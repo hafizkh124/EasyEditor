@@ -76,17 +76,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Determine voice config
+    const resolvedLang = languageCode || "ur-PK";
+    const resolvedVoice = voiceName || "ur-PK-Standard-A";
+
+    // Use SSML to explicitly set xml:lang for correct pronunciation
+    const ssmlText = `<speak xml:lang="${resolvedLang}">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</speak>`;
+
     // Call Google Cloud Text-to-Speech API
     const googleResponse = await fetch(
       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json; charset=utf-8" },
         body: JSON.stringify({
-          input: { text },
+          input: { ssml: ssmlText },
           voice: {
-            languageCode: languageCode || "ur-PK",
-            name: voiceName || "ur-PK-Wavenet-A",
+            languageCode: resolvedLang,
+            name: resolvedVoice,
           },
           audioConfig: {
             audioEncoding: "MP3",
