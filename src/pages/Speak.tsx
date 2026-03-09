@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Play, Square, Download, Volume2, User, Loader2, Coins } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Play, Square, Download, Volume2, User, Loader2, Coins, Upload, Mic2 } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import AudioWaveform from "@/components/AudioWaveform";
@@ -35,6 +36,8 @@ const personas: Persona[] = [
   { id: "yusuf", name: "Yusuf", nameUr: "یوسف", gender: "male", lang: "en-US", voiceLang: "en", elevenLabsVoiceId: "TX3LPaxmHKxFdv7VOQHJ" },
 ];
 
+type VoiceMode = "standard" | "cloned";
+
 const Speak = () => {
   const { user, session } = useAuth();
   const { t, language } = useLanguage();
@@ -51,6 +54,13 @@ const Speak = () => {
     tts_characters_used: number;
     tts_character_limit: number;
   } | null>(null);
+
+  // Voice cloning state
+  const [voiceMode, setVoiceMode] = useState<VoiceMode>("standard");
+  const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
+  const [isCloning, setIsCloning] = useState(false);
+  const [cloneSampleName, setCloneSampleName] = useState<string | null>(null);
+  const cloneInputRef = useRef<HTMLInputElement>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -79,6 +89,79 @@ const Speak = () => {
       });
   }, [user]);
 
+  // Load saved cloned voice ID from localStorage
+  useEffect(() => {
+    if (user) {
+      const savedId = localStorage.getItem(`cloned-voice-${user.id}`);
+      const savedName = localStorage.getItem(`cloned-voice-name-${user.id}`);
+      if (savedId) {
+        setClonedVoiceId(savedId);
+        setCloneSampleName(savedName);
+      }
+    }
+  }, [user]);
+
+  // --- Voice Clone Upload ---
+  const handleCloneUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !session?.access_token) return;
+
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast.error(t("tts.clone_file_too_large"));
+      return;
+    }
+
+    setIsCloning(true);
+    try {
+      const storagePath = `${user.id}/${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("voice-clones")
+        .upload(storagePath, file);
+
+      if (uploadError) throw uploadError;
+
+      toast.info(t("tts.training_voice"));
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/clone-voice`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            action: "create",
+            storagePath,
+            voiceName: `${user.email?.split("@")[0] || "user"}-clone`,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: "Clone failed" }));
+        throw new Error(err.error || "Voice cloning failed");
+      }
+
+      const data = await response.json();
+      if (data.voice_id) {
+        setClonedVoiceId(data.voice_id);
+        setCloneSampleName(file.name);
+        setVoiceMode("cloned");
+        localStorage.setItem(`cloned-voice-${user.id}`, data.voice_id);
+        localStorage.setItem(`cloned-voice-name-${user.id}`, file.name);
+        toast.success(t("tts.clone_success"));
+      }
+    } catch (err: any) {
+      toast.error(err.message || t("tts.clone_error"));
+    } finally {
+      setIsCloning(false);
+      if (cloneInputRef.current) cloneInputRef.current.value = "";
+    }
+  };
+
   // --- Browser TTS Fallback ---
   const playWithBrowserTTS = (textToSpeak: string) => {
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
@@ -99,6 +182,11 @@ const Speak = () => {
     speechSynthesis.speak(utterance);
   };
 
+  const getActiveVoiceId = () => {
+    if (voiceMode === "cloned" && clonedVoiceId) return clonedVoiceId;
+    return selectedPersona.elevenLabsVoiceId;
+  };
+
   const callTtsApi = async (): Promise<Blob | null> => {
     if (!session?.access_token) {
       toast.error("Please sign in to use TTS");
@@ -116,7 +204,7 @@ const Speak = () => {
         },
         body: JSON.stringify({
           text,
-          voiceId: selectedPersona.elevenLabsVoiceId,
+          voiceId: getActiveVoiceId(),
           speed,
         }),
       }
@@ -193,8 +281,7 @@ const Speak = () => {
       await audio.play();
       logActivity("tts", text.slice(0, 60));
     } catch {
-      // Fallback to browser TTS
-      toast.info(t("tts.fallback_browser"));
+      toast.error(t("tts.fallback_browser"));
       playWithBrowserTTS(text);
       logActivity("tts", text.slice(0, 60));
     }
@@ -230,7 +317,7 @@ const Speak = () => {
       const url = URL.createObjectURL(audioBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `tts-${selectedPersona.name}-${Date.now()}.mp3`;
+      a.download = `tts-${voiceMode === "cloned" ? "my-voice" : selectedPersona.name}-${Date.now()}.mp3`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(t("tts.downloaded"));
@@ -274,42 +361,115 @@ const Speak = () => {
           </Card>
         )}
 
-        {/* Persona Grid */}
-        <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">{t("tts.select_persona")}</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {personas.map((p) => (
-              <Card
-                key={p.id}
-                className={cn(
-                  "cursor-pointer transition-all hover:border-primary/50",
-                  selectedPersona.id === p.id && "border-primary ring-2 ring-primary/20"
-                )}
-                onClick={() => setSelectedPersona(p)}
+        {/* Voice Mode Selection */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">{t("tts.voice_source")}</h2>
+          <Select value={voiceMode} onValueChange={(v) => setVoiceMode(v as VoiceMode)}>
+            <SelectTrigger className="w-full sm:w-64">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="standard">
+                <span className="flex items-center gap-2">
+                  <Volume2 className="h-4 w-4" />
+                  {t("tts.standard_voices")}
+                </span>
+              </SelectItem>
+              <SelectItem value="cloned" disabled={!clonedVoiceId}>
+                <span className="flex items-center gap-2">
+                  <Mic2 className="h-4 w-4" />
+                  {t("tts.my_cloned_voice")}
+                  {!clonedVoiceId && ` (${t("tts.not_set_up")})`}
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Clone Voice Section */}
+          <Card className="border-dashed">
+            <CardContent className="pt-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Mic2 className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-medium text-foreground">{t("tts.clone_title")}</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">{t("tts.clone_desc")}</p>
+
+              {clonedVoiceId && cloneSampleName && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs">
+                    ✓ {cloneSampleName}
+                  </Badge>
+                </div>
+              )}
+
+              <input
+                ref={cloneInputRef}
+                type="file"
+                accept=".mp3,.wav,.m4a,.ogg,.webm"
+                className="hidden"
+                onChange={handleCloneUpload}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isCloning}
+                onClick={() => cloneInputRef.current?.click()}
+                className="gap-2"
               >
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div className={cn(
-                    "rounded-full p-2",
-                    p.gender === "female" ? "bg-primary/10" : "bg-secondary"
-                  )}>
-                    <User className={cn(
-                      "h-5 w-5",
-                      p.gender === "female" ? "text-primary" : "text-muted-foreground"
-                    )} />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm text-foreground">
-                      {language === "ur" ? p.nameUr : p.name}
-                    </p>
-                    <Badge variant="secondary" className="text-[10px] mt-0.5">
-                      {p.lang.split("-")[0].toUpperCase()}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                {isCloning ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t("tts.training_voice")}
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    {clonedVoiceId ? t("tts.replace_sample") : t("tts.upload_sample")}
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Persona Grid (only when standard mode) */}
+        {voiceMode === "standard" && (
+          <div>
+            <h2 className="text-sm font-medium text-muted-foreground mb-3">{t("tts.select_persona")}</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {personas.map((p) => (
+                <Card
+                  key={p.id}
+                  className={cn(
+                    "cursor-pointer transition-all hover:border-primary/50",
+                    selectedPersona.id === p.id && "border-primary ring-2 ring-primary/20"
+                  )}
+                  onClick={() => setSelectedPersona(p)}
+                >
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className={cn(
+                      "rounded-full p-2",
+                      p.gender === "female" ? "bg-primary/10" : "bg-secondary"
+                    )}>
+                      <User className={cn(
+                        "h-5 w-5",
+                        p.gender === "female" ? "text-primary" : "text-muted-foreground"
+                      )} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-foreground">
+                        {language === "ur" ? p.nameUr : p.name}
+                      </p>
+                      <Badge variant="secondary" className="text-[10px] mt-0.5">
+                        {p.lang.split("-")[0].toUpperCase()}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Text Input */}
         <div className="space-y-2">
@@ -323,8 +483,8 @@ const Speak = () => {
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, charLimit))}
             placeholder={t("tts.placeholder")}
-            dir={isRtlInput ? "rtl" : "ltr"}
-            className={cn("min-h-[120px] resize-none", isRtlInput && "text-right")}
+            dir={isRtlInput && voiceMode === "standard" ? "rtl" : "ltr"}
+            className={cn("min-h-[120px] resize-none", isRtlInput && voiceMode === "standard" && "text-right")}
             maxLength={charLimit}
           />
         </div>
@@ -391,9 +551,14 @@ const Speak = () => {
             {t("tts.download")}
           </Button>
 
+          {/* Active voice indicator */}
+          <Badge variant="outline" className="ms-auto text-xs">
+            {voiceMode === "cloned" ? t("tts.using_cloned") : selectedPersona.name}
+          </Badge>
+
           {/* Cost per request */}
           {text.trim() && subscription && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground ms-auto">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Coins className="h-3.5 w-3.5" />
               <span>{t("tts.cost")}: {costThisRequest} {t("tts.chars")}</span>
             </div>

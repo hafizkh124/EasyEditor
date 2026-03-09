@@ -1,6 +1,6 @@
 export interface ActivityEntry {
   id: string;
-  type: "tts" | "ocr";
+  type: "tts" | "ocr" | "stt";
   label: string;
   timestamp: number;
 }
@@ -17,7 +17,7 @@ export function getRecentActivity(): ActivityEntry[] {
   }
 }
 
-export function logActivity(type: "tts" | "ocr", label: string) {
+export function logActivity(type: "tts" | "ocr" | "stt", label: string) {
   const entries = getRecentActivity();
   const entry: ActivityEntry = {
     id: crypto.randomUUID(),
