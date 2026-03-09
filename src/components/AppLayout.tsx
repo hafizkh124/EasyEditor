@@ -1,5 +1,5 @@
 import { useLocation, Link } from "react-router-dom";
-import { Home, Mic, Volume2, Image, Settings, Menu, X } from "lucide-react";
+import { Home, Mic, Volume2, Image, BookOpen, Settings, Menu, X } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ const navItems = [
   { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe" },
   { path: "/speak", icon: Volume2, labelKey: "nav.speak" },
   { path: "/ocr", icon: Image, labelKey: "nav.ocr" },
+  { path: "/research", icon: BookOpen, labelKey: "nav.research" },
   { path: "/settings", icon: Settings, labelKey: "nav.settings" },
 ];
 

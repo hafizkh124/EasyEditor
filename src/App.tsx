@@ -14,6 +14,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Transcribe from "./pages/Transcribe";
 import Speak from "./pages/Speak";
 import OCR from "./pages/OCR";
+import Research from "./pages/Research";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/transcribe" element={<ProtectedRoute><Transcribe /></ProtectedRoute>} />
               <Route path="/speak" element={<ProtectedRoute><Speak /></ProtectedRoute>} />
               <Route path="/ocr" element={<ProtectedRoute><OCR /></ProtectedRoute>} />
+              <Route path="/research" element={<ProtectedRoute><Research /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
