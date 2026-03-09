@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.research-query]
 verify_jwt = false
+
+[functions.clone-voice]
+verify_jwt = false

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mic, MicOff, Copy, Download, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight } from "lucide-react";
+import { Mic, MicOff, Copy, Download, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight, Upload } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,8 @@ const refineActions: { action: RefineAction; icon: typeof GraduationCap; labelKe
   { action: "citations", icon: BookOpen, labelKey: "stt.citations" },
 ];
 
+const ACCEPTED_AUDIO = ".mp3,.wav,.m4a,.ogg,.webm,.flac,.aac";
+
 const Transcribe = () => {
   const { user, session } = useAuth();
   const { t } = useLanguage();
@@ -38,9 +40,11 @@ const Transcribe = () => {
   const [secondsUsed, setSecondsUsed] = useState(0);
   const [limit, setLimit] = useState(300);
   const [tier, setTier] = useState("free");
+  const [isUploading, setIsUploading] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startTimeRef = useRef<number>(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sttDir = sttLanguage === "ur-PK" ? "rtl" : "ltr";
   const isRtlText = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(transcript.slice(0, 100));
@@ -61,6 +65,59 @@ const Transcribe = () => {
   }, [user]);
 
   const limitReached = tier === "free" && secondsUsed >= limit;
+
+  // --- Audio file upload handler ---
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const maxSize = 25 * 1024 * 1024; // 25MB
+    if (file.size > maxSize) {
+      toast.error(t("stt.file_too_large"));
+      return;
+    }
+
+    if (limitReached) {
+      toast.error(t("stt.limit_reached"));
+      return;
+    }
+
+    setIsUploading(true);
+    setIsProcessing(true);
+
+    try {
+      // Estimate duration from file size (rough: ~16KB/s for compressed audio)
+      const estimatedDuration = Math.max(1, Math.round(file.size / 16000));
+
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke("transcribe", {
+        body: { audio: base64, language: sttLanguage, duration: estimatedDuration },
+      });
+
+      if (error) throw error;
+      if (data?.text) {
+        const newText = transcript ? transcript + "\n" + data.text : data.text;
+        setTranscript(newText);
+        setOriginalText("");
+        setSecondsUsed((prev) => prev + estimatedDuration);
+        logActivity("stt", data.text.slice(0, 60));
+        toast.success(t("stt.upload_success"));
+      }
+    } catch (err: any) {
+      toast.error(err.message || t("stt.upload_error"));
+    } finally {
+      setIsProcessing(false);
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }, [sttLanguage, limitReached, t, transcript]);
 
   const startRecording = useCallback(async () => {
     if (limitReached) {
@@ -216,26 +273,53 @@ const Transcribe = () => {
           </div>
         )}
 
-        {/* Mic Button */}
-        <div className="flex justify-center py-8">
-          <button
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={isProcessing || limitReached}
-            className={cn(
-              "relative flex h-24 w-24 items-center justify-center rounded-full transition-all",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              isRecording
-                ? "bg-destructive text-destructive-foreground animate-pulse"
-                : "bg-primary text-primary-foreground hover:bg-primary/90",
-              (isProcessing || limitReached) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            {isRecording ? <MicOff className="h-10 w-10" /> : <Mic className="h-10 w-10" />}
-          </button>
+        {/* Mic + Upload Buttons */}
+        <div className="flex flex-col items-center gap-4 py-8">
+          <div className="flex items-center gap-6">
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isProcessing || limitReached}
+              className={cn(
+                "relative flex h-24 w-24 items-center justify-center rounded-full transition-all",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                isRecording
+                  ? "bg-destructive text-destructive-foreground animate-pulse"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90",
+                (isProcessing || limitReached) && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              {isRecording ? <MicOff className="h-10 w-10" /> : <Mic className="h-10 w-10" />}
+            </button>
+
+            <div className="flex flex-col items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_AUDIO}
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={isProcessing || limitReached || isUploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-2 h-16 px-6"
+              >
+                {isUploading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Upload className="h-5 w-5" />
+                )}
+                {isUploading ? t("stt.transcribing") : t("stt.upload_file")}
+              </Button>
+              <span className="text-xs text-muted-foreground">{t("stt.upload_hint")}</span>
+            </div>
+          </div>
         </div>
 
         <p className="text-center text-sm text-muted-foreground">
-          {isRecording ? t("stt.recording") : isProcessing ? t("stt.processing") : t("stt.start")}
+          {isRecording ? t("stt.recording") : isProcessing ? (isUploading ? t("stt.transcribing") : t("stt.processing")) : t("stt.start")}
         </p>
 
         {/* Transcript Card */}
