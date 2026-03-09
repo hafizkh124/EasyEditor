@@ -96,24 +96,32 @@ const Dashboard = () => {
             </Card>
           </Link>
 
-          {[
-            { icon: BookOpen, label: t("dashboard.research_assistant") },
-            { icon: Image, label: t("dashboard.ocr") },
-          ].map((tool) => (
-            <Card key={tool.label} className="opacity-60 h-full">
+          <Link to="/ocr">
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-muted p-2">
-                    <tool.icon className="h-6 w-6 text-muted-foreground" />
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <Image className="h-6 w-6 text-primary" />
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">{tool.label}</CardTitle>
-                    <CardDescription className="text-xs">{t("dashboard.coming_soon")}</CardDescription>
-                  </div>
+                  <CardTitle className="text-lg">{t("dashboard.ocr")}</CardTitle>
                 </div>
               </CardHeader>
             </Card>
-          ))}
+          </Link>
+
+          <Card className="opacity-60 h-full">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-muted p-2">
+                  <BookOpen className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">{t("dashboard.research_assistant")}</CardTitle>
+                  <CardDescription className="text-xs">{t("dashboard.coming_soon")}</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
         </div>
       </div>
     </AppLayout>
