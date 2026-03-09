@@ -187,14 +187,26 @@ const Speak = () => {
     return selectedPersona.elevenLabsVoiceId;
   };
 
+  const getGoogleVoiceConfig = () => {
+    // Map persona language to Google TTS voice
+    const langMap: Record<string, { languageCode: string; voiceName: string }> = {
+      ur: { languageCode: "ur-PK", voiceName: "ur-PK-Wavenet-A" },
+      ar: { languageCode: "ar-XA", voiceName: "ar-XA-Wavenet-A" },
+      en: { languageCode: "en-US", voiceName: "en-US-Wavenet-D" },
+    };
+    return langMap[selectedPersona.voiceLang] || langMap.en;
+  };
+
   const callTtsApi = async (): Promise<Blob | null> => {
     if (!session?.access_token) {
       toast.error("Please sign in to use TTS");
       return null;
     }
 
+    const voiceConfig = getGoogleVoiceConfig();
+
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-tts`,
       {
         method: "POST",
         headers: {
@@ -204,7 +216,8 @@ const Speak = () => {
         },
         body: JSON.stringify({
           text,
-          voiceId: getActiveVoiceId(),
+          languageCode: voiceConfig.languageCode,
+          voiceName: voiceConfig.voiceName,
           speed,
         }),
       }
