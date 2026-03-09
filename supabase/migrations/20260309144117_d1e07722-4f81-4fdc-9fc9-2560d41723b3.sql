@@ -1,0 +1,1 @@
+ALTER TABLE public.subscriptions ALTER COLUMN tts_character_limit SET DEFAULT 10000;
