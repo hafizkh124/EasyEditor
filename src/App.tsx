@@ -13,6 +13,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Transcribe from "./pages/Transcribe";
 import Speak from "./pages/Speak";
+import OCR from "./pages/OCR";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
