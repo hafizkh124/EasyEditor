@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { path: "/", icon: Home, labelKey: "nav.home" },
   { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe" },
+  { path: "/speak", icon: Volume2, labelKey: "nav.speak" },
   { path: "/settings", icon: Settings, labelKey: "nav.settings" },
 ];
 
