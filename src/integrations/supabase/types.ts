@@ -51,6 +51,8 @@ export type Database = {
           tier: Database["public"]["Enums"]["subscription_tier"]
           transcription_limit: number
           transcription_seconds_used: number
+          tts_character_limit: number
+          tts_characters_used: number
           updated_at: string
           user_id: string
         }
@@ -60,6 +62,8 @@ export type Database = {
           tier?: Database["public"]["Enums"]["subscription_tier"]
           transcription_limit?: number
           transcription_seconds_used?: number
+          tts_character_limit?: number
+          tts_characters_used?: number
           updated_at?: string
           user_id: string
         }
@@ -69,6 +73,8 @@ export type Database = {
           tier?: Database["public"]["Enums"]["subscription_tier"]
           transcription_limit?: number
           transcription_seconds_used?: number
+          tts_character_limit?: number
+          tts_characters_used?: number
           updated_at?: string
           user_id?: string
         }
