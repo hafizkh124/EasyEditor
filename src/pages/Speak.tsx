@@ -189,8 +189,9 @@ const Speak = () => {
 
   const getGoogleVoiceConfig = () => {
     // Map persona language to Google TTS voice
+    // Note: Google TTS does not support ur-PK, so we use hi-IN (Hindi) as the closest language
     const langMap: Record<string, { languageCode: string; voiceName: string }> = {
-      ur: { languageCode: "ur-PK", voiceName: "ur-PK-Wavenet-A" },
+      ur: { languageCode: "hi-IN", voiceName: "hi-IN-Wavenet-A" },
       ar: { languageCode: "ar-XA", voiceName: "ar-XA-Wavenet-A" },
       en: { languageCode: "en-US", voiceName: "en-US-Wavenet-D" },
     };
