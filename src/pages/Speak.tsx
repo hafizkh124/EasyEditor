@@ -36,6 +36,7 @@ const personas: Persona[] = [
 const Speak = () => {
   const { user, session } = useAuth();
   const { t, language } = useLanguage();
+  const location = useLocation();
   const [text, setText] = useState("");
   const [selectedPersona, setSelectedPersona] = useState<Persona>(personas[0]);
   const [speed, setSpeed] = useState(1);
