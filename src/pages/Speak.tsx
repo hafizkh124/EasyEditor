@@ -188,8 +188,8 @@ const Speak = () => {
   };
 
   const getGoogleVoiceConfig = () => {
-    const langMap: Record<string, { languageCode: string; voiceName: string }> = {
-      ur: { languageCode: "ur-PK", voiceName: "ur-PK-Standard-A" },
+    const langMap: Record<string, { languageCode: string; voiceName?: string }> = {
+      ur: { languageCode: "hi-IN", voiceName: "hi-IN-Wavenet-A" },
       ar: { languageCode: "ar-XA", voiceName: "ar-XA-Wavenet-A" },
       en: { languageCode: "en-US", voiceName: "en-US-Wavenet-D" },
     };

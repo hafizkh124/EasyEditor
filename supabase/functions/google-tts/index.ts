@@ -76,9 +76,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Determine voice config
-    const resolvedLang = languageCode || "ur-PK";
-    const resolvedVoice = voiceName || "ur-PK-Standard-A";
+    // Determine voice config — Google TTS has no ur-PK voices, use hi-IN as fallback
+    const resolvedLang = languageCode || "hi-IN";
+    const resolvedVoice = voiceName || "hi-IN-Wavenet-A";
 
     // Use SSML to explicitly set xml:lang for correct pronunciation
     const ssmlText = `<speak xml:lang="${resolvedLang}">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</speak>`;
