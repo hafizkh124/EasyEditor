@@ -12,6 +12,7 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Transcribe from "./pages/Transcribe";
+import Speak from "./pages/Speak";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
