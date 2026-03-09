@@ -160,7 +160,7 @@ const DocumentBox = ({
   const isRtl = /[\u0600-\u06FF]/.test(content.slice(0, 100));
 
   return (
-    <div className="relative rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+    <div className="relative rounded-xl border border-border bg-card shadow-md overflow-hidden" style={{ boxShadow: "0 4px 24px -4px hsl(var(--foreground) / 0.08)" }}>
       {/* Floating Toolbar */}
       <div className="flex items-center gap-1.5 p-2 border-b border-border bg-muted/50 flex-wrap">
         <span className="text-xs font-medium text-muted-foreground mr-1 flex items-center gap-1">
@@ -189,25 +189,20 @@ const DocumentBox = ({
       </div>
 
       {/* Refining overlay */}
-      <AnimatePresence>
-        {isRefining && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm"
-          >
-            <div className="flex items-center gap-2 text-primary">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="text-sm font-medium">{t("research.refining")}</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isRefining && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity duration-300">
+          <div className="flex items-center gap-2 text-primary">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm font-medium">{t("research.refining")}</span>
+          </div>
+        </div>
+      )}
 
-      {/* Document content */}
+      {/* Document content - A4 paper feel */}
       <div
         dir={isRtl ? "rtl" : "ltr"}
         className={cn(
-          "p-5 prose prose-sm dark:prose-invert max-w-none min-h-[200px]",
+          "px-8 py-6 prose prose-sm dark:prose-invert max-w-none min-h-[250px] leading-relaxed",
           isRtl && "text-right"
         )}
       >
