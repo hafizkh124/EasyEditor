@@ -48,6 +48,7 @@ const translations: Record<Language, Record<string, string>> = {
     "tts.stop": "Stop",
     "tts.download": "Download",
     "tts.playing": "Playing...",
+    "tts.generating": "Generating...",
     "tts.chars_used": "Characters Used",
     "tts.limit_warning": "You are approaching your free tier limit!",
     "tts.limit_reached": "Free tier character limit reached. Upgrade to Pro.",
