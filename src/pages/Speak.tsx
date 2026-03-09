@@ -58,6 +58,14 @@ const Speak = () => {
     ? (subscription.tier === "pro" ? 10000 : subscription.tts_character_limit) - subscription.tts_characters_used
     : 0;
 
+  // Populate text from OCR "Listen Now" navigation
+  useEffect(() => {
+    const navState = location.state as { text?: string } | null;
+    if (navState?.text) {
+      setText(navState.text.slice(0, charLimit));
+    }
+  }, [location.state, charLimit]);
+
   useEffect(() => {
     if (!user) return;
     supabase
