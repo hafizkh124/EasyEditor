@@ -6,19 +6,34 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Mic, MicOff, Copy, Download } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Mic, MicOff, Copy, Download, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+import { logActivity } from "@/lib/activityLog";
 
 type SttLanguage = "en-US" | "ur-PK";
+type RefineAction = "formalize" | "humanize" | "shorten" | "citations";
+
+const refineActions: { action: RefineAction; icon: typeof GraduationCap; labelKey: string }[] = [
+  { action: "formalize", icon: GraduationCap, labelKey: "stt.formalize" },
+  { action: "humanize", icon: Heart, labelKey: "stt.humanize" },
+  { action: "shorten", icon: Scissors, labelKey: "stt.shorten" },
+  { action: "citations", icon: BookOpen, labelKey: "stt.citations" },
+];
 
 const Transcribe = () => {
-  const { user } = useAuth();
-  const { t, direction } = useLanguage();
+  const { user, session } = useAuth();
+  const { t } = useLanguage();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [originalText, setOriginalText] = useState("");
+  const [isRefining, setIsRefining] = useState(false);
+  const [activeAction, setActiveAction] = useState<RefineAction | null>(null);
+  const [showCompare, setShowCompare] = useState(false);
   const [sttLanguage, setSttLanguage] = useState<SttLanguage>("en-US");
   const [secondsUsed, setSecondsUsed] = useState(0);
   const [limit, setLimit] = useState(300);
@@ -28,6 +43,7 @@ const Transcribe = () => {
   const startTimeRef = useRef<number>(0);
 
   const sttDir = sttLanguage === "ur-PK" ? "rtl" : "ltr";
+  const isRtlText = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(transcript.slice(0, 100));
 
   useEffect(() => {
     if (!user) return;
@@ -69,7 +85,6 @@ const Transcribe = () => {
 
         setIsProcessing(true);
         try {
-          // Convert blob to base64
           const reader = new FileReader();
           const base64 = await new Promise<string>((resolve) => {
             reader.onloadend = () => resolve(reader.result as string);
@@ -82,8 +97,11 @@ const Transcribe = () => {
 
           if (error) throw error;
           if (data?.text) {
-            setTranscript((prev) => (prev ? prev + "\n" + data.text : data.text));
+            const newText = transcript ? transcript + "\n" + data.text : data.text;
+            setTranscript(newText);
+            setOriginalText("");
             setSecondsUsed((prev) => prev + duration);
+            logActivity("tts", data.text.slice(0, 60));
           }
         } catch (err: any) {
           toast.error(err.message || "Transcription failed");
@@ -96,7 +114,7 @@ const Transcribe = () => {
     } catch {
       toast.error("Microphone access denied");
     }
-  }, [sttLanguage, limitReached, t]);
+  }, [sttLanguage, limitReached, t, transcript]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -105,9 +123,49 @@ const Transcribe = () => {
     setIsRecording(false);
   }, []);
 
+  const handleRefine = async (action: RefineAction) => {
+    if (!transcript.trim() || !session?.access_token) return;
+    setIsRefining(true);
+    setActiveAction(action);
+    setShowCompare(false);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-text`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ text: transcript, action }),
+        }
+      );
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: "Unknown error" }));
+        toast.error(errData.error || t("stt.refine_error"));
+        return;
+      }
+
+      const data = await response.json();
+      if (data.text) {
+        setOriginalText(transcript);
+        setTranscript(data.text);
+        toast.success(t(`stt.${action}_done`));
+      }
+    } catch {
+      toast.error(t("stt.refine_error"));
+    } finally {
+      setIsRefining(false);
+      setActiveAction(null);
+    }
+  };
+
   const handleCopy = () => {
     navigator.clipboard.writeText(transcript);
-    toast.success(t("stt.copy") + " ✓");
+    toast.success(t("stt.copied"));
   };
 
   const handleDownload = () => {
@@ -118,6 +176,15 @@ const Transcribe = () => {
     a.download = "transcript.txt";
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleRevert = () => {
+    if (originalText) {
+      setTranscript(originalText);
+      setOriginalText("");
+      setShowCompare(false);
+      toast.info(t("stt.reverted"));
+    }
   };
 
   return (
@@ -171,31 +238,114 @@ const Transcribe = () => {
           {isRecording ? t("stt.recording") : isProcessing ? t("stt.processing") : t("stt.start")}
         </p>
 
-        {/* Transcript */}
+        {/* Transcript Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">{t("stt.transcript")}</CardTitle>
             {transcript && (
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 <Button variant="ghost" size="icon" onClick={handleCopy}>
                   <Copy className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="icon" onClick={handleDownload}>
                   <Download className="h-4 w-4" />
                 </Button>
+                {originalText && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowCompare(!showCompare)}
+                    className={cn(showCompare && "text-primary")}
+                  >
+                    <ArrowLeftRight className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             )}
           </CardHeader>
-          <CardContent>
-            <div
-              dir={sttDir}
-              className={cn(
-                "min-h-[200px] rounded-md border border-input bg-background p-4 text-sm whitespace-pre-wrap",
-                !transcript && "text-muted-foreground"
-              )}
-            >
-              {transcript || t("stt.no_transcript")}
-            </div>
+          <CardContent className="space-y-4">
+            {/* Compare View */}
+            {showCompare && originalText ? (
+              <Tabs defaultValue="refined" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="refined">{t("stt.refined")}</TabsTrigger>
+                  <TabsTrigger value="original">{t("stt.original")}</TabsTrigger>
+                </TabsList>
+                <TabsContent value="refined">
+                  <div
+                    dir={isRtlText ? "rtl" : "ltr"}
+                    className={cn(
+                      "min-h-[200px] rounded-md border border-input bg-background p-4 text-sm whitespace-pre-wrap",
+                      isRtlText && "text-right"
+                    )}
+                  >
+                    {transcript}
+                  </div>
+                </TabsContent>
+                <TabsContent value="original">
+                  <div
+                    dir={isRtlText ? "rtl" : "ltr"}
+                    className={cn(
+                      "min-h-[200px] rounded-md border border-input bg-background p-4 text-sm whitespace-pre-wrap",
+                      isRtlText && "text-right"
+                    )}
+                  >
+                    {originalText}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            ) : (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={transcript}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                  dir={sttDir}
+                  className={cn(
+                    "min-h-[200px] rounded-md border border-input bg-background p-4 text-sm whitespace-pre-wrap",
+                    !transcript && "text-muted-foreground"
+                  )}
+                >
+                  {transcript || t("stt.no_transcript")}
+                </motion.div>
+              </AnimatePresence>
+            )}
+
+            {/* AI Refinement Toolbar */}
+            {transcript && (
+              <div className="space-y-3">
+                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {t("stt.ai_tools")}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {refineActions.map(({ action, icon: Icon, labelKey }) => (
+                    <Button
+                      key={action}
+                      variant="outline"
+                      size="sm"
+                      disabled={isRefining}
+                      onClick={() => handleRefine(action)}
+                      className="gap-1.5"
+                    >
+                      {isRefining && activeAction === action ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Icon className="h-3.5 w-3.5" />
+                      )}
+                      {t(labelKey)}
+                    </Button>
+                  ))}
+
+                  {originalText && (
+                    <Button variant="ghost" size="sm" onClick={handleRevert} className="text-destructive">
+                      {t("stt.revert")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

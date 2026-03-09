@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.process-ocr]
 verify_jwt = false
+
+[functions.refine-text]
+verify_jwt = false
