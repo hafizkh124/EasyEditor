@@ -10,6 +10,7 @@ const navItems = [
   { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe" },
   { path: "/speak", icon: Volume2, labelKey: "nav.speak" },
   { path: "/ocr", icon: Image, labelKey: "nav.ocr" },
+  { path: "/research", icon: BookOpen, labelKey: "nav.research" },
   { path: "/settings", icon: Settings, labelKey: "nav.settings" },
 ];
 
