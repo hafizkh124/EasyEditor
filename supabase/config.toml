@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.refine-text]
 verify_jwt = false
+
+[functions.research-query]
+verify_jwt = false
