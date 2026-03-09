@@ -116,6 +116,7 @@ const translations: Record<Language, Record<string, string>> = {
     "tts.stop": "رکیں",
     "tts.download": "ڈاؤن لوڈ",
     "tts.playing": "چل رہا ہے...",
+    "tts.generating": "بنایا جا رہا ہے...",
     "tts.chars_used": "حروف استعمال ہوئے",
     "tts.limit_warning": "آپ اپنی مفت حد کے قریب پہنچ رہے ہیں!",
     "tts.limit_reached": "مفت حد تک پہنچ گئی۔ پرو میں اپ گریڈ کریں۔",
