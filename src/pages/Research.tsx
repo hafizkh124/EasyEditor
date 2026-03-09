@@ -198,11 +198,11 @@ const DocumentBox = ({
         </div>
       )}
 
-      {/* Document content */}
+      {/* Document content - A4 paper feel */}
       <div
         dir={isRtl ? "rtl" : "ltr"}
         className={cn(
-          "p-5 prose prose-sm dark:prose-invert max-w-none min-h-[200px]",
+          "px-8 py-6 prose prose-sm dark:prose-invert max-w-none min-h-[250px] leading-relaxed",
           isRtl && "text-right"
         )}
       >
