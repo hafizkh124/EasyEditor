@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -35,6 +36,7 @@ const personas: Persona[] = [
 const Speak = () => {
   const { user, session } = useAuth();
   const { t, language } = useLanguage();
+  const location = useLocation();
   const [text, setText] = useState("");
   const [selectedPersona, setSelectedPersona] = useState<Persona>(personas[0]);
   const [speed, setSpeed] = useState(1);
@@ -55,6 +57,14 @@ const Speak = () => {
   const charsRemaining = subscription
     ? (subscription.tier === "pro" ? 10000 : subscription.tts_character_limit) - subscription.tts_characters_used
     : 0;
+
+  // Populate text from OCR "Listen Now" navigation
+  useEffect(() => {
+    const navState = location.state as { text?: string } | null;
+    if (navState?.text) {
+      setText(navState.text.slice(0, charLimit));
+    }
+  }, [location.state, charLimit]);
 
   useEffect(() => {
     if (!user) return;
