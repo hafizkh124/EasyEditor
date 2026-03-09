@@ -1,24 +1,24 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Link2, Upload, FileText, Trash2, Plus, Send, Loader2, Download, BookOpen,
-  Globe, Lock, X
+  Globe, Lock, Copy, Check
 } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
 
 interface Source {
   id: string;
@@ -34,26 +34,108 @@ interface ChatMessage {
   content: string;
 }
 
+// --- Drag-and-drop zone component ---
+const DropZone = ({
+  onFileDrop,
+  isUploading,
+  t,
+}: {
+  onFileDrop: (file: File) => void;
+  isUploading: boolean;
+  t: (k: string) => string;
+}) => {
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragIn = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.items?.length) setIsDragOver(true);
+  }, []);
+
+  const handleDragOut = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+      const file = e.dataTransfer.files?.[0];
+      if (file) onFileDrop(file);
+    },
+    [onFileDrop]
+  );
+
+  return (
+    <motion.div
+      onDragEnter={handleDragIn}
+      onDragLeave={handleDragOut}
+      onDragOver={handleDrag}
+      onDrop={handleDrop}
+      animate={{
+        borderColor: isDragOver ? "hsl(var(--primary))" : "hsl(var(--border))",
+        backgroundColor: isDragOver ? "hsl(var(--primary) / 0.08)" : "transparent",
+        scale: isDragOver ? 1.02 : 1,
+      }}
+      transition={{ duration: 0.2 }}
+      className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer"
+    >
+      {isUploading ? (
+        <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary" />
+      ) : (
+        <>
+          <Upload className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+          <p className="text-xs text-muted-foreground">{t("research.drop_hint")}</p>
+        </>
+      )}
+    </motion.div>
+  );
+};
+
+// --- Markdown message renderer ---
+const MessageContent = ({ content, isUser }: { content: string; isUser: boolean }) => {
+  const isRtl = /[\u0600-\u06FF]/.test(content.slice(0, 100));
+
+  if (isUser) {
+    return (
+      <div dir={isRtl ? "rtl" : "ltr"} className={cn("whitespace-pre-wrap", isRtl && "text-right")}>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <div dir={isRtl ? "rtl" : "ltr"} className={cn("prose prose-sm dark:prose-invert max-w-none", isRtl && "text-right")}>
+      <ReactMarkdown>{content}</ReactMarkdown>
+    </div>
+  );
+};
+
 const Research = () => {
   const { user, session } = useAuth();
   const { t } = useLanguage();
 
-  // Sources state
   const [sources, setSources] = useState<Source[]>([]);
   const [urlInput, setUrlInput] = useState("");
   const [isAddingUrl, setIsAddingUrl] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState("sources");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [query, setQuery] = useState("");
   const [isQuerying, setIsQuerying] = useState(false);
   const [strictMode, setStrictMode] = useState(true);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Load sources on mount
   const loadSources = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
@@ -64,44 +146,17 @@ const Research = () => {
     if (data) setSources(data as Source[]);
   }, [user]);
 
-  useState(() => {
+  useEffect(() => {
     loadSources();
-  });
+  }, [loadSources]);
 
-  // Add URL source
-  const handleAddUrl = async () => {
-    if (!urlInput.trim() || !user) return;
-    let url = urlInput.trim();
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      url = "https://" + url;
-    }
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isQuerying]);
 
-    setIsAddingUrl(true);
-    try {
-      const title = new URL(url).hostname.replace("www.", "");
-      const { error } = await supabase.from("research_sources").insert({
-        user_id: user.id,
-        source_type: "url",
-        title,
-        url,
-      });
-      if (error) throw error;
-      setUrlInput("");
-      await loadSources();
-      toast.success(t("research.source_added"));
-    } catch (err: any) {
-      toast.error(err.message || t("research.add_error"));
-    } finally {
-      setIsAddingUrl(false);
-    }
-  };
-
-  // Upload file
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    e.target.value = "";
-
+  // --- File validation + upload ---
+  const processFile = useCallback(async (file: File) => {
+    if (!user) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
     if (!["pdf", "docx"].includes(ext || "")) {
       toast.error(t("research.invalid_file"));
@@ -135,9 +190,36 @@ const Research = () => {
     } finally {
       setIsUploading(false);
     }
+  }, [user, loadSources, t]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) processFile(file);
   };
 
-  // Delete source
+  const handleAddUrl = async () => {
+    if (!urlInput.trim() || !user) return;
+    let url = urlInput.trim();
+    if (!url.startsWith("http://") && !url.startsWith("https://")) url = "https://" + url;
+
+    setIsAddingUrl(true);
+    try {
+      const title = new URL(url).hostname.replace("www.", "");
+      const { error } = await supabase.from("research_sources").insert({
+        user_id: user.id, source_type: "url", title, url,
+      });
+      if (error) throw error;
+      setUrlInput("");
+      await loadSources();
+      toast.success(t("research.source_added"));
+    } catch (err: any) {
+      toast.error(err.message || t("research.add_error"));
+    } finally {
+      setIsAddingUrl(false);
+    }
+  };
+
   const handleDeleteSource = async (source: Source) => {
     try {
       if (source.storage_path) {
@@ -151,29 +233,50 @@ const Research = () => {
     }
   };
 
-  // Send query (placeholder for now — will be wired to edge function in next step)
+  // --- AI Query ---
   const handleSendQuery = async () => {
     if (!query.trim() || !session?.access_token) return;
     const userMsg: ChatMessage = { role: "user", content: query };
-    setMessages((prev) => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setQuery("");
     setIsQuerying(true);
 
     try {
-      // For now show a placeholder — the edge function will be built next
+      const { data, error } = await supabase.functions.invoke("research-query", {
+        body: {
+          query: userMsg.content,
+          sources,
+          strictMode,
+          chatHistory: messages, // previous messages for context
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        toast.error(data.error);
+        setIsQuerying(false);
+        return;
+      }
+
       const assistantMsg: ChatMessage = {
         role: "assistant",
-        content: t("research.coming_soon_msg"),
+        content: data?.answer || t("research.query_error"),
       };
-      setTimeout(() => {
-        setMessages((prev) => [...prev, assistantMsg]);
-        setIsQuerying(false);
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 1000);
-    } catch {
+      setMessages((prev) => [...prev, assistantMsg]);
+    } catch (err: any) {
+      toast.error(err.message || t("research.query_error"));
+    } finally {
       setIsQuerying(false);
-      toast.error(t("research.query_error"));
     }
+  };
+
+  const handleCopyMessage = (content: string, idx: number) => {
+    navigator.clipboard.writeText(content);
+    setCopiedIdx(idx);
+    toast.success(t("research.copied"));
+    setTimeout(() => setCopiedIdx(null), 2000);
   };
 
   const handleDownloadReport = () => {
@@ -190,12 +293,7 @@ const Research = () => {
     toast.success(t("research.report_downloaded"));
   };
 
-  const sourceIcon = (type: string) => {
-    if (type === "url") return Link2;
-    if (type === "pdf") return FileText;
-    return FileText;
-  };
-
+  const sourceIcon = (type: string) => (type === "url" ? Link2 : FileText);
   const isRtlText = /[\u0600-\u06FF]/.test(query.slice(0, 50));
 
   return (
@@ -225,6 +323,10 @@ const Research = () => {
                 {isAddingUrl ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               </Button>
             </div>
+
+            {/* Drag & Drop Zone */}
+            <DropZone onFileDrop={processFile} isUploading={isUploading} t={t} />
+
             <Button
               variant="outline"
               size="sm"
@@ -288,20 +390,12 @@ const Research = () => {
           <div className="p-3 border-t border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {strictMode ? (
-                  <Lock className="h-4 w-4 text-primary" />
-                ) : (
-                  <Globe className="h-4 w-4 text-primary" />
-                )}
+                {strictMode ? <Lock className="h-4 w-4 text-primary" /> : <Globe className="h-4 w-4 text-primary" />}
                 <Label htmlFor="mode-toggle" className="text-sm font-medium text-foreground">
                   {strictMode ? t("research.strict_mode") : t("research.extended_mode")}
                 </Label>
               </div>
-              <Switch
-                id="mode-toggle"
-                checked={!strictMode}
-                onCheckedChange={(v) => setStrictMode(!v)}
-              />
+              <Switch id="mode-toggle" checked={!strictMode} onCheckedChange={(v) => setStrictMode(!v)} />
             </div>
             <p className="text-[10px] text-muted-foreground mt-1">
               {strictMode ? t("research.strict_desc") : t("research.extended_desc")}
@@ -311,18 +405,16 @@ const Research = () => {
 
         {/* Chat Panel */}
         <div className="flex-1 flex flex-col min-h-0">
-          {/* Chat Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
             <h1 className="text-xl font-bold text-foreground">{t("research.title")}</h1>
             {messages.length > 0 && (
               <Button variant="outline" size="sm" onClick={handleDownloadReport}>
-                <Download className="h-3.5 w-3.5" />
+                <Download className="h-3.5 w-3.5 mr-1" />
                 {t("research.download_report")}
               </Button>
             )}
           </div>
 
-          {/* Messages */}
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4 max-w-3xl mx-auto">
               {messages.length === 0 && (
@@ -335,29 +427,34 @@ const Research = () => {
                 </div>
               )}
               {messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "flex",
-                    msg.role === "user" ? "justify-end" : "justify-start"
-                  )}
-                >
+                <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
                   <div
                     className={cn(
-                      "rounded-2xl px-4 py-2.5 max-w-[85%] text-sm whitespace-pre-wrap",
+                      "rounded-2xl px-4 py-2.5 max-w-[85%] text-sm group relative",
                       msg.role === "user"
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-foreground border border-border"
                     )}
                   >
-                    {msg.content}
+                    <MessageContent content={msg.content} isUser={msg.role === "user"} />
+                    {msg.role === "assistant" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 absolute -bottom-3 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border border-border"
+                        onClick={() => handleCopyMessage(msg.content, i)}
+                      >
+                        {copiedIdx === i ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
               {isQuerying && (
                 <div className="flex justify-start">
-                  <div className="rounded-2xl px-4 py-2.5 bg-muted border border-border">
+                  <div className="rounded-2xl px-4 py-3 bg-muted border border-border flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-xs text-muted-foreground">{t("research.thinking")}</span>
                   </div>
                 </div>
               )}
@@ -365,7 +462,6 @@ const Research = () => {
             </div>
           </ScrollArea>
 
-          {/* Input */}
           <div className="p-4 border-t border-border">
             <div className="flex gap-2 max-w-3xl mx-auto">
               <Textarea
