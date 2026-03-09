@@ -9,10 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Play, Square, Download, Volume2, User, Loader2 } from "lucide-react";
+import { Play, Square, Download, Volume2, User, Loader2, Coins } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
+import AudioWaveform from "@/components/AudioWaveform";
 import { cn } from "@/lib/utils";
+import { logActivity } from "@/lib/activityLog";
 
 interface Persona {
   id: string;
@@ -25,12 +27,12 @@ interface Persona {
 }
 
 const personas: Persona[] = [
-  { id: "zainab", name: "Zainab", nameUr: "زینب", gender: "female", lang: "ur-PK", voiceLang: "ur", elevenLabsVoiceId: "EXAVITQu4vr4xnSDxMaL" }, // Sarah - multilingual
-  { id: "omar", name: "Omar", nameUr: "عمر", gender: "male", lang: "ar-SA", voiceLang: "ar", elevenLabsVoiceId: "onwK4e9ZLuTAKqWW03F9" }, // Daniel - multilingual
-  { id: "fatima", name: "Fatima", nameUr: "فاطمہ", gender: "female", lang: "en-US", voiceLang: "en", elevenLabsVoiceId: "XrExE9yKIg1WjnnlVkGX" }, // Matilda
-  { id: "hamza", name: "Hamza", nameUr: "حمزہ", gender: "male", lang: "ur-PK", voiceLang: "ur", elevenLabsVoiceId: "JBFqnCBsd6RMkjVDRZzb" }, // George - multilingual
-  { id: "aisha", name: "Aisha", nameUr: "عائشہ", gender: "female", lang: "ar-SA", voiceLang: "ar", elevenLabsVoiceId: "FGY2WhTYpPnrIDTdsKH5" }, // Laura - multilingual
-  { id: "yusuf", name: "Yusuf", nameUr: "یوسف", gender: "male", lang: "en-US", voiceLang: "en", elevenLabsVoiceId: "TX3LPaxmHKxFdv7VOQHJ" }, // Liam
+  { id: "zainab", name: "Zainab", nameUr: "زینب", gender: "female", lang: "ur-PK", voiceLang: "ur", elevenLabsVoiceId: "EXAVITQu4vr4xnSDxMaL" },
+  { id: "omar", name: "Omar", nameUr: "عمر", gender: "male", lang: "ar-SA", voiceLang: "ar", elevenLabsVoiceId: "onwK4e9ZLuTAKqWW03F9" },
+  { id: "fatima", name: "Fatima", nameUr: "فاطمہ", gender: "female", lang: "en-US", voiceLang: "en", elevenLabsVoiceId: "XrExE9yKIg1WjnnlVkGX" },
+  { id: "hamza", name: "Hamza", nameUr: "حمزہ", gender: "male", lang: "ur-PK", voiceLang: "ur", elevenLabsVoiceId: "JBFqnCBsd6RMkjVDRZzb" },
+  { id: "aisha", name: "Aisha", nameUr: "عائشہ", gender: "female", lang: "ar-SA", voiceLang: "ar", elevenLabsVoiceId: "FGY2WhTYpPnrIDTdsKH5" },
+  { id: "yusuf", name: "Yusuf", nameUr: "یوسف", gender: "male", lang: "en-US", voiceLang: "en", elevenLabsVoiceId: "TX3LPaxmHKxFdv7VOQHJ" },
 ];
 
 const Speak = () => {
@@ -58,7 +60,6 @@ const Speak = () => {
     ? (subscription.tier === "pro" ? 10000 : subscription.tts_character_limit) - subscription.tts_characters_used
     : 0;
 
-  // Populate text from OCR "Listen Now" navigation
   useEffect(() => {
     const navState = location.state as { text?: string } | null;
     if (navState?.text) {
@@ -77,6 +78,26 @@ const Speak = () => {
         if (data) setSubscription(data);
       });
   }, [user]);
+
+  // --- Browser TTS Fallback ---
+  const playWithBrowserTTS = (textToSpeak: string) => {
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = speed;
+    utterance.onstart = () => {
+      setIsPlaying(true);
+      setIsLoading(false);
+    };
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setPlaybackProgress(0);
+    };
+    utterance.onerror = () => {
+      setIsPlaying(false);
+      setIsLoading(false);
+      toast.error(t("tts.error"));
+    };
+    speechSynthesis.speak(utterance);
+  };
 
   const callTtsApi = async (): Promise<Blob | null> => {
     if (!session?.access_token) {
@@ -106,12 +127,11 @@ const Speak = () => {
       if (response.status === 429) {
         toast.error(t("tts.limit_reached"));
       } else {
-        toast.error(errData.error || t("tts.error"));
+        throw new Error(errData.error || "ElevenLabs failed");
       }
       return null;
     }
 
-    // Update local subscription state
     if (subscription) {
       setSubscription((prev) =>
         prev ? { ...prev, tts_characters_used: prev.tts_characters_used + text.length } : prev
@@ -128,7 +148,6 @@ const Speak = () => {
       return;
     }
 
-    // Stop any existing playback
     handleStop();
     setIsLoading(true);
 
@@ -172,9 +191,12 @@ const Speak = () => {
       };
 
       await audio.play();
+      logActivity("tts", text.slice(0, 60));
     } catch {
-      setIsLoading(false);
-      toast.error(t("tts.error"));
+      // Fallback to browser TTS
+      toast.info(t("tts.fallback_browser"));
+      playWithBrowserTTS(text);
+      logActivity("tts", text.slice(0, 60));
     }
   };
 
@@ -184,6 +206,7 @@ const Speak = () => {
       audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
+    speechSynthesis.cancel();
     setIsPlaying(false);
     setPlaybackProgress(0);
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
@@ -224,6 +247,8 @@ const Speak = () => {
       ? 0
       : (subscription.tts_characters_used / subscription.tts_character_limit) * 100
     : 0;
+
+  const costThisRequest = text.length;
 
   return (
     <AppLayout>
@@ -324,25 +349,27 @@ const Speak = () => {
           </div>
         </div>
 
-        {/* Playback Progress */}
+        {/* Audio Waveform */}
         {(isPlaying || isLoading) && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
+          <Card>
+            <CardContent className="py-4">
               {isLoading ? (
-                <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                <div className="flex items-center justify-center gap-2 h-16">
+                  <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                  <span className="text-sm text-muted-foreground">{t("tts.generating")}</span>
+                </div>
               ) : (
-                <Volume2 className="h-4 w-4 text-primary animate-pulse" />
+                <AudioWaveform isPlaying={isPlaying} />
               )}
-              <span className="text-sm text-muted-foreground">
-                {isLoading ? t("tts.generating") : t("tts.playing")}
-              </span>
-            </div>
-            <Progress value={isLoading ? undefined : playbackProgress} className="h-2" />
-          </div>
+              {!isLoading && (
+                <Progress value={playbackProgress} className="h-1 mt-3" />
+              )}
+            </CardContent>
+          </Card>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-3">
+        {/* Action Buttons + Cost Indicator */}
+        <div className="flex flex-wrap gap-3 items-center">
           {isPlaying ? (
             <Button onClick={handleStop} variant="destructive" className="flex-1 sm:flex-none">
               <Square className="h-4 w-4" />
@@ -363,6 +390,14 @@ const Speak = () => {
             {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             {t("tts.download")}
           </Button>
+
+          {/* Cost per request */}
+          {text.trim() && subscription && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground ms-auto">
+              <Coins className="h-3.5 w-3.5" />
+              <span>{t("tts.cost")}: {costThisRequest} {t("tts.chars")}</span>
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>

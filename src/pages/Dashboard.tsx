@@ -6,8 +6,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Mic, BookOpen, Image, Volume2 } from "lucide-react";
+import { Mic, BookOpen, Image, Volume2, Clock } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
+import { getRecentActivity, type ActivityEntry } from "@/lib/activityLog";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -18,6 +19,11 @@ const Dashboard = () => {
     transcription_limit: number;
   } | null>(null);
   const [displayName, setDisplayName] = useState("");
+  const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
+
+  useEffect(() => {
+    setRecentActivity(getRecentActivity());
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -37,6 +43,11 @@ const Dashboard = () => {
       ? 0
       : (subscription.transcription_seconds_used / subscription.transcription_limit) * 100
     : 0;
+
+  const formatTime = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  };
 
   return (
     <AppLayout>
@@ -123,6 +134,33 @@ const Dashboard = () => {
             </CardHeader>
           </Card>
         </div>
+
+        {/* Recent Activity */}
+        {recentActivity.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+                {t("dashboard.recent_activity")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {recentActivity.map((entry) => (
+                <div key={entry.id} className="flex items-center gap-3 text-sm">
+                  <div className={`rounded p-1 ${entry.type === "tts" ? "bg-primary/10" : "bg-accent"}`}>
+                    {entry.type === "tts" ? (
+                      <Volume2 className="h-3.5 w-3.5 text-primary" />
+                    ) : (
+                      <Image className="h-3.5 w-3.5 text-accent-foreground" />
+                    )}
+                  </div>
+                  <span className="text-foreground truncate flex-1">{entry.label}</span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">{formatTime(entry.timestamp)}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AppLayout>
   );
