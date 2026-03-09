@@ -160,7 +160,7 @@ const DocumentBox = ({
   const isRtl = /[\u0600-\u06FF]/.test(content.slice(0, 100));
 
   return (
-    <div className="relative rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+    <div className="relative rounded-xl border border-border bg-card shadow-md overflow-hidden" style={{ boxShadow: "0 4px 24px -4px hsl(var(--foreground) / 0.08)" }}>
       {/* Floating Toolbar */}
       <div className="flex items-center gap-1.5 p-2 border-b border-border bg-muted/50 flex-wrap">
         <span className="text-xs font-medium text-muted-foreground mr-1 flex items-center gap-1">
