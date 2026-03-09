@@ -83,10 +83,22 @@ const Dashboard = () => {
             </Card>
           </Link>
 
+          <Link to="/speak">
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <Volume2 className="h-6 w-6 text-primary" />
+                  </div>
+                  <CardTitle className="text-lg">{t("dashboard.tts")}</CardTitle>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+
           {[
             { icon: BookOpen, label: t("dashboard.research_assistant") },
             { icon: Image, label: t("dashboard.ocr") },
-            { icon: Volume2, label: t("dashboard.tts") },
           ].map((tool) => (
             <Card key={tool.label} className="opacity-60 h-full">
               <CardHeader>
