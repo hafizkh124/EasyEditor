@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      research_sources: {
+        Row: {
+          created_at: string
+          id: string
+          source_type: string
+          storage_path: string | null
+          title: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          source_type: string
+          storage_path?: string | null
+          title: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          source_type?: string
+          storage_path?: string | null
+          title?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
