@@ -1,5 +1,5 @@
 import { useLocation, Link } from "react-router-dom";
-import { Home, Mic, Settings, Menu, X } from "lucide-react";
+import { Home, Mic, Volume2, Settings, Menu, X } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
