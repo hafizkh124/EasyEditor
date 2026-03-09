@@ -257,11 +257,11 @@ const Speak = () => {
                 <CardContent className="p-3 flex items-center gap-3">
                   <div className={cn(
                     "rounded-full p-2",
-                    p.gender === "female" ? "bg-pink-500/10" : "bg-blue-500/10"
+                    p.gender === "female" ? "bg-primary/10" : "bg-secondary"
                   )}>
                     <User className={cn(
                       "h-5 w-5",
-                      p.gender === "female" ? "text-pink-500" : "text-blue-500"
+                      p.gender === "female" ? "text-primary" : "text-muted-foreground"
                     )} />
                   </div>
                   <div>
