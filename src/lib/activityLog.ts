@@ -1,6 +1,6 @@
 export interface ActivityEntry {
   id: string;
-  type: "tts" | "ocr";
+  type: "tts" | "ocr" | "stt";
   label: string;
   timestamp: number;
 }
