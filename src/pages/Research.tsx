@@ -189,19 +189,14 @@ const DocumentBox = ({
       </div>
 
       {/* Refining overlay */}
-      <AnimatePresence>
-        {isRefining && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm"
-          >
-            <div className="flex items-center gap-2 text-primary">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="text-sm font-medium">{t("research.refining")}</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isRefining && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity duration-300">
+          <div className="flex items-center gap-2 text-primary">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm font-medium">{t("research.refining")}</span>
+          </div>
+        </div>
+      )}
 
       {/* Document content */}
       <div
