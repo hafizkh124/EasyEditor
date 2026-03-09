@@ -14,40 +14,31 @@ async function fetchUrlContent(url: string): Promise<string> {
     });
     if (!resp.ok) return `[Could not fetch ${url}]`;
     const html = await resp.text();
-    // Strip HTML tags for a rough text extraction
     const text = html
       .replace(/<script[\s\S]*?<\/script>/gi, "")
       .replace(/<style[\s\S]*?<\/style>/gi, "")
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
       .trim();
-    // Limit to ~8000 chars per source
     return text.slice(0, 8000);
   } catch {
     return `[Failed to fetch ${url}]`;
   }
 }
 
-async function fetchFileContent(
-  supabase: any,
-  storagePath: string
-): Promise<string> {
+async function fetchFileContent(supabase: any, storagePath: string): Promise<string> {
   try {
-    const { data, error } = await supabase.storage
-      .from("research-files")
-      .download(storagePath);
+    const { data, error } = await supabase.storage.from("research-files").download(storagePath);
     if (error || !data) return "[Could not read file]";
 
     const ext = storagePath.split(".").pop()?.toLowerCase();
 
     if (ext === "pdf") {
-      // Extract text from PDF bytes - basic extraction
       const bytes = new Uint8Array(await data.arrayBuffer());
       const textParts: string[] = [];
       const decoder = new TextDecoder("utf-8", { fatal: false });
       const raw = decoder.decode(bytes);
 
-      // Extract text between BT and ET operators (basic PDF text extraction)
       const btEtRegex = /BT\s([\s\S]*?)ET/g;
       let match;
       while ((match = btEtRegex.exec(raw)) !== null) {
@@ -59,11 +50,8 @@ async function fetchFileContent(
         }
       }
 
-      if (textParts.length > 0) {
-        return textParts.join(" ").slice(0, 8000);
-      }
+      if (textParts.length > 0) return textParts.join(" ").slice(0, 8000);
 
-      // Fallback: extract readable strings
       const readable = raw
         .replace(/[^\x20-\x7E\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\n]/g, " ")
         .replace(/\s+/g, " ")
@@ -72,13 +60,8 @@ async function fetchFileContent(
     }
 
     if (ext === "docx") {
-      // DOCX is a zip with XML; extract text from word/document.xml
-      // We'll do a simple XML text extraction from the raw bytes
       const text = await data.text();
-      const xmlText = text
-        .replace(/<[^>]+>/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+      const xmlText = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
       return xmlText.slice(0, 8000) || "[DOCX text extraction yielded no content]";
     }
 
@@ -97,26 +80,24 @@ serve(async (req) => {
     const { query, sources, strictMode, chatHistory } = await req.json();
 
     if (!query) {
-      return new Response(
-        JSON.stringify({ error: "Query is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Query is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "LOVABLE_API_KEY not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Create admin supabase client for storage access
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch content from all sources
     const contextParts: string[] = [];
 
     if (sources && sources.length > 0) {
@@ -152,7 +133,6 @@ IMPORTANT RULES:
 5. If multiple sources contain relevant information, synthesize them and note where each piece comes from.
 ${contextBlock}`;
 
-    // Build messages array with chat history
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
     if (chatHistory && chatHistory.length > 0) {
@@ -163,54 +143,45 @@ ${contextBlock}`;
 
     messages.push({ role: "user", content: query });
 
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages,
-        }),
-      }
-    );
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages,
+        stream: true,
+      }),
+    });
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits in Settings." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits in Settings." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      return new Response(
-        JSON.stringify({ error: "AI service error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "AI service error" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const data = await response.json();
-    const answer = data.choices?.[0]?.message?.content || "No response generated.";
-
-    return new Response(
-      JSON.stringify({ answer }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // Stream the SSE response back to the client
+    return new Response(response.body, {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    });
   } catch (e) {
     console.error("research-query error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
