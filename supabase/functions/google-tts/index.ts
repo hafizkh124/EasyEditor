@@ -6,7 +6,39 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-Deno.serve(async (req) => {
+// Urdu (Nastaliq/Arabic script) to Hindi (Devanagari) transliteration map
+// This allows hi-IN voices to correctly pronounce Urdu text
+function transliterateUrduToDevanagari(text: string): string {
+  const map: Record<string, string> = {
+    // Urdu letters → Devanagari equivalents
+    'ا': 'अ', 'آ': 'आ', 'ب': 'ब', 'پ': 'प', 'ت': 'त', 'ٹ': 'ट',
+    'ث': 'स', 'ج': 'ज', 'چ': 'च', 'ح': 'ह', 'خ': 'ख़',
+    'د': 'द', 'ڈ': 'ड', 'ذ': 'ज़', 'ر': 'र', 'ڑ': 'ड़',
+    'ز': 'ज़', 'ژ': 'झ', 'س': 'स', 'ش': 'श', 'ص': 'स',
+    'ض': 'ज़', 'ط': 'त', 'ظ': 'ज़', 'ع': 'अ', 'غ': 'ग़',
+    'ف': 'फ़', 'ق': 'क़', 'ک': 'क', 'گ': 'ग', 'ل': 'ल',
+    'م': 'म', 'ن': 'न', 'ں': 'ं', 'و': 'व', 'ہ': 'ह', 'ھ': 'ह',
+    'ء': '', 'ی': 'य', 'ے': 'ए', 'ئ': 'ई',
+    // Diacritics (Harakat)
+    'َ': 'ा', 'ِ': 'ि', 'ُ': 'ु', 'ّ': '्', 'ً': 'न',
+    'ٰ': 'ा', 'ٖ': 'ि',
+    // Common conjuncts
+    'ك': 'क', 'ي': 'ी', 'ة': 'ह',
+    // Punctuation
+    '،': ',', '؟': '?', '۔': '।',
+    // Numbers
+    '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+    '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9',
+  };
+
+  let result = '';
+  for (const char of text) {
+    result += map[char] !== undefined ? map[char] : char;
+  }
+  return result;
+}
+
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
