@@ -80,8 +80,15 @@ Deno.serve(async (req) => {
     const resolvedLang = languageCode || "hi-IN";
     const resolvedVoice = voiceName || "hi-IN-Wavenet-A";
 
+    // Transliterate Urdu/Arabic script to Devanagari for hi-IN voices
+    // hi-IN voices can only read Devanagari/Latin, not Nastaliq/Arabic script
+    let processedText = text;
+    if (resolvedLang === "hi-IN") {
+      processedText = transliterateUrduToDevanagari(text);
+    }
+
     // Use SSML to explicitly set xml:lang for correct pronunciation
-    const ssmlText = `<speak xml:lang="${resolvedLang}">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</speak>`;
+    const ssmlText = `<speak xml:lang="${resolvedLang}">${processedText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</speak>`;
 
     // Call Google Cloud Text-to-Speech API
     const googleResponse = await fetch(
