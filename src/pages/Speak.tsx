@@ -188,10 +188,20 @@ const Speak = () => {
   };
 
   const getGoogleVoiceConfig = () => {
-    const langMap: Record<string, { languageCode: string; voiceName?: string }> = {
-      ur: { languageCode: "hi-IN", voiceName: "hi-IN-Wavenet-A" },
-      ar: { languageCode: "ar-XA", voiceName: "ar-XA-Wavenet-A" },
-      en: { languageCode: "en-US", voiceName: "en-US-Wavenet-D" },
+    const isMale = selectedPersona.gender === "male";
+    const langMap: Record<string, { languageCode: string; voiceName: string }> = {
+      ur: { 
+        languageCode: "hi-IN", 
+        voiceName: isMale ? "hi-IN-Wavenet-B" : "hi-IN-Wavenet-A" 
+      },
+      ar: { 
+        languageCode: "ar-XA", 
+        voiceName: isMale ? "ar-XA-Wavenet-B" : "ar-XA-Wavenet-A" 
+      },
+      en: { 
+        languageCode: "en-US", 
+        voiceName: isMale ? "en-US-Wavenet-D" : "en-US-Wavenet-F" 
+      },
     };
     return langMap[selectedPersona.voiceLang] || langMap.en;
   };
