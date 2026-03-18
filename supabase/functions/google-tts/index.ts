@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,6 +57,11 @@ Deno.serve(async (req) => {
       });
     }
     const userId = user.id;
+
+    // Rate limit: 20 TTS requests per user per minute
+    if (isRateLimited(userId, 20, 60_000)) {
+      return rateLimitResponse(corsHeaders);
+    }
 
     const { text, personaId } = await req.json();
 

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,6 +45,11 @@ Deno.serve(async (req) => {
       });
     }
     const userId = claimsData.claims.sub;
+
+    // Rate limit: 15 OCR requests per user per minute
+    if (isRateLimited(userId, 15, 60_000)) {
+      return rateLimitResponse(corsHeaders);
+    }
 
     const { imageBase64, mimeType } = await req.json();
 

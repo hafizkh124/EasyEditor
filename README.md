@@ -1,73 +1,95 @@
-# Welcome to your Lovable project
+# Scribe Studio
 
-## Project info
+An AI-powered content toolkit supporting **English and Urdu**, featuring:
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+- **Transcribe** — Speech-to-text with AI refinement (formalize, humanize, shorten, citations)
+- **Speak** — Text-to-speech with 6 voice personas powered by Google Gemini
+- **OCR** — Image-to-text extraction with Urdu/Arabic support
+- **Research** — AI research assistant with URL, PDF, and DOCX source grounding
 
-## How can I edit this code?
+## Tech Stack
 
-There are several ways of editing your application.
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui
+- **Backend:** Supabase (PostgreSQL, Auth, Edge Functions, Storage)
+- **AI:** Google Gemini 2.5 Flash, Lovable AI Gateway, ElevenLabs
 
-**Use Lovable**
+## Getting Started
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node.js 18+ or Bun
+- A [Supabase](https://supabase.com) project
+- Google Gemini API key
+- Lovable AI Gateway key
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# 1. Clone the repository
 git clone <YOUR_GIT_URL>
+cd scribe-studio-app
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# 2. Install dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
+# 3. Set up environment variables
+cp .env.example .env
+# Edit .env and fill in your actual values
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 4. Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The app will be available at `http://localhost:8080`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Environment Variables
 
-**Use GitHub Codespaces**
+Copy `.env.example` to `.env` and provide:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```
+VITE_SUPABASE_PROJECT_ID=your-supabase-project-id
+VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-anon-key
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+```
 
-## What technologies are used for this project?
+Supabase Edge Functions also require these secrets (set via Supabase dashboard):
 
-This project is built with:
+```
+SUPABASE_SERVICE_ROLE_KEY
+LOVABLE_API_KEY
+GEMINI_API_KEY
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Available Scripts
 
-## How can I deploy this project?
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server (port 8080) |
+| `npm run build` | Production build |
+| `npm run build:dev` | Development build |
+| `npm run test` | Run unit tests |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run lint` | Lint source files |
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Database Setup
 
-## Can I connect a custom domain to my Lovable project?
+Run Supabase migrations to set up the database schema:
 
-Yes, you can!
+```sh
+npx supabase db push
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Tables created:
+- `profiles` — User profile data
+- `subscriptions` — Tier and usage tracking (free/pro)
+- `user_roles` — Role-based access control
+- `research_sources` — Saved research documents
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Subscription Tiers
+
+| Feature | Free | Pro |
+|---------|------|-----|
+| Transcription | 300 seconds/month | Unlimited |
+| Text-to-Speech | 2,000 characters/month | Unlimited |
+| OCR | Shared transcription budget | Unlimited |
+| Research | Unlimited | Unlimited |

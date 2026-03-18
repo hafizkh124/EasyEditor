@@ -22,7 +22,7 @@ const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
 
   useEffect(() => {
-    setRecentActivity(getRecentActivity());
+    getRecentActivity().then(setRecentActivity);
   }, []);
 
   useEffect(() => {
