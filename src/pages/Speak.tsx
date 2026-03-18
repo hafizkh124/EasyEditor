@@ -16,6 +16,7 @@ import AppLayout from "@/components/AppLayout";
 import AudioWaveform from "@/components/AudioWaveform";
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activityLog";
+import { handleSupabaseError } from "@/lib/errors";
 
 interface Persona {
   id: string;
@@ -84,7 +85,8 @@ const Speak = () => {
       .select("tier, tts_characters_used, tts_character_limit")
       .eq("user_id", user.id)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { handleSupabaseError(error, "load subscription"); return; }
         if (data) setSubscription(data);
       });
   }, [user]);

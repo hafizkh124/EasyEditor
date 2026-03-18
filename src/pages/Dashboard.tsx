@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Mic, BookOpen, Image, Volume2, Clock } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { getRecentActivity, type ActivityEntry } from "@/lib/activityLog";
+import { handleSupabaseError } from "@/lib/errors";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -22,16 +23,18 @@ const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
 
   useEffect(() => {
-    getRecentActivity().then(setRecentActivity);
+    getRecentActivity().then(setRecentActivity).catch(console.error);
   }, []);
 
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
-      const [{ data: profile }, { data: sub }] = await Promise.all([
+      const [{ data: profile, error: profileError }, { data: sub, error: subError }] = await Promise.all([
         supabase.from("profiles").select("display_name").eq("user_id", user.id).single(),
         supabase.from("subscriptions").select("tier, transcription_seconds_used, transcription_limit").eq("user_id", user.id).single(),
       ]);
+      if (profileError) handleSupabaseError(profileError, "load profile");
+      if (subError) handleSupabaseError(subError, "load subscription");
       if (profile) setDisplayName(profile.display_name || user.email || "");
       if (sub) setSubscription(sub);
     };
