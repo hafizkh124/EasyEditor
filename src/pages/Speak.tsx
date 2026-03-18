@@ -184,26 +184,7 @@ const Speak = () => {
 
   const getActiveVoiceId = () => {
     if (voiceMode === "cloned" && clonedVoiceId) return clonedVoiceId;
-    return selectedPersona.elevenLabsVoiceId;
-  };
-
-  const getGoogleVoiceConfig = () => {
-    const isMale = selectedPersona.gender === "male";
-    const langMap: Record<string, { languageCode: string; voiceName: string }> = {
-      ur: { 
-        languageCode: "hi-IN", 
-        voiceName: isMale ? "hi-IN-Wavenet-B" : "hi-IN-Wavenet-A" 
-      },
-      ar: { 
-        languageCode: "ar-XA", 
-        voiceName: isMale ? "ar-XA-Wavenet-B" : "ar-XA-Wavenet-A" 
-      },
-      en: { 
-        languageCode: "en-US", 
-        voiceName: isMale ? "en-US-Wavenet-D" : "en-US-Wavenet-F" 
-      },
-    };
-    return langMap[selectedPersona.voiceLang] || langMap.en;
+    return selectedPersona.geminiVoice;
   };
 
   const callTtsApi = async (): Promise<Blob | null> => {
@@ -211,8 +192,6 @@ const Speak = () => {
       toast.error("Please sign in to use TTS");
       return null;
     }
-
-    const voiceConfig = getGoogleVoiceConfig();
 
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-tts`,
@@ -225,9 +204,7 @@ const Speak = () => {
         },
         body: JSON.stringify({
           text,
-          languageCode: voiceConfig.languageCode,
-          voiceName: voiceConfig.voiceName,
-          speed,
+          personaId: selectedPersona.id,
         }),
       }
     );
@@ -242,13 +219,23 @@ const Speak = () => {
       return null;
     }
 
+    const data = await response.json();
+    if (!data.audioBase64) {
+      throw new Error("No audio data received");
+    }
+
+    // Convert base64 to Blob
+    const mimeType = data.mimeType || "audio/wav";
+    const binaryResponse = await fetch(`data:${mimeType};base64,${data.audioBase64}`);
+    const audioBlob = await binaryResponse.blob();
+
     if (subscription) {
       setSubscription((prev) =>
         prev ? { ...prev, tts_characters_used: prev.tts_characters_used + text.length } : prev
       );
     }
 
-    return await response.blob();
+    return audioBlob;
   };
 
   const handlePlay = async () => {
