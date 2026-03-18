@@ -13,6 +13,7 @@ import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { logActivity } from "@/lib/activityLog";
+import { handleSupabaseError } from "@/lib/errors";
 
 type SttLanguage = "en-US" | "ur-PK";
 type RefineAction = "formalize" | "humanize" | "shorten" | "citations";
@@ -55,7 +56,8 @@ const Transcribe = () => {
       .select("tier, transcription_seconds_used, transcription_limit")
       .eq("user_id", user.id)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { handleSupabaseError(error, "load subscription"); return; }
         if (data) {
           setSecondsUsed(data.transcription_seconds_used);
           setLimit(data.transcription_limit);
@@ -143,8 +145,9 @@ const Transcribe = () => {
         setIsProcessing(true);
         try {
           const reader = new FileReader();
-          const base64 = await new Promise<string>((resolve) => {
+          const base64 = await new Promise<string>((resolve, reject) => {
             reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
 

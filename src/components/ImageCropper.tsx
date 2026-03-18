@@ -13,8 +13,11 @@ interface ImageCropperProps {
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
   const image = new Image();
-  image.src = imageSrc;
-  await new Promise((resolve) => (image.onload = resolve));
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = reject;
+    image.src = imageSrc;
+  });
 
   const canvas = document.createElement("canvas");
   canvas.width = pixelCrop.width;
@@ -53,8 +56,11 @@ const ImageCropper = ({ imageSrc, onCropComplete, onCancel }: ImageCropperProps)
     let src = imageSrc;
     if (rotation !== 0) {
       const img = new Image();
-      img.src = imageSrc;
-      await new Promise((r) => (img.onload = r));
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = imageSrc;
+      });
       const canvas = document.createElement("canvas");
       const rad = (rotation * Math.PI) / 180;
       const sin = Math.abs(Math.sin(rad));

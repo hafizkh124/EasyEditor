@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { useNavigate } from "react-router-dom";
+import { handleSupabaseError } from "@/lib/errors";
 
 const Settings = () => {
   const { user, signOut } = useAuth();
@@ -24,10 +25,12 @@ const Settings = () => {
   useEffect(() => {
     if (!user) return;
     const fetch = async () => {
-      const [{ data: profile }, { data: sub }] = await Promise.all([
+      const [{ data: profile, error: profileError }, { data: sub, error: subError }] = await Promise.all([
         supabase.from("profiles").select("display_name, preferred_language").eq("user_id", user.id).single(),
         supabase.from("subscriptions").select("tier").eq("user_id", user.id).single(),
       ]);
+      if (profileError) handleSupabaseError(profileError, "load profile");
+      if (subError) handleSupabaseError(subError, "load subscription");
       if (profile) {
         setDisplayName(profile.display_name || "");
         if (profile.preferred_language === "ur" || profile.preferred_language === "en") {
@@ -46,7 +49,7 @@ const Settings = () => {
       display_name: displayName,
       preferred_language: language,
     }).eq("user_id", user.id);
-    if (error) toast.error(error.message);
+    if (error) { handleSupabaseError(error, "save profile"); return; }
     else toast.success(t("settings.save") + " ✓");
     setIsSaving(false);
   };
