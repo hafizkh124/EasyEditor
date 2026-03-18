@@ -6,36 +6,17 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Urdu (Nastaliq/Arabic script) to Hindi (Devanagari) transliteration map
-// This allows hi-IN voices to correctly pronounce Urdu text
-function transliterateUrduToDevanagari(text: string): string {
-  const map: Record<string, string> = {
-    // Urdu letters → Devanagari equivalents
-    'ا': 'अ', 'آ': 'आ', 'ب': 'ब', 'پ': 'प', 'ت': 'त', 'ٹ': 'ट',
-    'ث': 'स', 'ج': 'ज', 'چ': 'च', 'ح': 'ह', 'خ': 'ख़',
-    'د': 'द', 'ڈ': 'ड', 'ذ': 'ज़', 'ر': 'र', 'ڑ': 'ड़',
-    'ز': 'ज़', 'ژ': 'झ', 'س': 'स', 'ش': 'श', 'ص': 'स',
-    'ض': 'ज़', 'ط': 'त', 'ظ': 'ज़', 'ع': 'अ', 'غ': 'ग़',
-    'ف': 'फ़', 'ق': 'क़', 'ک': 'क', 'گ': 'ग', 'ل': 'ल',
-    'م': 'म', 'ن': 'न', 'ں': 'ं', 'و': 'व', 'ہ': 'ह', 'ھ': 'ह',
-    'ء': '', 'ی': 'य', 'ے': 'ए', 'ئ': 'ई',
-    // Diacritics (Harakat)
-    'َ': 'ा', 'ِ': 'ि', 'ُ': 'ु', 'ّ': '्', 'ً': 'न',
-    'ٰ': 'ा', 'ٖ': 'ि',
-    // Common conjuncts
-    'ك': 'क', 'ي': 'ी', 'ة': 'ह',
-    // Punctuation
-    '،': ',', '؟': '?', '۔': '।',
-    // Numbers
-    '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
-    '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9',
+// Map persona names to Gemini prebuilt voice IDs
+function getGeminiVoice(personaId: string): string {
+  const voiceMap: Record<string, string> = {
+    zainab: "Kore",      // female
+    omar: "Puck",        // male
+    fatima: "Zephyr",    // female
+    hamza: "Charon",     // male
+    aisha: "Aoede",      // female
+    yusuf: "Orus",       // male
   };
-
-  let result = '';
-  for (const char of text) {
-    result += map[char] !== undefined ? map[char] : char;
-  }
-  return result;
+  return voiceMap[personaId] || "Zephyr";
 }
 
 Deno.serve(async (req) => {
@@ -44,10 +25,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const GOOGLE_TTS_API_KEY = Deno.env.get("GOOGLE_TTS_API_KEY");
-    if (!GOOGLE_TTS_API_KEY) {
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "Google TTS API key not configured" }),
+        JSON.stringify({ error: "Gemini API key not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -76,7 +57,7 @@ Deno.serve(async (req) => {
     }
     const userId = user.id;
 
-    const { text, languageCode, voiceName, speed } = await req.json();
+    const { text, personaId } = await req.json();
 
     if (!text) {
       return new Response(
@@ -108,56 +89,44 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Determine voice config — Google TTS has no ur-PK voices, use hi-IN as fallback
-    const resolvedLang = languageCode || "hi-IN";
-    const resolvedVoice = voiceName || "hi-IN-Wavenet-A";
+    const voiceName = getGeminiVoice(personaId || "fatima");
 
-    // Transliterate Urdu/Arabic script to Devanagari for hi-IN voices
-    // hi-IN voices can only read Devanagari/Latin, not Nastaliq/Arabic script
-    let processedText = text;
-    if (resolvedLang === "hi-IN") {
-      processedText = transliterateUrduToDevanagari(text);
-    }
-
-    // Use SSML to explicitly set xml:lang for correct pronunciation
-    const ssmlText = `<speak xml:lang="${resolvedLang}">${processedText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</speak>`;
-
-    // Call Google Cloud Text-to-Speech API
-    const googleResponse = await fetch(
-      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`,
+    // Call Gemini API with audio modality
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json; charset=utf-8" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          input: { ssml: ssmlText },
-          voice: {
-            languageCode: resolvedLang,
-            name: resolvedVoice,
-          },
-          audioConfig: {
-            audioEncoding: "MP3",
-            speakingRate: speed || 1.0,
-            pitch: 0,
-          },
+          contents: [{ parts: [{ text }] }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName }
+              }
+            }
+          }
         }),
       }
     );
 
-    if (!googleResponse.ok) {
-      const errBody = await googleResponse.text();
-      console.error("Google TTS API error:", googleResponse.status, errBody);
+    if (!geminiResponse.ok) {
+      const errBody = await geminiResponse.text();
+      console.error("Gemini TTS API error:", geminiResponse.status, errBody);
       return new Response(
         JSON.stringify({ error: "TTS generation failed", details: errBody }),
-        { status: googleResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: geminiResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const data = await googleResponse.json();
-    const audioContent = data.audioContent; // base64-encoded MP3
+    const data = await geminiResponse.json();
+    const inlineData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
 
-    if (!audioContent) {
+    if (!inlineData?.data) {
+      console.error("No audio data in Gemini response:", JSON.stringify(data).slice(0, 500));
       return new Response(
-        JSON.stringify({ error: "No audio content returned" }),
+        JSON.stringify({ error: "No audio content returned from Gemini" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -168,20 +137,16 @@ Deno.serve(async (req) => {
       .update({ tts_characters_used: sub.tts_characters_used + charCount })
       .eq("user_id", userId);
 
-    // Decode base64 to binary and return as audio
-    const binaryString = atob(audioContent);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    return new Response(bytes, {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "audio/mpeg",
-        "Content-Disposition": "inline",
-      },
-    });
+    // Return base64 audio data as JSON
+    return new Response(
+      JSON.stringify({
+        audioBase64: inlineData.data,
+        mimeType: inlineData.mimeType || "audio/wav",
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   } catch (error) {
     console.error("Edge function error:", error);
     return new Response(

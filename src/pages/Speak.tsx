@@ -24,16 +24,16 @@ interface Persona {
   gender: "male" | "female";
   lang: string;
   voiceLang: string;
-  elevenLabsVoiceId: string;
+  geminiVoice: string;
 }
 
 const personas: Persona[] = [
-  { id: "zainab", name: "Zainab", nameUr: "زینب", gender: "female", lang: "ur-PK", voiceLang: "ur", elevenLabsVoiceId: "EXAVITQu4vr4xnSDxMaL" },
-  { id: "omar", name: "Omar", nameUr: "عمر", gender: "male", lang: "ar-SA", voiceLang: "ar", elevenLabsVoiceId: "onwK4e9ZLuTAKqWW03F9" },
-  { id: "fatima", name: "Fatima", nameUr: "فاطمہ", gender: "female", lang: "en-US", voiceLang: "en", elevenLabsVoiceId: "XrExE9yKIg1WjnnlVkGX" },
-  { id: "hamza", name: "Hamza", nameUr: "حمزہ", gender: "male", lang: "ur-PK", voiceLang: "ur", elevenLabsVoiceId: "JBFqnCBsd6RMkjVDRZzb" },
-  { id: "aisha", name: "Aisha", nameUr: "عائشہ", gender: "female", lang: "ar-SA", voiceLang: "ar", elevenLabsVoiceId: "FGY2WhTYpPnrIDTdsKH5" },
-  { id: "yusuf", name: "Yusuf", nameUr: "یوسف", gender: "male", lang: "en-US", voiceLang: "en", elevenLabsVoiceId: "TX3LPaxmHKxFdv7VOQHJ" },
+  { id: "zainab", name: "Zainab", nameUr: "زینب", gender: "female", lang: "ur-PK", voiceLang: "ur", geminiVoice: "Kore" },
+  { id: "omar", name: "Omar", nameUr: "عمر", gender: "male", lang: "ar-SA", voiceLang: "ar", geminiVoice: "Puck" },
+  { id: "fatima", name: "Fatima", nameUr: "فاطمہ", gender: "female", lang: "en-US", voiceLang: "en", geminiVoice: "Zephyr" },
+  { id: "hamza", name: "Hamza", nameUr: "حمزہ", gender: "male", lang: "ur-PK", voiceLang: "ur", geminiVoice: "Charon" },
+  { id: "aisha", name: "Aisha", nameUr: "عائشہ", gender: "female", lang: "ar-SA", voiceLang: "ar", geminiVoice: "Aoede" },
+  { id: "yusuf", name: "Yusuf", nameUr: "یوسف", gender: "male", lang: "en-US", voiceLang: "en", geminiVoice: "Orus" },
 ];
 
 type VoiceMode = "standard" | "cloned";
