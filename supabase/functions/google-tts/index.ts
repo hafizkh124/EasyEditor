@@ -105,6 +105,9 @@ Deno.serve(async (req) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text }] }],
+          systemInstruction: {
+            parts: [{ text: "Read aloud the following text exactly as given. Generate audio output only." }]
+          },
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig: {
