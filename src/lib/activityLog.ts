@@ -23,6 +23,7 @@ export async function getRecentActivity(): Promise<ActivityEntry[]> {
       .order("created_at", { ascending: false })
       .limit(MAX_ENTRIES);
 
+    // error.code 42P01 = table does not exist yet (migration not run)
     if (!error && data) {
       return data.map((row) => ({
         id: row.id,
@@ -47,12 +48,13 @@ export async function logActivity(type: "tts" | "ocr" | "stt", label: string) {
   const { data: { session } } = await supabase.auth.getSession();
 
   if (session?.user) {
-    await supabase.from("activity_log").insert({
+    const { error } = await supabase.from("activity_log").insert({
       user_id: session.user.id,
       type,
       label: truncatedLabel,
     });
-    return;
+    // If table doesn't exist yet, fall through to localStorage
+    if (!error) return;
   }
 
   // Fallback to localStorage when not authenticated
