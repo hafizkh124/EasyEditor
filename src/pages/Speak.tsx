@@ -185,7 +185,8 @@ const Speak = () => {
     speechSynthesis.speak(utterance);
   };
 
-  const _getActiveVoiceId = () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const getActiveVoiceId = () => {
     if (voiceMode === "cloned" && clonedVoiceId) return clonedVoiceId;
     return selectedPersona.geminiVoice;
   };
