@@ -67,10 +67,6 @@ const Speak = () => {
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const charLimit = subscription?.tier === "pro" ? 10000 : 2000;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const charsRemaining = subscription
-    ? (subscription.tier === "pro" ? 10000 : subscription.tts_character_limit) - subscription.tts_characters_used
-    : 0;
 
   useEffect(() => {
     const navState = location.state as { text?: string } | null;
