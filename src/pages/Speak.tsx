@@ -181,12 +181,6 @@ const Speak = () => {
     speechSynthesis.speak(utterance);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getActiveVoiceId = () => {
-    if (voiceMode === "cloned" && clonedVoiceId) return clonedVoiceId;
-    return selectedPersona.geminiVoice;
-  };
-
   const callTtsApi = async (): Promise<Blob | null> => {
     if (!session?.access_token) {
       toast.error("Please sign in to use TTS");
