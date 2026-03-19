@@ -184,7 +184,7 @@ const Speak = () => {
     speechSynthesis.speak(utterance);
   };
 
-  const getActiveVoiceId = () => {
+  const _getActiveVoiceId = () => {
     if (voiceMode === "cloned" && clonedVoiceId) return clonedVoiceId;
     return selectedPersona.geminiVoice;
   };
