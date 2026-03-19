@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   Link2, Upload, FileText, Trash2, Plus, Send, Loader2, Download, BookOpen,
-  Globe, Lock, Copy, Check, Sparkles, PenLine, MessageSquare, Minimize2, FileDown
+  Globe, Lock, Copy, Sparkles, PenLine, MessageSquare, Minimize2, FileDown
 } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
