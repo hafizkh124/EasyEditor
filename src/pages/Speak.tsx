@@ -67,7 +67,7 @@ const Speak = () => {
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const charLimit = subscription?.tier === "pro" ? 10000 : 2000;
-  const charsRemaining = subscription
+  const _charsRemaining = subscription
     ? (subscription.tier === "pro" ? 10000 : subscription.tts_character_limit) - subscription.tts_characters_used
     : 0;
 
