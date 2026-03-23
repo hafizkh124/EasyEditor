@@ -136,59 +136,136 @@ Deno.serve(async (req) => {
 
     const voiceName = getGeminiVoice(personaId || "fatima");
 
-    // Call Gemini API with audio modality using stable model
-    let geminiResponse: Response;
-    try {
-      geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text }] }],
-            systemInstruction: {
-              parts: [{ text: "Read aloud the following text exactly as given. Generate audio output only." }]
-            },
-            generationConfig: {
-              responseModalities: ["AUDIO"],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName }
-                }
+    // ── Model definitions with retry & fallback ──
+    // Primary: gemini-2.5-flash-preview-tts (supports systemInstruction)
+    // Fallback: gemini-2.0-flash (no systemInstruction for audio mode)
+    const MODELS = [
+      {
+        id: "gemini-2.5-flash-preview-tts",
+        label: "Gemini 2.5 Flash TTS",
+        body: {
+          contents: [{ parts: [{ text }] }],
+          systemInstruction: {
+            parts: [{ text: "Read aloud the following text exactly as given. Generate audio output only." }]
+          },
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName }
               }
             }
-          }),
+          }
+        },
+      },
+      {
+        id: "gemini-2.0-flash",
+        label: "Gemini 2.0 Flash (fallback)",
+        body: {
+          contents: [{ parts: [{ text }] }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName }
+              }
+            }
+          }
+        },
+      },
+    ];
+
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 500;
+    const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    /** Try a single model up to MAX_RETRIES times (only retries on 500+ errors) */
+    async function tryModelWithRetries(
+      model: typeof MODELS[number],
+      apiKey: string
+    ): Promise<{ ok: true; inlineData: { data: string; mimeType: string } } | { ok: false; lastStatus: number; lastError: unknown }> {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model.id}:generateContent?key=${apiKey}`;
+
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        console.log(`[TTS] ${model.label} — attempt ${attempt}/${MAX_RETRIES}`);
+
+        let resp: Response;
+        try {
+          resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(model.body),
+          });
+        } catch (networkErr) {
+          console.error(`[TTS] ${model.label} network error (attempt ${attempt}):`, networkErr);
+          if (attempt < MAX_RETRIES) { await delay(RETRY_DELAY_MS); continue; }
+          return { ok: false, lastStatus: 502, lastError: String(networkErr) };
         }
-      );
-    } catch (fetchErr) {
-      console.error("Gemini fetch network error:", fetchErr);
+
+        // Non-retryable client errors (400, 401, 403, 404, 429)
+        if (!resp.ok && resp.status < 500) {
+          const errBody = await resp.text();
+          let parsed: unknown = errBody;
+          try { parsed = JSON.parse(errBody); } catch { /* keep raw */ }
+          console.error(`[TTS] ${model.label} client error ${resp.status}:`, JSON.stringify(parsed, null, 2));
+          return { ok: false, lastStatus: resp.status, lastError: parsed };
+        }
+
+        // Retryable server errors (500+)
+        if (!resp.ok) {
+          const errBody = await resp.text();
+          let parsed: unknown = errBody;
+          try { parsed = JSON.parse(errBody); } catch { /* keep raw */ }
+          console.warn(`[TTS] ${model.label} server error ${resp.status} (attempt ${attempt}):`, JSON.stringify(parsed, null, 2));
+          if (attempt < MAX_RETRIES) { await delay(RETRY_DELAY_MS); continue; }
+          return { ok: false, lastStatus: resp.status, lastError: parsed };
+        }
+
+        // Success — extract audio
+        const data = await resp.json();
+        const inlineData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+        if (!inlineData?.data) {
+          console.warn(`[TTS] ${model.label} returned OK but no audio data (attempt ${attempt}):`, JSON.stringify(data).slice(0, 500));
+          if (attempt < MAX_RETRIES) { await delay(RETRY_DELAY_MS); continue; }
+          return { ok: false, lastStatus: 200, lastError: "No audio data in successful response" };
+        }
+
+        console.log(`[TTS] ${model.label} succeeded on attempt ${attempt}`);
+        return { ok: true, inlineData };
+      }
+
+      return { ok: false, lastStatus: 500, lastError: "Exhausted retries" };
+    }
+
+    // ── Execute: try each model in order ──
+    let audioResult: { data: string; mimeType: string } | null = null;
+    let usedModel = "";
+    const allErrors: Array<{ model: string; status: number; error: unknown }> = [];
+
+    for (const model of MODELS) {
+      const result = await tryModelWithRetries(model, GEMINI_API_KEY);
+      if (result.ok) {
+        audioResult = result.inlineData;
+        usedModel = model.label;
+        break;
+      }
+      allErrors.push({ model: model.label, status: result.lastStatus, error: result.lastError });
+      console.warn(`[TTS] ${model.label} failed after ${MAX_RETRIES} retries, trying next model...`);
+    }
+
+    if (!audioResult) {
+      console.error("[TTS] All models failed:", JSON.stringify(allErrors, null, 2));
       return new Response(
-        JSON.stringify({ error: "Failed to reach Gemini API", details: String(fetchErr) }),
+        JSON.stringify({
+          error: "TTS generation failed — all models exhausted",
+          failedModels: allErrors,
+        }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!geminiResponse.ok) {
-      const errBody = await geminiResponse.text();
-      let parsedError: unknown = errBody;
-      try { parsedError = JSON.parse(errBody); } catch { /* keep raw */ }
-      console.error("Gemini TTS API error:", geminiResponse.status, JSON.stringify(parsedError, null, 2));
-      return new Response(
-        JSON.stringify({ error: "TTS generation failed", status: geminiResponse.status, details: parsedError }),
-        { status: geminiResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const data = await geminiResponse.json();
-    const inlineData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-
-    if (!inlineData?.data) {
-      console.error("No audio data in Gemini response:", JSON.stringify(data).slice(0, 500));
-      return new Response(
-        JSON.stringify({ error: "No audio content returned from Gemini" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    console.log(`[TTS] Audio generated via ${usedModel}`);
+    const inlineData = audioResult;
 
     // Decode the base64 PCM data from Gemini
     const rawBase64 = inlineData.data;
