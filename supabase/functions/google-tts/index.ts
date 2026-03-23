@@ -64,10 +64,11 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_TTS_API_KEY");
     if (!GEMINI_API_KEY) {
+      console.error("No API key found. Checked GEMINI_API_KEY and GOOGLE_TTS_API_KEY.");
       return new Response(
-        JSON.stringify({ error: "Gemini API key not configured" }),
+        JSON.stringify({ error: "Gemini API key not configured. Set GEMINI_API_KEY or GOOGLE_TTS_API_KEY." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
