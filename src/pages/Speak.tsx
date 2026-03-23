@@ -215,10 +215,16 @@ const Speak = () => {
       const errData = await response.json().catch(() => ({ error: "Unknown error" }));
       if (response.status === 429) {
         toast.error(t("tts.limit_reached"));
-      } else {
-        throw new Error(errData.error || "TTS generation failed");
+        return null;
+      } else if (response.status === 401) {
+        toast.error(t("tts.unauthorized"));
+        return null;
+      } else if (response.status === 403) {
+        toast.error(t("tts.subscription_required"));
+        return null;
       }
-      return null;
+      console.error("TTS API error:", response.status, errData);
+      throw new Error(errData.error || "TTS generation failed");
     }
 
     const data = await response.json();
@@ -291,7 +297,8 @@ const Speak = () => {
 
       await audio.play();
       logActivity("tts", text.slice(0, 60));
-    } catch {
+    } catch (err) {
+      console.error("TTS error:", err);
       toast.error(t("tts.fallback_browser"));
       playWithBrowserTTS(text);
       logActivity("tts", text.slice(0, 60));
