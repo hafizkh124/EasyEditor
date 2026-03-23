@@ -136,34 +136,45 @@ Deno.serve(async (req) => {
 
     const voiceName = getGeminiVoice(personaId || "fatima");
 
-    // Call Gemini API with audio modality
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text }] }],
-          systemInstruction: {
-            parts: [{ text: "Read aloud the following text exactly as given. Generate audio output only." }]
-          },
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: { voiceName }
+    // Call Gemini API with audio modality using stable model
+    let geminiResponse: Response;
+    try {
+      geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text }] }],
+            systemInstruction: {
+              parts: [{ text: "Read aloud the following text exactly as given. Generate audio output only." }]
+            },
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName }
+                }
               }
             }
-          }
-        }),
-      }
-    );
+          }),
+        }
+      );
+    } catch (fetchErr) {
+      console.error("Gemini fetch network error:", fetchErr);
+      return new Response(
+        JSON.stringify({ error: "Failed to reach Gemini API", details: String(fetchErr) }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!geminiResponse.ok) {
       const errBody = await geminiResponse.text();
-      console.error("Gemini TTS API error:", geminiResponse.status, errBody);
+      let parsedError: unknown = errBody;
+      try { parsedError = JSON.parse(errBody); } catch { /* keep raw */ }
+      console.error("Gemini TTS API error:", geminiResponse.status, JSON.stringify(parsedError, null, 2));
       return new Response(
-        JSON.stringify({ error: "TTS generation failed", details: errBody }),
+        JSON.stringify({ error: "TTS generation failed", status: geminiResponse.status, details: parsedError }),
         { status: geminiResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
