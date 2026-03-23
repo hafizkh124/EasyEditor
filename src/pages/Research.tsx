@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   Link2, Upload, FileText, Trash2, Plus, Send, Loader2, Download, BookOpen,
-  Globe, Lock, Copy, Check, Sparkles, PenLine, MessageSquare, Minimize2, FileDown
+  Globe, Lock, Copy, Sparkles, PenLine, MessageSquare, Minimize2, FileDown
 } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
