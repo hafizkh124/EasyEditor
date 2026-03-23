@@ -140,6 +140,56 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Gemini returns raw PCM (audio/L16) which browsers cannot play directly.
+    // Convert to WAV by adding a proper header.
+    let audioBase64 = inlineData.data;
+    let mimeType = inlineData.mimeType || "audio/wav";
+
+    if (mimeType.startsWith("audio/L16") || mimeType.startsWith("audio/pcm")) {
+      // Extract sample rate from mimeType (e.g. "audio/L16;rate=24000")
+      const rateMatch = mimeType.match(/rate=(\d+)/);
+      const sampleRate = rateMatch ? parseInt(rateMatch[1]) : 24000;
+      const channels = 1;
+      const bitsPerSample = 16;
+
+      // Decode raw PCM from base64
+      const rawBytes = Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0));
+      const dataSize = rawBytes.length;
+
+      // Build 44-byte WAV header
+      const header = new ArrayBuffer(44);
+      const view = new DataView(header);
+      const writeString = (offset: number, str: string) => {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+      };
+      writeString(0, "RIFF");
+      view.setUint32(4, 36 + dataSize, true);
+      writeString(8, "WAVE");
+      writeString(12, "fmt ");
+      view.setUint32(16, 16, true);                // PCM sub-chunk size
+      view.setUint16(20, 1, true);                  // PCM format
+      view.setUint16(22, channels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * channels * (bitsPerSample / 8), true);
+      view.setUint16(32, channels * (bitsPerSample / 8), true);
+      view.setUint16(34, bitsPerSample, true);
+      writeString(36, "data");
+      view.setUint32(40, dataSize, true);
+
+      // Combine header + PCM data
+      const wavBytes = new Uint8Array(44 + dataSize);
+      wavBytes.set(new Uint8Array(header), 0);
+      wavBytes.set(rawBytes, 44);
+
+      // Re-encode as base64
+      let binary = "";
+      for (let i = 0; i < wavBytes.length; i++) {
+        binary += String.fromCharCode(wavBytes[i]);
+      }
+      audioBase64 = btoa(binary);
+      mimeType = "audio/wav";
+    }
+
     // Update usage
     await supabase
       .from("subscriptions")
@@ -149,8 +199,8 @@ Deno.serve(async (req) => {
     // Return base64 audio data as JSON
     return new Response(
       JSON.stringify({
-        audioBase64: inlineData.data,
-        mimeType: inlineData.mimeType || "audio/wav",
+        audioBase64,
+        mimeType,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
