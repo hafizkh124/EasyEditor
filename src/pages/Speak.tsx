@@ -320,7 +320,7 @@ const Speak = () => {
       const url = URL.createObjectURL(audioBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `tts-${voiceMode === "cloned" ? "my-voice" : selectedPersona.name}-${Date.now()}.mp3`;
+      a.download = `tts-${voiceMode === "cloned" ? "my-voice" : selectedPersona.name}-${Date.now()}.wav`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(t("tts.downloaded"));
