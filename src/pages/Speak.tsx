@@ -219,15 +219,8 @@ const Speak = () => {
       throw new Error(errData.error || "TTS generation failed");
     }
 
-    const data = await response.json();
-    if (!data.audioBase64) {
-      throw new Error("No audio data received");
-    }
-
-    // Convert base64 to Blob
-    const mimeType = data.mimeType || "audio/wav";
-    const binaryResponse = await fetch(`data:${mimeType};base64,${data.audioBase64}`);
-    const audioBlob = await binaryResponse.blob();
+    // Response is now binary audio/wav directly
+    const audioBlob = new Blob([await response.arrayBuffer()], { type: "audio/wav" });
 
     if (subscription) {
       setSubscription((prev) =>
@@ -327,7 +320,7 @@ const Speak = () => {
       const url = URL.createObjectURL(audioBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `tts-${voiceMode === "cloned" ? "my-voice" : selectedPersona.name}-${Date.now()}.mp3`;
+      a.download = `tts-${voiceMode === "cloned" ? "my-voice" : selectedPersona.name}-${Date.now()}.wav`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(t("tts.downloaded"));
