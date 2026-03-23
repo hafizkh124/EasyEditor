@@ -10,14 +10,52 @@ const corsHeaders = {
 // Map persona names to Gemini prebuilt voice IDs
 function getGeminiVoice(personaId: string): string {
   const voiceMap: Record<string, string> = {
-    zainab: "Kore",      // female
-    omar: "Puck",        // male
-    fatima: "Zephyr",    // female
-    hamza: "Charon",     // male
-    aisha: "Aoede",      // female
-    yusuf: "Orus",       // male
+    zainab: "Kore",
+    omar: "Puck",
+    fatima: "Zephyr",
+    hamza: "Charon",
+    aisha: "Aoede",
+    yusuf: "Orus",
   };
   return voiceMap[personaId] || "Zephyr";
+}
+
+/** Create a 44-byte WAV header for 16-bit mono PCM at the given sample rate */
+function createWavHeader(pcmLength: number, sampleRate = 24000, channels = 1, bitsPerSample = 16): Uint8Array {
+  const byteRate = sampleRate * channels * (bitsPerSample / 8);
+  const blockAlign = channels * (bitsPerSample / 8);
+  const dataSize = pcmLength;
+  const fileSize = 36 + dataSize; // 44 - 8 header bytes
+
+  const buffer = new ArrayBuffer(44);
+  const view = new DataView(buffer);
+
+  // RIFF header
+  writeString(view, 0, "RIFF");
+  view.setUint32(4, fileSize, true);
+  writeString(view, 8, "WAVE");
+
+  // fmt sub-chunk
+  writeString(view, 12, "fmt ");
+  view.setUint32(16, 16, true); // sub-chunk size (PCM = 16)
+  view.setUint16(20, 1, true);  // audio format (1 = PCM)
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+
+  // data sub-chunk
+  writeString(view, 36, "data");
+  view.setUint32(40, dataSize, true);
+
+  return new Uint8Array(buffer);
+}
+
+function writeString(view: DataView, offset: number, str: string) {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
 }
 
 Deno.serve(async (req) => {
@@ -140,22 +178,34 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Decode the base64 PCM data from Gemini
+    const rawBase64 = inlineData.data;
+    const binaryString = atob(rawBase64);
+    const pcmBytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      pcmBytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Create WAV file: 44-byte header + raw PCM
+    const wavHeader = createWavHeader(pcmBytes.length, 24000, 1, 16);
+    const wavFile = new Uint8Array(wavHeader.length + pcmBytes.length);
+    wavFile.set(wavHeader, 0);
+    wavFile.set(pcmBytes, wavHeader.length);
+
     // Update usage
     await supabase
       .from("subscriptions")
       .update({ tts_characters_used: sub.tts_characters_used + charCount })
       .eq("user_id", userId);
 
-    // Return base64 audio data as JSON
-    return new Response(
-      JSON.stringify({
-        audioBase64: inlineData.data,
-        mimeType: inlineData.mimeType || "audio/wav",
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    // Return binary WAV directly
+    return new Response(wavFile.buffer, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "audio/wav",
+        "Content-Disposition": "inline",
+      },
+    });
   } catch (error) {
     console.error("Edge function error:", error);
     return new Response(
