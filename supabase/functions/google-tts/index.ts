@@ -136,32 +136,30 @@ Deno.serve(async (req) => {
 
     const voiceName = getGeminiVoice(personaId || "fatima");
 
-    // Call Gemini API with audio modality using stable model identifier
-    const geminiModel = "models/gemini-2.0-flash";
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/${geminiModel}:generateContent?key=${GEMINI_API_KEY}`;
-
-    const requestBody = {
-      contents: [{ parts: [{ text }] }],
-      generationConfig: {
-        responseModalities: ["AUDIO"],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName }
-          }
-        }
-      }
-    };
-
-    console.log("Gemini TTS request URL:", geminiUrl);
-    console.log("Gemini TTS request body:", JSON.stringify(requestBody, null, 2));
-
+    // Call Gemini API with audio modality using stable model
     let geminiResponse: Response;
     try {
-      geminiResponse = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
+      geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text }] }],
+            systemInstruction: {
+              parts: [{ text: "Read aloud the following text exactly as given. Generate audio output only." }]
+            },
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName }
+                }
+              }
+            }
+          }),
+        }
+      );
     } catch (fetchErr) {
       console.error("Gemini fetch network error:", fetchErr);
       return new Response(
@@ -174,13 +172,7 @@ Deno.serve(async (req) => {
       const errBody = await geminiResponse.text();
       let parsedError: unknown = errBody;
       try { parsedError = JSON.parse(errBody); } catch { /* keep raw */ }
-      console.error(
-        "Gemini TTS API error:",
-        geminiResponse.status,
-        "URL:", geminiUrl,
-        "Body sent:", JSON.stringify(requestBody, null, 2),
-        "Error response:", JSON.stringify(parsedError, null, 2)
-      );
+      console.error("Gemini TTS API error:", geminiResponse.status, JSON.stringify(parsedError, null, 2));
       return new Response(
         JSON.stringify({ error: "TTS generation failed", status: geminiResponse.status, details: parsedError }),
         { status: geminiResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
