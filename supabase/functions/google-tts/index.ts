@@ -10,7 +10,7 @@ const corsHeaders = {
 // Map persona names to Gemini prebuilt voice IDs
 function getGeminiVoice(personaId: string): string {
   const voiceMap: Record<string, string> = {
-    zainab: "Kore",
+    zainab: "Aoede",
     omar: "Puck",
     fatima: "Zephyr",
     hamza: "Charon",
