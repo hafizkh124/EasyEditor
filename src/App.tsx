@@ -17,6 +17,7 @@ import OCR from "./pages/OCR";
 import Research from "./pages/Research";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
+import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
