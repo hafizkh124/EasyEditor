@@ -75,7 +75,9 @@ const Dashboard = () => {
               {subscription.tier === "free" && (
                 <>
                   <Progress value={usagePercent} className="h-2 mb-3" />
-                  <Button variant="outline" size="sm">{t("dashboard.upgrade")}</Button>
+                  <Link to="/pricing">
+                    <Button variant="outline" size="sm">{t("dashboard.upgrade")}</Button>
+                  </Link>
                 </>
               )}
             </CardContent>

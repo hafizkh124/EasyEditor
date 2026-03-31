@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Users, Shield } from "lucide-react";
+import { CheckCircle, XCircle, Users, Shield, Crown } from "lucide-react";
 
 interface UserRow {
   user_id: string;
   display_name: string | null;
   is_approved: boolean;
   created_at: string;
+  tier: string;
+  upgrade_requested: boolean;
 }
 
 const Admin = () => {
@@ -24,12 +26,25 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchUsers = async () => {
-    const { data, error } = await supabase
+    const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, display_name, is_approved, created_at")
       .order("created_at", { ascending: false });
 
-    if (!error && data) setUsers(data);
+    const { data: subs } = await supabase
+      .from("subscriptions")
+      .select("user_id, tier, upgrade_requested");
+
+    if (profiles) {
+      const subMap = new Map((subs || []).map((s) => [s.user_id, s]));
+      setUsers(
+        profiles.map((p) => ({
+          ...p,
+          tier: subMap.get(p.user_id)?.tier || "free",
+          upgrade_requested: subMap.get(p.user_id)?.upgrade_requested || false,
+        }))
+      );
+    }
     setLoading(false);
   };
 
@@ -49,6 +64,35 @@ const Admin = () => {
       toast.success(approve ? t("admin.approved") : t("admin.rejected"));
       setUsers((prev) =>
         prev.map((u) => (u.user_id === userId ? { ...u, is_approved: approve } : u))
+      );
+    }
+  };
+
+  const changeTier = async (userId: string, newTier: "free" | "pro") => {
+    const updates: Record<string, unknown> = {
+      tier: newTier,
+      upgrade_requested: false,
+    };
+    if (newTier === "pro") {
+      updates.transcription_limit = 999999;
+      updates.tts_character_limit = 999999;
+    } else {
+      updates.transcription_limit = 300;
+      updates.tts_character_limit = 10000;
+    }
+    const { error } = await supabase
+      .from("subscriptions")
+      .update(updates)
+      .eq("user_id", userId);
+
+    if (error) {
+      toast.error(t("admin.update_error"));
+    } else {
+      toast.success(newTier === "pro" ? t("admin.upgraded_pro") : t("admin.downgraded_free"));
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.user_id === userId ? { ...u, tier: newTier, upgrade_requested: false } : u
+        )
       );
     }
   };
@@ -83,7 +127,7 @@ const Admin = () => {
                 {users.map((user) => (
                   <div
                     key={user.user_id}
-                    className="flex items-center justify-between py-4 gap-4"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between py-4 gap-3"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-foreground truncate">
@@ -93,7 +137,8 @@ const Admin = () => {
                         {new Date(user.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Approval badge & controls */}
                       <Badge variant={user.is_approved ? "default" : "destructive"}>
                         {user.is_approved ? t("admin.status_approved") : t("admin.status_pending")}
                       </Badge>
@@ -114,6 +159,35 @@ const Admin = () => {
                         >
                           <CheckCircle className="h-4 w-4 me-1" />
                           {t("admin.approve")}
+                        </Button>
+                      )}
+
+                      {/* Tier badge & controls */}
+                      <Badge variant={user.tier === "pro" ? "default" : "secondary"}>
+                        {user.tier === "pro" ? t("settings.pro") : t("settings.free")}
+                      </Badge>
+                      {user.upgrade_requested && (
+                        <Badge variant="outline" className="text-amber-600 border-amber-400">
+                          {t("admin.upgrade_request")}
+                        </Badge>
+                      )}
+                      {user.tier === "free" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => changeTier(user.user_id, "pro")}
+                          className="text-primary border-primary/30 hover:bg-primary/10"
+                        >
+                          <Crown className="h-4 w-4 me-1" />
+                          {t("admin.make_pro")}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => changeTier(user.user_id, "free")}
+                        >
+                          {t("admin.make_free")}
                         </Button>
                       )}
                     </div>

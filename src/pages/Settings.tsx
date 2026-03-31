@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { handleSupabaseError } from "@/lib/errors";
 
 const Settings = () => {
@@ -105,7 +105,9 @@ const Settings = () => {
               </Badge>
             </div>
             {tier === "free" && (
-              <Button variant="outline" size="sm">{t("dashboard.upgrade")}</Button>
+              <Link to="/pricing">
+                <Button variant="outline" size="sm">{t("dashboard.upgrade")}</Button>
+              </Link>
             )}
           </CardContent>
         </Card>
