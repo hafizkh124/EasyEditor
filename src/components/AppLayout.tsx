@@ -1,11 +1,12 @@
 import { useLocation, Link } from "react-router-dom";
-import { Home, Mic, Volume2, Image, BookOpen, Settings, Menu, X } from "lucide-react";
+import { Home, Mic, Volume2, Image, BookOpen, Settings, Menu, X, Shield } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useApproval } from "@/hooks/useApproval";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
+const baseNavItems = [
   { path: "/", icon: Home, labelKey: "nav.home" },
   { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe" },
   { path: "/speak", icon: Volume2, labelKey: "nav.speak" },
@@ -13,6 +14,16 @@ const navItems = [
   { path: "/research", icon: BookOpen, labelKey: "nav.research" },
   { path: "/settings", icon: Settings, labelKey: "nav.settings" },
 ];
+
+const adminNavItem = { path: "/admin", icon: Shield, labelKey: "nav.admin" };
+
+const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { t, direction } = useLanguage();
+  const { isAdmin } = useApproval();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const navItems = isAdmin ? [...baseNavItems, adminNavItem] : baseNavItems;
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t, direction } = useLanguage();
