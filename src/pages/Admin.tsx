@@ -15,6 +15,8 @@ interface UserRow {
   display_name: string | null;
   is_approved: boolean;
   created_at: string;
+  tier: string;
+  upgrade_requested: boolean;
 }
 
 const Admin = () => {
@@ -24,12 +26,25 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchUsers = async () => {
-    const { data, error } = await supabase
+    const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, display_name, is_approved, created_at")
       .order("created_at", { ascending: false });
 
-    if (!error && data) setUsers(data);
+    const { data: subs } = await supabase
+      .from("subscriptions")
+      .select("user_id, tier, upgrade_requested");
+
+    if (profiles) {
+      const subMap = new Map((subs || []).map((s) => [s.user_id, s]));
+      setUsers(
+        profiles.map((p) => ({
+          ...p,
+          tier: subMap.get(p.user_id)?.tier || "free",
+          upgrade_requested: subMap.get(p.user_id)?.upgrade_requested || false,
+        }))
+      );
+    }
     setLoading(false);
   };
 
@@ -49,6 +64,35 @@ const Admin = () => {
       toast.success(approve ? t("admin.approved") : t("admin.rejected"));
       setUsers((prev) =>
         prev.map((u) => (u.user_id === userId ? { ...u, is_approved: approve } : u))
+      );
+    }
+  };
+
+  const changeTier = async (userId: string, newTier: "free" | "pro") => {
+    const updates: Record<string, unknown> = {
+      tier: newTier,
+      upgrade_requested: false,
+    };
+    if (newTier === "pro") {
+      updates.transcription_limit = 999999;
+      updates.tts_character_limit = 999999;
+    } else {
+      updates.transcription_limit = 300;
+      updates.tts_character_limit = 10000;
+    }
+    const { error } = await supabase
+      .from("subscriptions")
+      .update(updates)
+      .eq("user_id", userId);
+
+    if (error) {
+      toast.error(t("admin.update_error"));
+    } else {
+      toast.success(newTier === "pro" ? t("admin.upgraded_pro") : t("admin.downgraded_free"));
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.user_id === userId ? { ...u, tier: newTier, upgrade_requested: false } : u
+        )
       );
     }
   };
