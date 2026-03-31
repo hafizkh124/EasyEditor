@@ -111,6 +111,7 @@ export type Database = {
           tts_character_limit: number
           tts_characters_used: number
           updated_at: string
+          upgrade_requested: boolean
           user_id: string
         }
         Insert: {
@@ -122,6 +123,7 @@ export type Database = {
           tts_character_limit?: number
           tts_characters_used?: number
           updated_at?: string
+          upgrade_requested?: boolean
           user_id: string
         }
         Update: {
@@ -133,6 +135,7 @@ export type Database = {
           tts_character_limit?: number
           tts_characters_used?: number
           updated_at?: string
+          upgrade_requested?: boolean
           user_id?: string
         }
         Relationships: []
