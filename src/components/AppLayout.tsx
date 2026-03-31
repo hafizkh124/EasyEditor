@@ -1,5 +1,5 @@
 import { useLocation, Link } from "react-router-dom";
-import { Home, Mic, Volume2, Image, BookOpen, Settings, Menu, X, Shield } from "lucide-react";
+import { Home, Mic, Volume2, Image, BookOpen, Settings, Menu, X, Shield, Crown } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useApproval } from "@/hooks/useApproval";
 import { useState } from "react";
