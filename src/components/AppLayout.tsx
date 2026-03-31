@@ -12,6 +12,7 @@ const baseNavItems = [
   { path: "/speak", icon: Volume2, labelKey: "nav.speak" },
   { path: "/ocr", icon: Image, labelKey: "nav.ocr" },
   { path: "/research", icon: BookOpen, labelKey: "nav.research" },
+  { path: "/pricing", icon: Crown, labelKey: "nav.pricing" },
   { path: "/settings", icon: Settings, labelKey: "nav.settings" },
 ];
 
