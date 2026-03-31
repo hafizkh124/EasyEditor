@@ -25,11 +25,6 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const navItems = isAdmin ? [...baseNavItems, adminNavItem] : baseNavItems;
 
-const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { t, direction } = useLanguage();
-  const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   return (
     <div className="flex min-h-screen bg-background" dir={direction}>
       {/* Desktop Sidebar */}
