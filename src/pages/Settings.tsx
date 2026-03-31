@@ -105,7 +105,9 @@ const Settings = () => {
               </Badge>
             </div>
             {tier === "free" && (
-              <Button variant="outline" size="sm">{t("dashboard.upgrade")}</Button>
+              <Link to="/pricing">
+                <Button variant="outline" size="sm">{t("dashboard.upgrade")}</Button>
+              </Link>
             )}
           </CardContent>
         </Card>
