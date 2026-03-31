@@ -127,7 +127,7 @@ const Admin = () => {
                 {users.map((user) => (
                   <div
                     key={user.user_id}
-                    className="flex items-center justify-between py-4 gap-4"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between py-4 gap-3"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-foreground truncate">
@@ -137,7 +137,8 @@ const Admin = () => {
                         {new Date(user.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Approval badge & controls */}
                       <Badge variant={user.is_approved ? "default" : "destructive"}>
                         {user.is_approved ? t("admin.status_approved") : t("admin.status_pending")}
                       </Badge>
@@ -158,6 +159,35 @@ const Admin = () => {
                         >
                           <CheckCircle className="h-4 w-4 me-1" />
                           {t("admin.approve")}
+                        </Button>
+                      )}
+
+                      {/* Tier badge & controls */}
+                      <Badge variant={user.tier === "pro" ? "default" : "secondary"}>
+                        {user.tier === "pro" ? t("settings.pro") : t("settings.free")}
+                      </Badge>
+                      {user.upgrade_requested && (
+                        <Badge variant="outline" className="text-amber-600 border-amber-400">
+                          {t("admin.upgrade_request")}
+                        </Badge>
+                      )}
+                      {user.tier === "free" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => changeTier(user.user_id, "pro")}
+                          className="text-primary border-primary/30 hover:bg-primary/10"
+                        >
+                          <Crown className="h-4 w-4 me-1" />
+                          {t("admin.make_pro")}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => changeTier(user.user_id, "free")}
+                        >
+                          {t("admin.make_free")}
                         </Button>
                       )}
                     </div>
