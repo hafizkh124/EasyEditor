@@ -64,7 +64,10 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
           <aside className="fixed inset-y-0 start-0 w-64 bg-sidebar border-e border-border z-50">
             <div className="flex h-16 items-center justify-between px-6 border-b border-border">
-              <h1 className="text-xl font-bold text-foreground">EasyEditor</h1>
+              <div className="flex items-center gap-2">
+                <img src="/favicon.png" alt="EasyEditor" width={28} height={28} className="rounded" />
+                <h1 className="text-xl font-bold text-foreground">EasyEditor</h1>
+              </div>
               <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
                 <X className="h-5 w-5" />
               </Button>
