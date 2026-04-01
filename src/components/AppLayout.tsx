@@ -104,7 +104,10 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-bold text-foreground">EasyEditor</h1>
+          <div className="flex items-center gap-2">
+            <img src="/favicon.png" alt="EasyEditor" width={24} height={24} className="rounded" />
+            <h1 className="text-lg font-bold text-foreground">EasyEditor</h1>
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto pb-20 md:pb-6">
