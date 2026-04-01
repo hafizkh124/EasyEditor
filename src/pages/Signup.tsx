@@ -47,7 +47,10 @@ const Signup = () => {
     <div className="flex min-h-screen items-center justify-center bg-background p-4" dir={direction}>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">EasyEditor</CardTitle>
+          <CardTitle className="flex items-center justify-center gap-2 text-2xl font-bold">
+            <img src="/favicon.png" alt="EasyEditor" width={32} height={32} className="rounded" />
+            EasyEditor
+          </CardTitle>
           <CardDescription>{t("auth.signup")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
