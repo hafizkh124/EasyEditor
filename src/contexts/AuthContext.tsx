@@ -24,17 +24,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let initialSessionHandled = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      // Only clear loading if getSession already resolved (avoids flicker)
+      if (initialSessionHandled) {
+        setLoading(false);
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      initialSessionHandled = true;
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      initialSessionHandled = true;
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
