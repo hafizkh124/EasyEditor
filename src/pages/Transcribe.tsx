@@ -161,7 +161,7 @@ const Transcribe = () => {
             setTranscript(newText);
             setOriginalText("");
             setSecondsUsed((prev) => prev + duration);
-            logActivity("tts", data.text.slice(0, 60));
+            logActivity("stt", data.text.slice(0, 60));
           }
         } catch (err: any) {
           toast.error(err.message || "Transcription failed");
