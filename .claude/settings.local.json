@@ -6,7 +6,8 @@
       "Bash(npx tsc:*)",
       "Bash(npx vitest:*)",
       "Bash(node -e \"const en = require\\(''./src/locales/en.json''\\); const keys = Object.keys\\(en\\).filter\\(k => k.startsWith\\(''ocr.''\\) || k.startsWith\\(''research.''\\) || k.startsWith\\(''dashboard.''\\)\\); console.log\\(JSON.stringify\\(keys, null, 2\\)\\)\")",
-      "Bash(node -e \"const en = require\\(''./src/locales/en.json''\\); const ur = require\\(''./src/locales/ur.json''\\); console.log\\(''EN ocr.limit_reached:'', en[''ocr.limit_reached'']\\); console.log\\(''UR ocr.limit_reached:'', ur[''ocr.limit_reached'']\\); console.log\\(''EN dashboard.unlimited:'', en[''dashboard.unlimited'']\\); console.log\\(''UR dashboard.unlimited:'', ur[''dashboard.unlimited'']\\);\")"
+      "Bash(node -e \"const en = require\\(''./src/locales/en.json''\\); const ur = require\\(''./src/locales/ur.json''\\); console.log\\(''EN ocr.limit_reached:'', en[''ocr.limit_reached'']\\); console.log\\(''UR ocr.limit_reached:'', ur[''ocr.limit_reached'']\\); console.log\\(''EN dashboard.unlimited:'', en[''dashboard.unlimited'']\\); console.log\\(''UR dashboard.unlimited:'', ur[''dashboard.unlimited'']\\);\")",
+      "Bash(node -e \"const en = require\\(''./src/locales/en.json''\\); console.log\\(JSON.stringify\\(Object.keys\\(en\\).filter\\(k => k.startsWith\\(''admin.''\\) || k.startsWith\\(''pricing.''\\)\\), null, 2\\)\\)\")"
     ]
   }
 }

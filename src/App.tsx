@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
@@ -23,6 +24,7 @@ const Research = lazy(() => import("./pages/Research"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Pricing = lazy(() => import("./pages/Pricing"));
+const Profile = lazy(() => import("./pages/Profile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -39,6 +41,7 @@ const App = () => (
       <LanguageProvider>
         <AuthProvider>
           <SubscriptionProvider>
+          <NotificationProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -50,18 +53,20 @@ const App = () => (
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/transcribe" element={<ProtectedRoute><Transcribe /></ProtectedRoute>} />
-                  <Route path="/speak" element={<ProtectedRoute><Speak /></ProtectedRoute>} />
-                  <Route path="/ocr" element={<ProtectedRoute><OCR /></ProtectedRoute>} />
-                  <Route path="/research" element={<ProtectedRoute><Research /></ProtectedRoute>} />
+                  <Route path="/transcribe" element={<ProtectedRoute><ErrorBoundary><Transcribe /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/speak" element={<ProtectedRoute><ErrorBoundary><Speak /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/ocr" element={<ProtectedRoute><ErrorBoundary><OCR /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/research" element={<ProtectedRoute><ErrorBoundary><Research /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                   <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
             </ErrorBoundary>
           </BrowserRouter>
+          </NotificationProvider>
           </SubscriptionProvider>
         </AuthProvider>
       </LanguageProvider>

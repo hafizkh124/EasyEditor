@@ -6,7 +6,16 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Crown, Zap, Loader2, Sparkles, Shield, Star } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Check, X, Crown, Zap, Loader2, Sparkles, Shield, Star, Clock } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
@@ -18,9 +27,14 @@ const Pricing = () => {
   const { t, direction } = useLanguage();
   const { subscription, loading, refetch } = useSubscription();
   const currentTier = subscription?.tier ?? "free";
-  // Local optimistic state: set true immediately on success, synced from context on load
+
+  // Local optimistic state synced from context on load
   const [upgradeRequested, setUpgradeRequested] = useState(false);
-  const [requesting, setRequesting] = useState(false);
+
+  // Payment dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [txId, setTxId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (subscription) {
@@ -28,21 +42,29 @@ const Pricing = () => {
     }
   }, [subscription]);
 
-  const requestUpgrade = async () => {
-    if (!user) return;
-    setRequesting(true);
+  const submitUpgradeRequest = async () => {
+    if (!user || !txId.trim()) return;
+    setSubmitting(true);
     const { error } = await supabase
       .from("subscriptions")
-      .update({ upgrade_requested: true })
+      .update({
+        upgrade_requested: true,
+        pending_tier: "pro",
+        payment_reference: txId.trim(),
+        last_upgrade_request: new Date().toISOString(),
+      })
       .eq("user_id", user.id);
+
     if (error) {
       toast.error(t("pricing.request_error"));
     } else {
       setUpgradeRequested(true);
-      toast.success(t("pricing.request_sent"));
+      setDialogOpen(false);
+      setTxId("");
+      toast.success(t("pricing.request_submitted"));
       refetch();
     }
-    setRequesting(false);
+    setSubmitting(false);
   };
 
   const features = [
@@ -241,17 +263,22 @@ const Pricing = () => {
                   transition={{ delay: 0.7 }}
                 >
                   {upgradeRequested ? (
-                    <Button disabled className="w-full h-12 text-base rounded-xl">
-                      {t("pricing.request_pending")}
-                    </Button>
+                    <div className="rounded-xl border border-amber-400/50 bg-amber-50 dark:bg-amber-950/20 p-4 text-center space-y-1">
+                      <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-400 font-medium">
+                        <Clock className="h-4 w-4" />
+                        {t("pricing.pending_approval")}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {t("pricing.pending_approval_desc")}
+                      </p>
+                    </div>
                   ) : (
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                       <Button
-                        onClick={requestUpgrade}
-                        disabled={requesting}
+                        onClick={() => setDialogOpen(true)}
                         className="w-full h-12 text-base rounded-xl shadow-md hover:shadow-lg transition-shadow"
                       >
-                        {requesting ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : <Crown className="h-4 w-4 me-2" />}
+                        <Crown className="h-4 w-4 me-2" />
                         {t("pricing.request_upgrade")}
                       </Button>
                     </motion.div>
@@ -265,6 +292,59 @@ const Pricing = () => {
           </MotionCard>
         </div>
       </div>
+
+      {/* Payment Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md" dir={direction}>
+          <DialogHeader>
+            <DialogTitle>{t("pricing.payment_dialog_title")}</DialogTitle>
+            <DialogDescription>{t("pricing.payment_dialog_desc")}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Bank Transfer */}
+            <div className="rounded-lg border bg-muted/50 p-3 space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t("pricing.payment_bank_label")}
+              </p>
+              <p className="text-sm font-medium">{t("pricing.payment_bank_details")}</p>
+            </div>
+
+            {/* EasyPaisa */}
+            <div className="rounded-lg border bg-muted/50 p-3 space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t("pricing.payment_easypaisa_label")}
+              </p>
+              <p className="text-sm font-medium">{t("pricing.payment_easypaisa_details")}</p>
+            </div>
+
+            <p className="text-sm font-semibold text-primary">{t("pricing.payment_amount_pro")}</p>
+
+            {/* Transaction ID */}
+            <div className="space-y-1.5">
+              <Label htmlFor="txId">{t("pricing.transaction_id_label")}</Label>
+              <Input
+                id="txId"
+                placeholder={t("pricing.transaction_id_placeholder")}
+                value={txId}
+                onChange={(e) => setTxId(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !submitting && txId.trim() && submitUpgradeRequest()}
+              />
+            </div>
+
+            <p className="text-xs text-muted-foreground">{t("pricing.payment_note")}</p>
+
+            <Button
+              onClick={submitUpgradeRequest}
+              disabled={submitting || !txId.trim()}
+              className="w-full"
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : <Crown className="h-4 w-4 me-2" />}
+              {t("pricing.submit_payment")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };

@@ -38,6 +38,33 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -108,8 +135,11 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          last_upgrade_request: string | null
           ocr_pages_limit: number
           ocr_pages_used: number
+          payment_reference: string | null
+          pending_tier: string | null
           research_queries_limit: number
           research_queries_used: number
           tier: Database["public"]["Enums"]["subscription_tier"]
@@ -124,8 +154,11 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          last_upgrade_request?: string | null
           ocr_pages_limit?: number
           ocr_pages_used?: number
+          payment_reference?: string | null
+          pending_tier?: string | null
           research_queries_limit?: number
           research_queries_used?: number
           tier?: Database["public"]["Enums"]["subscription_tier"]
@@ -140,8 +173,11 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          last_upgrade_request?: string | null
           ocr_pages_limit?: number
           ocr_pages_used?: number
+          payment_reference?: string | null
+          pending_tier?: string | null
           research_queries_limit?: number
           research_queries_used?: number
           tier?: Database["public"]["Enums"]["subscription_tier"]
@@ -188,7 +224,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      subscription_tier: "free" | "pro"
+      subscription_tier: "free" | "pro" | "ultra"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -317,7 +353,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      subscription_tier: ["free", "pro"],
+      subscription_tier: ["free", "pro", "ultra"],
     },
   },
 } as const
