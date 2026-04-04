@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { logActivity } from "@/lib/activityLog";
 import { handleSupabaseError } from "@/lib/errors";
+import { isRtlText } from "@/utils/textUtils";
 
 type SttLanguage = "en-US" | "ur-PK";
 type RefineAction = "formalize" | "humanize" | "shorten" | "citations";
