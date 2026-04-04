@@ -88,16 +88,44 @@ const Speak = () => {
       });
   }, [user]);
 
-  // Load saved cloned voice ID from localStorage
+  // S2: Load cloned voice ID from Supabase profiles table, with localStorage fallback
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+
+    const loadVoiceId = async () => {
+      // Try DB first
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("cloned_voice_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!error && data?.cloned_voice_id) {
+        console.log("[Speak] Voice ID loaded from DB");
+        setClonedVoiceId(data.cloned_voice_id);
+        // Sync name from localStorage (name is display-only, not critical to persist in DB)
+        const savedName = localStorage.getItem(`cloned-voice-name-${user.id}`);
+        setCloneSampleName(savedName);
+        return;
+      }
+
+      // Fallback: check localStorage during transition period
       const savedId = localStorage.getItem(`cloned-voice-${user.id}`);
       const savedName = localStorage.getItem(`cloned-voice-name-${user.id}`);
       if (savedId) {
+        console.log("[Speak] Voice ID loaded from localStorage (fallback)");
         setClonedVoiceId(savedId);
         setCloneSampleName(savedName);
+
+        // Migrate to DB for future cross-device access
+        await supabase
+          .from("profiles")
+          .update({ cloned_voice_id: savedId })
+          .eq("user_id", user.id);
       }
-    }
+    };
+
+    loadVoiceId();
   }, [user]);
 
   // --- Voice Clone Upload ---
@@ -149,8 +177,15 @@ const Speak = () => {
         setClonedVoiceId(data.voice_id);
         setCloneSampleName(file.name);
         setVoiceMode("cloned");
+
+        // S2: Persist to Supabase profiles table (primary) and localStorage (fallback)
+        await supabase
+          .from("profiles")
+          .update({ cloned_voice_id: data.voice_id })
+          .eq("user_id", user.id);
         localStorage.setItem(`cloned-voice-${user.id}`, data.voice_id);
         localStorage.setItem(`cloned-voice-name-${user.id}`, file.name);
+
         toast.success(t("tts.clone_success"));
       }
     } catch (err: any) {

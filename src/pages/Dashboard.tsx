@@ -22,9 +22,10 @@ const Dashboard = () => {
   const [displayName, setDisplayName] = useState("");
   const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
 
+  // P6: Pass userId to avoid redundant getSession() call inside getRecentActivity
   useEffect(() => {
-    getRecentActivity().then(setRecentActivity).catch(console.error);
-  }, []);
+    getRecentActivity(user?.id).then(setRecentActivity).catch(console.error);
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
