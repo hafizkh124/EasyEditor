@@ -26,12 +26,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let initialSessionHandled = false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    /** Remove Supabase auth hash fragments (access_token=…) or a bare trailing '#' */
+    const cleanupHashFragment = () => {
+      if (typeof window === "undefined") return;
+      const hash = window.location.hash;
+      if (hash.includes("access_token") || hash === "#") {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        console.log("[Auth] Hash fragment detected and cleaned safely.");
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       // Only clear loading if getSession already resolved (avoids flicker)
       if (initialSessionHandled) {
         setLoading(false);
+      }
+
+      // Clean up after OAuth / magic-link sign-in or token refresh
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        cleanupHashFragment();
       }
     });
 
@@ -40,6 +55,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       initialSessionHandled = true;
       setLoading(false);
+
+      // Clean up any residual hash fragment from a prior auth redirect
+      if (session) {
+        cleanupHashFragment();
+      }
     }).catch(() => {
       initialSessionHandled = true;
       setLoading(false);
