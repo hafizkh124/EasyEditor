@@ -163,7 +163,7 @@ const DocumentBox = ({
   onRefine: (action: string) => void; onCopy: () => void; onDownload: () => void;
   t: (k: string) => string;
 }) => {
-  const isRtl = /[\u0600-\u06FF]/.test(content.slice(0, 100));
+  const isRtl = detectRtl(content);
 
   return (
     <div className="relative rounded-xl border border-border bg-card shadow-md overflow-hidden" style={{ boxShadow: "0 4px 24px -4px hsl(var(--foreground) / 0.08)" }}>
