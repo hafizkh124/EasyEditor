@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useApproval } from "@/hooks/useApproval";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Navigate } from "react-router-dom";
@@ -20,10 +21,43 @@ interface UserRow {
 }
 
 const Admin = () => {
+  const { user } = useAuth();
   const { isAdmin, loading: approvalLoading } = useApproval();
   const { t, direction } = useLanguage();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [verified, setVerified] = useState(false);
+  const [verifying, setVerifying] = useState(true);
+
+  // S3: Server-side admin role verification directly against user_roles table
+  useEffect(() => {
+    if (!user || approvalLoading) return;
+
+    const verifyAdminRole = async () => {
+      console.log("[Admin] Verifying access...");
+      setVerifying(true);
+
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (error) {
+        console.error("[Admin] Role verification failed:", error.message);
+        setVerified(false);
+      } else {
+        const isVerifiedAdmin = data !== null;
+        console.log("[Admin] Verified:", isVerifiedAdmin);
+        setVerified(isVerifiedAdmin);
+      }
+
+      setVerifying(false);
+    };
+
+    verifyAdminRole();
+  }, [user, approvalLoading]);
 
   const fetchUsers = async () => {
     const { data: profiles } = await supabase
@@ -49,8 +83,8 @@ const Admin = () => {
   };
 
   useEffect(() => {
-    if (isAdmin) fetchUsers();
-  }, [isAdmin]);
+    if (verified) fetchUsers();
+  }, [verified]);
 
   const toggleApproval = async (userId: string, approve: boolean) => {
     const { error } = await supabase
@@ -97,8 +131,11 @@ const Admin = () => {
     }
   };
 
-  if (approvalLoading) return null;
-  if (!isAdmin) return <Navigate to="/" replace />;
+  // Show nothing while verifying role
+  if (approvalLoading || verifying) return null;
+
+  // Redirect non-admin users (both hook check and server-side verification must pass)
+  if (!isAdmin || !verified) return <Navigate to="/" replace />;
 
   return (
     <AppLayout>

@@ -12,14 +12,13 @@ const MAX_ENTRIES = 5;
 // localStorage key for offline/unauthenticated fallback
 const STORAGE_KEY = "easyeditor-activity";
 
-export async function getRecentActivity(): Promise<ActivityEntry[]> {
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (session?.user) {
+// P6: Accept userId as parameter instead of calling getSession() redundantly
+export async function getRecentActivity(userId?: string): Promise<ActivityEntry[]> {
+  if (userId) {
     const { data, error } = await supabase
       .from("activity_log")
       .select("id, type, label, created_at")
-      .eq("user_id", session.user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(MAX_ENTRIES);
 
