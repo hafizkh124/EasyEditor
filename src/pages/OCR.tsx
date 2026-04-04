@@ -289,8 +289,8 @@ const OCR = () => {
             <Textarea
               value={extractedText}
               onChange={(e) => setExtractedText(e.target.value)}
-              dir={isRtlText ? "rtl" : "ltr"}
-              className={cn("min-h-[200px] resize-y", isRtlText && "text-right")}
+              dir={rtl ? "rtl" : "ltr"}
+              className={cn("min-h-[200px] resize-y", rtl && "text-right")}
             />
             <div className="flex gap-3">
               <Button onClick={handleCopy} variant="outline" className="flex-1 sm:flex-none">
