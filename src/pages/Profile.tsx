@@ -112,26 +112,26 @@ const Profile = () => {
     ? [
         {
           label: t("dashboard.stt_label"),
-          used: subscription.transcription_seconds_used,
-          limit: subscription.transcription_limit,
+          used: subscription.transcription_seconds_used ?? 0,
+          limit: subscription.transcription_limit ?? 300,
           unit: t("pricing.seconds"),
         },
         {
           label: t("dashboard.tts_label"),
-          used: subscription.tts_characters_used,
-          limit: subscription.tts_character_limit,
+          used: subscription.tts_characters_used ?? 0,
+          limit: subscription.tts_character_limit ?? 10_000,
           unit: t("pricing.characters"),
         },
         {
           label: t("dashboard.ocr_label"),
-          used: subscription.ocr_pages_used,
-          limit: subscription.ocr_pages_limit,
+          used: subscription.ocr_pages_used ?? 0,
+          limit: subscription.ocr_pages_limit ?? 5,
           unit: t("dashboard.pages_used"),
         },
         {
           label: t("dashboard.research_label"),
-          used: subscription.research_queries_used,
-          limit: subscription.research_queries_limit,
+          used: subscription.research_queries_used ?? 0,
+          limit: subscription.research_queries_limit ?? 3,
           unit: t("dashboard.queries_used"),
         },
       ]

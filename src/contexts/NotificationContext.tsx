@@ -37,12 +37,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("notifications")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20);
+    // Gracefully handle 404 (table not yet migrated in this environment)
+    if (error && (error as any).code !== "42P01") {
+      if (import.meta.env.DEV) console.warn("[NotificationContext] fetch error:", error.message);
+    }
     setNotifications(data ?? []);
     setLoading(false);
   }, [user]);
