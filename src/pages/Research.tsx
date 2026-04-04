@@ -516,7 +516,7 @@ const Research = () => {
                 }
 
                 // Older assistant messages rendered simply
-                const isRtl = /[\u0600-\u06FF]/.test(msg.content.slice(0, 100));
+                const isRtl = detectRtl(msg.content);
                 return (
                   <div key={i} className="flex justify-start">
                     <div className="rounded-2xl px-4 py-2.5 max-w-[85%] text-sm bg-muted text-foreground border border-border">
