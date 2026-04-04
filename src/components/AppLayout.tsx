@@ -1,11 +1,14 @@
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import { Home, Mic, Volume2, Image, BookOpen, Settings, Menu, X, Shield, Crown, LogOut } from "lucide-react";
+import { Home, Mic, Volume2, Image, BookOpen, Settings, Menu, X, Shield, Crown, LogOut, Bell, User } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApproval } from "@/hooks/useApproval";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const baseNavItems = [
   { path: "/", icon: Home, labelKey: "nav.home" },
@@ -18,6 +21,74 @@ const baseNavItems = [
 ];
 
 const adminNavItem = { path: "/admin", icon: Shield, labelKey: "nav.admin" };
+
+const NotificationBell = () => {
+  const { t } = useLanguage();
+  const { notifications, unreadCount, markAllRead, markRead } = useNotifications();
+  const [open, setOpen] = useState(false);
+
+  const handleOpen = (val: boolean) => {
+    setOpen(val);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={handleOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground hover:text-foreground">
+          <Bell className="h-4 w-4" />
+          {unreadCount > 0 && (
+            <span className="absolute top-0.5 end-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <p className="font-semibold text-sm">{t("notification.title")}</p>
+          {unreadCount > 0 && (
+            <Button variant="ghost" size="sm" className="h-auto py-0.5 px-2 text-xs" onClick={markAllRead}>
+              {t("notification.mark_all_read")}
+            </Button>
+          )}
+        </div>
+        <ScrollArea className="max-h-80">
+          {notifications.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8 px-4">
+              {t("notification.empty")}
+            </p>
+          ) : (
+            <div className="divide-y divide-border">
+              {notifications.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => !n.is_read && markRead(n.id)}
+                  className={cn(
+                    "w-full text-start px-4 py-3 hover:bg-accent/50 transition-colors",
+                    !n.is_read && "bg-primary/5"
+                  )}
+                >
+                  <div className="flex items-start gap-2">
+                    {!n.is_read && (
+                      <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
+                    )}
+                    <div className={cn("space-y-0.5", n.is_read && "ms-4")}>
+                      <p className="text-sm font-medium text-foreground leading-snug">{n.title}</p>
+                      <p className="text-xs text-muted-foreground leading-snug">{n.message}</p>
+                      <p className="text-[11px] text-muted-foreground/70">
+                        {new Date(n.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t, direction } = useLanguage();
@@ -33,6 +104,32 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   const navItems = isAdmin ? [...baseNavItems, adminNavItem] : baseNavItems;
+
+  const UserSection = ({ onNavigate }: { onNavigate?: () => void }) => (
+    <div className="border-t border-border p-4 space-y-2">
+      <Link
+        to="/profile"
+        onClick={onNavigate}
+        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-sidebar-accent/50 transition-colors group"
+      >
+        <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <User className="h-4 w-4 text-primary" />
+        </div>
+        <p className="text-xs text-muted-foreground truncate group-hover:text-foreground transition-colors">
+          {user?.email}
+        </p>
+      </Link>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleLogout}
+        className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+      >
+        <LogOut className="h-4 w-4" />
+        {t("settings.logout")}
+      </Button>
+    </div>
+  );
 
   return (
     <div className="flex min-h-screen bg-background" dir={direction}>
@@ -64,28 +161,14 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             );
           })}
         </nav>
-        {/* Desktop User Section */}
-        <div className="border-t border-border p-4 space-y-3">
-          <div className="px-1">
-            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-          >
-            <LogOut className="h-4 w-4" />
-            {t("settings.logout")}
-          </Button>
-        </div>
+        <UserSection />
       </aside>
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
-          <aside className="fixed inset-y-0 start-0 w-64 bg-sidebar border-e border-border z-50">
+          <aside className="fixed inset-y-0 start-0 w-64 bg-sidebar border-e border-border z-50 flex flex-col">
             <div className="flex h-16 items-center justify-between px-6 border-b border-border">
               <div className="flex items-center gap-2">
                 <img src="/favicon.png" alt="EasyEditor" width={28} height={28} className="rounded" />
@@ -116,21 +199,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 );
               })}
             </nav>
-            {/* Mobile User Section */}
-            <div className="border-t border-border p-4 space-y-3">
-              <div className="px-1">
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              >
-                <LogOut className="h-4 w-4" />
-                {t("settings.logout")}
-              </Button>
-            </div>
+            <UserSection onNavigate={() => setSidebarOpen(false)} />
           </aside>
         </div>
       )}
@@ -142,11 +211,17 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1">
             <img src="/favicon.png" alt="EasyEditor" width={24} height={24} className="rounded" />
             <h1 className="text-lg font-bold text-foreground">EasyEditor</h1>
           </div>
+          <NotificationBell />
         </header>
+
+        {/* Desktop Top Bar (notification bell only) */}
+        <div className="hidden md:flex h-14 items-center justify-end border-b border-border px-6">
+          <NotificationBell />
+        </div>
 
         <main className="flex-1 overflow-auto pb-20 md:pb-6">
           {children}

@@ -6,6 +6,32 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Subscription = Tables<"subscriptions">;
 
+/**
+ * Canonical per-tier DB column values.
+ * Used by Admin when approving upgrades so the limit columns always
+ * stay in sync with the tier. Import this instead of hardcoding numbers.
+ */
+export const TIER_LIMITS = {
+  free: {
+    transcription_limit: 300,
+    tts_character_limit: 10_000,
+    ocr_pages_limit: 5,
+    research_queries_limit: 3,
+  },
+  pro: {
+    transcription_limit: 999_999,
+    tts_character_limit: 999_999,
+    ocr_pages_limit: 999,
+    research_queries_limit: 999,
+  },
+  ultra: {
+    transcription_limit: 999_999,
+    tts_character_limit: 999_999,
+    ocr_pages_limit: 5_000,
+    research_queries_limit: 1_000,
+  },
+} as const;
+
 interface SubscriptionContextType {
   subscription: Subscription | null;
   loading: boolean;
@@ -31,7 +57,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(false);
       return;
     }
-    console.log("[SubscriptionContext] Fetching subscription for user:", user.id);
+    if (import.meta.env.DEV) console.log("[SubscriptionContext] Fetching subscription for user:", user.id);
     setLoading(true);
     const { data, error } = await supabase
       .from("subscriptions")
@@ -41,8 +67,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (error) {
       handleSupabaseError(error, "load subscription");
     } else {
-      console.log(
-        `[SubscriptionContext] Loaded — tier: ${data.tier} | STT used: ${data.transcription_seconds_used}s | TTS used: ${data.tts_characters_used} chars`
+      if (import.meta.env.DEV) console.log(
+        `[SubscriptionContext] Loaded — tier: ${data.tier} | STT: ${data.transcription_seconds_used}s | TTS: ${data.tts_characters_used} chars | OCR: ${data.ocr_pages_used} pages | Research: ${data.research_queries_used} queries`
       );
       setSubscription(data);
     }
