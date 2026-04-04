@@ -546,8 +546,8 @@ const Research = () => {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t("research.ask_placeholder")}
-                dir={isRtlText ? "rtl" : "ltr"}
-                className={cn("min-h-[44px] max-h-32 resize-none flex-1", isRtlText && "text-right")}
+                dir={isRtlQuery ? "rtl" : "ltr"}
+                className={cn("min-h-[44px] max-h-32 resize-none flex-1", isRtlQuery && "text-right")}
                 rows={1}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendQuery(); }
