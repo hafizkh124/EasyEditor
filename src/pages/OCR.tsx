@@ -14,6 +14,7 @@ import AppLayout from "@/components/AppLayout";
 import ImageCropper from "@/components/ImageCropper";
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activityLog";
+import { isRtlText } from "@/utils/textUtils";
 
 const OCR = () => {
   const { session } = useAuth();
