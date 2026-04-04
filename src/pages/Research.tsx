@@ -1,11 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -233,6 +236,11 @@ const DocumentBox = ({
 const Research = () => {
   const { user, session } = useAuth();
   const { t } = useLanguage();
+  const { subscription, refetch } = useSubscription();
+
+  const researchQueriesUsed = subscription?.research_queries_used ?? 0;
+  const researchQueriesLimit = subscription?.research_queries_limit ?? 3;
+  const researchLimitReached = subscription?.tier === "free" && researchQueriesUsed >= researchQueriesLimit;
 
   const [sources, setSources] = useState<Source[]>([]);
   const [urlInput, setUrlInput] = useState("");
@@ -316,6 +324,10 @@ const Research = () => {
   // --- AI Query with streaming ---
   const handleSendQuery = async () => {
     if (!query.trim() || !session?.access_token) return;
+    if (researchLimitReached) {
+      toast.error(t("research.limit_reached"));
+      return;
+    }
     const userMsg: ChatMessage = { role: "user", content: query };
     const prevMessages = [...messages];
     setMessages((prev) => [...prev, userMsg]);
@@ -341,7 +353,18 @@ const Research = () => {
       strictMode,
       chatHistory: prevMessages,
       onDelta: upsertAssistant,
-      onDone: () => setIsQuerying(false),
+      onDone: () => {
+        setIsQuerying(false);
+        // Increment research query counter and sync context
+        if (user) {
+          console.log("[Research] Incrementing research_queries_used for user:", user.id);
+          supabase
+            .from("subscriptions")
+            .update({ research_queries_used: researchQueriesUsed + 1 })
+            .eq("user_id", user.id)
+            .then(({ error }) => { if (!error) refetch(); });
+        }
+      },
       onError: (err) => { toast.error(err); setIsQuerying(false); },
     });
   };
@@ -445,7 +468,7 @@ const Research = () => {
             </div>
           </ScrollArea>
 
-          <div className="p-3 border-t border-border">
+          <div className="p-3 border-t border-border space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {strictMode ? <Lock className="h-4 w-4 text-primary" /> : <Globe className="h-4 w-4 text-primary" />}
@@ -455,9 +478,30 @@ const Research = () => {
               </div>
               <Switch id="mode-toggle" checked={!strictMode} onCheckedChange={(v) => setStrictMode(!v)} />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
+            <p className="text-[10px] text-muted-foreground">
               {strictMode ? t("research.strict_desc") : t("research.extended_desc")}
             </p>
+            {subscription?.tier === "free" && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span>{t("research.queries_label")}</span>
+                  <span className={researchLimitReached ? "text-destructive font-medium" : ""}>
+                    {researchQueriesUsed} / {researchQueriesLimit}
+                  </span>
+                </div>
+                <Progress
+                  value={Math.min((researchQueriesUsed / researchQueriesLimit) * 100, 100)}
+                  className="h-1"
+                />
+                {researchLimitReached && (
+                  <Link to="/pricing" className="block">
+                    <Badge variant="destructive" className="w-full justify-center text-[10px] cursor-pointer">
+                      {t("dashboard.upgrade")}
+                    </Badge>
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -553,7 +597,7 @@ const Research = () => {
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendQuery(); }
                 }}
               />
-              <Button onClick={handleSendQuery} disabled={!query.trim() || isQuerying} size="icon" className="shrink-0 h-11 w-11">
+              <Button onClick={handleSendQuery} disabled={!query.trim() || isQuerying || researchLimitReached} size="icon" className="shrink-0 h-11 w-11">
                 {isQuerying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>

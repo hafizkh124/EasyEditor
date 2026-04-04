@@ -1,6 +1,7 @@
-import { useLocation, Link } from "react-router-dom";
-import { Home, Mic, Volume2, Image, BookOpen, Settings, Menu, X, Shield, Crown } from "lucide-react";
+import { useLocation, Link, useNavigate } from "react-router-dom";
+import { Home, Mic, Volume2, Image, BookOpen, Settings, Menu, X, Shield, Crown, LogOut } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useApproval } from "@/hooks/useApproval";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -20,9 +21,16 @@ const adminNavItem = { path: "/admin", icon: Shield, labelKey: "nav.admin" };
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t, direction } = useLanguage();
+  const { user, signOut } = useAuth();
   const { isAdmin } = useApproval();
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   const navItems = isAdmin ? [...baseNavItems, adminNavItem] : baseNavItems;
 
@@ -56,6 +64,21 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             );
           })}
         </nav>
+        {/* Desktop User Section */}
+        <div className="border-t border-border p-4 space-y-3">
+          <div className="px-1">
+            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          >
+            <LogOut className="h-4 w-4" />
+            {t("settings.logout")}
+          </Button>
+        </div>
       </aside>
 
       {/* Mobile Sidebar Overlay */}
@@ -93,6 +116,21 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 );
               })}
             </nav>
+            {/* Mobile User Section */}
+            <div className="border-t border-border p-4 space-y-3">
+              <div className="px-1">
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              >
+                <LogOut className="h-4 w-4" />
+                {t("settings.logout")}
+              </Button>
+            </div>
           </aside>
         </div>
       )}

@@ -16,7 +16,7 @@ import AppLayout from "@/components/AppLayout";
 import AudioWaveform from "@/components/AudioWaveform";
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activityLog";
-import { handleSupabaseError } from "@/lib/errors";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 interface Persona {
   id: string;
@@ -50,11 +50,10 @@ const Speak = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState(0);
-  const [subscription, setSubscription] = useState<{
-    tier: string;
-    tts_characters_used: number;
-    tts_character_limit: number;
-  } | null>(null);
+  const { subscription } = useSubscription();
+  // Tracks chars used this session for optimistic UI (resets on page reload, which is fine)
+  const [sessionCharsUsed, setSessionCharsUsed] = useState(0);
+  const ttsCharsUsed = (subscription?.tts_characters_used ?? 0) + sessionCharsUsed;
 
   // Voice cloning state
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("standard");
@@ -75,18 +74,6 @@ const Speak = () => {
     }
   }, [location.state, charLimit]);
 
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("subscriptions")
-      .select("tier, tts_characters_used, tts_character_limit")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data, error }) => {
-        if (error) { handleSupabaseError(error, "load subscription"); return; }
-        if (data) setSubscription(data);
-      });
-  }, [user]);
 
   // S2: Load cloned voice ID from Supabase profiles table, with localStorage fallback
   useEffect(() => {
@@ -257,11 +244,7 @@ const Speak = () => {
     // Response is now binary audio/wav directly
     const audioBlob = new Blob([await response.arrayBuffer()], { type: "audio/wav" });
 
-    if (subscription) {
-      setSubscription((prev) =>
-        prev ? { ...prev, tts_characters_used: prev.tts_characters_used + text.length } : prev
-      );
-    }
+    setSessionCharsUsed((prev) => prev + text.length);
 
     return audioBlob;
   };
@@ -370,7 +353,7 @@ const Speak = () => {
   const usagePercent = subscription
     ? subscription.tier === "pro"
       ? 0
-      : (subscription.tts_characters_used / subscription.tts_character_limit) * 100
+      : (ttsCharsUsed / subscription.tts_character_limit) * 100
     : 0;
 
   const costThisRequest = text.length;
@@ -389,7 +372,7 @@ const Speak = () => {
             <CardContent className="pt-4 space-y-2">
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>{t("tts.chars_used")}</span>
-                <span>{subscription.tts_characters_used} / {subscription.tts_character_limit}</span>
+                <span>{ttsCharsUsed} / {subscription.tts_character_limit}</span>
               </div>
               <Progress value={usagePercent} className="h-2" />
               {usagePercent > 80 && (

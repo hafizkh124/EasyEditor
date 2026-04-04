@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,26 +16,17 @@ const MotionCard = motion(Card);
 const Pricing = () => {
   const { user } = useAuth();
   const { t, direction } = useLanguage();
-  const [currentTier, setCurrentTier] = useState<string>("free");
+  const { subscription, loading, refetch } = useSubscription();
+  const currentTier = subscription?.tier ?? "free";
+  // Local optimistic state: set true immediately on success, synced from context on load
   const [upgradeRequested, setUpgradeRequested] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("subscriptions")
-      .select("tier, upgrade_requested")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setCurrentTier(data.tier);
-          setUpgradeRequested(data.upgrade_requested ?? false);
-        }
-        setLoading(false);
-      });
-  }, [user]);
+    if (subscription) {
+      setUpgradeRequested(subscription.upgrade_requested ?? false);
+    }
+  }, [subscription]);
 
   const requestUpgrade = async () => {
     if (!user) return;
@@ -48,6 +40,7 @@ const Pricing = () => {
     } else {
       setUpgradeRequested(true);
       toast.success(t("pricing.request_sent"));
+      refetch();
     }
     setRequesting(false);
   };
