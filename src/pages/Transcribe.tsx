@@ -361,7 +361,7 @@ const Transcribe = () => {
                 </TabsList>
                 <TabsContent value="refined">
                   <div
-                    dir={isRtlText ? "rtl" : "ltr"}
+                    dir={rtlText ? "rtl" : "ltr"}
                     className={cn(
                       "min-h-[200px] rounded-md border border-input bg-background p-4 text-sm whitespace-pre-wrap",
                       isRtlText && "text-right"
