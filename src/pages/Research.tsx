@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
+import { isRtlText as detectRtl } from "@/utils/textUtils";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 
