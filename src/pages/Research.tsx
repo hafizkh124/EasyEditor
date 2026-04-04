@@ -487,7 +487,7 @@ const Research = () => {
                 const isLastAssistant = msg.role === "assistant" && i === messages.length - 1 - lastAssistantIdx;
 
                 if (msg.role === "user") {
-                  const isRtl = /[\u0600-\u06FF]/.test(msg.content.slice(0, 100));
+                  const isRtl = detectRtl(msg.content);
                   return (
                     <div key={i} className="flex justify-end">
                       <div className="rounded-2xl px-4 py-2.5 max-w-[85%] text-sm bg-primary text-primary-foreground">
