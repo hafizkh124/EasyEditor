@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
+import { isRtlText as detectRtl } from "@/utils/textUtils";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 
@@ -162,7 +163,7 @@ const DocumentBox = ({
   onRefine: (action: string) => void; onCopy: () => void; onDownload: () => void;
   t: (k: string) => string;
 }) => {
-  const isRtl = /[\u0600-\u06FF]/.test(content.slice(0, 100));
+  const isRtl = detectRtl(content);
 
   return (
     <div className="relative rounded-xl border border-border bg-card shadow-md overflow-hidden" style={{ boxShadow: "0 4px 24px -4px hsl(var(--foreground) / 0.08)" }}>
@@ -390,7 +391,7 @@ const Research = () => {
   };
 
   const sourceIcon = (type: string) => (type === "url" ? Link2 : FileText);
-  const isRtlText = /[\u0600-\u06FF]/.test(query.slice(0, 50));
+  const isRtlQuery = detectRtl(query);
 
   return (
     <AppLayout>
@@ -486,7 +487,7 @@ const Research = () => {
                 const isLastAssistant = msg.role === "assistant" && i === messages.length - 1 - lastAssistantIdx;
 
                 if (msg.role === "user") {
-                  const isRtl = /[\u0600-\u06FF]/.test(msg.content.slice(0, 100));
+                  const isRtl = detectRtl(msg.content);
                   return (
                     <div key={i} className="flex justify-end">
                       <div className="rounded-2xl px-4 py-2.5 max-w-[85%] text-sm bg-primary text-primary-foreground">
@@ -515,7 +516,7 @@ const Research = () => {
                 }
 
                 // Older assistant messages rendered simply
-                const isRtl = /[\u0600-\u06FF]/.test(msg.content.slice(0, 100));
+                const isRtl = detectRtl(msg.content);
                 return (
                   <div key={i} className="flex justify-start">
                     <div className="rounded-2xl px-4 py-2.5 max-w-[85%] text-sm bg-muted text-foreground border border-border">
@@ -545,8 +546,8 @@ const Research = () => {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t("research.ask_placeholder")}
-                dir={isRtlText ? "rtl" : "ltr"}
-                className={cn("min-h-[44px] max-h-32 resize-none flex-1", isRtlText && "text-right")}
+                dir={isRtlQuery ? "rtl" : "ltr"}
+                className={cn("min-h-[44px] max-h-32 resize-none flex-1", isRtlQuery && "text-right")}
                 rows={1}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendQuery(); }

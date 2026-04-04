@@ -125,16 +125,26 @@ serve(async (req) => {
     const contextParts: string[] = [];
 
     if (sources && sources.length > 0) {
-      for (const source of sources) {
-        let content = "";
+      console.log(`[Research] Parallel fetch initiated for ${sources.length} source(s)`);
+      const startTime = Date.now();
+
+      const fetchPromises = sources.map(async (source: any) => {
         if (source.source_type === "url" && source.url) {
-          content = await fetchUrlContent(source.url);
-          contextParts.push(`--- Source: ${source.title} (${source.url}) ---\n${content}`);
+          const content = await fetchUrlContent(source.url);
+          return `--- Source: ${source.title} (${source.url}) ---\n${content}`;
         } else if (source.storage_path) {
-          content = await fetchFileContent(supabase, source.storage_path);
-          contextParts.push(`--- Source: ${source.title} (File) ---\n${content}`);
+          const content = await fetchFileContent(supabase, source.storage_path);
+          return `--- Source: ${source.title} (File) ---\n${content}`;
         }
+        return null;
+      });
+
+      const results = await Promise.all(fetchPromises);
+      for (const r of results) {
+        if (r) contextParts.push(r);
       }
+
+      console.log(`[Research] Parallel fetch completed in ${Date.now() - startTime}ms`);
     }
 
     const contextBlock = contextParts.length > 0
