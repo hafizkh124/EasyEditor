@@ -162,9 +162,7 @@ const OCR = () => {
     localStorage.setItem("ocr-autocopy", String(checked));
   };
 
-  const isRtlText = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(
-    extractedText.slice(0, 100)
-  );
+  const rtl = isRtlText(extractedText);
 
   return (
     <AppLayout>

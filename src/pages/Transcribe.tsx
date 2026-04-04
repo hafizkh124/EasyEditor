@@ -49,7 +49,7 @@ const Transcribe = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sttDir = sttLanguage === "ur-PK" ? "rtl" : "ltr";
-  const isRtlText = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(transcript.slice(0, 100));
+  const rtlText = isRtlText(transcript);
 
   useEffect(() => {
     if (!user) return;
