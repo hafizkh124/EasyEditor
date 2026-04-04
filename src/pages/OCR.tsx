@@ -14,6 +14,7 @@ import AppLayout from "@/components/AppLayout";
 import ImageCropper from "@/components/ImageCropper";
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activityLog";
+import { isRtlText } from "@/utils/textUtils";
 
 const OCR = () => {
   const { session } = useAuth();
@@ -161,9 +162,7 @@ const OCR = () => {
     localStorage.setItem("ocr-autocopy", String(checked));
   };
 
-  const isRtlText = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(
-    extractedText.slice(0, 100)
-  );
+  const rtl = isRtlText(extractedText);
 
   return (
     <AppLayout>
@@ -290,8 +289,8 @@ const OCR = () => {
             <Textarea
               value={extractedText}
               onChange={(e) => setExtractedText(e.target.value)}
-              dir={isRtlText ? "rtl" : "ltr"}
-              className={cn("min-h-[200px] resize-y", isRtlText && "text-right")}
+              dir={rtl ? "rtl" : "ltr"}
+              className={cn("min-h-[200px] resize-y", rtl && "text-right")}
             />
             <div className="flex gap-3">
               <Button onClick={handleCopy} variant="outline" className="flex-1 sm:flex-none">
