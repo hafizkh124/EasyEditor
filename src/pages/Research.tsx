@@ -391,7 +391,7 @@ const Research = () => {
   };
 
   const sourceIcon = (type: string) => (type === "url" ? Link2 : FileText);
-  const isRtlText = /[\u0600-\u06FF]/.test(query.slice(0, 50));
+  const isRtlQuery = detectRtl(query);
 
   return (
     <AppLayout>
