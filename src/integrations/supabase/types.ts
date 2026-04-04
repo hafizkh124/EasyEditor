@@ -108,6 +108,10 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          ocr_pages_limit: number
+          ocr_pages_used: number
+          research_queries_limit: number
+          research_queries_used: number
           tier: Database["public"]["Enums"]["subscription_tier"]
           transcription_limit: number
           transcription_seconds_used: number
@@ -120,6 +124,10 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          ocr_pages_limit?: number
+          ocr_pages_used?: number
+          research_queries_limit?: number
+          research_queries_used?: number
           tier?: Database["public"]["Enums"]["subscription_tier"]
           transcription_limit?: number
           transcription_seconds_used?: number
@@ -132,6 +140,10 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          ocr_pages_limit?: number
+          ocr_pages_used?: number
+          research_queries_limit?: number
+          research_queries_used?: number
           tier?: Database["public"]["Enums"]["subscription_tier"]
           transcription_limit?: number
           transcription_seconds_used?: number

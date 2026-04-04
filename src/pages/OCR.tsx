@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,8 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Camera, Copy, Volume2, Loader2, ImageIcon, X, Crop } from "lucide-react";
+import { Upload, Camera, Copy, Volume2, Loader2, ImageIcon, X, Crop, ScanLine } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import AppLayout from "@/components/AppLayout";
 import ImageCropper from "@/components/ImageCropper";
 import { cn } from "@/lib/utils";
@@ -17,9 +20,14 @@ import { logActivity } from "@/lib/activityLog";
 import { isRtlText } from "@/utils/textUtils";
 
 const OCR = () => {
-  const { session } = useAuth();
+  const { user, session } = useAuth();
   const { t } = useLanguage();
+  const { subscription, refetch } = useSubscription();
   const navigate = useNavigate();
+
+  const ocrPagesUsed = subscription?.ocr_pages_used ?? 0;
+  const ocrPagesLimit = subscription?.ocr_pages_limit ?? 5;
+  const ocrLimitReached = subscription?.tier === "free" && ocrPagesUsed >= ocrPagesLimit;
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string>("image/jpeg");
@@ -94,6 +102,10 @@ const OCR = () => {
 
   const handleExtract = async () => {
     if (!imageBase64 || !session?.access_token) return;
+    if (ocrLimitReached) {
+      toast.error(t("ocr.limit_reached"));
+      return;
+    }
     setIsProcessing(true);
 
     try {
@@ -137,6 +149,16 @@ const OCR = () => {
           toast.info(t("ocr.auto_copied"));
         }
       }
+
+      // Increment usage counter and sync context regardless of whether text was found
+      if (user) {
+        console.log("[OCR] Incrementing ocr_pages_used for user:", user.id);
+        const { error } = await supabase
+          .from("subscriptions")
+          .update({ ocr_pages_used: ocrPagesUsed + 1 })
+          .eq("user_id", user.id);
+        if (!error) refetch();
+      }
     } catch {
       toast.error(t("ocr.error"));
     } finally {
@@ -172,13 +194,32 @@ const OCR = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">{t("ocr.title")}</h1>
             <p className="text-muted-foreground mt-1">{t("ocr.subtitle")}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="auto-copy" className="text-xs text-muted-foreground">
-              {t("ocr.auto_copy")}
-            </Label>
-            <Switch id="auto-copy" checked={autoCopy} onCheckedChange={toggleAutoCopy} />
+          <div className="flex items-center gap-3">
+            {subscription?.tier === "free" && (
+              <div className="flex items-center gap-1.5">
+                <ScanLine className="h-4 w-4 text-muted-foreground" />
+                <Badge variant={ocrLimitReached ? "destructive" : "secondary"} className="text-xs">
+                  {ocrPagesUsed} / {ocrPagesLimit} {t("ocr.pages_used")}
+                </Badge>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Label htmlFor="auto-copy" className="text-xs text-muted-foreground">
+                {t("ocr.auto_copy")}
+              </Label>
+              <Switch id="auto-copy" checked={autoCopy} onCheckedChange={toggleAutoCopy} />
+            </div>
           </div>
         </div>
+
+        {ocrLimitReached && (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between">
+            <span>{t("ocr.limit_reached")}</span>
+            <Link to="/pricing">
+              <Badge variant="destructive" className="cursor-pointer">{t("dashboard.upgrade")}</Badge>
+            </Link>
+          </div>
+        )}
 
         {/* Image Upload / Drag-Drop Area */}
         {!imagePreview ? (
@@ -265,7 +306,7 @@ const OCR = () => {
               </div>
               <Button
                 onClick={handleExtract}
-                disabled={isProcessing}
+                disabled={isProcessing || ocrLimitReached}
                 className="w-full"
               >
                 {isProcessing ? (

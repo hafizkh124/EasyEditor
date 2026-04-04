@@ -10,15 +10,12 @@ import { Mic, BookOpen, Image, Volume2, Clock } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { getRecentActivity, type ActivityEntry } from "@/lib/activityLog";
 import { handleSupabaseError } from "@/lib/errors";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const [subscription, setSubscription] = useState<{
-    tier: string;
-    transcription_seconds_used: number;
-    transcription_limit: number;
-  } | null>(null);
+  const { subscription } = useSubscription();
   const [displayName, setDisplayName] = useState("");
   const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
 
@@ -29,24 +26,19 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!user) return;
-    const fetchData = async () => {
-      const [{ data: profile, error: profileError }, { data: sub, error: subError }] = await Promise.all([
-        supabase.from("profiles").select("display_name").eq("user_id", user.id).single(),
-        supabase.from("subscriptions").select("tier, transcription_seconds_used, transcription_limit").eq("user_id", user.id).single(),
-      ]);
+    const fetchProfile = async () => {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .single();
       if (profileError) handleSupabaseError(profileError, "load profile");
-      if (subError) handleSupabaseError(subError, "load subscription");
       if (profile) setDisplayName(profile.display_name || user.email || "");
-      if (sub) setSubscription(sub);
     };
-    fetchData();
+    fetchProfile();
   }, [user]);
 
-  const usagePercent = subscription
-    ? subscription.tier === "pro"
-      ? 0
-      : (subscription.transcription_seconds_used / subscription.transcription_limit) * 100
-    : 0;
+  const isPro = subscription?.tier === "pro";
 
   const formatTime = (ts: number) => {
     const d = new Date(ts);
@@ -66,16 +58,45 @@ const Dashboard = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">{t("dashboard.usage")}</CardTitle>
-              <CardDescription>
-                {subscription.tier === "pro"
-                  ? t("dashboard.unlimited")
-                  : `${subscription.transcription_seconds_used} ${t("dashboard.seconds_used")} ${t("dashboard.of")} ${subscription.transcription_limit}`}
-              </CardDescription>
+              {isPro && (
+                <CardDescription>{t("dashboard.unlimited")}</CardDescription>
+              )}
             </CardHeader>
-            <CardContent>
-              {subscription.tier === "free" && (
+            <CardContent className="space-y-4">
+              {isPro ? null : (
                 <>
-                  <Progress value={usagePercent} className="h-2 mb-3" />
+                  {/* STT */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{t("dashboard.stt_label")}</span>
+                      <span>{subscription.transcription_seconds_used} / {subscription.transcription_limit} {t("dashboard.seconds_used")}</span>
+                    </div>
+                    <Progress value={Math.min((subscription.transcription_seconds_used / subscription.transcription_limit) * 100, 100)} className="h-1.5" />
+                  </div>
+                  {/* TTS */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{t("dashboard.tts_label")}</span>
+                      <span>{subscription.tts_characters_used} / {subscription.tts_character_limit} {t("tts.chars")}</span>
+                    </div>
+                    <Progress value={Math.min((subscription.tts_characters_used / subscription.tts_character_limit) * 100, 100)} className="h-1.5" />
+                  </div>
+                  {/* OCR */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{t("dashboard.ocr_label")}</span>
+                      <span>{subscription.ocr_pages_used} / {subscription.ocr_pages_limit} {t("dashboard.pages_used")}</span>
+                    </div>
+                    <Progress value={Math.min((subscription.ocr_pages_used / subscription.ocr_pages_limit) * 100, 100)} className="h-1.5" />
+                  </div>
+                  {/* Research */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{t("dashboard.research_label")}</span>
+                      <span>{subscription.research_queries_used} / {subscription.research_queries_limit} {t("dashboard.queries_used")}</span>
+                    </div>
+                    <Progress value={Math.min((subscription.research_queries_used / subscription.research_queries_limit) * 100, 100)} className="h-1.5" />
+                  </div>
                   <Link to="/pricing">
                     <Button variant="outline" size="sm">{t("dashboard.upgrade")}</Button>
                   </Link>

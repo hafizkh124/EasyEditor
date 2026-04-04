@@ -13,31 +13,32 @@ import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { useNavigate, Link } from "react-router-dom";
 import { handleSupabaseError } from "@/lib/errors";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 const Settings = () => {
   const { user, signOut } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const navigate = useNavigate();
+  const { subscription } = useSubscription();
+  const tier = subscription?.tier ?? "free";
   const [displayName, setDisplayName] = useState("");
-  const [tier, setTier] = useState("free");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     const fetch = async () => {
-      const [{ data: profile, error: profileError }, { data: sub, error: subError }] = await Promise.all([
-        supabase.from("profiles").select("display_name, preferred_language").eq("user_id", user.id).single(),
-        supabase.from("subscriptions").select("tier").eq("user_id", user.id).single(),
-      ]);
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("display_name, preferred_language")
+        .eq("user_id", user.id)
+        .single();
       if (profileError) handleSupabaseError(profileError, "load profile");
-      if (subError) handleSupabaseError(subError, "load subscription");
       if (profile) {
         setDisplayName(profile.display_name || "");
         if (profile.preferred_language === "ur" || profile.preferred_language === "en") {
           setLanguage(profile.preferred_language as "en" | "ur");
         }
       }
-      if (sub) setTier(sub.tier);
     };
     fetch();
   }, [user]);

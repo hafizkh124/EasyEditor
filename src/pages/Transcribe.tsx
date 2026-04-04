@@ -13,7 +13,7 @@ import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { logActivity } from "@/lib/activityLog";
-import { handleSupabaseError } from "@/lib/errors";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { isRtlText } from "@/utils/textUtils";
 
 type SttLanguage = "en-US" | "ur-PK";
@@ -39,9 +39,10 @@ const Transcribe = () => {
   const [activeAction, setActiveAction] = useState<RefineAction | null>(null);
   const [showCompare, setShowCompare] = useState(false);
   const [sttLanguage, setSttLanguage] = useState<SttLanguage>("en-US");
+  const { subscription } = useSubscription();
   const [secondsUsed, setSecondsUsed] = useState(0);
-  const [limit, setLimit] = useState(300);
-  const [tier, setTier] = useState("free");
+  const limit = subscription?.transcription_limit ?? 300;
+  const tier = subscription?.tier ?? "free";
   const [isUploading, setIsUploading] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -51,21 +52,12 @@ const Transcribe = () => {
   const sttDir = sttLanguage === "ur-PK" ? "rtl" : "ltr";
   const rtlText = isRtlText(transcript);
 
+  // Seed local secondsUsed from context once it loads (keeps optimistic increments working)
   useEffect(() => {
-    if (!user) return;
-    supabase.from("subscriptions")
-      .select("tier, transcription_seconds_used, transcription_limit")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data, error }) => {
-        if (error) { handleSupabaseError(error, "load subscription"); return; }
-        if (data) {
-          setSecondsUsed(data.transcription_seconds_used);
-          setLimit(data.transcription_limit);
-          setTier(data.tier);
-        }
-      });
-  }, [user]);
+    if (subscription) {
+      setSecondsUsed(subscription.transcription_seconds_used);
+    }
+  }, [subscription]);
 
   const limitReached = tier === "free" && secondsUsed >= limit;
 
