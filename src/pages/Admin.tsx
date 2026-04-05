@@ -126,7 +126,9 @@ const Admin = () => {
       .eq("user_id", userId);
 
     if (subError) {
-      toast.error(t("admin.update_error"));
+      if (import.meta.env.DEV)
+        console.error("[Admin] subscriptions PATCH failed →", subError.code, subError.message, subError.details);
+      toast.error(`${t("admin.update_error")}: ${subError.message}`);
       return;
     }
 
@@ -169,7 +171,9 @@ const Admin = () => {
       .eq("user_id", userId);
 
     if (subError) {
-      toast.error(t("admin.update_error"));
+      if (import.meta.env.DEV)
+        console.error("[Admin] revoke subscriptions PATCH failed →", subError.code, subError.message, subError.details);
+      toast.error(`${t("admin.update_error")}: ${subError.message}`);
       return;
     }
 
@@ -198,7 +202,9 @@ const Admin = () => {
       .eq("user_id", userId);
 
     if (error) {
-      toast.error(t("admin.update_error"));
+      if (import.meta.env.DEV)
+        console.error("[Admin] changeTier PATCH failed →", error.code, error.message, error.details);
+      toast.error(`${t("admin.update_error")}: ${error.message}`);
       return;
     }
 
@@ -362,7 +368,12 @@ const Admin = () => {
                                 <SelectContent>
                                   <SelectItem value="basic">{t("admin.basic_plan")}</SelectItem>
                                   <SelectItem value="pro">{t("admin.pro_plan_label")}</SelectItem>
-                                  <SelectItem value="ultra">{t("admin.ultra_plan_label")}</SelectItem>
+                                  <SelectItem value="ultra">
+                                    {t("admin.ultra_plan_label")}
+                                    <span className="ms-1 text-xs text-amber-600 font-normal">
+                                      ⚠ {t("admin.ultra_dev_warning")}
+                                    </span>
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                               <Button

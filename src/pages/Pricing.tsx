@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, X, Crown, Zap, Loader2, Star, Clock } from "lucide-react";
+import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
@@ -92,12 +92,13 @@ const Pricing = () => {
       cardBorder: "border-blue-200/60 dark:border-blue-800/40",
       gradient: "from-blue-500/5 via-transparent to-blue-500/5",
       popular: false,
+      comingSoon: false,
       features: [
-        { label: `30 minutes ${t("pricing.stt")}`,    included: true  },
-        { label: `30 ${t("pricing.pages")} ${t("pricing.ocr")}`,      included: true  },
+        { label: `30 min ${t("pricing.stt")}`,                         included: true  },
+        { label: `30 ${t("pricing.pages")} ${t("pricing.ocr")}`,       included: true  },
         { label: `20 ${t("pricing.queries")} ${t("pricing.research")}`, included: true  },
-        { label: t("pricing.tts"),                    included: false },
-        { label: t("pricing.voice_clone"),            included: false },
+        { label: t("pricing.tts"),                                      included: false },
+        { label: t("pricing.voice_clone"),                              included: false },
       ],
     },
     {
@@ -111,12 +112,13 @@ const Pricing = () => {
       cardBorder: "border-primary/40 shadow-md",
       gradient: "from-primary/5 via-transparent to-primary/5",
       popular: true,
+      comingSoon: false,
       features: [
-        { label: `5 hours ${t("pricing.stt")}`,       included: true  },
-        { label: `300 ${t("pricing.pages")} ${t("pricing.ocr")}`,     included: true  },
+        { label: `5 hrs ${t("pricing.stt")}`,                           included: true  },
+        { label: `300 ${t("pricing.pages")} ${t("pricing.ocr")}`,       included: true  },
         { label: `200 ${t("pricing.queries")} ${t("pricing.research")}`, included: true  },
-        { label: t("pricing.tts"),                    included: false },
-        { label: t("pricing.voice_clone"),            included: false },
+        { label: t("pricing.tts"),                                       included: false },
+        { label: t("pricing.voice_clone"),                               included: false },
       ],
     },
     {
@@ -127,15 +129,16 @@ const Pricing = () => {
       icon: Star,
       iconClass: "text-purple-500",
       bgClass: "bg-purple-500/10",
-      cardBorder: "border-purple-300/50 dark:border-purple-700/40",
+      cardBorder: "border-purple-300/50 dark:border-purple-700/40 opacity-80",
       gradient: "from-purple-500/5 via-transparent to-purple-500/5",
       popular: false,
+      comingSoon: true,   // ← disabled: no upgrade request allowed
       features: [
-        { label: `15 hours ${t("pricing.stt")}`,      included: true  },
-        { label: `5,000 ${t("pricing.pages")} ${t("pricing.ocr")}`,  included: true  },
-        { label: `1,000 ${t("pricing.queries")} ${t("pricing.research")}`, included: true  },
-        { label: t("pricing.tts"),                    included: true  },
-        { label: t("pricing.voice_clone"),            included: true  },
+        { label: `10 hrs ${t("pricing.stt")}`,                           included: true  },
+        { label: `2,000 ${t("pricing.pages")} ${t("pricing.ocr")}`,      included: true  },
+        { label: `500 ${t("pricing.queries")} ${t("pricing.research")}`,  included: true  },
+        { label: t("pricing.tts"),                                        included: true  },
+        { label: t("pricing.voice_clone"),                                included: true  },
       ],
     },
   ];
@@ -194,8 +197,8 @@ const Pricing = () => {
             const below       = isBelowCurrent(plan.id);
             const above       = isAboveCurrent(plan.id);
             const pendingThis = isPendingFor(plan.id);
-            // Show request button only when above current AND no pending request
-            const showRequest = above && !upgradeRequested;
+            // Show request button only when above current, no pending request, and NOT coming soon
+            const showRequest = above && !upgradeRequested && !plan.comingSoon;
 
             return (
               <MotionCard
@@ -219,6 +222,21 @@ const Pricing = () => {
                   >
                     <span className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-1 rounded-b-lg">
                       ⭐ {t("pricing.recommended")}
+                    </span>
+                  </motion.div>
+                )}
+
+                {/* Coming Soon ribbon (Ultra) */}
+                {plan.comingSoon && (
+                  <motion.div
+                    className="absolute top-0 inset-x-0 flex justify-center"
+                    initial={{ y: -30 }}
+                    animate={{ y: 0 }}
+                    transition={{ delay: 0.5, type: "spring" }}
+                  >
+                    <span className="flex items-center gap-1.5 bg-amber-500 text-white text-xs font-semibold px-4 py-1 rounded-b-lg">
+                      <Construction className="h-3 w-3" />
+                      {t("pricing.coming_soon")}
                     </span>
                   </motion.div>
                 )}
@@ -296,37 +314,46 @@ const Pricing = () => {
                   ))}
 
                   {/* CTA */}
-                  {(showRequest || pendingThis) && (
-                    <motion.div
-                      className="pt-5"
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6 }}
-                    >
-                      {pendingThis ? (
-                        <div className="rounded-xl border border-amber-400/50 bg-amber-50 dark:bg-amber-950/20 p-3 text-center space-y-1">
-                          <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium">
-                            <Clock className="h-4 w-4" />
-                            {t("pricing.pending_approval")}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {t("pricing.pending_approval_desc")}
-                          </p>
+                  <motion.div
+                    className="pt-5"
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                  >
+                    {plan.comingSoon ? (
+                      /* Ultra — Coming Soon: disabled Notify Me button */
+                      <Button
+                        disabled
+                        className="w-full h-11 rounded-xl"
+                        variant="outline"
+                      >
+                        <Construction className="h-4 w-4 me-2 text-amber-500" />
+                        {t("pricing.notify_me")}
+                      </Button>
+                    ) : pendingThis ? (
+                      /* Pending approval badge */
+                      <div className="rounded-xl border border-amber-400/50 bg-amber-50 dark:bg-amber-950/20 p-3 text-center space-y-1">
+                        <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium">
+                          <Clock className="h-4 w-4" />
+                          {t("pricing.pending_approval")}
                         </div>
-                      ) : (
-                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                          <Button
-                            onClick={() => openDialog(plan.id)}
-                            className="w-full h-11 rounded-xl"
-                            variant={plan.id === "ultra" ? "outline" : "default"}
-                          >
-                            <Icon className="h-4 w-4 me-2" />
-                            {t("pricing.request_upgrade")}
-                          </Button>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  )}
+                        <p className="text-xs text-muted-foreground">
+                          {t("pricing.pending_approval_desc")}
+                        </p>
+                      </div>
+                    ) : showRequest ? (
+                      /* Active upgrade button */
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button
+                          onClick={() => openDialog(plan.id)}
+                          className="w-full h-11 rounded-xl"
+                        >
+                          <Icon className="h-4 w-4 me-2" />
+                          {t("pricing.request_upgrade")}
+                        </Button>
+                      </motion.div>
+                    ) : null}
+                  </motion.div>
                 </CardContent>
               </MotionCard>
             );
