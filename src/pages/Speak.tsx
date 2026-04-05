@@ -30,7 +30,7 @@ const Speak = () => {
   const { user, session } = useAuth();
   const { t, language } = useLanguage();
   const location = useLocation();
-  const { subscription, loading: subLoading } = useSubscription();
+  const { subscription } = useSubscription();
 
   const [text, setText] = useState("");
   const [selectedPersona, setSelectedPersona] = useState<Persona>(personas[0]);
