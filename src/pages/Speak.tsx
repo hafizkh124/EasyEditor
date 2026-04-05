@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Play, Square, Download, Loader2, Coins, Lock, Crown } from "lucide-react";
+import { Play, Square, Download, Loader2, Coins, Construction } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import AudioWaveform from "@/components/AudioWaveform";
@@ -273,40 +273,30 @@ const Speak = () => {
     }
   };
 
-  // ── Ultra-only guard ──────────────────────────────────────────
-  if (subLoading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  // ── Work-in-Progress guard — blocks ALL users, prevents any API calls ──
+  return (
+    <AppLayout>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center space-y-6">
+        {/* Animated construction icon */}
+        <div className="rounded-full bg-amber-100 dark:bg-amber-950/40 p-6">
+          <Construction className="h-12 w-12 text-amber-500" />
         </div>
-      </AppLayout>
-    );
-  }
 
-  if (subscription?.tier !== "ultra") {
-    return (
-      <AppLayout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center space-y-6">
-          <div className="rounded-full bg-muted p-6">
-            <Lock className="h-12 w-12 text-muted-foreground" />
-          </div>
-          <div className="space-y-2 max-w-sm">
-            <h2 className="text-2xl font-bold text-foreground">{t("tts.locked_title")}</h2>
-            <p className="text-muted-foreground">{t("tts.locked_desc")}</p>
-          </div>
-          <Link to="/pricing">
-            <Button size="lg" className="rounded-xl px-8">
-              <Crown className="h-4 w-4 me-2" />
-              {t("tts.locked_upgrade")}
-            </Button>
-          </Link>
+        <div className="space-y-3 max-w-md">
+          {/* WIP badge */}
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs font-semibold px-3 py-1 border border-amber-300/60 dark:border-amber-700/40">
+            {t("tts.wip_badge")}
+          </span>
+
+          <h2 className="text-2xl font-bold text-foreground">{t("tts.wip_title")}</h2>
+          <p className="text-muted-foreground leading-relaxed">{t("tts.wip_desc")}</p>
         </div>
-      </AppLayout>
-    );
-  }
-  // ── end guard ─────────────────────────────────────────────────
+      </div>
+    </AppLayout>
+  );
+  // ── end WIP guard — nothing below executes ────────────────────────────
 
+  /* eslint-disable no-unreachable */
   const isRtlInput = selectedPersona.voiceLang === "ur" || selectedPersona.voiceLang === "ar";
   const showUsageMeter = charLimit > 0;
   const usagePercent = showUsageMeter
