@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Play, Square, Download, Loader2, Coins } from "lucide-react";
+import { Play, Square, Download, Loader2, Coins, Lock, Crown } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import AudioWaveform from "@/components/AudioWaveform";
@@ -30,7 +30,7 @@ const Speak = () => {
   const { user, session } = useAuth();
   const { t, language } = useLanguage();
   const location = useLocation();
-  const { subscription } = useSubscription();
+  const { subscription, loading: subLoading } = useSubscription();
 
   const [text, setText] = useState("");
   const [selectedPersona, setSelectedPersona] = useState<Persona>(personas[0]);
@@ -273,8 +273,42 @@ const Speak = () => {
     }
   };
 
+  // ── Ultra-only guard ──────────────────────────────────────────
+  if (subLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (subscription?.tier !== "ultra") {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center space-y-6">
+          <div className="rounded-full bg-muted p-6">
+            <Lock className="h-12 w-12 text-muted-foreground" />
+          </div>
+          <div className="space-y-2 max-w-sm">
+            <h2 className="text-2xl font-bold text-foreground">{t("tts.locked_title")}</h2>
+            <p className="text-muted-foreground">{t("tts.locked_desc")}</p>
+          </div>
+          <Link to="/pricing">
+            <Button size="lg" className="rounded-xl px-8">
+              <Crown className="h-4 w-4 me-2" />
+              {t("tts.locked_upgrade")}
+            </Button>
+          </Link>
+        </div>
+      </AppLayout>
+    );
+  }
+  // ── end guard ─────────────────────────────────────────────────
+
   const isRtlInput = selectedPersona.voiceLang === "ur" || selectedPersona.voiceLang === "ar";
-  const showUsageMeter = charLimit > 0 && charLimit < 999_999;
+  const showUsageMeter = charLimit > 0;
   const usagePercent = showUsageMeter
     ? Math.min((ttsCharsUsed / charLimit) * 100, 100)
     : 0;
