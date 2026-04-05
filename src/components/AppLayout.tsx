@@ -43,7 +43,7 @@ const NotificationBell = () => {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0">
+      <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] p-0">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <p className="font-semibold text-sm">{t("notification.title")}</p>
           {unreadCount > 0 && (
@@ -228,7 +228,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </main>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-border bg-background py-2 md:hidden">
+        <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center border-t border-border bg-background md:hidden overflow-x-auto scrollbar-none">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -236,12 +236,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors",
+                  "flex flex-col items-center gap-0.5 px-3 py-2 text-[10px] font-medium transition-colors flex-shrink-0",
                   isActive ? "text-primary" : "text-muted-foreground"
                 )}
               >
                 <item.icon className="h-5 w-5" />
-                <span>{t(item.labelKey)}</span>
+                <span className="hidden xs:inline">{t(item.labelKey)}</span>
               </Link>
             );
           })}

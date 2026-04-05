@@ -222,6 +222,7 @@
   "admin.pro_plan_label": "Pro (4,000 PKR)",
   "admin.ultra_plan_label": "Ultra (7,000 PKR)",
   "admin.plan_required": "Select a plan to approve",
+  "admin.change_tier": "Change Tier",
   "settings.ultra": "Ultra",
   "settings.basic": "Basic",
   "pricing.title": "Choose Your Plan",
