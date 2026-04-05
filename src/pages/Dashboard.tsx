@@ -67,33 +67,33 @@ const Dashboard = () => {
                 <>
                   {/* STT */}
                   <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{t("dashboard.stt_label")}</span>
-                      <span>{subscription.transcription_seconds_used} / {subscription.transcription_limit} {t("dashboard.seconds_used")}</span>
+                    <div className="flex justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="truncate">{t("dashboard.stt_label")}</span>
+                      <span className="flex-shrink-0 text-right">{subscription.transcription_seconds_used} / {subscription.transcription_limit}s</span>
                     </div>
                     <Progress value={Math.min((subscription.transcription_seconds_used / subscription.transcription_limit) * 100, 100)} className="h-1.5" />
                   </div>
                   {/* TTS */}
                   <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{t("dashboard.tts_label")}</span>
-                      <span>{subscription.tts_characters_used} / {subscription.tts_character_limit} {t("tts.chars")}</span>
+                    <div className="flex justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="truncate">{t("dashboard.tts_label")}</span>
+                      <span className="flex-shrink-0 text-right">{subscription.tts_characters_used.toLocaleString()} / {subscription.tts_character_limit.toLocaleString()}</span>
                     </div>
                     <Progress value={Math.min((subscription.tts_characters_used / subscription.tts_character_limit) * 100, 100)} className="h-1.5" />
                   </div>
                   {/* OCR */}
                   <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{t("dashboard.ocr_label")}</span>
-                      <span>{subscription.ocr_pages_used} / {subscription.ocr_pages_limit} {t("dashboard.pages_used")}</span>
+                    <div className="flex justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="truncate">{t("dashboard.ocr_label")}</span>
+                      <span className="flex-shrink-0 text-right">{subscription.ocr_pages_used} / {subscription.ocr_pages_limit} {t("dashboard.pages_used")}</span>
                     </div>
                     <Progress value={Math.min((subscription.ocr_pages_used / subscription.ocr_pages_limit) * 100, 100)} className="h-1.5" />
                   </div>
                   {/* Research */}
                   <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{t("dashboard.research_label")}</span>
-                      <span>{subscription.research_queries_used} / {subscription.research_queries_limit} {t("dashboard.queries_used")}</span>
+                    <div className="flex justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="truncate">{t("dashboard.research_label")}</span>
+                      <span className="flex-shrink-0 text-right">{subscription.research_queries_used} / {subscription.research_queries_limit} {t("dashboard.queries_used")}</span>
                     </div>
                     <Progress value={Math.min((subscription.research_queries_used / subscription.research_queries_limit) * 100, 100)} className="h-1.5" />
                   </div>

@@ -260,8 +260,8 @@ const Transcribe = () => {
         </div>
 
         {/* Usage Badge */}
-        {tier === "free" && (
-          <div className="flex items-center gap-2">
+        {limit > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant={limitReached ? "destructive" : "secondary"}>
               {secondsUsed}s / {limit}s
             </Badge>

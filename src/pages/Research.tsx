@@ -275,7 +275,7 @@ const Research = () => {
 
   return (
     <AppLayout>
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-3.5rem)] md:h-[calc(100vh)] overflow-hidden">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-3.5rem-5rem)] md:h-[calc(100vh-3.5rem)] lg:h-[calc(100vh-3.5rem)] overflow-hidden">
         <SourcesPanel
           sources={sources}
           urlInput={urlInput}

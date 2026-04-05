@@ -400,51 +400,39 @@ const Admin = () => {
                             </Badge>
                           )}
 
-                          {/* Tier change controls (approved users only) */}
+                          {/* Tier change — single Select dropdown (mobile-friendly) */}
                           {u.is_approved && (
-                            <>
-                              {u.tier !== "ultra" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => changeTier(u.user_id, "ultra")}
-                                  className="text-purple-600 border-purple-400/50 hover:bg-purple-50 dark:hover:bg-purple-950/20"
-                                >
-                                  <Crown className="h-4 w-4 me-1" />
-                                  {t("admin.make_ultra")}
-                                </Button>
-                              )}
-                              {u.tier !== "pro" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => changeTier(u.user_id, "pro")}
-                                  className="text-primary border-primary/30 hover:bg-primary/10"
-                                >
-                                  <Crown className="h-4 w-4 me-1" />
-                                  {t("admin.make_pro")}
-                                </Button>
-                              )}
-                              {u.tier !== "basic" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => changeTier(u.user_id, "basic")}
-                                >
-                                  {t("admin.make_basic")}
-                                </Button>
-                              )}
-                              {u.tier !== "free" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => changeTier(u.user_id, "free")}
-                                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                                >
-                                  {t("admin.make_free")}
-                                </Button>
-                              )}
-                            </>
+                            <Select
+                              value=""
+                              onValueChange={(val) =>
+                                changeTier(u.user_id, val as "free" | "basic" | "pro" | "ultra")
+                              }
+                            >
+                              <SelectTrigger className="h-8 w-[130px] text-xs">
+                                <Crown className="h-3.5 w-3.5 me-1 text-muted-foreground" />
+                                <SelectValue placeholder={t("admin.change_tier")} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {u.tier !== "ultra" && (
+                                  <SelectItem value="ultra">
+                                    <span className="text-purple-600">{t("admin.make_ultra")}</span>
+                                  </SelectItem>
+                                )}
+                                {u.tier !== "pro" && (
+                                  <SelectItem value="pro">
+                                    <span className="text-primary">{t("admin.make_pro")}</span>
+                                  </SelectItem>
+                                )}
+                                {u.tier !== "basic" && (
+                                  <SelectItem value="basic">{t("admin.make_basic")}</SelectItem>
+                                )}
+                                {u.tier !== "free" && (
+                                  <SelectItem value="free">
+                                    <span className="text-destructive">{t("admin.make_free")}</span>
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
                           )}
                         </div>
                       </div>
