@@ -95,7 +95,7 @@ const Research = () => {
 
   const researchQueriesUsed = subscription?.research_queries_used ?? 0;
   const researchQueriesLimit = subscription?.research_queries_limit ?? 3;
-  const researchLimitReached = subscription?.tier === "free" && researchQueriesUsed >= researchQueriesLimit;
+  const researchLimitReached = researchQueriesLimit > 0 && researchQueriesUsed >= researchQueriesLimit;
 
   const [sources, setSources] = useState<Source[]>([]);
   const [urlInput, setUrlInput] = useState("");
@@ -292,7 +292,7 @@ const Research = () => {
           researchQueriesUsed={researchQueriesUsed}
           researchQueriesLimit={researchQueriesLimit}
           researchLimitReached={researchLimitReached}
-          showUsageMeter={subscription?.tier === "free"}
+          showUsageMeter={(subscription?.research_queries_limit ?? 0) > 0}
           t={t}
         />
         <ChatDisplay

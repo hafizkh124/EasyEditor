@@ -11,18 +11,29 @@ type Subscription = Tables<"subscriptions">;
  * Used by Admin when approving upgrades so the limit columns always
  * stay in sync with the tier. Import this instead of hardcoding numbers.
  */
+/**
+ * Canonical per-tier limits.
+ * 'free' = unapproved/pending state → all zeros (no access until admin assigns a plan).
+ * Prices (PKR/month): Basic = 1,000 | Pro = 4,000 | Ultra = 7,000
+ */
 export const TIER_LIMITS = {
   free: {
-    transcription_limit: 300,
-    tts_character_limit: 10_000,
-    ocr_pages_limit: 5,
-    research_queries_limit: 3,
+    transcription_limit: 0,
+    tts_character_limit: 0,
+    ocr_pages_limit: 0,
+    research_queries_limit: 0,
+  },
+  basic: {
+    transcription_limit: 1_800,
+    tts_character_limit: 50_000,
+    ocr_pages_limit: 30,
+    research_queries_limit: 20,
   },
   pro: {
-    transcription_limit: 999_999,
-    tts_character_limit: 999_999,
-    ocr_pages_limit: 999,
-    research_queries_limit: 999,
+    transcription_limit: 18_000,
+    tts_character_limit: 500_000,
+    ocr_pages_limit: 300,
+    research_queries_limit: 200,
   },
   ultra: {
     transcription_limit: 999_999,

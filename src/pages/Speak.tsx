@@ -52,7 +52,7 @@ const Speak = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const charLimit = subscription?.tier === "pro" ? 10000 : 2000;
+  const charLimit = subscription?.tts_character_limit ?? 0;
 
   useEffect(() => {
     const navState = location.state as { text?: string } | null;
@@ -274,8 +274,9 @@ const Speak = () => {
   };
 
   const isRtlInput = selectedPersona.voiceLang === "ur" || selectedPersona.voiceLang === "ar";
-  const usagePercent = subscription?.tier === "free"
-    ? (ttsCharsUsed / (subscription?.tts_character_limit ?? 1)) * 100
+  const showUsageMeter = charLimit > 0 && charLimit < 999_999;
+  const usagePercent = showUsageMeter
+    ? Math.min((ttsCharsUsed / charLimit) * 100, 100)
     : 0;
 
   return (
@@ -286,13 +287,13 @@ const Speak = () => {
           <p className="text-muted-foreground mt-1">{t("tts.subtitle")}</p>
         </div>
 
-        {/* Usage meter (free tier only) */}
-        {subscription?.tier === "free" && (
+        {/* Usage meter (any metered tier) */}
+        {showUsageMeter && (
           <Card>
             <CardContent className="pt-4 space-y-2">
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>{t("tts.chars_used")}</span>
-                <span>{ttsCharsUsed} / {subscription.tts_character_limit}</span>
+                <span>{ttsCharsUsed.toLocaleString()} / {charLimit.toLocaleString()}</span>
               </div>
               <Progress value={usagePercent} className="h-2" />
               {usagePercent > 80 && (
