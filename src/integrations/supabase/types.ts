@@ -38,37 +38,9 @@ export type Database = {
         }
         Relationships: []
       }
-      notifications: {
-        Row: {
-          created_at: string
-          id: string
-          is_read: boolean
-          message: string
-          title: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_read?: boolean
-          message: string
-          title: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_read?: boolean
-          message?: string
-          title?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           avatar_url: string | null
-          cloned_voice_id: string | null
           created_at: string
           display_name: string | null
           id: string
@@ -79,7 +51,6 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
-          cloned_voice_id?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
@@ -90,7 +61,6 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
-          cloned_voice_id?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
@@ -135,13 +105,6 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          last_upgrade_request: string | null
-          ocr_pages_limit: number
-          ocr_pages_used: number
-          payment_reference: string | null
-          pending_tier: string | null
-          research_queries_limit: number
-          research_queries_used: number
           tier: Database["public"]["Enums"]["subscription_tier"]
           transcription_limit: number
           transcription_seconds_used: number
@@ -154,13 +117,6 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          last_upgrade_request?: string | null
-          ocr_pages_limit?: number
-          ocr_pages_used?: number
-          payment_reference?: string | null
-          pending_tier?: string | null
-          research_queries_limit?: number
-          research_queries_used?: number
           tier?: Database["public"]["Enums"]["subscription_tier"]
           transcription_limit?: number
           transcription_seconds_used?: number
@@ -173,13 +129,6 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          last_upgrade_request?: string | null
-          ocr_pages_limit?: number
-          ocr_pages_used?: number
-          payment_reference?: string | null
-          pending_tier?: string | null
-          research_queries_limit?: number
-          research_queries_used?: number
           tier?: Database["public"]["Enums"]["subscription_tier"]
           transcription_limit?: number
           transcription_seconds_used?: number
@@ -224,7 +173,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      subscription_tier: "free" | "pro" | "ultra"
+      subscription_tier: "free" | "pro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -353,7 +302,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      subscription_tier: ["free", "pro", "ultra"],
+      subscription_tier: ["free", "pro"],
     },
   },
 } as const
