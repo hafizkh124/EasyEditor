@@ -29,7 +29,7 @@ const refineActions: { action: RefineAction; icon: typeof GraduationCap; labelKe
 const ACCEPTED_AUDIO = ".mp3,.wav,.m4a,.ogg,.webm,.flac,.aac";
 
 const Transcribe = () => {
-  const { user, session } = useAuth();
+  const { session } = useAuth();
   const { t } = useLanguage();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
