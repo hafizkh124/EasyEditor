@@ -51,8 +51,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
-          message: string
-          title: string
+          message?: string
+          title?: string
           user_id: string
         }
         Update: {

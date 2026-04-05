@@ -276,7 +276,7 @@ Deno.serve(async (req) => {
       .update({ tts_characters_used: sub.tts_characters_used + charCount })
       .eq("user_id", user.id);
 
-    return new Response(wavFile.buffer, {
+    return new Response(wavFile as Uint8Array, {
       headers: { ...corsHeaders, "Content-Type": "audio/wav", "Content-Disposition": "inline" },
     });
   } catch (error) {
