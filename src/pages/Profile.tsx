@@ -106,7 +106,7 @@ const Profile = () => {
 
   const tier = subscription?.tier ?? "free";
   const tierLabel =
-    tier === "ultra" ? t("settings.ultra") : tier === "pro" ? t("settings.pro") : t("settings.free");
+    tier === "pro" ? t("settings.pro") : t("settings.free");
 
   const meters = subscription
     ? [

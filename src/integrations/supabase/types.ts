@@ -51,8 +51,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
-          message: string
-          title: string
+          message?: string
+          title?: string
           user_id: string
         }
         Update: {
@@ -224,7 +224,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      subscription_tier: "free" | "pro" | "ultra"
+      subscription_tier: "free" | "pro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -353,7 +353,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      subscription_tier: ["free", "pro", "ultra"],
+      subscription_tier: ["free", "pro"],
     },
   },
 } as const
