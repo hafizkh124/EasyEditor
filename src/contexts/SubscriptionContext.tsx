@@ -24,20 +24,20 @@ export const TIER_LIMITS = {
     research_queries_limit: 0,
   },
   basic: {
-    transcription_limit: 1_800,
-    tts_character_limit: 50_000,
+    transcription_limit: 1_800,    // 30 minutes
+    tts_character_limit: 0,        // TTS not included in Basic
     ocr_pages_limit: 30,
     research_queries_limit: 20,
   },
   pro: {
-    transcription_limit: 18_000,
-    tts_character_limit: 500_000,
+    transcription_limit: 18_000,   // 5 hours
+    tts_character_limit: 0,        // TTS not included in Pro
     ocr_pages_limit: 300,
     research_queries_limit: 200,
   },
   ultra: {
-    transcription_limit: 999_999,
-    tts_character_limit: 999_999,
+    transcription_limit: 54_000,   // 15 hours
+    tts_character_limit: 1_000_000,
     ocr_pages_limit: 5_000,
     research_queries_limit: 1_000,
   },

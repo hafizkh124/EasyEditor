@@ -75,7 +75,11 @@ const Pricing = () => {
     setSubmitting(false);
   };
 
-  // Plan definitions — features listed with inclusion status
+  /**
+   * Each feature row: { label, included }
+   * TTS + Voice Cloning are Ultra-only → shown with X on Basic/Pro.
+   * Priority Support row removed entirely.
+   */
   const plans = [
     {
       id: "basic" as PaidTier,
@@ -89,12 +93,11 @@ const Pricing = () => {
       gradient: "from-blue-500/5 via-transparent to-blue-500/5",
       popular: false,
       features: [
-        { label: `1,800 ${t("pricing.seconds")}`, key: "pricing.stt", included: true },
-        { label: `50,000 ${t("pricing.characters")}`, key: "pricing.tts", included: true },
-        { label: `30 ${t("pricing.pages")}`, key: "pricing.ocr", included: true },
-        { label: `20 ${t("pricing.queries")}`, key: "pricing.research", included: true },
-        { label: t("pricing.voice_clone"), key: "pricing.voice_clone", included: true },
-        { label: t("pricing.priority_support"), key: "pricing.priority_support", included: false },
+        { label: `30 minutes ${t("pricing.stt")}`,    included: true  },
+        { label: `30 ${t("pricing.pages")} ${t("pricing.ocr")}`,      included: true  },
+        { label: `20 ${t("pricing.queries")} ${t("pricing.research")}`, included: true  },
+        { label: t("pricing.tts"),                    included: false },
+        { label: t("pricing.voice_clone"),            included: false },
       ],
     },
     {
@@ -109,12 +112,11 @@ const Pricing = () => {
       gradient: "from-primary/5 via-transparent to-primary/5",
       popular: true,
       features: [
-        { label: `18,000 ${t("pricing.seconds")}`, key: "pricing.stt", included: true },
-        { label: `500,000 ${t("pricing.characters")}`, key: "pricing.tts", included: true },
-        { label: `300 ${t("pricing.pages")}`, key: "pricing.ocr", included: true },
-        { label: `200 ${t("pricing.queries")}`, key: "pricing.research", included: true },
-        { label: t("pricing.voice_clone"), key: "pricing.voice_clone", included: true },
-        { label: t("pricing.priority_support"), key: "pricing.priority_support", included: true },
+        { label: `5 hours ${t("pricing.stt")}`,       included: true  },
+        { label: `300 ${t("pricing.pages")} ${t("pricing.ocr")}`,     included: true  },
+        { label: `200 ${t("pricing.queries")} ${t("pricing.research")}`, included: true  },
+        { label: t("pricing.tts"),                    included: false },
+        { label: t("pricing.voice_clone"),            included: false },
       ],
     },
     {
@@ -129,21 +131,20 @@ const Pricing = () => {
       gradient: "from-purple-500/5 via-transparent to-purple-500/5",
       popular: false,
       features: [
-        { label: `${t("pricing.unlimited")} ${t("pricing.stt")}`, key: "pricing.stt", included: true },
-        { label: `${t("pricing.unlimited")} ${t("pricing.tts")}`, key: "pricing.tts", included: true },
-        { label: `5,000 ${t("pricing.pages")}`, key: "pricing.ocr", included: true },
-        { label: `1,000 ${t("pricing.queries")}`, key: "pricing.research", included: true },
-        { label: t("pricing.voice_clone"), key: "pricing.voice_clone", included: true },
-        { label: t("pricing.priority_support"), key: "pricing.priority_support", included: true },
+        { label: `15 hours ${t("pricing.stt")}`,      included: true  },
+        { label: `5,000 ${t("pricing.pages")} ${t("pricing.ocr")}`,  included: true  },
+        { label: `1,000 ${t("pricing.queries")} ${t("pricing.research")}`, included: true  },
+        { label: t("pricing.tts"),                    included: true  },
+        { label: t("pricing.voice_clone"),            included: true  },
       ],
     },
   ];
 
-  const isCurrent = (planId: PaidTier) => currentTier === planId;
-  const isBelowCurrent = (planId: PaidTier) => TIER_ORDER[planId] < TIER_ORDER[currentTier];
-  const isAboveCurrent = (planId: PaidTier) => TIER_ORDER[planId] > TIER_ORDER[currentTier];
-  const isPendingFor = (planId: PaidTier) =>
-    upgradeRequested && subscription?.pending_tier === planId;
+  const isCurrent    = (id: PaidTier) => currentTier === id;
+  const isBelowCurrent = (id: PaidTier) => TIER_ORDER[id] < TIER_ORDER[currentTier];
+  const isAboveCurrent = (id: PaidTier) => TIER_ORDER[id] > TIER_ORDER[currentTier];
+  const isPendingFor = (id: PaidTier) =>
+    upgradeRequested && subscription?.pending_tier === id;
 
   const selectedPlan = plans.find((p) => p.id === dialogPlan)!;
 
@@ -189,11 +190,11 @@ const Pricing = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           {plans.map((plan, index) => {
             const Icon = plan.icon;
-            const current = isCurrent(plan.id);
-            const below = isBelowCurrent(plan.id);
-            const above = isAboveCurrent(plan.id);
+            const current     = isCurrent(plan.id);
+            const below       = isBelowCurrent(plan.id);
+            const above       = isAboveCurrent(plan.id);
             const pendingThis = isPendingFor(plan.id);
-            // Request button is shown only when above current and no pending request exists
+            // Show request button only when above current AND no pending request
             const showRequest = above && !upgradeRequested;
 
             return (
@@ -222,12 +223,14 @@ const Pricing = () => {
                   </motion.div>
                 )}
 
-                {/* Subtle gradient */}
+                {/* Subtle gradient overlay */}
                 <div
                   className={`absolute inset-0 bg-gradient-to-br ${plan.gradient} pointer-events-none`}
                 />
 
-                <CardHeader className={`text-center pb-4 relative ${plan.popular ? "pt-10" : "pt-8"}`}>
+                <CardHeader
+                  className={`text-center pb-4 relative ${plan.popular ? "pt-10" : "pt-8"}`}
+                >
                   <motion.div
                     className="flex justify-center mb-3"
                     whileHover={{ rotate: plan.id === "pro" ? -15 : 15, scale: 1.1 }}
@@ -241,7 +244,9 @@ const Pricing = () => {
                   <CardTitle className="text-xl">{t(plan.nameKey)}</CardTitle>
                   <div className="mt-2">
                     <span className="text-3xl font-bold text-foreground">{plan.price}</span>
-                    <span className="text-sm text-muted-foreground"> / {t("pricing.per_month")}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {" "}/ {t("pricing.per_month")}
+                    </span>
                   </div>
 
                   {current && (
@@ -259,12 +264,12 @@ const Pricing = () => {
                   {/* Feature rows */}
                   {plan.features.map((f, i) => (
                     <motion.div
-                      key={f.key + f.label}
+                      key={f.label}
                       className={`flex items-center gap-2.5 text-sm rounded-lg px-2.5 py-2 transition-colors ${
-                        f.included ? "hover:bg-accent/50" : "opacity-40"
+                        f.included ? "hover:bg-accent/50" : "opacity-50"
                       }`}
                       initial={{ opacity: 0, x: -15 }}
-                      animate={{ opacity: f.included ? 1 : 0.4, x: 0 }}
+                      animate={{ opacity: f.included ? 1 : 0.5, x: 0 }}
                       transition={{ delay: 0.25 + i * 0.06 }}
                     >
                       <div
@@ -290,7 +295,7 @@ const Pricing = () => {
                     </motion.div>
                   ))}
 
-                  {/* CTA area */}
+                  {/* CTA */}
                   {(showRequest || pendingThis) && (
                     <motion.div
                       className="pt-5"
@@ -299,7 +304,6 @@ const Pricing = () => {
                       transition={{ delay: 0.6 }}
                     >
                       {pendingThis ? (
-                        /* Pending badge */
                         <div className="rounded-xl border border-amber-400/50 bg-amber-50 dark:bg-amber-950/20 p-3 text-center space-y-1">
                           <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium">
                             <Clock className="h-4 w-4" />
@@ -310,7 +314,6 @@ const Pricing = () => {
                           </p>
                         </div>
                       ) : (
-                        /* Request button */
                         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                           <Button
                             onClick={() => openDialog(plan.id)}
@@ -330,8 +333,9 @@ const Pricing = () => {
           })}
         </div>
 
-        <p className="text-xs text-center text-muted-foreground">
-          {t("pricing.admin_approval_note")}
+        {/* Footer note */}
+        <p className="text-xs text-center text-muted-foreground pb-4">
+          {t("pricing.manual_note")}
         </p>
       </div>
 
@@ -362,7 +366,7 @@ const Pricing = () => {
               <p className="text-sm font-medium">{t("pricing.payment_easypaisa_details")}</p>
             </div>
 
-            {/* Dynamic amount */}
+            {/* Dynamic plan amount */}
             <p className="text-sm font-semibold text-primary">
               {t(selectedPlan.priceAmountKey)}
             </p>
