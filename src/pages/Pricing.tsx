@@ -15,12 +15,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, X, Crown, Zap, Loader2, Sparkles, Shield, Star, Clock } from "lucide-react";
+import { Check, X, Crown, Zap, Loader2, Star, Clock } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
 
 const MotionCard = motion(Card);
+
+type PaidTier = "basic" | "pro" | "ultra";
+
+const TIER_ORDER: Record<string, number> = { free: 0, basic: 1, pro: 2, ultra: 3 };
 
 const Pricing = () => {
   const { user } = useAuth();
@@ -28,11 +32,9 @@ const Pricing = () => {
   const { subscription, loading, refetch } = useSubscription();
   const currentTier = subscription?.tier ?? "free";
 
-  // Local optimistic state synced from context on load
   const [upgradeRequested, setUpgradeRequested] = useState(false);
-
-  // Payment dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogPlan, setDialogPlan] = useState<PaidTier>("basic");
   const [txId, setTxId] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -42,6 +44,12 @@ const Pricing = () => {
     }
   }, [subscription]);
 
+  const openDialog = (plan: PaidTier) => {
+    setDialogPlan(plan);
+    setTxId("");
+    setDialogOpen(true);
+  };
+
   const submitUpgradeRequest = async () => {
     if (!user || !txId.trim()) return;
     setSubmitting(true);
@@ -49,7 +57,7 @@ const Pricing = () => {
       .from("subscriptions")
       .update({
         upgrade_requested: true,
-        pending_tier: "pro",
+        pending_tier: dialogPlan,
         payment_reference: txId.trim(),
         last_upgrade_request: new Date().toISOString(),
       })
@@ -67,14 +75,77 @@ const Pricing = () => {
     setSubmitting(false);
   };
 
-  const features = [
-    { key: "pricing.stt", free: "300 " + t("pricing.seconds"), pro: t("pricing.unlimited"), icon: Sparkles },
-    { key: "pricing.tts", free: "10,000 " + t("pricing.characters"), pro: t("pricing.unlimited"), icon: Star },
-    { key: "pricing.ocr", free: t("pricing.limited"), pro: t("pricing.unlimited"), icon: Shield },
-    { key: "pricing.research", free: true, pro: true, icon: Sparkles },
-    { key: "pricing.voice_clone", free: false, pro: true, icon: Star },
-    { key: "pricing.priority_support", free: false, pro: true, icon: Shield },
+  // Plan definitions — features listed with inclusion status
+  const plans = [
+    {
+      id: "basic" as PaidTier,
+      nameKey: "settings.basic",
+      price: "1,000 PKR",
+      priceAmountKey: "pricing.payment_amount_basic",
+      icon: Zap,
+      iconClass: "text-blue-500",
+      bgClass: "bg-blue-500/10",
+      cardBorder: "border-blue-200/60 dark:border-blue-800/40",
+      gradient: "from-blue-500/5 via-transparent to-blue-500/5",
+      popular: false,
+      features: [
+        { label: `1,800 ${t("pricing.seconds")}`, key: "pricing.stt", included: true },
+        { label: `50,000 ${t("pricing.characters")}`, key: "pricing.tts", included: true },
+        { label: `30 ${t("pricing.pages")}`, key: "pricing.ocr", included: true },
+        { label: `20 ${t("pricing.queries")}`, key: "pricing.research", included: true },
+        { label: t("pricing.voice_clone"), key: "pricing.voice_clone", included: true },
+        { label: t("pricing.priority_support"), key: "pricing.priority_support", included: false },
+      ],
+    },
+    {
+      id: "pro" as PaidTier,
+      nameKey: "settings.pro",
+      price: "4,000 PKR",
+      priceAmountKey: "pricing.payment_amount_pro",
+      icon: Crown,
+      iconClass: "text-primary",
+      bgClass: "bg-primary/15",
+      cardBorder: "border-primary/40 shadow-md",
+      gradient: "from-primary/5 via-transparent to-primary/5",
+      popular: true,
+      features: [
+        { label: `18,000 ${t("pricing.seconds")}`, key: "pricing.stt", included: true },
+        { label: `500,000 ${t("pricing.characters")}`, key: "pricing.tts", included: true },
+        { label: `300 ${t("pricing.pages")}`, key: "pricing.ocr", included: true },
+        { label: `200 ${t("pricing.queries")}`, key: "pricing.research", included: true },
+        { label: t("pricing.voice_clone"), key: "pricing.voice_clone", included: true },
+        { label: t("pricing.priority_support"), key: "pricing.priority_support", included: true },
+      ],
+    },
+    {
+      id: "ultra" as PaidTier,
+      nameKey: "settings.ultra",
+      price: "7,000 PKR",
+      priceAmountKey: "pricing.payment_amount_ultra",
+      icon: Star,
+      iconClass: "text-purple-500",
+      bgClass: "bg-purple-500/10",
+      cardBorder: "border-purple-300/50 dark:border-purple-700/40",
+      gradient: "from-purple-500/5 via-transparent to-purple-500/5",
+      popular: false,
+      features: [
+        { label: `${t("pricing.unlimited")} ${t("pricing.stt")}`, key: "pricing.stt", included: true },
+        { label: `${t("pricing.unlimited")} ${t("pricing.tts")}`, key: "pricing.tts", included: true },
+        { label: `5,000 ${t("pricing.pages")}`, key: "pricing.ocr", included: true },
+        { label: `1,000 ${t("pricing.queries")}`, key: "pricing.research", included: true },
+        { label: t("pricing.voice_clone"), key: "pricing.voice_clone", included: true },
+        { label: t("pricing.priority_support"), key: "pricing.priority_support", included: true },
+      ],
+    },
   ];
+
+  const isCurrent = (planId: PaidTier) => currentTier === planId;
+  const isBelowCurrent = (planId: PaidTier) => TIER_ORDER[planId] < TIER_ORDER[currentTier];
+  const isAboveCurrent = (planId: PaidTier) => TIER_ORDER[planId] > TIER_ORDER[currentTier];
+  const isPendingFor = (planId: PaidTier) =>
+    upgradeRequested && subscription?.pending_tier === planId;
+
+  const selectedPlan = plans.find((p) => p.id === dialogPlan)!;
 
   if (loading) {
     return (
@@ -88,7 +159,8 @@ const Pricing = () => {
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-10" dir={direction}>
+      <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-10" dir={direction}>
+
         {/* Header */}
         <motion.div
           className="text-center space-y-3"
@@ -113,191 +185,163 @@ const Pricing = () => {
           </p>
         </motion.div>
 
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          {/* Free Plan */}
-          <MotionCard
-            className={`relative overflow-hidden transition-shadow duration-300 hover:shadow-lg ${
-              currentTier === "free"
-                ? "border-primary/50 ring-2 ring-primary/20"
-                : "border-border"
-            }`}
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <CardHeader className="text-center pb-4 pt-8">
-              <motion.div
-                className="flex justify-center mb-4"
-                whileHover={{ rotate: 15 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div className="rounded-2xl bg-muted p-4">
-                  <Zap className="h-8 w-8 text-muted-foreground" />
-                </div>
-              </motion.div>
-              <CardTitle className="text-2xl">{t("pricing.free_plan")}</CardTitle>
-              <p className="text-4xl font-bold text-foreground mt-3">
-                {t("pricing.free_price")}
-              </p>
-              {currentTier === "free" && (
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>
-                  <Badge variant="secondary" className="mt-3 text-sm px-3 py-1">
-                    {t("pricing.current")}
-                  </Badge>
-                </motion.div>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-1 pb-8">
-              {features.map((f, i) => (
-                <motion.div
-                  key={f.key}
-                  className={`flex items-center gap-3 text-sm rounded-lg px-3 py-2.5 transition-colors ${
-                    f.free ? "hover:bg-accent/50" : "opacity-50"
-                  }`}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 + i * 0.08 }}
-                >
-                  {f.free ? (
-                    <div className="rounded-full bg-primary/10 p-1">
-                      <Check className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                  ) : (
-                    <div className="rounded-full bg-muted p-1">
-                      <X className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                  )}
-                  <span className="text-foreground">{t(f.key)}</span>
-                  {typeof f.free === "string" && (
-                    <span className="ms-auto text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                      {f.free}
-                    </span>
-                  )}
-                </motion.div>
-              ))}
-            </CardContent>
-          </MotionCard>
+        {/* Plan cards — 3 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          {plans.map((plan, index) => {
+            const Icon = plan.icon;
+            const current = isCurrent(plan.id);
+            const below = isBelowCurrent(plan.id);
+            const above = isAboveCurrent(plan.id);
+            const pendingThis = isPendingFor(plan.id);
+            // Request button is shown only when above current and no pending request exists
+            const showRequest = above && !upgradeRequested;
 
-          {/* Pro Plan */}
-          <MotionCard
-            className={`relative overflow-hidden transition-shadow duration-300 hover:shadow-xl ${
-              currentTier === "pro"
-                ? "border-primary ring-2 ring-primary/30 shadow-lg"
-                : "border-primary/40 shadow-md"
-            }`}
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            {/* Popular badge */}
-            {currentTier === "free" && (
-              <motion.div
-                className="absolute top-0 inset-x-0 flex justify-center"
-                initial={{ y: -30 }}
-                animate={{ y: 0 }}
-                transition={{ delay: 0.6, type: "spring" }}
+            return (
+              <MotionCard
+                key={plan.id}
+                className={`relative overflow-hidden transition-shadow duration-300 hover:shadow-lg ${
+                  current
+                    ? "border-primary ring-2 ring-primary/30 shadow-lg"
+                    : plan.cardBorder
+                } ${below ? "opacity-50" : ""}`}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: below ? 0.5 : 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 + index * 0.1 }}
               >
-                <span className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-1 rounded-b-lg">
-                  ⭐ {t("pricing.recommended") || "Recommended"}
-                </span>
-              </motion.div>
-            )}
-
-            {/* Gradient accent */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
-
-            <CardHeader className="text-center pb-4 pt-10 relative">
-              <motion.div
-                className="flex justify-center mb-4"
-                whileHover={{ rotate: -15, scale: 1.1 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div className="rounded-2xl bg-primary/15 p-4 relative">
-                  <Crown className="h-8 w-8 text-primary" />
+                {/* Popular ribbon */}
+                {plan.popular && !current && !below && (
                   <motion.div
-                    className="absolute -top-1 -right-1"
-                    animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="absolute top-0 inset-x-0 flex justify-center"
+                    initial={{ y: -30 }}
+                    animate={{ y: 0 }}
+                    transition={{ delay: 0.5, type: "spring" }}
                   >
-                    <Sparkles className="h-4 w-4 text-primary" />
-                  </motion.div>
-                </div>
-              </motion.div>
-              <CardTitle className="text-2xl">{t("pricing.pro_plan")}</CardTitle>
-              <p className="text-4xl font-bold text-foreground mt-3">
-                {t("pricing.pro_price")}
-              </p>
-              {currentTier === "pro" && (
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>
-                  <Badge className="mt-3 text-sm px-3 py-1">{t("pricing.current")}</Badge>
-                </motion.div>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-1 pb-8 relative">
-              {features.map((f, i) => (
-                <motion.div
-                  key={f.key}
-                  className="flex items-center gap-3 text-sm rounded-lg px-3 py-2.5 hover:bg-accent/50 transition-colors"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + i * 0.08 }}
-                >
-                  <div className="rounded-full bg-primary/15 p-1">
-                    <Check className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <span className="text-foreground font-medium">{t(f.key)}</span>
-                  {typeof f.pro === "string" && (
-                    <span className="ms-auto text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                      {f.pro}
+                    <span className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-1 rounded-b-lg">
+                      ⭐ {t("pricing.recommended")}
                     </span>
-                  )}
-                </motion.div>
-              ))}
+                  </motion.div>
+                )}
 
-              {currentTier === "free" && (
-                <motion.div
-                  className="pt-6"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 }}
-                >
-                  {upgradeRequested ? (
-                    <div className="rounded-xl border border-amber-400/50 bg-amber-50 dark:bg-amber-950/20 p-4 text-center space-y-1">
-                      <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-400 font-medium">
-                        <Clock className="h-4 w-4" />
-                        {t("pricing.pending_approval")}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {t("pricing.pending_approval_desc")}
-                      </p>
+                {/* Subtle gradient */}
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${plan.gradient} pointer-events-none`}
+                />
+
+                <CardHeader className={`text-center pb-4 relative ${plan.popular ? "pt-10" : "pt-8"}`}>
+                  <motion.div
+                    className="flex justify-center mb-3"
+                    whileHover={{ rotate: plan.id === "pro" ? -15 : 15, scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    <div className={`rounded-2xl ${plan.bgClass} p-4`}>
+                      <Icon className={`h-7 w-7 ${plan.iconClass}`} />
                     </div>
-                  ) : (
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Button
-                        onClick={() => setDialogOpen(true)}
-                        className="w-full h-12 text-base rounded-xl shadow-md hover:shadow-lg transition-shadow"
-                      >
-                        <Crown className="h-4 w-4 me-2" />
-                        {t("pricing.request_upgrade")}
-                      </Button>
+                  </motion.div>
+
+                  <CardTitle className="text-xl">{t(plan.nameKey)}</CardTitle>
+                  <div className="mt-2">
+                    <span className="text-3xl font-bold text-foreground">{plan.price}</span>
+                    <span className="text-sm text-muted-foreground"> / {t("pricing.per_month")}</span>
+                  </div>
+
+                  {current && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring" }}
+                    >
+                      <Badge className="mt-2 text-xs px-3 py-1">{t("pricing.current")}</Badge>
                     </motion.div>
                   )}
-                  <p className="text-xs text-muted-foreground text-center mt-3">
-                    {t("pricing.admin_approval_note")}
-                  </p>
-                </motion.div>
-              )}
-            </CardContent>
-          </MotionCard>
+                </CardHeader>
+
+                <CardContent className="space-y-0.5 pb-8 relative">
+                  {/* Feature rows */}
+                  {plan.features.map((f, i) => (
+                    <motion.div
+                      key={f.key + f.label}
+                      className={`flex items-center gap-2.5 text-sm rounded-lg px-2.5 py-2 transition-colors ${
+                        f.included ? "hover:bg-accent/50" : "opacity-40"
+                      }`}
+                      initial={{ opacity: 0, x: -15 }}
+                      animate={{ opacity: f.included ? 1 : 0.4, x: 0 }}
+                      transition={{ delay: 0.25 + i * 0.06 }}
+                    >
+                      <div
+                        className={`rounded-full p-1 flex-shrink-0 ${
+                          f.included ? plan.bgClass : "bg-muted"
+                        }`}
+                      >
+                        {f.included ? (
+                          <Check className={`h-3 w-3 ${plan.iconClass}`} />
+                        ) : (
+                          <X className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
+                      <span
+                        className={
+                          f.included
+                            ? "text-foreground font-medium"
+                            : "text-muted-foreground line-through"
+                        }
+                      >
+                        {f.label}
+                      </span>
+                    </motion.div>
+                  ))}
+
+                  {/* CTA area */}
+                  {(showRequest || pendingThis) && (
+                    <motion.div
+                      className="pt-5"
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.6 }}
+                    >
+                      {pendingThis ? (
+                        /* Pending badge */
+                        <div className="rounded-xl border border-amber-400/50 bg-amber-50 dark:bg-amber-950/20 p-3 text-center space-y-1">
+                          <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium">
+                            <Clock className="h-4 w-4" />
+                            {t("pricing.pending_approval")}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {t("pricing.pending_approval_desc")}
+                          </p>
+                        </div>
+                      ) : (
+                        /* Request button */
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                          <Button
+                            onClick={() => openDialog(plan.id)}
+                            className="w-full h-11 rounded-xl"
+                            variant={plan.id === "ultra" ? "outline" : "default"}
+                          >
+                            <Icon className="h-4 w-4 me-2" />
+                            {t("pricing.request_upgrade")}
+                          </Button>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  )}
+                </CardContent>
+              </MotionCard>
+            );
+          })}
         </div>
+
+        <p className="text-xs text-center text-muted-foreground">
+          {t("pricing.admin_approval_note")}
+        </p>
       </div>
 
       {/* Payment Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md" dir={direction}>
           <DialogHeader>
-            <DialogTitle>{t("pricing.payment_dialog_title")}</DialogTitle>
+            <DialogTitle>
+              {t("pricing.payment_dialog_title")} — {t(selectedPlan.nameKey)}
+            </DialogTitle>
             <DialogDescription>{t("pricing.payment_dialog_desc")}</DialogDescription>
           </DialogHeader>
 
@@ -310,7 +354,7 @@ const Pricing = () => {
               <p className="text-sm font-medium">{t("pricing.payment_bank_details")}</p>
             </div>
 
-            {/* EasyPaisa */}
+            {/* EasyPaisa / JazzCash */}
             <div className="rounded-lg border bg-muted/50 p-3 space-y-1">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 {t("pricing.payment_easypaisa_label")}
@@ -318,7 +362,10 @@ const Pricing = () => {
               <p className="text-sm font-medium">{t("pricing.payment_easypaisa_details")}</p>
             </div>
 
-            <p className="text-sm font-semibold text-primary">{t("pricing.payment_amount_pro")}</p>
+            {/* Dynamic amount */}
+            <p className="text-sm font-semibold text-primary">
+              {t(selectedPlan.priceAmountKey)}
+            </p>
 
             {/* Transaction ID */}
             <div className="space-y-1.5">
@@ -328,7 +375,9 @@ const Pricing = () => {
                 placeholder={t("pricing.transaction_id_placeholder")}
                 value={txId}
                 onChange={(e) => setTxId(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !submitting && txId.trim() && submitUpgradeRequest()}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && !submitting && txId.trim() && submitUpgradeRequest()
+                }
               />
             </div>
 
@@ -339,7 +388,11 @@ const Pricing = () => {
               disabled={submitting || !txId.trim()}
               className="w-full"
             >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : <Crown className="h-4 w-4 me-2" />}
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin me-2" />
+              ) : (
+                <Crown className="h-4 w-4 me-2" />
+              )}
               {t("pricing.submit_payment")}
             </Button>
           </div>
