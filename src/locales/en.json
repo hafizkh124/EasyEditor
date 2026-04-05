@@ -209,7 +209,15 @@
   "admin.upgrade_rejected": "Upgrade request rejected.",
   "admin.make_ultra": "Make Ultra",
   "admin.upgraded_ultra": "User upgraded to Ultra!",
+  "admin.make_basic": "Make Basic",
+  "admin.upgraded_basic": "User upgraded to Basic!",
+  "admin.select_plan": "Select Plan",
+  "admin.basic_plan": "Basic (1,000 PKR)",
+  "admin.pro_plan_label": "Pro (4,000 PKR)",
+  "admin.ultra_plan_label": "Ultra (7,000 PKR)",
+  "admin.plan_required": "Select a plan to approve",
   "settings.ultra": "Ultra",
+  "settings.basic": "Basic",
   "pricing.title": "Choose Your Plan",
   "pricing.subtitle": "Select the plan that fits your needs",
   "pricing.free_plan": "Free",
@@ -264,5 +272,7 @@
   "notification.upgrade_approved_title": "Upgrade Approved!",
   "notification.upgrade_approved_msg": "Your account has been upgraded to {tier}. Enjoy your new features!",
   "notification.upgrade_rejected_title": "Upgrade Request Rejected",
-  "notification.upgrade_rejected_msg": "Your upgrade request was not approved. Please contact support if you believe this is an error."
+  "notification.upgrade_rejected_msg": "Your upgrade request was not approved. Please contact support if you believe this is an error.",
+  "notification.account_approved_title": "Account Approved!",
+  "notification.account_approved_msg": "Your account has been approved with the {plan} plan. You now have full access!"
 }

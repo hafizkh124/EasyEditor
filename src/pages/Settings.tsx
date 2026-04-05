@@ -101,8 +101,14 @@ const Settings = () => {
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">{t("settings.current_plan")}:</span>
-              <Badge variant={tier === "pro" ? "default" : "secondary"}>
-                {tier === "pro" ? t("settings.pro") : t("settings.free")}
+              <Badge variant={tier === "free" ? "secondary" : "default"}>
+                {tier === "ultra"
+                  ? t("settings.ultra")
+                  : tier === "pro"
+                  ? t("settings.pro")
+                  : tier === "basic"
+                  ? t("settings.basic")
+                  : t("settings.free")}
               </Badge>
             </div>
             {tier === "free" && (

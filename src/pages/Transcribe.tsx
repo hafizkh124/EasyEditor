@@ -59,7 +59,7 @@ const Transcribe = () => {
     }
   }, [subscription]);
 
-  const limitReached = tier === "free" && secondsUsed >= limit;
+  const limitReached = limit > 0 && secondsUsed >= limit;
 
   // --- Audio file upload handler ---
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -38,7 +38,7 @@ const Dashboard = () => {
     fetchProfile();
   }, [user]);
 
-  const isPro = subscription?.tier === "pro";
+  const isUnlimited = (subscription?.transcription_limit ?? 0) >= 999_999;
 
   const formatTime = (ts: number) => {
     const d = new Date(ts);
@@ -58,12 +58,12 @@ const Dashboard = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">{t("dashboard.usage")}</CardTitle>
-              {isPro && (
+              {isUnlimited && (
                 <CardDescription>{t("dashboard.unlimited")}</CardDescription>
               )}
             </CardHeader>
             <CardContent className="space-y-4">
-              {isPro ? null : (
+              {isUnlimited ? null : (
                 <>
                   {/* STT */}
                   <div className="space-y-1">

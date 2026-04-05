@@ -27,7 +27,7 @@ const OCR = () => {
 
   const ocrPagesUsed = subscription?.ocr_pages_used ?? 0;
   const ocrPagesLimit = subscription?.ocr_pages_limit ?? 5;
-  const ocrLimitReached = subscription?.tier === "free" && ocrPagesUsed >= ocrPagesLimit;
+  const ocrLimitReached = ocrPagesLimit > 0 && ocrPagesUsed >= ocrPagesLimit;
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string>("image/jpeg");
@@ -195,7 +195,7 @@ const OCR = () => {
             <p className="text-muted-foreground mt-1">{t("ocr.subtitle")}</p>
           </div>
           <div className="flex items-center gap-3">
-            {subscription?.tier === "free" && (
+            {ocrPagesLimit > 0 && (
               <div className="flex items-center gap-1.5">
                 <ScanLine className="h-4 w-4 text-muted-foreground" />
                 <Badge variant={ocrLimitReached ? "destructive" : "secondary"} className="text-xs">

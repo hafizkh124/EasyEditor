@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, Users, Shield, Crown, CreditCard } from "lucide-react";
 
@@ -25,6 +26,8 @@ interface UserRow {
   last_upgrade_request: string | null;
 }
 
+type PaidTier = "basic" | "pro" | "ultra";
+
 const Admin = () => {
   const { user } = useAuth();
   const { isAdmin, loading: approvalLoading } = useApproval();
@@ -33,6 +36,9 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [verified, setVerified] = useState(false);
   const [verifying, setVerifying] = useState(true);
+
+  // Per-user plan selection for the approve-with-plan dropdown
+  const [approvalPlanMap, setApprovalPlanMap] = useState<Record<string, string>>({});
 
   // Server-side admin role verification
   useEffect(() => {
@@ -94,23 +100,88 @@ const Admin = () => {
     if (verified) fetchUsers();
   }, [verified]);
 
-  const toggleApproval = async (userId: string, approve: boolean) => {
-    const { error } = await supabase
-      .from("profiles")
-      .update({ is_approved: approve })
-      .eq("user_id", userId);
-
-    if (error) {
-      toast.error(t("admin.update_error"));
-    } else {
-      toast.success(approve ? t("admin.approved") : t("admin.rejected"));
-      setUsers((prev) =>
-        prev.map((u) => (u.user_id === userId ? { ...u, is_approved: approve } : u))
-      );
-    }
+  const sendNotification = async (userId: string, title: string, message: string) => {
+    await supabase.from("notifications").insert({ user_id: userId, title, message });
   };
 
-  const changeTier = async (userId: string, newTier: "free" | "pro" | "ultra") => {
+  /**
+   * Atomically approve a new user: set is_approved=true + assign tier + limits.
+   * This is the only path for first-time approval of unapproved (free/0-limit) accounts.
+   */
+  const approveWithPlan = async (userId: string, plan: PaidTier) => {
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ is_approved: true })
+      .eq("user_id", userId);
+
+    if (profileError) {
+      toast.error(t("admin.update_error"));
+      return;
+    }
+
+    const limits = TIER_LIMITS[plan];
+    const { error: subError } = await supabase
+      .from("subscriptions")
+      .update({ tier: plan, ...limits })
+      .eq("user_id", userId);
+
+    if (subError) {
+      toast.error(t("admin.update_error"));
+      return;
+    }
+
+    await sendNotification(
+      userId,
+      t("notification.account_approved_title"),
+      t("notification.account_approved_msg").replace("{plan}", plan.toUpperCase())
+    );
+
+    toast.success(t("admin.approved"));
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.user_id === userId ? { ...u, is_approved: true, tier: plan } : u
+      )
+    );
+    setApprovalPlanMap((prev) => {
+      const next = { ...prev };
+      delete next[userId];
+      return next;
+    });
+  };
+
+  /**
+   * Revoke approval: set is_approved=false + reset tier='free' with all limits=0.
+   */
+  const revokeApproval = async (userId: string) => {
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ is_approved: false })
+      .eq("user_id", userId);
+
+    if (profileError) {
+      toast.error(t("admin.update_error"));
+      return;
+    }
+
+    const { error: subError } = await supabase
+      .from("subscriptions")
+      .update({ tier: "free", ...TIER_LIMITS.free })
+      .eq("user_id", userId);
+
+    if (subError) {
+      toast.error(t("admin.update_error"));
+      return;
+    }
+
+    toast.success(t("admin.rejected"));
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.user_id === userId ? { ...u, is_approved: false, tier: "free" } : u
+      )
+    );
+  };
+
+  const changeTier = async (userId: string, newTier: "free" | "basic" | "pro" | "ultra") => {
     const limits = TIER_LIMITS[newTier];
     const updates: Record<string, unknown> = {
       tier: newTier,
@@ -136,6 +207,8 @@ const Admin = () => {
         ? t("admin.upgraded_ultra")
         : newTier === "pro"
         ? t("admin.upgraded_pro")
+        : newTier === "basic"
+        ? t("admin.upgraded_basic")
         : t("admin.downgraded_free");
 
     toast.success(successMsg);
@@ -148,12 +221,8 @@ const Admin = () => {
     );
   };
 
-  const sendNotification = async (userId: string, title: string, message: string) => {
-    await supabase.from("notifications").insert({ user_id: userId, title, message });
-  };
-
   const approveUpgrade = async (userId: string, pendingTier: string) => {
-    const tier = pendingTier as "free" | "pro" | "ultra";
+    const tier = pendingTier as "free" | "basic" | "pro" | "ultra";
     await changeTier(userId, tier);
     await sendNotification(
       userId,
@@ -191,6 +260,13 @@ const Admin = () => {
         )
       );
     }
+  };
+
+  const tierLabel = (tier: string) => {
+    if (tier === "ultra") return t("settings.ultra");
+    if (tier === "pro") return t("settings.pro");
+    if (tier === "basic") return t("settings.basic");
+    return t("settings.free");
   };
 
   if (approvalLoading || verifying) return null;
@@ -255,72 +331,109 @@ const Admin = () => {
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          {/* Approval badge & controls */}
+                          {/* Approval badge */}
                           <Badge variant={u.is_approved ? "default" : "destructive"}>
                             {u.is_approved ? t("admin.status_approved") : t("admin.status_pending")}
                           </Badge>
+
                           {u.is_approved ? (
+                            /* Revoke button */
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => toggleApproval(u.user_id, false)}
+                              onClick={() => revokeApproval(u.user_id)}
                               className="text-destructive border-destructive/30 hover:bg-destructive/10"
                             >
                               <XCircle className="h-4 w-4 me-1" />
                               {t("admin.revoke")}
                             </Button>
                           ) : (
-                            <Button
-                              size="sm"
-                              onClick={() => toggleApproval(u.user_id, true)}
-                            >
-                              <CheckCircle className="h-4 w-4 me-1" />
-                              {t("admin.approve")}
-                            </Button>
+                            /* Plan selector + Approve button (unapproved users) */
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={approvalPlanMap[u.user_id] ?? ""}
+                                onValueChange={(val) =>
+                                  setApprovalPlanMap((prev) => ({ ...prev, [u.user_id]: val }))
+                                }
+                              >
+                                <SelectTrigger className="h-8 w-[160px] text-xs">
+                                  <SelectValue placeholder={t("admin.select_plan")} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="basic">{t("admin.basic_plan")}</SelectItem>
+                                  <SelectItem value="pro">{t("admin.pro_plan_label")}</SelectItem>
+                                  <SelectItem value="ultra">{t("admin.ultra_plan_label")}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                size="sm"
+                                disabled={!approvalPlanMap[u.user_id]}
+                                onClick={() =>
+                                  approveWithPlan(u.user_id, approvalPlanMap[u.user_id] as PaidTier)
+                                }
+                                title={!approvalPlanMap[u.user_id] ? t("admin.plan_required") : undefined}
+                              >
+                                <CheckCircle className="h-4 w-4 me-1" />
+                                {t("admin.approve")}
+                              </Button>
+                            </div>
                           )}
 
-                          {/* Tier badge & controls */}
+                          {/* Tier badge */}
                           <Badge variant={u.tier === "free" ? "secondary" : "default"}>
-                            {u.tier === "ultra"
-                              ? t("settings.ultra")
-                              : u.tier === "pro"
-                              ? t("settings.pro")
-                              : t("settings.free")}
+                            {tierLabel(u.tier)}
                           </Badge>
                           {u.upgrade_requested && (
                             <Badge variant="outline" className="text-amber-600 border-amber-400">
                               {t("admin.upgrade_request")}
                             </Badge>
                           )}
-                          {u.tier !== "ultra" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => changeTier(u.user_id, "ultra")}
-                              className="text-purple-600 border-purple-400/50 hover:bg-purple-50 dark:hover:bg-purple-950/20"
-                            >
-                              <Crown className="h-4 w-4 me-1" />
-                              {t("admin.make_ultra")}
-                            </Button>
-                          )}
-                          {u.tier === "free" ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => changeTier(u.user_id, "pro")}
-                              className="text-primary border-primary/30 hover:bg-primary/10"
-                            >
-                              <Crown className="h-4 w-4 me-1" />
-                              {t("admin.make_pro")}
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => changeTier(u.user_id, "free")}
-                            >
-                              {t("admin.make_free")}
-                            </Button>
+
+                          {/* Tier change controls (approved users only) */}
+                          {u.is_approved && (
+                            <>
+                              {u.tier !== "ultra" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => changeTier(u.user_id, "ultra")}
+                                  className="text-purple-600 border-purple-400/50 hover:bg-purple-50 dark:hover:bg-purple-950/20"
+                                >
+                                  <Crown className="h-4 w-4 me-1" />
+                                  {t("admin.make_ultra")}
+                                </Button>
+                              )}
+                              {u.tier !== "pro" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => changeTier(u.user_id, "pro")}
+                                  className="text-primary border-primary/30 hover:bg-primary/10"
+                                >
+                                  <Crown className="h-4 w-4 me-1" />
+                                  {t("admin.make_pro")}
+                                </Button>
+                              )}
+                              {u.tier !== "basic" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => changeTier(u.user_id, "basic")}
+                                >
+                                  {t("admin.make_basic")}
+                                </Button>
+                              )}
+                              {u.tier !== "free" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => changeTier(u.user_id, "free")}
+                                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                                >
+                                  {t("admin.make_free")}
+                                </Button>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -361,13 +474,13 @@ const Admin = () => {
                             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                               <span>
                                 {t("admin.user_management")}:{" "}
-                                <span className="font-medium text-foreground">{u.tier}</span>
+                                <span className="font-medium text-foreground">{tierLabel(u.tier)}</span>
                               </span>
                               <span>→</span>
                               <span>
                                 {t("admin.pending_tier")}:{" "}
                                 <span className="font-semibold text-primary">
-                                  {u.pending_tier || "—"}
+                                  {u.pending_tier ? tierLabel(u.pending_tier) : "—"}
                                 </span>
                               </span>
                             </div>
