@@ -134,7 +134,7 @@ const SourcesPanel = ({
         <input ref={fileInputRef} type="file" accept=".pdf,.docx" onChange={onFileUpload} className="hidden" />
       </div>
 
-      <ScrollArea className="flex-1 max-h-48 lg:max-h-none">
+      <ScrollArea className="flex-1 max-h-64 lg:max-h-none">
         <div className="p-3 space-y-1.5">
           <AnimatePresence>
             {sources.length === 0 ? (

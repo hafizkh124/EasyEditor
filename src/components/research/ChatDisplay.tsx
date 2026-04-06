@@ -4,13 +4,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   Send, Loader2, Download, BookOpen, Copy, Sparkles,
-  PenLine, MessageSquare, Minimize2, FileDown,
+  PenLine, MessageSquare, Minimize2, FileDown, Trash2, RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isRtlText as detectRtl } from "@/utils/textUtils";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 import type { ChatMessage } from "./types";
+import type { Source } from "./types";
 
 interface DocumentBoxProps {
   content: string;
@@ -18,10 +21,11 @@ interface DocumentBoxProps {
   onRefine: (action: string) => void;
   onCopy: () => void;
   onDownload: () => void;
+  onRegenerate?: () => void;
   t: (k: string) => string;
 }
 
-const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, t }: DocumentBoxProps) => {
+const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRegenerate, t }: DocumentBoxProps) => {
   const isRtl = detectRtl(content);
 
   return (
@@ -74,15 +78,25 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, t }: D
         <ReactMarkdown>{content}</ReactMarkdown>
       </div>
 
-      <div className="flex items-center justify-end gap-2 p-3 border-t border-border">
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={onCopy}>
-          <Copy className="h-3.5 w-3.5" />
-          {t("research.copy")}
-        </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={onDownload}>
-          <FileDown className="h-3.5 w-3.5" />
-          {t("research.download_report")}
-        </Button>
+      <div className="flex items-center justify-between gap-2 p-3 border-t border-border flex-wrap">
+        <div className="flex items-center gap-2">
+          {onRegenerate && (
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={onRegenerate} disabled={isRefining}>
+              <RefreshCw className="h-3.5 w-3.5" />
+              {t("research.regenerate")}
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={onCopy}>
+            <Copy className="h-3.5 w-3.5" />
+            {t("research.copy")}
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={onDownload}>
+            <FileDown className="h-3.5 w-3.5" />
+            {t("research.download_report")}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -99,6 +113,9 @@ interface ChatDisplayProps {
   onRefine: (action: string) => void;
   onCopyOutput: () => void;
   onDownloadReport: () => void;
+  onClearChat: () => void;
+  onRegenerate: () => void;
+  sources: Source[];
   researchLimitReached: boolean;
   chatEndRef: React.RefObject<HTMLDivElement>;
   t: (k: string) => string;
@@ -115,22 +132,38 @@ const ChatDisplay = ({
   onRefine,
   onCopyOutput,
   onDownloadReport,
+  onClearChat,
+  onRegenerate,
+  sources,
   researchLimitReached,
   chatEndRef,
   t,
 }: ChatDisplayProps) => {
   const isRtlQuery = detectRtl(query);
 
+  const copyMessage = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast.success(t("research.copy_message"));
+  };
+
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <h1 className="text-xl font-bold text-foreground">{t("research.title")}</h1>
-        {messages.length > 0 && (
-          <Button variant="outline" size="sm" onClick={onDownloadReport}>
-            <Download className="h-3.5 w-3.5 mr-1" />
-            {t("research.download_report")}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {messages.length > 0 && (
+            <>
+              <Button variant="ghost" size="sm" onClick={onClearChat} className="gap-1.5 text-muted-foreground">
+                <Trash2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t("research.clear_chat")}</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={onDownloadReport} className="gap-1.5">
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t("research.download_report")}</span>
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <ScrollArea className="flex-1 p-4">
@@ -168,6 +201,7 @@ const ChatDisplay = ({
                     onRefine={onRefine}
                     onCopy={onCopyOutput}
                     onDownload={onDownloadReport}
+                    onRegenerate={onRegenerate}
                     t={t}
                   />
                 </motion.div>
@@ -176,11 +210,18 @@ const ChatDisplay = ({
 
             const isRtl = detectRtl(msg.content);
             return (
-              <div key={i} className="flex justify-start">
-                <div className="rounded-2xl px-4 py-2.5 max-w-[85%] text-sm bg-muted text-foreground border border-border">
+              <div key={i} className="flex justify-start group">
+                <div className="rounded-2xl px-4 py-2.5 max-w-[85%] text-sm bg-muted text-foreground border border-border relative">
                   <div dir={isRtl ? "rtl" : "ltr"} className={cn("prose prose-sm dark:prose-invert max-w-none", isRtl && "text-right")}>
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
+                  <button
+                    onClick={() => copyMessage(msg.content)}
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-muted-foreground hover:text-foreground hover:bg-background"
+                    title={t("research.copy")}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
                 </div>
               </div>
             );
@@ -198,7 +239,13 @@ const ChatDisplay = ({
         </div>
       </ScrollArea>
 
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border space-y-2">
+        {sources.length === 0 && (
+          <div className="flex items-center gap-2 max-w-3xl mx-auto rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-3 py-2">
+            <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+            <p className="text-xs text-amber-700 dark:text-amber-400">{t("research.no_sources_warning")}</p>
+          </div>
+        )}
         <div className="flex gap-2 max-w-3xl mx-auto">
           <Textarea
             value={query}
