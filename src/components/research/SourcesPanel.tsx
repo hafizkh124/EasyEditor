@@ -7,9 +7,20 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Link2, Upload, FileText, Trash2, Plus, Loader2, BookOpen, Globe, Lock } from "lucide-react";
+import { Link2, Upload, FileText, Trash2, Plus, Loader2, BookOpen, Globe, Lock, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Source } from "./types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface SourcesPanelProps {
   sources: Source[];
@@ -22,6 +33,7 @@ interface SourcesPanelProps {
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFileDrop: (file: File) => void;
   onDeleteSource: (source: Source) => void;
+  onDeleteAllSources: () => void;
   strictMode: boolean;
   onStrictModeChange: (v: boolean) => void;
   researchQueriesUsed: number;
@@ -87,6 +99,7 @@ const SourcesPanel = ({
   onFileUpload,
   onFileDrop,
   onDeleteSource,
+  onDeleteAllSources,
   strictMode,
   onStrictModeChange,
   researchQueriesUsed,
@@ -100,10 +113,49 @@ const SourcesPanel = ({
   return (
     <div className="lg:w-80 border-b lg:border-b-0 lg:border-e border-border bg-card flex flex-col">
       <div className="p-4 border-b border-border">
-        <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-primary" />
-          {t("research.sources")}
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-primary" />
+            {t("research.sources")}
+          </h2>
+          {sources.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {t("research.delete_all_sources")}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                    {t("research.delete_all_confirm")}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {sources.length === 1
+                      ? t("research.sources_hint")
+                      : `${sources.length} ${t("research.sources").toLowerCase()}`}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t("admin.cancel") || "Cancel"}</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onDeleteAllSources}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1.5" />
+                    {t("research.delete_all_sources")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground mt-1">{t("research.sources_hint")}</p>
       </div>
 
