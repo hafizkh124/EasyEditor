@@ -42,7 +42,6 @@ const Transcribe = () => {
   const { subscription } = useSubscription();
   const [secondsUsed, setSecondsUsed] = useState(0);
   const limit = subscription?.transcription_limit ?? 300;
-  const tier = subscription?.tier ?? "free";
   const [isUploading, setIsUploading] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
