@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -30,7 +30,7 @@ const Speak = () => {
   const { user, session } = useAuth();
   const { t, language } = useLanguage();
   const location = useLocation();
-  const { subscription, loading: subLoading } = useSubscription();
+  const { subscription } = useSubscription();
 
   const [text, setText] = useState("");
   const [selectedPersona, setSelectedPersona] = useState<Persona>(personas[0]);
