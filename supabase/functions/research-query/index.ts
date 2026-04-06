@@ -8,12 +8,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const SOURCE_CHAR_LIMIT = 20_000;
+
 async function fetchUrlContent(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
   try {
     const resp = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; ResearchBot/1.0)" },
+      signal: controller.signal,
     });
-    if (!resp.ok) return `[Could not fetch ${url}]`;
+    clearTimeout(timeoutId);
+    if (!resp.ok) return `[Could not fetch ${url}: HTTP ${resp.status}]`;
     const html = await resp.text();
     const text = html
       .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -21,8 +27,10 @@ async function fetchUrlContent(url: string): Promise<string> {
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
       .trim();
-    return text.slice(0, 8000);
-  } catch {
+    return text.slice(0, SOURCE_CHAR_LIMIT);
+  } catch (e: any) {
+    clearTimeout(timeoutId);
+    if (e?.name === "AbortError") return `[Timed out fetching ${url} — the page took too long to respond]`;
     return `[Failed to fetch ${url}]`;
   }
 }
@@ -40,6 +48,7 @@ async function fetchFileContent(supabase: any, storagePath: string): Promise<str
       const decoder = new TextDecoder("utf-8", { fatal: false });
       const raw = decoder.decode(bytes);
 
+      // Attempt 1: extract text from BT...ET blocks (works for uncompressed PDFs)
       const btEtRegex = /BT\s([\s\S]*?)ET/g;
       let match;
       while ((match = btEtRegex.exec(raw)) !== null) {
@@ -49,21 +58,57 @@ async function fetchFileContent(supabase: any, storagePath: string): Promise<str
         while ((tjMatch = tjRegex.exec(block)) !== null) {
           textParts.push(tjMatch[1]);
         }
+        // Also handle TJ arrays: [(text) n (text) n] TJ
+        const tjArrayRegex = /\[([^\]]*)\]\s*TJ/g;
+        let tjArrayMatch;
+        while ((tjArrayMatch = tjArrayRegex.exec(block)) !== null) {
+          const inner = tjArrayMatch[1];
+          const stringsInArray = inner.matchAll(/\(([^)]*)\)/g);
+          for (const s of stringsInArray) textParts.push(s[1]);
+        }
       }
 
-      if (textParts.length > 0) return textParts.join(" ").slice(0, 8000);
+      if (textParts.length > 0) return textParts.join(" ").slice(0, SOURCE_CHAR_LIMIT);
 
+      // Attempt 2: fallback — strip binary noise and return printable chars
       const readable = raw
         .replace(/[^\x20-\x7E\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\n]/g, " ")
         .replace(/\s+/g, " ")
         .trim();
-      return readable.slice(0, 8000) || "[PDF text extraction yielded no content]";
+      const result = readable.slice(0, SOURCE_CHAR_LIMIT);
+      return result || "[PDF text extraction yielded no readable content. The PDF may use compressed streams or non-standard encoding.]";
     }
 
     if (ext === "docx") {
-      const text = await data.text();
-      const xmlText = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-      return xmlText.slice(0, 8000) || "[DOCX text extraction yielded no content]";
+      // DOCX is a ZIP archive — read as ArrayBuffer and extract word/document.xml
+      try {
+        const arrayBuffer = await data.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        // Search for the word/document.xml content within the ZIP binary
+        // ZIP local file headers start with PK\x03\x04; we scan for XML content tags
+        const decoder = new TextDecoder("utf-8", { fatal: false });
+        const raw = decoder.decode(bytes);
+
+        // Find the word/document.xml section by looking for its XML content
+        // DOCX XML contains <w:t> tags (Word text elements)
+        const wTextRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+        const textParts: string[] = [];
+        let m;
+        while ((m = wTextRegex.exec(raw)) !== null) {
+          if (m[1].trim()) textParts.push(m[1]);
+        }
+
+        if (textParts.length > 0) {
+          return textParts.join(" ").replace(/\s+/g, " ").trim().slice(0, SOURCE_CHAR_LIMIT);
+        }
+
+        // Fallback: strip all XML tags from any readable section
+        const xmlStripped = raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        const printable = xmlStripped.replace(/[^\x20-\x7E\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/g, " ").replace(/\s+/g, " ").trim();
+        return printable.slice(0, SOURCE_CHAR_LIMIT) || "[DOCX text extraction yielded no content]";
+      } catch {
+        return "[DOCX text extraction failed]";
+      }
     }
 
     return "[Unsupported file type]";

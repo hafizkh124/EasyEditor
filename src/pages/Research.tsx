@@ -219,10 +219,9 @@ const Research = () => {
         setIsQuerying(false);
         if (user) {
           if (import.meta.env.DEV) console.log("[Research] Incrementing research_queries_used for user:", user.id);
+          // Use atomic RPC to avoid race conditions (multiple tabs / concurrent requests)
           supabase
-            .from("subscriptions")
-            .update({ research_queries_used: researchQueriesUsed + 1 })
-            .eq("user_id", user.id)
+            .rpc("increment_research_queries", { p_user_id: user.id })
             .then(({ error }) => { if (!error) refetch(); });
         }
       },
@@ -262,15 +261,76 @@ const Research = () => {
   };
 
   const handleDownloadReport = () => {
-    const report = messages.map((m) => `${m.role === "user" ? "Q" : "A"}: ${m.content}`).join("\n\n");
-    const blob = new Blob([report], { type: "text/plain" });
+    // Export as Markdown for better readability
+    const sourceList = sources.length > 0
+      ? `## Sources\n${sources.map((s) => `- ${s.title}${s.url ? ` (${s.url})` : ""}`).join("\n")}\n\n`
+      : "";
+    const body = messages.map((m) =>
+      m.role === "user"
+        ? `## Question\n${m.content}`
+        : `## Answer\n${m.content}`
+    ).join("\n\n---\n\n");
+    const report = `# Research Report\n_Generated: ${new Date().toLocaleString()}_\n\n${sourceList}${body}`;
+    const blob = new Blob([report], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `research-report-${Date.now()}.txt`;
+    a.download = `research-report-${Date.now()}.md`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success(t("research.report_downloaded"));
+  };
+
+  const handleClearChat = () => {
+    setMessages([]);
+    toast.success(t("research.chat_cleared"));
+  };
+
+  const handleRegenerate = async () => {
+    // Find the last user message and re-send it
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUserMsg || !session?.access_token) return;
+    if (researchLimitReached) { toast.error(t("research.limit_reached")); return; }
+
+    // Remove the last assistant response and re-query
+    const messagesWithoutLastAssistant = messages.slice(
+      0,
+      messages.length - 1 - lastAssistantIdx >= 0
+        ? messages.length - 1 - lastAssistantIdx
+        : messages.length
+    );
+    const prevMessages = messagesWithoutLastAssistant.slice(0, -1); // history before the last user msg
+    setMessages(messagesWithoutLastAssistant);
+    setIsQuerying(true);
+
+    let assistantSoFar = "";
+    const upsertAssistant = (chunk: string) => {
+      assistantSoFar += chunk;
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant") {
+          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+        }
+        return [...prev, { role: "assistant", content: assistantSoFar }];
+      });
+    };
+
+    await streamResearchQuery({
+      query: lastUserMsg.content,
+      sources,
+      strictMode,
+      chatHistory: prevMessages,
+      onDelta: upsertAssistant,
+      onDone: () => {
+        setIsQuerying(false);
+        if (user) {
+          supabase
+            .rpc("increment_research_queries", { p_user_id: user.id })
+            .then(({ error }) => { if (!error) refetch(); });
+        }
+      },
+      onError: (err) => { toast.error(err); setIsQuerying(false); },
+    });
   };
 
   return (
@@ -306,6 +366,9 @@ const Research = () => {
           onRefine={handleRefine}
           onCopyOutput={handleCopyOutput}
           onDownloadReport={handleDownloadReport}
+          onClearChat={handleClearChat}
+          onRegenerate={handleRegenerate}
+          sources={sources}
           researchLimitReached={researchLimitReached}
           chatEndRef={chatEndRef}
           t={t}
