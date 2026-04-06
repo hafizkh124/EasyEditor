@@ -187,6 +187,23 @@ const Research = () => {
     }
   };
 
+  const handleDeleteAllSources = async () => {
+    if (!user || sources.length === 0) return;
+    try {
+      // Remove all stored files in parallel
+      const filePaths = sources.filter((s) => s.storage_path).map((s) => s.storage_path as string);
+      if (filePaths.length > 0) {
+        await supabase.storage.from("research-files").remove(filePaths);
+      }
+      // Delete all DB rows for this user
+      await supabase.from("research_sources").delete().eq("user_id", user.id);
+      setSources([]);
+      toast.success(t("research.sources_cleared"));
+    } catch {
+      toast.error(t("research.delete_error"));
+    }
+  };
+
   const handleSendQuery = async () => {
     if (!query.trim() || !session?.access_token) return;
     if (researchLimitReached) { toast.error(t("research.limit_reached")); return; }
@@ -347,6 +364,7 @@ const Research = () => {
           onFileUpload={handleFileUpload}
           onFileDrop={processFile}
           onDeleteSource={handleDeleteSource}
+          onDeleteAllSources={handleDeleteAllSources}
           strictMode={strictMode}
           onStrictModeChange={setStrictMode}
           researchQueriesUsed={researchQueriesUsed}
