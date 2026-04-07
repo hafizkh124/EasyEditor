@@ -1,0 +1,30 @@
+/**
+ * Normalizes Arabic text for consistent embedding and search:
+ * - Strips all harakat (short vowels / diacritics)
+ * - Normalizes alef variants to bare alef (ا)
+ * - Normalizes ta marbuta (ة) to ha (ه)
+ * - Normalizes alef maqsura (ى) to ya (ي)
+ *
+ * Use before embedding queries in vector-search and during corpus ingestion.
+ */
+export function normalizeArabic(text: string): string {
+  return text
+    .replace(/[\u064B-\u065F\u0670]/g, "")           // strip all harakat + dagger alef
+    .replace(/[\u0622\u0623\u0625\u0671]/g, "\u0627") // normalize alef variants → bare alef ا
+    .replace(/\u0629/g, "\u0647")                     // ta marbuta ة → ha ه
+    .replace(/\u0649/g, "\u064A")                     // alef maqsura ى → ya ي
+    .trim();
+}
+
+/**
+ * Returns true if a string is primarily RTL (Arabic/Urdu) text.
+ * Simple heuristic: if >30% of word characters are Arabic/Urdu script.
+ */
+export function isRtlText(text: string): boolean {
+  if (!text) return false;
+  const arabicUrduRange = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/g;
+  const alphanumeric = text.replace(/\s/g, "");
+  if (alphanumeric.length === 0) return false;
+  const arabicCount = (text.match(arabicUrduRange) ?? []).length;
+  return arabicCount / alphanumeric.length > 0.3;
+}

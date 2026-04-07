@@ -10,6 +10,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Link2, Upload, FileText, Trash2, Plus, Loader2, BookOpen, Globe, Lock, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Source } from "./types";
+import IslamicResearchPanel from "./IslamicResearchPanel";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +42,16 @@ interface SourcesPanelProps {
   researchQueriesLimit: number;
   researchLimitReached: boolean;
   showUsageMeter: boolean;
+  // Islamic mode
+  mode: "general" | "islamic";
+  onModeChange: (m: "general" | "islamic") => void;
+  islamicDomains: string[];
+  onIslamicDomainsChange: (domains: string[]) => void;
+  islamicLanguages: string[];
+  onIslamicLanguagesChange: (langs: string[]) => void;
+  islamicQueriesUsed: number;
+  islamicQueriesLimit: number;
+  tier: string;
   t: (k: string) => string;
 }
 
@@ -106,12 +118,85 @@ const SourcesPanel = ({
   researchQueriesLimit,
   researchLimitReached,
   showUsageMeter,
+  mode,
+  onModeChange,
+  islamicDomains,
+  onIslamicDomainsChange,
+  islamicLanguages,
+  onIslamicLanguagesChange,
+  islamicQueriesUsed,
+  islamicQueriesLimit,
+  tier,
   t,
 }: SourcesPanelProps) => {
   const sourceIcon = (type: string) => (type === "url" ? Link2 : FileText);
+  const islamicLimitReached = islamicQueriesLimit > 0 && islamicQueriesUsed >= islamicQueriesLimit;
 
   return (
     <div className="lg:w-80 border-b lg:border-b-0 lg:border-e border-border bg-card flex flex-col">
+      {/* ── Mode Toggle ── */}
+      <div className="p-3 border-b border-border space-y-2">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+          {t("research.mode_label")}
+        </p>
+        <div className="grid grid-cols-2 gap-1">
+          {(["general", "islamic"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => onModeChange(m)}
+              className={cn(
+                "rounded-md px-2 py-1.5 text-xs font-medium transition-colors text-center",
+                mode === m
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {t(m === "general" ? "research.mode_general" : "research.mode_islamic")}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Islamic Mode Panel ── */}
+      {mode === "islamic" && (
+        <div className="p-3 border-b border-border">
+          <IslamicResearchPanel
+            selectedDomains={islamicDomains}
+            onSelectedDomainsChange={onIslamicDomainsChange}
+            selectedLanguages={islamicLanguages}
+            onSelectedLanguagesChange={onIslamicLanguagesChange}
+            strictMode={strictMode}
+            onStrictModeChange={onStrictModeChange}
+            tier={tier}
+          />
+          {/* Islamic usage meter */}
+          {islamicQueriesLimit > 0 && (
+            <div className="mt-3 space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>{t("research.islamic_queries_label")}</span>
+                <span className={islamicLimitReached ? "text-destructive font-medium" : ""}>
+                  {islamicQueriesUsed} / {islamicQueriesLimit}
+                </span>
+              </div>
+              <Progress
+                value={Math.min((islamicQueriesUsed / islamicQueriesLimit) * 100, 100)}
+                className="h-1"
+              />
+              {islamicLimitReached && (
+                <Link to="/pricing" className="block">
+                  <Badge variant="destructive" className="w-full justify-center text-[10px] cursor-pointer">
+                    {t("dashboard.upgrade")}
+                  </Badge>
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── General Mode: Sources Header + Inputs + List + Footer ── */}
+      {mode === "general" && (
+      <>
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
@@ -259,6 +344,8 @@ const SourcesPanel = ({
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 };

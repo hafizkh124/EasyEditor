@@ -22,24 +22,28 @@ export const TIER_LIMITS = {
     tts_character_limit: 0,
     ocr_pages_limit: 0,
     research_queries_limit: 0,
+    islamic_queries_limit: 0,
   },
   basic: {
     transcription_limit: 1_800,    // 30 minutes
     tts_character_limit: 0,        // TTS not included (Ultra only)
     ocr_pages_limit: 30,
     research_queries_limit: 20,
+    islamic_queries_limit: 10,     // Tier A APIs only (Dorar, AlQuran, Sunnah, Quran.com)
   },
   pro: {
     transcription_limit: 18_000,   // 5 hours
     tts_character_limit: 0,        // TTS not included (Ultra only)
     ocr_pages_limit: 300,
     research_queries_limit: 200,
+    islamic_queries_limit: 100,    // Tier A + B (vector index) + C (scraping)
   },
   ultra: {
     transcription_limit: 36_000,   // 10 hours — reserved for future launch
     tts_character_limit: 500_000,
     ocr_pages_limit: 2_000,
     research_queries_limit: 500,
+    islamic_queries_limit: 500,    // All tiers + top-20 vector results
   },
 } as const;
 

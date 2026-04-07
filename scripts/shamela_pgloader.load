@@ -1,0 +1,128 @@
+-- ============================================================================
+-- shamela_pgloader.load — pgloader config for Kaggle Shamela CSV → Supabase
+--
+-- Source:  Kaggle "Islam Corpus" / Shamela paragraphs CSV (~14.74 GB)
+-- Target:  public.scholarly_documents (pre-existing table from Phase 2 migration)
+-- Tool:    pgloader (https://pgloader.io) — handles large streaming CSV imports
+--
+-- IMPORTANT NOTES:
+--   1. Page numbers: The Kaggle Shamela CSV is PARAGRAPHIZED.
+--      It does NOT reliably preserve print page numbers.
+--      citation_ref will have paragraph-level IDs only — NOT volume/page.
+--      Use Shamela results for SEMANTIC DISCOVERY only, not print citations.
+--
+--   2. Run time: ~14.74 GB CSV will take 30-90 minutes depending on I/O.
+--      Run overnight or on a VPS with direct DB access.
+--
+--   3. Embedding: After COPY, run embedding batches via ingest-scholarly-data
+--      edge function. ~6M rows = ~60,000 batches of 100. Use a background job.
+--
+--   4. IVFFlat re-index: After Shamela ingestion, rebuild the IVFFlat index
+--      with lists = sqrt(total_rows) ≈ 2449. See run-in-dashboard.sql.
+--
+-- Usage:
+--   export DB_URL="postgresql://postgres:[password]@[host]:5432/postgres"
+--   pgloader shamela_pgloader.load
+--
+-- Or with connection string substitution:
+--   pgloader --with "prefetch rows = 10000" shamela_pgloader.load
+-- ============================================================================
+
+LOAD CSV
+  FROM 'shamela_paragraphs.csv'        -- adjust path to your local CSV file
+  (
+    -- Map CSV columns → intermediate names
+    -- Adjust these to match your actual CSV header row.
+    -- Common Kaggle Shamela column names:
+    book_name,          -- Book name (Arabic)
+    author_name,        -- Author name (Arabic)
+    paragraph_text,     -- Main text content (Arabic)
+    book_id,            -- Numeric book identifier
+    paragraph_id,       -- Paragraph sequence within book
+    part_number         -- Volume/part number (if present; often empty)
+  )
+  INTO postgresql:///?DB_URL
+  TARGET TABLE scholarly_documents
+  (
+    domain        CONSTANT 'shamela',
+    source_type   CONSTANT 'classical',
+    title         book_name,
+    content       paragraph_text,
+    content_ar    paragraph_text,
+    citation_ref  EXPRESSION
+      format(
+        '{"book": %s, "author": %s, "book_id": %s, "paragraph_id": %s, "volume": %s}',
+        COALESCE(quote_literal(book_name), 'null'),
+        COALESCE(quote_literal(author_name), 'null'),
+        COALESCE(quote_literal(book_id), 'null'),
+        COALESCE(quote_literal(paragraph_id), 'null'),
+        CASE WHEN part_number IS NOT NULL AND part_number != ''
+             THEN quote_literal(part_number) ELSE 'null' END
+      )::jsonb,
+    language      CONSTANT 'ar',
+    -- embedding is NULL at import time; set via ingest-scholarly-data edge fn
+    embedding     CONSTANT NULL
+  )
+
+  WITH
+    -- Performance tuning
+    batch rows = 10000,
+    batch size = 32MB,
+    prefetch rows = 10000,
+
+    -- Skip header row
+    skip header = 1,
+
+    -- Handle encoding issues in large Arabic corpora
+    fields optionally enclosed by '"',
+    fields escaped by '"',
+    fields terminated by ',',
+
+    -- On conflict: skip duplicates (based on paragraph_id + book_id if unique index exists)
+    -- Note: scholarly_documents has no unique index on Shamela rows,
+    -- so re-running will create duplicates. Use a staging table for re-runs.
+    workers = 4,
+    concurrency = 1
+
+  -- Filter: skip empty paragraphs
+  BEFORE LOAD DO
+    $$ SET work_mem TO '512MB'; $$,
+    $$ SET synchronous_commit TO 'off'; $$  -- faster bulk insert
+
+  AFTER LOAD DO
+    $$ RESET synchronous_commit; $$,
+    $$ ANALYZE public.scholarly_documents; $$
+;
+
+-- ============================================================================
+-- POST-IMPORT STEPS (run in Supabase SQL editor after pgloader completes):
+-- ============================================================================
+--
+-- 1. Verify row count:
+--    SELECT COUNT(*) FROM scholarly_documents WHERE domain = 'shamela';
+--    -- Expected: ~5.9M–6.2M rows
+--
+-- 2. Rebuild IVFFlat index with correct lists count:
+--    DROP INDEX IF EXISTS scholarly_documents_embedding_idx;
+--    CREATE INDEX scholarly_documents_embedding_idx
+--      ON public.scholarly_documents
+--      USING ivfflat (embedding vector_cosine_ops)
+--      WITH (lists = 2449);  -- sqrt(6M) ≈ 2449
+--    -- NOTE: Run this AFTER embedding is complete, not before.
+--
+-- 3. On Supabase Pro, upgrade to HNSW for better recall:
+--    DROP INDEX scholarly_documents_embedding_idx;
+--    CREATE INDEX scholarly_documents_embedding_hnsw_idx
+--      ON public.scholarly_documents
+--      USING hnsw (embedding vector_cosine_ops)
+--      WITH (m = 16, ef_construction = 64);
+--
+-- 4. Embedding batches (background CLI job — run on VPS):
+--    TOTAL_ROWS=$(psql $DATABASE_URL -At -c "SELECT COUNT(*) FROM scholarly_documents WHERE domain='shamela' AND embedding IS NULL;")
+--    TOTAL_BATCHES=$(( (TOTAL_ROWS + 499) / 500 ))
+--    for i in $(seq 0 $TOTAL_BATCHES); do
+--      supabase functions invoke ingest-scholarly-data \
+--        --data "{\"dataset\":\"shamela\",\"batchStart\":$((i*500)),\"batchSize\":500}"
+--      sleep 1
+--    done
+-- ============================================================================

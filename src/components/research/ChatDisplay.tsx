@@ -5,15 +5,16 @@ import { Separator } from "@/components/ui/separator";
 import {
   Send, Loader2, Download, BookOpen, Copy, Sparkles,
   PenLine, MessageSquare, Minimize2, FileDown, Trash2, RefreshCw,
-  AlertCircle,
+  AlertCircle, BookMarked, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isRtlText as detectRtl } from "@/utils/textUtils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import type { ChatMessage } from "./types";
 import type { Source } from "./types";
+import CitationPanel, { type CitationItem } from "./CitationPanel";
 
 interface DocumentBoxProps {
   content: string;
@@ -40,10 +41,10 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRege
         </span>
         <Separator orientation="vertical" className="h-5" />
         {[
-          { action: "formalize", icon: PenLine, label: t("research.formalize") },
-          { action: "humanize", icon: MessageSquare, label: t("research.humanize") },
-          { action: "shorten", icon: Minimize2, label: t("research.shorten") },
-          { action: "citations", icon: BookOpen, label: t("research.add_sources") },
+          { action: "formalize", icon: PenLine,      label: t("research.formalize") },
+          { action: "humanize",  icon: MessageSquare, label: t("research.humanize") },
+          { action: "shorten",   icon: Minimize2,     label: t("research.shorten") },
+          { action: "citations", icon: BookOpen,      label: t("research.add_sources") },
         ].map((btn) => (
           <Button
             key={btn.action}
@@ -102,6 +103,52 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRege
   );
 };
 
+// ── SourcesReadyIndicator ─────────────────────────────────────────────────────
+// Shows a small banner once islamic-search emits the sources_ready SSE event,
+// giving the user feedback that sources have been fetched before Gemini streams.
+interface SourcesReadyIndicatorProps {
+  count: number;
+  domains: string[];
+  t: (k: string) => string;
+}
+
+const DOMAIN_SHORT: Record<string, string> = {
+  dorar:           "Dorar",
+  sunnah:          "Sunnah",
+  "hadith-index":  "Hadith Index",
+  alquran:         "AlQuran",
+  "quran-com":     "Quran.com",
+  tanzil:          "Tanzil",
+  islamqa:         "IslamQA",
+  islamweb:        "IslamWeb",
+  "dar-alifta":    "Dar-Alifta",
+  "shamela-index": "Shamela",
+  "openiti-index": "OpenITI",
+};
+
+const SourcesReadyIndicator = ({ count, domains, t }: SourcesReadyIndicatorProps) => {
+  if (count === 0) return null;
+  const domainLabels = domains.map((d) => DOMAIN_SHORT[d] ?? d).join(" · ");
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-2 rounded-lg border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400"
+    >
+      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+      <span>
+        <span className="font-semibold">{count}</span>{" "}
+        {t("research.sources_fetched")}
+        {domainLabels && (
+          <span className="text-emerald-600 dark:text-emerald-500 ml-1">
+            — {domainLabels}
+          </span>
+        )}
+      </span>
+    </motion.div>
+  );
+};
+
 interface ChatDisplayProps {
   messages: ChatMessage[];
   isQuerying: boolean;
@@ -119,6 +166,13 @@ interface ChatDisplayProps {
   researchLimitReached: boolean;
   chatEndRef: React.RefObject<HTMLDivElement>;
   t: (k: string) => string;
+  // Phase 3 additions
+  mode?: "general" | "islamic";
+  sourcesReadyInfo?: { count: number; domains: string[] } | null;
+  citations?: CitationItem[];
+  // Phase 4
+  onExportBibliography?: () => void;
+  canExportBibliography?: boolean;
 }
 
 const ChatDisplay = ({
@@ -138,6 +192,11 @@ const ChatDisplay = ({
   researchLimitReached,
   chatEndRef,
   t,
+  mode = "general",
+  sourcesReadyInfo,
+  citations = [],
+  onExportBibliography,
+  canExportBibliography = false,
 }: ChatDisplayProps) => {
   const isRtlQuery = detectRtl(query);
 
@@ -146,8 +205,15 @@ const ChatDisplay = ({
     toast.success(t("research.copy_message"));
   };
 
+  // Show sources indicator when we have fetched sources AND are still querying
+  const showSourcesIndicator = mode === "islamic" && sourcesReadyInfo != null && sourcesReadyInfo.count > 0;
+
+  // In Islamic mode, suppress the "no sources" warning (user doesn't add sources in Islamic mode)
+  const showNoSourcesWarning = mode === "general" && sources.length === 0;
+
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <h1 className="text-xl font-bold text-foreground">{t("research.title")}</h1>
         <div className="flex items-center gap-2">
@@ -157,6 +223,12 @@ const ChatDisplay = ({
                 <Trash2 className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{t("research.clear_chat")}</span>
               </Button>
+              {canExportBibliography && onExportBibliography && citations.length > 0 && (
+                <Button variant="outline" size="sm" onClick={onExportBibliography} className="gap-1.5">
+                  <BookMarked className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t("research.export_bibliography")}</span>
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={onDownloadReport} className="gap-1.5">
                 <Download className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{t("research.download_report")}</span>
@@ -168,14 +240,25 @@ const ChatDisplay = ({
 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4 max-w-3xl mx-auto">
+          {/* Empty state */}
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <BookOpen className="h-12 w-12 text-muted-foreground/40 mb-4" />
-              <h3 className="text-lg font-medium text-foreground">{t("research.welcome")}</h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm">{t("research.welcome_hint")}</p>
+              <h3 className="text-lg font-medium text-foreground">
+                {mode === "islamic" ? t("research.welcome_islamic") : t("research.welcome")}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                {mode === "islamic" ? t("research.welcome_islamic_hint") : t("research.welcome_hint")}
+              </p>
             </div>
           )}
 
+          {/* Citation panel — shows accumulated session citations (Islamic mode) */}
+          {mode === "islamic" && citations.length > 0 && (
+            <CitationPanel citations={citations} t={t} />
+          )}
+
+          {/* Message list */}
           {messages.map((msg, i) => {
             const isLastAssistant = msg.role === "assistant" && i === messages.length - 1 - lastAssistantIdx;
 
@@ -227,20 +310,38 @@ const ChatDisplay = ({
             );
           })}
 
+          {/* Sources ready indicator (Islamic mode, shown while streaming) */}
+          <AnimatePresence>
+            {showSourcesIndicator && isQuerying && (
+              <SourcesReadyIndicator
+                count={sourcesReadyInfo!.count}
+                domains={sourcesReadyInfo!.domains}
+                t={t}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Typing / loading indicator */}
           {isQuerying && messages[messages.length - 1]?.role !== "assistant" && (
             <div className="flex justify-start">
               <div className="rounded-2xl px-4 py-3 bg-muted border border-border flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-xs text-muted-foreground">{t("research.thinking")}</span>
+                <span className="text-xs text-muted-foreground">
+                  {showSourcesIndicator
+                    ? t("research.generating_with_sources")
+                    : t("research.thinking")}
+                </span>
               </div>
             </div>
           )}
+
           <div ref={chatEndRef} />
         </div>
       </ScrollArea>
 
+      {/* Input area */}
       <div className="p-4 border-t border-border space-y-2">
-        {sources.length === 0 && (
+        {showNoSourcesWarning && (
           <div className="flex items-center gap-2 max-w-3xl mx-auto rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-3 py-2">
             <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
             <p className="text-xs text-amber-700 dark:text-amber-400">{t("research.no_sources_warning")}</p>
@@ -250,7 +351,7 @@ const ChatDisplay = ({
           <Textarea
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder={t("research.ask_placeholder")}
+            placeholder={mode === "islamic" ? t("research.ask_placeholder_islamic") : t("research.ask_placeholder")}
             dir={isRtlQuery ? "rtl" : "ltr"}
             className={cn("min-h-[44px] max-h-32 resize-none flex-1", isRtlQuery && "text-right")}
             rows={1}
