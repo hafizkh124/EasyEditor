@@ -72,7 +72,7 @@ const Admin = () => {
       setCorpusStats((statsRes.value.data ?? []) as unknown as CorpusStat[]);
     }
     if (jobsRes.status === "fulfilled" && !jobsRes.value.error) {
-      setIngestJobs((statsRes.value.data ?? []) as unknown as IngestJob[]);
+      setIngestJobs((jobsRes.status === "fulfilled" ? jobsRes.value?.data ?? [] : []) as unknown as IngestJob[]);
     }
     if (cacheRes.status === "fulfilled") {
       setCacheCount(cacheRes.value.count ?? 0);

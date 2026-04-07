@@ -282,8 +282,7 @@ const Research = () => {
       const title = firstUser?.content.slice(0, 80) ?? "Research Session";
 
       if (sessionIdRef.current) {
-        await supabase
-          .from("research_sessions")
+        await (supabase.from as any)("research_sessions")
           .update({
             messages:         updatedMessages,
             citations:        updatedCitations,
@@ -294,8 +293,7 @@ const Research = () => {
           .eq("id", sessionIdRef.current)
           .eq("user_id", user.id);
       } else {
-        const { data, error } = await supabase
-          .from("research_sessions")
+        const { data, error } = await (supabase.from as any)("research_sessions")
           .insert({
             user_id:          user.id,
             title,
@@ -317,8 +315,7 @@ const Research = () => {
   const loadLastSession = useCallback(async () => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from("research_sessions")
+      const { data, error } = await (supabase.from as any)("research_sessions")
         .select("*")
         .eq("user_id", user.id)
         .eq("mode", mode)
@@ -328,8 +325,8 @@ const Research = () => {
 
       if (!error && data) {
         sessionIdRef.current = data.id;
-        setMessages(data.messages as ChatMessage[] ?? []);
-        setCitations(data.citations as CitationItem[] ?? []);
+        setMessages(data.messages as unknown as ChatMessage[] ?? []);
+        setCitations(data.citations as unknown as CitationItem[] ?? []);
       }
     } catch {
       // Table not yet migrated — start with empty session
@@ -479,8 +476,8 @@ const Research = () => {
           setIsQuerying(false);
           if (user) {
             if (import.meta.env.DEV) console.log("[Research] Incrementing islamic_queries_used for user:", user.id);
-            supabase
-              .rpc("increment_islamic_queries", { p_user_id: user.id })
+            (supabase.rpc as any)("increment_islamic_queries", { p_user_id: user.id })
+              .then(({ error }: any) => { if (!error) refetch(); });
               .then(({ error }) => { if (!error) refetch(); });
           }
           // Auto-save session after stream completes
@@ -527,9 +524,8 @@ const Research = () => {
         if (user) {
           if (import.meta.env.DEV) console.log("[Research] Incrementing research_queries_used for user:", user.id);
           // Use atomic RPC to avoid race conditions (multiple tabs / concurrent requests)
-          supabase
-            .rpc("increment_research_queries", { p_user_id: user.id })
-            .then(({ error }) => { if (!error) refetch(); });
+          (supabase.rpc as any)("increment_research_queries", { p_user_id: user.id })
+            .then(({ error }: any) => { if (!error) refetch(); });
         }
       },
       onError: (err) => { toast.error(err); setIsQuerying(false); },
@@ -592,8 +588,7 @@ const Research = () => {
     // Delete the current session from DB if one exists (silent if table missing)
     if (user && sessionIdRef.current) {
       try {
-        await supabase
-          .from("research_sessions")
+        await (supabase.from as any)("research_sessions")
           .delete()
           .eq("id", sessionIdRef.current)
           .eq("user_id", user.id);
@@ -665,9 +660,8 @@ const Research = () => {
         onDone: () => {
           setIsQuerying(false);
           if (user) {
-            supabase
-              .rpc("increment_islamic_queries", { p_user_id: user.id })
-              .then(({ error }) => { if (!error) refetch(); });
+            (supabase.rpc as any)("increment_islamic_queries", { p_user_id: user.id })
+              .then(({ error }: any) => { if (!error) refetch(); });
           }
           setMessages((prev) => { saveSession(prev, newCitationsRegen); return prev; });
         },
@@ -683,9 +677,8 @@ const Research = () => {
         onDone: () => {
           setIsQuerying(false);
           if (user) {
-            supabase
-              .rpc("increment_research_queries", { p_user_id: user.id })
-              .then(({ error }) => { if (!error) refetch(); });
+            (supabase.rpc as any)("increment_research_queries", { p_user_id: user.id })
+              .then(({ error }: any) => { if (!error) refetch(); });
           }
         },
         onError: (err) => { toast.error(err); setIsQuerying(false); },
