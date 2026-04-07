@@ -162,6 +162,94 @@ $$;
 GRANT EXECUTE ON FUNCTION public.increment_research_queries(uuid) TO authenticated;
 
 
+-- ── Islamic Research Query Tracking (Migration 20260406000002) ──────────────
+-- Add Islamic research query tracking columns to subscriptions
+-- Separate from the general research_queries_* columns
+
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS islamic_queries_used  INT4 NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS islamic_queries_limit INT4 NOT NULL DEFAULT 0;
+
+-- Set default limits per tier for existing rows
+UPDATE public.subscriptions SET islamic_queries_limit = 10  WHERE tier = 'basic';
+UPDATE public.subscriptions SET islamic_queries_limit = 100 WHERE tier = 'pro';
+UPDATE public.subscriptions SET islamic_queries_limit = 500 WHERE tier = 'ultra';
+
+-- Atomic increment RPC for Islamic queries (same pattern as increment_research_queries)
+CREATE OR REPLACE FUNCTION public.increment_islamic_queries(p_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.subscriptions
+  SET islamic_queries_used = islamic_queries_used + 1
+  WHERE user_id = p_user_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.increment_islamic_queries(uuid) TO authenticated;
+
+
+-- ── Phase 2: scholarly_documents + pgvector (Migration 20260406000000) ──────
+-- PREREQUISITE: Enable the pgvector extension in Supabase Dashboard first:
+--   Dashboard → Database → Extensions → Search "vector" → Enable
+-- Then run the contents of:
+--   supabase/migrations/20260406000000_scholarly_documents.sql
+-- (copy-paste the full file contents here, or run via supabase db push)
+
+
+-- ── Phase 2: research_sessions (Migration 20260406000001) ────────────────────
+-- Run the contents of:
+--   supabase/migrations/20260406000001_research_sessions.sql
+
+
+-- ── Phase 2: ingest_jobs (Migration 20260406000003) ──────────────────────────
+-- Run the contents of:
+--   supabase/migrations/20260406000003_ingest_jobs.sql
+
+
+-- ── Phase 2: scholarly_documents_stats helper ─────────────────────────────
+-- After ingestion, use this to monitor corpus state:
+-- SELECT * FROM scholarly_documents_stats();
+
+
+-- ── Phase 2: IVFFlat index (run AFTER first bulk import) ─────────────────────
+-- IVFFlat requires rows to be present before index creation.
+-- Run this manually after psql COPY of Tanzil + hadith-json:
+--
+-- CREATE INDEX scholarly_documents_embedding_idx
+--   ON public.scholarly_documents
+--   USING ivfflat (embedding vector_cosine_ops)
+--   WITH (lists = 100);
+--
+-- After Shamela ingestion (~6M rows), retune: lists = 2449 (≈ sqrt(6M))
+-- On Supabase Pro, upgrade to HNSW:
+-- DROP INDEX scholarly_documents_embedding_idx;
+-- CREATE INDEX scholarly_documents_embedding_hnsw_idx
+--   ON public.scholarly_documents
+--   USING hnsw (embedding vector_cosine_ops)
+--   WITH (m = 16, ef_construction = 64);
+
+
+-- ── Phase 4: api_response_cache + quota reset (Migration 20260407000000) ─────
+-- Run the contents of:
+--   supabase/migrations/20260407000000_api_response_cache.sql
+-- This adds:
+--   - api_response_cache table (24h TTL for Tier A API responses)
+--   - purge_expired_cache() function (called by reset-monthly-quotas edge fn)
+--   - reset_monthly_quotas() function (called by reset-monthly-quotas edge fn)
+
+-- ── Phase 4: Monthly quota reset schedule ─────────────────────────────────
+-- Schedule the reset-monthly-quotas edge function in Supabase Dashboard:
+--   Dashboard → Edge Functions → reset-monthly-quotas → Schedule
+--   Cron: 0 0 1 * *  (midnight UTC, 1st of every month)
+--
+-- Or invoke manually:
+--   supabase functions invoke reset-monthly-quotas
+
+
 -- ── VERIFY ──────────────────────────────────────────────────
 SELECT
   policyname,
