@@ -270,61 +270,70 @@ const Research = () => {
   }, [user]);
 
   // ── Session save/load ─────────────────────────────────────────────────────
+  // Silently no-ops if the research_sessions table hasn't been migrated yet
+  // (returns a 404/PGRST116 until the SQL migration runs in the dashboard).
   const saveSession = useCallback(async (
     updatedMessages: ChatMessage[],
     updatedCitations: CitationItem[],
   ) => {
     if (!user || updatedMessages.length === 0) return;
-    // Derive a title from the first user message (truncated)
-    const firstUser = updatedMessages.find((m) => m.role === "user");
-    const title = firstUser?.content.slice(0, 80) ?? "Research Session";
+    try {
+      const firstUser = updatedMessages.find((m) => m.role === "user");
+      const title = firstUser?.content.slice(0, 80) ?? "Research Session";
 
-    if (sessionIdRef.current) {
-      // Update existing session
-      await supabase
-        .from("research_sessions")
-        .update({
-          messages:         updatedMessages,
-          citations:        updatedCitations,
-          selected_domains: mode === "islamic" ? islamicDomains : [],
-          mode,
-          title,
-        })
-        .eq("id", sessionIdRef.current)
-        .eq("user_id", user.id);
-    } else {
-      // Create new session
-      const { data } = await supabase
-        .from("research_sessions")
-        .insert({
-          user_id:          user.id,
-          title,
-          messages:         updatedMessages,
-          citations:        updatedCitations,
-          selected_domains: mode === "islamic" ? islamicDomains : [],
-          mode,
-        })
-        .select("id")
-        .single();
-      if (data?.id) sessionIdRef.current = data.id;
+      if (sessionIdRef.current) {
+        await supabase
+          .from("research_sessions")
+          .update({
+            messages:         updatedMessages,
+            citations:        updatedCitations,
+            selected_domains: mode === "islamic" ? islamicDomains : [],
+            mode,
+            title,
+          })
+          .eq("id", sessionIdRef.current)
+          .eq("user_id", user.id);
+      } else {
+        const { data, error } = await supabase
+          .from("research_sessions")
+          .insert({
+            user_id:          user.id,
+            title,
+            messages:         updatedMessages,
+            citations:        updatedCitations,
+            selected_domains: mode === "islamic" ? islamicDomains : [],
+            mode,
+          })
+          .select("id")
+          .single();
+        if (!error && data?.id) sessionIdRef.current = data.id;
+      }
+    } catch {
+      // Table not yet migrated — session persistence silently disabled
+      if (import.meta.env.DEV) console.warn("[Research] research_sessions table not available yet");
     }
   }, [user, mode, islamicDomains]);
 
   const loadLastSession = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from("research_sessions")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("mode", mode)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from("research_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("mode", mode)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (data) {
-      sessionIdRef.current = data.id;
-      setMessages(data.messages as ChatMessage[] ?? []);
-      setCitations(data.citations as CitationItem[] ?? []);
+      if (!error && data) {
+        sessionIdRef.current = data.id;
+        setMessages(data.messages as ChatMessage[] ?? []);
+        setCitations(data.citations as CitationItem[] ?? []);
+      }
+    } catch {
+      // Table not yet migrated — start with empty session
+      if (import.meta.env.DEV) console.warn("[Research] research_sessions table not available yet");
     }
   }, [user, mode]);
 
@@ -580,13 +589,17 @@ const Research = () => {
   };
 
   const handleClearChat = async () => {
-    // Delete the current session from DB if one exists
+    // Delete the current session from DB if one exists (silent if table missing)
     if (user && sessionIdRef.current) {
-      await supabase
-        .from("research_sessions")
-        .delete()
-        .eq("id", sessionIdRef.current)
-        .eq("user_id", user.id);
+      try {
+        await supabase
+          .from("research_sessions")
+          .delete()
+          .eq("id", sessionIdRef.current)
+          .eq("user_id", user.id);
+      } catch {
+        // Ignore — table may not be migrated yet
+      }
     }
     sessionIdRef.current = null;
     setMessages([]);

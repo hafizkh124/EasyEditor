@@ -233,21 +233,158 @@ GRANT EXECUTE ON FUNCTION public.increment_islamic_queries(uuid) TO authenticate
 --   WITH (m = 16, ef_construction = 64);
 
 
+-- ── Phase 3: research_sessions table (Migration 20260406000001) ─────────────
+CREATE TABLE IF NOT EXISTS public.research_sessions (
+  id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title            TEXT,
+  messages         JSONB       NOT NULL DEFAULT '[]',
+  selected_domains TEXT[]      NOT NULL DEFAULT '{}',
+  citations        JSONB       NOT NULL DEFAULT '[]',
+  mode             TEXT        NOT NULL DEFAULT 'general',
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.research_sessions ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'research_sessions' AND policyname = 'research_sessions_users_own'
+  ) THEN
+    CREATE POLICY "research_sessions_users_own"
+      ON public.research_sessions
+      FOR ALL TO authenticated
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS research_sessions_user_id_idx
+  ON public.research_sessions (user_id, updated_at DESC);
+
+CREATE OR REPLACE FUNCTION public.touch_research_session()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS research_sessions_updated_at ON public.research_sessions;
+CREATE TRIGGER research_sessions_updated_at
+  BEFORE UPDATE ON public.research_sessions
+  FOR EACH ROW EXECUTE FUNCTION public.touch_research_session();
+
+
+-- ── Phase 3: ingest_jobs table (Migration 20260406000003) ────────────────────
+CREATE TABLE IF NOT EXISTS public.ingest_jobs (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  dataset     TEXT        NOT NULL,
+  status      TEXT        NOT NULL DEFAULT 'pending',
+  total_rows  INT,
+  processed   INT         NOT NULL DEFAULT 0,
+  errors      INT         NOT NULL DEFAULT 0,
+  started_at  TIMESTAMPTZ,
+  finished_at TIMESTAMPTZ,
+  notes       TEXT
+);
+
+ALTER TABLE public.ingest_jobs ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'ingest_jobs' AND policyname = 'ingest_jobs_service_role_all'
+  ) THEN
+    CREATE POLICY "ingest_jobs_service_role_all"
+      ON public.ingest_jobs FOR ALL TO service_role
+      USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'ingest_jobs' AND policyname = 'ingest_jobs_authenticated_read'
+  ) THEN
+    CREATE POLICY "ingest_jobs_authenticated_read"
+      ON public.ingest_jobs FOR SELECT TO authenticated USING (true);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS ingest_jobs_dataset_status_idx
+  ON public.ingest_jobs (dataset, status);
+
+
 -- ── Phase 4: api_response_cache + quota reset (Migration 20260407000000) ─────
--- Run the contents of:
---   supabase/migrations/20260407000000_api_response_cache.sql
--- This adds:
---   - api_response_cache table (24h TTL for Tier A API responses)
---   - purge_expired_cache() function (called by reset-monthly-quotas edge fn)
---   - reset_monthly_quotas() function (called by reset-monthly-quotas edge fn)
+CREATE TABLE IF NOT EXISTS public.api_response_cache (
+  cache_key  TEXT        PRIMARY KEY,
+  domain     TEXT        NOT NULL,
+  response   JSONB       NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS api_response_cache_expires_idx
+  ON public.api_response_cache (expires_at);
+
+CREATE INDEX IF NOT EXISTS api_response_cache_domain_idx
+  ON public.api_response_cache (domain);
+
+ALTER TABLE public.api_response_cache ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'api_response_cache' AND policyname = 'api_response_cache_service_role'
+  ) THEN
+    CREATE POLICY "api_response_cache_service_role"
+      ON public.api_response_cache FOR ALL TO service_role
+      USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'api_response_cache' AND policyname = 'api_response_cache_authenticated_read'
+  ) THEN
+    CREATE POLICY "api_response_cache_authenticated_read"
+      ON public.api_response_cache FOR SELECT TO authenticated USING (true);
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.purge_expired_cache()
+RETURNS INT LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE deleted_count INT;
+BEGIN
+  DELETE FROM public.api_response_cache WHERE expires_at < now();
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.purge_expired_cache() TO service_role;
+GRANT EXECUTE ON FUNCTION public.purge_expired_cache() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.reset_monthly_quotas()
+RETURNS INT LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE updated_count INT;
+BEGIN
+  UPDATE public.subscriptions
+  SET
+    transcription_seconds_used = 0,
+    tts_characters_used        = 0,
+    ocr_pages_used             = 0,
+    research_queries_used      = 0,
+    islamic_queries_used       = 0
+  WHERE tier != 'free';
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  RETURN updated_count;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.reset_monthly_quotas() TO service_role;
+GRANT EXECUTE ON FUNCTION public.reset_monthly_quotas() TO authenticated;
 
 -- ── Phase 4: Monthly quota reset schedule ─────────────────────────────────
 -- Schedule the reset-monthly-quotas edge function in Supabase Dashboard:
 --   Dashboard → Edge Functions → reset-monthly-quotas → Schedule
 --   Cron: 0 0 1 * *  (midnight UTC, 1st of every month)
---
--- Or invoke manually:
---   supabase functions invoke reset-monthly-quotas
 
 
 -- ── VERIFY ──────────────────────────────────────────────────
