@@ -63,16 +63,16 @@ const Admin = () => {
   const fetchCorpusData = useCallback(async () => {
     setCorpusLoading(true);
     const [statsRes, jobsRes, cacheRes] = await Promise.allSettled([
-      supabase.rpc("scholarly_documents_stats"),
-      supabase.from("ingest_jobs").select("*").order("started_at", { ascending: false }).limit(20),
-      supabase.from("api_response_cache").select("cache_key", { count: "exact", head: true }),
+      (supabase.rpc as any)("scholarly_documents_stats"),
+      (supabase.from as any)("ingest_jobs").select("*").order("started_at", { ascending: false }).limit(20),
+      (supabase.from as any)("api_response_cache").select("cache_key", { count: "exact", head: true }),
     ]);
 
     if (statsRes.status === "fulfilled" && !statsRes.value.error) {
-      setCorpusStats((statsRes.value.data ?? []) as CorpusStat[]);
+      setCorpusStats((statsRes.value.data ?? []) as unknown as CorpusStat[]);
     }
     if (jobsRes.status === "fulfilled" && !jobsRes.value.error) {
-      setIngestJobs((jobsRes.value.data ?? []) as IngestJob[]);
+      setIngestJobs((statsRes.value.data ?? []) as unknown as IngestJob[]);
     }
     if (cacheRes.status === "fulfilled") {
       setCacheCount(cacheRes.value.count ?? 0);
@@ -81,14 +81,14 @@ const Admin = () => {
   }, []);
 
   const handlePurgeCache = async () => {
-    const { error } = await supabase.rpc("purge_expired_cache");
+    const { error } = await (supabase.rpc as any)("purge_expired_cache");
     if (error) { toast.error(error.message); return; }
     toast.success(t("admin.cache_purged"));
     fetchCorpusData();
   };
 
   const handleResetQuotas = async () => {
-    const { error } = await supabase.rpc("reset_monthly_quotas");
+    const { error } = await (supabase.rpc as any)("reset_monthly_quotas");
     if (error) { toast.error(error.message); return; }
     toast.success(t("admin.quota_reset_done"));
   };

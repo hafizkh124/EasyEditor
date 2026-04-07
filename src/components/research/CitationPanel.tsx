@@ -6,11 +6,9 @@
  */
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookMarked, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { BookMarked, ChevronDown, ChevronUp } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CitationBadge from "./CitationBadge";
-import { cn } from "@/lib/utils";
 
 export interface CitationItem {
   domain: string;
