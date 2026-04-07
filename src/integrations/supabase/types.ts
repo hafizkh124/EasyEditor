@@ -38,6 +38,153 @@ export type Database = {
         }
         Relationships: []
       }
+      api_response_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          domain: string
+          expires_at: string
+          response: Json
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          domain: string
+          expires_at: string
+          response: Json
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          domain?: string
+          expires_at?: string
+          response?: Json
+        }
+        Relationships: []
+      }
+      email_send_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          recipient_email: string
+          status: string
+          template_name: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          recipient_email: string
+          status: string
+          template_name: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          recipient_email?: string
+          status?: string
+          template_name?: string
+        }
+        Relationships: []
+      }
+      email_send_state: {
+        Row: {
+          auth_email_ttl_minutes: number
+          batch_size: number
+          id: number
+          retry_after_until: string | null
+          send_delay_ms: number
+          transactional_email_ttl_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          auth_email_ttl_minutes?: number
+          batch_size?: number
+          id?: number
+          retry_after_until?: string | null
+          send_delay_ms?: number
+          transactional_email_ttl_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          auth_email_ttl_minutes?: number
+          batch_size?: number
+          id?: number
+          retry_after_until?: string | null
+          send_delay_ms?: number
+          transactional_email_ttl_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_unsubscribe_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
+      ingest_jobs: {
+        Row: {
+          dataset: string
+          errors: number
+          finished_at: string | null
+          id: string
+          notes: string | null
+          processed: number
+          started_at: string | null
+          status: string
+          total_rows: number | null
+        }
+        Insert: {
+          dataset: string
+          errors?: number
+          finished_at?: string | null
+          id?: string
+          notes?: string | null
+          processed?: number
+          started_at?: string | null
+          status?: string
+          total_rows?: number | null
+        }
+        Update: {
+          dataset?: string
+          errors?: number
+          finished_at?: string | null
+          id?: string
+          notes?: string | null
+          processed?: number
+          started_at?: string | null
+          status?: string
+          total_rows?: number | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -101,6 +248,42 @@ export type Database = {
         }
         Relationships: []
       }
+      research_sessions: {
+        Row: {
+          citations: Json
+          created_at: string
+          id: string
+          messages: Json
+          mode: string
+          selected_domains: string[]
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          citations?: Json
+          created_at?: string
+          id?: string
+          messages?: Json
+          mode?: string
+          selected_domains?: string[]
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          citations?: Json
+          created_at?: string
+          id?: string
+          messages?: Json
+          mode?: string
+          selected_domains?: string[]
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       research_sources: {
         Row: {
           created_at: string
@@ -131,10 +314,54 @@ export type Database = {
         }
         Relationships: []
       }
+      scholarly_documents: {
+        Row: {
+          citation_ref: Json
+          content: string
+          content_ar: string | null
+          domain: string
+          embedding: string | null
+          id: string
+          ingested_at: string
+          language: string
+          source_type: string
+          source_url: string | null
+          title: string | null
+        }
+        Insert: {
+          citation_ref?: Json
+          content: string
+          content_ar?: string | null
+          domain: string
+          embedding?: string | null
+          id?: string
+          ingested_at?: string
+          language?: string
+          source_type: string
+          source_url?: string | null
+          title?: string | null
+        }
+        Update: {
+          citation_ref?: Json
+          content?: string
+          content_ar?: string | null
+          domain?: string
+          embedding?: string | null
+          id?: string
+          ingested_at?: string
+          language?: string
+          source_type?: string
+          source_url?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
           id: string
+          islamic_queries_limit: number
+          islamic_queries_used: number
           last_upgrade_request: string | null
           ocr_pages_limit: number
           ocr_pages_used: number
@@ -154,6 +381,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          islamic_queries_limit?: number
+          islamic_queries_used?: number
           last_upgrade_request?: string | null
           ocr_pages_limit?: number
           ocr_pages_used?: number
@@ -173,6 +402,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          islamic_queries_limit?: number
+          islamic_queries_used?: number
           last_upgrade_request?: string | null
           ocr_pages_limit?: number
           ocr_pages_used?: number
@@ -188,6 +419,30 @@ export type Database = {
           updated_at?: string
           upgrade_requested?: boolean
           user_id?: string
+        }
+        Relationships: []
+      }
+      suppressed_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          metadata: Json | null
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          metadata?: Json | null
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string
         }
         Relationships: []
       }
@@ -214,12 +469,76 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_email: {
+        Args: { message_id: number; queue_name: string }
+        Returns: boolean
+      }
+      enqueue_email: {
+        Args: { payload: Json; queue_name: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_islamic_queries: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      increment_research_queries: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      match_scholarly_documents: {
+        Args: {
+          filter_domains?: string[]
+          filter_language?: string
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          citation_ref: Json
+          content: string
+          domain: string
+          id: string
+          language: string
+          similarity: number
+          source_type: string
+          source_url: string
+          title: string
+        }[]
+      }
+      move_to_dlq: {
+        Args: {
+          dlq_name: string
+          message_id: number
+          payload: Json
+          source_queue: string
+        }
+        Returns: number
+      }
+      purge_expired_cache: { Args: never; Returns: number }
+      read_email_batch: {
+        Args: { batch_size: number; queue_name: string; vt: number }
+        Returns: {
+          message: Json
+          msg_id: number
+          read_ct: number
+        }[]
+      }
+      reset_monthly_quotas: { Args: never; Returns: number }
+      scholarly_documents_stats: {
+        Args: never
+        Returns: {
+          domain: string
+          embedded: number
+          source_type: string
+          total: number
+        }[]
       }
     }
     Enums: {
