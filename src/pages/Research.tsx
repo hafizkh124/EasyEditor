@@ -478,7 +478,6 @@ const Research = () => {
             if (import.meta.env.DEV) console.log("[Research] Incrementing islamic_queries_used for user:", user.id);
             (supabase.rpc as any)("increment_islamic_queries", { p_user_id: user.id })
               .then(({ error }: any) => { if (!error) refetch(); });
-              .then(({ error }) => { if (!error) refetch(); });
           }
           // Auto-save session after stream completes
           setMessages((prev) => {
