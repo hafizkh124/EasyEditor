@@ -7,6 +7,7 @@ Usage:
   python scripts/load_quran_hadith.py --key SERVICE_ROLE_KEY --source quran --dry-run
   python scripts/load_quran_hadith.py --key SERVICE_ROLE_KEY --source hadith --resume
 
+The --key is the service_role key used to authenticate with the ingest-batch edge function.
 Expects to be run from D:\EEData (or parent of Quran/ and Hadith/ dirs).
 
 Source-of-Truth:
@@ -30,7 +31,7 @@ except ImportError:
 
 # ── Config ────────────────────────────────────────────────────────────────────
 SUPABASE_URL = "https://vdfdqtzndsrrlutbprtk.supabase.co"
-TABLE_ENDPOINT = f"{SUPABASE_URL}/rest/v1/scholarly_documents"
+EDGE_FUNCTION_ENDPOINT = f"{SUPABASE_URL}/functions/v1/ingest-batch"
 BATCH_SIZE = 500
 MAX_RETRIES = 5
 
