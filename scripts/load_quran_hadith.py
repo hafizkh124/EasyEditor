@@ -138,23 +138,23 @@ def parse_juz(path: str) -> dict:
 
 
 def upload_batch(rows, headers, dry_run=False, resume=False):
-    """Upload a batch of rows to Supabase REST API. Returns (ok_count, fail_count)."""
+    """Upload a batch of rows via the ingest-batch edge function. Returns (ok_count, fail_count)."""
     if dry_run or not rows:
         return len(rows), 0
 
-    h = dict(headers)
-    if resume:
-        h["Prefer"] = "resolution=merge-duplicates,return=minimal"
-    else:
-        h["Prefer"] = "return=minimal"
+    payload = {
+        "rows": rows,
+        "mode": "upsert" if resume else "insert",
+    }
 
     for attempt in range(MAX_RETRIES):
         try:
-            resp = requests.post(TABLE_ENDPOINT, json=rows, headers=h, timeout=30)
-            if resp.status_code in (200, 201):
-                return len(rows), 0
-            if resp.status_code == 409 and not resume:
-                # Duplicate conflict — skip
+            resp = requests.post(EDGE_FUNCTION_ENDPOINT, json=payload, headers=headers, timeout=30)
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("ok", 0), data.get("duplicates", 0)
+            if resp.status_code == 401:
+                print(f"    [ERROR] Unauthorized — check your --key value")
                 return 0, len(rows)
             if resp.status_code in (429, 500, 502, 503):
                 wait = min(2 ** attempt * 2, 30)
