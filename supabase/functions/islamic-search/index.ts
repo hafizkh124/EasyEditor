@@ -209,6 +209,53 @@ serve(async (req) => {
       );
     }
 
+    // Tier K: local DB keyword search (available to all tiers)
+    if (tierKDomains.length > 0) {
+      fanOutPromises.push(
+        (async (): Promise<IslamicResult[]> => {
+          try {
+            // Build simple tsquery from query words
+            const words = query.trim().split(/\s+/).filter(Boolean);
+            if (words.length === 0) return [];
+
+            const tsquery = words.map((w: string) => `'${w.replace(/'/g, "''")}'`).join(" & ");
+
+            // Map tier K domains to source_types
+            const sourceTypes: string[] = [];
+            if (tierKDomains.includes("tanzil")) sourceTypes.push("quran");
+            if (tierKDomains.includes("hadith-json")) sourceTypes.push("hadith");
+
+            if (sourceTypes.length === 0) return [];
+
+            const sourceFilter = sourceTypes.map(s => `source_type.eq.${s}`).join(",");
+
+            // Search both Arabic and English content
+            const { data, error } = await supabase
+              .from("scholarly_documents")
+              .select("domain, content, content_ar, citation_ref, language, source_type")
+              .or(sourceFilter)
+              .or(`content_ar.fts(simple).${query},content.fts(simple).${query}`)
+              .limit(15);
+
+            if (error) {
+              console.error("Tier K keyword search error:", error);
+              return [];
+            }
+
+            return (data ?? []).map((row: any): IslamicResult => ({
+              domain: row.domain,
+              content: row.content,
+              citation_ref: row.citation_ref ?? {},
+              language: row.language ?? "ar",
+            }));
+          } catch (e) {
+            console.error("Tier K error:", e);
+            return [];
+          }
+        })()
+      );
+    }
+
     const settled = await Promise.allSettled(fanOutPromises);
     const allResults: IslamicResult[] = [];
     for (const r of settled) {
