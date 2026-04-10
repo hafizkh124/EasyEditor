@@ -133,7 +133,7 @@ serve(async (req) => {
     }
 
     // ── 3. Filter to Tier B domains that are in scholarly_documents ───────────
-    const tierBDomains = ["hadith-index", "tanzil", "shamela-index", "openiti-index"];
+    const tierBDomains = ["hadith-index", "tanzil", "hadith-json", "shamela-index", "openiti-index"];
     const filterDomains = (selectedDomains ?? tierBDomains).filter((d: string) =>
       tierBDomains.includes(d)
     );
