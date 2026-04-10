@@ -459,9 +459,8 @@ def main():
     args = parser.parse_args()
 
     headers = {
-        "apikey": args.key,
-        "Authorization": f"Bearer {args.key}",
         "Content-Type": "application/json",
+        "x-admin-key": args.key,
     }
 
     base = os.path.abspath(args.base)
