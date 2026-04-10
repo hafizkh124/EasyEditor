@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-key",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-ingest-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -12,12 +12,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Auth: require the admin key header matching SUPABASE_SERVICE_ROLE_KEY
-    // OR use the anon key + a simple shared secret for the loader
-    const adminKey = req.headers.get("x-admin-key");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // SECURITY: Use a shared secret for ingest authorization
+    // instead of exposing the service role key to the client.
+    const ingestSecret = req.headers.get("x-ingest-secret");
+    const sharedSecret = Deno.env.get("INGEST_SHARED_SECRET");
 
-    if (!adminKey || adminKey !== serviceRoleKey) {
+    if (!ingestSecret || ingestSecret !== sharedSecret) {
+      console.error("Unauthorized ingest attempt");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -25,7 +26,10 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabase = createClient(supabaseUrl, serviceRoleKey!, {
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    
+    // Internal client uses service role key for DB operations
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
 
@@ -39,6 +43,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Protection against overly large payloads
     if (rows.length > 500) {
       return new Response(JSON.stringify({ error: "Max 500 rows per batch" }), {
         status: 400,
@@ -69,7 +74,7 @@ Deno.serve(async (req) => {
     }
 
     if (result.error) {
-      // If duplicate conflict, return partial success
+      // If duplicate conflict, return partial success (200) or error
       if (result.error.code === "23505") {
         return new Response(
           JSON.stringify({ ok: 0, duplicates: rows.length, error: result.error.message }),
