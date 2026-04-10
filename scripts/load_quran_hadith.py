@@ -7,6 +7,7 @@ Usage:
   python scripts/load_quran_hadith.py --key SERVICE_ROLE_KEY --source quran --dry-run
   python scripts/load_quran_hadith.py --key SERVICE_ROLE_KEY --source hadith --resume
 
+The --key is the service_role key used to authenticate with the ingest-batch edge function.
 Expects to be run from D:\EEData (or parent of Quran/ and Hadith/ dirs).
 
 Source-of-Truth:
@@ -30,7 +31,7 @@ except ImportError:
 
 # ── Config ────────────────────────────────────────────────────────────────────
 SUPABASE_URL = "https://vdfdqtzndsrrlutbprtk.supabase.co"
-TABLE_ENDPOINT = f"{SUPABASE_URL}/rest/v1/scholarly_documents"
+EDGE_FUNCTION_ENDPOINT = f"{SUPABASE_URL}/functions/v1/ingest-batch"
 BATCH_SIZE = 500
 MAX_RETRIES = 5
 
@@ -137,23 +138,23 @@ def parse_juz(path: str) -> dict:
 
 
 def upload_batch(rows, headers, dry_run=False, resume=False):
-    """Upload a batch of rows to Supabase REST API. Returns (ok_count, fail_count)."""
+    """Upload a batch of rows via the ingest-batch edge function. Returns (ok_count, fail_count)."""
     if dry_run or not rows:
         return len(rows), 0
 
-    h = dict(headers)
-    if resume:
-        h["Prefer"] = "resolution=merge-duplicates,return=minimal"
-    else:
-        h["Prefer"] = "return=minimal"
+    payload = {
+        "rows": rows,
+        "mode": "upsert" if resume else "insert",
+    }
 
     for attempt in range(MAX_RETRIES):
         try:
-            resp = requests.post(TABLE_ENDPOINT, json=rows, headers=h, timeout=30)
-            if resp.status_code in (200, 201):
-                return len(rows), 0
-            if resp.status_code == 409 and not resume:
-                # Duplicate conflict — skip
+            resp = requests.post(EDGE_FUNCTION_ENDPOINT, json=payload, headers=headers, timeout=30)
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("ok", 0), data.get("duplicates", 0)
+            if resp.status_code == 401:
+                print(f"    [ERROR] Unauthorized — check your --key value")
                 return 0, len(rows)
             if resp.status_code in (429, 500, 502, 503):
                 wait = min(2 ** attempt * 2, 30)
@@ -458,9 +459,8 @@ def main():
     args = parser.parse_args()
 
     headers = {
-        "apikey": args.key,
-        "Authorization": f"Bearer {args.key}",
         "Content-Type": "application/json",
+        "x-admin-key": args.key,
     }
 
     base = os.path.abspath(args.base)
