@@ -3,11 +3,11 @@
 load_quran_hadith.py — MVP Loader: Tanzil Quran + Hadith-JSON → Supabase scholarly_documents
 
 Usage:
-  python scripts/load_quran_hadith.py --key SERVICE_ROLE_KEY --source all
-  python scripts/load_quran_hadith.py --key SERVICE_ROLE_KEY --source quran --dry-run
-  python scripts/load_quran_hadith.py --key SERVICE_ROLE_KEY --source hadith --resume
+  python scripts/load_quran_hadith.py --secret INGEST_SHARED_SECRET --source all
+  python scripts/load_quran_hadith.py --secret INGEST_SHARED_SECRET --source quran --dry-run
+  python scripts/load_quran_hadith.py --secret INGEST_SHARED_SECRET --source hadith --resume
 
-The --key is the service_role key used to authenticate with the ingest-batch edge function.
+The --secret is the INGEST_SHARED_SECRET used to authenticate with the ingest-batch edge function.
 Expects to be run from D:\EEData (or parent of Quran/ and Hadith/ dirs).
 
 Source-of-Truth:
@@ -137,6 +137,30 @@ def parse_juz(path: str) -> dict:
     return juz
 
 
+def test_auth(headers) -> bool:
+    """Send a lightweight test request to verify auth before bulk upload."""
+    print("[AUTH TEST] Verifying ingest-batch authorization...")
+    test_payload = {
+        "rows": [{
+            "domain": "test",
+            "source_type": "test",
+            "content": "auth_test_ping",
+            "title": "__auth_test__",
+        }],
+        "mode": "insert",
+    }
+    try:
+        resp = requests.post(EDGE_FUNCTION_ENDPOINT, json=test_payload, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            print("[AUTH TEST] ✓ Authorization successful")
+            return True
+        print(f"[AUTH TEST] ✗ Failed with status {resp.status_code}: {resp.text[:200]}")
+        return False
+    except Exception as e:
+        print(f"[AUTH TEST] ✗ Connection error: {e}")
+        return False
+
+
 def upload_batch(rows, headers, dry_run=False, resume=False):
     """Upload a batch of rows via the ingest-batch edge function. Returns (ok_count, fail_count)."""
     if dry_run or not rows:
@@ -154,7 +178,7 @@ def upload_batch(rows, headers, dry_run=False, resume=False):
                 data = resp.json()
                 return data.get("ok", 0), data.get("duplicates", 0)
             if resp.status_code == 401:
-                print(f"    [ERROR] Unauthorized — check your --key value")
+                print(f"    [ERROR] Unauthorized — check your --secret value")
                 return 0, len(rows)
             if resp.status_code in (429, 500, 502, 503):
                 wait = min(2 ** attempt * 2, 30)
@@ -451,7 +475,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="MVP Loader: Tanzil Quran + Hadith-JSON → Supabase scholarly_documents"
     )
-    parser.add_argument("--key", required=True, help="Supabase service_role key")
+    parser.add_argument("--secret", required=True, help="INGEST_SHARED_SECRET value")
     parser.add_argument("--source", choices=["quran", "hadith", "all"], default="all")
     parser.add_argument("--base", default=".", help="Base data directory (default: current dir)")
     parser.add_argument("--dry-run", action="store_true", help="Parse and count without uploading")
@@ -460,7 +484,7 @@ def main():
 
     headers = {
         "Content-Type": "application/json",
-        "x-admin-key": args.key,
+        "x-ingest-secret": args.secret,
     }
 
     base = os.path.abspath(args.base)
@@ -470,8 +494,17 @@ def main():
     print(f"  Source: {args.source}")
     print(f"  Dry run: {args.dry_run}")
     print(f"  Resume mode: {args.resume}")
+    print(f"  Upload sources: Tanzil Quran + Hadith-JSON ONLY")
+    print(f"  (OpenITI, Shamela excluded from MVP scope)")
     print(f"{'='*60}")
     print()
+
+    if not args.dry_run:
+        if not test_auth(headers):
+            print("\n[ABORT] Authorization failed. Check your --secret value.")
+            print("  The secret must match INGEST_SHARED_SECRET configured in Lovable Cloud.")
+            sys.exit(1)
+        print()
 
     start = time.time()
     results = {}
