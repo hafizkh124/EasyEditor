@@ -16,6 +16,8 @@ const TIER_A_DOMAINS = ["dorar", "alquran", "sunnah", "quran-com", "tanzil"];
 const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
 // Tier C domains (Pro/Ultra — live scraping)
 const TIER_C_DOMAINS = ["islamqa", "islamweb", "dar-alifta"];
+// Tier K domains (Keyword — local DB full-text search, available to all)
+const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 
 function buildContextBlock(results: IslamicResult[]): string {
   if (results.length === 0) return "\n\n[No Islamic sources were retrieved for this query.]";
@@ -128,16 +130,18 @@ serve(async (req) => {
 
     // Determine allowed domains based on tier
     const tierAllowsAdvanced = tier === "pro" || tier === "ultra";
-    const effectiveDomains: string[] = (selectedDomains ?? [...TIER_A_DOMAINS]).filter((d: string) => {
+    const effectiveDomains: string[] = (selectedDomains ?? [...TIER_A_DOMAINS, ...TIER_K_DOMAINS]).filter((d: string) => {
       if (TIER_A_DOMAINS.includes(d)) return true;
+      if (TIER_K_DOMAINS.includes(d)) return true; // keyword search available to all tiers
       if ((TIER_B_DOMAINS.includes(d) || TIER_C_DOMAINS.includes(d)) && tierAllowsAdvanced) return true;
       return false;
     });
 
-    // --- Fan-out: Tier A (always), Tier B (Pro/Ultra), Tier C (Pro/Ultra) ---
+    // --- Fan-out: Tier A (always), Tier B (Pro/Ultra), Tier C (Pro/Ultra), Tier K (keyword) ---
     const tierADomains = effectiveDomains.filter((d) => TIER_A_DOMAINS.includes(d));
     const tierBDomains = effectiveDomains.filter((d) => TIER_B_DOMAINS.includes(d));
     const tierCDomains = effectiveDomains.filter((d) => TIER_C_DOMAINS.includes(d));
+    const tierKDomains = effectiveDomains.filter((d) => TIER_K_DOMAINS.includes(d));
 
     const fanOutPromises: Promise<IslamicResult[]>[] = [];
 
