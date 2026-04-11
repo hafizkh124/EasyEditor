@@ -42,19 +42,12 @@ All colors MUST be HSL.
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 0 0% 9%;
-
     --sidebar-primary: 161 93% 30%;
-
     --sidebar-primary-foreground: 151 80% 95%;
-
-    --sidebar-accent: 0 0% 32%;
-
-    --sidebar-accent-foreground: 0 0% 98%;
-
-    --sidebar-border: 0 0% 83%;
-
+    --sidebar-accent: 161 40% 94%;
+    --sidebar-accent-foreground: 161 93% 24%;
+    --sidebar-border: 0 0% 89%;
     --sidebar-ring: 161 93% 30%;
 
     --chart-1: 158 64% 51%;
@@ -124,13 +117,13 @@ All colors MUST be HSL.
     --border: 0 0% 32%;
     --input: 0 0% 32%;
     --ring: 158 64% 51%;
-    --sidebar-background: 240 5.9% 10%;
+    --sidebar-background: 0 0% 10%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 158 64% 51%;
     --sidebar-primary-foreground: 165 91% 9%;
-    --sidebar-accent: 172 66% 50%;
-    --sidebar-accent-foreground: 178 84% 10%;
-    --sidebar-border: 0 0% 32%;
+    --sidebar-accent: 160 30% 18%;
+    --sidebar-accent-foreground: 158 64% 70%;
+    --sidebar-border: 0 0% 20%;
     --sidebar-ring: 158 64% 51%;
     --chart-1: 156 71% 66%;
     --chart-2: 141 76% 73%;
