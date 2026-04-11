@@ -46,15 +46,18 @@ function buildSystemPrompt(contextBlock: string, strictMode: boolean): string {
   const modeInstruction = strictMode
     ? `STRICT SOURCE MODE:
 - You MUST answer ONLY based on the provided Islamic sources below.
-- If the answer is NOT found in the provided sources, say: "لم أجد إجابة في المصادر المتاحة" / "I could not find an answer in the available sources."
+- If the sources partially cover the topic, answer what you CAN from the sources and note what is missing.
+- Only say "لم أجد إجابة" if the sources are COMPLETELY irrelevant to the question.
 - Do NOT generate or invent any hadith text, Quran translation, or scholarly opinion.
 - Do NOT paraphrase a source in a way that changes its meaning.`
     : `REFERENCED MODE:
 - Use the provided Islamic sources as PRIMARY references.
-- You may supplement with widely-accepted Islamic knowledge, but you MUST clearly mark it: "⚠️ From general knowledge, not from provided sources."
-- Never fabricate hadith, Quran verses, or scholarly opinions.`;
+- You may supplement with widely-accepted Islamic knowledge, but you MUST clearly mark supplemental info with: "📌 معلومات عامہ / General Knowledge:"
+- Never fabricate hadith, Quran verses, or scholarly opinions.
+- Always try to answer helpfully — do not refuse if you have relevant general knowledge.`;
 
   return `You are an expert Islamic research assistant specializing in Quran, Hadith, Fiqh, and Aqeedah.
+You are helpful, knowledgeable, and always try to provide the most comprehensive answer possible using the provided sources.
 
 ${modeInstruction}
 
@@ -62,33 +65,42 @@ ANTI-HALLUCINATION RULES — CRITICAL:
 1. NEVER invent or fabricate a hadith. If you are unsure of a hadith's exact wording, say so.
 2. NEVER create a fake Quran verse or translation. Only quote what is provided in the sources.
 3. NEVER attribute a ruling or opinion to a scholar without a source reference.
-4. If sources are insufficient, clearly state: "The provided sources do not cover this topic fully."
+4. If sources are insufficient, clearly state what the sources DO cover, then note the gap.
 5. Distinguish between: (a) direct quotes from sources, (b) your summary of sources, (c) general knowledge.
 
-CITATION FORMAT — MANDATORY:
-Each source below has a CITATION_REF block. Cite inline using square brackets:
-- **Hadith**: [Collection Name, Hadith No. X] — include grade and narrator if available
-- **Quran**:  [Surah Name X:Y] — include Juz number if available
-- **Fatwa**:  [Source, Fatwa #N] — include scholar name if available
-- **Classical**: [Author, Title, Vol. X, P. Y]
+ANSWER STRUCTURE — USE THIS EXACT FORMAT:
+
+## 📝 جواب / Answer
+Start with a clear, concise answer to the question (2-3 sentences).
+
+## 📖 قرآنی دلائل / Quranic Evidence
+(Skip this section if no Quran sources are relevant)
+- Quote the Arabic verse with full diacritics
+- Provide translation immediately after
+- Cite as [Surah Name X:Y]
+
+## 📜 احادیث / Hadith Evidence
+(Skip this section if no Hadith sources are relevant)
+- Quote the hadith text (Arabic if available, then translation)
+- Cite as [Collection Name, Hadith No. X]
+- Include narrator and grade if available
+
+## 🧾 خلاصہ / Summary
+A brief 2-3 sentence summary tying the evidence together.
+
+## 📚 حوالہ جات / References
+Numbered list of all sources cited.
 
 CITATION RULES:
-- Every factual claim MUST have at least one inline citation. No uncited assertions.
-- When quoting Arabic text, always provide the citation immediately after.
-- Group related citations together when making a compound point.
-- At the end of your answer, provide a "## المراجع / References" section listing all cited sources.
-
-ANSWER STRUCTURE:
-1. **Direct Answer**: Start with a clear, concise answer to the question.
-2. **Evidence**: Present Quran verses first (if relevant), then Hadith, then scholarly opinions.
-3. **Arabic Text**: Include original Arabic text when available, followed by translation.
-4. **References Section**: End with a numbered list of all sources cited.
+- Every factual claim MUST have at least one inline citation in square brackets.
+- When quoting Arabic text, cite immediately after.
+- Use exact text from sources — do not paraphrase Arabic verses or hadith text.
 
 FORMATTING:
-- Use Markdown: headers (##), bullet points, **bold** for key terms
+- Use Markdown with the emoji headers shown above
 - Respond in the same language as the user's question (Arabic / English / Urdu)
 - For Arabic content, preserve diacritics (tashkeel) as provided in sources
-- Use RTL formatting hints when responding in Arabic
+- Use **bold** for key Islamic terms
 ${contextBlock}`;
 }
 
@@ -237,40 +249,131 @@ serve(async (req) => {
       );
     }
 
-    // Tier K: local DB keyword search (available to all tiers)
+    // Tier K: local DB keyword search with bilingual expansion (available to all tiers)
     if (tierKDomains.length > 0) {
       fanOutPromises.push(
         (async (): Promise<IslamicResult[]> => {
           try {
-            // Build simple tsquery from query words
-            const words = query.trim().split(/\s+/).filter(Boolean);
-            if (words.length === 0) return [];
-
-            const tsquery = words.map((w: string) => `'${w.replace(/'/g, "''")}'`).join(" & ");
-
             // Map tier K domains to source_types
             const sourceTypes: string[] = [];
             if (tierKDomains.includes("tanzil")) sourceTypes.push("quran");
             if (tierKDomains.includes("hadith-json")) sourceTypes.push("hadith");
-
             if (sourceTypes.length === 0) return [];
 
-            const sourceFilter = sourceTypes.map(s => `source_type.eq.${s}`).join(",");
+            // --- Bilingual query expansion ---
+            // Common Islamic term mappings: Arabic ↔ English
+            const BILINGUAL_MAP: Record<string, string[]> = {
+              "نیت": ["نية", "intention", "deeds", "الأعمال", "النيات"],
+              "نية": ["نیت", "intention", "deeds", "الأعمال", "النيات"],
+              "intention": ["نية", "النيات", "الأعمال"],
+              "niyyah": ["نية", "النيات", "intention"],
+              "الإيمان": ["iman", "faith", "belief", "ايمان"],
+              "iman": ["الإيمان", "faith", "ايمان"],
+              "faith": ["الإيمان", "iman", "ايمان"],
+              "الصلاة": ["prayer", "salah", "نماز", "صلاة"],
+              "prayer": ["الصلاة", "salah", "صلاة", "نماز"],
+              "salah": ["الصلاة", "prayer", "صلاة"],
+              "نماز": ["الصلاة", "prayer", "salah", "صلاة"],
+              "الزكاة": ["zakat", "zakah", "charity", "زکوٰة"],
+              "zakat": ["الزكاة", "زکوٰة", "charity"],
+              "الصوم": ["fasting", "صيام", "روزہ", "sawm"],
+              "fasting": ["الصوم", "صيام", "روزہ"],
+              "روزہ": ["الصوم", "صيام", "fasting"],
+              "الحج": ["hajj", "pilgrimage", "حج"],
+              "hajj": ["الحج", "حج", "pilgrimage"],
+              "التوحيد": ["tawheed", "monotheism", "توحید"],
+              "tawheed": ["التوحيد", "توحید", "monotheism"],
+              "الجنة": ["paradise", "heaven", "جنت"],
+              "paradise": ["الجنة", "جنت"],
+              "النار": ["hellfire", "hell", "جہنم"],
+              "الوضوء": ["wudu", "ablution", "وضو"],
+              "wudu": ["الوضوء", "وضو", "ablution"],
+              "الحلال": ["halal", "permissible", "حلال"],
+              "الحرام": ["haram", "forbidden", "حرام"],
+              "القرآن": ["quran", "قرآن"],
+              "الحديث": ["hadith", "حدیث"],
+              "الجهاد": ["jihad", "struggle", "جہاد"],
+              "التوبة": ["repentance", "tawbah", "توبہ"],
+              "الصبر": ["patience", "sabr", "صبر"],
+              "الشكر": ["gratitude", "shukr", "شکر"],
+              "التقوى": ["taqwa", "piety", "تقویٰ"],
+            };
 
-            // Search both Arabic and English content
-            const { data, error } = await supabase
-              .from("scholarly_documents")
-              .select("domain, content, content_ar, citation_ref, language, source_type")
-              .or(sourceFilter)
-              .or(`content_ar.fts(simple).${query},content.fts(simple).${query}`)
-              .limit(15);
-
-            if (error) {
-              console.error("Tier K keyword search error:", error);
-              return [];
+            // Expand query terms with bilingual synonyms
+            const queryWords = query.trim().split(/\s+/).filter(Boolean);
+            const expandedTerms = new Set<string>(queryWords);
+            for (const word of queryWords) {
+              const lower = word.toLowerCase();
+              if (BILINGUAL_MAP[word]) {
+                BILINGUAL_MAP[word].forEach(t => expandedTerms.add(t));
+              } else if (BILINGUAL_MAP[lower]) {
+                BILINGUAL_MAP[lower].forEach(t => expandedTerms.add(t));
+              }
             }
 
-            return (data ?? []).map((row: any): IslamicResult => ({
+            const allTerms = [...expandedTerms];
+            const sourceFilter = sourceTypes.map(s => `source_type.eq.${s}`).join(",");
+
+            // Run parallel searches: original query + expanded terms
+            const searchPromises: Promise<any[]>[] = [];
+
+            // Search 1: Original query (Arabic content)
+            searchPromises.push(
+              supabase
+                .from("scholarly_documents")
+                .select("domain, content, content_ar, citation_ref, language, source_type")
+                .or(sourceFilter)
+                .or(`content_ar.fts(simple).${query},content.fts(simple).${query}`)
+                .limit(8)
+                .then(({ data, error }) => {
+                  if (error) { console.error("Tier K search 1 error:", error); return []; }
+                  return data ?? [];
+                })
+            );
+
+            // Search 2: Expanded terms (if we have expansions beyond original)
+            const extraTerms = allTerms.filter(t => !queryWords.includes(t));
+            if (extraTerms.length > 0) {
+              // Search each expanded term individually (OR logic)
+              const expandedQuery = extraTerms.slice(0, 3).join(" | "); // top 3 expansions
+              searchPromises.push(
+                supabase
+                  .from("scholarly_documents")
+                  .select("domain, content, content_ar, citation_ref, language, source_type")
+                  .or(sourceFilter)
+                  .or(`content_ar.fts(simple).${extraTerms[0]},content.fts(simple).${extraTerms[0]}`)
+                  .limit(5)
+                  .then(({ data, error }) => {
+                    if (error) { console.error("Tier K expanded search error:", error); return []; }
+                    return data ?? [];
+                  })
+              );
+            }
+
+            const searchResults = await Promise.all(searchPromises);
+            const allRows = searchResults.flat();
+
+            // Deduplicate by content (avoid showing same hadith twice)
+            const seen = new Set<string>();
+            const unique = allRows.filter((row: any) => {
+              const key = (row.citation_ref?.hadith_number ?? "") + "|" + (row.citation_ref?.surah_number ?? "") + "|" + (row.citation_ref?.verse ?? "") + "|" + row.domain;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+
+            // Ensure mix: at least some Quran + some Hadith if both available
+            const quranResults = unique.filter((r: any) => r.source_type === "quran");
+            const hadithResults = unique.filter((r: any) => r.source_type === "hadith");
+            let mixed: any[] = [];
+            if (quranResults.length > 0 && hadithResults.length > 0) {
+              // Take up to 3 Quran + up to 5 Hadith = max 8
+              mixed = [...quranResults.slice(0, 3), ...hadithResults.slice(0, 5)];
+            } else {
+              mixed = unique.slice(0, 8);
+            }
+
+            return mixed.map((row: any): IslamicResult => ({
               domain: row.domain,
               content: row.content,
               citation_ref: row.citation_ref ?? {},
