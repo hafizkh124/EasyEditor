@@ -73,13 +73,42 @@ serve(async (req) => {
         });
       }
 
+      // Alias mapping: short names → canonical collection names in DB
+      const COLLECTION_ALIASES: Record<string, string> = {
+        bukhari: "Sahih al-Bukhari",
+        muslim: "Sahih Muslim",
+        tirmidhi: "Jami' al-Tirmidhi",
+        "abu dawud": "Sunan Abi Dawud",
+        "abu_dawud": "Sunan Abi Dawud",
+        nasai: "Sunan al-Nasa'i",
+        "ibn majah": "Sunan Ibn Majah",
+        "ibn_majah": "Sunan Ibn Majah",
+        malik: "Muwatta Malik",
+        muwatta: "Muwatta Malik",
+        nawawi: "The Forty Hadith of Imam Nawawi",
+        "nawawi 40": "The Forty Hadith of Imam Nawawi",
+        riyad: "Riyad as-Salihin",
+        "riyad as-salihin": "Riyad as-Salihin",
+        ahmad: "Musnad Ahmad ibn Hanbal",
+        "adab al-mufrad": "Al-Adab Al-Mufrad",
+        "bulugh al-maram": "Bulugh al-Maram",
+        "qudsi": "The Forty Hadith Qudsi",
+        "shamail": "Shama'il Muhammadiyah",
+        "mishkat": "Mishkat al-Masabih",
+        "shah waliullah": "The Forty Hadith of Shah Waliullah",
+      };
+
+      const resolvedCollection = collection
+        ? COLLECTION_ALIASES[collection.toLowerCase()] ?? collection
+        : undefined;
+
       let query = supabase
         .from("scholarly_documents")
         .select("id, title, content, content_ar, citation_ref, language")
         .eq("source_type", "hadith");
 
-      if (collection) {
-        query = query.eq("citation_ref->>collection", collection);
+      if (resolvedCollection) {
+        query = query.eq("citation_ref->>collection", resolvedCollection);
       }
       if (book) {
         query = query.eq("citation_ref->>book", book);
