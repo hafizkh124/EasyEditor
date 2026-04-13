@@ -6,13 +6,13 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0d9488",
-  "orientation": "portrait",
+  "orientation": "any",
   "scope": "/",
   "lang": "ur",
   "icons": [
     {
       "src": "/icon-192.png",
-      "sizes": "192x192",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
@@ -23,19 +23,5 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["productivity", "education", "utilities"],
-  "screenshots": [
-    {
-      "src": "/screenshot-wide.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    },
-    {
-      "src": "/screenshot-narrow.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ]
+  "categories": ["productivity", "education", "utilities"]
 }
