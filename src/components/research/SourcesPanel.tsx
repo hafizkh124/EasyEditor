@@ -133,7 +133,7 @@ const SourcesPanel = ({
   const islamicLimitReached = islamicQueriesLimit > 0 && islamicQueriesUsed >= islamicQueriesLimit;
 
   return (
-    <div className="lg:w-80 border-b lg:border-b-0 lg:border-e border-border bg-card flex flex-col">
+    <div className="w-full lg:w-80 lg:shrink-0 lg:max-h-full max-h-[40vh] lg:max-h-none overflow-y-auto border-b lg:border-b-0 lg:border-e border-border bg-card flex flex-col">
       {/* ── Mode Toggle ── */}
       <div className="p-3 border-b border-border space-y-2">
         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
