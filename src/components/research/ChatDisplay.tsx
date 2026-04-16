@@ -24,9 +24,11 @@ interface DocumentBoxProps {
   onDownload: () => void;
   onRegenerate?: () => void;
   t: (k: string) => string;
+  showAiTools?: boolean;
+  showDownload?: boolean;
 }
 
-const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRegenerate, t }: DocumentBoxProps) => {
+const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRegenerate, t, showAiTools = true, showDownload = true }: DocumentBoxProps) => {
   const isRtl = detectRtl(content);
 
   return (
@@ -34,31 +36,33 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRege
       className="relative rounded-xl border border-border bg-card shadow-md overflow-hidden"
       style={{ boxShadow: "0 4px 24px -4px hsl(var(--foreground) / 0.08)" }}
     >
-      <div className="flex items-center gap-1.5 p-2 border-b border-border bg-muted/50 flex-wrap">
-        <span className="text-xs font-medium text-muted-foreground mr-1 flex items-center gap-1">
-          <Sparkles className="h-3.5 w-3.5" />
-          {t("research.ai_tools")}
-        </span>
-        <Separator orientation="vertical" className="h-5" />
-        {[
-          { action: "formalize", icon: PenLine,      label: t("research.formalize") },
-          { action: "humanize",  icon: MessageSquare, label: t("research.humanize") },
-          { action: "shorten",   icon: Minimize2,     label: t("research.shorten") },
-          { action: "citations", icon: BookOpen,      label: t("research.add_sources") },
-        ].map((btn) => (
-          <Button
-            key={btn.action}
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs gap-1"
-            disabled={isRefining}
-            onClick={() => onRefine(btn.action)}
-          >
-            <btn.icon className="h-3 w-3" />
-            {btn.label}
-          </Button>
-        ))}
-      </div>
+      {showAiTools && (
+        <div className="flex items-center gap-1.5 p-2 border-b border-border bg-muted/50 flex-wrap">
+          <span className="text-xs font-medium text-muted-foreground mr-1 flex items-center gap-1">
+            <Sparkles className="h-3.5 w-3.5" />
+            {t("research.ai_tools")}
+          </span>
+          <Separator orientation="vertical" className="h-5" />
+          {[
+            { action: "formalize", icon: PenLine,      label: t("research.formalize") },
+            { action: "humanize",  icon: MessageSquare, label: t("research.humanize") },
+            { action: "shorten",   icon: Minimize2,     label: t("research.shorten") },
+            { action: "citations", icon: BookOpen,      label: t("research.add_sources") },
+          ].map((btn) => (
+            <Button
+              key={btn.action}
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              disabled={isRefining}
+              onClick={() => onRefine(btn.action)}
+            >
+              <btn.icon className="h-3 w-3" />
+              {btn.label}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {isRefining && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity duration-300">
@@ -93,10 +97,12 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRege
             <Copy className="h-3.5 w-3.5" />
             {t("research.copy")}
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={onDownload}>
-            <FileDown className="h-3.5 w-3.5" />
-            {t("research.download_report")}
-          </Button>
+          {showDownload && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={onDownload}>
+              <FileDown className="h-3.5 w-3.5" />
+              {t("research.download_report")}
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -229,10 +235,12 @@ const ChatDisplay = ({
                   <span className="hidden sm:inline">{t("research.export_bibliography")}</span>
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={onDownloadReport} className="gap-1.5">
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("research.download_report")}</span>
-              </Button>
+              {mode !== "islamic" && (
+                <Button variant="outline" size="sm" onClick={onDownloadReport} className="gap-1.5">
+                  <Download className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t("research.download_report")}</span>
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -286,6 +294,8 @@ const ChatDisplay = ({
                     onDownload={onDownloadReport}
                     onRegenerate={onRegenerate}
                     t={t}
+                    showAiTools={mode !== "islamic"}
+                    showDownload={mode !== "islamic"}
                   />
                 </motion.div>
               );
@@ -329,7 +339,7 @@ const ChatDisplay = ({
                 <span className="text-xs text-muted-foreground">
                   {showSourcesIndicator
                     ? t("research.generating_with_sources")
-                    : t("research.thinking")}
+                    : t(mode === "islamic" ? "research.thinking_islamic" : "research.thinking")}
                 </span>
               </div>
             </div>
