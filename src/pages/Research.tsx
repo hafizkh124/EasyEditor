@@ -180,9 +180,16 @@ async function streamIslamicQuery({
   }
 }
 
-// --- Default Islamic domains (Tier A — available to all paid tiers) ---
-const DEFAULT_ISLAMIC_DOMAINS = ["dorar", "sunnah", "alquran", "quran-com", "tanzil"];
-const DEFAULT_ISLAMIC_LANGUAGES = ["ar", "en"];
+// --- Islamic domains (auto-selected based on tier; UI is hidden) ---
+const ALL_ISLAMIC_DOMAINS_TIER_A = ["dorar", "sunnah", "alquran", "quran-com", "tanzil"];
+const ALL_ISLAMIC_DOMAINS_PRO = [
+  ...ALL_ISLAMIC_DOMAINS_TIER_A,
+  "hadith-index", "islamqa", "islamweb", "dar-alifta", "shamela-index", "openiti-index",
+];
+const DEFAULT_ISLAMIC_DOMAINS = ALL_ISLAMIC_DOMAINS_TIER_A;
+const DEFAULT_ISLAMIC_LANGUAGES = ["ar", "en", "ur"];
+const getAutoIslamicDomains = (tier: string) =>
+  tier === "pro" || tier === "ultra" ? ALL_ISLAMIC_DOMAINS_PRO : ALL_ISLAMIC_DOMAINS_TIER_A;
 
 const Research = () => {
   const { user, session } = useAuth();
@@ -335,6 +342,22 @@ const Research = () => {
   }, [user, mode]);
 
   useEffect(() => { loadSources(); }, [loadSources]);
+
+  // Auto-select all allowed islamic domains whenever mode is islamic or tier changes.
+  // The domain UI is hidden in islamic mode, so the user shouldn't have to manage this.
+  useEffect(() => {
+    if (mode === "islamic") {
+      const auto = getAutoIslamicDomains(tier);
+      setIslamicDomains((prev) => {
+        if (prev.length === auto.length && prev.every((d) => auto.includes(d))) return prev;
+        localStorage.setItem("islamic_domains", JSON.stringify(auto));
+        return auto;
+      });
+      // Islamic mode is always strict (answers from curated Islamic data only)
+      setStrictMode(true);
+    }
+  }, [mode, tier]);
+
   // Load session when user/mode changes
   useEffect(() => {
     sessionIdRef.current = null;
