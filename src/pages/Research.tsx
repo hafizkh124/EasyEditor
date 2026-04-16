@@ -342,6 +342,22 @@ const Research = () => {
   }, [user, mode]);
 
   useEffect(() => { loadSources(); }, [loadSources]);
+
+  // Auto-select all allowed islamic domains whenever mode is islamic or tier changes.
+  // The domain UI is hidden in islamic mode, so the user shouldn't have to manage this.
+  useEffect(() => {
+    if (mode === "islamic") {
+      const auto = getAutoIslamicDomains(tier);
+      setIslamicDomains((prev) => {
+        if (prev.length === auto.length && prev.every((d) => auto.includes(d))) return prev;
+        localStorage.setItem("islamic_domains", JSON.stringify(auto));
+        return auto;
+      });
+      // Islamic mode is always strict (answers from curated Islamic data only)
+      setStrictMode(true);
+    }
+  }, [mode, tier]);
+
   // Load session when user/mode changes
   useEffect(() => {
     sessionIdRef.current = null;

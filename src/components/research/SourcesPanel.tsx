@@ -140,57 +140,50 @@ const SourcesPanel = ({
           {t("research.mode_label")}
         </p>
         <div className="grid grid-cols-2 gap-1">
-          {(["general", "islamic"] as const).map((m) => (
+          {(["islamic", "general"] as const).map((m) => (
             <button
               key={m}
               onClick={() => onModeChange(m)}
               className={cn(
-                "rounded-md px-2 py-1.5 text-xs font-medium transition-colors text-center",
+                "rounded-md px-2 py-1.5 text-xs font-medium transition-colors text-center leading-tight",
                 mode === m
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
             >
               {t(m === "general" ? "research.mode_general" : "research.mode_islamic")}
+              {m === "general" && (
+                <span className="block text-[9px] opacity-80 font-normal">
+                  {t("research.under_construction")}
+                </span>
+              )}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── Islamic Mode Panel ── */}
-      {mode === "islamic" && (
+      {/* ── Islamic Mode Panel (domains hidden — auto-selected) ── */}
+      {mode === "islamic" && islamicQueriesLimit > 0 && (
         <div className="p-3 border-b border-border">
-          <IslamicResearchPanel
-            selectedDomains={islamicDomains}
-            onSelectedDomainsChange={onIslamicDomainsChange}
-            selectedLanguages={islamicLanguages}
-            onSelectedLanguagesChange={onIslamicLanguagesChange}
-            strictMode={strictMode}
-            onStrictModeChange={onStrictModeChange}
-            tier={tier}
-          />
-          {/* Islamic usage meter */}
-          {islamicQueriesLimit > 0 && (
-            <div className="mt-3 space-y-1.5">
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                <span>{t("research.islamic_queries_label")}</span>
-                <span className={islamicLimitReached ? "text-destructive font-medium" : ""}>
-                  {islamicQueriesUsed} / {islamicQueriesLimit}
-                </span>
-              </div>
-              <Progress
-                value={Math.min((islamicQueriesUsed / islamicQueriesLimit) * 100, 100)}
-                className="h-1"
-              />
-              {islamicLimitReached && (
-                <Link to="/pricing" className="block">
-                  <Badge variant="destructive" className="w-full justify-center text-[10px] cursor-pointer">
-                    {t("dashboard.upgrade")}
-                  </Badge>
-                </Link>
-              )}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+              <span>{t("research.islamic_queries_label")}</span>
+              <span className={islamicLimitReached ? "text-destructive font-medium" : ""}>
+                {islamicQueriesUsed} / {islamicQueriesLimit}
+              </span>
             </div>
-          )}
+            <Progress
+              value={Math.min((islamicQueriesUsed / islamicQueriesLimit) * 100, 100)}
+              className="h-1"
+            />
+            {islamicLimitReached && (
+              <Link to="/pricing" className="block">
+                <Badge variant="destructive" className="w-full justify-center text-[10px] cursor-pointer">
+                  {t("dashboard.upgrade")}
+                </Badge>
+              </Link>
+            )}
+          </div>
         </div>
       )}
 
