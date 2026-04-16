@@ -36,31 +36,33 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRege
       className="relative rounded-xl border border-border bg-card shadow-md overflow-hidden"
       style={{ boxShadow: "0 4px 24px -4px hsl(var(--foreground) / 0.08)" }}
     >
-      <div className="flex items-center gap-1.5 p-2 border-b border-border bg-muted/50 flex-wrap">
-        <span className="text-xs font-medium text-muted-foreground mr-1 flex items-center gap-1">
-          <Sparkles className="h-3.5 w-3.5" />
-          {t("research.ai_tools")}
-        </span>
-        <Separator orientation="vertical" className="h-5" />
-        {[
-          { action: "formalize", icon: PenLine,      label: t("research.formalize") },
-          { action: "humanize",  icon: MessageSquare, label: t("research.humanize") },
-          { action: "shorten",   icon: Minimize2,     label: t("research.shorten") },
-          { action: "citations", icon: BookOpen,      label: t("research.add_sources") },
-        ].map((btn) => (
-          <Button
-            key={btn.action}
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs gap-1"
-            disabled={isRefining}
-            onClick={() => onRefine(btn.action)}
-          >
-            <btn.icon className="h-3 w-3" />
-            {btn.label}
-          </Button>
-        ))}
-      </div>
+      {showAiTools && (
+        <div className="flex items-center gap-1.5 p-2 border-b border-border bg-muted/50 flex-wrap">
+          <span className="text-xs font-medium text-muted-foreground mr-1 flex items-center gap-1">
+            <Sparkles className="h-3.5 w-3.5" />
+            {t("research.ai_tools")}
+          </span>
+          <Separator orientation="vertical" className="h-5" />
+          {[
+            { action: "formalize", icon: PenLine,      label: t("research.formalize") },
+            { action: "humanize",  icon: MessageSquare, label: t("research.humanize") },
+            { action: "shorten",   icon: Minimize2,     label: t("research.shorten") },
+            { action: "citations", icon: BookOpen,      label: t("research.add_sources") },
+          ].map((btn) => (
+            <Button
+              key={btn.action}
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              disabled={isRefining}
+              onClick={() => onRefine(btn.action)}
+            >
+              <btn.icon className="h-3 w-3" />
+              {btn.label}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {isRefining && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity duration-300">
@@ -95,10 +97,12 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRege
             <Copy className="h-3.5 w-3.5" />
             {t("research.copy")}
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={onDownload}>
-            <FileDown className="h-3.5 w-3.5" />
-            {t("research.download_report")}
-          </Button>
+          {showDownload && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={onDownload}>
+              <FileDown className="h-3.5 w-3.5" />
+              {t("research.download_report")}
+            </Button>
+          )}
         </div>
       </div>
     </div>
