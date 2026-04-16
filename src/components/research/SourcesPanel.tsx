@@ -129,6 +129,8 @@ const SourcesPanel = ({
   tier,
   t,
 }: SourcesPanelProps) => {
+  // These props are kept for API compatibility but unused here (domains auto-managed in islamic mode).
+  void islamicDomains; void onIslamicDomainsChange; void islamicLanguages; void onIslamicLanguagesChange; void tier;
   const sourceIcon = (type: string) => (type === "url" ? Link2 : FileText);
   const islamicLimitReached = islamicQueriesLimit > 0 && islamicQueriesUsed >= islamicQueriesLimit;
 
