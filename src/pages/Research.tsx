@@ -180,9 +180,16 @@ async function streamIslamicQuery({
   }
 }
 
-// --- Default Islamic domains (Tier A — available to all paid tiers) ---
-const DEFAULT_ISLAMIC_DOMAINS = ["dorar", "sunnah", "alquran", "quran-com", "tanzil"];
-const DEFAULT_ISLAMIC_LANGUAGES = ["ar", "en"];
+// --- Islamic domains (auto-selected based on tier; UI is hidden) ---
+const ALL_ISLAMIC_DOMAINS_TIER_A = ["dorar", "sunnah", "alquran", "quran-com", "tanzil"];
+const ALL_ISLAMIC_DOMAINS_PRO = [
+  ...ALL_ISLAMIC_DOMAINS_TIER_A,
+  "hadith-index", "islamqa", "islamweb", "dar-alifta", "shamela-index", "openiti-index",
+];
+const DEFAULT_ISLAMIC_DOMAINS = ALL_ISLAMIC_DOMAINS_TIER_A;
+const DEFAULT_ISLAMIC_LANGUAGES = ["ar", "en", "ur"];
+const getAutoIslamicDomains = (tier: string) =>
+  tier === "pro" || tier === "ultra" ? ALL_ISLAMIC_DOMAINS_PRO : ALL_ISLAMIC_DOMAINS_TIER_A;
 
 const Research = () => {
   const { user, session } = useAuth();
