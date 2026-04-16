@@ -24,9 +24,11 @@ interface DocumentBoxProps {
   onDownload: () => void;
   onRegenerate?: () => void;
   t: (k: string) => string;
+  showAiTools?: boolean;
+  showDownload?: boolean;
 }
 
-const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRegenerate, t }: DocumentBoxProps) => {
+const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRegenerate, t, showAiTools = true, showDownload = true }: DocumentBoxProps) => {
   const isRtl = detectRtl(content);
 
   return (
