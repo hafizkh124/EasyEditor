@@ -43,7 +43,12 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const t = useCallback(
     (key: TranslationKey | string): string => {
-      return translationMap[language][key] || key;
+      const dict = translationMap[language] ?? translationMap.en ?? {};
+      const value = dict[key];
+      if (value) return value;
+      // Fallback to English if current language is missing the key
+      const enValue = translationMap.en?.[key];
+      return enValue ?? key;
     },
     [language]
   );
