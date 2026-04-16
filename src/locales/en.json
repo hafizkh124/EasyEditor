@@ -158,6 +158,7 @@
   "research.coming_soon_msg": "The AI research engine is being activated. Source-based Q&A will be available shortly.",
   "research.drop_hint": "Drag & drop PDF or DOCX here",
   "research.thinking": "Analyzing your sources…",
+  "research.thinking_islamic": "Please wait — searching trusted Islamic sources…",
   "research.copied": "Copied to clipboard!",
   "research.copy": "Copy",
   "research.ai_tools": "AI Refinement",
