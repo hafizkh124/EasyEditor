@@ -1,6 +1,6 @@
 {
-  "name": "Easy Editor by Al-Ulama",
-  "short_name": "EasyEditor",
+  "name": "Easy Editor",
+  "short_name": "Easy Editor",
   "description": "AI-powered transcription, text-to-speech, OCR, and Islamic research assistant with Urdu and English support",
   "start_url": "/",
   "display": "standalone",
