@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Link2, Upload, FileText, Trash2, Plus, Loader2, BookOpen, Globe, Lock, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Source } from "./types";
-import IslamicResearchPanel from "./IslamicResearchPanel";
+
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
