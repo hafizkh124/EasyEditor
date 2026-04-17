@@ -359,11 +359,8 @@ const Landing = () => {
       <footer className="border-t border-border/60 py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground md:flex-row">
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="" width={24} height={24} className="h-6 w-6 rounded" />
-            <span>
-              © {new Date().getFullYear()}{" "}
-              {language === "ur" ? "العلماء ایزی ایڈیٹر" : "Al-Ulama Easy Editor"}
-            </span>
+            <img src="/favicon.png" alt="" width={24} height={24} className="rounded" />
+            <span>© {new Date().getFullYear()} EasyEditor</span>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/login" className="hover:text-foreground">
