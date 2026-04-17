@@ -103,13 +103,6 @@ const Landing = () => {
 
   const plans = [
     {
-      key: "free",
-      icon: ShieldCheck,
-      price: language === "ur" ? "مفت" : "Free",
-      iconClass: "text-emerald-600",
-      bg: "bg-emerald-500/10",
-    },
-    {
       key: "basic",
       icon: Zap,
       price: "1,000 PKR",
