@@ -11,7 +11,6 @@ import {
   ScanText,
   BookOpen,
   Sparkles,
-  ShieldCheck,
   Globe,
   Check,
   ArrowRight,
