@@ -329,7 +329,7 @@ const Admin = () => {
   };
 
   if (approvalLoading || verifying) return null;
-  if (!isAdmin || !verified) return <Navigate to="/" replace />;
+  if (!isAdmin || !verified) return <Navigate to="/dashboard" replace />;
 
   const upgradeRequests = users.filter((u) => u.upgrade_requested);
 
