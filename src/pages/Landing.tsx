@@ -152,17 +152,15 @@ const Landing = () => {
               <Languages className="h-4 w-4" />
               {language === "ur" ? "EN" : "اردو"}
             </Button>
-            <Link to="/login">
-              <Button variant="ghost" size="sm">
-                {t("auth.login")}
-              </Button>
-            </Link>
-            <Link to="/signup">
-              <Button size="sm" className="gap-1">
-                {t("auth.signup")}
-                <ArrowRight className="h-4 w-4 rtl:rotate-180" />
-              </Button>
-            </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLanguage(language === "ur" ? "en" : "ur")}
+              className="gap-1.5"
+            >
+              <Languages className="h-4 w-4" />
+              {language === "ur" ? "EN" : "اردو"}
+            </Button>
           </div>
         </div>
       </header>
