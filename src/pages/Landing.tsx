@@ -152,15 +152,6 @@ const Landing = () => {
               <Languages className="h-4 w-4" />
               {language === "ur" ? "EN" : "اردو"}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLanguage(language === "ur" ? "en" : "ur")}
-              className="gap-1.5"
-            >
-              <Languages className="h-4 w-4" />
-              {language === "ur" ? "EN" : "اردو"}
-            </Button>
           </div>
         </div>
       </header>
