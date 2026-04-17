@@ -366,8 +366,8 @@
   "landing.badge": "AI for Scholars & Students",
   "landing.hero_title": "Al-Ulama Easy Editor — your AI suite for Islamic research, transcription & more",
   "landing.hero_subtitle": "Islamic GPT grounded in Quran & Hadith, plus Urdu/Arabic/English transcription, OCR, and Text-to-Speech — all in one place.",
-  "landing.cta_signup": "Get Started — Free",
-  "landing.trust_free": "Free tier available",
+  "landing.cta_signup": "Create Account",
+  "landing.trust_quran": "Grounded in Quran & Hadith",
   "landing.trust_langs": "Urdu · Arabic · English",
   "landing.features_title": "Everything you need, in one editor",
   "landing.features_subtitle": "Purpose-built tools for Islamic scholars, researchers and students.",
@@ -394,5 +394,5 @@
   "landing.plan_ultra_name": "Ultra",
   "landing.plan_ultra_desc": "10 hrs STT, 2,000 OCR pages, 500 queries plus TTS & voice cloning.",
   "landing.cta_title": "Ready to start your research?",
-  "landing.cta_subtitle": "Create a free account in under a minute. No credit card required."
+  "landing.cta_subtitle": "Create your account in under a minute and pick the plan that fits you."
 }

@@ -11,7 +11,6 @@ import {
   ScanText,
   BookOpen,
   Sparkles,
-  ShieldCheck,
   Globe,
   Check,
   ArrowRight,
@@ -102,13 +101,6 @@ const Landing = () => {
   ] as const;
 
   const plans = [
-    {
-      key: "free",
-      icon: ShieldCheck,
-      price: language === "ur" ? "مفت" : "Free",
-      iconClass: "text-emerald-600",
-      bg: "bg-emerald-500/10",
-    },
     {
       key: "basic",
       icon: Zap,
@@ -214,11 +206,11 @@ const Landing = () => {
             <div className="flex items-center gap-4 pt-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <Check className="h-4 w-4 text-primary" />
-                {t("landing.trust_free")}
+                {t("landing.trust_langs")}
               </span>
               <span className="flex items-center gap-1.5">
                 <Check className="h-4 w-4 text-primary" />
-                {t("landing.trust_langs")}
+                {t("landing.trust_quran")}
               </span>
             </div>
           </div>
@@ -321,12 +313,9 @@ const Landing = () => {
                     </h3>
                     <div className="mb-4">
                       <span className="text-2xl font-bold">{plan.price}</span>
-                      {plan.key !== "free" && (
-                        <span className="text-sm text-muted-foreground">
-                          {" "}
-                          / {t("pricing.per_month")}
-                        </span>
-                      )}
+                      <span className="text-sm text-muted-foreground">
+                        {" "}/ {t("pricing.per_month")}
+                      </span>
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {t(`landing.plan_${plan.key}_desc`)}
