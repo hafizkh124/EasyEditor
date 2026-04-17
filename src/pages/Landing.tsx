@@ -131,17 +131,15 @@ const Landing = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2.5">
             <img
-              src="/logo.png"
-              alt="Al-Ulama Easy Editor"
-              width={36}
-              height={36}
-              className="h-9 w-9 rounded-md"
+              src="/favicon.png"
+              alt="EasyEditor"
+              width={26}
+              height={26}
+              className="rounded"
             />
-            <span className="font-bold tracking-tight text-foreground">
-              {language === "ur" ? "العلماء ایزی ایڈیٹر" : "Al-Ulama Easy Editor"}
-            </span>
+            <h1 className="text-lg font-bold tracking-tight text-foreground">EasyEditor</h1>
           </Link>
 
           <div className="flex items-center gap-2">
