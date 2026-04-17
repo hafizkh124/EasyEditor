@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const baseNavItems = [
-  { path: "/", icon: Home, labelKey: "nav.home" },
+  { path: "/dashboard", icon: Home, labelKey: "nav.home" },
   { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe" },
   { path: "/speak", icon: Volume2, labelKey: "nav.speak" },
   { path: "/ocr", icon: Image, labelKey: "nav.ocr" },
@@ -177,7 +177,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* ── Desktop Sidebar ── */}
       <aside className="hidden md:flex md:w-60 lg:w-64 md:flex-col border-e border-sidebar-border bg-sidebar shrink-0">
         <div className="flex h-14 items-center px-5 border-b border-sidebar-border">
-          <Link to="/" className="flex items-center gap-2.5">
+          <Link to="/dashboard" className="flex items-center gap-2.5">
             <img src="/favicon.png" alt="EasyEditor" width={26} height={26} className="rounded" />
             <h1 className="text-lg font-bold text-foreground tracking-tight">EasyEditor</h1>
           </Link>
@@ -204,7 +204,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           />
           <aside className="fixed inset-y-0 start-0 w-72 bg-sidebar border-e border-sidebar-border z-50 flex flex-col shadow-xl">
             <div className="flex h-14 items-center justify-between px-5 border-b border-sidebar-border">
-              <Link to="/" className="flex items-center gap-2.5" onClick={() => setSidebarOpen(false)}>
+              <Link to="/dashboard" className="flex items-center gap-2.5" onClick={() => setSidebarOpen(false)}>
                 <img src="/favicon.png" alt="EasyEditor" width={26} height={26} className="rounded" />
                 <h1 className="text-lg font-bold text-foreground tracking-tight">EasyEditor</h1>
               </Link>
@@ -235,7 +235,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="h-9 w-9">
             <Menu className="h-5 w-5" />
           </Button>
-          <Link to="/" className="flex items-center gap-2 flex-1 min-w-0">
+          <Link to="/dashboard" className="flex items-center gap-2 flex-1 min-w-0">
             <img src="/favicon.png" alt="EasyEditor" width={24} height={24} className="rounded" />
             <h1 className="text-base font-bold text-foreground truncate">EasyEditor</h1>
           </Link>

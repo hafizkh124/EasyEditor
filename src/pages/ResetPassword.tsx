@@ -30,7 +30,7 @@ const ResetPassword = () => {
       toast.error(error.message);
     } else {
       toast.success("Password updated successfully!");
-      navigate("/");
+      navigate("/dashboard");
     }
     setIsLoading(false);
   };
