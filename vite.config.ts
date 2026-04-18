@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+import { VitePWA } from "vite-plugin-pwa";
 
 const FALLBACK_SUPABASE_PROJECT_ID = "vdfdqtzndsrrlutbprtk";
 const FALLBACK_SUPABASE_URL = `https://${FALLBACK_SUPABASE_PROJECT_ID}.supabase.co`;
@@ -31,7 +32,29 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(supabasePublishableKey),
       "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(supabaseProjectId),
     },
-    plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+    plugins: [
+      react(),
+      mode === "development" && componentTagger(),
+      // Service worker is ONLY for update-detection (no offline caching of app data).
+      // We precache the app shell so the browser can detect a new build and prompt the user.
+      VitePWA({
+        registerType: "prompt",
+        injectRegister: null, // we register manually in src/pwa/registerSW.ts with iframe/preview guards
+        devOptions: {
+          enabled: false,
+        },
+        manifest: false, // we keep using the existing /manifest.json
+        workbox: {
+          // App shell only — no runtime caching of API/Supabase responses.
+          globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
+          navigateFallback: "/index.html",
+          navigateFallbackDenylist: [/^\/~oauth/, /^\/api/],
+          cleanupOutdatedCaches: true,
+          clientsClaim: false,
+          skipWaiting: false,
+        },
+      }),
+    ].filter(Boolean),
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
