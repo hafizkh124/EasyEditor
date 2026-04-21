@@ -208,7 +208,7 @@ const ChatDisplay = ({
   onRegenerate,
   sources,
   researchLimitReached,
-  chatEndRef,
+  chatEndRef: _chatEndRef,
   t,
   mode = "general",
   sourcesReadyInfo,
@@ -261,7 +261,7 @@ const ChatDisplay = ({
     return items;
   }, [messages, mode, citations.length, showSourcesIndicator, isQuerying]);
 
-  const listRef = useRef<List>(null);
+  const listRef = useRef<any>(null);
   const rowHeights = useRef<Record<number, number>>({});
   const lastScrollTime = useRef(0);
 
@@ -451,7 +451,7 @@ const ChatDisplay = ({
 
       <div className="flex-1 p-4 w-full h-full relative">
         <AutoSizer>
-          {({ height, width }) => (
+          {({ height, width }: { height: number; width: number }) => (
             <List
               ref={listRef}
               height={height}
@@ -460,7 +460,7 @@ const ChatDisplay = ({
               itemSize={getRowHeight}
               className="max-w-3xl mx-auto"
             >
-              {({ index, style }) => (
+              {({ index, style }: { index: number; style: React.CSSProperties }) => (
                 <Row index={index} style={style} />
               )}
             </List>
