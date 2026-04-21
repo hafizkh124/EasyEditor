@@ -47,7 +47,7 @@ ${contextBlock}`;
 }
 
 async function fetchIslamicContext(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   text: string,
   lovableKey: string,
 ): Promise<string> {
