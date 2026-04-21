@@ -47,7 +47,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
   const {
     user, session, mode, tier, sources, strictMode,
     islamicDomains, islamicLanguages,
-    researchLimitReached, islamicLimitReached, refetch,
+    researchLimitReached, islamicLimitReached, assistModes, refetch,
   } = args;
   const { t } = useLanguage();
 

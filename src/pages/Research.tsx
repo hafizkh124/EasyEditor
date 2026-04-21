@@ -100,6 +100,7 @@ const Research = () => {
     islamicLanguages,
     researchLimitReached,
     islamicLimitReached,
+    assistModes,
     refetch,
   });
 
