@@ -1,7 +1,9 @@
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { VariableSizeList as List } from "react-window";
+import AutoSizer from "react-virtualized-auto-sizer";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Send, Loader2, Download, BookOpen, Copy, Sparkles,
   PenLine, MessageSquare, Minimize2, FileDown, Trash2, RefreshCw,
@@ -15,6 +17,11 @@ import { toast } from "sonner";
 import type { ChatMessage } from "./types";
 import type { Source } from "./types";
 import CitationPanel, { type CitationItem } from "./CitationPanel";
+import SpellingResponse from "./SpellingResponse";
+import CitationResponse from "./CitationResponse";
+import ModeChips from "./ModeChips";
+import type { ResearchAssistMode } from "@/lib/prompts";
+import type { ResearchMode } from "./ResearchModeSwitcher";
 
 interface DocumentBoxProps {
   content: string;
@@ -167,12 +174,15 @@ interface ChatDisplayProps {
   chatEndRef: React.RefObject<HTMLDivElement>;
   t: (k: string) => string;
   // Phase 3 additions
-  mode?: "general" | "islamic";
+  mode?: ResearchMode;
   sourcesReadyInfo?: { count: number; domains: string[] } | null;
   citations?: CitationItem[];
   // Phase 4
   onExportBibliography?: () => void;
   canExportBibliography?: boolean;
+  // Phase 3 assist chips
+  assistModes?: ResearchAssistMode[];
+  onAssistModesChange?: (modes: ResearchAssistMode[]) => void;
 }
 
 const ChatDisplay = ({
@@ -197,6 +207,8 @@ const ChatDisplay = ({
   citations = [],
   onExportBibliography,
   canExportBibliography = false,
+  assistModes = [],
+  onAssistModesChange,
 }: ChatDisplayProps) => {
   const isRtlQuery = detectRtl(query);
 
@@ -208,8 +220,199 @@ const ChatDisplay = ({
   // Show sources indicator when we have fetched sources AND are still querying
   const showSourcesIndicator = mode === "islamic" && sourcesReadyInfo != null && sourcesReadyInfo.count > 0;
 
-  // In Islamic mode, suppress the "no sources" warning (user doesn't add sources in Islamic mode)
-  const showNoSourcesWarning = mode === "general" && sources.length === 0;
+  // In Islamic/General mode, suppress the "no sources" warning.
+  // Only warn in Custom (user-provided sources) mode when empty.
+  const showNoSourcesWarning = mode === "custom" && sources.length === 0;
+
+  type ListItem =
+    | { type: "empty" }
+    | { type: "citations" }
+    | { type: "message"; index: number; msg: ChatMessage }
+    | { type: "sources_ready" }
+    | { type: "typing" }
+    | { type: "spacer" };
+
+  const listItems = useMemo(() => {
+    const items: ListItem[] = [];
+    if (messages.length === 0) {
+      items.push({ type: "empty" });
+    }
+    if (mode === "islamic" && citations.length > 0) {
+      items.push({ type: "citations" });
+    }
+    messages.forEach((msg, i) => {
+      items.push({ type: "message", index: i, msg });
+    });
+    if (showSourcesIndicator && isQuerying) {
+      items.push({ type: "sources_ready" });
+    }
+    if (isQuerying && messages[messages.length - 1]?.role !== "assistant") {
+      items.push({ type: "typing" });
+    }
+    items.push({ type: "spacer" });
+    return items;
+  }, [messages, mode, citations.length, showSourcesIndicator, isQuerying]);
+
+  const listRef = useRef<List>(null);
+  const rowHeights = useRef<Record<number, number>>({});
+  const lastScrollTime = useRef(0);
+
+  const setRowHeight = useCallback((index: number, size: number) => {
+    const paddedSize = size + 16; // space-y-4 equivalent
+    if (rowHeights.current[index] !== paddedSize) {
+      rowHeights.current[index] = paddedSize;
+      listRef.current?.resetAfterIndex(index);
+    }
+  }, []);
+
+  const getRowHeight = useCallback((index: number) => {
+    return rowHeights.current[index] || 80;
+  }, []);
+
+  // Throttled Auto-scroll
+  useEffect(() => {
+    if (isQuerying && listRef.current) {
+      const now = Date.now();
+      if (now - lastScrollTime.current > 150) {
+        listRef.current.scrollToItem(listItems.length - 1, "end");
+        lastScrollTime.current = now;
+      }
+    }
+  }, [messages, isQuerying, listItems.length]);
+
+  const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
+    const item = listItems[index];
+    const rowRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (!rowRef.current) return;
+      const observer = new ResizeObserver((entries) => {
+        if (entries[0]) {
+          setRowHeight(index, entries[0].borderBoxSize[0].blockSize);
+        }
+      });
+      observer.observe(rowRef.current);
+      return () => observer.disconnect();
+    }, [item, index, setRowHeight]);
+
+    let content = null;
+
+    if (item.type === "empty") {
+      content = (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <BookOpen className="h-12 w-12 text-muted-foreground/40 mb-4" />
+          <h3 className="text-lg font-medium text-foreground">
+            {mode === "islamic" ? t("research.welcome_islamic") : t("research.welcome")}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+            {mode === "islamic" ? t("research.welcome_islamic_hint") : t("research.welcome_hint")}
+          </p>
+        </div>
+      );
+    } else if (item.type === "citations") {
+      content = <CitationPanel citations={citations} t={t} />;
+    } else if (item.type === "message") {
+      const msg = item.msg;
+      const isLastAssistant = msg.role === "assistant" && item.index === messages.length - 1 - lastAssistantIdx;
+
+      if (msg.role === "user") {
+        const isRtl = detectRtl(msg.content);
+        content = (
+          <div className="flex justify-end">
+            <div className="rounded-2xl px-4 py-2.5 max-w-[85%] text-sm bg-primary text-primary-foreground">
+              <div dir={isRtl ? "rtl" : "ltr"} className={cn("whitespace-pre-wrap", isRtl && "text-right")}>
+                {msg.content}
+              </div>
+            </div>
+          </div>
+        );
+      } else if (msg.assist) {
+        content = (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+            <div className="space-y-4 max-w-3xl">
+              {msg.assist.promptKey === "spelling" && (
+                <SpellingResponse original="" corrected={msg.assist.corrected} changes={msg.assist.changes} t={t} />
+              )}
+              {msg.assist.promptKey === "citations" && (
+                <CitationResponse text={msg.assist.text} citations={msg.assist.citations} t={t} />
+              )}
+              {msg.assist.promptKey === "combined" && (
+                <>
+                  <SpellingResponse original="" corrected={msg.assist.corrected} changes={msg.assist.changes} t={t} />
+                  <CitationResponse text={msg.assist.text} citations={msg.assist.citations} t={t} />
+                </>
+              )}
+            </div>
+          </motion.div>
+        );
+      } else if (isLastAssistant) {
+        content = (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+            <DocumentBox
+              content={msg.content}
+              isRefining={isRefining}
+              onRefine={onRefine}
+              onCopy={onCopyOutput}
+              onDownload={onDownloadReport}
+              onRegenerate={onRegenerate}
+              t={t}
+            />
+          </motion.div>
+        );
+      } else {
+        const isRtl = detectRtl(msg.content);
+        content = (
+          <div className="flex justify-start group">
+            <div className="rounded-2xl px-4 py-2.5 max-w-[85%] text-sm bg-muted text-foreground border border-border relative">
+              <div dir={isRtl ? "rtl" : "ltr"} className={cn("prose prose-sm dark:prose-invert max-w-none", isRtl && "text-right")}>
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              </div>
+              <button
+                onClick={() => copyMessage(msg.content)}
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-muted-foreground hover:text-foreground hover:bg-background"
+                title={t("research.copy")}
+              >
+                <Copy className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        );
+      }
+    } else if (item.type === "sources_ready") {
+      content = (
+        <AnimatePresence>
+          <SourcesReadyIndicator
+            count={sourcesReadyInfo!.count}
+            domains={sourcesReadyInfo!.domains}
+            t={t}
+          />
+        </AnimatePresence>
+      );
+    } else if (item.type === "typing") {
+      content = (
+        <div className="flex justify-start">
+          <div className="rounded-2xl px-4 py-3 bg-muted border border-border flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-xs text-muted-foreground">
+              {showSourcesIndicator
+                ? t("research.generating_with_sources")
+                : t("research.thinking")}
+            </span>
+          </div>
+        </div>
+      );
+    } else if (item.type === "spacer") {
+      content = <div className="h-4" />;
+    }
+
+    return (
+      <div style={style}>
+        <div ref={rowRef} className="pb-4">
+          {content}
+        </div>
+      </div>
+    );
+  }, [listItems, messages.length, lastAssistantIdx, citations, mode, isRefining, sourcesReadyInfo, onRefine, onCopyOutput, onDownloadReport, onRegenerate, showSourcesIndicator, setRowHeight, t]);
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -238,109 +441,32 @@ const ChatDisplay = ({
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4 max-w-3xl mx-auto">
-          {/* Empty state */}
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <BookOpen className="h-12 w-12 text-muted-foreground/40 mb-4" />
-              <h3 className="text-lg font-medium text-foreground">
-                {mode === "islamic" ? t("research.welcome_islamic") : t("research.welcome")}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                {mode === "islamic" ? t("research.welcome_islamic_hint") : t("research.welcome_hint")}
-              </p>
-            </div>
+      <div className="flex-1 p-4 w-full h-full relative">
+        <AutoSizer>
+          {({ height, width }) => (
+            <List
+              ref={listRef}
+              height={height}
+              width={width}
+              itemCount={listItems.length}
+              itemSize={getRowHeight}
+              className="max-w-3xl mx-auto"
+            >
+              {({ index, style }) => (
+                <Row index={index} style={style} />
+              )}
+            </List>
           )}
-
-          {/* Citation panel — shows accumulated session citations (Islamic mode) */}
-          {mode === "islamic" && citations.length > 0 && (
-            <CitationPanel citations={citations} t={t} />
-          )}
-
-          {/* Message list */}
-          {messages.map((msg, i) => {
-            const isLastAssistant = msg.role === "assistant" && i === messages.length - 1 - lastAssistantIdx;
-
-            if (msg.role === "user") {
-              const isRtl = detectRtl(msg.content);
-              return (
-                <div key={i} className="flex justify-end">
-                  <div className="rounded-2xl px-4 py-2.5 max-w-[85%] text-sm bg-primary text-primary-foreground">
-                    <div dir={isRtl ? "rtl" : "ltr"} className={cn("whitespace-pre-wrap", isRtl && "text-right")}>
-                      {msg.content}
-                    </div>
-                  </div>
-                </div>
-              );
-            }
-
-            if (isLastAssistant) {
-              return (
-                <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                  <DocumentBox
-                    content={msg.content}
-                    isRefining={isRefining}
-                    onRefine={onRefine}
-                    onCopy={onCopyOutput}
-                    onDownload={onDownloadReport}
-                    onRegenerate={onRegenerate}
-                    t={t}
-                  />
-                </motion.div>
-              );
-            }
-
-            const isRtl = detectRtl(msg.content);
-            return (
-              <div key={i} className="flex justify-start group">
-                <div className="rounded-2xl px-4 py-2.5 max-w-[85%] text-sm bg-muted text-foreground border border-border relative">
-                  <div dir={isRtl ? "rtl" : "ltr"} className={cn("prose prose-sm dark:prose-invert max-w-none", isRtl && "text-right")}>
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
-                  <button
-                    onClick={() => copyMessage(msg.content)}
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-muted-foreground hover:text-foreground hover:bg-background"
-                    title={t("research.copy")}
-                  >
-                    <Copy className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Sources ready indicator (Islamic mode, shown while streaming) */}
-          <AnimatePresence>
-            {showSourcesIndicator && isQuerying && (
-              <SourcesReadyIndicator
-                count={sourcesReadyInfo!.count}
-                domains={sourcesReadyInfo!.domains}
-                t={t}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Typing / loading indicator */}
-          {isQuerying && messages[messages.length - 1]?.role !== "assistant" && (
-            <div className="flex justify-start">
-              <div className="rounded-2xl px-4 py-3 bg-muted border border-border flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-xs text-muted-foreground">
-                  {showSourcesIndicator
-                    ? t("research.generating_with_sources")
-                    : t("research.thinking")}
-                </span>
-              </div>
-            </div>
-          )}
-
-          <div ref={chatEndRef} />
-        </div>
-      </ScrollArea>
+        </AutoSizer>
+      </div>
 
       {/* Input area */}
       <div className="p-4 border-t border-border space-y-2">
+        {onAssistModesChange && (
+          <div className="max-w-3xl mx-auto">
+            <ModeChips modes={assistModes} onModesChange={onAssistModesChange} disabled={isQuerying} t={t} />
+          </div>
+        )}
         {showNoSourcesWarning && (
           <div className="flex items-center gap-2 max-w-3xl mx-auto rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-3 py-2">
             <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />

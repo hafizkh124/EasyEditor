@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useLimitReached } from "@/hooks/useLimitReached";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import AudioWaveform from "@/components/AudioWaveform";
 import { logActivity } from "@/lib/activityLog";
+import { usePageSession } from "@/hooks/usePageSession";
 import VoiceSelector from "@/components/speak/VoiceSelector";
 import TextInputArea from "@/components/speak/TextInputArea";
 import type { Persona, VoiceMode } from "@/components/speak/types";
@@ -42,7 +44,7 @@ const Speak = () => {
 
   // Tracks chars used this session for optimistic UI (resets on page reload, which is fine)
   const [sessionCharsUsed, setSessionCharsUsed] = useState(0);
-  const ttsCharsUsed = (subscription?.tts_characters_used ?? 0) + sessionCharsUsed;
+  const { used: ttsCharsUsed, limit: charLimit } = useLimitReached("tts", sessionCharsUsed);
 
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("standard");
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
@@ -52,7 +54,26 @@ const Speak = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const charLimit = subscription?.tts_character_limit ?? 0;
+  const handleRestoreSession = useCallback((metadata: { text?: string; personaId?: string; speed?: number; voiceMode?: VoiceMode }) => {
+    if (typeof metadata.text === "string") setText(metadata.text);
+    if (typeof metadata.speed === "number") setSpeed(metadata.speed);
+    if (metadata.voiceMode === "standard" || metadata.voiceMode === "cloned") setVoiceMode(metadata.voiceMode);
+    if (metadata.personaId) {
+      const p = personas.find((x) => x.id === metadata.personaId);
+      if (p) setSelectedPersona(p);
+    }
+  }, []);
+  const { save: saveSession } = usePageSession<{ text: string; personaId: string; speed: number; voiceMode: VoiceMode }>({
+    section: "speak",
+    onRestore: handleRestoreSession,
+  });
+  const persistTTS = useCallback((spoken: string) => {
+    if (!spoken.trim()) return;
+    saveSession({
+      title: spoken.slice(0, 80),
+      metadata: { text: spoken, personaId: selectedPersona.id, speed, voiceMode },
+    });
+  }, [saveSession, selectedPersona.id, speed, voiceMode]);
 
   useEffect(() => {
     const navState = location.state as { text?: string } | null;
@@ -145,8 +166,8 @@ const Speak = () => {
         localStorage.setItem(`cloned-voice-name-${user.id}`, file.name);
         toast.success(t("tts.clone_success"));
       }
-    } catch (err: any) {
-      toast.error(err.message || t("tts.clone_error"));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("tts.clone_error"));
     } finally {
       setIsCloning(false);
     }
@@ -244,11 +265,13 @@ const Speak = () => {
 
       await audio.play();
       logActivity("tts", text.slice(0, 60));
+      persistTTS(text);
     } catch (err) {
       if (import.meta.env.DEV) console.error("TTS error:", err);
       toast.error(t("tts.fallback_browser"));
       playWithBrowserTTS(text);
       logActivity("tts", text.slice(0, 60));
+      persistTTS(text);
     }
   };
 

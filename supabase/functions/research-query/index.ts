@@ -1,6 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
+import {
+  NORMAL_SYSTEM_PROMPT,
+  STRICT_INSTRUCTION_ON,
+  STRICT_INSTRUCTION_OFF,
+  SPELLING_SYSTEM_PROMPT,
+  CITATIONS_SYSTEM_PROMPT,
+  COMBINED_SYSTEM_PROMPT,
+  pickPromptKey,
+  type ResearchAssistMode,
+} from "../_shared/researchPrompts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -150,7 +160,20 @@ serve(async (req) => {
       return rateLimitResponse(corsHeaders);
     }
 
-    const { query, sources, strictMode, chatHistory } = await req.json();
+    const body = await req.json();
+    const {
+      query,
+      sources,
+      strictMode,
+      chatHistory,
+      modes: rawModes,
+    }: {
+      query?: string;
+      sources?: unknown[];
+      strictMode?: boolean;
+      chatHistory?: Array<{ role: string; content: string }>;
+      modes?: unknown;
+    } = body ?? {};
 
     if (!query) {
       return new Response(JSON.stringify({ error: "Query is required" }), {
@@ -158,6 +181,11 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const modes: ResearchAssistMode[] = Array.isArray(rawModes)
+      ? (rawModes.filter((m) => m === "spelling" || m === "citations") as ResearchAssistMode[])
+      : [];
+    const promptKey = pickPromptKey(modes);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -196,25 +224,27 @@ serve(async (req) => {
       ? `\n\nHere are the research sources provided by the user:\n\n${contextParts.join("\n\n")}`
       : "\n\n[No sources have been provided yet.]";
 
-    const strictInstruction = strictMode
-      ? "You MUST answer ONLY based on the provided sources. If the answer is not found in the sources, say so clearly. Do NOT use any external knowledge."
-      : "Use the provided sources as primary references, but you may also use your general knowledge to provide a comprehensive answer. Clearly distinguish between information from sources and your own knowledge.";
+    const strictInstruction = strictMode ? STRICT_INSTRUCTION_ON : STRICT_INSTRUCTION_OFF;
 
-    const systemPrompt = `You are an expert research assistant. Your job is to help users understand and analyze their research sources.
+    // Assist modes (spelling / citations / combined) return strict JSON and
+    // skip sources/chat history — input is just the user's text to edit.
+    const isAssistMode = promptKey !== "normal";
 
-${strictInstruction}
+    let systemPrompt: string;
+    if (promptKey === "spelling") systemPrompt = SPELLING_SYSTEM_PROMPT;
+    else if (promptKey === "citations") systemPrompt = CITATIONS_SYSTEM_PROMPT;
+    else if (promptKey === "combined") systemPrompt = COMBINED_SYSTEM_PROMPT;
+    else {
+      systemPrompt = NORMAL_SYSTEM_PROMPT
+        .replace("{{STRICT_INSTRUCTION}}", strictInstruction)
+        .replace("{{CONTEXT_BLOCK}}", contextBlock);
+    }
 
-IMPORTANT RULES:
-1. Always cite your sources. When referencing information, mention the source name (e.g., "According to [Source Name]..." or "As mentioned in [File Name]...").
-2. Format your responses using Markdown: use **bold**, bullet points, numbered lists, and headers where appropriate.
-3. Support both English and Urdu queries. Respond in the same language as the user's question.
-4. Be thorough but concise. Provide well-structured answers.
-5. If multiple sources contain relevant information, synthesize them and note where each piece comes from.
-${contextBlock}`;
+    const messages: Array<{ role: string; content: string }> = [
+      { role: "system", content: systemPrompt },
+    ];
 
-    const messages: any[] = [{ role: "system", content: systemPrompt }];
-
-    if (chatHistory && chatHistory.length > 0) {
+    if (!isAssistMode && chatHistory && chatHistory.length > 0) {
       for (const msg of chatHistory) {
         messages.push({ role: msg.role, content: msg.content });
       }
@@ -231,7 +261,8 @@ ${contextBlock}`;
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages,
-        stream: true,
+        stream: !isAssistMode,
+        ...(isAssistMode ? { response_format: { type: "json_object" } } : {}),
       }),
     });
 
@@ -253,7 +284,29 @@ ${contextBlock}`;
       });
     }
 
-    // Stream the SSE response back to the client
+    if (isAssistMode) {
+      const completion = await response.json();
+      const raw: string = completion?.choices?.[0]?.message?.content ?? "";
+      let parsed: unknown = null;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        // Fallback: strip ```json fences if model ignored json_object directive
+        const stripped = raw.replace(/```json\s*|\s*```/g, "").trim();
+        try { parsed = JSON.parse(stripped); } catch { parsed = null; }
+      }
+      if (!parsed || typeof parsed !== "object") {
+        console.error("[research-query] assist mode returned unparseable JSON:", raw.slice(0, 500));
+        return new Response(JSON.stringify({ error: "Model returned malformed response" }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ promptKey, ...parsed }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Normal mode — stream the SSE response back to the client
     return new Response(response.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });

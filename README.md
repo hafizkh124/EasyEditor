@@ -44,6 +44,9 @@ The app will be available at `http://localhost:8080`.
 
 ### Environment Variables
 
+**Security:** `.env` is gitignored and must never be committed. The app will fail to
+start if any of the three required `VITE_SUPABASE_*` variables are missing.
+
 Copy `.env.example` to `.env` and provide:
 
 ```
@@ -52,12 +55,15 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-anon-key
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 ```
 
-Supabase Edge Functions also require these secrets (set via Supabase dashboard):
+Supabase Edge Functions read their secrets from the Supabase project, **not** from
+`.env`. Set them via the Supabase dashboard or CLI:
 
-```
-SUPABASE_SERVICE_ROLE_KEY
-LOVABLE_API_KEY
-GEMINI_API_KEY
+```sh
+supabase secrets set \
+  SUPABASE_SERVICE_ROLE_KEY=... \
+  LOVABLE_API_KEY=... \
+  GEMINI_API_KEY=... \
+  INGEST_SHARED_SECRET=...
 ```
 
 ## Available Scripts

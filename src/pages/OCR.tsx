@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useLimitReached } from "@/hooks/useLimitReached";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,17 +18,17 @@ import AppLayout from "@/components/AppLayout";
 import ImageCropper from "@/components/ImageCropper";
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activityLog";
+import { usePageSession } from "@/hooks/usePageSession";
 import { isRtlText } from "@/utils/textUtils";
 
 const OCR = () => {
   const { user, session } = useAuth();
   const { t } = useLanguage();
-  const { subscription, refetch } = useSubscription();
+  const { refetch } = useSubscription();
   const navigate = useNavigate();
 
-  const ocrPagesUsed = subscription?.ocr_pages_used ?? 0;
-  const ocrPagesLimit = subscription?.ocr_pages_limit ?? 5;
-  const ocrLimitReached = ocrPagesLimit > 0 && ocrPagesUsed >= ocrPagesLimit;
+  const { used: ocrPagesUsed, limit: ocrPagesLimitRaw, reached: ocrLimitReached } = useLimitReached("ocr");
+  const ocrPagesLimit = ocrPagesLimitRaw || 5; // legacy default when tier has no explicit limit
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string>("image/jpeg");
@@ -40,16 +41,24 @@ const OCR = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const setImageFromDataUrl = (dataUrl: string, mimeType?: string) => {
+  const handleRestoreSession = useCallback((metadata: { extractedText?: string }) => {
+    if (typeof metadata.extractedText === "string") setExtractedText(metadata.extractedText);
+  }, []);
+  const { save: saveSession } = usePageSession<{ extractedText: string }>({
+    section: "ocr",
+    onRestore: handleRestoreSession,
+  });
+
+  const setImageFromDataUrl = useCallback((dataUrl: string, mimeType?: string) => {
     setImagePreview(dataUrl);
     const base64 = dataUrl.split(",")[1];
     setImageBase64(base64);
     if (mimeType) setImageMimeType(mimeType);
     setExtractedText("");
     setIsCropping(false);
-  };
+  }, []);
 
-  const handleFile = (file: File) => {
+  const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {
       toast.error(t("ocr.invalid_file"));
       return;
@@ -65,7 +74,7 @@ const OCR = () => {
       setImageFromDataUrl(dataUrl, file.type);
     };
     reader.readAsDataURL(file);
-  };
+  }, [t, setImageFromDataUrl]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,7 +96,7 @@ const OCR = () => {
     setIsDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) handleFile(file);
-  }, []);
+  }, [handleFile]);
 
   const clearImage = () => {
     setImagePreview(null);
@@ -144,6 +153,7 @@ const OCR = () => {
       } else {
         toast.success(t("ocr.success"));
         logActivity("ocr", text.slice(0, 60));
+        saveSession({ title: text.slice(0, 80), metadata: { extractedText: text } });
         if (autoCopy) {
           await navigator.clipboard.writeText(text);
           toast.info(t("ocr.auto_copied"));

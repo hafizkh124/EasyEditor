@@ -30,7 +30,10 @@ except ImportError:
     sys.exit(1)
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SUPABASE_URL = "https://vdfdqtzndsrrlutbprtk.supabase.co"
+SUPABASE_URL = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
+if not SUPABASE_URL:
+    print("ERROR: set SUPABASE_URL (or VITE_SUPABASE_URL) in the environment.")
+    sys.exit(1)
 EDGE_FUNCTION_ENDPOINT = f"{SUPABASE_URL}/functions/v1/ingest-batch"
 BATCH_SIZE = 500
 MAX_RETRIES = 5

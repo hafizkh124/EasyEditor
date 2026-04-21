@@ -1,17 +1,16 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Link2, Upload, FileText, Trash2, Plus, Loader2, BookOpen, Globe, Lock, AlertTriangle } from "lucide-react";
+import { Link2, Upload, FileText, Trash2, Loader2, BookOpen, Globe, Lock, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Source } from "./types";
 import IslamicResearchPanel from "./IslamicResearchPanel";
-import { cn } from "@/lib/utils";
+import type { ResearchMode } from "./ResearchModeSwitcher";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,15 +41,16 @@ interface SourcesPanelProps {
   researchQueriesLimit: number;
   researchLimitReached: boolean;
   showUsageMeter: boolean;
-  // Islamic mode
-  mode: "general" | "islamic";
-  onModeChange: (m: "general" | "islamic") => void;
+  // Research tab mode (Islamic / Custom / General). Switcher lives at page top now.
+  mode: ResearchMode;
   islamicDomains: string[];
   onIslamicDomainsChange: (domains: string[]) => void;
   islamicLanguages: string[];
   onIslamicLanguagesChange: (langs: string[]) => void;
   islamicQueriesUsed: number;
   islamicQueriesLimit: number;
+  madhhab: string;
+  onMadhhabChange: (v: string) => void;
   tier: string;
   t: (k: string) => string;
 }
@@ -119,13 +119,14 @@ const SourcesPanel = ({
   researchLimitReached,
   showUsageMeter,
   mode,
-  onModeChange,
   islamicDomains,
   onIslamicDomainsChange,
   islamicLanguages,
   onIslamicLanguagesChange,
   islamicQueriesUsed,
   islamicQueriesLimit,
+  madhhab,
+  onMadhhabChange,
   tier,
   t,
 }: SourcesPanelProps) => {
@@ -134,30 +135,7 @@ const SourcesPanel = ({
 
   return (
     <div className="lg:w-80 border-b lg:border-b-0 lg:border-e border-border bg-card flex flex-col">
-      {/* ── Mode Toggle ── */}
-      <div className="p-3 border-b border-border space-y-2">
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-          {t("research.mode_label")}
-        </p>
-        <div className="grid grid-cols-2 gap-1">
-          {(["general", "islamic"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => onModeChange(m)}
-              className={cn(
-                "rounded-md px-2 py-1.5 text-xs font-medium transition-colors text-center",
-                mode === m
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              {t(m === "general" ? "research.mode_general" : "research.mode_islamic")}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Islamic Mode Panel ── */}
+      {/* ── Islamic Mode Panel (FR-4.4: auto-select all domains, no checklist) ── */}
       {mode === "islamic" && (
         <div className="p-3 border-b border-border">
           <IslamicResearchPanel
@@ -168,6 +146,9 @@ const SourcesPanel = ({
             strictMode={strictMode}
             onStrictModeChange={onStrictModeChange}
             tier={tier}
+            hideDomains
+            madhhab={madhhab}
+            onMadhhabChange={onMadhhabChange}
           />
           {/* Islamic usage meter */}
           {islamicQueriesLimit > 0 && (
@@ -194,8 +175,8 @@ const SourcesPanel = ({
         </div>
       )}
 
-      {/* ── General Mode: Sources Header + Inputs + List + Footer ── */}
-      {mode === "general" && (
+      {/* ── Custom Sources Mode (FR-4.5): file uploads only, NO URL input ── */}
+      {mode === "custom" && (
       <>
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
@@ -245,18 +226,6 @@ const SourcesPanel = ({
       </div>
 
       <div className="p-3 space-y-2 border-b border-border">
-        <div className="flex gap-2">
-          <Input
-            value={urlInput}
-            onChange={(e) => onUrlInputChange(e.target.value)}
-            placeholder="https://example.com"
-            className="text-sm"
-            onKeyDown={(e) => e.key === "Enter" && onAddUrl()}
-          />
-          <Button size="icon" onClick={onAddUrl} disabled={isAddingUrl || !urlInput.trim()}>
-            {isAddingUrl ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          </Button>
-        </div>
         <DropZone onFileDrop={onFileDrop} isUploading={isUploading} t={t} />
         <Button
           variant="outline"
@@ -307,8 +276,23 @@ const SourcesPanel = ({
           </AnimatePresence>
         </div>
       </ScrollArea>
+      </>
+      )}
 
-      <div className="p-3 border-t border-border space-y-3">
+      {/* ── General Mode (FR-4.6): web search only, no source inputs ── */}
+      {mode === "general" && (
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center gap-2 mb-1">
+            <Globe className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold text-foreground">{t("research.tab_general")}</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">{t("research.general_hint")}</p>
+        </div>
+      )}
+
+      {/* Shared footer for Custom + General: strict toggle + usage meter */}
+      {(mode === "custom" || mode === "general") && (
+      <div className="p-3 border-t border-border space-y-3 mt-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {strictMode ? <Lock className="h-4 w-4 text-primary" /> : <Globe className="h-4 w-4 text-primary" />}
@@ -344,7 +328,6 @@ const SourcesPanel = ({
           </div>
         )}
       </div>
-      </>
       )}
     </div>
   );
