@@ -1,8 +1,14 @@
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { VariableSizeList as List } from "react-window";
-import AutoSizer from "react-virtualized-auto-sizer";
+import * as ReactWindow from "react-window";
+import * as AutoSizerModule from "react-virtualized-auto-sizer";
+
+// Robust ESM/CJS interop for production builds (Vite/Rollup)
+const List: typeof import("react-window").VariableSizeList =
+  (ReactWindow as any).VariableSizeList ?? (ReactWindow as any).default?.VariableSizeList;
+const AutoSizer: typeof import("react-virtualized-auto-sizer").default =
+  (AutoSizerModule as any).default ?? (AutoSizerModule as any);
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Send, Loader2, Download, BookOpen, Copy, Sparkles,
