@@ -20,17 +20,93 @@ Preserve the core meaning. Only output the refined text.`,
   shorten: `You are a concise editor. Condense the following text into a brief summary capturing all key points. 
 Maintain the original language (if Urdu, respond in Urdu script; if English, respond in English). 
 Only output the shortened text.`,
-
-  citations: `You are a research assistant. Read the following text and find 3-5 relevant, real web sources that support or relate to the content.
-Append them at the end as a "Sources" section with numbered links.
-Maintain the original text unchanged above the sources section.
-Maintain the original language for the text portion (if Urdu, keep it in Urdu; if English, keep it in English).
-Format sources as:
-Sources:
-1. [Title](URL)
-2. [Title](URL)
-...`,
 };
+
+// ── Build a citations-with-Islamic-sources prompt using retrieved RAG context ──
+function buildIslamicCitationsPrompt(contextBlock: string): string {
+  return `You are an Islamic research assistant. The user has provided a piece of text (transcribed speech, lecture, or notes).
+Your task:
+1. Keep the user's original text COMPLETELY UNCHANGED at the top.
+2. After the original text, append a section titled "حوالہ جات / Sources" containing 3–6 RELEVANT references chosen ONLY from the curated Islamic sources provided below.
+3. NEVER invent, paraphrase, or fabricate a hadith, Quran verse, fatwa, or scholarly citation. If no curated source is relevant, write a brief note that no matching authentic source was found and DO NOT add any citation.
+4. For each citation, include: short title, narrator/scholar/surah info, and the source URL if available.
+5. Maintain the original language of the user's text. Section heading may be bilingual.
+
+Format:
+
+[ORIGINAL TEXT — verbatim]
+
+---
+
+## حوالہ جات / Sources
+1. [Title or hadith/verse reference] — short context. ([source link](URL))
+2. ...
+
+CURATED ISLAMIC SOURCES (use ONLY these):
+${contextBlock}`;
+}
+
+async function fetchIslamicContext(
+  supabase: ReturnType<typeof createClient>,
+  text: string,
+  lovableKey: string,
+): Promise<string> {
+  // 1. Embed the text via Lovable AI gateway (use a small embedding model if available, otherwise fall back)
+  // The project already uses match_scholarly_documents elsewhere; we keep it simple here.
+  try {
+    const embedResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/text-embedding-004",
+        input: text.slice(0, 4000),
+      }),
+    });
+
+    if (!embedResp.ok) {
+      console.warn("[refine-text/citations] embedding failed:", embedResp.status);
+      return "[No curated sources retrieved — embedding service unavailable.]";
+    }
+
+    const embedData = await embedResp.json();
+    const embedding = embedData?.data?.[0]?.embedding;
+    if (!Array.isArray(embedding)) {
+      return "[No curated sources retrieved — invalid embedding response.]";
+    }
+
+    // 2. Match against curated Islamic scholarly documents
+    const { data: matches, error } = await (supabase.rpc as any)("match_scholarly_documents", {
+      query_embedding: embedding,
+      match_threshold: 0.5,
+      match_count: 8,
+    });
+
+    if (error || !Array.isArray(matches) || matches.length === 0) {
+      return "[No matching curated Islamic sources were found for this text.]";
+    }
+
+    // 3. Format compact context block for the model
+    return matches
+      .map((m: any, i: number) => {
+        const cite = m.citation_ref ?? {};
+        const ref =
+          cite.collection || cite.book
+            ? `${cite.collection ?? cite.book}${cite.hadith_number ? ` #${cite.hadith_number}` : ""}${cite.grade ? ` (${cite.grade})` : ""}`
+            : cite.surah_name
+            ? `Quran ${cite.surah_name} ${cite.surah_number ?? ""}:${cite.verse ?? ""}`
+            : cite.title || m.title || m.domain;
+        const url = m.source_url || cite.url || "";
+        return `Source ${i + 1} [${m.domain}] — ${ref}${url ? ` (${url})` : ""}\n${(m.content ?? "").slice(0, 600)}`;
+      })
+      .join("\n\n");
+  } catch (e) {
+    console.warn("[refine-text/citations] retrieval error:", e);
+    return "[No curated sources retrieved — retrieval error.]";
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -66,7 +142,8 @@ serve(async (req) => {
 
     const { text, action } = await req.json();
 
-    if (!text || !action || !actionPrompts[action]) {
+    const isCitations = action === "citations";
+    if (!text || !action || (!isCitations && !actionPrompts[action])) {
       return new Response(JSON.stringify({ error: "Invalid request. Provide text and a valid action." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -81,7 +158,16 @@ serve(async (req) => {
       });
     }
 
-    const model = action === "citations" ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
+    // Build system prompt — for citations, retrieve Islamic context first
+    let systemPrompt: string;
+    if (isCitations) {
+      const contextBlock = await fetchIslamicContext(supabase, text, LOVABLE_API_KEY);
+      systemPrompt = buildIslamicCitationsPrompt(contextBlock);
+    } else {
+      systemPrompt = actionPrompts[action];
+    }
+
+    const model = isCitations ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -92,7 +178,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: actionPrompts[action] },
+          { role: "system", content: systemPrompt },
           { role: "user", content: text },
         ],
       }),
