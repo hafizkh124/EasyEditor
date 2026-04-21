@@ -102,12 +102,12 @@ const DropZone = ({
 
 const SourcesPanel = ({
   sources,
-  urlInput,
-  onUrlInputChange,
-  isAddingUrl,
+  urlInput: _urlInput,
+  onUrlInputChange: _onUrlInputChange,
+  isAddingUrl: _isAddingUrl,
   isUploading,
   fileInputRef,
-  onAddUrl,
+  onAddUrl: _onAddUrl,
   onFileUpload,
   onFileDrop,
   onDeleteSource,
