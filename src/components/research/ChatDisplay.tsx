@@ -6,10 +6,11 @@ import * as AutoSizerModule from "react-virtualized-auto-sizer";
 
 // Robust ESM/CJS interop for production builds (Vite/Rollup).
 // Some bundlers wrap CJS modules under a `.default` property; fall back gracefully.
-const List = ((ReactWindow as any).VariableSizeList ??
-  (ReactWindow as any).default?.VariableSizeList) as typeof ReactWindow.VariableSizeList;
-const AutoSizer = ((AutoSizerModule as any).default ??
-  (AutoSizerModule as any)) as typeof AutoSizerModule;
+// We cast to `any` because the runtime shape varies between dev (ESM) and prod (CJS-wrapped).
+const List: any =
+  (ReactWindow as any).VariableSizeList ?? (ReactWindow as any).default?.VariableSizeList;
+const AutoSizer: any =
+  (AutoSizerModule as any).default ?? AutoSizerModule;
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Send, Loader2, Download, BookOpen, Copy, Sparkles,
