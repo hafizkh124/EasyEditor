@@ -3,15 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import * as ReactWindow from "react-window";
 import * as AutoSizerModule from "react-virtualized-auto-sizer";
-import type { VariableSizeList as VariableSizeListType } from "react-window";
-import type AutoSizerType from "react-virtualized-auto-sizer";
 
 // Robust ESM/CJS interop for production builds (Vite/Rollup).
 // Some bundlers wrap CJS modules under a `.default` property; fall back gracefully.
 const List = ((ReactWindow as any).VariableSizeList ??
-  (ReactWindow as any).default?.VariableSizeList) as typeof VariableSizeListType;
+  (ReactWindow as any).default?.VariableSizeList) as typeof ReactWindow.VariableSizeList;
 const AutoSizer = ((AutoSizerModule as any).default ??
-  (AutoSizerModule as any)) as typeof AutoSizerType;
+  (AutoSizerModule as any)) as typeof AutoSizerModule;
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Send, Loader2, Download, BookOpen, Copy, Sparkles,
