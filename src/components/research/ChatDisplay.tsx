@@ -1,8 +1,16 @@
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { VariableSizeList as List } from "react-window";
-import AutoSizer from "react-virtualized-auto-sizer";
+import * as ReactWindow from "react-window";
+import * as AutoSizerModule from "react-virtualized-auto-sizer";
+
+// Robust ESM/CJS interop for production builds (Vite/Rollup).
+// Some bundlers wrap CJS modules under a `.default` property; fall back gracefully.
+// We cast to `any` because the runtime shape varies between dev (ESM) and prod (CJS-wrapped).
+const List: any =
+  (ReactWindow as any).VariableSizeList ?? (ReactWindow as any).default?.VariableSizeList;
+const AutoSizer: any =
+  (AutoSizerModule as any).default ?? AutoSizerModule;
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Send, Loader2, Download, BookOpen, Copy, Sparkles,
@@ -200,7 +208,7 @@ const ChatDisplay = ({
   onRegenerate,
   sources,
   researchLimitReached,
-  chatEndRef,
+  chatEndRef: _chatEndRef,
   t,
   mode = "general",
   sourcesReadyInfo,
@@ -253,7 +261,7 @@ const ChatDisplay = ({
     return items;
   }, [messages, mode, citations.length, showSourcesIndicator, isQuerying]);
 
-  const listRef = useRef<List>(null);
+  const listRef = useRef<any>(null);
   const rowHeights = useRef<Record<number, number>>({});
   const lastScrollTime = useRef(0);
 
@@ -443,7 +451,7 @@ const ChatDisplay = ({
 
       <div className="flex-1 p-4 w-full h-full relative">
         <AutoSizer>
-          {({ height, width }) => (
+          {({ height, width }: { height: number; width: number }) => (
             <List
               ref={listRef}
               height={height}
@@ -452,7 +460,7 @@ const ChatDisplay = ({
               itemSize={getRowHeight}
               className="max-w-3xl mx-auto"
             >
-              {({ index, style }) => (
+              {({ index, style }: { index: number; style: React.CSSProperties }) => (
                 <Row index={index} style={style} />
               )}
             </List>
