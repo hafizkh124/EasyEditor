@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { usePageSession } from "@/hooks/usePageSession";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { logActivity } from "@/lib/activityLog";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useLimitReached } from "@/hooks/useLimitReached";
 import { isRtlText } from "@/utils/textUtils";
 
 type SttLanguage = "en-US" | "ur-PK";
@@ -41,7 +43,10 @@ const Transcribe = () => {
   const [sttLanguage, setSttLanguage] = useState<SttLanguage>("en-US");
   const { subscription } = useSubscription();
   const [secondsUsed, setSecondsUsed] = useState(0);
-  const limit = subscription?.transcription_limit ?? 300;
+  // Optimistic delta over the persisted value so local increments count.
+  const optimisticDelta = Math.max(0, secondsUsed - (subscription?.transcription_seconds_used ?? 0));
+  const { limit: limitRaw, reached: limitReached } = useLimitReached("transcription", optimisticDelta);
+  const limit = limitRaw || 300; // fallback for display when tier has no explicit limit
   const [isUploading, setIsUploading] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -51,14 +56,27 @@ const Transcribe = () => {
   const sttDir = sttLanguage === "ur-PK" ? "rtl" : "ltr";
   const rtlText = isRtlText(transcript);
 
+  // Session persistence
+  const handleRestoreSession = useCallback((metadata: { transcript?: string; originalText?: string; sttLanguage?: SttLanguage }) => {
+    if (typeof metadata.transcript === "string") setTranscript(metadata.transcript);
+    if (typeof metadata.originalText === "string") setOriginalText(metadata.originalText);
+    if (metadata.sttLanguage === "en-US" || metadata.sttLanguage === "ur-PK") setSttLanguage(metadata.sttLanguage);
+  }, []);
+  const { save: saveSession } = usePageSession<{ transcript: string; originalText: string; sttLanguage: SttLanguage }>({
+    section: "transcribe",
+    onRestore: handleRestoreSession,
+  });
+  const persistTranscript = useCallback((text: string, original: string = originalText) => {
+    if (!text.trim()) return;
+    saveSession({ title: text.slice(0, 80), metadata: { transcript: text, originalText: original, sttLanguage } });
+  }, [saveSession, sttLanguage, originalText]);
+
   // Seed local secondsUsed from context once it loads (keeps optimistic increments working)
   useEffect(() => {
     if (subscription) {
       setSecondsUsed(subscription.transcription_seconds_used);
     }
   }, [subscription]);
-
-  const limitReached = limit > 0 && secondsUsed >= limit;
 
   // --- Audio file upload handler ---
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,10 +119,11 @@ const Transcribe = () => {
         setOriginalText("");
         setSecondsUsed((prev) => prev + estimatedDuration);
         logActivity("stt", data.text.slice(0, 60));
+        persistTranscript(newText, "");
         toast.success(t("stt.upload_success"));
       }
-    } catch (err: any) {
-      toast.error(err.message || t("stt.upload_error"));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("stt.upload_error"));
     } finally {
       setIsProcessing(false);
       setIsUploading(false);
@@ -154,9 +173,10 @@ const Transcribe = () => {
             setOriginalText("");
             setSecondsUsed((prev) => prev + duration);
             logActivity("stt", data.text.slice(0, 60));
+            persistTranscript(newText, "");
           }
-        } catch (err: any) {
-          toast.error(err.message || "Transcription failed");
+        } catch (err: unknown) {
+          toast.error(err instanceof Error ? err.message : "Transcription failed");
         }
         setIsProcessing(false);
       };
@@ -205,6 +225,7 @@ const Transcribe = () => {
       if (data.text) {
         setOriginalText(transcript);
         setTranscript(data.text);
+        persistTranscript(data.text, transcript);
         toast.success(t(`stt.${action}_done`));
       }
     } catch {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -11,13 +12,14 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Camera, User, Crown, BarChart3 } from "lucide-react";
+import { Loader2, Camera, User, Crown, BarChart3, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { subscription, loading: subLoading } = useSubscription();
   const { t, direction } = useLanguage();
+  const navigate = useNavigate();
 
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -47,17 +49,10 @@ const Profile = () => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error(t("profile.avatar_too_large"));
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      toast.error(t("profile.avatar_invalid"));
-      return;
-    }
+    if (file.size > 2 * 1024 * 1024) { toast.error(t("profile.avatar_too_large")); return; }
+    if (!file.type.startsWith("image/")) { toast.error(t("profile.avatar_invalid")); return; }
 
     setUploading(true);
-    // Sanitize: use user_id + timestamp, ignore original filename
     const ext = (file.name.split(".").pop() ?? "jpg").replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
     const path = `${user.id}_${Date.now()}.${ext}`;
 
@@ -65,11 +60,7 @@ const Profile = () => {
       .from("avatars")
       .upload(path, file, { upsert: true });
 
-    if (uploadError) {
-      toast.error(t("profile.avatar_upload_error"));
-      setUploading(false);
-      return;
-    }
+    if (uploadError) { toast.error(t("profile.avatar_upload_error")); setUploading(false); return; }
 
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
     const publicUrl = urlData.publicUrl + `?t=${Date.now()}`;
@@ -96,50 +87,29 @@ const Profile = () => {
       .update({ display_name: displayName.trim() || null })
       .eq("user_id", user.id);
 
-    if (error) {
-      toast.error(t("profile.save_error"));
-    } else {
-      toast.success(t("profile.saved"));
-    }
+    if (error) toast.error(t("profile.save_error"));
+    else toast.success(t("profile.saved"));
     setSaving(false);
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
   };
 
   const tier = subscription?.tier ?? "free";
   const tierLabel =
-    tier === "ultra"
-      ? t("settings.ultra")
-      : tier === "pro"
-      ? t("settings.pro")
-      : tier === "basic"
-      ? t("settings.basic")
+    tier === "ultra" ? t("settings.ultra")
+      : tier === "pro" ? t("settings.pro")
+      : tier === "basic" ? t("settings.basic")
       : t("settings.free");
 
   const meters = subscription
     ? [
-        {
-          label: t("dashboard.stt_label"),
-          used: subscription.transcription_seconds_used ?? 0,
-          limit: subscription.transcription_limit ?? 300,
-          unit: t("pricing.seconds"),
-        },
-        {
-          label: t("dashboard.tts_label"),
-          used: subscription.tts_characters_used ?? 0,
-          limit: subscription.tts_character_limit ?? 10_000,
-          unit: t("pricing.characters"),
-        },
-        {
-          label: t("dashboard.ocr_label"),
-          used: subscription.ocr_pages_used ?? 0,
-          limit: subscription.ocr_pages_limit ?? 5,
-          unit: t("dashboard.pages_used"),
-        },
-        {
-          label: t("dashboard.research_label"),
-          used: subscription.research_queries_used ?? 0,
-          limit: subscription.research_queries_limit ?? 3,
-          unit: t("dashboard.queries_used"),
-        },
+        { label: t("dashboard.stt_label"), used: subscription.transcription_seconds_used ?? 0, limit: subscription.transcription_limit ?? 300, unit: t("pricing.seconds") },
+        { label: t("dashboard.tts_label"), used: subscription.tts_characters_used ?? 0, limit: subscription.tts_character_limit ?? 10_000, unit: t("pricing.characters") },
+        { label: t("dashboard.ocr_label"), used: subscription.ocr_pages_used ?? 0, limit: subscription.ocr_pages_limit ?? 5, unit: t("dashboard.pages_used") },
+        { label: t("dashboard.research_label"), used: subscription.research_queries_used ?? 0, limit: subscription.research_queries_limit ?? 3, unit: t("dashboard.queries_used") },
       ]
     : [];
 
@@ -173,7 +143,6 @@ const Profile = () => {
             <CardTitle className="text-lg">{t("profile.edit_profile")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Avatar */}
             <div className="flex items-center gap-5">
               <div className="relative">
                 <Avatar className="h-20 w-20">
@@ -186,11 +155,7 @@ const Profile = () => {
                   className="absolute -bottom-1 -end-1 rounded-full bg-primary text-primary-foreground p-1.5 shadow-md hover:bg-primary/90 transition-colors disabled:opacity-60"
                   aria-label={t("profile.change_avatar")}
                 >
-                  {uploading ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Camera className="h-3.5 w-3.5" />
-                  )}
+                  {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
                 </button>
                 <input
                   ref={fileInputRef}
@@ -200,14 +165,13 @@ const Profile = () => {
                   onChange={handleAvatarUpload}
                 />
               </div>
-              <div className="space-y-0.5">
-                <p className="font-medium text-foreground">{displayName || t("admin.unnamed")}</p>
-                <p className="text-sm text-muted-foreground">{user?.email}</p>
+              <div className="space-y-0.5 min-w-0">
+                <p className="font-medium text-foreground truncate">{displayName || t("admin.unnamed")}</p>
+                <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
                 <p className="text-xs text-muted-foreground">{t("profile.avatar_hint")}</p>
               </div>
             </div>
 
-            {/* Display Name */}
             <div className="space-y-1.5">
               <Label htmlFor="displayName">{t("settings.display_name")}</Label>
               <Input
@@ -226,7 +190,7 @@ const Profile = () => {
           </CardContent>
         </Card>
 
-        {/* Subscription Summary Card */}
+        {/* Plan + Usage (FR-5.1) */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -235,10 +199,17 @@ const Profile = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="flex items-center gap-2">
-              <Crown className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-muted-foreground">{t("settings.current_plan")}:</span>
-              <Badge variant={tier === "free" ? "secondary" : "default"}>{tierLabel}</Badge>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Crown className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-muted-foreground">{t("settings.current_plan")}:</span>
+                <Badge variant={tier === "free" ? "secondary" : "default"}>{tierLabel}</Badge>
+              </div>
+              {tier !== "ultra" && (
+                <Link to="/pricing">
+                  <Button variant="outline" size="sm">{t("dashboard.upgrade")}</Button>
+                </Link>
+              )}
             </div>
 
             {meters.map((m) => (
@@ -257,6 +228,23 @@ const Profile = () => {
                 />
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        {/* Account Actions (FR-5.1, FR-5.2) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">{t("profile.account_actions") || "Account"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className="w-full sm:w-auto gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+            >
+              <LogOut className="h-4 w-4" />
+              {t("settings.logout")}
+            </Button>
           </CardContent>
         </Card>
       </div>

@@ -27,7 +27,10 @@
       "Bash(python -W ignore \"D:\\\\EEData\\\\scripts\\\\readiness_report.py\")",
       "Bash(python -c \"import psycopg2; print\\('psycopg2 available'\\)\")",
       "Bash(grep -v \"^$\")",
-      "Bash(python -W ignore \"D:\\\\EEData\\\\scripts\\\\supabase_bulk_load.py\" --help)"
+      "Bash(python -W ignore \"D:\\\\EEData\\\\scripts\\\\supabase_bulk_load.py\" --help)",
+      "Bash(npm run *)",
+      "Bash(find /e/scribe-studio-app/src/pages -name \"*.tsx\" -exec wc -l {} +)",
+      "Bash(xargs grep *)"
     ]
   }
 }
