@@ -288,8 +288,8 @@ const SourcesPanel = ({
         </div>
       )}
 
-      {/* Shared footer for Custom + General: strict toggle + usage meter */}
-      {(mode === "custom" || mode === "general") && (
+      {/* Custom-only footer: strict toggle + usage meter (Extended mode only in Custom Sources) */}
+      {mode === "custom" && (
       <div className="p-3 border-t border-border space-y-3 mt-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
