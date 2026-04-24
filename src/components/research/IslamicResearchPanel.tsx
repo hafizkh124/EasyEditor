@@ -41,12 +41,6 @@ const GROUP_LABELS: Record<string, string> = {
 
 const GROUPS: DomainInfo["group"][] = ["hadith", "quran", "fatawa", "classical"];
 
-const LANGUAGES = [
-  { id: "ar", labelKey: "islamic.lang_arabic" },
-  { id: "en", labelKey: "islamic.lang_english" },
-  { id: "ur", labelKey: "islamic.lang_urdu" },
-];
-
 interface IslamicResearchPanelProps {
   selectedDomains: string[];
   onSelectedDomainsChange: (domains: string[]) => void;
