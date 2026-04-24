@@ -136,7 +136,7 @@
   "research.delete_error": "ذریعہ حذف کرنے میں ناکامی۔",
   "research.invalid_file": "صرف PDF اور DOCX فائلیں قبول ہیں۔",
   "research.file_too_large": "فائل 20MB سے کم ہونی چاہیے۔",
-  "research.no_sources": "ابھی کوئی ذرائع نہیں۔ URL شامل کریں یا فائل اپ لوڈ کریں۔",
+  "research.no_sources": "ابھی کوئی ذرائع نہیں۔ فائل اپ لوڈ کریں۔",
   "research.strict_mode": "سخت موڈ",
   "research.extended_mode": "وسیع موڈ",
   "research.strict_desc": "AI صرف آپ کے ذرائع سے جواب دے گا۔",
