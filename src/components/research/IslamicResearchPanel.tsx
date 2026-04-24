@@ -67,8 +67,6 @@ const IslamicResearchPanel = ({
   onSelectedDomainsChange,
   selectedLanguages,
   onSelectedLanguagesChange,
-  strictMode,
-  onStrictModeChange,
   tier,
   hideDomains = false,
 }: IslamicResearchPanelProps) => {
