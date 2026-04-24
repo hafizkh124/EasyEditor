@@ -125,8 +125,8 @@ const SourcesPanel = ({
   onIslamicLanguagesChange,
   islamicQueriesUsed,
   islamicQueriesLimit,
-  madhhab,
-  onMadhhabChange,
+  madhhab: _madhhab,
+  onMadhhabChange: _onMadhhabChange,
   tier,
   t,
 }: SourcesPanelProps) => {
@@ -147,8 +147,6 @@ const SourcesPanel = ({
             onStrictModeChange={onStrictModeChange}
             tier={tier}
             hideDomains
-            madhhab={madhhab}
-            onMadhhabChange={onMadhhabChange}
           />
           {/* Islamic usage meter */}
           {islamicQueriesLimit > 0 && (
@@ -290,8 +288,8 @@ const SourcesPanel = ({
         </div>
       )}
 
-      {/* Shared footer for Custom + General: strict toggle + usage meter */}
-      {(mode === "custom" || mode === "general") && (
+      {/* Custom-only footer: strict toggle + usage meter (Extended mode only in Custom Sources) */}
+      {mode === "custom" && (
       <div className="p-3 border-t border-border space-y-3 mt-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -328,6 +326,29 @@ const SourcesPanel = ({
           </div>
         )}
       </div>
+      )}
+
+      {/* General-mode footer: usage meter only (no Extended toggle) */}
+      {mode === "general" && showUsageMeter && (
+        <div className="p-3 border-t border-border space-y-1.5 mt-auto">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>{t("research.queries_label")}</span>
+            <span className={researchLimitReached ? "text-destructive font-medium" : ""}>
+              {researchQueriesUsed} / {researchQueriesLimit}
+            </span>
+          </div>
+          <Progress
+            value={Math.min((researchQueriesUsed / researchQueriesLimit) * 100, 100)}
+            className="h-1"
+          />
+          {researchLimitReached && (
+            <Link to="/pricing" className="block">
+              <Badge variant="destructive" className="w-full justify-center text-[10px] cursor-pointer">
+                {t("dashboard.upgrade")}
+              </Badge>
+            </Link>
+          )}
+        </div>
       )}
     </div>
   );

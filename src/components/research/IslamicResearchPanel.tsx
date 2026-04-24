@@ -1,9 +1,7 @@
 import { Link } from "react-router-dom";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Globe, Lock, CheckSquare, Square } from "lucide-react";
+import { Lock, CheckSquare, Square } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 
@@ -69,8 +67,6 @@ const IslamicResearchPanel = ({
   onSelectedDomainsChange,
   selectedLanguages,
   onSelectedLanguagesChange,
-  strictMode,
-  onStrictModeChange,
   tier,
   hideDomains = false,
 }: IslamicResearchPanelProps) => {
@@ -200,27 +196,6 @@ const IslamicResearchPanel = ({
         </div>
       </div>
 
-      {/* Strict / Extended mode */}
-      <div className="flex items-center justify-between pt-1">
-        <div className="flex items-center gap-2">
-          {strictMode ? (
-            <Lock className="h-4 w-4 text-primary" />
-          ) : (
-            <Globe className="h-4 w-4 text-primary" />
-          )}
-          <Label htmlFor="islamic-mode-toggle" className="text-xs font-medium text-foreground cursor-pointer">
-            {strictMode ? t("research.strict_mode") : t("research.extended_mode")}
-          </Label>
-        </div>
-        <Switch
-          id="islamic-mode-toggle"
-          checked={!strictMode}
-          onCheckedChange={(v) => onStrictModeChange(!v)}
-        />
-      </div>
-      <p className="text-[10px] text-muted-foreground">
-        {strictMode ? t("research.strict_desc") : t("research.extended_desc")}
-      </p>
     </div>
   );
 };
