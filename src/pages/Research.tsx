@@ -95,7 +95,8 @@ const Research = () => {
     mode: hookMode,
     tier,
     sources: sourcesApi.sources,
-    strictMode,
+    // Extended mode is only available in Custom Sources tab; force strict elsewhere
+    strictMode: mode === "custom" ? strictMode : true,
     islamicDomains,
     islamicLanguages,
     researchLimitReached,
