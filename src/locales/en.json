@@ -216,7 +216,7 @@
   "research.sources_fetched": "sources fetched",
   "research.generating_with_sources": "Generating answer with retrieved sources…",
   "research.welcome_islamic": "Islamic Scholarly Research",
-  "research.welcome_islamic_hint": "Select your domains on the left, then ask a question in Arabic, English, or Urdu.",
+  "research.welcome_islamic_hint": "Ask a question in Arabic, English, or Urdu.",
   "research.ask_placeholder_islamic": "Ask about Quran, Hadith, Fiqh… (Arabic, English, Urdu)",
   "research.citations_panel_title": "Session Sources",
   "research.citations_from_domains": "from {n} domain(s)",
