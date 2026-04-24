@@ -49,14 +49,6 @@ const LANGUAGES = [
   { id: "ur", labelKey: "islamic.lang_urdu" },
 ];
 
-const MADHHABS = [
-  { id: "any",    labelKey: "islamic.madhhab_any" },
-  { id: "hanafi", labelKey: "islamic.madhhab_hanafi" },
-  { id: "maliki", labelKey: "islamic.madhhab_maliki" },
-  { id: "shafii", labelKey: "islamic.madhhab_shafii" },
-  { id: "hanbali",labelKey: "islamic.madhhab_hanbali" },
-];
-
 interface IslamicResearchPanelProps {
   selectedDomains: string[];
   onSelectedDomainsChange: (domains: string[]) => void;
@@ -67,7 +59,7 @@ interface IslamicResearchPanelProps {
   tier: string;
   // FR-4.4.1: hide the per-domain checklist (domains auto-selected)
   hideDomains?: boolean;
-  // FR-4.4.2: Madhhab filter
+  // FR-4.4.2: Madhhab filter (deprecated UI; prop kept for compatibility)
   madhhab?: string;
   onMadhhabChange?: (id: string) => void;
 }
@@ -81,8 +73,6 @@ const IslamicResearchPanel = ({
   onStrictModeChange,
   tier,
   hideDomains = false,
-  madhhab = "any",
-  onMadhhabChange,
 }: IslamicResearchPanelProps) => {
   const { t } = useLanguage();
   const isProOrUltra = tier === "pro" || tier === "ultra";
