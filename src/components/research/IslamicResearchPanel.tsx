@@ -173,29 +173,6 @@ const IslamicResearchPanel = ({
         );
       })}
 
-      {/* Language Filter */}
-      <div className="space-y-1">
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-          {t("islamic.language_filter")}
-        </p>
-        <div className="flex gap-2 flex-wrap">
-          {LANGUAGES.map((lang) => (
-            <button
-              key={lang.id}
-              onClick={() => toggleLanguage(lang.id)}
-              className={cn(
-                "rounded-full px-3 py-1 text-[11px] font-medium border transition-colors",
-                selectedLanguages.includes(lang.id)
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-border hover:bg-muted"
-              )}
-            >
-              {t(lang.labelKey)}
-            </button>
-          ))}
-        </div>
-      </div>
-
     </div>
   );
 };
