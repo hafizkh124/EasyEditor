@@ -130,11 +130,23 @@ const Research = () => {
     <AppLayout>
       <div className="flex flex-col h-[calc(100vh-3.5rem-5rem)] md:h-[calc(100vh-3.5rem)] lg:h-[calc(100vh-3.5rem)] overflow-hidden">
         <div className="border-b border-border bg-background px-3 py-2 md:px-4">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
             <ResearchModeSwitcher mode={mode} onModeChange={handleModeChange} t={t} />
+            {/* Compact usage chip for islamic/general (replaces left-panel usage block) */}
+            {mode === "islamic" && islamicQueriesLimit > 0 && (
+              <span className={`text-[11px] font-medium px-2 py-1 rounded-md border whitespace-nowrap ${islamicLimitReached ? "text-destructive border-destructive/40 bg-destructive/5" : "text-muted-foreground border-border bg-muted/40"}`}>
+                {islamicQueriesUsed} / {islamicQueriesLimit}
+              </span>
+            )}
+            {mode === "general" && (subscription?.research_queries_limit ?? 0) > 0 && (
+              <span className={`text-[11px] font-medium px-2 py-1 rounded-md border whitespace-nowrap ${researchLimitReached ? "text-destructive border-destructive/40 bg-destructive/5" : "text-muted-foreground border-border bg-muted/40"}`}>
+                {researchQueriesUsed} / {researchQueriesLimit}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
+        {mode === "custom" && (
         <SourcesPanel
           sources={sourcesApi.sources}
           urlInput={sourcesApi.urlInput}
@@ -165,6 +177,7 @@ const Research = () => {
           tier={tier}
           t={t}
         />
+        )}
         <ChatDisplay
           messages={chat.messages}
           isQuerying={chat.isQuerying}
