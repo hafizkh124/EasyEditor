@@ -59,8 +59,6 @@ interface IslamicResearchPanelProps {
 const IslamicResearchPanel = ({
   selectedDomains,
   onSelectedDomainsChange,
-  selectedLanguages,
-  onSelectedLanguagesChange,
   tier,
   hideDomains = false,
 }: IslamicResearchPanelProps) => {
@@ -73,15 +71,6 @@ const IslamicResearchPanel = ({
       onSelectedDomainsChange(selectedDomains.filter((d) => d !== id));
     } else {
       onSelectedDomainsChange([...selectedDomains, id]);
-    }
-  };
-
-  const toggleLanguage = (id: string) => {
-    if (selectedLanguages.includes(id)) {
-      if (selectedLanguages.length === 1) return; // keep at least one
-      onSelectedLanguagesChange(selectedLanguages.filter((l) => l !== id));
-    } else {
-      onSelectedLanguagesChange([...selectedLanguages, id]);
     }
   };
 
