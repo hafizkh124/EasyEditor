@@ -198,11 +198,14 @@ export function useResearchChat(args: UseResearchChatArgs) {
         onError: (err) => { toast.error(err); setIsQuerying(false); },
       });
     }
-  }, [mode, citations, islamicDomains, islamicLanguages, strictMode, tier, sources, user, refetch, saveSession, appendAssistantChunk]);
+  }, [mode, citations, islamicDomains, islamicLanguages, strictMode, tier, sources, user, refetch, saveSession, appendAssistantChunk, assistModes, t]);
 
   const handleSendQuery = async () => {
     if (!query.trim() || !session?.access_token) return;
-    const limitReached = mode === "islamic" ? islamicLimitReached : researchLimitReached;
+    // Assist modes always bill against research quota regardless of tab.
+    const limitReached = assistModes.length > 0
+      ? researchLimitReached
+      : mode === "islamic" ? islamicLimitReached : researchLimitReached;
     if (limitReached) { toast.error(t("research.limit_reached")); return; }
 
     const userMsg: ChatMessage = { role: "user", content: query };
@@ -216,7 +219,10 @@ export function useResearchChat(args: UseResearchChatArgs) {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (!lastUserMsg || !session?.access_token) return;
 
-    const limitReached = mode === "islamic" ? islamicLimitReached : researchLimitReached;
+    // Assist modes always bill against research quota regardless of tab.
+    const limitReached = assistModes.length > 0
+      ? researchLimitReached
+      : mode === "islamic" ? islamicLimitReached : researchLimitReached;
     if (limitReached) { toast.error(t("research.limit_reached")); return; }
 
     const cutoff = messages.length - 1 - lastAssistantIdx >= 0
