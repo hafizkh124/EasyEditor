@@ -1,17 +1,7 @@
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import * as ReactWindow from "react-window";
-import * as AutoSizerModule from "react-virtualized-auto-sizer";
-
-// Robust ESM/CJS interop for production builds (Vite/Rollup).
-// Some bundlers wrap CJS modules under a `.default` property; fall back gracefully.
-// We cast to `any` because the runtime shape varies between dev (ESM) and prod (CJS-wrapped).
-const List: any =
-  (ReactWindow as any).VariableSizeList ?? (ReactWindow as any).default?.VariableSizeList;
-const AutoSizer: any =
-  (AutoSizerModule as any).default ?? AutoSizerModule;
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Send, Loader2, Download, BookOpen, Copy, Sparkles,
   PenLine, MessageSquare, Minimize2, FileDown, Trash2, RefreshCw,
@@ -261,49 +251,16 @@ const ChatDisplay = ({
     return items;
   }, [messages, mode, citations.length, showSourcesIndicator, isQuerying]);
 
-  const listRef = useRef<any>(null);
-  const rowHeights = useRef<Record<number, number>>({});
-  const lastScrollTime = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const bottomAnchorRef = useRef<HTMLDivElement>(null);
 
-  const setRowHeight = useCallback((index: number, size: number) => {
-    const paddedSize = size + 16; // space-y-4 equivalent
-    if (rowHeights.current[index] !== paddedSize) {
-      rowHeights.current[index] = paddedSize;
-      listRef.current?.resetAfterIndex(index);
-    }
-  }, []);
-
-  const getRowHeight = useCallback((index: number) => {
-    return rowHeights.current[index] || 80;
-  }, []);
-
-  // Throttled Auto-scroll
+  // Auto-scroll to the latest message on new content or while streaming.
   useEffect(() => {
-    if (isQuerying && listRef.current) {
-      const now = Date.now();
-      if (now - lastScrollTime.current > 150) {
-        listRef.current.scrollToItem(listItems.length - 1, "end");
-        lastScrollTime.current = now;
-      }
-    }
+    bottomAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, isQuerying, listItems.length]);
 
-  const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const item = listItems[index];
-    const rowRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      if (!rowRef.current) return;
-      const observer = new ResizeObserver((entries) => {
-        if (entries[0]) {
-          setRowHeight(index, entries[0].borderBoxSize[0].blockSize);
-        }
-      });
-      observer.observe(rowRef.current);
-      return () => observer.disconnect();
-    }, [item, index, setRowHeight]);
-
-    let content = null;
+  const renderItem = (item: ListItem, index: number) => {
+    let content: React.ReactNode = null;
 
     if (item.type === "empty") {
       content = (
@@ -414,13 +371,11 @@ const ChatDisplay = ({
     }
 
     return (
-      <div style={style}>
-        <div ref={rowRef} className="pb-4">
-          {content}
-        </div>
+      <div key={index} className="pb-4">
+        {content}
       </div>
     );
-  }, [listItems, messages.length, lastAssistantIdx, citations, mode, isRefining, sourcesReadyInfo, onRefine, onCopyOutput, onDownloadReport, onRegenerate, showSourcesIndicator, setRowHeight, t]);
+  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -449,23 +404,11 @@ const ChatDisplay = ({
         </div>
       </div>
 
-      <div className="flex-1 p-4 w-full h-full relative">
-        <AutoSizer>
-          {({ height, width }: { height: number; width: number }) => (
-            <List
-              ref={listRef}
-              height={height}
-              width={width}
-              itemCount={listItems.length}
-              itemSize={getRowHeight}
-              className="max-w-3xl mx-auto"
-            >
-              {({ index, style }: { index: number; style: React.CSSProperties }) => (
-                <Row index={index} style={style} />
-              )}
-            </List>
-          )}
-        </AutoSizer>
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 w-full relative">
+        <div className="max-w-3xl mx-auto">
+          {listItems.map((item, index) => renderItem(item, index))}
+          <div ref={bottomAnchorRef} />
+        </div>
       </div>
 
       {/* Input area */}

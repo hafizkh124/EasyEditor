@@ -31,7 +31,8 @@
       "Bash(npm run *)",
       "Bash(find /e/scribe-studio-app/src/pages -name \"*.tsx\" -exec wc -l {} +)",
       "Bash(xargs grep *)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(grep -v \"^//\")"
     ]
   }
 }
