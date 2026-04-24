@@ -41,12 +41,6 @@ const GROUP_LABELS: Record<string, string> = {
 
 const GROUPS: DomainInfo["group"][] = ["hadith", "quran", "fatawa", "classical"];
 
-const LANGUAGES = [
-  { id: "ar", labelKey: "islamic.lang_arabic" },
-  { id: "en", labelKey: "islamic.lang_english" },
-  { id: "ur", labelKey: "islamic.lang_urdu" },
-];
-
 interface IslamicResearchPanelProps {
   selectedDomains: string[];
   onSelectedDomainsChange: (domains: string[]) => void;
@@ -65,8 +59,6 @@ interface IslamicResearchPanelProps {
 const IslamicResearchPanel = ({
   selectedDomains,
   onSelectedDomainsChange,
-  selectedLanguages,
-  onSelectedLanguagesChange,
   tier,
   hideDomains = false,
 }: IslamicResearchPanelProps) => {
@@ -79,15 +71,6 @@ const IslamicResearchPanel = ({
       onSelectedDomainsChange(selectedDomains.filter((d) => d !== id));
     } else {
       onSelectedDomainsChange([...selectedDomains, id]);
-    }
-  };
-
-  const toggleLanguage = (id: string) => {
-    if (selectedLanguages.includes(id)) {
-      if (selectedLanguages.length === 1) return; // keep at least one
-      onSelectedLanguagesChange(selectedLanguages.filter((l) => l !== id));
-    } else {
-      onSelectedLanguagesChange([...selectedLanguages, id]);
     }
   };
 
@@ -172,29 +155,6 @@ const IslamicResearchPanel = ({
           </div>
         );
       })}
-
-      {/* Language Filter */}
-      <div className="space-y-1">
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-          {t("islamic.language_filter")}
-        </p>
-        <div className="flex gap-2 flex-wrap">
-          {LANGUAGES.map((lang) => (
-            <button
-              key={lang.id}
-              onClick={() => toggleLanguage(lang.id)}
-              className={cn(
-                "rounded-full px-3 py-1 text-[11px] font-medium border transition-colors",
-                selectedLanguages.includes(lang.id)
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-border hover:bg-muted"
-              )}
-            >
-              {t(lang.labelKey)}
-            </button>
-          ))}
-        </div>
-      </div>
 
     </div>
   );
