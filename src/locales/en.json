@@ -127,7 +127,7 @@
   "ocr.pages_used": "pages scanned",
   "research.title": "AI Research Assistant",
   "research.sources": "Active Sources",
-  "research.sources_hint": "Add links or upload files to ground your research.",
+  "research.sources_hint": "Upload files to ground your research.",
   "research.upload_file": "Upload PDF / DOCX",
   "research.source_added": "Source added!",
   "research.source_removed": "Source removed.",
