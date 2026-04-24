@@ -147,8 +147,6 @@ const SourcesPanel = ({
             onStrictModeChange={onStrictModeChange}
             tier={tier}
             hideDomains
-            madhhab={madhhab}
-            onMadhhabChange={onMadhhabChange}
           />
           {/* Islamic usage meter */}
           {islamicQueriesLimit > 0 && (
