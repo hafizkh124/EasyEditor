@@ -118,24 +118,6 @@ const IslamicResearchPanel = ({
 
   return (
     <div className="space-y-3">
-      {/* Madhhab filter (always visible in Islamic mode) */}
-      {onMadhhabChange && (
-        <div className="space-y-1">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-            {t("islamic.madhhab_label")}
-          </p>
-          <select
-            value={madhhab}
-            onChange={(e) => onMadhhabChange(e.target.value)}
-            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
-          >
-            {MADHHABS.map((m) => (
-              <option key={m.id} value={m.id}>{t(m.labelKey)}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
       {/* Domain Focus Header (hidden in Islamic-tab mode per FR-4.4.1) */}
       {!hideDomains && (
       <div className="flex items-center justify-between">
