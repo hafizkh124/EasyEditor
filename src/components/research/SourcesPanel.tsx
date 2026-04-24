@@ -125,8 +125,8 @@ const SourcesPanel = ({
   onIslamicLanguagesChange,
   islamicQueriesUsed,
   islamicQueriesLimit,
-  madhhab,
-  onMadhhabChange,
+  madhhab: _madhhab,
+  onMadhhabChange: _onMadhhabChange,
   tier,
   t,
 }: SourcesPanelProps) => {
