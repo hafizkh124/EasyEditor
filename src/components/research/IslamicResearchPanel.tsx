@@ -1,9 +1,7 @@
 import { Link } from "react-router-dom";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Globe, Lock, CheckSquare, Square } from "lucide-react";
+import { Lock, CheckSquare, Square } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 
