@@ -30,7 +30,8 @@
       "Bash(python -W ignore \"D:\\\\EEData\\\\scripts\\\\supabase_bulk_load.py\" --help)",
       "Bash(npm run *)",
       "Bash(find /e/scribe-studio-app/src/pages -name \"*.tsx\" -exec wc -l {} +)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(npx vite *)"
     ]
   }
 }
