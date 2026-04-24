@@ -136,7 +136,7 @@
   "research.delete_error": "Failed to delete source.",
   "research.invalid_file": "Only PDF and DOCX files are supported.",
   "research.file_too_large": "File must be under 20MB.",
-  "research.no_sources": "No sources yet. Add a URL or upload a file.",
+  "research.no_sources": "No sources yet. Upload a file.",
   "research.strict_mode": "Strict Mode",
   "research.extended_mode": "Extended Mode",
   "research.strict_desc": "AI answers only from your sources.",
