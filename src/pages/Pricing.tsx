@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
@@ -154,8 +155,27 @@ const Pricing = () => {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-10" dir={direction} aria-busy="true" aria-live="polite">
+          <div className="space-y-3 text-center">
+            <Skeleton className="h-9 w-72 mx-auto" />
+            <Skeleton className="h-4 w-96 mx-auto" />
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardHeader className="space-y-3">
+                  <Skeleton className="h-6 w-24" />
+                  <Skeleton className="h-9 w-20" />
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[0, 1, 2, 3, 4].map((j) => (
+                    <Skeleton key={j} className="h-3 w-full" />
+                  ))}
+                  <Skeleton className="h-9 w-full mt-4" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </AppLayout>
     );

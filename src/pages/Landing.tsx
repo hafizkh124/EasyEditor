@@ -133,7 +133,7 @@ const Landing = () => {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2.5">
             <img
-              src="/favicon.png"
+              src="/favicon.webp"
               alt="EasyEditor"
               width={26}
               height={26}
@@ -204,7 +204,7 @@ const Landing = () => {
 
           <div className="flex items-center justify-center">
             <img
-              src="/og-image.png"
+              src="/og-image.webp"
               alt={
                 language === "ur"
                   ? "العلماء ایزی ایڈیٹر — AI-Powered Islamic Research & Editing Suite"
@@ -348,7 +348,7 @@ const Landing = () => {
       <footer className="border-t border-border/60 py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground md:flex-row">
           <div className="flex items-center gap-2">
-            <img src="/favicon.png" alt="" width={24} height={24} className="rounded" />
+            <img src="/favicon.webp" alt="" width={24} height={24} className="rounded" />
             <span>© {new Date().getFullYear()} EasyEditor</span>
           </div>
           <div className="flex items-center gap-4">

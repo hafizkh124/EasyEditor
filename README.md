@@ -2,10 +2,14 @@
 
 An AI-powered content toolkit supporting **English and Urdu**, featuring:
 
-- **Transcribe** — Speech-to-text with AI refinement (formalize, humanize, shorten, citations)
+- **Transcribe** — Speech-to-text with AI refinement (formalize, humanize, shorten, citations). Supports long-form audio up to 60 minutes via client-side chunked transcription.
 - **Speak** — Text-to-speech with 6 voice personas powered by Google Gemini
 - **OCR** — Image-to-text extraction with Urdu/Arabic support
-- **Research** — AI research assistant with URL, PDF, and DOCX source grounding
+- **Research** — Three-mode AI research assistant (Islamic / Custom Sources / General) with optional spelling correction and citation overlays
+- **Session history** — Per-section session list in the sidebar; sessions persist unlimited across reloads.
+
+See [`docs/SPEC-v2.md`](docs/SPEC-v2.md) for the full v2 specification and
+[`docs/adr/`](docs/adr/) for architectural decision records.
 
 ## Tech Stack
 
@@ -44,8 +48,9 @@ The app will be available at `http://localhost:8080`.
 
 ### Environment Variables
 
-**Security:** `.env` is gitignored and must never be committed. The app will fail to
-start if any of the three required `VITE_SUPABASE_*` variables are missing.
+**Security:** `.env` is gitignored and must never be committed. There are no
+hardcoded fallbacks for Supabase credentials — `vite build --mode production`
+fails fast if any of the three required `VITE_SUPABASE_*` variables are missing.
 
 Copy `.env.example` to `.env` and provide:
 
@@ -85,17 +90,16 @@ Run Supabase migrations to set up the database schema:
 npx supabase db push
 ```
 
-Tables created:
+Tables created (selected):
 - `profiles` — User profile data
-- `subscriptions` — Tier and usage tracking (free/pro)
+- `subscriptions` — Tier and usage tracking
 - `user_roles` — Role-based access control
 - `research_sources` — Saved research documents
+- `user_sessions` — Per-section persisted session history (transcribe / speak / ocr / research)
 
 ## Subscription Tiers
 
-| Feature | Free | Pro |
-|---------|------|-----|
-| Transcription | 300 seconds/month | Unlimited |
-| Text-to-Speech | 2,000 characters/month | Unlimited |
-| OCR | Shared transcription budget | Unlimited |
-| Research | Unlimited | Unlimited |
+Four tiers: **free** (no access), **basic**, **pro**, **ultra**. Per-tier quota
+columns live on the `subscriptions` table; canonical values are defined in
+[`src/contexts/SubscriptionContext.tsx`](src/contexts/SubscriptionContext.tsx)
+under `TIER_LIMITS`. Edit there to change limits.

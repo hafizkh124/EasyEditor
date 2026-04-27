@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Camera, User, Crown, BarChart3, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
@@ -118,8 +119,39 @@ const Profile = () => {
   if (profileLoading || subLoading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-6" dir={direction} aria-busy="true" aria-live="polite">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-7 w-7 rounded-full" />
+            <Skeleton className="h-7 w-40" />
+          </div>
+          <Card>
+            <CardContent className="pt-6 space-y-6">
+              <div className="flex items-center gap-5">
+                <Skeleton className="h-20 w-20 rounded-full" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-3 w-2/3" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              </div>
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-32" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 space-y-5">
+              <Skeleton className="h-5 w-1/3" />
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <Skeleton className="h-2 w-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
       </AppLayout>
     );
