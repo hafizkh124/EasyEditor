@@ -91,7 +91,7 @@ const VirtualMessageList = ({
 
   return (
     <AutoSizer>
-      {({ height, width }) => (
+      {({ height, width }: { height: number; width: number }) => (
         <VariableSizeList
           ref={listRef}
           height={height}
