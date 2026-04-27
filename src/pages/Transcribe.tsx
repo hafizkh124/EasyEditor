@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mic, MicOff, Copy, Download, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight, Upload } from "lucide-react";
+import { Mic, MicOff, Copy, Download, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,12 @@ import { logActivity } from "@/lib/activityLog";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useLimitReached } from "@/hooks/useLimitReached";
 import { isRtlText } from "@/utils/textUtils";
+import {
+  transcribeLongForm,
+  TranscribeCancelledError,
+  MAX_DURATION_SECONDS,
+  type ProgressPhase,
+} from "@/lib/audio/transcribeLongForm";
 
 type SttLanguage = "en-US" | "ur-PK";
 type RefineAction = "formalize" | "humanize" | "shorten" | "citations";
@@ -48,10 +55,15 @@ const Transcribe = () => {
   const { limit: limitRaw, reached: limitReached } = useLimitReached("transcription", optimisticDelta);
   const limit = limitRaw || 300; // fallback for display when tier has no explicit limit
   const [isUploading, setIsUploading] = useState(false);
+  const [progressPhase, setProgressPhase] = useState<ProgressPhase | null>(null);
+  const [progressCurrent, setProgressCurrent] = useState(0);
+  const [progressTotal, setProgressTotal] = useState(0);
+  const [longFormStartedAt, setLongFormStartedAt] = useState<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startTimeRef = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const sttDir = sttLanguage === "ur-PK" ? "rtl" : "ltr";
   const rtlText = isRtlText(transcript);
@@ -78,59 +90,105 @@ const Transcribe = () => {
     }
   }, [subscription]);
 
-  // --- Audio file upload handler ---
+  // --- Audio file upload handler (FR-3: long-form chunked transcription) ---
+  const resetProgress = useCallback(() => {
+    setProgressPhase(null);
+    setProgressCurrent(0);
+    setProgressTotal(0);
+    setLongFormStartedAt(null);
+  }, []);
+
+  const handleCancelTranscribe = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const maxSize = 25 * 1024 * 1024; // 25MB
-    if (file.size > maxSize) {
-      toast.error(t("stt.file_too_large"));
-      return;
-    }
+    // Reset the input early so the same file can be re-selected after a cancel.
+    if (fileInputRef.current) fileInputRef.current.value = "";
 
     if (limitReached) {
       toast.error(t("stt.limit_reached"));
       return;
     }
 
+    // FR-3.6: tier quota pre-check — best-effort using file-size heuristic before
+    // we decode. The actual decoded duration is rechecked once decoding finishes.
+    const sizeBasedDurationGuess = Math.round(file.size / 16000);
+    if (limit > 0 && secondsUsed + sizeBasedDurationGuess > limit) {
+      toast.error(t("stt.quota_insufficient"));
+      return;
+    }
+
+    const controller = new AbortController();
+    abortRef.current = controller;
     setIsUploading(true);
     setIsProcessing(true);
+    setLongFormStartedAt(Date.now());
 
     try {
-      // Estimate duration from file size (rough: ~16KB/s for compressed audio)
-      const estimatedDuration = Math.max(1, Math.round(file.size / 16000));
-
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      // FR-3.7: persist the partial transcript after each chunk completes so a
+      // page reload mid-transcription preserves the completed chunks. Track
+      // the last persisted text to avoid duplicate writes when the orchestrator
+      // emits both pre- and post-chunk events with the same partial.
+      const priorTranscript = transcript;
+      const compose = (partial: string) => (priorTranscript ? priorTranscript + "\n" + partial : partial);
+      let lastPersisted = "";
+      const { text, durationSeconds, chunkCount } = await transcribeLongForm({
+        file,
+        language: sttLanguage,
+        signal: controller.signal,
+        onProgress: (ev) => {
+          setProgressPhase(ev.phase);
+          if (typeof ev.current === "number") setProgressCurrent(ev.current);
+          if (typeof ev.total === "number") setProgressTotal(ev.total);
+          if (typeof ev.partialTranscript === "string" && ev.partialTranscript) {
+            const composed = compose(ev.partialTranscript);
+            setTranscript(composed);
+            if (composed !== lastPersisted) {
+              persistTranscript(composed, "");
+              lastPersisted = composed;
+            }
+          }
+        },
       });
 
-      const { data, error } = await supabase.functions.invoke("transcribe", {
-        body: { audio: base64, language: sttLanguage, duration: estimatedDuration },
-      });
+      if (limit > 0 && secondsUsed + durationSeconds > limit) {
+        toast.error(t("stt.quota_insufficient"));
+        return;
+      }
 
-      if (error) throw error;
-      if (data?.text) {
-        const newText = transcript ? transcript + "\n" + data.text : data.text;
+      if (text) {
+        const newText = transcript ? transcript + "\n" + text : text;
         setTranscript(newText);
         setOriginalText("");
-        setSecondsUsed((prev) => prev + estimatedDuration);
-        logActivity("stt", data.text.slice(0, 60));
+        setSecondsUsed((prev) => prev + durationSeconds);
+        logActivity("stt", text.slice(0, 60));
         persistTranscript(newText, "");
-        toast.success(t("stt.upload_success"));
+        toast.success(
+          chunkCount > 1
+            ? t("stt.upload_success_chunked").replace("{n}", String(chunkCount))
+            : t("stt.upload_success"),
+        );
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("stt.upload_error"));
+      if (err instanceof TranscribeCancelledError || controller.signal.aborted) {
+        toast.info(t("stt.cancelled"));
+      } else {
+        const msg = err instanceof Error ? err.message : t("stt.upload_error");
+        const friendly = msg.includes(`${MAX_DURATION_SECONDS / 60}-minute`)
+          ? t("stt.too_long")
+          : msg;
+        toast.error(friendly);
+      }
     } finally {
+      abortRef.current = null;
       setIsProcessing(false);
       setIsUploading(false);
-      // Reset file input
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      resetProgress();
     }
-  }, [sttLanguage, limitReached, t, transcript]);
+  }, [sttLanguage, limitReached, limit, secondsUsed, t, transcript, persistTranscript, resetProgress]);
 
   const startRecording = useCallback(async () => {
     if (limitReached) {
@@ -289,12 +347,64 @@ const Transcribe = () => {
           </div>
         )}
 
+        {/* Long-form Progress (FR-3.3, FR-3.4) */}
+        {progressPhase && (
+          <Card>
+            <CardContent className="pt-6 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-foreground">
+                  {progressPhase === "decoding" && t("stt.progress.decoding")}
+                  {progressPhase === "preparing" && t("stt.progress.preparing")}
+                  {progressPhase === "transcribing" && t("stt.progress.transcribing")
+                    .replace("{current}", String(progressCurrent))
+                    .replace("{total}", String(progressTotal))}
+                  {progressPhase === "finalizing" && t("stt.progress.finalizing")}
+                </span>
+                {longFormStartedAt && (
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {(() => {
+                      const elapsed = Math.floor((Date.now() - longFormStartedAt) / 1000);
+                      const m = Math.floor(elapsed / 60);
+                      const s = elapsed % 60;
+                      return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+                    })()}
+                  </span>
+                )}
+              </div>
+              <Progress
+                value={
+                  progressPhase === "decoding"
+                    ? 5
+                    : progressPhase === "preparing"
+                    ? 10
+                    : progressPhase === "transcribing" && progressTotal > 0
+                    ? 10 + (progressCurrent / progressTotal) * 85
+                    : 100
+                }
+                className="h-2"
+              />
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelTranscribe}
+                  className="gap-1.5"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  {t("stt.cancel")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Mic + Upload Buttons */}
         <div className="flex flex-col items-center gap-4 py-8">
           <div className="flex items-center gap-6">
             <button
               onClick={isRecording ? stopRecording : startRecording}
               disabled={isProcessing || limitReached}
+              aria-label={isRecording ? t("stt.stop") : t("stt.start")}
               className={cn(
                 "relative flex h-24 w-24 items-center justify-center rounded-full transition-all",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -344,16 +454,18 @@ const Transcribe = () => {
             <CardTitle className="text-lg">{t("stt.transcript")}</CardTitle>
             {transcript && (
               <div className="flex gap-1">
-                <Button variant="ghost" size="icon" onClick={handleCopy}>
+                <Button variant="ghost" size="icon" aria-label={t("stt.copy")} onClick={handleCopy}>
                   <Copy className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={handleDownload}>
+                <Button variant="ghost" size="icon" aria-label={t("stt.download")} onClick={handleDownload}>
                   <Download className="h-4 w-4" />
                 </Button>
                 {originalText && (
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label={showCompare ? t("stt.refined") : t("stt.original")}
+                    aria-pressed={showCompare}
                     onClick={() => setShowCompare(!showCompare)}
                     className={cn(showCompare && "text-primary")}
                   >

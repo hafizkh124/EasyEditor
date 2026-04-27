@@ -180,7 +180,7 @@ const SidebarBody = ({
       collapsed ? "justify-center px-2" : "justify-between px-5",
     )}>
       <Link to="/" onClick={onItemClick} className="flex items-center gap-2.5 min-w-0">
-        <img src="/favicon.png" alt="EasyEditor" width={26} height={26} className="rounded flex-shrink-0" />
+        <img src="/favicon.webp" alt="EasyEditor" width={26} height={26} className="rounded flex-shrink-0" />
         {!collapsed && <h1 className="text-lg font-bold text-foreground tracking-tight truncate">EasyEditor</h1>}
       </Link>
       {showCollapseButton && !collapsed && onToggleCollapse && (
@@ -250,6 +250,14 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="flex min-h-screen bg-background" dir={direction}>
+      {/* Skip-to-main link (Phase 6 a11y) — visible only when focused via keyboard. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        {t("a11y.skip_to_main") || "Skip to main content"}
+      </a>
+
       {/* Desktop Sidebar */}
       <aside
         className={cn(
@@ -293,7 +301,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </SheetContent>
           </Sheet>
           <Link to="/" className="flex items-center gap-2 flex-1 min-w-0">
-            <img src="/favicon.png" alt="EasyEditor" width={24} height={24} className="rounded" />
+            <img src="/favicon.webp" alt="EasyEditor" width={24} height={24} className="rounded" />
             <h1 className="text-base font-bold text-foreground truncate">EasyEditor</h1>
           </Link>
           <NotificationBell />
@@ -304,7 +312,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <NotificationBell />
         </div>
 
-        <main className="flex-1 overflow-auto pb-20 md:pb-6">
+        <main id="main-content" className="flex-1 overflow-auto pb-20 md:pb-6">
           {children}
         </main>
 

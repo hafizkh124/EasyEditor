@@ -18,8 +18,14 @@ import CitationPanel, { type CitationItem } from "./CitationPanel";
 import SpellingResponse from "./SpellingResponse";
 import CitationResponse from "./CitationResponse";
 import ModeChips from "./ModeChips";
+import VirtualMessageList from "./VirtualMessageList";
+import { useSubmitGuard } from "@/hooks/useSubmitGuard";
 import type { ResearchAssistMode } from "@/lib/prompts";
 import type { ResearchMode } from "./ResearchModeSwitcher";
+
+// SPEC-v2 NFR-2: virtualize the chat once it grows large. Below this threshold
+// the flat render is faster and keeps markdown layout simple for the common case.
+const VIRTUALIZE_THRESHOLD = 50;
 
 interface DocumentBoxProps {
   content: string;
@@ -209,6 +215,8 @@ const ChatDisplay = ({
   onAssistModesChange,
 }: ChatDisplayProps) => {
   const isRtlQuery = detectRtl(query);
+  const guard = useSubmitGuard(500);
+  const guardedSendQuery = guard(onSendQuery);
 
   const copyMessage = (content: string) => {
     navigator.clipboard.writeText(content);
@@ -404,11 +412,31 @@ const ChatDisplay = ({
         </div>
       </div>
 
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 w-full relative">
-        <div className="max-w-3xl mx-auto">
-          {listItems.map((item, index) => renderItem(item, index))}
-          <div ref={bottomAnchorRef} />
-        </div>
+      <div ref={scrollContainerRef} className={cn(
+        "flex-1 w-full relative",
+        listItems.length > VIRTUALIZE_THRESHOLD ? "overflow-hidden" : "overflow-y-auto p-4",
+      )}>
+        {listItems.length > VIRTUALIZE_THRESHOLD ? (
+          <div className="absolute inset-0 px-4 py-4">
+            <div className="max-w-3xl mx-auto h-full">
+              <VirtualMessageList
+                count={listItems.length}
+                renderItem={(i) => renderItem(listItems[i], i)}
+                getKey={(i) => {
+                  const item = listItems[i];
+                  if (item.type === "message") return `m:${item.index}:${item.msg.role}:${item.msg.content.length}`;
+                  return `${item.type}:${i}`;
+                }}
+              />
+              <div ref={bottomAnchorRef} />
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-3xl mx-auto">
+            {listItems.map((item, index) => renderItem(item, index))}
+            <div ref={bottomAnchorRef} />
+          </div>
+        )}
       </div>
 
       {/* Input area */}
@@ -433,13 +461,14 @@ const ChatDisplay = ({
             className={cn("min-h-[44px] max-h-32 resize-none flex-1", isRtlQuery && "text-right")}
             rows={1}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSendQuery(); }
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); guardedSendQuery(); }
             }}
           />
           <Button
-            onClick={onSendQuery}
+            onClick={guardedSendQuery}
             disabled={!query.trim() || isQuerying || researchLimitReached}
             size="icon"
+            aria-label={t("research.send") || "Send"}
             className="shrink-0 h-11 w-11"
           >
             {isQuerying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

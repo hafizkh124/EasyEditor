@@ -58,6 +58,17 @@ serve(async (req) => {
 
     const { audio, language, duration } = await req.json();
 
+    // SPEC-v2 FR-3.1: hard cap on per-call duration. Long-form transcription is
+    // chunked client-side into ~5-minute slices, so any single call should be
+    // well under this limit; reject obvious abuse.
+    const MAX_CALL_DURATION_SECONDS = 600; // 10 minutes per chunk, generous headroom over the 5-min target
+    if (typeof duration !== "number" || !Number.isFinite(duration) || duration <= 0 || duration > MAX_CALL_DURATION_SECONDS) {
+      return new Response(
+        JSON.stringify({ error: `Invalid duration. Each request must be between 1 and ${MAX_CALL_DURATION_SECONDS} seconds.` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (sub.tier === "free" && sub.transcription_seconds_used + duration > sub.transcription_limit) {
       return new Response(
         JSON.stringify({ error: "Free tier limit reached. Upgrade to Pro for unlimited access." }),

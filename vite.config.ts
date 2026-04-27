@@ -9,17 +9,15 @@ import { visualizer } from "rollup-plugin-visualizer";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
-  // Hardcoded Supabase fallbacks (per project memory: tech/environment-config).
-  // Ensures builds like `vite build --mode development` succeed without a mode-specific .env file.
-  const FALLBACKS: Record<string, string> = {
-    VITE_SUPABASE_URL: "https://vdfdqtzndsrrlutbprtk.supabase.co",
-    VITE_SUPABASE_PUBLISHABLE_KEY:
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkZmRxdHpuZHNycmx1dGJwcnRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNDg4MTIsImV4cCI6MjA4ODYyNDgxMn0.qctx-QWA-HVSclpOKYp_j-4IxsbfrZF8NQmQXLYZOOQ",
-    VITE_SUPABASE_PROJECT_ID: "vdfdqtzndsrrlutbprtk",
-  };
-  for (const [key, fallback] of Object.entries(FALLBACKS)) {
-    if (!env[key]) env[key] = fallback;
-    if (!process.env[key]) process.env[key] = env[key];
+  // Per SPEC-v2 §7 Phase 0: no hardcoded Supabase keys in the repo.
+  // The app reads VITE_SUPABASE_* from .env (gitignored). Fail fast in build mode
+  // if they are missing so misconfigured deploys do not silently ship broken bundles.
+  const REQUIRED = ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_PROJECT_ID"];
+  if (mode === "production") {
+    const missing = REQUIRED.filter((k) => !env[k]);
+    if (missing.length > 0) {
+      throw new Error(`Missing required env vars for production build: ${missing.join(", ")}`);
+    }
   }
 
   return {
