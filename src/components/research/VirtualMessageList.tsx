@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { VariableSizeList, type ListOnItemsRenderedProps } from "react-window";
-import AutoSizer from "react-virtualized-auto-sizer";
+import { AutoSizer } from "react-virtualized-auto-sizer";
 
 interface VirtualMessageListProps {
   count: number;
@@ -90,12 +90,12 @@ const VirtualMessageList = ({
   }, [renderItem]);
 
   return (
-    <AutoSizer>
-      {({ height, width }) => (
+    <AutoSizer
+      renderProp={({ height, width }) => (
         <VariableSizeList
           ref={listRef}
-          height={height}
-          width={width}
+          height={height ?? 0}
+          width={width ?? 0}
           itemCount={count}
           itemKey={(i) => getKey(i)}
           itemSize={getItemSize}
@@ -106,7 +106,7 @@ const VirtualMessageList = ({
           {Row}
         </VariableSizeList>
       )}
-    </AutoSizer>
+    />
   );
 };
 
