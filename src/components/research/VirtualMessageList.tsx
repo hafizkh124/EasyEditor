@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { VariableSizeList, type ListOnItemsRenderedProps } from "react-window";
-import AutoSizer from "react-virtualized-auto-sizer";
+import { AutoSizer } from "react-virtualized-auto-sizer";
 
 interface VirtualMessageListProps {
   count: number;
