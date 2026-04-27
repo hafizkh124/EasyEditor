@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { VariableSizeList, type ListOnItemsRenderedProps } from "react-window";
-import AutoSizer from "react-virtualized-auto-sizer";
+import { AutoSizer } from "react-virtualized-auto-sizer";
 
 interface VirtualMessageListProps {
   count: number;
@@ -89,24 +89,29 @@ const VirtualMessageList = ({
     return Inner;
   }, [renderItem]);
 
+  // react-virtualized-auto-sizer v2 uses a `renderProp` prop instead of children,
+  // and `height` / `width` are `undefined` on the initial render (including SSR).
   return (
-    <AutoSizer>
-      {({ height, width }) => (
-        <VariableSizeList
-          ref={listRef}
-          height={height}
-          width={width}
-          itemCount={count}
-          itemKey={(i) => getKey(i)}
-          itemSize={getItemSize}
-          estimatedItemSize={estimatedItemSize}
-          overscanCount={4}
-          onItemsRendered={onItemsRendered}
-        >
-          {Row}
-        </VariableSizeList>
-      )}
-    </AutoSizer>
+    <AutoSizer
+      renderProp={({ height, width }) => {
+        if (height == null || width == null) return null;
+        return (
+          <VariableSizeList
+            ref={listRef}
+            height={height}
+            width={width}
+            itemCount={count}
+            itemKey={(i) => getKey(i)}
+            itemSize={getItemSize}
+            estimatedItemSize={estimatedItemSize}
+            overscanCount={4}
+            onItemsRendered={onItemsRendered}
+          >
+            {Row}
+          </VariableSizeList>
+        );
+      }}
+    />
   );
 };
 

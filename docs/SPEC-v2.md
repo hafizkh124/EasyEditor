@@ -395,7 +395,7 @@ Elapsed 02:14 · ETA ~03:30
 - [x] `react-window` virtualization on Research chat (threshold-gated; see [ADR 0003](./adr/0003-threshold-gated-virtualization.md)).
 - [x] Throttled auto-scroll (handled internally by `VirtualMessageList` via `onItemsRendered` + `scrollToItem`).
 - [x] `vite-plugin-pwa` with Workbox runtime caching.
-- [x] Images converted to WebP. _Scope: in-app brand `<img>` refs swapped from `favicon.png` → `favicon.webp` (76% size reduction). PWA install icons (`icon-*.png`) and `<link rel="icon">` / `apple-touch-icon` deliberately kept as PNG for iOS / manifest compatibility. Also fixed a broken `/og-image.png` reference in Landing.tsx → `/og-image.webp`._
+- [x] Images converted to WebP. _Scope: brand `<img>` refs in `AppLayout`, `Login`, `Signup` swapped from `favicon.png` → `favicon.webp` (76% smaller). PWA install icons (`icon-*.png`), `<link rel="icon">` / `apple-touch-icon`, and Landing page imagery deliberately kept as PNG (iOS/manifest compatibility, and to preserve the curated landing visuals from the original Lovable design)._
 - [x] Bundle analyzer wired (`rollup-plugin-visualizer`); budget set to 250 KB chunk warning.
 **Exit criteria:** Lighthouse PWA ≥ 90, Performance ≥ 85 on mid-tier mobile. ⏳ (pending live build measurement)
 
