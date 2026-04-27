@@ -93,24 +93,21 @@ const VirtualMessageList = ({
   // and `height` / `width` are `undefined` on the initial render (including SSR).
   return (
     <AutoSizer
-      renderProp={({ height, width }) => {
-        if (height == null || width == null) return null;
-        return (
-          <VariableSizeList
-            ref={listRef}
-            height={height}
-            width={width}
-            itemCount={count}
-            itemKey={(i) => getKey(i)}
-            itemSize={getItemSize}
-            estimatedItemSize={estimatedItemSize}
-            overscanCount={4}
-            onItemsRendered={onItemsRendered}
-          >
-            {Row}
-          </VariableSizeList>
-        );
-      }}
+      renderProp={({ height, width }) => (
+        <VariableSizeList
+          ref={listRef}
+          height={height ?? 0}
+          width={width ?? 0}
+          itemCount={count}
+          itemKey={(i) => getKey(i)}
+          itemSize={getItemSize}
+          estimatedItemSize={estimatedItemSize}
+          overscanCount={4}
+          onItemsRendered={onItemsRendered}
+        >
+          {Row}
+        </VariableSizeList>
+      )}
     />
   );
 };
