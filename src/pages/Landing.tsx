@@ -204,7 +204,7 @@ const Landing = () => {
 
           <div className="flex items-center justify-center">
             <img
-              src="/og-image.webp"
+              src="/og-image.png"
               alt={
                 language === "ur"
                   ? "العلماء ایزی ایڈیٹر — AI-Powered Islamic Research & Editing Suite"
