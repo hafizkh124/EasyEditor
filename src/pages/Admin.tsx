@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSeo } from "@/hooks/useSeo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApproval } from "@/hooks/useApproval";
@@ -14,6 +15,8 @@ import CorpusPanel from "@/components/admin/CorpusPanel";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 
 const Admin = () => {
+  useSeo({ title: "Admin — Al-Ulama Easy Editor", description: "Admin panel for approving registrations and managing Al-Ulama Easy Editor accounts.", path: "/admin" });
+
   const { user } = useAuth();
   const { isAdmin, loading: approvalLoading } = useApproval();
   const { t, direction } = useLanguage();

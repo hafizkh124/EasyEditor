@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSeo } from "@/hooks/useSeo";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -9,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
 const ResetPassword = () => {
+  useSeo({ title: "Reset password — Al-Ulama Easy Editor", description: "Set a new password for your Al-Ulama Easy Editor account and continue working securely.", path: "/reset-password" });
+
   const { t, direction } = useLanguage();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");

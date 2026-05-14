@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useSeo } from "@/hooks/useSeo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -38,6 +39,8 @@ const refineActions: { action: RefineAction; icon: typeof GraduationCap; labelKe
 const ACCEPTED_AUDIO = ".mp3,.wav,.m4a,.ogg,.webm,.flac,.aac";
 
 const Transcribe = () => {
+  useSeo({ title: "Transcribe — Al-Ulama Easy Editor", description: "Speech-to-text in Urdu, Arabic and English with smart AI editing for scholars and students.", path: "/transcribe" });
+
   const { session } = useAuth();
   const { t } = useLanguage();
   const [isRecording, setIsRecording] = useState(false);

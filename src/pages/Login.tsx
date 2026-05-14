@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSeo } from "@/hooks/useSeo";
 import { Link, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -12,6 +13,8 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 const Login = () => {
+  useSeo({ title: "Log in — Al-Ulama Easy Editor", description: "Sign in to Al-Ulama Easy Editor to access transcription, OCR, TTS and Islamic research tools.", path: "/login" });
+
   const { user, loading } = useAuth();
   const { t, direction } = useLanguage();
   const [email, setEmail] = useState("");
