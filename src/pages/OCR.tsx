@@ -23,7 +23,7 @@ import { usePageSession } from "@/hooks/usePageSession";
 import { isRtlText } from "@/utils/textUtils";
 
 const OCR = () => {
-  useSeo({ title: "OCR — Al-Ulama Easy Editor", description: "Extract Urdu, Arabic and English text from images and scanned pages with high accuracy.", path: "/ocr" });
+  useSeo({ title: "Urdu & Arabic OCR — Islamic Text Digitization", description: "Extract Urdu, Arabic and English text from images and scanned Islamic books with high accuracy. Free Quran-friendly OCR.", path: "/ocr" });
 
   const { user, session } = useAuth();
   const { t } = useLanguage();
