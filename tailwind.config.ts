@@ -63,6 +63,21 @@ export default {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+  		minHeight: {
+  			touch: '2.75rem'
+  		},
+  		minWidth: {
+  			touch: '2.75rem'
+  		},
+  		fontSize: {
+  			'fluid-xs': 'clamp(0.75rem, 0.72rem + 0.15vw, 0.8125rem)',
+  			'fluid-sm': 'clamp(0.875rem, 0.84rem + 0.18vw, 0.9375rem)',
+  			'fluid-base': 'clamp(1rem, 0.96rem + 0.2vw, 1.0625rem)',
+  			'fluid-lg': 'clamp(1.125rem, 1.06rem + 0.35vw, 1.375rem)',
+  			'fluid-xl': 'clamp(1.375rem, 1.24rem + 0.7vw, 1.875rem)',
+  			'fluid-2xl': 'clamp(1.75rem, 1.45rem + 1.5vw, 2.625rem)',
+  			'fluid-3xl': 'clamp(2.125rem, 1.7rem + 2.2vw, 3.5rem)'
+  		},
   		keyframes: {
   			'accordion-down': {
   				from: {

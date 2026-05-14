@@ -134,7 +134,7 @@ const SourcesPanel = ({
   const islamicLimitReached = islamicQueriesLimit > 0 && islamicQueriesUsed >= islamicQueriesLimit;
 
   return (
-    <div className="lg:w-80 border-b lg:border-b-0 lg:border-e border-border bg-card flex flex-col">
+    <div className="lg:w-80 shrink-0 max-h-[45vh] overflow-y-auto lg:max-h-none lg:overflow-visible border-b lg:border-b-0 lg:border-e border-border bg-card flex flex-col">
       {/* ── Islamic Mode Panel (FR-4.4: auto-select all domains, no checklist) ── */}
       {mode === "islamic" && (
         <div className="p-3 border-b border-border">
@@ -262,10 +262,11 @@ const SourcesPanel = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                       onClick={() => onDeleteSource(source)}
+                      aria-label={t("research.delete_source") || "Delete source"}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </motion.div>
                 );

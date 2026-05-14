@@ -68,21 +68,21 @@ const Admin = () => {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-4xl mx-auto space-y-6" dir={direction}>
+      <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6" dir={direction}>
         <div className="flex items-center gap-3">
           <Shield className="h-7 w-7 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">{t("admin.title")}</h1>
         </div>
 
         <Tabs defaultValue="users">
-          <TabsList className="mb-4">
+          <TabsList className="mb-4 w-full justify-start overflow-x-auto sm:w-auto">
             <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              {t("admin.user_management")}
+              <Users className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">{t("admin.user_management")}</span>
             </TabsTrigger>
             <TabsTrigger value="upgrades" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              {t("admin.upgrade_requests")}
+              <CreditCard className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">{t("admin.upgrade_requests")}</span>
               {upgradeRequests.length > 0 && (
                 <Badge className="ms-1 h-5 min-w-5 rounded-full px-1.5 text-xs">
                   {upgradeRequests.length}
@@ -90,8 +90,8 @@ const Admin = () => {
               )}
             </TabsTrigger>
             <TabsTrigger value="corpus" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              {t("admin.corpus_tab")}
+              <Database className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">{t("admin.corpus_tab")}</span>
             </TabsTrigger>
           </TabsList>
 
