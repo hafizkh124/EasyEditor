@@ -28,11 +28,11 @@ const Landing = () => {
   useEffect(() => {
     const isUr = language === "ur";
     const title = isUr
-      ? "اسلامی AI اسسٹنٹ — قرآن و حدیث ریسرچ GPT"
-      : "Islamic AI Research Assistant — Quran & Hadith GPT";
+      ? "العلماء ایزی ایڈیٹر — اسلامی AI ریسرچ اسسٹنٹ"
+      : "Al-Ulama Easy Editor — Islamic AI Research Assistant";
     const desc = isUr
-      ? "اسلامی AI اسسٹنٹ: قرآن و حدیث پر مبنی Muslim AI، اردو/عربی/انگریزی ریسرچ، ٹرانسکرپشن، OCR اور ٹیکسٹ ٹو اسپیچ — علماء و طلبہ کے لیے۔"
-      : "Islamic AI assistant grounded in Quran & Hadith. Muslim AI for Urdu, Arabic and English research, transcription, OCR and text-to-speech — built for scholars and students.";
+      ? "العلماء ایزی ایڈیٹر: قرآن و حدیث پر مبنی اسلامی AI اسسٹنٹ، اردو/عربی/انگریزی ریسرچ، ٹرانسکرپشن، OCR اور ٹیکسٹ ٹو اسپیچ — علماء و طلبہ کے لیے۔"
+      : "Al-Ulama Easy Editor: Islamic AI assistant grounded in Quran & Hadith. Muslim AI for Urdu, Arabic and English research, transcription, OCR and text-to-speech.";
 
     document.title = title;
     document.documentElement.lang = isUr ? "ur" : "en";
@@ -142,7 +142,13 @@ const Landing = () => {
             <span className="text-lg font-bold tracking-tight text-foreground">EasyEditor</span>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <nav className="flex items-center gap-1 sm:gap-2">
+            <Link to="/about" className="hidden sm:inline-flex px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+              {t("public.nav_about") || "About"}
+            </Link>
+            <Link to="/faq/is-ai-haram-in-islam" className="hidden md:inline-flex px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+              {t("public.nav_faq") || "FAQ"}
+            </Link>
             <Button
               variant="ghost"
               size="sm"
@@ -152,7 +158,7 @@ const Landing = () => {
               <Languages className="h-4 w-4" />
               {language === "ur" ? "EN" : "اردو"}
             </Button>
-          </div>
+          </nav>
         </div>
       </header>
 
@@ -357,7 +363,13 @@ const Landing = () => {
             <img src="/favicon.png" alt="" width={24} height={24} className="rounded" />
             <span>© {new Date().getFullYear()} EasyEditor</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link to="/about" className="hover:text-foreground">
+              {t("public.nav_about") || "About"}
+            </Link>
+            <Link to="/faq/is-ai-haram-in-islam" className="hover:text-foreground">
+              {t("public.nav_faq") || "FAQ"}
+            </Link>
             <Link to="/login" className="hover:text-foreground">
               {t("auth.login")}
             </Link>
