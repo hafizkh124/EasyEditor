@@ -430,11 +430,11 @@ const Pricing = () => {
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_nbp")}
                 </p>
-                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1.5 text-sm items-center">
                   <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
                   <span className="font-medium" dir="ltr">Al-Ulama</span>
                   <span className="text-muted-foreground">{t("pricing.payment_iban")}:</span>
-                  <span className="font-mono text-xs font-medium break-all" dir="ltr">PK04NBPA1997004243449556</span>
+                  <CopyValue value="PK04NBPA1997004243449556" mono small label={t("pricing.payment_iban")} copyLabel={t("pricing.copy")} copiedLabel={t("pricing.copied")} />
                   <span className="text-muted-foreground">{t("pricing.payment_branch")}:</span>
                   <span className="font-medium" dir="ltr">Badami Bagh 1997</span>
                 </div>
@@ -445,11 +445,11 @@ const Pricing = () => {
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_jazzcash_business")}
                 </p>
-                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1.5 text-sm items-center">
                   <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
                   <span className="font-medium" dir="ltr">Ulama Centre</span>
                   <span className="text-muted-foreground">{t("pricing.payment_till_id")}:</span>
-                  <span className="font-mono font-medium" dir="ltr">00420745</span>
+                  <CopyValue value="00420745" mono label={t("pricing.payment_till_id")} copyLabel={t("pricing.copy")} copiedLabel={t("pricing.copied")} />
                 </div>
               </div>
 
@@ -458,11 +458,11 @@ const Pricing = () => {
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_jazzcash_personal")}
                 </p>
-                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1.5 text-sm items-center">
                   <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
                   <span className="font-medium" dir="ltr">Hafiz Khizar Hayat</span>
                   <span className="text-muted-foreground">{t("pricing.payment_number")}:</span>
-                  <span className="font-mono font-medium" dir="ltr">0308 4164816</span>
+                  <PhoneValue display="0308 4164816" raw="03084164816" wa="923084164816" copyLabel={t("pricing.copy")} copiedLabel={t("pricing.copied")} waLabel={t("pricing.manual_note_whatsapp_label")} />
                 </div>
               </div>
 
@@ -471,13 +471,14 @@ const Pricing = () => {
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_easypaisa_personal")}
                 </p>
-                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1.5 text-sm items-center">
                   <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
                   <span className="font-medium" dir="ltr">Hafiz Khizar Hayat</span>
                   <span className="text-muted-foreground">{t("pricing.payment_number")}:</span>
-                  <span className="font-mono font-medium" dir="ltr">0308 4164816</span>
+                  <PhoneValue display="0308 4164816" raw="03084164816" copyLabel={t("pricing.copy")} copiedLabel={t("pricing.copied")} />
                 </div>
               </div>
+            </div>
             </div>
 
             {/* Dynamic plan amount */}
