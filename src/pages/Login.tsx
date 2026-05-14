@@ -47,7 +47,7 @@ const Login = () => {
           <div className="rounded-2xl bg-primary/10 p-3">
             <img src="/favicon.webp" alt="EasyEditor" width={40} height={40} className="rounded-lg" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">EasyEditor</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Log in to EasyEditor</h1>
           <p className="text-sm text-muted-foreground">{t("auth.login")}</p>
         </div>
 
