@@ -1,0 +1,19 @@
+# Al-Ulama Easy Editor
+
+> AI-powered Islamic research, transcription, OCR, and text-to-speech suite with full Urdu, Arabic, and English support — built for scholars and students.
+
+Al-Ulama Easy Editor (EasyEditor) provides a grounded Islamic GPT research assistant (Quran & Hadith citations), long-form audio transcription, image-to-text OCR for Arabic/Urdu/English, and natural text-to-speech voices.
+
+## Pages
+
+- [Home](/): Product overview, features, and pricing.
+- [Pricing](/pricing): Basic, Pro, and Ultra plans (PKR).
+- [Sign up](/signup): Create an account (manual admin approval).
+- [Log in](/login): Sign in with email or Google.
+
+## Features
+
+- [Islamic Research](/research): Citation-grounded answers from Quran and Hadith.
+- [Transcribe](/transcribe): Urdu, Arabic, and English audio transcription.
+- [OCR](/ocr): Extract Urdu, Arabic, and English text from images.
+- [Speak](/speak): Multilingual text-to-speech with multiple voices.
