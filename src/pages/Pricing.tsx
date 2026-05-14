@@ -390,7 +390,7 @@ const Pricing = () => {
           </p>
 
           <a
-            href="https://wa.me/923184164816"
+            href="https://wa.me/923184269036"
             target="_blank"
             rel="noopener noreferrer"
             className="group mx-auto my-5 flex w-full max-w-sm items-center justify-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 transition-all hover:border-emerald-500/60 hover:bg-emerald-500/20 hover:shadow-md"
@@ -398,7 +398,7 @@ const Pricing = () => {
           >
             <MessageCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             <span className="font-mono text-base font-semibold tracking-wider text-emerald-700 dark:text-emerald-300">
-              0318 416 4816
+              +92 318 4269036
             </span>
           </a>
 
