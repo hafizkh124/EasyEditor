@@ -325,7 +325,21 @@ const Landing = () => {
           </div>
 
           <p className="mt-8 text-center text-xs text-muted-foreground whitespace-pre-line">
-            {t("pricing.manual_note")}
+            {t("pricing.manual_note").split("03184164816").map((part, i, arr) => (
+              <span key={i}>
+                {part}
+                {i < arr.length - 1 && (
+                  <a
+                    href="https://wa.me/923184164816"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
+                  >
+                    03184164816
+                  </a>
+                )}
+              </span>
+            ))}
           </p>
         </div>
       </section>
