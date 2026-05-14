@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSeo } from "@/hooks/useSeo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -28,6 +29,8 @@ type PaidTier = "basic" | "pro" | "ultra";
 const TIER_ORDER: Record<string, number> = { free: 0, basic: 1, pro: 2, ultra: 3 };
 
 const Pricing = () => {
+  useSeo({ title: "Pricing — Al-Ulama Easy Editor", description: "Compare Basic, Pro and Ultra plans for Al-Ulama Easy Editor and pick what fits you.", path: "/pricing" });
+
   const { user } = useAuth();
   const { t, direction } = useLanguage();
   const { subscription, loading, refetch } = useSubscription();

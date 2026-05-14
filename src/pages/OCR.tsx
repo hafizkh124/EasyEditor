@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { useSeo } from "@/hooks/useSeo";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,6 +23,8 @@ import { usePageSession } from "@/hooks/usePageSession";
 import { isRtlText } from "@/utils/textUtils";
 
 const OCR = () => {
+  useSeo({ title: "OCR — Al-Ulama Easy Editor", description: "Extract Urdu, Arabic and English text from images and scanned pages with high accuracy.", path: "/ocr" });
+
   const { user, session } = useAuth();
   const { t } = useLanguage();
   const { refetch } = useSubscription();
