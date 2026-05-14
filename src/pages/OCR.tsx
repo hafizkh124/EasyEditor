@@ -292,7 +292,7 @@ const OCR = () => {
               <div className="relative">
                 <img
                   src={imagePreview}
-                  alt="Uploaded"
+                  alt={t("ocr.uploaded_alt") || "Uploaded document for text extraction"}
                   className="w-full max-h-64 object-contain rounded-lg bg-muted"
                 />
                 <div className="absolute top-2 end-2 flex gap-1">
@@ -301,6 +301,7 @@ const OCR = () => {
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => setIsCropping(true)}
+                    aria-label={t("ocr.crop_image") || "Crop image"}
                   >
                     <Crop className="h-4 w-4" />
                   </Button>
@@ -309,6 +310,7 @@ const OCR = () => {
                     size="icon"
                     className="h-8 w-8"
                     onClick={clearImage}
+                    aria-label={t("ocr.remove_image") || "Remove image"}
                   >
                     <X className="h-4 w-4" />
                   </Button>
