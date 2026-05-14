@@ -67,7 +67,7 @@ const About = () => {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link to="/signup">
               <Button size="lg" className="h-12 gap-2 px-6 text-base">
-                {isUr ? "مفت اکاؤنٹ بنائیں" : "Create free account"}
+                {isUr ? "اکاؤنٹ بنائیں" : "Create account"}
                 <ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </Button>
             </Link>
@@ -125,13 +125,13 @@ const About = () => {
           </h2>
           <p className="mt-3 text-muted-foreground md:text-lg">
             {isUr
-              ? "مفت اکاؤنٹ بنائیں اور اسلامی AI اسسٹنٹ کا تجربہ کریں۔"
+              ? "اکاؤنٹ بنائیں اور اسلامی AI اسسٹنٹ کا تجربہ کریں۔"
               : "Create a account and try the Islamic AI assistant for yourself."}
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link to="/signup">
               <Button size="lg" className="h-12 gap-2 px-6 text-base">
-                {isUr ? "مفت اکاؤنٹ بنائیں" : "Create free account"}
+                {isUr ? "اکاؤنٹ بنائیں" : "Create account"}
                 <ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </Button>
             </Link>
