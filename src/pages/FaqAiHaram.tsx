@@ -112,7 +112,7 @@ const FaqAiHaram = () => {
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
             <Link to="/signup">
               <Button size="lg" className="h-11 gap-2 px-5">
-                {isUr ? "مفت اکاؤنٹ بنائیں" : "Create free account"}
+                {isUr ? "اکاؤنٹ بنائیں" : "Create account"}
                 <ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </Button>
             </Link>
