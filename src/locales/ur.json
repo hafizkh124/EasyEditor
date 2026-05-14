@@ -338,6 +338,8 @@
   "pricing.payment_dialog_title": "اپنی اپ گریڈ درخواست مکمل کریں",
   "pricing.payment_dialog_desc": "نیچے دیے گئے طریقوں میں سے کسی ایک سے ادائیگی کریں، پھر اپنا ٹرانزیکشن ریفرنس درج کریں۔",
   "pricing.payment_methods_heading": "ادائیگی کے اکاؤنٹس",
+  "pricing.copy": "کاپی کریں",
+  "pricing.copied": "کاپی ہو گیا",
   "pricing.payment_account_title": "اکاؤنٹ کا نام",
   "pricing.payment_iban": "IBAN",
   "pricing.payment_branch": "برانچ",
