@@ -28,8 +28,8 @@ const Landing = () => {
   useEffect(() => {
     const isUr = language === "ur";
     const title = isUr
-      ? "العلماء ایزی ایڈیٹر — اسلامی ریسرچ، ٹرانسکرپشن، OCR اور TTS"
-      : "Al-Ulama Easy Editor — Islamic Research, Transcription, OCR & TTS";
+      ? "العلماء ایزی ایڈیٹر — اسلامی ریسرچ و ایڈیٹر"
+      : "Al-Ulama Easy Editor — Islamic Research Suite";
     const desc = isUr
       ? "العلماء ایزی ایڈیٹر: قرآن و حدیث پر مبنی اسلامی جی پی ٹی، اردو/عربی/انگریزی ٹرانسکرپشن، OCR اور ٹیکسٹ ٹو اسپیچ — علماء و طلبہ کے لیے۔"
       : "Al-Ulama Easy Editor: Islamic GPT grounded in Quran & Hadith, Urdu/Arabic/English transcription, OCR and Text-to-Speech — built for scholars and students.";
@@ -139,7 +139,7 @@ const Landing = () => {
               height={26}
               className="rounded"
             />
-            <h1 className="text-lg font-bold tracking-tight text-foreground">EasyEditor</h1>
+            <span className="text-lg font-bold tracking-tight text-foreground">EasyEditor</span>
           </Link>
 
           <div className="flex items-center gap-2">
@@ -156,6 +156,7 @@ const Landing = () => {
         </div>
       </header>
 
+      <main>
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/15 via-background to-primary/5">
         <div
@@ -210,8 +211,12 @@ const Landing = () => {
                   ? "العلماء ایزی ایڈیٹر — AI-Powered Islamic Research & Editing Suite"
                   : "Al-Ulama Easy Editor — AI-Powered Islamic Research & Editing Suite"
               }
+              width={1200}
+              height={630}
               className="w-full max-w-lg rounded-2xl border border-border/60 shadow-2xl"
               loading="eager"
+              fetchPriority="high"
+              decoding="async"
             />
           </div>
         </div>
@@ -343,6 +348,7 @@ const Landing = () => {
           </div>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer className="border-t border-border/60 py-8">
