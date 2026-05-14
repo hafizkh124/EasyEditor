@@ -419,20 +419,65 @@ const Pricing = () => {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* Bank Transfer */}
-            <div className="rounded-lg border bg-muted/50 p-3 space-y-1">
+            {/* Payment accounts */}
+            <div className="space-y-3 max-h-[45vh] overflow-y-auto pe-1">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {t("pricing.payment_bank_label")}
+                {t("pricing.payment_methods_heading")}
               </p>
-              <p className="text-sm font-medium">{t("pricing.payment_bank_details")}</p>
-            </div>
 
-            {/* EasyPaisa / JazzCash */}
-            <div className="rounded-lg border bg-muted/50 p-3 space-y-1">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {t("pricing.payment_easypaisa_label")}
-              </p>
-              <p className="text-sm font-medium">{t("pricing.payment_easypaisa_details")}</p>
+              {/* 1. NBP */}
+              <div className="rounded-lg border bg-muted/50 p-3 space-y-1.5">
+                <p className="text-sm font-semibold text-foreground">
+                  {t("pricing.payment_method_nbp")}
+                </p>
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
+                  <span className="font-medium" dir="ltr">Al-Ulama</span>
+                  <span className="text-muted-foreground">{t("pricing.payment_iban")}:</span>
+                  <span className="font-mono text-xs font-medium break-all" dir="ltr">PK04NBPA1997004243449556</span>
+                  <span className="text-muted-foreground">{t("pricing.payment_branch")}:</span>
+                  <span className="font-medium" dir="ltr">Badami Bagh 1997</span>
+                </div>
+              </div>
+
+              {/* 2. JazzCash Business */}
+              <div className="rounded-lg border bg-muted/50 p-3 space-y-1.5">
+                <p className="text-sm font-semibold text-foreground">
+                  {t("pricing.payment_method_jazzcash_business")}
+                </p>
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
+                  <span className="font-medium" dir="ltr">Ulama Centre</span>
+                  <span className="text-muted-foreground">{t("pricing.payment_till_id")}:</span>
+                  <span className="font-mono font-medium" dir="ltr">00420745</span>
+                </div>
+              </div>
+
+              {/* 3. JazzCash Personal */}
+              <div className="rounded-lg border bg-muted/50 p-3 space-y-1.5">
+                <p className="text-sm font-semibold text-foreground">
+                  {t("pricing.payment_method_jazzcash_personal")}
+                </p>
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
+                  <span className="font-medium" dir="ltr">Hafiz Khizar Hayat</span>
+                  <span className="text-muted-foreground">{t("pricing.payment_number")}:</span>
+                  <span className="font-mono font-medium" dir="ltr">0308 4164816</span>
+                </div>
+              </div>
+
+              {/* 4. EasyPaisa Personal */}
+              <div className="rounded-lg border bg-muted/50 p-3 space-y-1.5">
+                <p className="text-sm font-semibold text-foreground">
+                  {t("pricing.payment_method_easypaisa_personal")}
+                </p>
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
+                  <span className="font-medium" dir="ltr">Hafiz Khizar Hayat</span>
+                  <span className="text-muted-foreground">{t("pricing.payment_number")}:</span>
+                  <span className="font-mono font-medium" dir="ltr">0308 4164816</span>
+                </div>
+              </div>
             </div>
 
             {/* Dynamic plan amount */}
