@@ -360,7 +360,7 @@ const Landing = () => {
           </div>
 
           {/* Payment accounts */}
-          <div className="mx-auto mt-10 max-w-4xl">
+          <div id="payment-accounts" className="mx-auto mt-10 max-w-4xl scroll-mt-24">
             <h3 className="mb-4 text-center text-lg font-semibold text-foreground">
               {t("pricing.payment_methods_heading")}
             </h3>
