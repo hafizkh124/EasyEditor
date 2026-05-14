@@ -5,39 +5,47 @@ const SITE_ORIGIN = "https://editor.alulama.org";
 interface SeoOptions {
   title: string;
   description?: string;
-  path?: string; // route path for canonical, e.g. "/ocr"
+  path?: string;
 }
 
 /**
- * Sets per-route <title>, <meta name="description">, and self-referencing
- * <link rel="canonical">. Title should be < 60 chars, description 50-160.
+ * Sets per-route <title>, <meta name="description">, <link rel="canonical">,
+ * and Open Graph / Twitter title, description and URL.
  */
 export function useSeo({ title, description, path }: SeoOptions) {
   useEffect(() => {
     if (title) document.title = title;
 
-    if (description) {
-      let meta = document.head.querySelector<HTMLMetaElement>(
-        'meta[name="description"]',
-      );
-      if (!meta) {
-        meta = document.createElement("meta");
-        meta.setAttribute("name", "description");
-        document.head.appendChild(meta);
-      }
-      meta.setAttribute("content", description);
-    }
-
     const canonicalPath = path ?? window.location.pathname;
-    const href = SITE_ORIGIN + canonicalPath;
-    let link = document.head.querySelector<HTMLLinkElement>(
-      'link[rel="canonical"]',
-    );
+    const url = SITE_ORIGIN + canonicalPath;
+
+    const setMeta = (selector: string, attr: "name" | "property", key: string, value: string) => {
+      let el = document.head.querySelector<HTMLMetaElement>(selector);
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attr, key);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", value);
+    };
+
+    if (description) {
+      setMeta('meta[name="description"]', "name", "description", description);
+      setMeta('meta[property="og:description"]', "property", "og:description", description);
+      setMeta('meta[name="twitter:description"]', "name", "twitter:description", description);
+    }
+    if (title) {
+      setMeta('meta[property="og:title"]', "property", "og:title", title);
+      setMeta('meta[name="twitter:title"]', "name", "twitter:title", title);
+    }
+    setMeta('meta[property="og:url"]', "property", "og:url", url);
+
+    let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     if (!link) {
       link = document.createElement("link");
       link.setAttribute("rel", "canonical");
       document.head.appendChild(link);
     }
-    link.setAttribute("href", href);
+    link.setAttribute("href", url);
   }, [title, description, path]);
 }
