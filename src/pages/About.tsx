@@ -126,7 +126,7 @@ const About = () => {
           <p className="mt-3 text-muted-foreground md:text-lg">
             {isUr
               ? "مفت اکاؤنٹ بنائیں اور اسلامی AI اسسٹنٹ کا تجربہ کریں۔"
-              : "Create a free account and try the Islamic AI assistant for yourself."}
+              : "Create a account and try the Islamic AI assistant for yourself."}
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link to="/signup">
