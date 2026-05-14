@@ -324,7 +324,7 @@ const Landing = () => {
             })}
           </div>
 
-          <p className="mt-8 text-center text-xs text-muted-foreground">
+          <p className="mt-8 text-center text-xs text-muted-foreground whitespace-pre-line">
             {t("pricing.manual_note")}
           </p>
         </div>
