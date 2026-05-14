@@ -28,11 +28,11 @@ const Landing = () => {
   useEffect(() => {
     const isUr = language === "ur";
     const title = isUr
-      ? "اسلامی AI اسسٹنٹ — قرآن و حدیث ریسرچ GPT"
-      : "Islamic AI Research Assistant — Quran & Hadith GPT";
+      ? "العلماء ایزی ایڈیٹر — اسلامی AI ریسرچ اسسٹنٹ"
+      : "Al-Ulama Easy Editor — Islamic AI Research Assistant";
     const desc = isUr
-      ? "اسلامی AI اسسٹنٹ: قرآن و حدیث پر مبنی Muslim AI، اردو/عربی/انگریزی ریسرچ، ٹرانسکرپشن، OCR اور ٹیکسٹ ٹو اسپیچ — علماء و طلبہ کے لیے۔"
-      : "Islamic AI assistant grounded in Quran & Hadith. Muslim AI for Urdu, Arabic and English research, transcription, OCR and text-to-speech — built for scholars and students.";
+      ? "العلماء ایزی ایڈیٹر: قرآن و حدیث پر مبنی اسلامی AI اسسٹنٹ، اردو/عربی/انگریزی ریسرچ، ٹرانسکرپشن، OCR اور ٹیکسٹ ٹو اسپیچ — علماء و طلبہ کے لیے۔"
+      : "Al-Ulama Easy Editor: Islamic AI assistant grounded in Quran & Hadith. Muslim AI for Urdu, Arabic and English research, transcription, OCR and text-to-speech.";
 
     document.title = title;
     document.documentElement.lang = isUr ? "ur" : "en";
