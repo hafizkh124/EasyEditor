@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useSeo } from "@/hooks/useSeo";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,6 +30,8 @@ const personas: Persona[] = [
 ];
 
 const Speak = () => {
+  useSeo({ title: "Text to Speech — Al-Ulama Easy Editor", description: "Generate natural Urdu, Arabic and English speech from text with multiple voice personas.", path: "/speak" });
+
   const { user, session } = useAuth();
   const { t, language } = useLanguage();
   const location = useLocation();
