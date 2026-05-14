@@ -479,7 +479,6 @@ const Pricing = () => {
                 </div>
               </div>
             </div>
-            </div>
 
             {/* Dynamic plan amount */}
             <p className="text-sm font-semibold text-primary">
