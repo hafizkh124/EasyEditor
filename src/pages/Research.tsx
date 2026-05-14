@@ -34,7 +34,7 @@ function usePersistedState<T>(key: string, initial: T, parse: (raw: string) => T
 }
 
 const Research = () => {
-  useSeo({ title: "Research — Al-Ulama Easy Editor", description: "Grounded Islamic research assistant with citations from Quran, Hadith and classical sources.", path: "/research" });
+  useSeo({ title: "Islamic AI Assistant — Quran & Hadith Research", description: "Islamic AI research assistant grounded in Quran, Hadith and classical sources. Cited Muslim AI answers in Urdu, Arabic and English.", path: "/research" });
 
   const { user, session } = useAuth();
   const { t } = useLanguage();
