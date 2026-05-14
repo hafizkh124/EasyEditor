@@ -156,6 +156,7 @@ const Landing = () => {
         </div>
       </header>
 
+      <main>
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/15 via-background to-primary/5">
         <div
@@ -347,6 +348,7 @@ const Landing = () => {
           </div>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer className="border-t border-border/60 py-8">
