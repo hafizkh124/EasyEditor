@@ -19,7 +19,41 @@ import {
   Zap,
   Star,
   MessageCircle,
+  Copy,
 } from "lucide-react";
+import { toast } from "sonner";
+
+interface PaymentAccount {
+  methodKey: string;
+  title: string;
+  rows: { labelKey: string; value: string; mono?: boolean; small?: boolean }[];
+}
+
+const PAYMENT_ACCOUNTS: PaymentAccount[] = [
+  {
+    methodKey: "pricing.payment_method_nbp",
+    title: "Al-Ulama",
+    rows: [
+      { labelKey: "pricing.payment_iban", value: "PK04NBPA1997004243449556", mono: true, small: true },
+      { labelKey: "pricing.payment_branch", value: "Badami Bagh 1997" },
+    ],
+  },
+  {
+    methodKey: "pricing.payment_method_jazzcash_business",
+    title: "Ulama Centre",
+    rows: [{ labelKey: "pricing.payment_till_id", value: "00420745", mono: true }],
+  },
+  {
+    methodKey: "pricing.payment_method_jazzcash_personal",
+    title: "Hafiz Khizar Hayat",
+    rows: [{ labelKey: "pricing.payment_number", value: "0308 4164816", mono: true }],
+  },
+  {
+    methodKey: "pricing.payment_method_easypaisa_personal",
+    title: "Hafiz Khizar Hayat",
+    rows: [{ labelKey: "pricing.payment_number", value: "0308 4164816", mono: true }],
+  },
+];
 
 const Landing = () => {
   const { user, loading } = useAuth();
