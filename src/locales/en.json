@@ -338,6 +338,8 @@
   "pricing.payment_dialog_title": "Complete Your Upgrade Request",
   "pricing.payment_dialog_desc": "Send payment using one of the methods below, then enter your transaction reference so we can verify it.",
   "pricing.payment_methods_heading": "Payment Accounts",
+  "pricing.copy": "Copy",
+  "pricing.copied": "Copied",
   "pricing.payment_account_title": "Account Title",
   "pricing.payment_iban": "IBAN",
   "pricing.payment_branch": "Branch",

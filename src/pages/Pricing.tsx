@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle } from "lucide-react";
+import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
@@ -27,6 +27,80 @@ const MotionCard = motion(Card);
 type PaidTier = "basic" | "pro" | "ultra";
 
 const TIER_ORDER: Record<string, number> = { free: 0, basic: 1, pro: 2, ultra: 3 };
+
+const copyToClipboard = async (value: string, copiedLabel: string) => {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(copiedLabel);
+  } catch {
+    toast.error("Copy failed");
+  }
+};
+
+interface CopyValueProps {
+  value: string;
+  mono?: boolean;
+  small?: boolean;
+  label: string;
+  copyLabel: string;
+  copiedLabel: string;
+}
+
+const CopyValue = ({ value, mono, small, label, copyLabel, copiedLabel }: CopyValueProps) => (
+  <div className="flex items-center gap-2 min-w-0" dir="ltr">
+    <span className={`font-medium break-all ${mono ? "font-mono" : ""} ${small ? "text-xs" : ""}`}>
+      {value}
+    </span>
+    <button
+      type="button"
+      onClick={() => copyToClipboard(value, copiedLabel)}
+      aria-label={`${copyLabel} ${label}`}
+      className="flex-shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+    >
+      <Copy className="h-3.5 w-3.5" />
+    </button>
+  </div>
+);
+
+interface PhoneValueProps {
+  display: string;
+  raw: string;
+  wa?: string;
+  copyLabel: string;
+  copiedLabel: string;
+  waLabel?: string;
+}
+
+const PhoneValue = ({ display, raw, wa, copyLabel, copiedLabel, waLabel }: PhoneValueProps) => (
+  <div className="flex items-center gap-2 min-w-0 flex-wrap" dir="ltr">
+    <a
+      href={`tel:${raw}`}
+      className="font-mono font-medium text-primary underline-offset-2 hover:underline"
+    >
+      {display}
+    </a>
+    <button
+      type="button"
+      onClick={() => copyToClipboard(raw, copiedLabel)}
+      aria-label={`${copyLabel} ${display}`}
+      className="flex-shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+    >
+      <Copy className="h-3.5 w-3.5" />
+    </button>
+    {wa && (
+      <a
+        href={`https://wa.me/${wa}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={waLabel ?? "WhatsApp"}
+        className="flex-shrink-0 rounded-md p-1.5 text-emerald-600 transition-colors hover:bg-emerald-500/10 dark:text-emerald-400 focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        <MessageCircle className="h-3.5 w-3.5" />
+      </a>
+    )}
+  </div>
+);
+
 
 const Pricing = () => {
   useSeo({ title: "Pricing — Al-Ulama Easy Editor", description: "Compare Basic, Pro and Ultra plans for Al-Ulama Easy Editor and pick what fits you.", path: "/pricing" });
@@ -430,11 +504,11 @@ const Pricing = () => {
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_nbp")}
                 </p>
-                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1.5 text-sm items-center">
                   <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
                   <span className="font-medium" dir="ltr">Al-Ulama</span>
                   <span className="text-muted-foreground">{t("pricing.payment_iban")}:</span>
-                  <span className="font-mono text-xs font-medium break-all" dir="ltr">PK04NBPA1997004243449556</span>
+                  <CopyValue value="PK04NBPA1997004243449556" mono small label={t("pricing.payment_iban")} copyLabel={t("pricing.copy")} copiedLabel={t("pricing.copied")} />
                   <span className="text-muted-foreground">{t("pricing.payment_branch")}:</span>
                   <span className="font-medium" dir="ltr">Badami Bagh 1997</span>
                 </div>
@@ -445,11 +519,11 @@ const Pricing = () => {
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_jazzcash_business")}
                 </p>
-                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1.5 text-sm items-center">
                   <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
                   <span className="font-medium" dir="ltr">Ulama Centre</span>
                   <span className="text-muted-foreground">{t("pricing.payment_till_id")}:</span>
-                  <span className="font-mono font-medium" dir="ltr">00420745</span>
+                  <CopyValue value="00420745" mono label={t("pricing.payment_till_id")} copyLabel={t("pricing.copy")} copiedLabel={t("pricing.copied")} />
                 </div>
               </div>
 
@@ -458,11 +532,11 @@ const Pricing = () => {
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_jazzcash_personal")}
                 </p>
-                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1.5 text-sm items-center">
                   <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
                   <span className="font-medium" dir="ltr">Hafiz Khizar Hayat</span>
                   <span className="text-muted-foreground">{t("pricing.payment_number")}:</span>
-                  <span className="font-mono font-medium" dir="ltr">0308 4164816</span>
+                  <PhoneValue display="0308 4164816" raw="03084164816" wa="923084164816" copyLabel={t("pricing.copy")} copiedLabel={t("pricing.copied")} waLabel={t("pricing.manual_note_whatsapp_label")} />
                 </div>
               </div>
 
@@ -471,11 +545,11 @@ const Pricing = () => {
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_easypaisa_personal")}
                 </p>
-                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+                <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1.5 text-sm items-center">
                   <span className="text-muted-foreground">{t("pricing.payment_account_title")}:</span>
                   <span className="font-medium" dir="ltr">Hafiz Khizar Hayat</span>
                   <span className="text-muted-foreground">{t("pricing.payment_number")}:</span>
-                  <span className="font-mono font-medium" dir="ltr">0308 4164816</span>
+                  <PhoneValue display="0308 4164816" raw="03084164816" copyLabel={t("pricing.copy")} copiedLabel={t("pricing.copied")} />
                 </div>
               </div>
             </div>
