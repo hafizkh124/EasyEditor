@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSeo } from "@/hooks/useSeo";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +14,8 @@ import { handleSupabaseError } from "@/lib/errors";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 
 const Dashboard = () => {
+  useSeo({ title: "Dashboard — Al-Ulama Easy Editor", description: "Your Al-Ulama Easy Editor home: recent activity, usage limits and shortcuts to every tool.", path: "/dashboard" });
+
   const { user } = useAuth();
   const { t } = useLanguage();
   const { subscription } = useSubscription();

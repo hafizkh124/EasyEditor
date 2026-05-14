@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSeo } from "@/hooks/useSeo";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +18,8 @@ import { Loader2, Camera, User, Crown, BarChart3, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
 const Profile = () => {
+  useSeo({ title: "Profile — Al-Ulama Easy Editor", description: "Update your profile, display name and account info for Al-Ulama Easy Editor.", path: "/profile" });
+
   const { user, signOut } = useAuth();
   const { subscription, loading: subLoading } = useSubscription();
   const { t, direction } = useLanguage();

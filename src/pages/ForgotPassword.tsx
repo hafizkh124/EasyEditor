@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSeo } from "@/hooks/useSeo";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -9,6 +10,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { toast } from "sonner";
 
 const ForgotPassword = () => {
+  useSeo({ title: "Forgot password — Al-Ulama Easy Editor", description: "Reset your Al-Ulama Easy Editor password by email to regain access to your account.", path: "/forgot-password" });
+
   const { t, direction } = useLanguage();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
