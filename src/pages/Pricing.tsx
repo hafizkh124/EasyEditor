@@ -28,6 +28,80 @@ type PaidTier = "basic" | "pro" | "ultra";
 
 const TIER_ORDER: Record<string, number> = { free: 0, basic: 1, pro: 2, ultra: 3 };
 
+const copyToClipboard = async (value: string, copiedLabel: string) => {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(copiedLabel);
+  } catch {
+    toast.error("Copy failed");
+  }
+};
+
+interface CopyValueProps {
+  value: string;
+  mono?: boolean;
+  small?: boolean;
+  label: string;
+  copyLabel: string;
+  copiedLabel: string;
+}
+
+const CopyValue = ({ value, mono, small, label, copyLabel, copiedLabel }: CopyValueProps) => (
+  <div className="flex items-center gap-2 min-w-0" dir="ltr">
+    <span className={`font-medium break-all ${mono ? "font-mono" : ""} ${small ? "text-xs" : ""}`}>
+      {value}
+    </span>
+    <button
+      type="button"
+      onClick={() => copyToClipboard(value, copiedLabel)}
+      aria-label={`${copyLabel} ${label}`}
+      className="flex-shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+    >
+      <Copy className="h-3.5 w-3.5" />
+    </button>
+  </div>
+);
+
+interface PhoneValueProps {
+  display: string;
+  raw: string;
+  wa?: string;
+  copyLabel: string;
+  copiedLabel: string;
+  waLabel?: string;
+}
+
+const PhoneValue = ({ display, raw, wa, copyLabel, copiedLabel, waLabel }: PhoneValueProps) => (
+  <div className="flex items-center gap-2 min-w-0 flex-wrap" dir="ltr">
+    <a
+      href={`tel:${raw}`}
+      className="font-mono font-medium text-primary underline-offset-2 hover:underline"
+    >
+      {display}
+    </a>
+    <button
+      type="button"
+      onClick={() => copyToClipboard(raw, copiedLabel)}
+      aria-label={`${copyLabel} ${display}`}
+      className="flex-shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+    >
+      <Copy className="h-3.5 w-3.5" />
+    </button>
+    {wa && (
+      <a
+        href={`https://wa.me/${wa}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={waLabel ?? "WhatsApp"}
+        className="flex-shrink-0 rounded-md p-1.5 text-emerald-600 transition-colors hover:bg-emerald-500/10 dark:text-emerald-400 focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        <MessageCircle className="h-3.5 w-3.5" />
+      </a>
+    )}
+  </div>
+);
+
+
 const Pricing = () => {
   useSeo({ title: "Pricing — Al-Ulama Easy Editor", description: "Compare Basic, Pro and Ultra plans for Al-Ulama Easy Editor and pick what fits you.", path: "/pricing" });
 
