@@ -93,11 +93,6 @@ const FaqAiHaram = () => {
             ? "کیا AI اسلام میں حرام ہے؟ — علماء کا جائزہ شدہ جواب"
             : "Is AI Haram in Islam? A Scholar-Reviewed Answer"}
         </h1>
-        <p className="mt-5 text-lg text-muted-foreground leading-relaxed">
-          {isUr
-            ? "یہ صفحہ ایک خلاصہ ہے، کوئی فتویٰ نہیں۔ آخری فیصلہ کے لیے اپنے مستند علماء سے رجوع فرمائیں۔"
-            : "This page is a summary, not a fatwa. For final rulings, please refer to qualified scholars."}
-        </p>
 
         <div className="mt-10 space-y-8">
           {qas.map((qa, i) => (
@@ -114,11 +109,6 @@ const FaqAiHaram = () => {
               ? "اپنے سوالات کا جواب قرآن و حدیث سے حاصل کریں"
               : "Get answers from Quran & Hadith with citations"}
           </h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {isUr
-              ? "ہمارا اسلامی AI اسسٹنٹ مفت آزمائیں۔"
-              : "Try our Islamic AI assistant — free to start."}
-          </p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
             <Link to="/signup">
               <Button size="lg" className="h-11 gap-2 px-5">
