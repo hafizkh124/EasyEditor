@@ -270,7 +270,7 @@ const Landing = () => {
             </p>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 text-center">
             {plans.map((plan) => {
               const Icon = plan.icon;
               const popular = "popular" in plan && plan.popular;
