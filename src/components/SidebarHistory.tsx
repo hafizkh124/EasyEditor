@@ -122,10 +122,10 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed }: SidebarHisto
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100"
+                      className="h-8 w-8 opacity-100 focus:opacity-100 data-[state=open]:opacity-100 md:opacity-0 md:group-hover:opacity-100"
                       aria-label={t("sidebar.history_item_menu") || "Item menu"}
                     >
-                      <MoreHorizontal className="h-3.5 w-3.5" />
+                      <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-36">

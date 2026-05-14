@@ -151,3 +151,19 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Shared responsive page wrapper — mobile-first horizontal padding + sane max width. */
+  .page-container {
+    @apply mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Prevent iOS auto-zoom on focus: inputs must render at >=16px on touch devices. */
+  @media (max-width: 767px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+}

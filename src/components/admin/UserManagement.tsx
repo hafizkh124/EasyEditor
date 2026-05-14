@@ -61,7 +61,7 @@ const UserManagement = ({ users, loading, onApprove, onRevoke, onChangeTier, tie
                     {new Date(u.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <Badge variant={u.is_approved ? "default" : "destructive"}>
                     {u.is_approved ? t("admin.status_approved") : t("admin.status_pending")}
                   </Badge>
@@ -77,14 +77,14 @@ const UserManagement = ({ users, loading, onApprove, onRevoke, onChangeTier, tie
                       {t("admin.revoke")}
                     </Button>
                   ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full sm:w-auto items-center gap-2">
                       <Select
                         value={approvalPlanMap[u.user_id] ?? ""}
                         onValueChange={(val) =>
                           setApprovalPlanMap((prev) => ({ ...prev, [u.user_id]: val }))
                         }
                       >
-                        <SelectTrigger className="h-8 w-[160px] text-xs">
+                        <SelectTrigger className="h-9 flex-1 sm:w-[160px] sm:flex-none text-xs">
                           <SelectValue placeholder={t("admin.select_plan")} />
                         </SelectTrigger>
                         <SelectContent>
@@ -124,7 +124,7 @@ const UserManagement = ({ users, loading, onApprove, onRevoke, onChangeTier, tie
                       value=""
                       onValueChange={(val) => onChangeTier(u.user_id, val as Tier)}
                     >
-                      <SelectTrigger className="h-8 w-[130px] text-xs">
+                      <SelectTrigger className="h-9 w-full sm:w-[130px] text-xs">
                         <Crown className="h-3.5 w-3.5 me-1 text-muted-foreground" />
                         <SelectValue placeholder={t("admin.change_tier")} />
                       </SelectTrigger>

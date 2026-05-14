@@ -43,7 +43,7 @@ const NotificationBell = () => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground" aria-label={t("notification.title")}>
+        <Button variant="ghost" size="icon" className="relative h-10 w-10 text-muted-foreground hover:text-foreground" aria-label={t("notification.title")}>
           <Bell className="h-[18px] w-[18px]" />
           {unreadCount > 0 && (
             <span className="absolute top-1 end-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
@@ -52,7 +52,7 @@ const NotificationBell = () => {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(340px,calc(100vw-2rem))] p-0">
+      <PopoverContent align="end" className="w-[min(20rem,calc(100vw-1.5rem))] p-0">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <p className="font-semibold text-sm">{t("notification.title")}</p>
           {unreadCount > 0 && (
@@ -188,7 +188,7 @@ const SidebarBody = ({
           variant="ghost"
           size="icon"
           onClick={onToggleCollapse}
-          className="h-7 w-7"
+          className="h-9 w-9"
           aria-label={t("sidebar.collapse") || "Collapse sidebar"}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -202,7 +202,7 @@ const SidebarBody = ({
           variant="ghost"
           size="icon"
           onClick={onToggleCollapse}
-          className="h-7 w-7"
+          className="h-9 w-9"
           aria-label={t("sidebar.expand") || "Expand sidebar"}
         >
           <ChevronRight className="h-4 w-4" />
@@ -253,7 +253,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Skip-to-main link (Phase 6 a11y) — visible only when focused via keyboard. */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:start-2 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       >
         {t("a11y.skip_to_main") || "Skip to main content"}
       </a>
@@ -283,11 +283,11 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <header className="flex h-14 items-center gap-3 border-b border-border px-4 md:hidden bg-background/95 backdrop-blur-sm sticky top-0 z-30">
           <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={t("sidebar.open") || "Open menu"}>
+              <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={t("sidebar.open") || "Open menu"}>
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side={direction === "rtl" ? "right" : "left"} className="p-0 w-72 bg-sidebar border-e border-sidebar-border">
+            <SheetContent side={direction === "rtl" ? "right" : "left"} className="p-0 w-[min(20rem,85vw)] bg-sidebar border-e border-sidebar-border">
               <SidebarBody
                 collapsed={false}
                 onItemClick={() => setDrawerOpen(false)}
@@ -326,12 +326,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1 px-2 py-1.5 rounded-lg transition-colors min-w-[56px]",
+                    "flex flex-col items-center justify-center gap-1 px-2 py-1.5 rounded-lg transition-colors min-w-touch min-h-touch flex-1",
                     isActive ? "text-primary" : "text-muted-foreground active:text-foreground",
                   )}
                 >
                   <item.icon className={cn("h-5 w-5", isActive && "text-primary")} />
-                  <span className="text-[10px] font-medium leading-none">{t(item.labelKey)}</span>
+                  <span className="text-[11px] font-medium leading-none">{t(item.labelKey)}</span>
                 </Link>
               );
             })}

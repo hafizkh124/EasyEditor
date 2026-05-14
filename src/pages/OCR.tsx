@@ -298,11 +298,11 @@ const OCR = () => {
                   alt={t("ocr.uploaded_alt") || "Uploaded document for text extraction"}
                   className="w-full max-h-64 object-contain rounded-lg bg-muted"
                 />
-                <div className="absolute top-2 end-2 flex gap-1">
+                <div className="absolute top-2 end-2 flex gap-1.5">
                   <Button
                     variant="secondary"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-10 w-10"
                     onClick={() => setIsCropping(true)}
                     aria-label={t("ocr.crop_image") || "Crop image"}
                   >
@@ -311,7 +311,7 @@ const OCR = () => {
                   <Button
                     variant="destructive"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-10 w-10"
                     onClick={clearImage}
                     aria-label={t("ocr.remove_image") || "Remove image"}
                   >

@@ -275,6 +275,7 @@ const Profile = () => {
             <Button
               variant="outline"
               onClick={handleLogout}
+              data-approval-allow
               className="w-full sm:w-auto gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
             >
               <LogOut className="h-4 w-4" />

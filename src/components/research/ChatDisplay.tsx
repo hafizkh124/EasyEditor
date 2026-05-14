@@ -83,7 +83,7 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRege
       <div
         dir={isRtl ? "rtl" : "ltr"}
         className={cn(
-          "px-8 py-6 prose prose-sm dark:prose-invert max-w-none min-h-[250px] leading-relaxed",
+          "px-4 py-5 sm:px-8 sm:py-6 prose prose-sm dark:prose-invert max-w-none min-h-[250px] leading-relaxed",
           isRtl && "text-right"
         )}
       >
@@ -342,10 +342,11 @@ const ChatDisplay = ({
               </div>
               <button
                 onClick={() => copyMessage(msg.content)}
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-muted-foreground hover:text-foreground hover:bg-background"
+                className="absolute top-1.5 end-1.5 flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-opacity hover:bg-background hover:text-foreground focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring md:opacity-0 md:group-hover:opacity-100"
+                aria-label={t("research.copy")}
                 title={t("research.copy")}
               >
-                <Copy className="h-3 w-3" />
+                <Copy className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
