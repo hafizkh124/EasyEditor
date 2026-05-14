@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, Fragment } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -19,7 +19,41 @@ import {
   Zap,
   Star,
   MessageCircle,
+  Copy,
 } from "lucide-react";
+import { toast } from "sonner";
+
+interface PaymentAccount {
+  methodKey: string;
+  title: string;
+  rows: { labelKey: string; value: string; mono?: boolean; small?: boolean }[];
+}
+
+const PAYMENT_ACCOUNTS: PaymentAccount[] = [
+  {
+    methodKey: "pricing.payment_method_nbp",
+    title: "Al-Ulama",
+    rows: [
+      { labelKey: "pricing.payment_iban", value: "PK04NBPA1997004243449556", mono: true, small: true },
+      { labelKey: "pricing.payment_branch", value: "Badami Bagh 1997" },
+    ],
+  },
+  {
+    methodKey: "pricing.payment_method_jazzcash_business",
+    title: "Ulama Centre",
+    rows: [{ labelKey: "pricing.payment_till_id", value: "00420745", mono: true }],
+  },
+  {
+    methodKey: "pricing.payment_method_jazzcash_personal",
+    title: "Hafiz Khizar Hayat",
+    rows: [{ labelKey: "pricing.payment_number", value: "0308 4164816", mono: true }],
+  },
+  {
+    methodKey: "pricing.payment_method_easypaisa_personal",
+    title: "Hafiz Khizar Hayat",
+    rows: [{ labelKey: "pricing.payment_number", value: "0308 4164816", mono: true }],
+  },
+];
 
 const Landing = () => {
   const { user, loading } = useAuth();
@@ -323,6 +357,60 @@ const Landing = () => {
                 </Card>
               );
             })}
+          </div>
+
+          {/* Payment accounts */}
+          <div className="mx-auto mt-10 max-w-4xl">
+            <h3 className="mb-4 text-center text-lg font-semibold text-foreground">
+              {t("pricing.payment_methods_heading")}
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {PAYMENT_ACCOUNTS.map((acc, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-border/60 bg-card/40 p-5 shadow-sm backdrop-blur-sm"
+                >
+                  <p className="mb-3 text-sm font-semibold text-primary">
+                    {t(acc.methodKey)}
+                  </p>
+                  <div className="grid grid-cols-[auto,1fr] items-center gap-x-3 gap-y-2 text-sm">
+                    <span className="text-muted-foreground">
+                      {t("pricing.payment_account_title")}:
+                    </span>
+                    <span className="font-medium" dir="ltr">
+                      {acc.title}
+                    </span>
+                    {acc.rows.map((r, j) => (
+                      <Fragment key={j}>
+                        <span className="text-muted-foreground">{t(r.labelKey)}:</span>
+                        <div className="flex items-center gap-2 min-w-0" dir="ltr">
+                          <span
+                            className={`font-medium break-all ${r.mono ? "font-mono" : ""} ${r.small ? "text-xs" : ""}`}
+                          >
+                            {r.value}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(r.value.replace(/\s+/g, ""));
+                                toast.success(t("pricing.copied"));
+                              } catch {
+                                toast.error("Copy failed");
+                              }
+                            }}
+                            aria-label={`${t("pricing.copy")} ${t(r.labelKey)}`}
+                            className="flex-shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </Fragment>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-border/60 bg-card/40 p-6 shadow-sm backdrop-blur-sm sm:p-8">
