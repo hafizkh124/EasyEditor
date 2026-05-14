@@ -18,6 +18,7 @@ import {
   Crown,
   Zap,
   Star,
+  MessageCircle,
 } from "lucide-react";
 
 const Landing = () => {
