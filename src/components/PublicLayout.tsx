@@ -20,10 +20,10 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
           </Link>
           <nav className="flex items-center gap-1 sm:gap-2">
             <Link to="/about" className="hidden sm:inline-flex px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-              {t("public.nav_about") || "About"}
+              {language === "ur" ? "ہمارے بارے میں" : "About"}
             </Link>
             <Link to="/faq/is-ai-haram-in-islam" className="hidden md:inline-flex px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-              {t("public.nav_faq") || "FAQ"}
+              {language === "ur" ? "سوالات" : "FAQ"}
             </Link>
             <Button
               variant="ghost"
@@ -50,8 +50,8 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
             <span>© {new Date().getFullYear()} EasyEditor</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Link to="/about" className="hover:text-foreground">{t("public.nav_about") || "About"}</Link>
-            <Link to="/faq/is-ai-haram-in-islam" className="hover:text-foreground">{t("public.nav_faq") || "FAQ"}</Link>
+            <Link to="/about" className="hover:text-foreground">{language === "ur" ? "ہمارے بارے میں" : "About"}</Link>
+            <Link to="/faq/is-ai-haram-in-islam" className="hover:text-foreground">{language === "ur" ? "سوالات" : "FAQ"}</Link>
             <Link to="/login" className="hover:text-foreground">{t("auth.login")}</Link>
             <Link to="/signup" className="hover:text-foreground">{t("auth.signup")}</Link>
           </div>
