@@ -109,12 +109,6 @@ const Research = () => {
   });
 
 
-  const handleExportBibliography = () => {
-    if (downloadBibliography(chat.citations)) {
-      toast.success(t("research.bibliography_exported"));
-    }
-  };
-
   const handleModeChange = (next: ResearchMode) => {
     if (next === mode) return;
     if (chat.query.trim().length > 0) {
