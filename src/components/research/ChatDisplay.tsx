@@ -199,9 +199,7 @@ const ChatDisplay = ({
   t,
   mode = "general",
   sourcesReadyInfo,
-  citations = [],
-  onExportBibliography,
-  canExportBibliography = false,
+  citations: _citations = [],
   assistModes = [],
   onAssistModesChange,
 }: ChatDisplayProps) => {
