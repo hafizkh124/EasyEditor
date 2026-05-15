@@ -325,7 +325,7 @@ const ChatDisplay = ({
               isRefining={isRefining}
               onRefine={onRefine}
               onCopy={onCopyOutput}
-              onDownload={onDownloadReport}
+              
               onRegenerate={onRegenerate}
               t={t}
             />
