@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 import {
   Send, Loader2, BookOpen, Copy, Sparkles,
   PenLine, MessageSquare, Minimize2, MessageSquarePlus, RefreshCw,
-  AlertCircle, BookMarked, CheckCircle2,
+  AlertCircle, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isRtlText as detectRtl } from "@/utils/textUtils";
