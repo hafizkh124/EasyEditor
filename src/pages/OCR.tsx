@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Camera, Copy, Volume2, Loader2, ImageIcon, X, Crop, ScanLine, SpellCheck, Languages } from "lucide-react";
+import { Upload, Camera, Copy, Volume2, Loader2, ImageIcon, X, Crop, ScanLine, SpellCheck, Languages, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import AppLayout from "@/components/AppLayout";
@@ -263,6 +263,12 @@ const OCR = () => {
               </Label>
               <Switch id="auto-copy" checked={autoCopy} onCheckedChange={toggleAutoCopy} />
             </div>
+            {(imagePreview || extractedText) && (
+              <Button variant="outline" size="sm" onClick={clearImage} className="gap-1.5">
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+                {t("common.new_chat")}
+              </Button>
+            )}
           </div>
         </div>
 

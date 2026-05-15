@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useMemo, useRef } from "react";
 import {
-  Send, Loader2, Download, BookOpen, Copy, Sparkles,
-  PenLine, MessageSquare, Minimize2, FileDown, Trash2, RefreshCw,
+  Send, Loader2, BookOpen, Copy, Sparkles,
+  PenLine, MessageSquare, Minimize2, MessageSquarePlus, RefreshCw,
   AlertCircle, BookMarked, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,12 +32,11 @@ interface DocumentBoxProps {
   isRefining: boolean;
   onRefine: (action: string) => void;
   onCopy: () => void;
-  onDownload: () => void;
   onRegenerate?: () => void;
   t: (k: string) => string;
 }
 
-const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRegenerate, t }: DocumentBoxProps) => {
+const DocumentBox = ({ content, isRefining, onRefine, onCopy, onRegenerate, t }: DocumentBoxProps) => {
   const isRtl = detectRtl(content);
 
   return (
@@ -104,10 +103,6 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRege
             <Copy className="h-3.5 w-3.5" />
             {t("research.copy")}
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={onDownload}>
-            <FileDown className="h-3.5 w-3.5" />
-            {t("research.download_report")}
-          </Button>
         </div>
       </div>
     </div>
@@ -170,7 +165,7 @@ interface ChatDisplayProps {
   lastAssistantIdx: number;
   onRefine: (action: string) => void;
   onCopyOutput: () => void;
-  onDownloadReport: () => void;
+  
   onClearChat: () => void;
   onRegenerate: () => void;
   sources: Source[];
@@ -199,7 +194,7 @@ const ChatDisplay = ({
   lastAssistantIdx,
   onRefine,
   onCopyOutput,
-  onDownloadReport,
+  
   onClearChat,
   onRegenerate,
   sources,
@@ -330,7 +325,7 @@ const ChatDisplay = ({
               isRefining={isRefining}
               onRefine={onRefine}
               onCopy={onCopyOutput}
-              onDownload={onDownloadReport}
+              
               onRegenerate={onRegenerate}
               t={t}
             />
@@ -396,23 +391,15 @@ const ChatDisplay = ({
       <div className="flex items-center justify-between p-4 border-b border-border">
         <h1 className="text-xl font-bold text-foreground">{t("research.title")}</h1>
         <div className="flex items-center gap-2">
-          {messages.length > 0 && (
-            <>
-              <Button variant="ghost" size="sm" onClick={onClearChat} className="gap-1.5 text-muted-foreground">
-                <Trash2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("research.clear_chat")}</span>
-              </Button>
-              {canExportBibliography && onExportBibliography && citations.length > 0 && (
-                <Button variant="outline" size="sm" onClick={onExportBibliography} className="gap-1.5">
-                  <BookMarked className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{t("research.export_bibliography")}</span>
-                </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={onDownloadReport} className="gap-1.5">
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("research.download_report")}</span>
-              </Button>
-            </>
+          <Button variant="outline" size="sm" onClick={onClearChat} className="gap-1.5">
+            <MessageSquarePlus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{t("common.new_chat")}</span>
+          </Button>
+          {messages.length > 0 && canExportBibliography && onExportBibliography && citations.length > 0 && (
+            <Button variant="outline" size="sm" onClick={onExportBibliography} className="gap-1.5">
+              <BookMarked className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("research.export_bibliography")}</span>
+            </Button>
           )}
         </div>
       </div>

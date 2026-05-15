@@ -11,7 +11,7 @@ import ResearchModeSwitcher, { type ResearchMode } from "@/components/research/R
 import { useResearchSources } from "@/hooks/useResearchSources";
 import { useResearchChat } from "@/hooks/useResearchChat";
 import { downloadBibliography } from "@/lib/research/bibliography";
-import { downloadResearchReport } from "@/lib/research/report";
+
 import type { ResearchAssistMode } from "@/lib/prompts";
 import { toast } from "sonner";
 
@@ -108,10 +108,6 @@ const Research = () => {
     refetch,
   });
 
-  const handleDownloadReport = () => {
-    downloadResearchReport(chat.messages, sourcesApi.sources);
-    toast.success(t("research.report_downloaded"));
-  };
 
   const handleExportBibliography = () => {
     if (downloadBibliography(chat.citations)) {
@@ -191,7 +187,7 @@ const Research = () => {
           lastAssistantIdx={chat.lastAssistantIdx}
           onRefine={chat.handleRefine}
           onCopyOutput={chat.handleCopyOutput}
-          onDownloadReport={handleDownloadReport}
+          
           onClearChat={chat.handleClearChat}
           onRegenerate={chat.handleRegenerate}
           sources={sourcesApi.sources}
