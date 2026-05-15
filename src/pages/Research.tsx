@@ -108,10 +108,6 @@ const Research = () => {
     refetch,
   });
 
-  const handleDownloadReport = () => {
-    downloadResearchReport(chat.messages, sourcesApi.sources);
-    toast.success(t("research.report_downloaded"));
-  };
 
   const handleExportBibliography = () => {
     if (downloadBibliography(chat.citations)) {
