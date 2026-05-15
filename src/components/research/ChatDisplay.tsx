@@ -394,12 +394,6 @@ const ChatDisplay = ({
             <MessageSquarePlus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{t("common.new_chat")}</span>
           </Button>
-          {messages.length > 0 && canExportBibliography && onExportBibliography && citations.length > 0 && (
-            <Button variant="outline" size="sm" onClick={onExportBibliography} className="gap-1.5">
-              <BookMarked className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("research.export_bibliography")}</span>
-            </Button>
-          )}
         </div>
       </div>
 
