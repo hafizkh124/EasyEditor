@@ -54,7 +54,6 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onRegenerate, t }:
           { action: "formalize", icon: PenLine,      label: t("research.formalize") },
           { action: "humanize",  icon: MessageSquare, label: t("research.humanize") },
           { action: "shorten",   icon: Minimize2,     label: t("research.shorten") },
-          { action: "citations", icon: BookOpen,      label: t("research.add_sources") },
         ].map((btn) => (
           <Button
             key={btn.action}
