@@ -165,7 +165,7 @@ interface ChatDisplayProps {
   lastAssistantIdx: number;
   onRefine: (action: string) => void;
   onCopyOutput: () => void;
-  onDownloadReport: () => void;
+  
   onClearChat: () => void;
   onRegenerate: () => void;
   sources: Source[];
