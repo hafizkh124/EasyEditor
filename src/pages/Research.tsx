@@ -10,10 +10,8 @@ import ChatDisplay from "@/components/research/ChatDisplay";
 import ResearchModeSwitcher, { type ResearchMode } from "@/components/research/ResearchModeSwitcher";
 import { useResearchSources } from "@/hooks/useResearchSources";
 import { useResearchChat } from "@/hooks/useResearchChat";
-import { downloadBibliography } from "@/lib/research/bibliography";
 
 import type { ResearchAssistMode } from "@/lib/prompts";
-import { toast } from "sonner";
 
 const DEFAULT_ISLAMIC_DOMAINS = ["dorar", "sunnah", "alquran", "quran-com", "tanzil"];
 const DEFAULT_ISLAMIC_LANGUAGES = ["ar", "en"];
