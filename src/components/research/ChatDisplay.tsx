@@ -391,23 +391,15 @@ const ChatDisplay = ({
       <div className="flex items-center justify-between p-4 border-b border-border">
         <h1 className="text-xl font-bold text-foreground">{t("research.title")}</h1>
         <div className="flex items-center gap-2">
-          {messages.length > 0 && (
-            <>
-              <Button variant="ghost" size="sm" onClick={onClearChat} className="gap-1.5 text-muted-foreground">
-                <Trash2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("research.clear_chat")}</span>
-              </Button>
-              {canExportBibliography && onExportBibliography && citations.length > 0 && (
-                <Button variant="outline" size="sm" onClick={onExportBibliography} className="gap-1.5">
-                  <BookMarked className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{t("research.export_bibliography")}</span>
-                </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={onDownloadReport} className="gap-1.5">
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("research.download_report")}</span>
-              </Button>
-            </>
+          <Button variant="outline" size="sm" onClick={onClearChat} className="gap-1.5">
+            <MessageSquarePlus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{t("common.new_chat")}</span>
+          </Button>
+          {messages.length > 0 && canExportBibliography && onExportBibliography && citations.length > 0 && (
+            <Button variant="outline" size="sm" onClick={onExportBibliography} className="gap-1.5">
+              <BookMarked className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("research.export_bibliography")}</span>
+            </Button>
           )}
         </div>
       </div>
