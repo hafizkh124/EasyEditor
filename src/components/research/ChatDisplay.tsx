@@ -194,7 +194,7 @@ const ChatDisplay = ({
   lastAssistantIdx,
   onRefine,
   onCopyOutput,
-  onDownloadReport,
+  
   onClearChat,
   onRegenerate,
   sources,
