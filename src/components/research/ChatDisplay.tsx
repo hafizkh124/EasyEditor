@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 import {
   Send, Loader2, BookOpen, Copy, Sparkles,
   PenLine, MessageSquare, Minimize2, MessageSquarePlus, RefreshCw,
-  AlertCircle, BookMarked, CheckCircle2,
+  AlertCircle, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isRtlText as detectRtl } from "@/utils/textUtils";
@@ -54,7 +54,6 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onRegenerate, t }:
           { action: "formalize", icon: PenLine,      label: t("research.formalize") },
           { action: "humanize",  icon: MessageSquare, label: t("research.humanize") },
           { action: "shorten",   icon: Minimize2,     label: t("research.shorten") },
-          { action: "citations", icon: BookOpen,      label: t("research.add_sources") },
         ].map((btn) => (
           <Button
             key={btn.action}
@@ -176,9 +175,6 @@ interface ChatDisplayProps {
   mode?: ResearchMode;
   sourcesReadyInfo?: { count: number; domains: string[] } | null;
   citations?: CitationItem[];
-  // Phase 4
-  onExportBibliography?: () => void;
-  canExportBibliography?: boolean;
   // Phase 3 assist chips
   assistModes?: ResearchAssistMode[];
   onAssistModesChange?: (modes: ResearchAssistMode[]) => void;
@@ -204,8 +200,6 @@ const ChatDisplay = ({
   mode = "general",
   sourcesReadyInfo,
   citations = [],
-  onExportBibliography,
-  canExportBibliography = false,
   assistModes = [],
   onAssistModesChange,
 }: ChatDisplayProps) => {
@@ -395,12 +389,6 @@ const ChatDisplay = ({
             <MessageSquarePlus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{t("common.new_chat")}</span>
           </Button>
-          {messages.length > 0 && canExportBibliography && onExportBibliography && citations.length > 0 && (
-            <Button variant="outline" size="sm" onClick={onExportBibliography} className="gap-1.5">
-              <BookMarked className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("research.export_bibliography")}</span>
-            </Button>
-          )}
         </div>
       </div>
 
