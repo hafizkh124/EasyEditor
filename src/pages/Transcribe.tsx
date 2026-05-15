@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mic, MicOff, Copy, Download, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight, Upload, X, SpellCheck, Languages } from "lucide-react";
+import { Mic, MicOff, Copy, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight, Upload, X, SpellCheck, Languages, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
