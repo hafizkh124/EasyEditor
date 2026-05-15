@@ -187,7 +187,7 @@ const Research = () => {
           lastAssistantIdx={chat.lastAssistantIdx}
           onRefine={chat.handleRefine}
           onCopyOutput={chat.handleCopyOutput}
-          onDownloadReport={handleDownloadReport}
+          
           onClearChat={chat.handleClearChat}
           onRegenerate={chat.handleRegenerate}
           sources={sourcesApi.sources}
