@@ -199,7 +199,7 @@ const ChatDisplay = ({
   t,
   mode = "general",
   sourcesReadyInfo,
-  citations: _citations = [],
+  citations = [],
   assistModes = [],
   onAssistModesChange,
 }: ChatDisplayProps) => {
