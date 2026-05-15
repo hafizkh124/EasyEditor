@@ -278,7 +278,11 @@ const ChatDisplay = ({
             {mode === "islamic" ? t("research.welcome_islamic") : t("research.welcome")}
           </h3>
           <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-            {mode === "islamic" ? t("research.welcome_islamic_hint") : t("research.welcome_hint")}
+            {mode === "islamic"
+              ? t("research.welcome_islamic_hint")
+              : mode === "general"
+                ? t("research.welcome_general_hint")
+                : t("research.welcome_hint")}
           </p>
         </div>
       );
