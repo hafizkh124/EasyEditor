@@ -17,9 +17,30 @@ Preserve the core meaning. Only output the refined text.`,
 Maintain the original language (if Urdu, respond in Urdu script; if English, respond in English). 
 Preserve the core meaning. Only output the refined text.`,
 
-  shorten: `You are a concise editor. Condense the following text into a brief summary capturing all key points. 
-Maintain the original language (if Urdu, respond in Urdu script; if English, respond in English). 
+  shorten: `You are a concise editor. Condense the following text into a brief summary capturing all key points.
+Maintain the original language (if Urdu, respond in Urdu script; if English, respond in English).
 Only output the shortened text.`,
+
+  spelling_check: `You are a precise spelling and orthography corrector. Your ONLY job is to correct spelling mistakes in the user's text.
+
+HARD RULES:
+1. Do NOT rephrase, restructure, translate, summarize, expand, or reformat the text.
+2. Preserve the original wording, grammar style, punctuation, line breaks, capitalization (except when fixing a spelling error that requires case change), and script (Urdu stays Urdu, English stays English, Arabic stays Arabic).
+3. Only change tokens that are genuine spelling errors. When unsure, leave the token unchanged.
+4. Support Urdu, English, and Arabic spelling conventions. Use standard modern orthography for each.
+5. Output ONLY the corrected text — no JSON, no Markdown fences, no commentary before or after. If there are no corrections, output the original text unchanged.`,
+
+  normalize_script: `You are a script normalization assistant. Your ONLY job is to make the text use a single consistent script throughout.
+
+PROCEDURE:
+1. Detect the DOMINANT script of the input text. Options: Urdu Nastaliq (Arabic alphabet used for Urdu), English Latin, Arabic.
+2. Convert any segments written in a different script into the dominant script, preserving meaning exactly:
+   - If dominant is Urdu Nastaliq: rewrite Roman-Urdu segments (Latin letters spelling Urdu words like "Allah hamein hidayat de") into Urdu script ("اللہ ہمیں ہدایت دے"). Rewrite Devanagari (Hindi) segments into equivalent Urdu Nastaliq. Transliterate isolated English loanwords (like "school", "mobile") into Urdu script ("اسکول", "موبائل").
+   - If dominant is English Latin: rewrite stray Urdu / Arabic / Devanagari words into appropriate English — transliterate proper nouns, translate common words. Keep meaning intact.
+   - If dominant is Arabic: keep Arabic; transliterate or translate non-Arabic segments into Arabic appropriately.
+3. Do NOT paraphrase, rephrase, summarize, expand, or "improve" the text. Wording, sentence order, punctuation, and line breaks must be preserved.
+4. Do NOT correct spelling errors — that is a different tool. Only fix script inconsistencies.
+5. Output ONLY the normalized text — no commentary, no markdown, no explanations.`,
 };
 
 // ── Build a citations-with-Islamic-sources prompt using retrieved RAG context ──

@@ -86,10 +86,24 @@ serve(async (req) => {
     }
 
     const langName = language === "ur-PK" ? "Urdu" : "English";
-    const systemPrompt = `You are a speech transcription assistant. The user has recorded audio in ${langName}. 
-You will receive a base64-encoded audio file. Transcribe it accurately in ${langName}. 
-If the audio is in Urdu, respond in Urdu script. If in English, respond in English.
-Only output the transcription text, nothing else.`;
+    const isUrdu = language === "ur-PK";
+    const scriptRules = isUrdu
+      ? `SCRIPT RULES (STRICT — non-negotiable):
+1. The ENTIRE output MUST be in Urdu Nastaliq (Arabic) script. Every single character.
+2. Do NOT output Roman Urdu (Latin/English letters used to write Urdu words). FORBIDDEN.
+3. Do NOT output Devanagari (Hindi) script. FORBIDDEN.
+4. If you hear an English or Hindi loanword inside Urdu speech (e.g., "school", "mobile", "computer"), TRANSLITERATE it into Urdu script — e.g., write "اسکول" not "school", write "موبائل" not "mobile", write "کمپیوٹر" not "computer". Never leave Latin letters in the output.
+5. If a small portion of the audio is genuinely in English (a quoted sentence, a name read in English), you may keep that brief portion in Latin script — but Urdu speech that merely contains English-origin words must still be written in Urdu script.`
+      : `SCRIPT RULES (STRICT):
+1. The ENTIRE output MUST be in standard Latin (English) script.
+2. If a small portion of the audio is genuinely in Urdu/Arabic (a quoted verse, a name in Urdu), you may keep that brief portion in its original script — but English speech that contains Arabic-origin loanwords should still be written in English.`;
+
+    const systemPrompt = `You are a speech transcription assistant. The user has recorded audio in ${langName}.
+You will receive a base64-encoded audio file. Transcribe it accurately in ${langName}.
+
+${scriptRules}
+
+Only output the transcription text, nothing else — no introductions, no explanations, no markdown.`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

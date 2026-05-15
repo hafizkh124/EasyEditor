@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Camera, Copy, Volume2, Loader2, ImageIcon, X, Crop, ScanLine } from "lucide-react";
+import { Upload, Camera, Copy, Volume2, Loader2, ImageIcon, X, Crop, ScanLine, SpellCheck, Languages } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import AppLayout from "@/components/AppLayout";
@@ -37,6 +37,8 @@ const OCR = () => {
   const [imageMimeType, setImageMimeType] = useState<string>("image/jpeg");
   const [extractedText, setExtractedText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
+  const [activeRefineAction, setActiveRefineAction] = useState<"spelling_check" | "normalize_script" | null>(null);
   const [isCropping, setIsCropping] = useState(false);
   const [autoCopy, setAutoCopy] = useState(() => localStorage.getItem("ocr-autocopy") === "true");
   const [isDragOver, setIsDragOver] = useState(false);
@@ -190,6 +192,45 @@ const OCR = () => {
 
   const handleListenNow = () => {
     navigate("/speak", { state: { text: extractedText } });
+  };
+
+  const handleRefine = async (action: "spelling_check" | "normalize_script") => {
+    if (!extractedText.trim() || !session?.access_token) return;
+    setIsRefining(true);
+    setActiveRefineAction(action);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-text`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ text: extractedText, action }),
+        }
+      );
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: "Unknown error" }));
+        toast.error(errData.error || t("ocr.refine_error"));
+        return;
+      }
+
+      const data = await response.json();
+      if (data.text) {
+        setExtractedText(data.text);
+        saveSession({ title: data.text.slice(0, 80), metadata: { extractedText: data.text } });
+        toast.success(t(`ocr.${action}_done`));
+      }
+    } catch {
+      toast.error(t("ocr.refine_error"));
+    } finally {
+      setIsRefining(false);
+      setActiveRefineAction(null);
+    }
   };
 
   const toggleAutoCopy = (checked: boolean) => {
@@ -348,6 +389,36 @@ const OCR = () => {
               dir={rtl ? "rtl" : "ltr"}
               className={cn("min-h-[200px] resize-y", rtl && "text-right")}
             />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => handleRefine("spelling_check")}
+                variant="outline"
+                size="sm"
+                disabled={isRefining}
+                className="gap-1.5"
+              >
+                {isRefining && activeRefineAction === "spelling_check" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <SpellCheck className="h-3.5 w-3.5" />
+                )}
+                {t("ocr.spelling_check")}
+              </Button>
+              <Button
+                onClick={() => handleRefine("normalize_script")}
+                variant="outline"
+                size="sm"
+                disabled={isRefining}
+                className="gap-1.5"
+              >
+                {isRefining && activeRefineAction === "normalize_script" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Languages className="h-3.5 w-3.5" />
+                )}
+                {t("ocr.normalize_script")}
+              </Button>
+            </div>
             <div className="flex gap-3">
               <Button onClick={handleCopy} variant="outline" className="flex-1 sm:flex-none">
                 <Copy className="h-4 w-4" />
