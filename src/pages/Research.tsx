@@ -11,7 +11,7 @@ import ResearchModeSwitcher, { type ResearchMode } from "@/components/research/R
 import { useResearchSources } from "@/hooks/useResearchSources";
 import { useResearchChat } from "@/hooks/useResearchChat";
 import { downloadBibliography } from "@/lib/research/bibliography";
-import { downloadResearchReport } from "@/lib/research/report";
+
 import type { ResearchAssistMode } from "@/lib/prompts";
 import { toast } from "sonner";
 
