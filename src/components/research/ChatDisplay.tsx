@@ -175,9 +175,6 @@ interface ChatDisplayProps {
   mode?: ResearchMode;
   sourcesReadyInfo?: { count: number; domains: string[] } | null;
   citations?: CitationItem[];
-  // Phase 4
-  onExportBibliography?: () => void;
-  canExportBibliography?: boolean;
   // Phase 3 assist chips
   assistModes?: ResearchAssistMode[];
   onAssistModesChange?: (modes: ResearchAssistMode[]) => void;
