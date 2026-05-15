@@ -458,8 +458,8 @@ const Transcribe = () => {
                 <Button variant="ghost" size="icon" aria-label={t("stt.copy")} onClick={handleCopy}>
                   <Copy className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" aria-label={t("stt.download")} onClick={handleDownload}>
-                  <Download className="h-4 w-4" />
+                <Button variant="ghost" size="icon" aria-label={t("common.new_chat")} title={t("common.new_chat")} onClick={handleNewSession}>
+                  <MessageSquarePlus className="h-4 w-4" />
                 </Button>
                 {originalText && (
                   <Button
