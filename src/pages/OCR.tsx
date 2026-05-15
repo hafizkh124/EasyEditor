@@ -263,6 +263,12 @@ const OCR = () => {
               </Label>
               <Switch id="auto-copy" checked={autoCopy} onCheckedChange={toggleAutoCopy} />
             </div>
+            {(imagePreview || extractedText) && (
+              <Button variant="outline" size="sm" onClick={clearImage} className="gap-1.5">
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+                {t("common.new_chat")}
+              </Button>
+            )}
           </div>
         </div>
 
