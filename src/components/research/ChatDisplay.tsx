@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useMemo, useRef } from "react";
 import {
-  Send, Loader2, Download, BookOpen, Copy, Sparkles,
-  PenLine, MessageSquare, Minimize2, FileDown, Trash2, RefreshCw,
+  Send, Loader2, BookOpen, Copy, Sparkles,
+  PenLine, MessageSquare, Minimize2, MessageSquarePlus, RefreshCw,
   AlertCircle, BookMarked, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
