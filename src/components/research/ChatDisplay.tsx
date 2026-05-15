@@ -103,10 +103,6 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onRegenerate, t }:
             <Copy className="h-3.5 w-3.5" />
             {t("research.copy")}
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={onDownload}>
-            <FileDown className="h-3.5 w-3.5" />
-            {t("research.download_report")}
-          </Button>
         </div>
       </div>
     </div>
