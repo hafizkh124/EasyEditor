@@ -191,8 +191,6 @@ const Research = () => {
           mode={mode}
           sourcesReadyInfo={chat.sourcesReadyInfo}
           citations={chat.citations}
-          onExportBibliography={handleExportBibliography}
-          canExportBibliography={tier === "ultra" && mode === "islamic"}
           assistModes={assistModes}
           onAssistModesChange={setAssistModes}
         />
