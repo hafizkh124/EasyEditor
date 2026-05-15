@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mic, MicOff, Copy, Download, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight, Upload, X, SpellCheck, Languages } from "lucide-react";
+import { Mic, MicOff, Copy, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight, Upload, X, SpellCheck, Languages, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
@@ -304,14 +304,10 @@ const Transcribe = () => {
     toast.success(t("stt.copied"));
   };
 
-  const handleDownload = () => {
-    const blob = new Blob([transcript], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "transcript.txt";
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleNewSession = () => {
+    setTranscript("");
+    setOriginalText("");
+    setShowCompare(false);
   };
 
   const handleRevert = () => {
@@ -462,8 +458,8 @@ const Transcribe = () => {
                 <Button variant="ghost" size="icon" aria-label={t("stt.copy")} onClick={handleCopy}>
                   <Copy className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" aria-label={t("stt.download")} onClick={handleDownload}>
-                  <Download className="h-4 w-4" />
+                <Button variant="ghost" size="icon" aria-label={t("common.new_chat")} title={t("common.new_chat")} onClick={handleNewSession}>
+                  <MessageSquarePlus className="h-4 w-4" />
                 </Button>
                 {originalText && (
                   <Button
