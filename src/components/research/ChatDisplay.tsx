@@ -36,7 +36,7 @@ interface DocumentBoxProps {
   t: (k: string) => string;
 }
 
-const DocumentBox = ({ content, isRefining, onRefine, onCopy, onDownload, onRegenerate, t }: DocumentBoxProps) => {
+const DocumentBox = ({ content, isRefining, onRefine, onCopy, onRegenerate, t }: DocumentBoxProps) => {
   const isRtl = detectRtl(content);
 
   return (
