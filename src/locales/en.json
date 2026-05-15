@@ -170,6 +170,7 @@
   "research.regenerate": "Regenerate",
   "research.welcome": "Start Your Research",
   "research.welcome_hint": "Add sources on the left, then ask questions about them.",
+  "research.welcome_general_hint": "Type any question below to get an AI-researched answer with citations from the open web.",
   "research.ask_placeholder": "Ask a question about your sources...",
   "research.query_error": "Failed to process query.",
   "research.download_report": "Download Report",
