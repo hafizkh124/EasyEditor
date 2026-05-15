@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mic, MicOff, Copy, Download, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight, Upload, X } from "lucide-react";
+import { Mic, MicOff, Copy, Download, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight, Upload, X, SpellCheck, Languages } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
@@ -27,9 +27,11 @@ import {
 } from "@/lib/audio/transcribeLongForm";
 
 type SttLanguage = "en-US" | "ur-PK";
-type RefineAction = "formalize" | "humanize" | "shorten" | "citations";
+type RefineAction = "formalize" | "humanize" | "shorten" | "citations" | "spelling_check" | "normalize_script";
 
 const refineActions: { action: RefineAction; icon: typeof GraduationCap; labelKey: string }[] = [
+  { action: "spelling_check", icon: SpellCheck, labelKey: "stt.spelling_check" },
+  { action: "normalize_script", icon: Languages, labelKey: "stt.normalize_script" },
   { action: "formalize", icon: GraduationCap, labelKey: "stt.formalize" },
   { action: "humanize", icon: Heart, labelKey: "stt.humanize" },
   { action: "shorten", icon: Scissors, labelKey: "stt.shorten" },
