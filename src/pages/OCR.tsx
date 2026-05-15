@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Camera, Copy, Volume2, Loader2, ImageIcon, X, Crop, ScanLine, SpellCheck, Languages } from "lucide-react";
+import { Upload, Camera, Copy, Volume2, Loader2, ImageIcon, X, Crop, ScanLine, SpellCheck, Languages, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import AppLayout from "@/components/AppLayout";
