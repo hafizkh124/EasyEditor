@@ -32,7 +32,6 @@ interface DocumentBoxProps {
   isRefining: boolean;
   onRefine: (action: string) => void;
   onCopy: () => void;
-  onDownload: () => void;
   onRegenerate?: () => void;
   t: (k: string) => string;
 }
