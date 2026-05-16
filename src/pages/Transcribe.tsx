@@ -52,7 +52,7 @@ const Transcribe = () => {
   const [isRefining, setIsRefining] = useState(false);
   const [activeAction, setActiveAction] = useState<RefineAction | null>(null);
   const [showCompare, setShowCompare] = useState(false);
-  const [sttLanguage, setSttLanguage] = useState<SttLanguage>("en-US");
+  const [sttLanguage, setSttLanguage] = useState<SttLanguage>("auto");
   const { subscription } = useSubscription();
   const [secondsUsed, setSecondsUsed] = useState(0);
   // Optimistic delta over the persisted value so local increments count.
