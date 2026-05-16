@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Database, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
+import { Database, RefreshCw, Loader2, AlertTriangle, Activity, CheckCircle2, XCircle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,8 +22,10 @@ import {
   fetchCacheCount,
   purgeExpiredCache,
   resetMonthlyQuotas,
+  fetchIslamicHealth,
   type CorpusStat,
   type IngestJob,
+  type HealthResult,
 } from "@/lib/admin/corpus-rpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -33,6 +35,18 @@ const CorpusPanel = () => {
   const [ingestJobs, setIngestJobs] = useState<IngestJob[]>([]);
   const [cacheCount, setCacheCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [health, setHealth] = useState<HealthResult[]>([]);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [healthGeneratedAt, setHealthGeneratedAt] = useState<string | null>(null);
+
+  const runHealthCheck = useCallback(async () => {
+    setHealthLoading(true);
+    const res = await fetchIslamicHealth();
+    if (res.error) toast.error(res.error);
+    setHealth(res.results);
+    setHealthGeneratedAt(res.generated_at ?? null);
+    setHealthLoading(false);
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -184,6 +198,51 @@ const CorpusPanel = () => {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Activity className="h-5 w-5" />
+              Islamic upstream health
+            </CardTitle>
+            <Button variant="outline" size="sm" onClick={runHealthCheck} disabled={healthLoading} className="gap-1.5">
+              {healthLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              Run check
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {health.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              {healthLoading ? "Probing upstreams…" : "Press Run check to probe every API and RPC."}
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {health.map((row) => (
+                <div key={row.name} className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {row.ok
+                      ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                      : <XCircle className="h-4 w-4 text-destructive shrink-0" />}
+                    <span className="font-medium truncate">{row.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                    <span className="tabular-nums">{row.latency_ms} ms</span>
+                    <span className="tabular-nums">{row.sample_hits} hits</span>
+                    {row.note && <span className="text-destructive truncate max-w-[160px]" title={row.note}>{row.note}</span>}
+                  </div>
+                </div>
+              ))}
+              {healthGeneratedAt && (
+                <p className="text-[11px] text-muted-foreground pt-1">
+                  Generated {new Date(healthGeneratedAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card>

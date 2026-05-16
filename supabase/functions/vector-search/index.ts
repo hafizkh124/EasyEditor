@@ -1,11 +1,12 @@
 /**
  * vector-search — Tier B: pgvector semantic search over scholarly_documents
  *
- * Called internally by islamic-search (Pro/Ultra only).
+ * Called internally by islamic-search for every authenticated user. Plan
+ * differentiation is enforced upstream via monthly query quota, not here.
  * Flow:
  *   1. Normalize Arabic query
- *   2. Embed via Lovable AI gateway (text-embedding-004, 768 dims)
- *   3. Call match_scholarly_documents RPC (cosine similarity ≥ 0.6)
+ *   2. Embed via Lovable AI gateway (text-embedding-004, 768 dims, retry once on 5xx)
+ *   3. Call match_scholarly_documents RPC (cosine similarity ≥ 0.45)
  *   4. Return IslamicResult[]
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -100,8 +101,8 @@ serve(async (req) => {
     // ── 1. Normalize Arabic query ─────────────────────────────────────────────
     const normalizedQuery = normalizeArabic(query);
 
-    // ── 2. Embed via Lovable AI gateway ──────────────────────────────────────
-    const embedRes = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+    // ── 2. Embed via Lovable AI gateway (retry once on 5xx) ──────────────────
+    const callEmbedding = () => fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -113,6 +114,12 @@ serve(async (req) => {
       }),
       signal: AbortSignal.timeout(15_000),
     });
+
+    let embedRes = await callEmbedding();
+    if (!embedRes.ok && embedRes.status >= 500 && embedRes.status < 600) {
+      console.warn("Embedding 5xx, retrying once:", embedRes.status);
+      embedRes = await callEmbedding();
+    }
 
     if (!embedRes.ok) {
       const errTxt = await embedRes.text().catch(() => "");
@@ -138,13 +145,14 @@ serve(async (req) => {
       tierBDomains.includes(d)
     );
 
-    // Ultra gets top-20 results; Pro gets top-8
-    const topK = matchCount ?? (tier === "ultra" ? 20 : 8);
+    // All users get the same retrieval depth. Caller may override via matchCount.
+    const topK = matchCount ?? 15;
+    void tier; // accepted for backwards compat; no longer used to gate depth
 
     // ── 4. Call pgvector RPC ──────────────────────────────────────────────────
     const { data, error } = await supabase.rpc("match_scholarly_documents", {
       query_embedding: embedding,
-      match_threshold: 0.6,
+      match_threshold: 0.45,
       match_count:     topK,
       filter_domains:  filterDomains.length > 0 ? filterDomains : null,
       filter_language: null,  // caller can pass language filter in future

@@ -10,14 +10,13 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Tier A domains (available to all paid tiers)
+// Source domains — all available to every authenticated user. Plan differentiation
+// happens via monthly query quota (islamic_queries_limit), not data access.
 const TIER_A_DOMAINS = ["dorar", "alquran", "sunnah", "quran-com", "tanzil"];
-// Tier B domains (Pro/Ultra — vector index)
 const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
-// Tier C domains (Pro/Ultra — live scraping)
 const TIER_C_DOMAINS = ["islamqa", "islamweb", "dar-alifta"];
-// Tier K domains (Keyword — local DB full-text search, available to all)
 const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
+const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS];
 
 function buildContextBlock(results: IslamicResult[]): string {
   if (results.length === 0) return "\n\n[No Islamic sources were retrieved for this query. If you have general knowledge about this topic, clearly state that it comes from general knowledge, not from verified sources.]";
@@ -168,14 +167,13 @@ serve(async (req) => {
       });
     }
 
-    // Determine allowed domains based on tier
-    const tierAllowsAdvanced = tier === "pro" || tier === "ultra";
-    const effectiveDomains: string[] = (selectedDomains ?? [...TIER_A_DOMAINS, ...TIER_K_DOMAINS]).filter((d: string) => {
-      if (TIER_A_DOMAINS.includes(d)) return true;
-      if (TIER_K_DOMAINS.includes(d)) return true; // keyword search available to all tiers
-      if ((TIER_B_DOMAINS.includes(d) || TIER_C_DOMAINS.includes(d)) && tierAllowsAdvanced) return true;
-      return false;
-    });
+    // All authenticated users may reach every source. Quota (above) is the only
+    // plan-based gate. If the caller doesn't explicitly select domains, default
+    // to the full set so free-tier users get the same retrieval quality.
+    const effectiveDomains: string[] = (selectedDomains ?? ALL_DOMAINS).filter(
+      (d: string) => ALL_DOMAINS.includes(d),
+    );
+    void tier; // retained in scope for future telemetry / quota differentiation
 
     // --- Fan-out: Tier A (always), Tier B (Pro/Ultra), Tier C (Pro/Ultra), Tier K (keyword) ---
     const tierADomains = effectiveDomains.filter((d) => TIER_A_DOMAINS.includes(d));
@@ -205,8 +203,8 @@ serve(async (req) => {
       );
     }
 
-    // Tier B: call vector-search (Pro/Ultra only, requires scholarly_documents populated)
-    if (tierBDomains.length > 0 && tierAllowsAdvanced) {
+    // Tier B: call vector-search (available to all — requires scholarly_documents populated)
+    if (tierBDomains.length > 0) {
       const vectorUrl = `${supabaseUrl}/functions/v1/vector-search`;
       fanOutPromises.push(
         fetch(vectorUrl, {
@@ -229,8 +227,8 @@ serve(async (req) => {
       );
     }
 
-    // Tier C: call domain-scrape (Pro/Ultra only)
-    if (tierCDomains.length > 0 && tierAllowsAdvanced) {
+    // Tier C: call domain-scrape (live fatwa scraping — available to all)
+    if (tierCDomains.length > 0) {
       const scrapeUrl = `${supabaseUrl}/functions/v1/domain-scrape`;
       fanOutPromises.push(
         fetch(scrapeUrl, {

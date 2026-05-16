@@ -52,3 +52,18 @@ export async function resetMonthlyQuotas(): Promise<{ ok: boolean; message?: str
   const { error } = await (supabase.rpc as any)("reset_monthly_quotas");
   return error ? { ok: false, message: error.message as string } : { ok: true };
 }
+
+export interface HealthResult {
+  name: string;
+  ok: boolean;
+  latency_ms: number;
+  sample_hits: number;
+  note?: string;
+}
+
+export async function fetchIslamicHealth(): Promise<{ results: HealthResult[]; generated_at?: string; error?: string }> {
+  const { data, error } = await (supabase.functions as any).invoke("islamic-health", { body: {} });
+  if (error) return { results: [], error: error.message ?? String(error) };
+  if (!data || !Array.isArray(data.results)) return { results: [], error: "Empty response" };
+  return { results: data.results as HealthResult[], generated_at: data.generated_at };
+}
