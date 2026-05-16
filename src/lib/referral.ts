@@ -39,23 +39,11 @@ export function consumePendingReferralCode(): string | null {
  * Look up the referral code on profiles and write referred_by onto the
  * new user's profile. Idempotent — won't overwrite an existing referred_by.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function applyPendingReferral(
   newUserId: string,
   code: string,
-  supabase: {
-    from: (table: string) => {
-      select: (cols: string) => {
-        eq: (col: string, val: string) => {
-          single: () => Promise<{ data: { user_id?: string; referred_by?: string | null } | null }>;
-        };
-      };
-      update: (vals: Record<string, unknown>) => {
-        eq: (col: string, val: string) => {
-          is: (col: string, val: null) => Promise<{ error: unknown }>;
-        };
-      };
-    };
-  },
+  supabase: any,
 ): Promise<void> {
   if (!code || !newUserId) return;
   const { data: referrer } = await supabase
