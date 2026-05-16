@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Source } from "./types";
 import IslamicResearchPanel from "./IslamicResearchPanel";
 import type { ResearchMode } from "./ResearchModeSwitcher";
+import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -132,6 +133,7 @@ const SourcesPanel = ({
 }: SourcesPanelProps) => {
   const sourceIcon = (type: string) => (type === "url" ? Link2 : FileText);
   const islamicLimitReached = islamicQueriesLimit > 0 && islamicQueriesUsed >= islamicQueriesLimit;
+  const upgradeKey = getUpgradeLabelKey(tier);
 
   return (
     <div className="lg:w-80 shrink-0 max-h-[45vh] overflow-y-auto lg:max-h-none lg:overflow-visible border-b lg:border-b-0 lg:border-e border-border bg-card flex flex-col">
@@ -161,10 +163,10 @@ const SourcesPanel = ({
                 value={Math.min((islamicQueriesUsed / islamicQueriesLimit) * 100, 100)}
                 className="h-1"
               />
-              {islamicLimitReached && (
+              {islamicLimitReached && upgradeKey && (
                 <Link to="/pricing" className="block">
                   <Badge variant="destructive" className="w-full justify-center text-[10px] cursor-pointer">
-                    {t("dashboard.upgrade")}
+                    {t(upgradeKey)}
                   </Badge>
                 </Link>
               )}
@@ -317,10 +319,10 @@ const SourcesPanel = ({
               value={Math.min((researchQueriesUsed / researchQueriesLimit) * 100, 100)}
               className="h-1"
             />
-            {researchLimitReached && (
+            {researchLimitReached && upgradeKey && (
               <Link to="/pricing" className="block">
                 <Badge variant="destructive" className="w-full justify-center text-[10px] cursor-pointer">
-                  {t("dashboard.upgrade")}
+                  {t(upgradeKey)}
                 </Badge>
               </Link>
             )}
@@ -342,10 +344,10 @@ const SourcesPanel = ({
             value={Math.min((researchQueriesUsed / researchQueriesLimit) * 100, 100)}
             className="h-1"
           />
-          {researchLimitReached && (
+          {researchLimitReached && upgradeKey && (
             <Link to="/pricing" className="block">
               <Badge variant="destructive" className="w-full justify-center text-[10px] cursor-pointer">
-                {t("dashboard.upgrade")}
+                {t(upgradeKey)}
               </Badge>
             </Link>
           )}
