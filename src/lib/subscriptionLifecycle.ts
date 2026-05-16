@@ -13,12 +13,19 @@ export interface LifecycleInfo {
  * Compute lifecycle status from a subscription row. Free-tier users (no
  * activation) get status "none". Otherwise: active (>7d remaining),
  * expiring_soon (≤7d), or expired (past expiry).
+ *
+ * `exemptFromExpiry: true` (used for admins / team members) forces "none"
+ * regardless of the underlying dates — these accounts never expire.
  */
 export function getLifecycleInfo(args: {
   tier: string;
   activatedAt: string | null;
   expiresAt: string | null;
+  exemptFromExpiry?: boolean;
 }): LifecycleInfo {
+  if (args.exemptFromExpiry) {
+    return { status: "none", daysRemaining: null, expiresAt: null, activatedAt: null };
+  }
   if (args.tier === "free" || !args.activatedAt || !args.expiresAt) {
     return { status: "none", daysRemaining: null, expiresAt: null, activatedAt: null };
   }

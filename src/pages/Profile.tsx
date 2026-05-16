@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Camera, User, Crown, BarChart3, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import ReferralCard from "@/components/ReferralCard";
+import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 
 const Profile = () => {
   useSeo({ title: "Profile — Al-Ulama Easy Editor", description: "Update your profile, display name and account info for Al-Ulama Easy Editor.", path: "/profile" });
@@ -241,11 +242,14 @@ const Profile = () => {
                 <span className="text-sm font-medium text-muted-foreground">{t("settings.current_plan")}:</span>
                 <Badge variant={tier === "free" ? "secondary" : "default"}>{tierLabel}</Badge>
               </div>
-              {tier !== "ultra" && (
-                <Link to="/pricing">
-                  <Button variant="outline" size="sm">{t("dashboard.upgrade")}</Button>
-                </Link>
-              )}
+              {(() => {
+                const upgradeKey = getUpgradeLabelKey(tier);
+                return upgradeKey ? (
+                  <Link to="/pricing">
+                    <Button variant="outline" size="sm">{t(upgradeKey)}</Button>
+                  </Link>
+                ) : null;
+              })()}
             </div>
 
             {meters.map((m) => (

@@ -12,8 +12,10 @@ import AppLayout from "@/components/AppLayout";
 import { getRecentActivity, type ActivityEntry } from "@/lib/activityLog";
 import { handleSupabaseError } from "@/lib/errors";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useApproval } from "@/hooks/useApproval";
 import { getLifecycleInfo, formatLifecycleDate } from "@/lib/subscriptionLifecycle";
 import { WHATSAPP_CONTACT_URL } from "@/lib/paymentAccounts";
+import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 
 const Dashboard = () => {
   useSeo({ title: "Dashboard — Al-Ulama Easy Editor", description: "Your Al-Ulama Easy Editor home: recent activity, usage limits and shortcuts to every tool.", path: "/dashboard" });
@@ -21,6 +23,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { subscription } = useSubscription();
+  const { isAdmin } = useApproval();
   const [displayName, setDisplayName] = useState("");
   const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
 
@@ -56,6 +59,8 @@ const Dashboard = () => {
         tier: subWithLifecycle.tier,
         activatedAt: subWithLifecycle.activated_at ?? null,
         expiresAt: subWithLifecycle.expires_at ?? null,
+        // Admins / team members are exempt from subscription expiry.
+        exemptFromExpiry: isAdmin,
       })
     : null;
   const renewalMessage = encodeURIComponent(
@@ -176,9 +181,14 @@ const Dashboard = () => {
                     </div>
                     <Progress value={Math.min((subscription.research_queries_used / subscription.research_queries_limit) * 100, 100)} className="h-1.5" />
                   </div>
-                  <Link to="/pricing">
-                    <Button variant="outline" size="sm">{t("dashboard.upgrade")}</Button>
-                  </Link>
+                  {(() => {
+                    const upgradeKey = getUpgradeLabelKey(subscription.tier);
+                    return upgradeKey ? (
+                      <Link to="/pricing">
+                        <Button variant="outline" size="sm">{t(upgradeKey)}</Button>
+                      </Link>
+                    ) : null;
+                  })()}
                 </>
               )}
             </CardContent>

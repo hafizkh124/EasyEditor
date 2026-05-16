@@ -53,6 +53,17 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const nowIso = new Date().toISOString();
 
+    // Find user_ids that have the admin role — they are part of the team
+    // and never expire.
+    const { data: adminRoles, error: adminErr } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+    if (adminErr) {
+      console.warn("[check-subscription-expiry] admin role lookup failed:", adminErr.message);
+    }
+    const adminIds = new Set<string>((adminRoles ?? []).map((r: { user_id: string }) => r.user_id));
+
     // Find expired subscriptions still on a paid tier.
     const { data: expired, error: findErr } = await supabase
       .from("subscriptions")
@@ -68,11 +79,19 @@ serve(async (req) => {
       );
     }
 
-    const expiredList = expired ?? [];
+    // Filter out admin users — they are exempt from auto-downgrade.
+    const expiredList = (expired ?? []).filter((s) => !adminIds.has(s.user_id));
+    const skippedAdmins = (expired ?? []).filter((s) => adminIds.has(s.user_id)).length;
 
     if (expiredList.length === 0) {
-      const result = { success: true, expired_count: 0, downgraded: [], checked_at: nowIso };
-      console.log("[check-subscription-expiry] No expired subscriptions.");
+      const result = {
+        success: true,
+        expired_count: 0,
+        skipped_admins: skippedAdmins,
+        downgraded: [],
+        checked_at: nowIso,
+      };
+      console.log("[check-subscription-expiry] No expired subscriptions to downgrade.", { skippedAdmins });
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -107,6 +126,7 @@ serve(async (req) => {
     const result = {
       success: true,
       expired_count: expiredList.length,
+      skipped_admins: skippedAdmins,
       downgraded: expiredList.map((s) => ({
         user_id: s.user_id,
         previous_tier: s.tier,

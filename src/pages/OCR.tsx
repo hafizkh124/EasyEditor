@@ -21,13 +21,15 @@ import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activityLog";
 import { usePageSession } from "@/hooks/usePageSession";
 import { isRtlText } from "@/utils/textUtils";
+import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 
 const OCR = () => {
   useSeo({ title: "Urdu & Arabic OCR — Islamic Text Digitization", description: "Extract Urdu, Arabic and English text from images and scanned Islamic books with high accuracy. Free Quran-friendly OCR.", path: "/ocr" });
 
   const { user, session } = useAuth();
   const { t } = useLanguage();
-  const { refetch } = useSubscription();
+  const { subscription, refetch } = useSubscription();
+  const upgradeKey = getUpgradeLabelKey(subscription?.tier);
   const navigate = useNavigate();
 
   const { used: ocrPagesUsed, limit: ocrPagesLimitRaw, reached: ocrLimitReached } = useLimitReached("ocr");
@@ -275,9 +277,11 @@ const OCR = () => {
         {ocrLimitReached && (
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between">
             <span>{t("ocr.limit_reached")}</span>
-            <Link to="/pricing">
-              <Badge variant="destructive" className="cursor-pointer">{t("dashboard.upgrade")}</Badge>
-            </Link>
+            {upgradeKey && (
+              <Link to="/pricing">
+                <Badge variant="destructive" className="cursor-pointer">{t(upgradeKey)}</Badge>
+              </Link>
+            )}
           </div>
         )}
 

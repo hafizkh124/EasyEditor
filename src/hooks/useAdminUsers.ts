@@ -105,13 +105,23 @@ export function useAdminUsers(enabled: boolean) {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + cycleDays * 24 * 60 * 60 * 1000);
 
+    // Admins / team members never expire. Check role and write NULL expiry if so.
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    const targetIsAdmin = !!roleRow;
+    const expiresAtIso = targetIsAdmin ? null : expiresAt.toISOString();
+
     const { error: subError } = await supabase
       .from("subscriptions")
       .update({
         tier: plan,
         ...TIER_LIMITS[plan],
         activated_at: now.toISOString(),
-        expires_at: expiresAt.toISOString(),
+        expires_at: expiresAtIso,
       })
       .eq("user_id", userId);
 
@@ -189,7 +199,7 @@ export function useAdminUsers(enabled: boolean) {
               rejection_reason: null,
               rejected_at: null,
               activated_at: now.toISOString(),
-              expires_at: expiresAt.toISOString(),
+              expires_at: expiresAtIso,
             }
           : u,
       ),
@@ -211,16 +221,27 @@ export function useAdminUsers(enabled: boolean) {
       renewal_count?: number | null;
     } | null;
 
+    // Admins never expire — renewing clears any leftover expiry date.
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    const targetIsAdmin = !!roleRow;
+
     const cycleDays = sub?.billing_cycle_days ?? 30;
     const now = new Date();
     const baseExpiry = sub?.expires_at ? new Date(sub.expires_at) : now;
     const startFrom = baseExpiry.getTime() > now.getTime() ? baseExpiry : now;
-    const newExpiry = new Date(startFrom.getTime() + cycleDays * 24 * 60 * 60 * 1000);
+    const newExpiry = targetIsAdmin
+      ? null
+      : new Date(startFrom.getTime() + cycleDays * 24 * 60 * 60 * 1000);
 
     const { error } = await supabase
       .from("subscriptions")
       .update({
-        expires_at: newExpiry.toISOString(),
+        expires_at: newExpiry ? newExpiry.toISOString() : null,
         last_renewed_at: now.toISOString(),
         renewal_count: (sub?.renewal_count ?? 0) + 1,
       })
@@ -234,10 +255,12 @@ export function useAdminUsers(enabled: boolean) {
     await sendNotification(
       userId,
       t("notification.subscription_renewed_title") || "Subscription renewed",
-      (t("notification.subscription_renewed_msg") || "Your subscription has been renewed. New expiry: {date}").replace(
-        "{date}",
-        newExpiry.toLocaleDateString(),
-      ),
+      newExpiry
+        ? (t("notification.subscription_renewed_msg") || "Your subscription has been renewed. New expiry: {date}").replace(
+            "{date}",
+            newExpiry.toLocaleDateString(),
+          )
+        : (t("notification.subscription_no_expiry") || "Your subscription is active with no expiry."),
     );
 
     toast.success(t("admin.renewed_done") || "Subscription renewed");
@@ -246,7 +269,7 @@ export function useAdminUsers(enabled: boolean) {
         u.user_id === userId
           ? {
               ...u,
-              expires_at: newExpiry.toISOString(),
+              expires_at: newExpiry ? newExpiry.toISOString() : null,
               last_renewed_at: now.toISOString(),
               renewal_count: (u.renewal_count ?? 0) + 1,
             }
