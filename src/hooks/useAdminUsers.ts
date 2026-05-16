@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { TIER_LIMITS } from "@/contexts/SubscriptionContext";
 import type { UserRow, PaidTier, Tier } from "@/components/admin/types";
+import { REFERRAL_CREDIT_AMOUNT } from "@/lib/referral";
 
 const sendNotification = (userId: string, title: string, message: string) =>
   supabase.from("notifications").insert({ user_id: userId, title, message });
@@ -16,7 +17,7 @@ export function useAdminUsers(enabled: boolean) {
   const fetchUsers = async () => {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, display_name, is_approved, created_at, rejection_status, rejection_reason, rejected_at")
+      .select("user_id, display_name, is_approved, created_at, rejection_status, rejection_reason, rejected_at, referral_code, referred_by, referral_credits")
       .order("created_at", { ascending: false });
 
     const { data: subs } = await supabase
@@ -31,6 +32,9 @@ export function useAdminUsers(enabled: boolean) {
             rejection_status?: string | null;
             rejection_reason?: string | null;
             rejected_at?: string | null;
+            referral_code?: string | null;
+            referred_by?: string | null;
+            referral_credits?: number | null;
           };
           const sub = subMap.get(p.user_id) as
             | (NonNullable<typeof subs>[number] & {
@@ -59,6 +63,9 @@ export function useAdminUsers(enabled: boolean) {
             last_renewed_at: sub?.last_renewed_at ?? null,
             renewal_count: sub?.renewal_count ?? 0,
             billing_cycle_days: sub?.billing_cycle_days ?? 30,
+            referral_code: profileWithRejection.referral_code ?? null,
+            referred_by: profileWithRejection.referred_by ?? null,
+            referral_credits: profileWithRejection.referral_credits ?? 0,
           };
         })
       );
@@ -120,6 +127,55 @@ export function useAdminUsers(enabled: boolean) {
       t("notification.account_approved_title"),
       t("notification.account_approved_msg").replace("{plan}", plan.toUpperCase())
     );
+
+    // Grant referral credit if this user was referred. Idempotent via the
+    // UNIQUE(referrer_id, referee_id) constraint on referral_events: a second
+    // approve after a revoke won't double-credit. Failures are non-fatal —
+    // approval has already succeeded.
+    try {
+      const { data: refRow } = await supabase
+        .from("profiles")
+        .select("referred_by")
+        .eq("user_id", userId)
+        .single();
+      const referrerId = (refRow as { referred_by?: string | null } | null)?.referred_by;
+      if (referrerId) {
+        const { error: eventErr } = await supabase
+          .from("referral_events")
+          .insert({
+            referrer_id: referrerId,
+            referee_id: userId,
+            credits_granted: REFERRAL_CREDIT_AMOUNT,
+          });
+        // 23505 = unique violation → already granted. Treat as success.
+        const isUniqueViolation = eventErr && (eventErr as { code?: string }).code === "23505";
+        if (!eventErr) {
+          // Increment the referrer's credit balance.
+          const { data: refProfile } = await supabase
+            .from("profiles")
+            .select("referral_credits")
+            .eq("user_id", referrerId)
+            .single();
+          const current = (refProfile as { referral_credits?: number | null } | null)?.referral_credits ?? 0;
+          await supabase
+            .from("profiles")
+            .update({ referral_credits: current + REFERRAL_CREDIT_AMOUNT })
+            .eq("user_id", referrerId);
+          await sendNotification(
+            referrerId,
+            t("notification.referral_earned_title") || "Referral credits earned",
+            (t("notification.referral_earned_msg") || "You earned {n} credits for referring a new subscriber.").replace(
+              "{n}",
+              String(REFERRAL_CREDIT_AMOUNT),
+            ),
+          );
+        } else if (!isUniqueViolation && import.meta.env.DEV) {
+          console.warn("[Admin] referral_events insert error:", eventErr);
+        }
+      }
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn("[Admin] referral grant skipped:", e);
+    }
 
     toast.success(t("admin.approved"));
     setUsers((prev) =>

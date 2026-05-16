@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Camera, User, Crown, BarChart3, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import ReferralCard from "@/components/ReferralCard";
 
 const Profile = () => {
   useSeo({ title: "Profile — Al-Ulama Easy Editor", description: "Update your profile, display name and account info for Al-Ulama Easy Editor.", path: "/profile" });
@@ -265,6 +266,9 @@ const Profile = () => {
             ))}
           </CardContent>
         </Card>
+
+        {/* Referral program (Phase C) */}
+        <ReferralCard />
 
         {/* Account Actions (FR-5.1, FR-5.2) */}
         <Card>
