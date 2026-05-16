@@ -18,6 +18,7 @@ const DOMAINS: DomainInfo[] = [
   // HADITH
   { id: "dorar",       labelKey: "islamic.domain_dorar",     tier: "all",  group: "hadith" },
   { id: "sunnah",      labelKey: "islamic.domain_sunnah",    tier: "all",  group: "hadith" },
+  { id: "hadith-api",  labelKey: "islamic.domain_hadithapi", tier: "all",  group: "hadith" },
   { id: "hadith-index",labelKey: "islamic.domain_hadith_idx",tier: "all",  group: "hadith" },
   // QURAN & TAFSIR
   { id: "alquran",     labelKey: "islamic.domain_alquran",   tier: "all",  group: "quran" },

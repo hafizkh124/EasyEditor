@@ -12,7 +12,7 @@ const corsHeaders = {
 
 // Source domains — all available to every authenticated user. Plan differentiation
 // happens via monthly query quota (islamic_queries_limit), not data access.
-const TIER_A_DOMAINS = ["dorar", "alquran", "sunnah", "quran-com", "tanzil"];
+const TIER_A_DOMAINS = ["dorar", "alquran", "sunnah", "hadith-api", "quran-com", "tanzil"];
 const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
 const TIER_C_DOMAINS = ["islamqa", "islamweb", "dar-alifta"];
 const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
@@ -25,7 +25,7 @@ function buildContextBlock(results: IslamicResult[]): string {
     const cite = r.citation_ref;
     let citeLine = "";
 
-    if (r.domain === "dorar" || r.domain === "sunnah" || r.domain === "hadith-index" || r.domain === "hadith-json") {
+    if (r.domain === "dorar" || r.domain === "sunnah" || r.domain === "hadith-api" || r.domain === "hadith-index" || r.domain === "hadith-json") {
       citeLine = `CITATION_REF: { type: "hadith", collection: "${cite.collection ?? cite.book ?? ""}", hadith_number: "${cite.hadith_number ?? ""}", chapter: "${cite.chapter ?? ""}", grade: "${cite.grade ?? ""}", narrator: "${cite.rawi ?? ""}", author: "${cite.author ?? ""}" }`;
     } else if (r.domain === "alquran" || r.domain === "quran-com" || r.domain === "tanzil") {
       citeLine = `CITATION_REF: { type: "quran", surah_number: ${cite.surah_number ?? 0}, surah_name: "${cite.surah_name ?? ""}", verse: ${cite.verse ?? 0}, juz: ${cite.juz ?? ""} }`;

@@ -73,6 +73,26 @@ async function probeQuranCom(): Promise<HealthResult> {
   }
 }
 
+async function probeHadithApi(): Promise<HealthResult> {
+  const key = Deno.env.get("HADITH_API_KEY") ?? "";
+  if (!key) {
+    return { name: "hadith-api", ok: false, latency_ms: 0, sample_hits: 0, note: "HADITH_API_KEY not set" };
+  }
+  try {
+    const [res, ms] = await timed(() =>
+      fetch(`https://hadithapi.com/api/hadiths/?apiKey=${encodeURIComponent(key)}&hadithEnglish=${encodeURIComponent(PROBE_QUERY_EN)}&paginate=3`, {
+        signal: AbortSignal.timeout(10_000),
+      }),
+    );
+    if (!res.ok) return { name: "hadith-api", ok: false, latency_ms: ms, sample_hits: 0, note: `HTTP ${res.status}` };
+    const data = await res.json();
+    const hits = (data?.hadiths?.data ?? data?.hadiths ?? []).length;
+    return { name: "hadith-api", ok: hits > 0, latency_ms: ms, sample_hits: hits };
+  } catch (e) {
+    return { name: "hadith-api", ok: false, latency_ms: 0, sample_hits: 0, note: String(e) };
+  }
+}
+
 async function probeSunnah(): Promise<HealthResult> {
   const key = Deno.env.get("SUNNAH_API_KEY") ?? "";
   if (!key) {
@@ -216,6 +236,7 @@ serve(async (req) => {
       probeAlQuran(),
       probeQuranCom(),
       probeSunnah(),
+      probeHadithApi(),
       probeEmbedding(),
       probeGemini(),
       probeVectorRpc(supabase),

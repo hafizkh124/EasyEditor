@@ -202,6 +202,60 @@ async function fetchSunnah(query: string, apiKey: string): Promise<IslamicResult
   }
 }
 
+// ── HadithAPI.com — Arabic + English + Urdu hadith search ───────────────────
+// Docs: https://hadithapi.com/docs/hadiths
+// Auth: query param ?apiKey=...   (HADITH_API_KEY is configured inside the Lovable platform)
+// Books: sahih-bukhari, sahih-muslim, al-tirmidhi, abu-dawood, ibn-e-majah,
+//        sunan-nasai, mishkat, musnad-ahmad, al-silsila-sahiha
+function detectQueryLanguage(query: string): "ar" | "ur" | "en" {
+  // Urdu-specific characters not present in Standard Arabic
+  if (/[ٹڈڑںھہۂۃیے۔چ]/.test(query)) {
+    return "ur";
+  }
+  // Any Arabic block character → treat as Arabic
+  if (/[؀-ۿ]/.test(query)) return "ar";
+  return "en";
+}
+
+async function fetchHadithApi(query: string, apiKey: string): Promise<IslamicResult[]> {
+  if (!apiKey) return [];
+  try {
+    const lang = detectQueryLanguage(query);
+    const param =
+      lang === "ar" ? "hadithArabic" :
+      lang === "ur" ? "hadithUrdu"   :
+                      "hadithEnglish";
+    const url = `https://hadithapi.com/api/hadiths/?apiKey=${encodeURIComponent(apiKey)}&${param}=${encodeURIComponent(query)}&paginate=10`;
+    const res = await fetchWithTimeout(url, {}, 12_000);
+    if (!res.ok) return [];
+    const data = await res.json();
+    // Response shape: { hadiths: { data: [{ id, hadithNumber, hadithArabic, hadithEnglish, hadithUrdu, book: { bookSlug, bookName }, chapter: { chapterEnglish }, englishNarrator, status }] } }
+    const items: any[] = data?.hadiths?.data ?? data?.hadiths ?? [];
+    return items.slice(0, 10).map((item: any): IslamicResult => {
+      const bookSlug = item.book?.bookSlug ?? item.bookSlug ?? "";
+      const arabic   = item.hadithArabic ?? "";
+      const urdu     = item.hadithUrdu ?? "";
+      const english  = item.hadithEnglish ?? "";
+      const parts    = [arabic, urdu, english].filter(Boolean).join("\n\n");
+      return {
+        domain: "hadith-api",
+        content: parts,
+        citation_ref: {
+          collection:    item.book?.bookName ?? bookSlug,
+          book:          bookSlug,
+          hadith_number: item.hadithNumber,
+          grade:         item.status,
+          rawi:          item.englishNarrator,
+          url:           `https://hadithapi.com/hadith/${bookSlug}/${item.hadithNumber}`,
+        },
+        language: lang,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 // ── Quran.com API ─────────────────────────────────────────────────────────────
 async function fetchQuranCom(query: string): Promise<IslamicResult[]> {
   try {
@@ -242,8 +296,12 @@ serve(async (req) => {
     }
 
     const SUNNAH_API_KEY  = Deno.env.get("SUNNAH_API_KEY") ?? "";
+    const HADITH_API_KEY  = Deno.env.get("HADITH_API_KEY") ?? "";
     if (!SUNNAH_API_KEY) {
-      console.warn("[islamic-api-fetch] SUNNAH_API_KEY not set — Sunnah.com lane is disabled. Add the key to Supabase function secrets to enable it.");
+      console.warn("[islamic-api-fetch] SUNNAH_API_KEY not set — Sunnah.com lane is disabled. Add the secret inside the Lovable platform to enable it.");
+    }
+    if (!HADITH_API_KEY) {
+      console.warn("[islamic-api-fetch] HADITH_API_KEY not set — HadithAPI.com (Urdu/EN/AR) lane is disabled. Add the secret inside the Lovable platform to enable it.");
     }
     const supabaseUrl     = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -282,6 +340,9 @@ serve(async (req) => {
     }
     if ((!selectedDomains || selectedDomains.includes("sunnah")) && SUNNAH_API_KEY) {
       fetchers.push(fetchWithCache("sunnah", () => fetchSunnah(query, SUNNAH_API_KEY)));
+    }
+    if ((!selectedDomains || selectedDomains.includes("hadith-api")) && HADITH_API_KEY) {
+      fetchers.push(fetchWithCache("hadith-api", () => fetchHadithApi(query, HADITH_API_KEY)));
     }
     if (!selectedDomains || selectedDomains.includes("quran-com")) {
       fetchers.push(fetchWithCache("quran-com", () => fetchQuranCom(query)));
