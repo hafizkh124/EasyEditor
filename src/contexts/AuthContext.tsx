@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event === "SIGNED_IN" && session?.user?.id) {
         const code = consumePendingReferralCode();
         if (code) {
-          applyPendingReferral(session.user.id, code, supabase as Parameters<typeof applyPendingReferral>[2]).catch(() => {
+          applyPendingReferral(session.user.id, code, supabase).catch(() => {
             /* non-fatal */
           });
         }
