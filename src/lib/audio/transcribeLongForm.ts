@@ -22,9 +22,11 @@ export interface ProgressEvent {
   partialTranscript?: string;
 }
 
+export type TranscribeLanguage = "en-US" | "ur-PK" | "auto";
+
 export interface LongFormTranscribeArgs {
   file: Blob;
-  language: "en-US" | "ur-PK";
+  language: TranscribeLanguage;
   signal?: AbortSignal;
   onProgress?: (event: ProgressEvent) => void;
 }
