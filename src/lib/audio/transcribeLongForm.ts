@@ -22,9 +22,11 @@ export interface ProgressEvent {
   partialTranscript?: string;
 }
 
+export type TranscribeLanguage = "en-US" | "ur-PK" | "auto";
+
 export interface LongFormTranscribeArgs {
   file: Blob;
-  language: "en-US" | "ur-PK";
+  language: TranscribeLanguage;
   signal?: AbortSignal;
   onProgress?: (event: ProgressEvent) => void;
 }
@@ -48,7 +50,7 @@ function checkSignal(signal?: AbortSignal): void {
 
 async function transcribeChunk(
   chunk: AudioChunk,
-  language: "en-US" | "ur-PK",
+  language: TranscribeLanguage,
   signal?: AbortSignal,
 ): Promise<string> {
   checkSignal(signal);

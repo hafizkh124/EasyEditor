@@ -6,7 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { usePageSession } from "@/hooks/usePageSession";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,7 +26,7 @@ import {
   type ProgressPhase,
 } from "@/lib/audio/transcribeLongForm";
 
-type SttLanguage = "en-US" | "ur-PK";
+type SttLanguage = "en-US" | "ur-PK" | "auto";
 type RefineAction = "formalize" | "humanize" | "shorten" | "citations" | "spelling_check" | "normalize_script";
 
 const refineActions: { action: RefineAction; icon: typeof GraduationCap; labelKey: string }[] = [
@@ -52,7 +52,7 @@ const Transcribe = () => {
   const [isRefining, setIsRefining] = useState(false);
   const [activeAction, setActiveAction] = useState<RefineAction | null>(null);
   const [showCompare, setShowCompare] = useState(false);
-  const [sttLanguage, setSttLanguage] = useState<SttLanguage>("en-US");
+  const [sttLanguage, setSttLanguage] = useState<SttLanguage>("auto");
   const { subscription } = useSubscription();
   const [secondsUsed, setSecondsUsed] = useState(0);
   // Optimistic delta over the persisted value so local increments count.
@@ -70,8 +70,8 @@ const Transcribe = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const sttDir = sttLanguage === "ur-PK" ? "rtl" : "ltr";
   const rtlText = isRtlText(transcript);
+  const sttDir = rtlText ? "rtl" : "ltr";
 
   // Session persistence
   const handleRestoreSession = useCallback((metadata: { transcript?: string; originalText?: string; sttLanguage?: SttLanguage }) => {
@@ -324,18 +324,6 @@ const Transcribe = () => {
       <div className="p-4 md:p-8 space-y-6 max-w-3xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold text-foreground">{t("stt.title")}</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{t("stt.language")}:</span>
-            <Select value={sttLanguage} onValueChange={(v) => setSttLanguage(v as SttLanguage)}>
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en-US">English</SelectItem>
-                <SelectItem value="ur-PK">اردو (Urdu)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {/* Usage Badge */}
