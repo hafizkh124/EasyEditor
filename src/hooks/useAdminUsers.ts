@@ -16,7 +16,7 @@ export function useAdminUsers(enabled: boolean) {
   const fetchUsers = async () => {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, display_name, is_approved, created_at")
+      .select("user_id, display_name, is_approved, created_at, rejection_status, rejection_reason, rejected_at")
       .order("created_at", { ascending: false });
 
     const { data: subs } = await supabase
@@ -26,14 +26,27 @@ export function useAdminUsers(enabled: boolean) {
     if (profiles) {
       const subMap = new Map((subs || []).map((s) => [s.user_id, s]));
       setUsers(
-        profiles.map((p) => ({
-          ...p,
-          tier: subMap.get(p.user_id)?.tier || "free",
-          upgrade_requested: subMap.get(p.user_id)?.upgrade_requested || false,
-          pending_tier: subMap.get(p.user_id)?.pending_tier || null,
-          payment_reference: subMap.get(p.user_id)?.payment_reference || null,
-          last_upgrade_request: subMap.get(p.user_id)?.last_upgrade_request || null,
-        }))
+        profiles.map((p) => {
+          const profileWithRejection = p as typeof p & {
+            rejection_status?: string | null;
+            rejection_reason?: string | null;
+            rejected_at?: string | null;
+          };
+          return {
+            user_id: p.user_id,
+            display_name: p.display_name,
+            is_approved: p.is_approved,
+            created_at: p.created_at,
+            tier: subMap.get(p.user_id)?.tier || "free",
+            upgrade_requested: subMap.get(p.user_id)?.upgrade_requested || false,
+            pending_tier: subMap.get(p.user_id)?.pending_tier || null,
+            payment_reference: subMap.get(p.user_id)?.payment_reference || null,
+            last_upgrade_request: subMap.get(p.user_id)?.last_upgrade_request || null,
+            rejection_status: profileWithRejection.rejection_status ?? null,
+            rejection_reason: profileWithRejection.rejection_reason ?? null,
+            rejected_at: profileWithRejection.rejected_at ?? null,
+          };
+        })
       );
     }
     setLoading(false);
@@ -44,9 +57,16 @@ export function useAdminUsers(enabled: boolean) {
   }, [enabled]);
 
   const approveWithPlan = async (userId: string, plan: PaidTier) => {
+    // Clears any prior rejection state — admin may approve a previously rejected user.
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({ is_approved: true })
+      .update({
+        is_approved: true,
+        rejection_status: null,
+        rejection_reason: null,
+        rejected_at: null,
+        rejected_by: null,
+      })
       .eq("user_id", userId);
 
     if (profileError) {
@@ -74,7 +94,87 @@ export function useAdminUsers(enabled: boolean) {
 
     toast.success(t("admin.approved"));
     setUsers((prev) =>
-      prev.map((u) => (u.user_id === userId ? { ...u, is_approved: true, tier: plan } : u))
+      prev.map((u) =>
+        u.user_id === userId
+          ? {
+              ...u,
+              is_approved: true,
+              tier: plan,
+              rejection_status: null,
+              rejection_reason: null,
+              rejected_at: null,
+            }
+          : u,
+      ),
+    );
+  };
+
+  const rejectUser = async (userId: string, reason: string) => {
+    const trimmedReason = reason.trim() || null;
+    const { data: { user: adminUser } } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        is_approved: false,
+        rejection_status: "rejected",
+        rejection_reason: trimmedReason,
+        rejected_at: new Date().toISOString(),
+        rejected_by: adminUser?.id ?? null,
+      })
+      .eq("user_id", userId);
+
+    if (error) {
+      toast.error(`${t("admin.update_error")}: ${error.message}`);
+      return;
+    }
+
+    await sendNotification(
+      userId,
+      t("notification.account_rejected_title") || "Account rejected",
+      trimmedReason
+        ? (t("notification.account_rejected_msg_with_reason") || "Your account was rejected. Reason: {reason}").replace("{reason}", trimmedReason)
+        : (t("notification.account_rejected_msg") || "Your account registration has been rejected. Please contact the admin if you believe this is a mistake."),
+    );
+
+    toast.success(t("admin.rejected_done") || "User rejected");
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.user_id === userId
+          ? {
+              ...u,
+              is_approved: false,
+              rejection_status: "rejected",
+              rejection_reason: trimmedReason,
+              rejected_at: new Date().toISOString(),
+            }
+          : u,
+      ),
+    );
+  };
+
+  const unrejectUser = async (userId: string) => {
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        rejection_status: null,
+        rejection_reason: null,
+        rejected_at: null,
+        rejected_by: null,
+      })
+      .eq("user_id", userId);
+
+    if (error) {
+      toast.error(`${t("admin.update_error")}: ${error.message}`);
+      return;
+    }
+
+    toast.success(t("admin.unrejected_done") || "Returned to pending queue");
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.user_id === userId
+          ? { ...u, rejection_status: null, rejection_reason: null, rejected_at: null }
+          : u,
+      ),
     );
   };
 
@@ -202,6 +302,8 @@ export function useAdminUsers(enabled: boolean) {
     loading,
     approveWithPlan,
     revokeApproval,
+    rejectUser,
+    unrejectUser,
     changeTier,
     approveUpgrade,
     rejectUpgrade,

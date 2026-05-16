@@ -55,6 +55,8 @@ const Admin = () => {
     loading,
     approveWithPlan,
     revokeApproval,
+    rejectUser,
+    unrejectUser,
     changeTier,
     approveUpgrade,
     rejectUpgrade,
@@ -101,6 +103,8 @@ const Admin = () => {
               loading={loading}
               onApprove={approveWithPlan}
               onRevoke={revokeApproval}
+              onReject={rejectUser}
+              onUnreject={unrejectUser}
               onChangeTier={changeTier}
               tierLabel={tierLabel}
             />
