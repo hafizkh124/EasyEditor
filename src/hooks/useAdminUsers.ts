@@ -21,7 +21,7 @@ export function useAdminUsers(enabled: boolean) {
 
     const { data: subs } = await supabase
       .from("subscriptions")
-      .select("user_id, tier, upgrade_requested, pending_tier, payment_reference, last_upgrade_request");
+      .select("user_id, tier, upgrade_requested, pending_tier, payment_reference, last_upgrade_request, activated_at, expires_at, last_renewed_at, renewal_count, billing_cycle_days");
 
     if (profiles) {
       const subMap = new Map((subs || []).map((s) => [s.user_id, s]));
@@ -32,19 +32,33 @@ export function useAdminUsers(enabled: boolean) {
             rejection_reason?: string | null;
             rejected_at?: string | null;
           };
+          const sub = subMap.get(p.user_id) as
+            | (NonNullable<typeof subs>[number] & {
+                activated_at?: string | null;
+                expires_at?: string | null;
+                last_renewed_at?: string | null;
+                renewal_count?: number | null;
+                billing_cycle_days?: number | null;
+              })
+            | undefined;
           return {
             user_id: p.user_id,
             display_name: p.display_name,
             is_approved: p.is_approved,
             created_at: p.created_at,
-            tier: subMap.get(p.user_id)?.tier || "free",
-            upgrade_requested: subMap.get(p.user_id)?.upgrade_requested || false,
-            pending_tier: subMap.get(p.user_id)?.pending_tier || null,
-            payment_reference: subMap.get(p.user_id)?.payment_reference || null,
-            last_upgrade_request: subMap.get(p.user_id)?.last_upgrade_request || null,
+            tier: sub?.tier || "free",
+            upgrade_requested: sub?.upgrade_requested || false,
+            pending_tier: sub?.pending_tier || null,
+            payment_reference: sub?.payment_reference || null,
+            last_upgrade_request: sub?.last_upgrade_request || null,
             rejection_status: profileWithRejection.rejection_status ?? null,
             rejection_reason: profileWithRejection.rejection_reason ?? null,
             rejected_at: profileWithRejection.rejected_at ?? null,
+            activated_at: sub?.activated_at ?? null,
+            expires_at: sub?.expires_at ?? null,
+            last_renewed_at: sub?.last_renewed_at ?? null,
+            renewal_count: sub?.renewal_count ?? 0,
+            billing_cycle_days: sub?.billing_cycle_days ?? 30,
           };
         })
       );
@@ -74,9 +88,24 @@ export function useAdminUsers(enabled: boolean) {
       return;
     }
 
+    // Read current billing_cycle_days so admins can customize per-user cycles later.
+    const { data: currentSub } = await supabase
+      .from("subscriptions")
+      .select("billing_cycle_days")
+      .eq("user_id", userId)
+      .single();
+    const cycleDays = (currentSub as { billing_cycle_days?: number | null } | null)?.billing_cycle_days ?? 30;
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + cycleDays * 24 * 60 * 60 * 1000);
+
     const { error: subError } = await supabase
       .from("subscriptions")
-      .update({ tier: plan, ...TIER_LIMITS[plan] })
+      .update({
+        tier: plan,
+        ...TIER_LIMITS[plan],
+        activated_at: now.toISOString(),
+        expires_at: expiresAt.toISOString(),
+      })
       .eq("user_id", userId);
 
     if (subError) {
@@ -103,6 +132,67 @@ export function useAdminUsers(enabled: boolean) {
               rejection_status: null,
               rejection_reason: null,
               rejected_at: null,
+              activated_at: now.toISOString(),
+              expires_at: expiresAt.toISOString(),
+            }
+          : u,
+      ),
+    );
+  };
+
+  const renewSubscription = async (userId: string) => {
+    // Greatest() handles both early renewals (extend from current expiry)
+    // and post-expiry renewals (extend from today).
+    const { data: current } = await supabase
+      .from("subscriptions")
+      .select("expires_at, billing_cycle_days, renewal_count")
+      .eq("user_id", userId)
+      .single();
+
+    const sub = current as {
+      expires_at?: string | null;
+      billing_cycle_days?: number | null;
+      renewal_count?: number | null;
+    } | null;
+
+    const cycleDays = sub?.billing_cycle_days ?? 30;
+    const now = new Date();
+    const baseExpiry = sub?.expires_at ? new Date(sub.expires_at) : now;
+    const startFrom = baseExpiry.getTime() > now.getTime() ? baseExpiry : now;
+    const newExpiry = new Date(startFrom.getTime() + cycleDays * 24 * 60 * 60 * 1000);
+
+    const { error } = await supabase
+      .from("subscriptions")
+      .update({
+        expires_at: newExpiry.toISOString(),
+        last_renewed_at: now.toISOString(),
+        renewal_count: (sub?.renewal_count ?? 0) + 1,
+      })
+      .eq("user_id", userId);
+
+    if (error) {
+      toast.error(`${t("admin.update_error")}: ${error.message}`);
+      return;
+    }
+
+    await sendNotification(
+      userId,
+      t("notification.subscription_renewed_title") || "Subscription renewed",
+      (t("notification.subscription_renewed_msg") || "Your subscription has been renewed. New expiry: {date}").replace(
+        "{date}",
+        newExpiry.toLocaleDateString(),
+      ),
+    );
+
+    toast.success(t("admin.renewed_done") || "Subscription renewed");
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.user_id === userId
+          ? {
+              ...u,
+              expires_at: newExpiry.toISOString(),
+              last_renewed_at: now.toISOString(),
+              renewal_count: (u.renewal_count ?? 0) + 1,
             }
           : u,
       ),
@@ -191,7 +281,13 @@ export function useAdminUsers(enabled: boolean) {
 
     const { error: subError } = await supabase
       .from("subscriptions")
-      .update({ tier: "free", ...TIER_LIMITS.free })
+      .update({
+        tier: "free",
+        ...TIER_LIMITS.free,
+        activated_at: null,
+        expires_at: null,
+        last_renewed_at: null,
+      })
       .eq("user_id", userId);
 
     if (subError) {
@@ -203,7 +299,18 @@ export function useAdminUsers(enabled: boolean) {
 
     toast.success(t("admin.rejected"));
     setUsers((prev) =>
-      prev.map((u) => (u.user_id === userId ? { ...u, is_approved: false, tier: "free" } : u))
+      prev.map((u) =>
+        u.user_id === userId
+          ? {
+              ...u,
+              is_approved: false,
+              tier: "free",
+              activated_at: null,
+              expires_at: null,
+              last_renewed_at: null,
+            }
+          : u,
+      ),
     );
   };
 
@@ -304,6 +411,7 @@ export function useAdminUsers(enabled: boolean) {
     revokeApproval,
     rejectUser,
     unrejectUser,
+    renewSubscription,
     changeTier,
     approveUpgrade,
     rejectUpgrade,

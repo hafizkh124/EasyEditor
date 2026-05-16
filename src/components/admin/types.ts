@@ -11,6 +11,11 @@ export interface UserRow {
   rejection_status: string | null;
   rejection_reason: string | null;
   rejected_at: string | null;
+  activated_at: string | null;
+  expires_at: string | null;
+  last_renewed_at: string | null;
+  renewal_count: number;
+  billing_cycle_days: number;
 }
 
 export type PaidTier = "basic" | "pro" | "ultra";
