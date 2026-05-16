@@ -135,7 +135,7 @@ Only output the transcription text, nothing else — no introductions, no explan
           {
             role: "user",
             content: [
-              { type: "text", text: `Transcribe this audio recording in ${langName}:` },
+              { type: "text", text: isAuto ? "Detect the spoken language and transcribe this audio in its native script:" : `Transcribe this audio recording in ${langName}:` },
               { type: "image_url", image_url: { url: audio } },
             ],
           },
