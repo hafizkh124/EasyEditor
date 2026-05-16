@@ -9,6 +9,7 @@ export const useApproval = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [rejectionStatus, setRejectionStatus] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchStatus = useCallback(async () => {
@@ -17,6 +18,7 @@ export const useApproval = () => {
       setIsAdmin(false);
       setRejectionStatus(null);
       setRejectionReason(null);
+      setProfileComplete(null);
       setLoading(false);
       return;
     }
@@ -24,15 +26,23 @@ export const useApproval = () => {
     const [profileRes, roleRes] = await Promise.all([
       supabase
         .from("profiles")
-        .select("is_approved, rejection_status, rejection_reason")
+        .select("is_approved, rejection_status, rejection_reason, whatsapp_number")
         .eq("user_id", userId)
         .single(),
       supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
     ]);
 
-    setIsApproved(profileRes.data?.is_approved ?? false);
-    setRejectionStatus((profileRes.data as { rejection_status?: string | null } | null)?.rejection_status ?? null);
-    setRejectionReason((profileRes.data as { rejection_reason?: string | null } | null)?.rejection_reason ?? null);
+    const profileData = profileRes.data as {
+      is_approved?: boolean | null;
+      rejection_status?: string | null;
+      rejection_reason?: string | null;
+      whatsapp_number?: string | null;
+    } | null;
+
+    setIsApproved(profileData?.is_approved ?? false);
+    setRejectionStatus(profileData?.rejection_status ?? null);
+    setRejectionReason(profileData?.rejection_reason ?? null);
+    setProfileComplete(!!profileData?.whatsapp_number);
     setIsAdmin(roleRes.data === true);
     setLoading(false);
   }, [user, session]);
@@ -41,5 +51,13 @@ export const useApproval = () => {
     fetchStatus();
   }, [fetchStatus]);
 
-  return { isApproved, isAdmin, rejectionStatus, rejectionReason, loading, refetch: fetchStatus };
+  return {
+    isApproved,
+    isAdmin,
+    rejectionStatus,
+    rejectionReason,
+    profileComplete,
+    loading,
+    refetch: fetchStatus,
+  };
 };

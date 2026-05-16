@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Camera, User, Crown, BarChart3, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import ReferralCard from "@/components/ReferralCard";
+import ContactInfoCard from "@/components/ContactInfoCard";
 import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 
 const Profile = () => {
@@ -270,6 +271,9 @@ const Profile = () => {
             ))}
           </CardContent>
         </Card>
+
+        {/* Contact information (Phase: profile completion) */}
+        <ContactInfoCard />
 
         {/* Referral program (Phase C) */}
         <ReferralCard />

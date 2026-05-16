@@ -19,6 +19,9 @@ export interface UserRow {
   referral_code: string | null;
   referred_by: string | null;
   referral_credits: number;
+  whatsapp_number: string | null;
+  country: string | null;
+  profession: string | null;
 }
 
 export type PaidTier = "basic" | "pro" | "ultra";
