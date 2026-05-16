@@ -206,12 +206,12 @@ async function fetchSunnah(query: string, apiKey: string): Promise<IslamicResult
 async function fetchQuranCom(query: string): Promise<IslamicResult[]> {
   try {
     const res = await fetchWithTimeout(
-      `https://api.quran.com/api/v4/search?q=${encodeURIComponent(query)}&size=5&translations=131`
+      `https://api.quran.com/api/v4/search?q=${encodeURIComponent(query)}&size=10&translations=131`
     );
     if (!res.ok) return [];
     const data = await res.json();
     const results = data?.search?.results ?? [];
-    return results.slice(0, 4).map((item: any): IslamicResult => ({
+    return results.slice(0, 10).map((item: any): IslamicResult => ({
       domain: "quran-com",
       content: `${item.text ?? ""}`,
       citation_ref: {
@@ -242,6 +242,9 @@ serve(async (req) => {
     }
 
     const SUNNAH_API_KEY  = Deno.env.get("SUNNAH_API_KEY") ?? "";
+    if (!SUNNAH_API_KEY) {
+      console.warn("[islamic-api-fetch] SUNNAH_API_KEY not set — Sunnah.com lane is disabled. Add the key to Supabase function secrets to enable it.");
+    }
     const supabaseUrl     = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase        = createClient(supabaseUrl, supabaseKey);
