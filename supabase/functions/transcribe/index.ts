@@ -85,9 +85,19 @@ serve(async (req) => {
       });
     }
 
-    const langName = language === "ur-PK" ? "Urdu" : "English";
+    const isAuto = !language || language === "auto";
+    const langName = isAuto ? "auto-detected" : language === "ur-PK" ? "Urdu" : "English";
     const isUrdu = language === "ur-PK";
-    const scriptRules = isUrdu
+    const scriptRules = isAuto
+      ? `SCRIPT RULES (STRICT — non-negotiable):
+1. Auto-detect the spoken language from the audio (it may be Urdu, English, Arabic, or another language).
+2. Transcribe in the NATIVE script of the detected language:
+   - Urdu → Urdu Nastaliq (Arabic) script. NEVER Roman Urdu (Latin) or Devanagari (Hindi). Transliterate English loanwords into Urdu script (e.g., "school" → "اسکول").
+   - Arabic → Arabic script.
+   - English → standard Latin script.
+   - Any other language → its standard native script.
+3. If the audio mixes languages, write each portion in its own native script.`
+      : isUrdu
       ? `SCRIPT RULES (STRICT — non-negotiable):
 1. The ENTIRE output MUST be in Urdu Nastaliq (Arabic) script. Every single character.
 2. Do NOT output Roman Urdu (Latin/English letters used to write Urdu words). FORBIDDEN.
@@ -98,7 +108,14 @@ serve(async (req) => {
 1. The ENTIRE output MUST be in standard Latin (English) script.
 2. If a small portion of the audio is genuinely in Urdu/Arabic (a quoted verse, a name in Urdu), you may keep that brief portion in its original script — but English speech that contains Arabic-origin loanwords should still be written in English.`;
 
-    const systemPrompt = `You are a speech transcription assistant. The user has recorded audio in ${langName}.
+    const systemPrompt = isAuto
+      ? `You are a speech transcription assistant. The user has recorded audio in an unspecified language.
+Detect the spoken language and transcribe it accurately in that language's native script.
+
+${scriptRules}
+
+Only output the transcription text, nothing else — no introductions, no explanations, no markdown, no language labels.`
+      : `You are a speech transcription assistant. The user has recorded audio in ${langName}.
 You will receive a base64-encoded audio file. Transcribe it accurately in ${langName}.
 
 ${scriptRules}
