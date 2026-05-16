@@ -26,7 +26,7 @@ import {
   type ProgressPhase,
 } from "@/lib/audio/transcribeLongForm";
 
-type SttLanguage = "en-US" | "ur-PK";
+type SttLanguage = "en-US" | "ur-PK" | "auto";
 type RefineAction = "formalize" | "humanize" | "shorten" | "citations" | "spelling_check" | "normalize_script";
 
 const refineActions: { action: RefineAction; icon: typeof GraduationCap; labelKey: string }[] = [
