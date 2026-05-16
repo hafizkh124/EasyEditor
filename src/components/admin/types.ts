@@ -16,6 +16,9 @@ export interface UserRow {
   last_renewed_at: string | null;
   renewal_count: number;
   billing_cycle_days: number;
+  referral_code: string | null;
+  referred_by: string | null;
+  referral_credits: number;
 }
 
 export type PaidTier = "basic" | "pro" | "ultra";

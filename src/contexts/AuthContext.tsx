@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { applyPendingReferral, consumePendingReferralCode } from "@/lib/referral";
 
 interface AuthContextType {
   user: User | null;
@@ -47,6 +48,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clean up after OAuth / magic-link sign-in or token refresh
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         cleanupHashFragment();
+      }
+
+      // Apply any pending referral code stashed by Signup.tsx before an
+      // OAuth redirect or email-confirmation round-trip. Fire-and-forget;
+      // failures are non-fatal.
+      if (event === "SIGNED_IN" && session?.user?.id) {
+        const code = consumePendingReferralCode();
+        if (code) {
+          applyPendingReferral(session.user.id, code, supabase as Parameters<typeof applyPendingReferral>[2]).catch(() => {
+            /* non-fatal */
+          });
+        }
       }
     });
 

@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CheckCircle, XCircle, Users, Crown, Ban, Undo2, RefreshCw, CalendarClock } from "lucide-react";
+import { CheckCircle, XCircle, Users, Crown, Ban, Undo2, RefreshCw, CalendarClock, Gift } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { UserRow, PaidTier, Tier } from "./types";
 import { getLifecycleInfo, formatLifecycleDate } from "@/lib/subscriptionLifecycle";
@@ -146,6 +146,19 @@ const UserManagement = ({
                         <p className="text-xs text-destructive/80 mt-1 italic">
                           {t("admin.rejection_reason_label") || "Reason"}: {u.rejection_reason}
                         </p>
+                      )}
+                      {(u.referred_by || (u.referral_credits ?? 0) > 0) && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
+                          {u.referred_by && (
+                            <span className="flex items-center gap-1">
+                              <Gift className="h-3 w-3 text-green-600" />
+                              {t("admin.referred_user") || "Referred"}
+                            </span>
+                          )}
+                          {(u.referral_credits ?? 0) > 0 && (
+                            <span>{t("admin.referral_credits") || "Credits"}: {u.referral_credits}</span>
+                          )}
+                        </div>
                       )}
                       {lifecycle.status !== "none" && (
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
