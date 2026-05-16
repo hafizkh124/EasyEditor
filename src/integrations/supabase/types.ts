@@ -216,35 +216,89 @@ export type Database = {
         Row: {
           avatar_url: string | null
           cloned_voice_id: string | null
+          country: string | null
           created_at: string
           display_name: string | null
           id: string
           is_approved: boolean
           preferred_language: string
+          profession: string | null
+          referral_code: string | null
+          referral_credits: number
+          referred_by: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          rejection_status: string | null
           updated_at: string
           user_id: string
+          whatsapp_number: string | null
         }
         Insert: {
           avatar_url?: string | null
           cloned_voice_id?: string | null
+          country?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
           is_approved?: boolean
           preferred_language?: string
+          profession?: string | null
+          referral_code?: string | null
+          referral_credits?: number
+          referred_by?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          rejection_status?: string | null
           updated_at?: string
           user_id: string
+          whatsapp_number?: string | null
         }
         Update: {
           avatar_url?: string | null
           cloned_voice_id?: string | null
+          country?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
           is_approved?: boolean
           preferred_language?: string
+          profession?: string | null
+          referral_code?: string | null
+          referral_credits?: number
+          referred_by?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          rejection_status?: string | null
           updated_at?: string
           user_id?: string
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
+      referral_events: {
+        Row: {
+          credits_granted: number
+          granted_at: string
+          id: string
+          referee_id: string
+          referrer_id: string
+        }
+        Insert: {
+          credits_granted: number
+          granted_at?: string
+          id?: string
+          referee_id: string
+          referrer_id: string
+        }
+        Update: {
+          credits_granted?: number
+          granted_at?: string
+          id?: string
+          referee_id?: string
+          referrer_id?: string
         }
         Relationships: []
       }
@@ -358,15 +412,20 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          activated_at: string | null
+          billing_cycle_days: number
           created_at: string
+          expires_at: string | null
           id: string
           islamic_queries_limit: number
           islamic_queries_used: number
+          last_renewed_at: string | null
           last_upgrade_request: string | null
           ocr_pages_limit: number
           ocr_pages_used: number
           payment_reference: string | null
           pending_tier: string | null
+          renewal_count: number
           research_queries_limit: number
           research_queries_used: number
           tier: Database["public"]["Enums"]["subscription_tier"]
@@ -379,15 +438,20 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          activated_at?: string | null
+          billing_cycle_days?: number
           created_at?: string
+          expires_at?: string | null
           id?: string
           islamic_queries_limit?: number
           islamic_queries_used?: number
+          last_renewed_at?: string | null
           last_upgrade_request?: string | null
           ocr_pages_limit?: number
           ocr_pages_used?: number
           payment_reference?: string | null
           pending_tier?: string | null
+          renewal_count?: number
           research_queries_limit?: number
           research_queries_used?: number
           tier?: Database["public"]["Enums"]["subscription_tier"]
@@ -400,15 +464,20 @@ export type Database = {
           user_id: string
         }
         Update: {
+          activated_at?: string | null
+          billing_cycle_days?: number
           created_at?: string
+          expires_at?: string | null
           id?: string
           islamic_queries_limit?: number
           islamic_queries_used?: number
+          last_renewed_at?: string | null
           last_upgrade_request?: string | null
           ocr_pages_limit?: number
           ocr_pages_used?: number
           payment_reference?: string | null
           pending_tier?: string | null
+          renewal_count?: number
           research_queries_limit?: number
           research_queries_used?: number
           tier?: Database["public"]["Enums"]["subscription_tier"]
