@@ -34,7 +34,7 @@
   "stt.transcript": "Transcript",
   "stt.copy": "Copy",
   "stt.download": "Download",
-  "stt.no_transcript": "Press the mic button to start transcribing...",
+  "stt.no_transcript": "Upload a File or Press the mic button to start transcribing...",
   "stt.recording": "Recording...",
   "stt.processing": "Processing...",
   "stt.limit_reached": "Free tier limit reached. Upgrade to Pro for unlimited access.",
