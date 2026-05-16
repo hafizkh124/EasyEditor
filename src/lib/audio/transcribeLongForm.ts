@@ -50,7 +50,7 @@ function checkSignal(signal?: AbortSignal): void {
 
 async function transcribeChunk(
   chunk: AudioChunk,
-  language: "en-US" | "ur-PK",
+  language: TranscribeLanguage,
   signal?: AbortSignal,
 ): Promise<string> {
   checkSignal(signal);
