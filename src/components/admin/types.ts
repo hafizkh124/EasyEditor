@@ -8,6 +8,9 @@ export interface UserRow {
   pending_tier: string | null;
   payment_reference: string | null;
   last_upgrade_request: string | null;
+  rejection_status: string | null;
+  rejection_reason: string | null;
+  rejected_at: string | null;
 }
 
 export type PaidTier = "basic" | "pro" | "ultra";

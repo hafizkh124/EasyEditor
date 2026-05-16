@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -65,10 +65,29 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed }: SidebarHisto
     setRenamingId(null);
   };
 
+  const startNewChat = () => {
+    // Hard navigate so the section page remounts and any local state
+    // (transcript, extracted text, chat messages) is cleared. A client-side
+    // navigate would only clear the URL param but leave page state intact.
+    window.location.href = SECTION_ROUTES[section];
+  };
+
   return (
     <div className="flex flex-col min-h-0 flex-1">
-      <div className="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-sidebar-foreground/60">
-        {t("sidebar.history") || "History"}
+      <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-1">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-sidebar-foreground/60">
+          {t("sidebar.history") || "History"}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={startNewChat}
+          className="h-7 gap-1 px-2 text-xs"
+          aria-label={t("sidebar.new_chat") || "New"}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {t("sidebar.new_chat") || "New"}
+        </Button>
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
         {loading && items.length === 0 ? (
