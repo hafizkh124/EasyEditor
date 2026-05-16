@@ -11,6 +11,7 @@
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { expandQueryTerms } from "../_shared/bilingualMap.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 
 const corsHeaders = {
@@ -98,8 +99,18 @@ serve(async (req) => {
     const supabaseKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase     = createClient(supabaseUrl, supabaseKey);
 
-    // ── 1. Normalize Arabic query ─────────────────────────────────────────────
+    // ── 1. Normalize Arabic query + append bilingual expansions ───────────────
+    // Embedding the original query alone often misses cross-script matches
+    // (e.g. Urdu "صدقہ" vs Arabic corpus "الصدقة"). By concatenating expansions
+    // from the shared bilingual map, the embedding vector lands in a region of
+    // semantic space that better overlaps Arabic/English/Urdu hits at once.
     const normalizedQuery = normalizeArabic(query);
+    const expansions = expandQueryTerms(query).filter(
+      (t) => t.toLowerCase() !== normalizedQuery.toLowerCase(),
+    );
+    const embedInput = expansions.length > 0
+      ? `${normalizedQuery}\n${expansions.slice(0, 6).join(" ")}`
+      : normalizedQuery;
 
     // ── 2. Embed via Lovable AI gateway (retry once on 5xx) ──────────────────
     const callEmbedding = () => fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
@@ -110,7 +121,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "google/text-embedding-004",
-        input: normalizedQuery,
+        input: embedInput,
       }),
       signal: AbortSignal.timeout(15_000),
     });

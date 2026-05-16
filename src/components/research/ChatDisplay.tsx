@@ -300,7 +300,14 @@ const ChatDisplay = ({
                 <SpellingResponse original="" corrected={msg.assist.corrected} changes={msg.assist.changes} t={t} />
               )}
               {msg.assist.promptKey === "citations" && (
-                <CitationResponse text={msg.assist.text} citations={msg.assist.citations} t={t} />
+                <CitationResponse
+                  text={msg.assist.text}
+                  citations={msg.assist.citations}
+                  totalSegments={msg.assist.total_segments}
+                  rejectedSegments={msg.assist.rejected_segments}
+                  uncitedSegments={msg.assist.uncited_segments}
+                  t={t}
+                />
               )}
               {msg.assist.promptKey === "combined" && (
                 <>

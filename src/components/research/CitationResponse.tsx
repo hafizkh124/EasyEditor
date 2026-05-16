@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { Copy, ChevronDown, BookMarked } from "lucide-react";
+import { Copy, ChevronDown, BookMarked, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +14,13 @@ import type { StructuredCitation } from "@/lib/research/streamers";
 interface CitationResponseProps {
   text: string;
   citations: StructuredCitation[];
+  /** Total claim segments the pipeline processed. Optional — only set by the
+   *  corpus-validated pipeline. */
+  totalSegments?: number;
+  /** Segments where the LLM picked a citation but DB verification rejected it. */
+  rejectedSegments?: number[];
+  /** Segments the pipeline could not confidently cite. */
+  uncitedSegments?: number[];
   t: (k: string) => string;
 }
 
@@ -29,8 +36,20 @@ function stripArabicAndTranslation(text: string): string {
   return text.replace(blockRe, (_, ref: string) => ref);
 }
 
-const CitationResponse = ({ text, citations, t }: CitationResponseProps) => {
+const CitationResponse = ({
+  text,
+  citations,
+  totalSegments,
+  rejectedSegments,
+  uncitedSegments,
+  t,
+}: CitationResponseProps) => {
   const rtl = isRtlText(text);
+  const cited = citations.length;
+  const total = totalSegments ?? 0;
+  const rejected = rejectedSegments?.length ?? 0;
+  const uncited  = uncitedSegments?.length ?? 0;
+  const showSummary = total > 0;
 
   const copyFull = async () => {
     await navigator.clipboard.writeText(text);
@@ -75,6 +94,30 @@ const CitationResponse = ({ text, citations, t }: CitationResponseProps) => {
       >
         {text}
       </div>
+
+      {showSummary && (
+        <div className="flex flex-wrap items-center gap-3 text-xs pt-2 border-t border-border/50">
+          <span className="flex items-center gap-1 text-green-700 dark:text-green-400">
+            <CheckCircle2 className="h-3 w-3" />
+            {cited} / {total} {t("research.citations_cited_segments") || "segments cited"}
+          </span>
+          {uncited > 0 && (
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <BookMarked className="h-3 w-3" />
+              {uncited} {t("research.citations_uncited_segments") || "without reliable citation"}
+            </span>
+          )}
+          {rejected > 0 && (
+            <span
+              className="flex items-center gap-1 text-amber-700 dark:text-amber-400"
+              title={t("research.citations_rejected_tooltip") || "Model picked these but DB verification failed; they were dropped to avoid showing wrong references."}
+            >
+              <AlertTriangle className="h-3 w-3" />
+              {rejected} {t("research.citations_rejected_segments") || "rejected by verifier"}
+            </span>
+          )}
+        </div>
+      )}
 
       {citations.length > 0 && (
         <div className="pt-3 border-t border-border space-y-2">

@@ -7,10 +7,14 @@ import {
   STRICT_INSTRUCTION_OFF,
   SPELLING_SYSTEM_PROMPT,
   CITATIONS_SYSTEM_PROMPT,
+  CITATIONS_CONSTRAINED_PROMPT,
   COMBINED_SYSTEM_PROMPT,
   pickPromptKey,
   type ResearchAssistMode,
 } from "../_shared/researchPrompts.ts";
+import { segmentClaims } from "../_shared/segmentClaims.ts";
+import { findCitationCandidates, type CitationCandidate } from "../_shared/citationCandidates.ts";
+import { verifyAll } from "../_shared/citationVerifier.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -127,6 +131,222 @@ async function fetchFileContent(supabase: any, storagePath: string): Promise<str
   }
 }
 
+// ─── Corpus-validated "Add citations" pipeline ───────────────────────────────
+interface CitationsPipelineInput {
+  text:       string;
+  supabase:   any;
+  lovableKey: string;
+}
+
+interface CitationsPipelineOutput {
+  text:       string;
+  citations:  Array<{
+    index:       number;
+    arabic:      string;
+    translation: string;
+    reference:   string;
+    source_url?: string;
+  }>;
+  /** Segments where the LLM tried to insert a citation but the verifier rejected it. */
+  rejected_segments: number[];
+  /** Segments that had no candidate matches at all. */
+  uncited_segments:  number[];
+  /** Total segments processed (for UI progress / telemetry). */
+  total_segments:    number;
+}
+
+async function runCitationsPipeline(input: CitationsPipelineInput): Promise<CitationsPipelineOutput> {
+  const segments = segmentClaims(input.text);
+  if (segments.length === 0) {
+    return { text: input.text, citations: [], rejected_segments: [], uncited_segments: [], total_segments: 0 };
+  }
+
+  // 1. Fetch candidates per segment in parallel (capped to avoid melting upstreams)
+  const candidatesPerSegment = await Promise.all(
+    segments.map((seg) =>
+      findCitationCandidates(seg.text, {
+        supabase:    input.supabase,
+        includeApis: false,    // pure corpus for safety in pipeline v1; flip to true once Phase 3 ingest is complete
+        maxQuran:    3,
+        maxHadith:   3,
+      }),
+    ),
+  );
+
+  // Short-circuit: if NO segment yielded any candidate, return early with the
+  // original text and a list of all segments as "uncited".
+  const totalCandidates = candidatesPerSegment.reduce((s, c) => s + c.length, 0);
+  if (totalCandidates === 0) {
+    return {
+      text: input.text,
+      citations: [],
+      rejected_segments: [],
+      uncited_segments: segments.map((s) => s.index),
+      total_segments: segments.length,
+    };
+  }
+
+  // 2. Build the LLM prompt: segments + candidates per segment
+  const promptPayload = {
+    segments: segments.map((seg, i) => ({
+      index: seg.index,
+      text:  seg.text,
+      candidates: candidatesPerSegment[i].map((c) => ({
+        match_key:   c.match_key,
+        type:        c.type,
+        reference:   c.reference,
+        arabic:      c.arabic.slice(0, 400),
+        translation: c.translation.slice(0, 400),
+      })),
+    })),
+  };
+
+  const messages = [
+    { role: "system", content: CITATIONS_CONSTRAINED_PROMPT },
+    {
+      role: "user",
+      content:
+        "Here is the user text segmented by claim, with retrieved citation candidates per segment.\n\n" +
+        JSON.stringify(promptPayload, null, 2),
+    },
+  ];
+
+  const llmRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${input.lovableKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!llmRes.ok) {
+    console.error("[citations-pipeline] LLM error:", llmRes.status, await llmRes.text().catch(() => ""));
+    return {
+      text: input.text,
+      citations: [],
+      rejected_segments: [],
+      uncited_segments: segments.map((s) => s.index),
+      total_segments: segments.length,
+    };
+  }
+
+  const llmJson = await llmRes.json();
+  const raw: string = llmJson?.choices?.[0]?.message?.content ?? "";
+  let picks: Array<{ segment_index: number; match_key: string; arabic?: string; translation?: string; reference?: string }> = [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed?.picks)) picks = parsed.picks;
+  } catch {
+    try {
+      const stripped = raw.replace(/```json\s*|\s*```/g, "").trim();
+      const parsed = JSON.parse(stripped);
+      if (Array.isArray(parsed?.picks)) picks = parsed.picks;
+    } catch {
+      console.error("[citations-pipeline] LLM returned unparseable JSON:", raw.slice(0, 300));
+    }
+  }
+
+  // 3. For each pick, confirm the match_key is in the candidate list it was
+  //    drawn from (LLM hallucination check #1). Then map back to the candidate
+  //    for the canonical reference + URL.
+  const matchKeyToCandidate = new Map<string, { segmentIndex: number; candidate: CitationCandidate }>();
+  for (let i = 0; i < segments.length; i++) {
+    for (const c of candidatesPerSegment[i]) {
+      // Last writer wins if duplicate keys across segments — fine for verifier
+      matchKeyToCandidate.set(c.match_key, { segmentIndex: segments[i].index, candidate: c });
+    }
+  }
+
+  const llmRejectedSegments: number[] = [];
+  const validPicks = picks.filter((p) => {
+    const cand = matchKeyToCandidate.get(p.match_key);
+    if (!cand) {
+      llmRejectedSegments.push(p.segment_index);
+      return false;
+    }
+    return true;
+  });
+
+  // 4. Server-side DB verification of every accepted pick (hallucination check #2)
+  const rawForVerifier = validPicks.map((p) => {
+    const cand = matchKeyToCandidate.get(p.match_key)!.candidate;
+    if (cand.type === "quran") {
+      const [, surahStr, verseStr] = cand.match_key.split(":");
+      return { reference: p.reference ?? cand.reference, surah: parseInt(surahStr, 10), verse: parseInt(verseStr, 10), translation: p.translation, arabic: p.arabic };
+    }
+    const [, book, number] = cand.match_key.split(":");
+    return { reference: p.reference ?? cand.reference, book, hadith_number: number, translation: p.translation, arabic: p.arabic };
+  });
+  const { verified, rejected: verifierRejected } = await verifyAll(rawForVerifier, input.supabase);
+
+  // Build the per-segment pick lookup using verified results
+  const verifiedByMatchKey = new Map<string, typeof verified[number]>();
+  for (const v of verified) verifiedByMatchKey.set(v.match_key, v);
+
+  const segmentPicks: Map<number, typeof verified[number]> = new Map();
+  for (const p of validPicks) {
+    const v = verifiedByMatchKey.get(p.match_key);
+    if (v) segmentPicks.set(p.segment_index, v);
+  }
+
+  // 5. Re-assemble the text with inline citation blocks appended to each
+  //    segment that has a verified pick.
+  const blocks: string[] = [];
+  let cursor = 0;
+  let citationIndex = 0;
+  const finalCitations: CitationsPipelineOutput["citations"] = [];
+  const uncited: number[] = [];
+
+  for (const seg of segments) {
+    // Preserve any whitespace between segments untouched
+    if (seg.start > cursor) blocks.push(input.text.slice(cursor, seg.start));
+    const v = segmentPicks.get(seg.index);
+    if (v) {
+      citationIndex += 1;
+      const inline =
+        ` «${v.arabic.trim()}» — "${v.translation.trim()}" [${v.reference}]`;
+      blocks.push(seg.text + inline);
+      finalCitations.push({
+        index:       citationIndex,
+        arabic:      v.arabic,
+        translation: v.translation,
+        reference:   v.reference,
+        source_url:  v.source_url,
+      });
+    } else {
+      blocks.push(seg.text);
+      if (candidatesPerSegment[seg.index].length > 0) {
+        // We had candidates but no confident pick — segment is "uncited"
+        uncited.push(seg.index);
+      } else {
+        uncited.push(seg.index);
+      }
+    }
+    cursor = seg.end;
+  }
+  if (cursor < input.text.length) blocks.push(input.text.slice(cursor));
+
+  // Verifier rejections are also reported as "rejected segments" so the UI
+  // can surface them rather than silently dropping bad picks.
+  const rejectedSegments = Array.from(new Set([
+    ...llmRejectedSegments,
+    ...verifierRejected.map((r: any) => r.segment_index).filter((n: any) => typeof n === "number"),
+  ]));
+
+  return {
+    text:              blocks.join(""),
+    citations:         finalCitations,
+    rejected_segments: rejectedSegments,
+    uncited_segments:  uncited,
+    total_segments:    segments.length,
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -191,6 +411,23 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
         status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Citations-only mode: corpus-validated pipeline ───────────────────────
+    // Bypasses the generic LLM-prompt path. Segments the text, fetches a
+    // candidate list per segment from scholarly_documents (+ APIs), asks the
+    // LLM to PICK only from those candidates, then verifies every pick exists
+    // in the DB before returning it. See _shared/citationCandidates.ts and
+    // _shared/citationVerifier.ts.
+    if (promptKey === "citations") {
+      const result = await runCitationsPipeline({
+        text: query,
+        supabase,
+        lovableKey: LOVABLE_API_KEY,
+      });
+      return new Response(JSON.stringify({ promptKey, ...result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

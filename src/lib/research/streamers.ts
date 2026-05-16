@@ -13,7 +13,16 @@ export type StructuredCitation = {
 };
 export type AssistResult =
   | { promptKey: "spelling"; corrected: string; changes: SpellingChange[] }
-  | { promptKey: "citations"; text: string; citations: StructuredCitation[] }
+  | {
+      promptKey: "citations";
+      text: string;
+      citations: StructuredCitation[];
+      // Set by the corpus-validated pipeline (research-query citations branch).
+      // Older / legacy responses omit these — clients should treat as optional.
+      total_segments?: number;
+      rejected_segments?: number[];   // LLM-picked citations that failed DB verification
+      uncited_segments?: number[];    // Segments the pipeline could not confidently cite
+    }
   | {
       promptKey: "combined";
       corrected: string;

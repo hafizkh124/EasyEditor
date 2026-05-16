@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
+import { expandQueryTerms } from "../_shared/bilingualMap.ts";
+import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 
 const corsHeaders = {
@@ -258,89 +260,42 @@ serve(async (req) => {
             if (tierKDomains.includes("hadith-json")) sourceTypes.push("hadith");
             if (sourceTypes.length === 0) return [];
 
-            // --- Bilingual query expansion ---
-            // Common Islamic term mappings: Arabic ↔ English
-            const BILINGUAL_MAP: Record<string, string[]> = {
-              "نیت": ["نية", "intention", "deeds", "الأعمال", "النيات"],
-              "نية": ["نیت", "intention", "deeds", "الأعمال", "النيات"],
-              "intention": ["نية", "النيات", "الأعمال"],
-              "niyyah": ["نية", "النيات", "intention"],
-              "الإيمان": ["iman", "faith", "belief", "ايمان"],
-              "iman": ["الإيمان", "faith", "ايمان"],
-              "faith": ["الإيمان", "iman", "ايمان"],
-              "الصلاة": ["prayer", "salah", "نماز", "صلاة"],
-              "prayer": ["الصلاة", "salah", "صلاة", "نماز"],
-              "salah": ["الصلاة", "prayer", "صلاة"],
-              "نماز": ["الصلاة", "prayer", "salah", "صلاة"],
-              "الزكاة": ["zakat", "zakah", "charity", "زکوٰة"],
-              "zakat": ["الزكاة", "زکوٰة", "charity"],
-              "الصوم": ["fasting", "صيام", "روزہ", "sawm"],
-              "fasting": ["الصوم", "صيام", "روزہ"],
-              "روزہ": ["الصوم", "صيام", "fasting"],
-              "الحج": ["hajj", "pilgrimage", "حج"],
-              "hajj": ["الحج", "حج", "pilgrimage"],
-              "التوحيد": ["tawheed", "monotheism", "توحید"],
-              "tawheed": ["التوحيد", "توحید", "monotheism"],
-              "الجنة": ["paradise", "heaven", "جنت"],
-              "paradise": ["الجنة", "جنت"],
-              "النار": ["hellfire", "hell", "جہنم"],
-              "الوضوء": ["wudu", "ablution", "وضو"],
-              "wudu": ["الوضوء", "وضو", "ablution"],
-              "الحلال": ["halal", "permissible", "حلال"],
-              "الحرام": ["haram", "forbidden", "حرام"],
-              "القرآن": ["quran", "قرآن"],
-              "الحديث": ["hadith", "حدیث"],
-              "الجهاد": ["jihad", "struggle", "جہاد"],
-              "التوبة": ["repentance", "tawbah", "توبہ"],
-              "الصبر": ["patience", "sabr", "صبر"],
-              "الشكر": ["gratitude", "shukr", "شکر"],
-              "التقوى": ["taqwa", "piety", "تقویٰ"],
-            };
-
-            // Expand query terms with bilingual synonyms
+            // Expand query terms via the shared bilingual map (~50 topics,
+            // Urdu ↔ Arabic ↔ English ↔ transliteration). See bilingualMap.ts.
             const queryWords = query.trim().split(/\s+/).filter(Boolean);
-            const expandedTerms = new Set<string>(queryWords);
-            for (const word of queryWords) {
-              const lower = word.toLowerCase();
-              if (BILINGUAL_MAP[word]) {
-                BILINGUAL_MAP[word].forEach(t => expandedTerms.add(t));
-              } else if (BILINGUAL_MAP[lower]) {
-                BILINGUAL_MAP[lower].forEach(t => expandedTerms.add(t));
-              }
-            }
+            const allTerms = expandQueryTerms(query);
 
-            const allTerms = [...expandedTerms];
             const sourceFilter = sourceTypes.map(s => `source_type.eq.${s}`).join(",");
 
             // Run parallel searches: original query + expanded terms
             const searchPromises: Promise<any[]>[] = [];
 
-            // Search 1: Original query (Arabic content)
+            // Search 1: Original query (FTS on both Arabic + English content)
             searchPromises.push(
               supabase
                 .from("scholarly_documents")
                 .select("domain, content, content_ar, citation_ref, language, source_type")
                 .or(sourceFilter)
                 .or(`content_ar.fts(simple).${query},content.fts(simple).${query}`)
-                .limit(8)
+                .limit(20)
                 .then(({ data, error }) => {
                   if (error) { console.error("Tier K search 1 error:", error); return []; }
                   return data ?? [];
                 })
             );
 
-            // Search 2: Expanded terms (if we have expansions beyond original)
+            // Searches 2..N: each expansion that is not in the original tokens.
+            // We loop so a Urdu query like "صدقہ" actually pulls hits from the
+            // Arabic "الصدقة" / English "charity" lanes as well.
             const extraTerms = allTerms.filter(t => !queryWords.includes(t));
-            if (extraTerms.length > 0) {
-              // Search each expanded term individually (OR logic)
-              const expandedQuery = extraTerms.slice(0, 3).join(" | "); // top 3 expansions
+            for (const term of extraTerms.slice(0, 5)) {
               searchPromises.push(
                 supabase
                   .from("scholarly_documents")
                   .select("domain, content, content_ar, citation_ref, language, source_type")
                   .or(sourceFilter)
-                  .or(`content_ar.fts(simple).${extraTerms[0]},content.fts(simple).${extraTerms[0]}`)
-                  .limit(5)
+                  .or(`content_ar.fts(simple).${term},content.fts(simple).${term}`)
+                  .limit(10)
                   .then(({ data, error }) => {
                     if (error) { console.error("Tier K expanded search error:", error); return []; }
                     return data ?? [];
@@ -360,15 +315,15 @@ serve(async (req) => {
               return true;
             });
 
-            // Ensure mix: at least some Quran + some Hadith if both available
+            // Ensure mix: at least some Quran + some Hadith if both available.
+            // Capped higher than before now that retrieval is wider.
             const quranResults = unique.filter((r: any) => r.source_type === "quran");
             const hadithResults = unique.filter((r: any) => r.source_type === "hadith");
             let mixed: any[] = [];
             if (quranResults.length > 0 && hadithResults.length > 0) {
-              // Take up to 3 Quran + up to 5 Hadith = max 8
-              mixed = [...quranResults.slice(0, 3), ...hadithResults.slice(0, 5)];
+              mixed = [...quranResults.slice(0, 6), ...hadithResults.slice(0, 10)];
             } else {
-              mixed = unique.slice(0, 8);
+              mixed = unique.slice(0, 16);
             }
 
             return mixed.map((row: any): IslamicResult => ({
@@ -389,6 +344,92 @@ serve(async (req) => {
     const allResults: IslamicResult[] = [];
     for (const r of settled) {
       if (r.status === "fulfilled") allResults.push(...r.value);
+    }
+
+    // ── Topic-anchor fallback ─────────────────────────────────────────────
+    // If the user asked about a recognized topic (charity, prayer, etc.) and
+    // the fan-out returned weak coverage, force-fetch the canonical anchor
+    // refs directly so every common topic always returns the well-known
+    // verses + hadiths. Anchors are only inserted when they actually exist
+    // in scholarly_documents — never fabricated.
+    const anchors = lookupTopicAnchors(query);
+    if (anchors) {
+      const quranCount  = allResults.filter((r) => /quran|tanzil|alquran/.test(r.domain)).length;
+      const hadithCount = allResults.filter((r) => /hadith|dorar|sunnah/.test(r.domain)).length;
+
+      const needQuran  = quranCount  < 3 && anchors.quran.length  > 0;
+      const needHadith = hadithCount < 3 && anchors.hadith.length > 0;
+
+      if (needQuran || needHadith) {
+        const anchorFetches: Promise<IslamicResult[]>[] = [];
+
+        if (needQuran) {
+          const wanted = anchors.quran.slice(0, 6);
+          // OR-chain (surah=X,verse=Y) tuples
+          const filters = wanted.map(
+            (a) => `and(citation_ref->>surah_number.eq.${a.surah},citation_ref->>verse.eq.${a.verse})`,
+          );
+          anchorFetches.push(
+            supabase
+              .from("scholarly_documents")
+              .select("domain, content, content_ar, citation_ref, language, source_type")
+              .eq("source_type", "quran")
+              .or(filters.join(","))
+              .limit(wanted.length)
+              .then(({ data, error }) => {
+                if (error) { console.error("Topic-anchor Quran fetch error:", error); return []; }
+                return (data ?? []).map((row: any): IslamicResult => ({
+                  domain: row.domain ?? "tanzil",
+                  content: row.content,
+                  citation_ref: row.citation_ref ?? {},
+                  language: row.language ?? "ar",
+                }));
+              })
+          );
+        }
+
+        if (needHadith) {
+          const wanted = anchors.hadith.slice(0, 6);
+          const filters = wanted.map(
+            (a) => `and(citation_ref->>book.eq.${a.book},citation_ref->>hadith_number.eq.${a.hadith_number})`,
+          );
+          anchorFetches.push(
+            supabase
+              .from("scholarly_documents")
+              .select("domain, content, content_ar, citation_ref, language, source_type")
+              .eq("source_type", "hadith")
+              .or(filters.join(","))
+              .limit(wanted.length)
+              .then(({ data, error }) => {
+                if (error) { console.error("Topic-anchor Hadith fetch error:", error); return []; }
+                return (data ?? []).map((row: any): IslamicResult => ({
+                  domain: row.domain ?? "hadith-json",
+                  content: row.content,
+                  citation_ref: row.citation_ref ?? {},
+                  language: row.language ?? "ar",
+                }));
+              })
+          );
+        }
+
+        const extra = (await Promise.all(anchorFetches)).flat();
+
+        // Dedupe against what we already have
+        const seenKeys = new Set(
+          allResults.map((r) => {
+            const c = r.citation_ref ?? {};
+            return `${c.surah_number ?? ""}:${c.verse ?? ""}|${c.book ?? ""}:${c.hadith_number ?? ""}`;
+          }),
+        );
+        for (const e of extra) {
+          const c = e.citation_ref ?? {};
+          const k = `${c.surah_number ?? ""}:${c.verse ?? ""}|${c.book ?? ""}:${c.hadith_number ?? ""}`;
+          if (!seenKeys.has(k)) {
+            seenKeys.add(k);
+            allResults.unshift(e); // prepend so anchors lead the context
+          }
+        }
+      }
     }
 
     const contextBlock = buildContextBlock(allResults);
