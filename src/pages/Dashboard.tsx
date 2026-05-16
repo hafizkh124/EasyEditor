@@ -7,11 +7,13 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Mic, BookOpen, Image, Volume2, Clock } from "lucide-react";
+import { Mic, BookOpen, Image, Volume2, Clock, CalendarClock, AlertTriangle, MessageCircle } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { getRecentActivity, type ActivityEntry } from "@/lib/activityLog";
 import { handleSupabaseError } from "@/lib/errors";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { getLifecycleInfo, formatLifecycleDate } from "@/lib/subscriptionLifecycle";
+import { WHATSAPP_CONTACT_URL } from "@/lib/paymentAccounts";
 
 const Dashboard = () => {
   useSeo({ title: "Dashboard — Al-Ulama Easy Editor", description: "Your Al-Ulama Easy Editor home: recent activity, usage limits and shortcuts to every tool.", path: "/dashboard" });
@@ -43,6 +45,24 @@ const Dashboard = () => {
 
   const isUnlimited = (subscription?.transcription_limit ?? 0) >= 999_999;
 
+  // Lifecycle dates were added in Phase B; cast to read them safely while the
+  // generated types catch up.
+  const subWithLifecycle = subscription as (typeof subscription & {
+    activated_at?: string | null;
+    expires_at?: string | null;
+  }) | null;
+  const lifecycle = subWithLifecycle
+    ? getLifecycleInfo({
+        tier: subWithLifecycle.tier,
+        activatedAt: subWithLifecycle.activated_at ?? null,
+        expiresAt: subWithLifecycle.expires_at ?? null,
+      })
+    : null;
+  const renewalMessage = encodeURIComponent(
+    t("dashboard.renewal_whatsapp_template") ||
+      "Assalam-o-Alaikum, I would like to renew my subscription.",
+  );
+
   const formatTime = (ts: number) => {
     const d = new Date(ts);
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
@@ -55,6 +75,62 @@ const Dashboard = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">{t("dashboard.welcome")}</h1>
           <p className="text-muted-foreground mt-1">{displayName ? `👋 ${displayName}` : t("dashboard.subtitle")}</p>
         </div>
+
+        {/* Subscription Lifecycle Card */}
+        {lifecycle && lifecycle.status !== "none" && (
+          <Card
+            className={
+              lifecycle.status === "expired"
+                ? "border-destructive/40 bg-destructive/5"
+                : lifecycle.status === "expiring_soon"
+                ? "border-amber-400/40 bg-amber-50 dark:bg-amber-950/20"
+                : undefined
+            }
+          >
+            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+              <div className="flex items-start gap-3 min-w-0">
+                {lifecycle.status === "expired" || lifecycle.status === "expiring_soon" ? (
+                  <AlertTriangle
+                    className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+                      lifecycle.status === "expired" ? "text-destructive" : "text-amber-600"
+                    }`}
+                  />
+                ) : (
+                  <CalendarClock className="h-5 w-5 flex-shrink-0 mt-0.5 text-primary" />
+                )}
+                <div className="space-y-0.5 min-w-0">
+                  <p className="text-sm font-medium">
+                    {lifecycle.status === "expired"
+                      ? t("dashboard.subscription_expired") || "Your subscription has expired"
+                      : lifecycle.status === "expiring_soon"
+                      ? (t("dashboard.expiring_soon") || "Subscription expires in {n} day(s)").replace(
+                          "{n}",
+                          String(lifecycle.daysRemaining ?? 0),
+                        )
+                      : t("dashboard.subscription_active") || "Subscription Active"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {(t("dashboard.activated_label") || "Activated") + ": " + formatLifecycleDate(lifecycle.activatedAt)}
+                    {" • "}
+                    {(t("dashboard.expires_label") || "Expires") + ": " + formatLifecycleDate(lifecycle.expiresAt)}
+                  </p>
+                </div>
+              </div>
+              {(lifecycle.status === "expired" || lifecycle.status === "expiring_soon") && (
+                <Button asChild variant="default" className="flex-shrink-0">
+                  <a
+                    href={`${WHATSAPP_CONTACT_URL}?text=${renewalMessage}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MessageCircle className="h-4 w-4 me-2" />
+                    {t("dashboard.contact_renew") || "Contact Admin to Renew"}
+                  </a>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Usage Card */}
         {subscription && (

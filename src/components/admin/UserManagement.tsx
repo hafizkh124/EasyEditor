@@ -12,9 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CheckCircle, XCircle, Users, Crown, Ban, Undo2 } from "lucide-react";
+import { CheckCircle, XCircle, Users, Crown, Ban, Undo2, RefreshCw, CalendarClock } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { UserRow, PaidTier, Tier } from "./types";
+import { getLifecycleInfo, formatLifecycleDate } from "@/lib/subscriptionLifecycle";
 
 interface UserManagementProps {
   users: UserRow[];
@@ -23,6 +24,7 @@ interface UserManagementProps {
   onRevoke: (userId: string) => void | Promise<void>;
   onReject: (userId: string, reason: string) => void | Promise<void>;
   onUnreject: (userId: string) => void | Promise<void>;
+  onRenew: (userId: string) => void | Promise<void>;
   onChangeTier: (userId: string, tier: Tier) => void | Promise<void>;
   tierLabel: (tier: string) => string;
 }
@@ -36,6 +38,7 @@ const UserManagement = ({
   onRevoke,
   onReject,
   onUnreject,
+  onRenew,
   onChangeTier,
   tierLabel,
 }: UserManagementProps) => {
@@ -122,6 +125,11 @@ const UserManagement = ({
             <div className="divide-y divide-border">
               {filteredUsers.map((u) => {
                 const status = getUserStatus(u);
+                const lifecycle = getLifecycleInfo({
+                  tier: u.tier,
+                  activatedAt: u.activated_at,
+                  expiresAt: u.expires_at,
+                });
                 return (
                   <div
                     key={u.user_id}
@@ -139,6 +147,24 @@ const UserManagement = ({
                           {t("admin.rejection_reason_label") || "Reason"}: {u.rejection_reason}
                         </p>
                       )}
+                      {lifecycle.status !== "none" && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <CalendarClock className="h-3 w-3" />
+                            {t("admin.activated_on") || "Activated"}: {formatLifecycleDate(lifecycle.activatedAt)}
+                          </span>
+                          <span>•</span>
+                          <span>
+                            {t("admin.expires_on") || "Expires"}: {formatLifecycleDate(lifecycle.expiresAt)}
+                          </span>
+                          {(u.renewal_count ?? 0) > 0 && (
+                            <>
+                              <span>•</span>
+                              <span>{t("admin.renewals") || "Renewals"}: {u.renewal_count}</span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                       {status === "approved" && (
@@ -151,6 +177,29 @@ const UserManagement = ({
                         <Badge variant="outline" className="text-destructive border-destructive/40">
                           {t("admin.status_rejected") || "Rejected"}
                         </Badge>
+                      )}
+
+                      {status === "approved" && lifecycle.status === "expiring_soon" && (
+                        <Badge variant="outline" className="text-amber-600 border-amber-400">
+                          {(t("admin.expiring_in") || "Expires in {n}d").replace("{n}", String(lifecycle.daysRemaining ?? 0))}
+                        </Badge>
+                      )}
+                      {status === "approved" && lifecycle.status === "expired" && (
+                        <Badge variant="outline" className="text-destructive border-destructive/40">
+                          {t("admin.expired") || "Expired"}
+                        </Badge>
+                      )}
+
+                      {status === "approved" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onRenew(u.user_id)}
+                          className="text-green-700 border-green-300 hover:bg-green-50"
+                        >
+                          <RefreshCw className="h-4 w-4 me-1" />
+                          {t("admin.renew") || "Renew"}
+                        </Button>
                       )}
 
                       {status === "approved" && (

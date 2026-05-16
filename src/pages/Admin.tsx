@@ -57,6 +57,7 @@ const Admin = () => {
     revokeApproval,
     rejectUser,
     unrejectUser,
+    renewSubscription,
     changeTier,
     approveUpgrade,
     rejectUpgrade,
@@ -105,6 +106,7 @@ const Admin = () => {
               onRevoke={revokeApproval}
               onReject={rejectUser}
               onUnreject={unrejectUser}
+              onRenew={renewSubscription}
               onChangeTier={changeTier}
               tierLabel={tierLabel}
             />
