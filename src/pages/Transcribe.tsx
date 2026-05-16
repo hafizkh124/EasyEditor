@@ -70,7 +70,7 @@ const Transcribe = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const sttDir = sttLanguage === "ur-PK" ? "rtl" : "ltr";
+  const sttDir = rtlText(transcript) ? "rtl" : "ltr";
   const rtlText = isRtlText(transcript);
 
   // Session persistence
