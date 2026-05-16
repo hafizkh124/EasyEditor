@@ -70,8 +70,8 @@ const Transcribe = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const sttDir = rtlText(transcript) ? "rtl" : "ltr";
   const rtlText = isRtlText(transcript);
+  const sttDir = rtlText ? "rtl" : "ltr";
 
   // Session persistence
   const handleRestoreSession = useCallback((metadata: { transcript?: string; originalText?: string; sttLanguage?: SttLanguage }) => {
