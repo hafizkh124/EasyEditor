@@ -324,18 +324,6 @@ const Transcribe = () => {
       <div className="p-4 md:p-8 space-y-6 max-w-3xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold text-foreground">{t("stt.title")}</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{t("stt.language")}:</span>
-            <Select value={sttLanguage} onValueChange={(v) => setSttLanguage(v as SttLanguage)}>
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en-US">English</SelectItem>
-                <SelectItem value="ur-PK">اردو (Urdu)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {/* Usage Badge */}
