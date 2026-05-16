@@ -28,6 +28,7 @@ const Pricing = lazy(() => import("./pages/Pricing"));
 const Profile = lazy(() => import("./pages/Profile"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const AccountRejected = lazy(() => import("./pages/AccountRejected"));
+const CompleteProfile = lazy(() => import("./pages/CompleteProfile"));
 const About = lazy(() => import("./pages/About"));
 const FaqAiHaram = lazy(() => import("./pages/FaqAiHaram"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -60,6 +61,7 @@ const App = () => (
                   <Route path="/" element={<Landing />} />
                   <Route path="/pending-approval" element={<PendingApproval />} />
                   <Route path="/account-rejected" element={<AccountRejected />} />
+                  <Route path="/complete-profile" element={<CompleteProfile />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/faq/is-ai-haram-in-islam" element={<FaqAiHaram />} />
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

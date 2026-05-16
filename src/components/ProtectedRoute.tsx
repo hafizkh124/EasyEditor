@@ -5,7 +5,7 @@ import { useApproval } from "@/hooks/useApproval";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
-  const { isApproved, rejectionStatus, loading: approvalLoading } = useApproval();
+  const { isApproved, rejectionStatus, profileComplete, isAdmin, loading: approvalLoading } = useApproval();
 
   if (loading || approvalLoading) {
     return (
@@ -23,6 +23,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   // they can't access the app and have a path to appeal via WhatsApp.
   if (rejectionStatus === "rejected") {
     return <Navigate to="/account-rejected" replace />;
+  }
+
+  // Profile completion gate: non-admin users must provide WhatsApp + name
+  // before they can access any protected page. Admins are exempt because
+  // they're the team — the WhatsApp number is for the team to reach
+  // *users*, not for users to reach themselves.
+  if (!isAdmin && profileComplete === false) {
+    return <Navigate to="/complete-profile" replace />;
   }
 
   // Unapproved users are redirected to a dedicated payment-instructions page

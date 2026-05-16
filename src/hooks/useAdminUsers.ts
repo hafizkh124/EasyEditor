@@ -17,7 +17,7 @@ export function useAdminUsers(enabled: boolean) {
   const fetchUsers = async () => {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, display_name, is_approved, created_at, rejection_status, rejection_reason, rejected_at, referral_code, referred_by, referral_credits")
+      .select("user_id, display_name, is_approved, created_at, rejection_status, rejection_reason, rejected_at, referral_code, referred_by, referral_credits, whatsapp_number, country, profession")
       .order("created_at", { ascending: false });
 
     const { data: subs } = await supabase
@@ -35,6 +35,9 @@ export function useAdminUsers(enabled: boolean) {
             referral_code?: string | null;
             referred_by?: string | null;
             referral_credits?: number | null;
+            whatsapp_number?: string | null;
+            country?: string | null;
+            profession?: string | null;
           };
           const sub = subMap.get(p.user_id) as
             | (NonNullable<typeof subs>[number] & {
@@ -66,6 +69,9 @@ export function useAdminUsers(enabled: boolean) {
             referral_code: profileWithRejection.referral_code ?? null,
             referred_by: profileWithRejection.referred_by ?? null,
             referral_credits: profileWithRejection.referral_credits ?? 0,
+            whatsapp_number: profileWithRejection.whatsapp_number ?? null,
+            country: profileWithRejection.country ?? null,
+            profession: profileWithRejection.profession ?? null,
           };
         })
       );

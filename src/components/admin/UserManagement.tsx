@@ -12,10 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CheckCircle, XCircle, Users, Crown, Ban, Undo2, RefreshCw, CalendarClock, Gift } from "lucide-react";
+import { CheckCircle, XCircle, Users, Crown, Ban, Undo2, RefreshCw, CalendarClock, Gift, MessageCircle, MapPin, Briefcase } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { UserRow, PaidTier, Tier } from "./types";
 import { getLifecycleInfo, formatLifecycleDate } from "@/lib/subscriptionLifecycle";
+import { buildWhatsAppLink } from "@/lib/phoneValidation";
 
 interface UserManagementProps {
   users: UserRow[];
@@ -146,6 +147,34 @@ const UserManagement = ({
                         <p className="text-xs text-destructive/80 mt-1 italic">
                           {t("admin.rejection_reason_label") || "Reason"}: {u.rejection_reason}
                         </p>
+                      )}
+                      {(u.whatsapp_number || u.country || u.profession) && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
+                          {u.whatsapp_number && (
+                            <a
+                              href={buildWhatsAppLink(u.whatsapp_number)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={t("admin.message_on_whatsapp") || "Message on WhatsApp"}
+                              className="flex items-center gap-1 text-green-700 hover:underline font-mono"
+                            >
+                              <MessageCircle className="h-3 w-3" />
+                              {u.whatsapp_number}
+                            </a>
+                          )}
+                          {u.country && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {u.country}
+                            </span>
+                          )}
+                          {u.profession && (
+                            <span className="flex items-center gap-1 capitalize">
+                              <Briefcase className="h-3 w-3" />
+                              {t(`onboarding.profession_${u.profession}`) || u.profession}
+                            </span>
+                          )}
+                        </div>
                       )}
                       {(u.referred_by || (u.referral_credits ?? 0) > 0) && (
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
