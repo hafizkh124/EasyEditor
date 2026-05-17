@@ -620,6 +620,7 @@ export type Database = {
         }
         Returns: number
       }
+      normalize_arabic_text: { Args: { t: string }; Returns: string }
       purge_expired_cache: { Args: never; Returns: number }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
@@ -637,6 +638,24 @@ export type Database = {
           embedded: number
           source_type: string
           total: number
+        }[]
+      }
+      search_documents_smart: {
+        Args: {
+          p_match_limit?: number
+          p_source_types?: string[]
+          p_terms: string[]
+        }
+        Returns: {
+          citation_ref: Json
+          content: string
+          content_ar: string
+          domain: string
+          id: string
+          language: string
+          match_score: number
+          source_type: string
+          source_url: string
         }[]
       }
     }
