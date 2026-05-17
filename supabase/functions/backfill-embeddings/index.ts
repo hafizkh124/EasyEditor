@@ -31,18 +31,25 @@ interface RowToEmbed {
   content_ar:   string | null;
 }
 
-async function callEmbedBatch(texts: string[], lovableKey: string): Promise<number[][]> {
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+// Embed via Google AI Studio's Generative Language API directly.
+// The Lovable AI Gateway does not expose the embeddings endpoint on every
+// workspace tier (returns 404 "route_not_found"), so we call Google directly
+// using GEMINI_API_KEY. This endpoint is free tier-friendly (1500 RPM).
+async function callEmbedBatch(texts: string[], geminiKey: string): Promise<number[][]> {
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents";
+  const requests = texts.map((t) => ({
+    model: "models/text-embedding-004",
+    content: { parts: [{ text: t || " " }] },
+  }));
+
+  const res = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${lovableKey}`,
+      "x-goog-api-key": geminiKey,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: "google/text-embedding-004",
-      input: texts,
-    }),
-    signal: AbortSignal.timeout(30_000),
+    body: JSON.stringify({ requests }),
+    signal: AbortSignal.timeout(45_000),
   });
 
   if (!res.ok) {
@@ -50,9 +57,9 @@ async function callEmbedBatch(texts: string[], lovableKey: string): Promise<numb
     throw new Error(`Embedding API ${res.status}: ${body.slice(0, 200)}`);
   }
   const data = await res.json();
-  const arr  = data?.data;
+  const arr  = data?.embeddings;
   if (!Array.isArray(arr)) throw new Error("Unexpected embedding response shape");
-  return arr.map((d: any) => d.embedding);
+  return arr.map((e: any) => e.values as number[]);
 }
 
 serve(async (req) => {
@@ -76,9 +83,9 @@ serve(async (req) => {
 
     const supabaseUrl  = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableKey   = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableKey) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
+    const geminiKey    = Deno.env.get("GEMINI_API_KEY");
+    if (!geminiKey) {
+      return new Response(JSON.stringify({ error: "GEMINI_API_KEY not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -116,11 +123,11 @@ serve(async (req) => {
 
     let vectors: number[][];
     try {
-      vectors = await callEmbedBatch(texts, lovableKey);
+      vectors = await callEmbedBatch(texts, geminiKey);
     } catch (e) {
       // Retry once on transient failure
       console.warn("[backfill-embeddings] embed retry:", e);
-      vectors = await callEmbedBatch(texts, lovableKey);
+      vectors = await callEmbedBatch(texts, geminiKey);
     }
 
     if (vectors.length !== rows.length) {

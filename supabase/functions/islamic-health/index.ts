@@ -114,20 +114,26 @@ async function probeSunnah(): Promise<HealthResult> {
 }
 
 async function probeEmbedding(): Promise<HealthResult> {
-  const key = Deno.env.get("LOVABLE_API_KEY") ?? "";
-  if (!key) return { name: "embeddings", ok: false, latency_ms: 0, sample_hits: 0, note: "LOVABLE_API_KEY not set" };
+  const key = Deno.env.get("GEMINI_API_KEY") ?? "";
+  if (!key) return { name: "embeddings", ok: false, latency_ms: 0, sample_hits: 0, note: "GEMINI_API_KEY not set" };
   try {
     const [res, ms] = await timed(() =>
-      fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "google/text-embedding-004", input: PROBE_QUERY_EN }),
-        signal: AbortSignal.timeout(10_000),
-      }),
+      fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent",
+        {
+          method: "POST",
+          headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model:   "models/text-embedding-004",
+            content: { parts: [{ text: PROBE_QUERY_EN }] },
+          }),
+          signal: AbortSignal.timeout(10_000),
+        },
+      ),
     );
     if (!res.ok) return { name: "embeddings", ok: false, latency_ms: ms, sample_hits: 0, note: `HTTP ${res.status}` };
     const data = await res.json();
-    const dims = data?.data?.[0]?.embedding?.length ?? 0;
+    const dims = data?.embedding?.values?.length ?? 0;
     return { name: "embeddings", ok: dims === 768, latency_ms: ms, sample_hits: dims, note: dims === 768 ? undefined : `unexpected dim ${dims}` };
   } catch (e) {
     return { name: "embeddings", ok: false, latency_ms: 0, sample_hits: 0, note: String(e) };
