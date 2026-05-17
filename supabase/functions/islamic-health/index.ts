@@ -119,13 +119,14 @@ async function probeEmbedding(): Promise<HealthResult> {
   try {
     const [res, ms] = await timed(() =>
       fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
         {
           method: "POST",
           headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model:   "models/text-embedding-004",
-            content: { parts: [{ text: PROBE_QUERY_EN }] },
+            model:                "models/gemini-embedding-001",
+            content:              { parts: [{ text: PROBE_QUERY_EN }] },
+            outputDimensionality: 768,
           }),
           signal: AbortSignal.timeout(10_000),
         },

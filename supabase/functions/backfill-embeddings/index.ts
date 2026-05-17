@@ -34,12 +34,20 @@ interface RowToEmbed {
 // Embed via Google AI Studio's Generative Language API directly.
 // The Lovable AI Gateway does not expose the embeddings endpoint on every
 // workspace tier (returns 404 "route_not_found"), so we call Google directly
-// using GEMINI_API_KEY. This endpoint is free tier-friendly (1500 RPM).
+// using GEMINI_API_KEY. This endpoint is free tier-friendly.
+//
+// Model: gemini-embedding-001 (the current canonical embedding model — the
+// older "text-embedding-004" was retired). We request outputDimensionality
+// of 768 so the vectors fit our existing pgvector(768) schema.
+const EMBED_MODEL = "gemini-embedding-001";
+const EMBED_DIMS  = 768;
+
 async function callEmbedBatch(texts: string[], geminiKey: string): Promise<number[][]> {
-  const url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:batchEmbedContents`;
   const requests = texts.map((t) => ({
-    model: "models/text-embedding-004",
-    content: { parts: [{ text: t || " " }] },
+    model:                `models/${EMBED_MODEL}`,
+    content:              { parts: [{ text: t || " " }] },
+    outputDimensionality: EMBED_DIMS,
   }));
 
   const res = await fetch(url, {
@@ -54,7 +62,7 @@ async function callEmbedBatch(texts: string[], geminiKey: string): Promise<numbe
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Embedding API ${res.status}: ${body.slice(0, 200)}`);
+    throw new Error(`Embedding API ${res.status}: ${body.slice(0, 300)}`);
   }
   const data = await res.json();
   const arr  = data?.embeddings;

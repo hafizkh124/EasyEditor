@@ -116,8 +116,10 @@ serve(async (req) => {
     // Lovable AI Gateway's embeddings endpoint is not available on every
     // workspace (returns 404 "route_not_found"). We call Google's free-tier
     // direct API with GEMINI_API_KEY to bypass that limitation. Retry once.
+    // Model: gemini-embedding-001 (text-embedding-004 retired). Request 768
+    // dims to match the existing pgvector(768) schema.
     const callEmbedding = () => fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
       {
         method: "POST",
         headers: {
@@ -125,8 +127,9 @@ serve(async (req) => {
           "Content-Type":   "application/json",
         },
         body: JSON.stringify({
-          model:   "models/text-embedding-004",
-          content: { parts: [{ text: embedInput }] },
+          model:                "models/gemini-embedding-001",
+          content:              { parts: [{ text: embedInput }] },
+          outputDimensionality: 768,
         }),
         signal: AbortSignal.timeout(15_000),
       },
