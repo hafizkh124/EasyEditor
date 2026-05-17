@@ -5,6 +5,20 @@ import { expandQueryTerms } from "../_shared/bilingualMap.ts";
 import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 
+/** Strip Arabic diacritics/harakat so an "الصدقة" search matches stored
+ *  "الصَّدَقَةُ". Mirrors normalizeArabic in vector-search and _shared. */
+// Note: query-time diacritic normalization now lives in the
+// `search_documents_smart` Postgres RPC (migration 20260517000000). This
+// helper is kept only because the Tier-A `domain-scrape` fallback path
+// still uses it for client-side filtering of scraped fatwa snippets.
+function stripArabicDiacritics(text: string): string {
+  return text
+    .replace(/[ً-ٰٟ]/g, "")
+    .replace(/[آأإٱ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي");
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -249,88 +263,71 @@ serve(async (req) => {
       );
     }
 
-    // Tier K: local DB keyword search with bilingual expansion (available to all tiers)
-    if (tierKDomains.length > 0) {
+    // Tier K: local DB keyword search with bilingual expansion (available to all tiers).
+    // Source_type selection is INFERRED from the user's overall domain selection,
+    // not from a strict Tier-K membership check. This way, selecting "Sunnah.com"
+    // or "Dorar" (Tier-A hadith APIs) also triggers a search of the local hadith
+    // corpus — which holds 81K+ rows. Similarly any Quran-related domain pulls
+    // from tanzil. Without this inference, the Tier-A frontend domains would
+    // never reach Tier-K's hadith-json data even though it's the richest source.
+    const wantsQuran  = effectiveDomains.some((d) =>
+      ["tanzil", "alquran", "quran-com"].includes(d),
+    );
+    const wantsHadith = effectiveDomains.some((d) =>
+      ["dorar", "sunnah", "hadith-api", "hadith-index", "hadith-json"].includes(d),
+    );
+    if (wantsQuran || wantsHadith) {
       fanOutPromises.push(
         (async (): Promise<IslamicResult[]> => {
           try {
-            // Map tier K domains to source_types
             const sourceTypes: string[] = [];
-            if (tierKDomains.includes("tanzil")) sourceTypes.push("quran");
-            if (tierKDomains.includes("hadith-json")) sourceTypes.push("hadith");
+            if (wantsQuran)  sourceTypes.push("quran");
+            if (wantsHadith) sourceTypes.push("hadith");
             if (sourceTypes.length === 0) return [];
 
-            // Expand query terms via the shared bilingual map (~50 topics,
-            // Urdu ↔ Arabic ↔ English ↔ transliteration). See bilingualMap.ts.
-            const queryWords = query.trim().split(/\s+/).filter(Boolean);
-            const allTerms = expandQueryTerms(query);
+            // Build expanded term list — original query + bilingual synonyms.
+            // The smart-search RPC handles diacritic + letter-variant tolerance
+            // server-side, so we can pass raw Urdu / Arabic / English terms
+            // without pre-normalizing.
+            const expanded = expandQueryTerms(query);
+            // Cap to a sensible upper bound so the SQL UNNEST stays small.
+            const terms = expanded.slice(0, 12);
 
-            const sourceFilter = sourceTypes.map(s => `source_type.eq.${s}`).join(",");
-
-            // Run parallel searches: original query + expanded terms
-            const searchPromises: Promise<any[]>[] = [];
-
-            // Search 1: Original query (FTS on both Arabic + English content)
-            searchPromises.push(
-              supabase
-                .from("scholarly_documents")
-                .select("domain, content, content_ar, citation_ref, language, source_type")
-                .or(sourceFilter)
-                .or(`content_ar.fts(simple).${query},content.fts(simple).${query}`)
-                .limit(20)
-                .then(({ data, error }) => {
-                  if (error) { console.error("Tier K search 1 error:", error); return []; }
-                  return data ?? [];
-                })
-            );
-
-            // Searches 2..N: each expansion that is not in the original tokens.
-            // We loop so a Urdu query like "صدقہ" actually pulls hits from the
-            // Arabic "الصدقة" / English "charity" lanes as well.
-            const extraTerms = allTerms.filter(t => !queryWords.includes(t));
-            for (const term of extraTerms.slice(0, 5)) {
-              searchPromises.push(
-                supabase
-                  .from("scholarly_documents")
-                  .select("domain, content, content_ar, citation_ref, language, source_type")
-                  .or(sourceFilter)
-                  .or(`content_ar.fts(simple).${term},content.fts(simple).${term}`)
-                  .limit(10)
-                  .then(({ data, error }) => {
-                    if (error) { console.error("Tier K expanded search error:", error); return []; }
-                    return data ?? [];
-                  })
-              );
-            }
-
-            const searchResults = await Promise.all(searchPromises);
-            const allRows = searchResults.flat();
-
-            // Deduplicate by content (avoid showing same hadith twice)
-            const seen = new Set<string>();
-            const unique = allRows.filter((row: any) => {
-              const key = (row.citation_ref?.hadith_number ?? "") + "|" + (row.citation_ref?.surah_number ?? "") + "|" + (row.citation_ref?.verse ?? "") + "|" + row.domain;
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
+            const { data, error } = await supabase.rpc("search_documents_smart", {
+              p_terms:        terms,
+              p_source_types: sourceTypes,
+              p_match_limit:  30,
             });
 
-            // Ensure mix: at least some Quran + some Hadith if both available.
-            // Capped higher than before now that retrieval is wider.
-            const quranResults = unique.filter((r: any) => r.source_type === "quran");
-            const hadithResults = unique.filter((r: any) => r.source_type === "hadith");
-            let mixed: any[] = [];
-            if (quranResults.length > 0 && hadithResults.length > 0) {
-              mixed = [...quranResults.slice(0, 6), ...hadithResults.slice(0, 10)];
-            } else {
-              mixed = unique.slice(0, 16);
+            if (error) {
+              console.error("Tier K smart-search error:", error);
+              return [];
             }
 
-            return mixed.map((row: any): IslamicResult => ({
+            const rows = (data ?? []) as Array<{
+              domain: string;
+              source_type: string;
+              content: string;
+              content_ar: string;
+              citation_ref: any;
+              language: string;
+              source_url?: string;
+              match_score?: number;
+            }>;
+
+            // Balanced mix: 6 Quran + 10 Hadith max (Hadith corpus is much
+            // larger so we let it dominate when both are present).
+            const quranRows  = rows.filter((r) => r.source_type === "quran").slice(0, 6);
+            const hadithRows = rows.filter((r) => r.source_type === "hadith").slice(0, 10);
+            const mixed = quranRows.length && hadithRows.length
+              ? [...quranRows, ...hadithRows]
+              : rows.slice(0, 16);
+
+            return mixed.map((row): IslamicResult => ({
               domain: row.domain,
               content: row.content,
               citation_ref: row.citation_ref ?? {},
-              language: row.language ?? "ar",
+              language: (row.language as "ar" | "en" | "ur") ?? "ar",
             }));
           } catch (e) {
             console.error("Tier K error:", e);
