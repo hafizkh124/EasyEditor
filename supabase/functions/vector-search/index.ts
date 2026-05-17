@@ -88,9 +88,9 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "AI service not configured" }), {
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      return new Response(JSON.stringify({ error: "GEMINI_API_KEY not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -112,19 +112,25 @@ serve(async (req) => {
       ? `${normalizedQuery}\n${expansions.slice(0, 6).join(" ")}`
       : normalizedQuery;
 
-    // ── 2. Embed via Lovable AI gateway (retry once on 5xx) ──────────────────
-    const callEmbedding = () => fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+    // ── 2. Embed via Google AI Studio Generative Language API ────────────────
+    // Lovable AI Gateway's embeddings endpoint is not available on every
+    // workspace (returns 404 "route_not_found"). We call Google's free-tier
+    // direct API with GEMINI_API_KEY to bypass that limitation. Retry once.
+    const callEmbedding = () => fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent",
+      {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": GEMINI_API_KEY,
+          "Content-Type":   "application/json",
+        },
+        body: JSON.stringify({
+          model:   "models/text-embedding-004",
+          content: { parts: [{ text: embedInput }] },
+        }),
+        signal: AbortSignal.timeout(15_000),
       },
-      body: JSON.stringify({
-        model: "google/text-embedding-004",
-        input: embedInput,
-      }),
-      signal: AbortSignal.timeout(15_000),
-    });
+    );
 
     let embedRes = await callEmbedding();
     if (!embedRes.ok && embedRes.status >= 500 && embedRes.status < 600) {
@@ -141,7 +147,7 @@ serve(async (req) => {
     }
 
     const embedData = await embedRes.json();
-    const embedding: number[] = embedData?.data?.[0]?.embedding;
+    const embedding: number[] = embedData?.embedding?.values;
 
     if (!embedding || embedding.length !== 768) {
       console.error("Unexpected embedding shape:", embedData);
