@@ -61,13 +61,6 @@ function extractFatwaNumberFromUrl(url: string, domain: string): string {
     const m = url.match(/FatwaId=(\d+)/i);
     return m?.[1] ?? "";
   }
-  if (domain === "dar-alifta") {
-    // Pattern: /fatawa/1234 or /ViewFatwa.aspx?ID=1234
-    const m1 = url.match(/\/fatawa\/(\d+)/i);
-    if (m1) return m1[1];
-    const m2 = url.match(/[?&](?:ID|id|FatwaId)=(\d+)/i);
-    return m2?.[1] ?? "";
-  }
   return "";
 }
 
@@ -255,44 +248,107 @@ async function scrapeIslamWeb(query: string): Promise<IslamicResult[]> {
   return results;
 }
 
-// ── Dar-Alifta.org ────────────────────────────────────────────────────────────
-async function scrapeDarAlifta(query: string): Promise<IslamicResult[]> {
-  const searchUrl = `https://dar-alifta.org/ar/search?q=${encodeURIComponent(query)}`;
-  const html = await fetchWithTimeout(searchUrl);
+// ── Dar-Alifta.org — removed per Phase 7.5 doctrine (persistent timeouts).
+//    Reinstate scrapeDarAlifta here if the upstream becomes reliable again.
+
+// ── ShamilaUrdu.com (Phase 8.3) — DEFERRED ────────────────────────────────────
+// Public-facing pages are static (URL patterns like /hadith/<slug>/<N>/ and
+// /book/<slug>/<page>/), but the search endpoint /?s=… rejects bot-shaped
+// requests with `SECURITY_ERROR_BAD_INPUT`. Re-enabling this scraper requires
+// either:
+//   (a) discovering an unprotected search endpoint via browser DevTools, OR
+//   (b) using a search-engine fallback (DuckDuckGo `site:shamilaurdu.com` query)
+//       to find result URLs and then fetching the static pages directly.
+// Leave the stub in place so the wiring is obvious when we come back to it.
+async function scrapeShamilaUrdu(_query: string): Promise<IslamicResult[]> {
+  return [];
+}
+
+// ── IslamicUrduBooks.com (Phase 8.2) ─────────────────────────────────────────
+// Static HTML PHP site. 38 hadith collections in Arabic + Urdu. Search at
+// /hadith/search_urdu.php?q=<term> yields links to /hadith/hadith-.php?bookid=X&hadith_number=Y
+//
+// Defensive parsing: we don't know exact CSS class names, so we use multiple
+// strategies — URL-param extraction for the structured fields, and a
+// content-density heuristic for the Arabic / Urdu body. If the site reshuffles
+// markup, parsing degrades gracefully (returns whatever was extractable).
+async function scrapeIslamicUrduBooks(query: string): Promise<IslamicResult[]> {
+  const base = "https://www.islamicurdubooks.com";
+  const searchUrl = `${base}/hadith/search_urdu.php?q=${encodeURIComponent(query)}`;
+  const html = await fetchWithTimeout(searchUrl, 12_000);
   if (!html) return [];
 
-  const links = extractLinks(html, "https://dar-alifta.org",
-    /href="(\/ar\/(?:fatawa|ViewFatwa)[^"]*\d+[^"]*)"/);
+  // Result links follow the pattern: hadith-.php?bookid=N&hadith_number=M
+  // (we accept both relative `./hadith-...` and absolute `https://...` forms).
+  const links = extractLinks(
+    html,
+    base,
+    /href="((?:\.{0,2}\/)?(?:hadith\/)?hadith-\.php\?bookid=\d+&(?:hadith_number|hadithno)=\d+[^"]*)"/i,
+  );
   if (links.length === 0) return [];
 
   const results: IslamicResult[] = [];
 
-  for (const link of links.slice(0, 2)) {
-    const fullLink = link.startsWith("http") ? link : `https://dar-alifta.org${link}`;
-    const pageHtml = await fetchWithTimeout(fullLink);
+  // Map bookid → book name. The full list lives on the site; we hardcode the
+  // common ones so citations get readable book names. Unknown ids fall back
+  // to "Book <N>" so the citation still works.
+  const BOOK_NAMES: Record<string, string> = {
+    "1":  "صحيح البخاري",
+    "2":  "صحيح مسلم",
+    "3":  "سنن أبي داود",
+    "4":  "جامع الترمذي",
+    "5":  "سنن النسائي",
+    "6":  "سنن ابن ماجه",
+    "7":  "موطأ الإمام مالك",
+    "8":  "مسند أحمد",
+    "9":  "سنن الدارمي",
+    "10": "صحيح ابن خزيمة",
+    "11": "صحيح ابن حبان",
+    "12": "المستدرك للحاكم",
+    "13": "السنن الكبرى للبيهقي",
+  };
+
+  for (const link of links.slice(0, 3)) {
+    const pageHtml = await fetchWithTimeout(link, 12_000);
     if (!pageHtml) continue;
 
-    // Layer 1
-    const fatwaNumber = extractFatwaNumberFromUrl(fullLink, "dar-alifta");
+    // ─ Structured ids from URL ────────────────────────────────────────
+    const bookId = link.match(/bookid=(\d+)/i)?.[1] ?? "";
+    const hadithNumber = link.match(/(?:hadith_number|hadithno)=(\d+)/i)?.[1] ?? "";
+    if (!bookId || !hadithNumber) continue;
 
-    const content = extractSection(pageHtml, ".FatwaText") ||
-      stripHtml(pageHtml.match(/<div[^>]*class="[^"]*FatwaText[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "").slice(0, 3_000);
+    // ─ Title from H1 ──────────────────────────────────────────────────
+    const h1 = pageHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "";
+    const title = stripHtml(h1).slice(0, 200);
 
-    if (!content) continue;
+    // ─ Body content: take all <p>, <div class*="hadith"|"text"|"matn">,
+    //   <font>, <span class*="arabic"|"urdu"> blocks and concatenate. ──
+    const bodyParts: string[] = [];
+    const blockRe = /<(?:p|div|font|span)[^>]*>([\s\S]*?)<\/(?:p|div|font|span)>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = blockRe.exec(pageHtml)) !== null && bodyParts.length < 30) {
+      const txt = stripHtml(m[1]);
+      // Heuristic: keep blocks that have ≥ 25 chars and contain at least one
+      // Arabic or Urdu character. Drops nav/footer/script blocks.
+      if (txt.length >= 25 && /[؀-ۿ]/.test(txt)) {
+        bodyParts.push(txt);
+      }
+    }
+    // Dedupe consecutive duplicates from nested tags
+    const body = [...new Set(bodyParts)].join("\n\n").slice(0, 3_500);
+    if (!body) continue;
 
-    // Layer 2 + 3 (Arabic content)
-    let scholar = extractScholarFromHtml(pageHtml);
-    if (!scholar) scholar = extractScholarFromText(content);
+    const bookName = BOOK_NAMES[bookId] ?? `Book ${bookId}`;
 
     results.push({
-      domain: "dar-alifta",
-      content,
+      domain: "islamicurdubooks",
+      content: title ? `**${title}**\n\n${body}` : body,
       citation_ref: {
-        fatwa_number: fatwaNumber || undefined,
-        scholar:      scholar || undefined,
-        url:          fullLink,
+        book:          bookName,
+        hadith_number: hadithNumber,
+        url:           link.startsWith("http") ? link : `${base}/${link.replace(/^\.{0,2}\//, "")}`,
       } as any,
-      language: "ar",
+      language: "ur",
     });
   }
 
@@ -313,9 +369,9 @@ serve(async (req) => {
     }
 
     const scrapers: Promise<IslamicResult[]>[] = [];
-    if (!selectedDomains || selectedDomains.includes("islamqa"))    scrapers.push(scrapeIslamQA(query));
-    if (!selectedDomains || selectedDomains.includes("islamweb"))   scrapers.push(scrapeIslamWeb(query));
-    if (!selectedDomains || selectedDomains.includes("dar-alifta")) scrapers.push(scrapeDarAlifta(query));
+    if (!selectedDomains || selectedDomains.includes("islamqa"))           scrapers.push(scrapeIslamQA(query));
+    if (!selectedDomains || selectedDomains.includes("islamweb"))          scrapers.push(scrapeIslamWeb(query));
+    if (!selectedDomains || selectedDomains.includes("islamicurdubooks")) scrapers.push(scrapeIslamicUrduBooks(query));
 
     const settled = await Promise.allSettled(scrapers);
     const results: IslamicResult[] = [];

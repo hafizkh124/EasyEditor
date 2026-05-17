@@ -28,9 +28,13 @@ const corsHeaders = {
 
 // Source domains — all available to every authenticated user. Plan differentiation
 // happens via monthly query quota (islamic_queries_limit), not data access.
-const TIER_A_DOMAINS = ["dorar", "alquran", "sunnah", "hadith-api", "quran-com", "tanzil"];
+// Per Phase 7.5 locked doctrine: only sources with working live integrations.
+// Sunnah.com (no API key obtained) and Dar-Alifta.org (persistent timeouts)
+// removed. They can be reinstated in `domain-scrape` / `islamic-api-fetch`
+// once upstream recovers or credentials are obtained.
+const TIER_A_DOMAINS = ["dorar", "alquran", "hadith-api", "quran-com", "tanzil"];
 const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
-const TIER_C_DOMAINS = ["islamqa", "islamweb", "dar-alifta"];
+const TIER_C_DOMAINS = ["islamqa", "islamweb", "islamicurdubooks"];
 const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS];
 
@@ -41,7 +45,7 @@ function buildContextBlock(results: IslamicResult[]): string {
     const cite = r.citation_ref;
     let citeLine = "";
 
-    if (r.domain === "dorar" || r.domain === "sunnah" || r.domain === "hadith-api" || r.domain === "hadith-index" || r.domain === "hadith-json") {
+    if (r.domain === "dorar" || r.domain === "hadith-api" || r.domain === "hadith-index" || r.domain === "hadith-json" || r.domain === "islamicurdubooks") {
       citeLine = `CITATION_REF: { type: "hadith", collection: "${cite.collection ?? cite.book ?? ""}", hadith_number: "${cite.hadith_number ?? ""}", chapter: "${cite.chapter ?? ""}", grade: "${cite.grade ?? ""}", narrator: "${cite.rawi ?? ""}", author: "${cite.author ?? ""}" }`;
     } else if (r.domain === "alquran" || r.domain === "quran-com" || r.domain === "tanzil") {
       citeLine = `CITATION_REF: { type: "quran", surah_number: ${cite.surah_number ?? 0}, surah_name: "${cite.surah_name ?? ""}", verse: ${cite.verse ?? 0}, juz: ${cite.juz ?? ""} }`;
@@ -274,7 +278,7 @@ serve(async (req) => {
       ["tanzil", "alquran", "quran-com"].includes(d),
     );
     const wantsHadith = effectiveDomains.some((d) =>
-      ["dorar", "sunnah", "hadith-api", "hadith-index", "hadith-json"].includes(d),
+      ["dorar", "hadith-api", "hadith-index", "hadith-json", "islamicurdubooks"].includes(d),
     );
     if (wantsQuran || wantsHadith) {
       fanOutPromises.push(
@@ -343,88 +347,84 @@ serve(async (req) => {
       if (r.status === "fulfilled") allResults.push(...r.value);
     }
 
-    // ── Topic-anchor fallback ─────────────────────────────────────────────
-    // If the user asked about a recognized topic (charity, prayer, etc.) and
-    // the fan-out returned weak coverage, force-fetch the canonical anchor
-    // refs directly so every common topic always returns the well-known
-    // verses + hadiths. Anchors are only inserted when they actually exist
-    // in scholarly_documents — never fabricated.
+    // ── Topic-anchor always-merge ────────────────────────────────────────
+    // If the user asked about a recognized topic (charity, prayer, etc.),
+    // ALWAYS force-fetch the canonical anchor refs and prepend them. The
+    // older count-gated logic was a foot-gun: 4 unrelated rows in `allResults`
+    // caused needQuran=false → anchors never fired → user got garbage even
+    // for canonical-anchored topics. Per Phase 7.3 of the locked plan.
+    //
+    // Anchors are only inserted when they actually exist in scholarly_documents.
     const anchors = lookupTopicAnchors(query);
     if (anchors) {
-      const quranCount  = allResults.filter((r) => /quran|tanzil|alquran/.test(r.domain)).length;
-      const hadithCount = allResults.filter((r) => /hadith|dorar|sunnah/.test(r.domain)).length;
+      const anchorFetches: Promise<IslamicResult[]>[] = [];
 
-      const needQuran  = quranCount  < 3 && anchors.quran.length  > 0;
-      const needHadith = hadithCount < 3 && anchors.hadith.length > 0;
-
-      if (needQuran || needHadith) {
-        const anchorFetches: Promise<IslamicResult[]>[] = [];
-
-        if (needQuran) {
-          const wanted = anchors.quran.slice(0, 6);
-          // OR-chain (surah=X,verse=Y) tuples
-          const filters = wanted.map(
-            (a) => `and(citation_ref->>surah_number.eq.${a.surah},citation_ref->>verse.eq.${a.verse})`,
-          );
-          anchorFetches.push(
-            supabase
-              .from("scholarly_documents")
-              .select("domain, content, content_ar, citation_ref, language, source_type")
-              .eq("source_type", "quran")
-              .or(filters.join(","))
-              .limit(wanted.length)
-              .then(({ data, error }) => {
-                if (error) { console.error("Topic-anchor Quran fetch error:", error); return []; }
-                return (data ?? []).map((row: any): IslamicResult => ({
-                  domain: row.domain ?? "tanzil",
-                  content: row.content,
-                  citation_ref: row.citation_ref ?? {},
-                  language: row.language ?? "ar",
-                }));
-              })
-          );
-        }
-
-        if (needHadith) {
-          const wanted = anchors.hadith.slice(0, 6);
-          const filters = wanted.map(
-            (a) => `and(citation_ref->>book.eq.${a.book},citation_ref->>hadith_number.eq.${a.hadith_number})`,
-          );
-          anchorFetches.push(
-            supabase
-              .from("scholarly_documents")
-              .select("domain, content, content_ar, citation_ref, language, source_type")
-              .eq("source_type", "hadith")
-              .or(filters.join(","))
-              .limit(wanted.length)
-              .then(({ data, error }) => {
-                if (error) { console.error("Topic-anchor Hadith fetch error:", error); return []; }
-                return (data ?? []).map((row: any): IslamicResult => ({
-                  domain: row.domain ?? "hadith-json",
-                  content: row.content,
-                  citation_ref: row.citation_ref ?? {},
-                  language: row.language ?? "ar",
-                }));
-              })
-          );
-        }
-
-        const extra = (await Promise.all(anchorFetches)).flat();
-
-        // Dedupe against what we already have
-        const seenKeys = new Set(
-          allResults.map((r) => {
-            const c = r.citation_ref ?? {};
-            return `${c.surah_number ?? ""}:${c.verse ?? ""}|${c.book ?? ""}:${c.hadith_number ?? ""}`;
-          }),
+      if (anchors.quran.length > 0) {
+        const wanted = anchors.quran.slice(0, 4);
+        const filters = wanted.map(
+          (a) => `and(citation_ref->>surah_number.eq.${a.surah},citation_ref->>verse.eq.${a.verse})`,
         );
-        for (const e of extra) {
-          const c = e.citation_ref ?? {};
-          const k = `${c.surah_number ?? ""}:${c.verse ?? ""}|${c.book ?? ""}:${c.hadith_number ?? ""}`;
-          if (!seenKeys.has(k)) {
-            seenKeys.add(k);
-            allResults.unshift(e); // prepend so anchors lead the context
-          }
+        anchorFetches.push(
+          supabase
+            .from("scholarly_documents")
+            .select("domain, content, content_ar, citation_ref, language, source_type")
+            .eq("source_type", "quran")
+            .or(filters.join(","))
+            .limit(wanted.length)
+            .then(({ data, error }) => {
+              if (error) { console.error("Topic-anchor Quran fetch error:", error); return []; }
+              return (data ?? []).map((row: any): IslamicResult => ({
+                domain: row.domain ?? "tanzil",
+                content: row.content,
+                citation_ref: { ...(row.citation_ref ?? {}), _is_anchor: true },
+                language: row.language ?? "ar",
+              }));
+            })
+        );
+      }
+
+      if (anchors.hadith.length > 0) {
+        const wanted = anchors.hadith.slice(0, 4);
+        const filters = wanted.map(
+          (a) => `and(citation_ref->>book.eq.${a.book},citation_ref->>hadith_number.eq.${a.hadith_number})`,
+        );
+        anchorFetches.push(
+          supabase
+            .from("scholarly_documents")
+            .select("domain, content, content_ar, citation_ref, language, source_type")
+            .eq("source_type", "hadith")
+            .or(filters.join(","))
+            .limit(wanted.length)
+            .then(({ data, error }) => {
+              if (error) { console.error("Topic-anchor Hadith fetch error:", error); return []; }
+              return (data ?? []).map((row: any): IslamicResult => ({
+                domain: row.domain ?? "hadith-json",
+                content: row.content,
+                citation_ref: { ...(row.citation_ref ?? {}), _is_anchor: true },
+                language: row.language ?? "ar",
+              }));
+            })
+        );
+      }
+
+      const extra = (await Promise.all(anchorFetches)).flat();
+
+      // Dedupe against what fan-out already returned.
+      const seenKeys = new Set(
+        allResults.map((r) => {
+          const c = r.citation_ref ?? {};
+          return `${c.surah_number ?? ""}:${c.verse ?? ""}|${c.book ?? ""}:${c.hadith_number ?? ""}`;
+        }),
+      );
+      // Prepend in reverse so the FIRST anchor in the array ends up first
+      // in the final results list.
+      for (let i = extra.length - 1; i >= 0; i--) {
+        const e = extra[i];
+        const c = e.citation_ref ?? {};
+        const k = `${c.surah_number ?? ""}:${c.verse ?? ""}|${c.book ?? ""}:${c.hadith_number ?? ""}`;
+        if (!seenKeys.has(k)) {
+          seenKeys.add(k);
+          allResults.unshift(e);
         }
       }
     }

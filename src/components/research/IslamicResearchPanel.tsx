@@ -17,9 +17,10 @@ interface DomainInfo {
 const DOMAINS: DomainInfo[] = [
   // HADITH
   { id: "dorar",       labelKey: "islamic.domain_dorar",     tier: "all",  group: "hadith" },
-  { id: "sunnah",      labelKey: "islamic.domain_sunnah",    tier: "all",  group: "hadith" },
-  { id: "hadith-api",  labelKey: "islamic.domain_hadithapi", tier: "all",  group: "hadith" },
-  { id: "hadith-index",labelKey: "islamic.domain_hadith_idx",tier: "all",  group: "hadith" },
+  // sunnah removed per Phase 7.5 doctrine — no API key, would silently no-op.
+  { id: "hadith-api",       labelKey: "islamic.domain_hadithapi",       tier: "all", group: "hadith" },
+  { id: "hadith-index",     labelKey: "islamic.domain_hadith_idx",      tier: "all", group: "hadith" },
+  { id: "islamicurdubooks", labelKey: "islamic.domain_islamicurdubooks", tier: "all", group: "hadith" },
   // QURAN & TAFSIR
   { id: "alquran",     labelKey: "islamic.domain_alquran",   tier: "all",  group: "quran" },
   { id: "quran-com",   labelKey: "islamic.domain_qurancom",  tier: "all",  group: "quran" },
@@ -27,7 +28,7 @@ const DOMAINS: DomainInfo[] = [
   // FATAWA & Q&A
   { id: "islamqa",     labelKey: "islamic.domain_islamqa",   tier: "all",  group: "fatawa" },
   { id: "islamweb",    labelKey: "islamic.domain_islamweb",  tier: "all",  group: "fatawa" },
-  { id: "dar-alifta",  labelKey: "islamic.domain_daralifta", tier: "all",  group: "fatawa" },
+  // dar-alifta removed per Phase 7.5 doctrine — persistent upstream timeouts.
   // CLASSICAL
   { id: "shamela-index",  labelKey: "islamic.domain_shamela",   tier: "all", group: "classical" },
   { id: "openiti-index",  labelKey: "islamic.domain_openiti",   tier: "all", group: "classical" },

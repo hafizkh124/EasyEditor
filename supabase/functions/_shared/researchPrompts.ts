@@ -16,8 +16,14 @@ IMPORTANT RULES:
 export const STRICT_INSTRUCTION_ON =
   "You MUST answer ONLY based on the provided sources. If the answer is not found in the sources, say so clearly. Do NOT use any external knowledge.";
 
-export const STRICT_INSTRUCTION_OFF =
-  "Use the provided sources as primary references, but you may also use your general knowledge to provide a comprehensive answer. Clearly distinguish between information from sources and your own knowledge.";
+export const STRICT_INSTRUCTION_OFF = `Use the provided sources as primary references, but you may also draw on general knowledge to provide a comprehensive answer.
+
+CITATION DISCIPLINE (non-negotiable):
+- For every factual claim, identify its source: a book name, a website URL, a hadith collection + number, a Quran surah + verse, or explicitly state "(general knowledge, no specific source)".
+- NEVER invent a URL, hadith number, surah/verse, or book reference. Fabricated citations are the worst possible failure.
+- If you don't know an exact reference but the claim is widely known, say "(commonly attributed to <X> — exact reference not verified)".
+- If you genuinely don't know the answer, say "I don't have reliable information on this" — do not guess.
+- Clearly distinguish information from the provided sources vs your own knowledge with phrases like "According to <source>..." vs "Based on general knowledge...".`;
 
 export const SPELLING_SYSTEM_PROMPT = `You are a precise spelling and orthography corrector. Your ONLY job is to correct spelling mistakes in the user's text.
 

@@ -1,7 +1,7 @@
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Send, Loader2, BookOpen, Copy, Sparkles,
   PenLine, MessageSquare, Minimize2, MessageSquarePlus, RefreshCw,
@@ -173,12 +173,21 @@ interface ChatDisplayProps {
   t: (k: string) => string;
   // Phase 3 additions
   mode?: ResearchMode;
+  // Phase 8.5: optional callback for the "Switch to Islamic" hint banner.
+  // When provided AND `mode === "general"`, an Islamic-query banner appears
+  // to nudge the user toward the Islamic Research tab for better-sourced answers.
+  onModeChange?: (mode: ResearchMode) => void;
   sourcesReadyInfo?: { count: number; domains: string[] } | null;
   citations?: CitationItem[];
   // Phase 3 assist chips
   assistModes?: ResearchAssistMode[];
   onAssistModesChange?: (modes: ResearchAssistMode[]) => void;
 }
+
+// Phase 8.5: detect when a General-tab query smells Islamic, so we can nudge
+// the user toward Islamic Research where the answer will be properly sourced.
+// Conservative match — only triggers on unambiguous Islamic vocabulary.
+const ISLAMIC_QUERY_MARKERS = /(?:قرآن|قراٰن|قُرآن|حدیث|حديث|آیت|آية|آیات|آيات|اَیات|سورۃ|سورة|نماز|روزہ|روزه|زکوٰۃ|زكاة|حج|عمرہ|عمرة|نکاح|طلاق|توبہ|توبة|صدقہ|صدقة|الله|اللہ|اللّٰہ|سنت|سنة|فقہ|فقه|تفسیر|تفسير|نبی|نبي|رسول|صحابہ|صحابة|إسلام|اسلام|sahaba|quran|qur'?an|hadith|hadis|surah|ayah|prophet|islam(?:ic)?)/i;
 
 const ChatDisplay = ({
   messages,
@@ -198,6 +207,7 @@ const ChatDisplay = ({
   chatEndRef: _chatEndRef,
   t,
   mode = "general",
+  onModeChange,
   sourcesReadyInfo,
   citations = [],
   assistModes = [],
@@ -218,6 +228,22 @@ const ChatDisplay = ({
   // In Islamic/General mode, suppress the "no sources" warning.
   // Only warn in Custom (user-provided sources) mode when empty.
   const showNoSourcesWarning = mode === "custom" && sources.length === 0;
+
+  // Phase 8.5: Islamic-query hint banner.
+  // Visible when (a) the user is on the General tab, (b) their typed query
+  // contains unambiguous Islamic vocabulary, and (c) they haven't dismissed
+  // the hint in this session.
+  const [islamicHintDismissed, setIslamicHintDismissed] = useState<boolean>(() => {
+    try { return sessionStorage.getItem("islamicHintDismissed") === "1"; } catch { return false; }
+  });
+  const queryLooksIslamic = useMemo(
+    () => query.trim().length >= 3 && ISLAMIC_QUERY_MARKERS.test(query),
+    [query],
+  );
+  const showIslamicHint =
+    (mode === "general" || mode === "custom") &&
+    queryLooksIslamic &&
+    !islamicHintDismissed;
 
   type ListItem =
     | { type: "empty" }
@@ -437,6 +463,33 @@ const ChatDisplay = ({
           <div className="flex items-center gap-2 max-w-3xl mx-auto rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-3 py-2">
             <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
             <p className="text-xs text-amber-700 dark:text-amber-400">{t("research.no_sources_warning")}</p>
+          </div>
+        )}
+        {showIslamicHint && (
+          <div className="flex items-center gap-2 max-w-3xl mx-auto rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 px-3 py-2">
+            <BookOpen className="h-4 w-4 text-blue-500 shrink-0" />
+            <p className="text-xs flex-1 text-blue-700 dark:text-blue-400">{t("research.islamic_hint")}</p>
+            {onModeChange && (
+              <Button
+                size="sm"
+                variant="default"
+                className="h-7 text-xs px-2"
+                onClick={() => { onModeChange("islamic"); setIslamicHintDismissed(true); }}
+              >
+                {t("research.islamic_hint_switch")}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs px-2"
+              onClick={() => {
+                setIslamicHintDismissed(true);
+                try { sessionStorage.setItem("islamicHintDismissed", "1"); } catch { /* no-op */ }
+              }}
+            >
+              {t("research.islamic_hint_dismiss")}
+            </Button>
           </div>
         )}
         <div className="flex gap-2 max-w-3xl mx-auto">
