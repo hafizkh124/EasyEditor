@@ -105,26 +105,62 @@ async function setCached(
 }
 
 // ── Dorar.net Hadith API ──────────────────────────────────────────────────────
+// Endpoint: https://dorar.net/dorar_api.json?skey=<query>
+// (The old /v1/api/hadith/search endpoint returns 404 as of 2026-05.)
+// Response shape: { ahadith: { result: "<html-blob>" } } — the result is
+// rendered HTML, so we parse it the same way the official docs sample does.
 async function fetchDorar(query: string): Promise<IslamicResult[]> {
   try {
-    const url = `https://www.dorar.net/v1/api/hadith/search?value=${encodeURIComponent(query)}&books=0`;
+    const url = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`;
     const res = await fetchWithTimeout(url);
     if (!res.ok) return [];
     const data = await res.json();
-    const items = data?.data ?? [];
-    return items.slice(0, 5).map((item: any): IslamicResult => ({
-      domain: "dorar",
-      content: `${item.hadith ?? ""}\n\n[${item.book ?? ""}، رقم: ${item.hadithNumber ?? ""} — ${item.grade ?? ""}]`,
-      citation_ref: {
-        book:       item.book,
-        hadith_number: item.hadithNumber,
-        grade:      item.grade,
-        rawi:       item.rawi,
-        mohdith:    item.mohdith,
-        collection: item.bookNumber ? String(item.bookNumber) : undefined,
-      },
-      language: "ar",
-    }));
+    const html: string = data?.ahadith?.result ?? "";
+    if (!html) return [];
+
+    // Each result item appears wrapped in <div class="hadith-info"> ... </div>
+    // with sibling spans/divs containing الراوي / المحدث / المصدر / الصفحة
+    // أو الرقم / خلاصة حكم المحدث.
+    const items: IslamicResult[] = [];
+    const blockRe = /<div[^>]*class="[^"]*hadith[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/gi;
+    const stripTags = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+    let m: RegExpExecArray | null;
+    while ((m = blockRe.exec(html)) !== null && items.length < 5) {
+      const block = m[1];
+      const text = stripTags(block);
+      if (!text || text.length < 20) continue;
+
+      const grab = (label: string): string => {
+        const re = new RegExp(label + "[:\\s]*([^<\\n،,]+)", "i");
+        const mm = text.match(re);
+        return mm?.[1]?.trim() ?? "";
+      };
+
+      const rawi      = grab("الراوي");
+      const mohdith   = grab("المحدث");
+      const book      = grab("المصدر") || grab("الكتاب");
+      const number    = grab("الصفحة أو الرقم") || grab("الرقم");
+      const grade     = grab("خلاصة حكم المحدث") || grab("درجة الحديث");
+
+      // The hadith text itself sits before the metadata labels.
+      const hadithText = text.split(/الراوي|المحدث|المصدر|الصفحة/)[0]?.trim() ?? "";
+      if (!hadithText || hadithText.length < 10) continue;
+
+      items.push({
+        domain: "dorar",
+        content: `${hadithText}\n\n[${book || "?"}، رقم: ${number || "?"} — ${grade || "?"}]`,
+        citation_ref: {
+          book:          book || undefined,
+          hadith_number: number || undefined,
+          grade:         grade || undefined,
+          rawi:          rawi || undefined,
+          mohdith:       mohdith || undefined,
+        },
+        language: "ar",
+      });
+    }
+    return items;
   } catch {
     return [];
   }
@@ -174,33 +210,9 @@ async function fetchAlQuran(query: string): Promise<IslamicResult[]> {
   }
 }
 
-// ── Sunnah.com API (requires API key) ─────────────────────────────────────────
-async function fetchSunnah(query: string, apiKey: string): Promise<IslamicResult[]> {
-  if (!apiKey) return [];
-  try {
-    const res = await fetchWithTimeout(
-      `https://api.sunnah.com/v1/hadiths?limit=5`,
-      { headers: { "X-API-Key": apiKey } }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    const items = data?.data ?? [];
-    return items.slice(0, 5).map((item: any): IslamicResult => ({
-      domain: "sunnah",
-      content: `${item.body ?? item.hadith?.[0]?.body ?? ""}`,
-      citation_ref: {
-        collection:    item.collection,
-        book:          item.bookName,
-        hadith_number: item.hadithNumber,
-        grade:         item.grades?.[0]?.grade,
-        url:           `https://sunnah.com/${item.collection}:${item.hadithNumber}`,
-      },
-      language: "en",
-    }));
-  } catch {
-    return [];
-  }
-}
+// ── Sunnah.com API — removed per Phase 7.5 doctrine (no API key obtained).
+//    Reinstate the `fetchSunnah` function and SUNNAH_API_KEY env check here
+//    if a key is later obtained via https://github.com/sunnah-com/api.
 
 // ── HadithAPI.com — Arabic + English + Urdu hadith search ───────────────────
 // Docs: https://hadithapi.com/docs/hadiths
@@ -295,11 +307,7 @@ serve(async (req) => {
       });
     }
 
-    const SUNNAH_API_KEY  = Deno.env.get("SUNNAH_API_KEY") ?? "";
     const HADITH_API_KEY  = Deno.env.get("HADITH_API_KEY") ?? "";
-    if (!SUNNAH_API_KEY) {
-      console.warn("[islamic-api-fetch] SUNNAH_API_KEY not set — Sunnah.com lane is disabled. Add the secret inside the Lovable platform to enable it.");
-    }
     if (!HADITH_API_KEY) {
       console.warn("[islamic-api-fetch] HADITH_API_KEY not set — HadithAPI.com (Urdu/EN/AR) lane is disabled. Add the secret inside the Lovable platform to enable it.");
     }
@@ -337,9 +345,6 @@ serve(async (req) => {
     }
     if (!selectedDomains || selectedDomains.includes("alquran")) {
       fetchers.push(fetchWithCache("alquran", () => fetchAlQuran(query)));
-    }
-    if ((!selectedDomains || selectedDomains.includes("sunnah")) && SUNNAH_API_KEY) {
-      fetchers.push(fetchWithCache("sunnah", () => fetchSunnah(query, SUNNAH_API_KEY)));
     }
     if ((!selectedDomains || selectedDomains.includes("hadith-api")) && HADITH_API_KEY) {
       fetchers.push(fetchWithCache("hadith-api", () => fetchHadithApi(query, HADITH_API_KEY)));

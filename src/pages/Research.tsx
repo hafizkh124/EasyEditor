@@ -187,6 +187,7 @@ const Research = () => {
           chatEndRef={chat.chatEndRef}
           t={t}
           mode={mode}
+          onModeChange={handleModeChange}
           sourcesReadyInfo={chat.sourcesReadyInfo}
           citations={chat.citations}
           assistModes={assistModes}

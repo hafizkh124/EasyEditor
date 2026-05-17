@@ -31,6 +31,32 @@ interface RowToEmbed {
   content_ar:   string | null;
 }
 
+/** Count rows with NULL embedding. Filters by sourceType when provided so the
+ *  orchestrator's per-domain progress is accurate. Returns `{remaining, error}`
+ *  with `error` set if the count itself failed (we then never signal done). */
+async function countRemaining(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  sourceType: string | null,
+): Promise<{ remaining: number | null; error: Error | null }> {
+  try {
+    let q = supabase
+      .from("scholarly_documents")
+      .select("id", { count: "exact", head: true })
+      .is("embedding", null);
+    if (sourceType) q = q.eq("source_type", sourceType);
+    const { count, error } = await q;
+    if (error) return { remaining: null, error };
+    // count can be null when the head request fails silently — treat as error
+    if (count === null || count === undefined) {
+      return { remaining: null, error: new Error("count returned null") };
+    }
+    return { remaining: count, error: null };
+  } catch (e) {
+    return { remaining: null, error: e instanceof Error ? e : new Error(String(e)) };
+  }
+}
+
 // Embed via Google AI Studio's Generative Language API directly.
 // The Lovable AI Gateway does not expose the embeddings endpoint on every
 // workspace tier (returns 404 "route_not_found"), so we call Google directly
@@ -110,15 +136,25 @@ serve(async (req) => {
     const { data: rows, error: selErr } = await query;
     if (selErr) throw selErr;
     if (!rows || rows.length === 0) {
-      // Also report whether we are fully done across the whole table
-      const { count: stillPending } = await supabase
-        .from("scholarly_documents")
-        .select("id", { count: "exact", head: true })
-        .is("embedding", null);
+      // When the orchestrator specified a sourceType, the relevant "remaining"
+      // is FOR THAT source_type — not the whole table. Mixing scopes is what
+      // caused the orchestrator to falsely terminate earlier.
+      const { remaining, error: countErr } = await countRemaining(supabase, sourceType);
+      if (countErr) {
+        // Count flaked out — DO NOT signal done. Tell orchestrator to retry.
+        return new Response(JSON.stringify({
+          processed:        0,
+          attempted:        0,
+          remaining_total:  null,
+          done:             false,
+          count_error:      countErr.message ?? "count failed",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       return new Response(JSON.stringify({
         processed:        0,
-        remaining_total:  stillPending ?? 0,
-        done:             (stillPending ?? 0) === 0,
+        attempted:        0,
+        remaining_total:  remaining ?? 0,
+        done:             (remaining ?? 0) === 0,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -155,16 +191,21 @@ serve(async (req) => {
     }));
 
     // ── Report remaining work so the orchestrator knows when to stop ─────
-    const { count: stillPending } = await supabase
-      .from("scholarly_documents")
-      .select("id", { count: "exact", head: true })
-      .is("embedding", null);
+    // Critical safety: if we processed > 0 rows this batch, NEVER signal
+    // done=true. A productive batch cannot be the last one. Also count
+    // remaining within the same source_type the caller asked for, so the
+    // orchestrator's per-domain progress is meaningful.
+    const { remaining, error: countErr } = await countRemaining(supabase, sourceType);
+
+    const productive = updated > 0;
+    const doneFlag   = !productive && !countErr && (remaining ?? 0) === 0;
 
     return new Response(JSON.stringify({
       processed:        updated,
       attempted:        rows.length,
-      remaining_total:  stillPending ?? 0,
-      done:             (stillPending ?? 0) === 0,
+      remaining_total:  countErr ? null : (remaining ?? 0),
+      done:             doneFlag,
+      ...(countErr ? { count_error: countErr.message ?? "count failed" } : {}),
       errors:           errors.slice(0, 5),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 

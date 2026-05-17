@@ -272,25 +272,33 @@ export const BILINGUAL_MAP: Record<string, string[]> = {
   "الصحابة":["صحابہ", "sahaba", "companions"],
 };
 
+import { isStopword, dropStopwords } from "./stopwords.ts";
+
 /**
  * Expand a free-text query into a deduplicated set of search terms.
- * Splits on whitespace, looks each token up (case-preserving and lowercase)
- * in BILINGUAL_MAP, and returns the original tokens plus all matched
- * expansions.
+ * Splits on whitespace, drops stopwords, looks each remaining token up
+ * (case-preserving and lowercase) in BILINGUAL_MAP, and returns the
+ * content-bearing tokens plus all matched expansions.
+ *
+ * Stopwords are filtered BEFORE expansion: a query like
+ * "نماز سے متعلق آیات اور احادیث" yields just ["نماز", ...salah expansions],
+ * not the original 8 tokens. This prevents generic words like "آیات" from
+ * dragging unrelated verses to the top of the smart-search ranking.
  */
 export function expandQueryTerms(query: string): string[] {
-  const original = query.trim().split(/\s+/).filter(Boolean);
-  const out = new Set<string>(original);
-  for (const word of original) {
+  const rawTokens = query.trim().split(/\s+/).filter(Boolean);
+  const contentTokens = dropStopwords(rawTokens);
+  const out = new Set<string>(contentTokens);
+  for (const word of contentTokens) {
     const direct = BILINGUAL_MAP[word];
     if (direct) {
-      for (const t of direct) out.add(t);
+      for (const t of direct) if (!isStopword(t)) out.add(t);
       continue;
     }
     const lower = word.toLowerCase();
     const lo = BILINGUAL_MAP[lower];
     if (lo) {
-      for (const t of lo) out.add(t);
+      for (const t of lo) if (!isStopword(t)) out.add(t);
     }
   }
   return [...out];

@@ -29,15 +29,20 @@ async function timed<T>(fn: () => Promise<T>): Promise<[T, number]> {
 }
 
 async function probeDorar(): Promise<HealthResult> {
+  // Uses the current Dorar endpoint (https://dorar.net/dorar_api.json?skey=…).
+  // The old /v1/api/hadith/search path returns 404 as of 2026-05.
   try {
     const [res, ms] = await timed(() =>
-      fetch(`https://www.dorar.net/v1/api/hadith/search?value=${encodeURIComponent(PROBE_QUERY_AR)}&books=0`, {
+      fetch(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(PROBE_QUERY_AR)}`, {
         signal: AbortSignal.timeout(8_000),
       }),
     );
     if (!res.ok) return { name: "dorar", ok: false, latency_ms: ms, sample_hits: 0, note: `HTTP ${res.status}` };
     const data = await res.json();
-    return { name: "dorar", ok: true, latency_ms: ms, sample_hits: (data?.data ?? []).length };
+    const html: string = data?.ahadith?.result ?? "";
+    // Count how many hadith blocks the result HTML contains as a proxy for hit count.
+    const matches = html.match(/الراوي/g)?.length ?? 0;
+    return { name: "dorar", ok: matches > 0, latency_ms: ms, sample_hits: matches, note: matches === 0 ? "empty result html" : undefined };
   } catch (e) {
     return { name: "dorar", ok: false, latency_ms: 0, sample_hits: 0, note: String(e) };
   }
@@ -93,25 +98,8 @@ async function probeHadithApi(): Promise<HealthResult> {
   }
 }
 
-async function probeSunnah(): Promise<HealthResult> {
-  const key = Deno.env.get("SUNNAH_API_KEY") ?? "";
-  if (!key) {
-    return { name: "sunnah", ok: false, latency_ms: 0, sample_hits: 0, note: "SUNNAH_API_KEY not set" };
-  }
-  try {
-    const [res, ms] = await timed(() =>
-      fetch(`https://api.sunnah.com/v1/hadiths?limit=3`, {
-        headers: { "X-API-Key": key },
-        signal: AbortSignal.timeout(8_000),
-      }),
-    );
-    if (!res.ok) return { name: "sunnah", ok: false, latency_ms: ms, sample_hits: 0, note: `HTTP ${res.status}` };
-    const data = await res.json();
-    return { name: "sunnah", ok: true, latency_ms: ms, sample_hits: (data?.data ?? []).length };
-  } catch (e) {
-    return { name: "sunnah", ok: false, latency_ms: 0, sample_hits: 0, note: String(e) };
-  }
-}
+// probeSunnah removed per Phase 7.5 doctrine (no API key).
+// probeScraper("dar-alifta", ...) likewise dropped from the probe list below.
 
 async function probeEmbedding(): Promise<HealthResult> {
   const key = Deno.env.get("GEMINI_API_KEY") ?? "";
@@ -242,14 +230,13 @@ serve(async (req) => {
       probeDorar(),
       probeAlQuran(),
       probeQuranCom(),
-      probeSunnah(),
       probeHadithApi(),
       probeEmbedding(),
       probeGemini(),
       probeVectorRpc(supabase),
       probeScraper("islamqa", `https://islamqa.info/en/search?q=${encodeURIComponent(PROBE_QUERY_EN)}`),
       probeScraper("islamweb", `https://www.islamweb.net/en/fatwa/search/?q=${encodeURIComponent(PROBE_QUERY_EN)}`),
-      probeScraper("dar-alifta", `https://dar-alifta.org/ar/search?q=${encodeURIComponent(PROBE_QUERY_AR)}`),
+      probeScraper("islamicurdubooks", `https://www.islamicurdubooks.com/hadith/search_urdu.php?q=${encodeURIComponent(PROBE_QUERY_AR)}`),
     ]);
 
     return new Response(JSON.stringify({ results, generated_at: new Date().toISOString() }), {
