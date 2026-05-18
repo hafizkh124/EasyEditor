@@ -88,15 +88,25 @@ async function topicAnchorRows(
   }
 
   if (anchors.hadith.length > 0) {
-    const filters = anchors.hadith.slice(0, 6).map(
-      (a) => `and(citation_ref->>book.eq.${a.book},citation_ref->>hadith_number.eq.${a.hadith_number})`,
-    );
+    // Each anchor now carries multiple book-name variants (Phase 10.1) — emit
+    // one filter clause per (variant, hadith_number) pair. Also check the
+    // `collection` field since different ingestion paths put the slug there
+    // instead of in `book`. Cap total clauses at 30 to keep URL length safe.
+    const filters: string[] = [];
+    for (const a of anchors.hadith.slice(0, 8)) {
+      for (const bookName of a.books) {
+        filters.push(`and(citation_ref->>book.eq.${bookName},citation_ref->>hadith_number.eq.${a.hadith_number})`);
+        filters.push(`and(citation_ref->>collection.eq.${bookName},citation_ref->>hadith_number.eq.${a.hadith_number})`);
+        if (filters.length >= 30) break;
+      }
+      if (filters.length >= 30) break;
+    }
     const { data, error } = await supabase
       .from("scholarly_documents")
       .select("domain, content, content_ar, citation_ref, language, source_type, source_url")
       .eq("source_type", "hadith")
       .or(filters.join(","))
-      .limit(filters.length);
+      .limit(anchors.hadith.length);
     if (!error && data) out.hadith = data;
   }
 

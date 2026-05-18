@@ -34,7 +34,7 @@ const corsHeaders = {
 // once upstream recovers or credentials are obtained.
 const TIER_A_DOMAINS = ["dorar", "alquran", "hadith-api", "quran-com", "tanzil"];
 const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
-const TIER_C_DOMAINS = ["islamqa", "islamweb", "islamicurdubooks"];
+const TIER_C_DOMAINS = ["islamqa", "islamweb", "islamicurdubooks", "shamilaurdu"];
 const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS];
 
@@ -45,7 +45,7 @@ function buildContextBlock(results: IslamicResult[]): string {
     const cite = r.citation_ref;
     let citeLine = "";
 
-    if (r.domain === "dorar" || r.domain === "hadith-api" || r.domain === "hadith-index" || r.domain === "hadith-json" || r.domain === "islamicurdubooks") {
+    if (r.domain === "dorar" || r.domain === "hadith-api" || r.domain === "hadith-index" || r.domain === "hadith-json" || r.domain === "islamicurdubooks" || r.domain === "shamilaurdu") {
       citeLine = `CITATION_REF: { type: "hadith", collection: "${cite.collection ?? cite.book ?? ""}", hadith_number: "${cite.hadith_number ?? ""}", chapter: "${cite.chapter ?? ""}", grade: "${cite.grade ?? ""}", narrator: "${cite.rawi ?? ""}", author: "${cite.author ?? ""}" }`;
     } else if (r.domain === "alquran" || r.domain === "quran-com" || r.domain === "tanzil") {
       citeLine = `CITATION_REF: { type: "quran", surah_number: ${cite.surah_number ?? 0}, surah_name: "${cite.surah_name ?? ""}", verse: ${cite.verse ?? 0}, juz: ${cite.juz ?? ""} }`;
@@ -278,7 +278,7 @@ serve(async (req) => {
       ["tanzil", "alquran", "quran-com"].includes(d),
     );
     const wantsHadith = effectiveDomains.some((d) =>
-      ["dorar", "hadith-api", "hadith-index", "hadith-json", "islamicurdubooks"].includes(d),
+      ["dorar", "hadith-api", "hadith-index", "hadith-json", "islamicurdubooks", "shamilaurdu"].includes(d),
     );
     if (wantsQuran || wantsHadith) {
       fanOutPromises.push(
@@ -384,10 +384,21 @@ serve(async (req) => {
       }
 
       if (anchors.hadith.length > 0) {
-        const wanted = anchors.hadith.slice(0, 4);
-        const filters = wanted.map(
-          (a) => `and(citation_ref->>book.eq.${a.book},citation_ref->>hadith_number.eq.${a.hadith_number})`,
-        );
+        // Phase 10.1: each anchor now lists multiple `books` variants because
+        // the DB stores hadith book identifiers in different shapes across
+        // ingestion paths. Emit one filter clause per (variant, number) and
+        // also try the `collection` field. Cap at 30 clauses to keep URL
+        // length under PostgREST's limit.
+        const wanted = anchors.hadith.slice(0, 6);
+        const filters: string[] = [];
+        for (const a of wanted) {
+          for (const bookName of a.books) {
+            filters.push(`and(citation_ref->>book.eq.${bookName},citation_ref->>hadith_number.eq.${a.hadith_number})`);
+            filters.push(`and(citation_ref->>collection.eq.${bookName},citation_ref->>hadith_number.eq.${a.hadith_number})`);
+            if (filters.length >= 30) break;
+          }
+          if (filters.length >= 30) break;
+        }
         anchorFetches.push(
           supabase
             .from("scholarly_documents")
@@ -458,6 +469,10 @@ serve(async (req) => {
         model: "google/gemini-2.5-flash",
         messages,
         stream: true,
+        // Phase 10.2: explicit cap so long Islamic answers (full Arabic
+        // quotes + Urdu translations + summaries) don't get cut off at
+        // the gateway's conservative default.
+        max_tokens: 4096,
       }),
     });
 

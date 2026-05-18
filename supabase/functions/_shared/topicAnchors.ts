@@ -13,10 +13,12 @@
 //   2. relevance (each ref actually addresses the topic, not a passing mention)
 //   3. completeness (no glaring omission of a critically-relevant ref)
 //
-// Hadith book slugs MUST match what was ingested into scholarly_documents.
-// We currently use the HadithAPI.com convention: sahih-bukhari, sahih-muslim,
-// al-tirmidhi, abu-dawood, ibn-e-majah, sunan-nasai, mishkat, musnad-ahmad,
-// al-silsila-sahiha. (Cross-check with citation_ref->>'book' values in DB.)
+// Hadith book identifiers carry multiple variant strings because different
+// ingestion paths put different shapes into citation_ref.book and .collection:
+// the same Sahih al-Bukhari row may have `book="sahih-bukhari"` (HadithAPI
+// convention), `book="Sahih al-Bukhari"` (display name), `book="bukhari"`
+// (short slug), or `book="صحيح البخاري"` (Arabic). Per Phase 10.1, we list
+// ALL known aliases so the SQL filter at the call site can OR over each.
 
 export interface QuranAnchor {
   surah: number;
@@ -24,8 +26,33 @@ export interface QuranAnchor {
 }
 
 export interface HadithAnchor {
-  book: string;            // book slug as ingested (sahih-bukhari, sahih-muslim, ...)
+  books: string[];         // every known string variant that may identify the collection
   hadith_number: string;   // string because some collections use compound numbering
+}
+
+// ── Book-alias map ────────────────────────────────────────────────────────
+// Resolves a canonical collection key (e.g. "bukhari") to the full set of
+// strings the DB may carry for that collection. Add new aliases here when
+// you find a row in the DB that's not yet matched.
+const BOOK_ALIASES: Record<string, string[]> = {
+  bukhari:         ["sahih-bukhari", "bukhari", "sahih_bukhari", "Sahih Bukhari", "Sahih al-Bukhari", "صحيح البخاري"],
+  muslim:          ["sahih-muslim", "muslim", "sahih_muslim", "Sahih Muslim", "صحيح مسلم"],
+  tirmidhi:        ["al-tirmidhi", "tirmidhi", "Jami` at-Tirmidhi", "Jami` al-Tirmidhi", "Jami al-Tirmidhi", "جامع الترمذي"],
+  "abu-dawood":    ["abu-dawood", "abu-dawud", "abudawud", "Sunan Abi Dawud", "Abu Dawud", "سنن أبي داود"],
+  "ibn-majah":     ["ibn-e-majah", "ibn-majah", "ibnmajah", "Sunan Ibn Majah", "سنن ابن ماجه"],
+  nasai:           ["sunan-nasai", "nasai", "an-nasai", "Sunan an-Nasa'i", "Sunan al-Nasa'i", "سنن النسائي"],
+  mishkat:         ["mishkat", "Mishkat al-Masabih", "مشكاة المصابيح"],
+  "musnad-ahmad":  ["musnad-ahmad", "musnad_ahmad", "Musnad Ahmad", "مسند أحمد"],
+  silsila:         ["al-silsila-sahiha", "silsila-sahiha", "Silsila Sahiha"],
+  nawawi40:        ["nawawi40", "Forty Hadith of Imam Nawawi", "An-Nawawi's Forty Hadith", "الأربعون النووية"],
+  bulugh:          ["bulugh_almaram", "Bulugh al-Maram", "بلوغ المرام"],
+  riyad:           ["riyad_assalihin", "Riyad as-Salihin", "Riyadh as-Salihin", "رياض الصالحين"],
+};
+
+function bookSet(key: string): string[] {
+  const set = BOOK_ALIASES[key];
+  if (!set) throw new Error(`unknown hadith collection key: ${key}`);
+  return set;
 }
 
 export interface TopicAnchorSet {
@@ -58,10 +85,10 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 9,  verse: 103 },  // take charity to purify
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "1410" },
-        { book: "sahih-muslim",  hadith_number: "1017" },
-        { book: "sahih-bukhari", hadith_number: "1442" },
-        { book: "sahih-muslim",  hadith_number: "1006" },
+        { books: bookSet("bukhari"), hadith_number: "1410" },
+        { books: bookSet("muslim"), hadith_number: "1017" },
+        { books: bookSet("bukhari"), hadith_number: "1442" },
+        { books: bookSet("muslim"), hadith_number: "1006" },
       ],
     },
   },
@@ -75,9 +102,9 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 9,  verse: 103 },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "1395" },
-        { book: "sahih-muslim",  hadith_number: "19"   },
-        { book: "sahih-bukhari", hadith_number: "8"    },
+        { books: bookSet("bukhari"), hadith_number: "1395" },
+        { books: bookSet("muslim"), hadith_number: "19"   },
+        { books: bookSet("bukhari"), hadith_number: "8"    },
       ],
     },
   },
@@ -92,9 +119,9 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 29,  verse: 45  },  // prayer prevents indecency
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "8"  },
-        { book: "sahih-muslim",  hadith_number: "16" },
-        { book: "sahih-bukhari", hadith_number: "528" },
+        { books: bookSet("bukhari"), hadith_number: "8"  },
+        { books: bookSet("muslim"), hadith_number: "16" },
+        { books: bookSet("bukhari"), hadith_number: "528" },
       ],
     },
   },
@@ -108,9 +135,9 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 2, verse: 187 },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "1903" },
-        { book: "sahih-muslim",  hadith_number: "1151" },
-        { book: "sahih-bukhari", hadith_number: "38"   },
+        { books: bookSet("bukhari"), hadith_number: "1903" },
+        { books: bookSet("muslim"), hadith_number: "1151" },
+        { books: bookSet("bukhari"), hadith_number: "38"   },
       ],
     },
   },
@@ -124,8 +151,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 22, verse: 27 },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "1521" },
-        { book: "sahih-muslim",  hadith_number: "1218" },
+        { books: bookSet("bukhari"), hadith_number: "1521" },
+        { books: bookSet("muslim"), hadith_number: "1218" },
       ],
     },
   },
@@ -138,8 +165,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 30, verse: 21  },   // among His signs: spouses for tranquility
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "5063" },
-        { book: "sahih-muslim",  hadith_number: "1400" },
+        { books: bookSet("bukhari"), hadith_number: "5063" },
+        { books: bookSet("muslim"), hadith_number: "1400" },
       ],
     },
   },
@@ -152,9 +179,9 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 65, verse: 1   },   // surah at-talaq opening
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "5251" },
-        { book: "sahih-muslim",  hadith_number: "1471" },
-        { book: "abu-dawood",    hadith_number: "2178" },  // most hated halal
+        { books: bookSet("bukhari"), hadith_number: "5251" },
+        { books: bookSet("muslim"), hadith_number: "1471" },
+        { books: bookSet("abu-dawood"), hadith_number: "2178" },  // most hated halal
       ],
     },
   },
@@ -167,8 +194,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 4, verse: 176 },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "6732" },
-        { book: "sahih-muslim",  hadith_number: "1614" },
+        { books: bookSet("bukhari"), hadith_number: "6732" },
+        { books: bookSet("muslim"), hadith_number: "1614" },
       ],
     },
   },
@@ -182,8 +209,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 3, verse: 130 },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "2086" },
-        { book: "sahih-muslim",  hadith_number: "1597" },
+        { books: bookSet("bukhari"), hadith_number: "2086" },
+        { books: bookSet("muslim"), hadith_number: "1597" },
       ],
     },
   },
@@ -197,8 +224,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 66, verse: 8   },   // sincere repentance
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "6307" },
-        { book: "sahih-muslim",  hadith_number: "2702" },
+        { books: bookSet("bukhari"), hadith_number: "6307" },
+        { books: bookSet("muslim"), hadith_number: "2702" },
       ],
     },
   },
@@ -211,8 +238,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 49, verse: 15  },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "50" },   // gabriel hadith
-        { book: "sahih-muslim",  hadith_number: "8"  },
+        { books: bookSet("bukhari"), hadith_number: "50" },   // gabriel hadith
+        { books: bookSet("muslim"), hadith_number: "8"  },
       ],
     },
   },
@@ -227,8 +254,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 112, verse: 4   },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "7372" },
-        { book: "sahih-muslim",  hadith_number: "22"   },
+        { books: bookSet("bukhari"), hadith_number: "7372" },
+        { books: bookSet("muslim"), hadith_number: "22"   },
       ],
     },
   },
@@ -241,8 +268,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 31, verse: 13  },   // luqman: shirk is great wrong
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "6861" },
-        { book: "sahih-muslim",  hadith_number: "86"   },
+        { books: bookSet("bukhari"), hadith_number: "6861" },
+        { books: bookSet("muslim"), hadith_number: "86"   },
       ],
     },
   },
@@ -256,8 +283,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 2, verse: 157 },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "1469" },
-        { book: "sahih-muslim",  hadith_number: "1053" },
+        { books: bookSet("bukhari"), hadith_number: "1469" },
+        { books: bookSet("muslim"), hadith_number: "1053" },
       ],
     },
   },
@@ -270,8 +297,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 49, verse: 13  },   // most honored is most god-conscious
       ],
       hadith: [
-        { book: "sahih-muslim",  hadith_number: "2628" },
-        { book: "al-tirmidhi",   hadith_number: "1987" },  // taqwa wherever you are
+        { books: bookSet("muslim"), hadith_number: "2628" },
+        { books: bookSet("tirmidhi"), hadith_number: "1987" },  // taqwa wherever you are
       ],
     },
   },
@@ -284,8 +311,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 47, verse: 15  },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "6549" },
-        { book: "sahih-muslim",  hadith_number: "2824" },
+        { books: bookSet("bukhari"), hadith_number: "6549" },
+        { books: bookSet("muslim"), hadith_number: "2824" },
       ],
     },
   },
@@ -298,8 +325,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 66, verse: 6  },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "6562" },
-        { book: "sahih-muslim",  hadith_number: "2842" },
+        { books: bookSet("bukhari"), hadith_number: "6562" },
+        { books: bookSet("muslim"), hadith_number: "2842" },
       ],
     },
   },
@@ -312,8 +339,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 22, verse: 78  },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "2785" },
-        { book: "sahih-muslim",  hadith_number: "1876" },
+        { books: bookSet("bukhari"), hadith_number: "2785" },
+        { books: bookSet("muslim"), hadith_number: "1876" },
       ],
     },
   },
@@ -326,8 +353,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 5, verse: 4   },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "52"   },   // halal is clear, haram is clear
-        { book: "sahih-muslim",  hadith_number: "1599" },
+        { books: bookSet("bukhari"), hadith_number: "52"   },   // halal is clear, haram is clear
+        { books: bookSet("muslim"), hadith_number: "1599" },
       ],
     },
   },
@@ -340,8 +367,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 6, verse: 151 },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "52"   },
-        { book: "sahih-muslim",  hadith_number: "1599" },
+        { books: bookSet("bukhari"), hadith_number: "52"   },
+        { books: bookSet("muslim"), hadith_number: "1599" },
       ],
     },
   },
@@ -355,8 +382,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 46, verse: 15 },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "5971" },
-        { book: "sahih-muslim",  hadith_number: "2548" },
+        { books: bookSet("bukhari"), hadith_number: "5971" },
+        { books: bookSet("muslim"), hadith_number: "2548" },
       ],
     },
   },
@@ -370,8 +397,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 93, verse: 9   },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "6005" },
-        { book: "sahih-muslim",  hadith_number: "2983" },
+        { books: bookSet("bukhari"), hadith_number: "6005" },
+        { books: bookSet("muslim"), hadith_number: "2983" },
       ],
     },
   },
@@ -383,8 +410,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 39, verse: 60  },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "33"   },
-        { book: "sahih-muslim",  hadith_number: "59"   },
+        { books: bookSet("bukhari"), hadith_number: "33"   },
+        { books: bookSet("muslim"), hadith_number: "59"   },
       ],
     },
   },
@@ -395,8 +422,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 49, verse: 12 },
       ],
       hadith: [
-        { book: "sahih-muslim",  hadith_number: "2589" },
-        { book: "abu-dawood",    hadith_number: "4874" },
+        { books: bookSet("muslim"), hadith_number: "2589" },
+        { books: bookSet("abu-dawood"), hadith_number: "4874" },
       ],
     },
   },
@@ -409,8 +436,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 58, verse: 11  },
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "71"   },
-        { book: "sahih-muslim",  hadith_number: "2699" },
+        { books: bookSet("bukhari"), hadith_number: "71"   },
+        { books: bookSet("muslim"), hadith_number: "2699" },
       ],
     },
   },
@@ -421,8 +448,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 98, verse: 5 },   // sincerity in worship
       ],
       hadith: [
-        { book: "sahih-bukhari", hadith_number: "1"    },  // actions by intentions
-        { book: "sahih-muslim",  hadith_number: "1907" },
+        { books: bookSet("bukhari"), hadith_number: "1"    },  // actions by intentions
+        { books: bookSet("muslim"), hadith_number: "1907" },
       ],
     },
   },
@@ -434,8 +461,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 40, verse: 60  },   // call upon Me, I will respond
       ],
       hadith: [
-        { book: "al-tirmidhi",   hadith_number: "3370" },   // dua is the worship
-        { book: "sahih-muslim",  hadith_number: "2735" },
+        { books: bookSet("tirmidhi"), hadith_number: "3370" },   // dua is the worship
+        { books: bookSet("muslim"), hadith_number: "2735" },
       ],
     },
   },
@@ -446,8 +473,8 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 5, verse: 6 },
       ],
       hadith: [
-        { book: "sahih-muslim",  hadith_number: "224" },
-        { book: "sahih-bukhari", hadith_number: "159" },
+        { books: bookSet("muslim"), hadith_number: "224" },
+        { books: bookSet("bukhari"), hadith_number: "159" },
       ],
     },
   },
@@ -459,7 +486,7 @@ const RAW_TOPIC_ANCHORS: Array<{ keys: string[]; anchors: TopicAnchorSet }> = [
         { surah: 14, verse: 7   },
       ],
       hadith: [
-        { book: "sahih-muslim",  hadith_number: "2999" },
+        { books: bookSet("muslim"), hadith_number: "2999" },
       ],
     },
   },
@@ -500,7 +527,9 @@ export function lookupTopicAnchors(query: string): TopicAnchorSet | null {
       if (!seenQ.has(k)) { seenQ.add(k); quran.push(q); }
     }
     for (const h of hit.hadith) {
-      const k = `${h.book}:${h.hadith_number}`;
+      // Dedupe by (canonical first alias, hadith_number) — first alias
+      // is the canonical slug in BOOK_ALIASES, so it's stable.
+      const k = `${h.books[0]}:${h.hadith_number}`;
       if (!seenH.has(k)) { seenH.add(k); hadith.push(h); }
     }
   }
