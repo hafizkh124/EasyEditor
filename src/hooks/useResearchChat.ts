@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,14 +94,37 @@ export function useResearchChat(args: UseResearchChatArgs) {
       }
       // Bump the sessions-list version so the sidebar refetches.
       setSessionsVersion((v) => v + 1);
+      // Cross-component signal so the global `SidebarHistory` (rendered in
+      // AppLayout) picks up the new/updated session without a page reload.
+      window.dispatchEvent(new CustomEvent("session-history-changed", { detail: { section: "research" } }));
     } catch {
       if (import.meta.env.DEV) console.warn("[Research] research_sessions table not available yet");
     }
   }, [user, mode, islamicDomains]);
 
-  const loadLastSession = useCallback(async () => {
+  // If the URL has `?session=<id>`, the global SidebarHistory has navigated
+  // us into a specific past session — load THAT one instead of the latest.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedSessionId = searchParams.get("session");
+
+  const loadRequestedOrLatest = useCallback(async () => {
     if (!user) return;
     try {
+      if (requestedSessionId) {
+        const data = await loadResearchSession(requestedSessionId, user.id);
+        if (data) {
+          sessionIdRef.current = data.id;
+          setActiveSessionId(data.id);
+          setMessages(data.messages ?? []);
+          setCitations(data.citations ?? []);
+          return;
+        }
+        // Requested id wasn't found — fall through to "latest" so the page
+        // isn't stuck empty, and strip the bad param so reload doesn't loop.
+        const next = new URLSearchParams(searchParams);
+        next.delete("session");
+        setSearchParams(next, { replace: true });
+      }
       const data = await loadLatestResearchSession(user.id, mode);
       if (data) {
         sessionIdRef.current = data.id;
@@ -111,7 +135,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
     } catch {
       if (import.meta.env.DEV) console.warn("[Research] research_sessions table not available yet");
     }
-  }, [user, mode]);
+  }, [user, mode, requestedSessionId, searchParams, setSearchParams]);
 
   useEffect(() => {
     sessionIdRef.current = null;
@@ -119,8 +143,8 @@ export function useResearchChat(args: UseResearchChatArgs) {
     setMessages([]);
     setCitations([]);
     setSourcesReadyInfo(null);
-    loadLastSession();
-  }, [loadLastSession]);
+    loadRequestedOrLatest();
+  }, [loadRequestedOrLatest]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -291,6 +315,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
     setCitations([]);
     setSourcesReadyInfo(null);
     setSessionsVersion((v) => v + 1);
+    window.dispatchEvent(new CustomEvent("session-history-changed", { detail: { section: "research" } }));
     toast.success(t("research.chat_cleared"));
   };
 

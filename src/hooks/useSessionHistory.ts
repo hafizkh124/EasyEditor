@@ -26,10 +26,19 @@ interface UserSessionRow {
 // are re-run. Cast minimally here; lib-level escape hatch per Phase 1 decision.
 const fromUserSessions = () =>
   (supabase.from as unknown as (table: string) => ReturnType<typeof supabase.from>)("user_sessions");
+// Research has its own dedicated table (`research_sessions`) populated by
+// `src/lib/research/persistence.ts`. We unify it into the same generic
+// history UI by reading from there when `section === "research"`.
+const fromResearchSessions = () =>
+  (supabase.from as unknown as (table: string) => ReturnType<typeof supabase.from>)("research_sessions");
 
 /**
  * Generic, section-scoped history of the signed-in user's sessions.
- * Silently no-ops if the user_sessions table is missing (pre-migration).
+ * Silently no-ops if the underlying table is missing (pre-migration).
+ *
+ * For section === "research", reads from `research_sessions` (separate table
+ * owned by the Research chat hook) and projects each row into the common
+ * SessionHistoryItem shape.
  */
 export function useSessionHistory(section: SessionSection) {
   const { user } = useAuth();
@@ -41,6 +50,30 @@ export function useSessionHistory(section: SessionSection) {
     if (!user) { setItems([]); return; }
     setLoading(true);
     try {
+      if (section === "research") {
+        const { data, error } = await fromResearchSessions()
+          .select("id, title, mode, created_at, updated_at")
+          .eq("user_id", user.id)
+          .order("updated_at", { ascending: false });
+        if (error) {
+          if (import.meta.env.DEV) console.warn("[useSessionHistory] research_sessions:", error.message);
+          setAvailable(false);
+          setItems([]);
+          return;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rows = (data ?? []) as any[];
+        setItems(rows.map((r) => ({
+          id:         r.id,
+          section:    "research" as const,
+          title:      r.title ?? "Untitled",
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+          metadata:   { mode: r.mode },
+        })));
+        return;
+      }
+
       const { data, error } = await fromUserSessions()
         .select("id, section, title, created_at, updated_at, metadata")
         .eq("user_id", user.id)
@@ -62,9 +95,24 @@ export function useSessionHistory(section: SessionSection) {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
+  // Cross-component refresh signal. Pages (e.g. Research) dispatch
+  // `session-history-changed` after writing a new row so the sidebar
+  // updates without a manual reload.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ section?: SessionSection }>).detail;
+      if (!detail?.section || detail.section === section) {
+        fetchItems();
+      }
+    };
+    window.addEventListener("session-history-changed", handler);
+    return () => window.removeEventListener("session-history-changed", handler);
+  }, [fetchItems, section]);
+
   const rename = async (id: string, title: string) => {
     if (!user) return false;
-    const { error } = await fromUserSessions()
+    const table = section === "research" ? fromResearchSessions() : fromUserSessions();
+    const { error } = await table
       .update({ title })
       .eq("id", id)
       .eq("user_id", user.id);
@@ -75,7 +123,8 @@ export function useSessionHistory(section: SessionSection) {
 
   const remove = async (id: string) => {
     if (!user) return false;
-    const { error } = await fromUserSessions()
+    const table = section === "research" ? fromResearchSessions() : fromUserSessions();
+    const { error } = await table
       .delete()
       .eq("id", id)
       .eq("user_id", user.id);
