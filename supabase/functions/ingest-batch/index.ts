@@ -12,11 +12,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // SECURITY: Use a shared secret for ingest authorization
-    // instead of exposing the service role key to the client.
+    // SECURITY: shared secret authorization
     const ingestSecret = req.headers.get("x-ingest-secret");
     const sharedSecret = Deno.env.get("INGEST_SHARED_SECRET");
-
     if (!ingestSecret || ingestSecret !== sharedSecret) {
       console.error("Unauthorized ingest attempt");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -27,14 +25,12 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
-    // Internal client uses service role key for DB operations
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
 
     const body = await req.json();
-    const { rows, mode } = body;
+    const { rows } = body;
 
     if (!Array.isArray(rows) || rows.length === 0) {
       return new Response(JSON.stringify({ error: "rows array required" }), {
@@ -42,16 +38,12 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Protection against overly large payloads
     if (rows.length > 500) {
       return new Response(JSON.stringify({ error: "Max 500 rows per batch" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Validate required fields
     for (const row of rows) {
       if (!row.domain || !row.source_type || !row.content) {
         return new Response(
@@ -61,31 +53,41 @@ Deno.serve(async (req) => {
       }
     }
 
-    let result;
-    if (mode === "upsert") {
-      // For resume mode: upsert based on domain + source_type + title
-      result = await supabase
-        .from("scholarly_documents")
-        .upsert(rows, { onConflict: "domain,source_type,title" });
-    } else {
-      result = await supabase
-        .from("scholarly_documents")
-        .insert(rows);
-    }
+    // Duplicate-aware ingestion strategy:
+    //
+    // The scholarly_documents table now enforces unique indexes per domain
+    // (openiti_id, hadith collection+number, quran surah+verse, and a universal
+    // exact-content hash). A naive bulk INSERT would abort the entire batch on
+    // the first conflict, so we use a two-tier approach:
+    //
+    //   1. Try one bulk INSERT — fast path when no duplicates exist.
+    //   2. On conflict (23505), fall back to per-row INSERT so good rows still
+    //      land and we get accurate inserted / duplicate counts.
+    let inserted = 0;
+    let duplicates = 0;
+    let otherErrors = 0;
 
-    if (result.error) {
-      // If duplicate conflict, return partial success (200) or error
-      if (result.error.code === "23505") {
-        return new Response(
-          JSON.stringify({ ok: 0, duplicates: rows.length, error: result.error.message }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    const bulk = await supabase.from("scholarly_documents").insert(rows);
+
+    if (!bulk.error) {
+      inserted = rows.length;
+    } else if (bulk.error.code === "23505") {
+      // Per-row fallback to skip only the duplicates
+      for (const row of rows) {
+        const r = await supabase.from("scholarly_documents").insert([row]);
+        if (!r.error) inserted++;
+        else if (r.error.code === "23505") duplicates++;
+        else {
+          otherErrors++;
+          console.error("Row insert error:", r.error.message);
+        }
       }
-      throw result.error;
+    } else {
+      throw bulk.error;
     }
 
     return new Response(
-      JSON.stringify({ ok: rows.length, duplicates: 0 }),
+      JSON.stringify({ ok: inserted, duplicates, errors: otherErrors }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
