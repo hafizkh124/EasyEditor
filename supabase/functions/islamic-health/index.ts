@@ -237,6 +237,8 @@ serve(async (req) => {
       probeScraper("islamqa", `https://islamqa.info/en/search?q=${encodeURIComponent(PROBE_QUERY_EN)}`),
       probeScraper("islamweb", `https://www.islamweb.net/en/fatwa/search/?q=${encodeURIComponent(PROBE_QUERY_EN)}`),
       probeScraper("islamicurdubooks", `https://www.islamicurdubooks.com/hadith/search_urdu.php?q=${encodeURIComponent(PROBE_QUERY_AR)}`),
+      // ShamilaUrdu uses DuckDuckGo for URL discovery — probe DDG with a site: query.
+      probeScraper("shamilaurdu", `https://html.duckduckgo.com/html?q=${encodeURIComponent("site:shamilaurdu.com " + PROBE_QUERY_AR)}`),
     ]);
 
     return new Response(JSON.stringify({ results, generated_at: new Date().toISOString() }), {

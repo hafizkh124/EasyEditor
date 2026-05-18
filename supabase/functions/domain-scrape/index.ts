@@ -251,17 +251,91 @@ async function scrapeIslamWeb(query: string): Promise<IslamicResult[]> {
 // ── Dar-Alifta.org — removed per Phase 7.5 doctrine (persistent timeouts).
 //    Reinstate scrapeDarAlifta here if the upstream becomes reliable again.
 
-// ── ShamilaUrdu.com (Phase 8.3) — DEFERRED ────────────────────────────────────
-// Public-facing pages are static (URL patterns like /hadith/<slug>/<N>/ and
-// /book/<slug>/<page>/), but the search endpoint /?s=… rejects bot-shaped
-// requests with `SECURITY_ERROR_BAD_INPUT`. Re-enabling this scraper requires
-// either:
-//   (a) discovering an unprotected search endpoint via browser DevTools, OR
-//   (b) using a search-engine fallback (DuckDuckGo `site:shamilaurdu.com` query)
-//       to find result URLs and then fetching the static pages directly.
-// Leave the stub in place so the wiring is obvious when we come back to it.
-async function scrapeShamilaUrdu(_query: string): Promise<IslamicResult[]> {
-  return [];
+// ── ShamilaUrdu.com (Phase 10.4.b) ────────────────────────────────────────────
+// The native search endpoint /?s=… rejects bot-shaped requests with
+// SECURITY_ERROR_BAD_INPUT. Workaround: discover URLs via DuckDuckGo's bot-
+// friendly HTML endpoint with `site:shamilaurdu.com`, then fetch the static
+// detail pages directly (those are NOT behind the security guard — only the
+// search endpoint is). Static URL patterns: /hadith/<slug>/<N>/ , /book/<slug>/<page>/.
+async function scrapeShamilaUrdu(query: string): Promise<IslamicResult[]> {
+  const base = "https://shamilaurdu.com";
+  // DuckDuckGo HTML endpoint — bot-friendly, no JS required.
+  const ddgUrl = `https://html.duckduckgo.com/html?q=${encodeURIComponent(
+    `site:shamilaurdu.com ${query}`,
+  )}`;
+  const ddgHtml = await fetchWithTimeout(ddgUrl, 12_000);
+  if (!ddgHtml) return [];
+
+  // DuckDuckGo wraps each result link in `<a class="result__a" href="...">`.
+  // The href is sometimes a redirect (`/l/?uddg=…`) — handle both shapes.
+  const linkSet = new Set<string>();
+  const reA = /href="(https?:\/\/(?:www\.)?shamilaurdu\.com\/[^"]+)"/gi;
+  const reB = /uddg=([^&"]+)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = reA.exec(ddgHtml)) !== null) linkSet.add(m[1]);
+  while ((m = reB.exec(ddgHtml)) !== null) {
+    try {
+      const decoded = decodeURIComponent(m[1]);
+      if (decoded.startsWith("http") && decoded.includes("shamilaurdu.com")) {
+        linkSet.add(decoded);
+      }
+    } catch { /* skip malformed */ }
+  }
+
+  // Keep only the content-detail patterns; drop nav/homepage/category hits.
+  const detailPattern = /shamilaurdu\.com\/(?:hadith|book|quran)\//i;
+  const links = [...linkSet].filter((u) => detailPattern.test(u)).slice(0, 3);
+  if (links.length === 0) return [];
+
+  const results: IslamicResult[] = [];
+  for (const link of links) {
+    const pageHtml = await fetchWithTimeout(link, 10_000);
+    if (!pageHtml) continue;
+
+    // ─ Title from <h1> ────────────────────────────────────────────────
+    const h1 = pageHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "";
+    const title = stripHtml(h1).slice(0, 200);
+
+    // ─ Pull all <p>, <div>, <span> blocks containing Arabic/Urdu text ─
+    const bodyParts: string[] = [];
+    const blockRe = /<(?:p|div|span)[^>]*>([\s\S]*?)<\/(?:p|div|span)>/gi;
+    let mm: RegExpExecArray | null;
+    while ((mm = blockRe.exec(pageHtml)) !== null && bodyParts.length < 20) {
+      const txt = stripHtml(mm[1]);
+      if (txt.length >= 30 && /[؀-ۿ]/.test(txt)) {
+        bodyParts.push(txt);
+      }
+    }
+    const body = [...new Set(bodyParts)].join("\n\n").slice(0, 3_500);
+    if (!body) continue;
+
+    // ─ Try to read collection slug + hadith number out of URL path ────
+    // Patterns: /hadith/bukhari/123/  or  /book/<slug>/<page>/
+    const pathMatch = link.match(/shamilaurdu\.com\/(hadith|book|quran)\/([^/]+)\/(\d+)/i);
+    const section = pathMatch?.[1] ?? "";
+    const slug    = pathMatch?.[2] ?? "";
+    const num     = pathMatch?.[3] ?? "";
+
+    results.push({
+      domain: "shamilaurdu",
+      content: title ? `**${title}**\n\n${body}` : body,
+      citation_ref: {
+        book:          slug || section || "shamilaurdu",
+        hadith_number: section === "hadith" ? num : undefined,
+        page:          section === "book"   ? Number(num) : undefined,
+        surah_number:  section === "quran"  ? Number(num) : undefined,
+        url:           link,
+      } as any,
+      language: "ur",
+    });
+    // gentle pacing to avoid tripping any rate-limit on the upstream
+    if (results.length < links.length) await new Promise((r) => setTimeout(r, 250));
+  }
+
+  // Suppress unused parameter warning when `base` isn't referenced.
+  void base;
+
+  return results;
 }
 
 // ── IslamicUrduBooks.com (Phase 8.2) ─────────────────────────────────────────
@@ -372,6 +446,7 @@ serve(async (req) => {
     if (!selectedDomains || selectedDomains.includes("islamqa"))           scrapers.push(scrapeIslamQA(query));
     if (!selectedDomains || selectedDomains.includes("islamweb"))          scrapers.push(scrapeIslamWeb(query));
     if (!selectedDomains || selectedDomains.includes("islamicurdubooks")) scrapers.push(scrapeIslamicUrduBooks(query));
+    if (!selectedDomains || selectedDomains.includes("shamilaurdu"))      scrapers.push(scrapeShamilaUrdu(query));
 
     const settled = await Promise.allSettled(scrapers);
     const results: IslamicResult[] = [];

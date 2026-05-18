@@ -10,6 +10,7 @@ import type { ResearchAssistMode } from "@/lib/prompts";
 import {
   upsertResearchSession,
   loadLatestResearchSession,
+  loadResearchSession,
   deleteResearchSession,
   incrementQueryCount,
 } from "@/lib/research/persistence";
@@ -59,6 +60,12 @@ export function useResearchChat(args: UseResearchChatArgs) {
   const [sourcesReadyInfo, setSourcesReadyInfo] = useState<{ count: number; domains: string[] } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef<string | null>(null);
+  // Mirror of sessionIdRef as state so the sidebar can re-render and highlight
+  // the active session. The ref is the source of truth for write paths
+  // (handleSendQuery / handleClearChat); the state just tracks it for reads.
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  // Bump this to trigger the sessions list to refetch (after save/delete).
+  const [sessionsVersion, setSessionsVersion] = useState(0);
 
   const lastAssistantIdx = [...messages].reverse().findIndex((m) => m.role === "assistant");
   const lastAssistantMessage = lastAssistantIdx >= 0 ? messages[messages.length - 1 - lastAssistantIdx] : null;
@@ -80,7 +87,12 @@ export function useResearchChat(args: UseResearchChatArgs) {
         citations: updatedCitations,
         selectedDomains: mode === "islamic" ? islamicDomains : [],
       });
-      if (newId && !sessionIdRef.current) sessionIdRef.current = newId;
+      if (newId && !sessionIdRef.current) {
+        sessionIdRef.current = newId;
+        setActiveSessionId(newId);
+      }
+      // Bump the sessions-list version so the sidebar refetches.
+      setSessionsVersion((v) => v + 1);
     } catch {
       if (import.meta.env.DEV) console.warn("[Research] research_sessions table not available yet");
     }
@@ -92,6 +104,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
       const data = await loadLatestResearchSession(user.id, mode);
       if (data) {
         sessionIdRef.current = data.id;
+        setActiveSessionId(data.id);
         setMessages(data.messages ?? []);
         setCitations(data.citations ?? []);
       }
@@ -102,6 +115,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
 
   useEffect(() => {
     sessionIdRef.current = null;
+    setActiveSessionId(null);
     setMessages([]);
     setCitations([]);
     setSourcesReadyInfo(null);
@@ -272,10 +286,59 @@ export function useResearchChat(args: UseResearchChatArgs) {
       } catch { /* table may not be migrated */ }
     }
     sessionIdRef.current = null;
+    setActiveSessionId(null);
     setMessages([]);
     setCitations([]);
     setSourcesReadyInfo(null);
+    setSessionsVersion((v) => v + 1);
     toast.success(t("research.chat_cleared"));
+  };
+
+  // Phase 10.5: start a fresh chat without deleting the current session.
+  const handleNewChat = () => {
+    sessionIdRef.current = null;
+    setActiveSessionId(null);
+    setMessages([]);
+    setCitations([]);
+    setSourcesReadyInfo(null);
+  };
+
+  // Phase 10.5: load a specific past session into the active chat (sidebar click).
+  const handleLoadSession = async (id: string) => {
+    if (!user) return;
+    try {
+      const data = await loadResearchSession(id, user.id);
+      if (!data) {
+        toast.error(t("research.session_not_found") || "Session not found");
+        return;
+      }
+      sessionIdRef.current = data.id;
+      setActiveSessionId(data.id);
+      setMessages(data.messages ?? []);
+      setCitations(data.citations ?? []);
+      setSourcesReadyInfo(null);
+    } catch {
+      toast.error(t("research.session_load_failed") || "Failed to load session");
+    }
+  };
+
+  // Phase 10.5: delete a specific session from the sidebar (not necessarily the active one).
+  const handleDeleteSession = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteResearchSession(id, user.id);
+      // If we deleted the currently-active session, reset the chat too.
+      if (sessionIdRef.current === id) {
+        sessionIdRef.current = null;
+        setActiveSessionId(null);
+        setMessages([]);
+        setCitations([]);
+        setSourcesReadyInfo(null);
+      }
+      setSessionsVersion((v) => v + 1);
+    } catch {
+      toast.error(t("research.session_delete_failed") || "Failed to delete session");
+    }
   };
 
   return {
@@ -293,5 +356,11 @@ export function useResearchChat(args: UseResearchChatArgs) {
     handleRefine,
     handleCopyOutput,
     handleClearChat,
+    // Phase 10.5 sidebar API
+    activeSessionId,
+    sessionsVersion,
+    handleNewChat,
+    handleLoadSession,
+    handleDeleteSession,
   };
 }
