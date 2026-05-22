@@ -61,7 +61,7 @@ export async function logActivity(
     if (tokensSpent != null && tokensSpent > 0) {
       row.tokens_spent = tokensSpent;
     }
-    const { error } = await supabase.from("activity_log").insert(row);
+    const { error } = await supabase.from("activity_log").insert(row as never);
     // If table doesn't exist yet, fall through to localStorage
     if (!error) return;
   }

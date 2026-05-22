@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useLimitReached } from "@/hooks/useLimitReached";
-import { useCanAfford } from "@/hooks/useTokenBalance";
+
 import TokenCostBadge from "@/components/TokenCostBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -327,9 +327,8 @@ const Speak = () => {
   /* eslint-disable no-unreachable */
   const isRtlInput = selectedPersona.voiceLang === "ur" || selectedPersona.voiceLang === "ar";
   const showUsageMeter = charLimit > 0;
-  const usagePercent = showUsageMeter
-    ? Math.min((ttsCharsUsed / charLimit) * 100, 100)
-    : 0;
+  void showUsageMeter;
+  void ttsCharsUsed;
 
   return (
     <AppLayout>

@@ -530,7 +530,7 @@ export function useAdminUsers(enabled: boolean) {
     const actionType = amount >= 0 ? "admin_adjust" : "admin_adjust";
     const source = "topup"; // Manual adjustments go to topup pool (persistent)
 
-    const { data, error } = await supabase.rpc("credit_tokens", {
+    const { error } = await supabase.rpc("credit_tokens", {
       p_user_id: userId,
       p_amount: amount,
       p_source: source,
