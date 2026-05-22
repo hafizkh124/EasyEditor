@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
+import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +43,7 @@ serve(async (req) => {
       return rateLimitResponse(corsHeaders);
     }
 
-    // Check subscription limits
+    // Check subscription exists
     const { data: sub } = await supabase
       .from("subscriptions")
       .select("tier, transcription_seconds_used, transcription_limit")
@@ -69,11 +70,14 @@ serve(async (req) => {
       );
     }
 
-    if (sub.tier === "free" && sub.transcription_seconds_used + duration > sub.transcription_limit) {
-      return new Response(
-        JSON.stringify({ error: "Free tier limit reached. Upgrade to Pro for unlimited access." }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Token-based quota check: 10 tokens per minute (round up)
+    const tokenCost = calculateCost("stt", Math.ceil(duration / 60));
+    const tokenResult = await checkAndDeductTokens(
+      supabase, user.id, tokenCost, "stt",
+      `${(duration / 60).toFixed(1)} min transcription`,
+    );
+    if (!tokenResult.ok) {
+      return insufficientTokensResponse(tokenResult, corsHeaders);
     }
 
     // Call Lovable AI Gateway to refine/process the audio transcription
@@ -144,6 +148,9 @@ Only output the transcription text, nothing else — no introductions, no explan
     });
 
     if (!aiResponse.ok) {
+      // Refund tokens on AI failure
+      await refundTokens(supabase, user.id, tokenCost, "stt", "AI gateway error");
+
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later." }), {
           status: 429,
@@ -167,15 +174,16 @@ Only output the transcription text, nothing else — no introductions, no explan
     const aiData = await aiResponse.json();
     const text = aiData.choices?.[0]?.message?.content || "";
 
-    // Update usage
-    await supabase
+    // Update legacy usage counter (backward compat analytics)
+    supabase
       .from("subscriptions")
       .update({
         transcription_seconds_used: sub.transcription_seconds_used + duration,
       })
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .then(() => {});
 
-    return new Response(JSON.stringify({ text }), {
+    return new Response(JSON.stringify({ text, tokens_used: tokenCost }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

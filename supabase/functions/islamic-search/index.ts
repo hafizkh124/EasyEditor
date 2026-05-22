@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
+import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 import { expandQueryTerms } from "../_shared/bilingualMap.ts";
 import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
@@ -155,7 +156,7 @@ serve(async (req) => {
       return rateLimitResponse(corsHeaders);
     }
 
-    // --- Subscription check ---
+    // --- Subscription tier (for domain access stratification) ---
     const { data: sub } = await supabase
       .from("subscriptions")
       .select("tier, islamic_queries_used, islamic_queries_limit")
@@ -163,14 +164,6 @@ serve(async (req) => {
       .single();
 
     const tier = sub?.tier ?? "free";
-    const islamicUsed = sub?.islamic_queries_used ?? 0;
-    const islamicLimit = sub?.islamic_queries_limit ?? 0;
-
-    if (islamicLimit > 0 && islamicUsed >= islamicLimit) {
-      return new Response(JSON.stringify({ error: "Islamic research query limit reached. Please upgrade your plan." }), {
-        status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const { query, selectedDomains, chatHistory, strictMode } = await req.json();
 
@@ -178,6 +171,16 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Query is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Token-based quota check: 40 tokens per Islamic research query
+    const tokenCost = calculateCost("islamic", 1);
+    const tokenResult = await checkAndDeductTokens(
+      supabase, user.id, tokenCost, "islamic",
+      `Islamic query: ${query.slice(0, 60)}`,
+    );
+    if (!tokenResult.ok) {
+      return insufficientTokensResponse(tokenResult, corsHeaders);
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -477,6 +480,9 @@ serve(async (req) => {
     });
 
     if (!geminiRes.ok) {
+      // Refund tokens — AI call failed
+      await refundTokens(supabase, user.id, tokenCost, "islamic", "Gemini API error");
+
       const errTxt = await geminiRes.text().catch(() => "");
       if (geminiRes.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
@@ -510,14 +516,38 @@ serve(async (req) => {
       // Proxy Gemini SSE
       const reader = geminiRes.body!.getReader();
       let done = false;
-      while (!done) {
-        const { value, done: streamDone } = await reader.read();
-        done = streamDone;
-        if (value) await writer.write(value);
+      let streamFailed = false;
+      try {
+        while (!done) {
+          const { value, done: streamDone } = await reader.read();
+          done = streamDone;
+          if (value) await writer.write(value);
+        }
+      } catch (streamErr) {
+        console.error("[islamic-search] Stream error:", streamErr);
+        streamFailed = true;
       }
 
-      // On stream end: increment islamic_queries_used atomically
-      supabase.rpc("increment_islamic_queries", { p_user_id: user.id }).catch(console.error);
+      if (streamFailed) {
+        // Refund tokens — AI stream failed
+        await refundTokens(supabase, user.id, tokenCost, "islamic", "Gemini stream error");
+      } else {
+        // Legacy analytics: update islamic_queries_used (non-blocking, backward compat)
+        supabase
+          .from("subscriptions")
+          .select("islamic_queries_used")
+          .eq("user_id", user.id)
+          .single()
+          .then(({ data: sub }) => {
+            if (sub) {
+              supabase
+                .from("subscriptions")
+                .update({ islamic_queries_used: (sub.islamic_queries_used ?? 0) + 1 })
+                .eq("user_id", user.id)
+                .then(() => {});
+            }
+          });
+      }
 
       await writer.close();
     })();
@@ -527,6 +557,13 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("islamic-search error:", e);
+    // Best-effort refund if tokens were already deducted
+    try {
+      if (typeof tokenCost !== "undefined" && typeof user !== "undefined") {
+        const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        await refundTokens(supabase, user.id, tokenCost, "islamic", "Unhandled error");
+      }
+    } catch (_) { /* ignore refund errors in crash path */ }
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

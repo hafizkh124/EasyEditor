@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           id: string
           label: string
+          tokens_spent: number
           type: string
           user_id: string
         }
@@ -26,6 +27,7 @@ export type Database = {
           created_at?: string
           id?: string
           label: string
+          tokens_spent?: number
           type: string
           user_id: string
         }
@@ -33,6 +35,7 @@ export type Database = {
           created_at?: string
           id?: string
           label?: string
+          tokens_spent?: number
           type?: string
           user_id?: string
         }
@@ -491,6 +494,102 @@ export type Database = {
         }
         Relationships: []
       }
+      token_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          amount: number
+          balance_after: number
+          action_type: string
+          action_detail: string | null
+          source: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          amount: number
+          balance_after: number
+          action_type: string
+          action_detail?: string | null
+          source?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          amount?: number
+          balance_after?: number
+          action_type?: string
+          action_detail?: string | null
+          source?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      token_wallets: {
+        Row: {
+          user_id: string
+          monthly_balance: number
+          topup_balance: number
+          monthly_limit: number
+          updated_at: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          monthly_balance?: number
+          topup_balance?: number
+          monthly_limit?: number
+          updated_at?: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          monthly_balance?: number
+          topup_balance?: number
+          monthly_limit?: number
+          updated_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      topup_requests: {
+        Row: {
+          id: string
+          user_id: string
+          token_amount: number
+          pkr_amount: number
+          payment_reference: string | null
+          status: string
+          reviewed_by: string | null
+          reviewed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          token_amount: number
+          pkr_amount: number
+          payment_reference?: string | null
+          status?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          token_amount?: number
+          pkr_amount?: number
+          payment_reference?: string | null
+          status?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -568,6 +667,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_token_balance: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      credit_tokens: {
+        Args: {
+          p_user_id: string
+          p_amount: number
+          p_source: string
+          p_action_type: string
+          p_detail?: string
+        }
+        Returns: Json
+      }
+      deduct_tokens: {
+        Args: {
+          p_user_id: string
+          p_amount: number
+          p_action_type: string
+          p_action_detail?: string
+        }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -631,6 +753,10 @@ export type Database = {
         }[]
       }
       reset_monthly_quotas: { Args: never; Returns: number }
+      reset_monthly_tokens: {
+        Args: { p_bonus_rate?: number }
+        Returns: number
+      }
       scholarly_documents_stats: {
         Args: never
         Returns: {

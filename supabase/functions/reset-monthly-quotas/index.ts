@@ -1,8 +1,12 @@
 /**
  * reset-monthly-quotas — Scheduled edge function
  *
- * Resets all per-user usage counters (STT, TTS, OCR, Research, Islamic)
- * to 0 on the 1st of each month at midnight UTC.
+ * Token system (v3): Calls `reset_monthly_tokens` RPC which:
+ *   1. Calculates 15% bonus from unused monthly tokens → topup pool
+ *   2. Resets monthly_balance to monthly_limit for all active paid users
+ *   3. Resets legacy *_used columns to 0 for backward compat analytics
+ *
+ * Also purges expired cache entries.
  *
  * Schedule via Supabase Dashboard → Edge Functions → Schedule:
  *   Cron: 0 0 1 * *  (midnight UTC on 1st of every month)
@@ -43,19 +47,30 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // ── 1. Reset all usage counters via RPC ───────────────────────────────────
-    const { data: resetCount, error: resetErr } = await supabase
-      .rpc("reset_monthly_quotas");
+    // ── 1. Reset monthly tokens + calculate bonuses ──────────────────────────
+    // The RPC handles: bonus calculation (15% of unused monthly → topup),
+    // monthly_balance reset to monthly_limit, and legacy *_used column resets.
+    const { data: tokenResetCount, error: tokenResetErr } = await supabase
+      .rpc("reset_monthly_tokens", { p_bonus_rate: 0.15 });
 
-    if (resetErr) {
-      console.error("[reset-monthly-quotas] reset_monthly_quotas RPC error:", resetErr);
+    if (tokenResetErr) {
+      console.error("[reset-monthly-quotas] reset_monthly_tokens RPC error:", tokenResetErr);
       return new Response(
-        JSON.stringify({ error: "Failed to reset quotas", details: resetErr.message }),
+        JSON.stringify({ error: "Failed to reset monthly tokens", details: tokenResetErr.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // ── 2. Purge expired cache entries ────────────────────────────────────────
+    // ── 2. Also call legacy reset_monthly_quotas for any remaining old counters
+    const { data: legacyResetCount, error: legacyResetErr } = await supabase
+      .rpc("reset_monthly_quotas");
+
+    if (legacyResetErr) {
+      // Non-fatal: token reset already succeeded
+      console.warn("[reset-monthly-quotas] legacy reset_monthly_quotas warning:", legacyResetErr.message);
+    }
+
+    // ── 3. Purge expired cache entries ────────────────────────────────────────
     const { data: purgeCount, error: purgeErr } = await supabase
       .rpc("purge_expired_cache");
 
@@ -65,10 +80,11 @@ serve(async (req) => {
     }
 
     const result = {
-      success:         true,
-      users_reset:     resetCount ?? 0,
-      cache_purged:    purgeCount ?? 0,
-      reset_at:        new Date().toISOString(),
+      success:              true,
+      token_users_reset:    tokenResetCount ?? 0,
+      legacy_users_reset:   legacyResetCount ?? 0,
+      cache_purged:         purgeCount ?? 0,
+      reset_at:             new Date().toISOString(),
     };
 
     console.log("[reset-monthly-quotas] Completed:", result);

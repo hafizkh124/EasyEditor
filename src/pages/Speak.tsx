@@ -6,6 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useLimitReached } from "@/hooks/useLimitReached";
+import { useCanAfford } from "@/hooks/useTokenBalance";
+import TokenCostBadge from "@/components/TokenCostBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -345,21 +347,13 @@ const Speak = () => {
           )}
         </div>
 
-        {/* Usage meter (any metered tier) */}
-        {showUsageMeter && (
-          <Card>
-            <CardContent className="pt-4 space-y-2">
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>{t("tts.chars_used")}</span>
-                <span>{ttsCharsUsed.toLocaleString()} / {charLimit.toLocaleString()}</span>
-              </div>
-              <Progress value={usagePercent} className="h-2" />
-              {usagePercent > 80 && (
-                <p className="text-xs text-destructive">{t("tts.limit_warning")}</p>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        {/* Token cost display */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <TokenCostBadge action="tts_google" quantity={Math.max(1, Math.ceil(text.length / 1000))} />
+          {voiceMode === "cloned" && (
+            <TokenCostBadge action="tts_elevenlabs" quantity={Math.max(1, Math.ceil(text.length / 1000))} className="border-amber-300" />
+          )}
+        </div>
 
         <VoiceSelector
           personas={personas}

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
+import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -215,25 +216,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Subscription check
-    const { data: sub, error: subError } = await supabase
-      .from("subscriptions")
-      .select("tier, tts_characters_used, tts_character_limit")
-      .eq("user_id", user.id)
-      .single();
-
-    if (subError || !sub) {
-      return new Response(JSON.stringify({ error: "Subscription not found" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const charCount = text.length;
-    const limit = sub.tier === "pro" ? 999999 : sub.tts_character_limit;
-    if (sub.tts_characters_used + charCount > limit && sub.tier === "free") {
-      return new Response(JSON.stringify({ error: "TTS character limit reached" }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+
+    // Token-based quota check: 50 tokens per 1K characters (Google TTS)
+    const tokenCost = calculateCost("tts_google", Math.ceil(charCount / 1000));
+    const tokenResult = await checkAndDeductTokens(
+      supabase, user.id, tokenCost, "tts_google",
+      `${charCount} chars Google TTS`,
+    );
+    if (!tokenResult.ok) {
+      return insufficientTokensResponse(tokenResult, corsHeaders);
     }
 
     const pid = personaId || "fatima";
@@ -256,6 +248,9 @@ Deno.serve(async (req) => {
       const cloudResult = await tryGoogleCloudTts(text, pid, apiKey);
 
       if (!cloudResult.ok) {
+        // Refund tokens — both engines failed
+        await refundTokens(supabase, user.id, tokenCost, "tts_google", "All TTS engines failed");
+
         console.error(`[TTS] All engines failed. Gemini: ${geminiResult.error}. Cloud: ${cloudResult.error}`);
         return new Response(
           JSON.stringify({
@@ -270,14 +265,24 @@ Deno.serve(async (req) => {
       wavFile = cloudResult.wavBytes;
     }
 
-    // Update usage
-    await supabase
+    // Update legacy usage counter (backward compat analytics)
+    supabase
       .from("subscriptions")
-      .update({ tts_characters_used: sub.tts_characters_used + charCount })
-      .eq("user_id", user.id);
+      .select("tts_characters_used")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data: sub }) => {
+        if (sub) {
+          supabase
+            .from("subscriptions")
+            .update({ tts_characters_used: (sub.tts_characters_used ?? 0) + charCount })
+            .eq("user_id", user.id)
+            .then(() => {});
+        }
+      });
 
     return new Response(new Uint8Array(wavFile) as unknown as BodyInit, {
-      headers: { ...corsHeaders, "Content-Type": "audio/wav", "Content-Disposition": "inline" },
+      headers: { ...corsHeaders, "Content-Type": "audio/wav", "Content-Disposition": "inline", "X-Tokens-Used": String(tokenCost) },
     });
   } catch (error) {
     console.error("Edge function error:", error);

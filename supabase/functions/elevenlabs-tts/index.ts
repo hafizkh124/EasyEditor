@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,27 +54,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check subscription limits
-    const { data: sub, error: subError } = await supabase
-      .from("subscriptions")
-      .select("tier, tts_characters_used, tts_character_limit")
-      .eq("user_id", userId)
-      .single();
-
-    if (subError || !sub) {
-      return new Response(
-        JSON.stringify({ error: "Subscription not found" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const charCount = text.length;
-    const limit = sub.tier === "pro" ? 999999 : sub.tts_character_limit;
-    if (sub.tts_characters_used + charCount > limit && sub.tier === "free") {
-      return new Response(
-        JSON.stringify({ error: "TTS character limit reached" }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+
+    // Token-based quota check: 500 tokens per 1K characters (ElevenLabs premium)
+    const tokenCost = calculateCost("tts_elevenlabs", Math.ceil(charCount / 1000));
+    const tokenResult = await checkAndDeductTokens(
+      supabase, userId, tokenCost, "tts_elevenlabs",
+      `${charCount} chars ElevenLabs TTS`,
+    );
+    if (!tokenResult.ok) {
+      return insufficientTokensResponse(tokenResult, corsHeaders);
     }
 
     // Call ElevenLabs TTS API
@@ -100,6 +90,9 @@ Deno.serve(async (req) => {
     );
 
     if (!elevenLabsResponse.ok) {
+      // Refund tokens on ElevenLabs failure
+      await refundTokens(supabase, userId, tokenCost, "tts_elevenlabs", "ElevenLabs API error");
+
       const errBody = await elevenLabsResponse.text();
       console.error("ElevenLabs API error:", elevenLabsResponse.status, errBody);
       return new Response(
@@ -108,11 +101,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Update usage
-    await supabase
+    // Update legacy usage counter (backward compat analytics)
+    supabase
       .from("subscriptions")
-      .update({ tts_characters_used: sub.tts_characters_used + charCount })
-      .eq("user_id", userId);
+      .select("tts_characters_used")
+      .eq("user_id", userId)
+      .single()
+      .then(({ data: sub }) => {
+        if (sub) {
+          supabase
+            .from("subscriptions")
+            .update({ tts_characters_used: (sub.tts_characters_used ?? 0) + charCount })
+            .eq("user_id", userId)
+            .then(() => {});
+        }
+      });
 
     const audioBuffer = await elevenLabsResponse.arrayBuffer();
 
@@ -121,6 +124,7 @@ Deno.serve(async (req) => {
         ...corsHeaders,
         "Content-Type": "audio/mpeg",
         "Content-Disposition": "inline",
+        "X-Tokens-Used": String(tokenCost),
       },
     });
   } catch (error) {

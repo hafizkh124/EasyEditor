@@ -16,6 +16,7 @@ import { useApproval } from "@/hooks/useApproval";
 import { getLifecycleInfo, formatLifecycleDate } from "@/lib/subscriptionLifecycle";
 import { WHATSAPP_CONTACT_URL } from "@/lib/paymentAccounts";
 import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
+import TokenMeter from "@/components/TokenMeter";
 
 const Dashboard = () => {
   useSeo({ title: "Dashboard — Al-Ulama Easy Editor", description: "Your Al-Ulama Easy Editor home: recent activity, usage limits and shortcuts to every tool.", path: "/dashboard" });
@@ -137,7 +138,7 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Usage Card */}
+        {/* Token Usage Card */}
         {subscription && (
           <Card>
             <CardHeader className="pb-2">
@@ -149,38 +150,7 @@ const Dashboard = () => {
             <CardContent className="space-y-4">
               {isUnlimited ? null : (
                 <>
-                  {/* STT */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between gap-2 text-xs text-muted-foreground">
-                      <span className="truncate">{t("dashboard.stt_label")}</span>
-                      <span className="flex-shrink-0 text-right">{subscription.transcription_seconds_used} / {subscription.transcription_limit}s</span>
-                    </div>
-                    <Progress value={Math.min((subscription.transcription_seconds_used / subscription.transcription_limit) * 100, 100)} className="h-1.5" />
-                  </div>
-                  {/* TTS */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between gap-2 text-xs text-muted-foreground">
-                      <span className="truncate">{t("dashboard.tts_label")}</span>
-                      <span className="flex-shrink-0 text-right">{subscription.tts_characters_used.toLocaleString()} / {subscription.tts_character_limit.toLocaleString()}</span>
-                    </div>
-                    <Progress value={Math.min((subscription.tts_characters_used / subscription.tts_character_limit) * 100, 100)} className="h-1.5" />
-                  </div>
-                  {/* OCR */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between gap-2 text-xs text-muted-foreground">
-                      <span className="truncate">{t("dashboard.ocr_label")}</span>
-                      <span className="flex-shrink-0 text-right">{subscription.ocr_pages_used} / {subscription.ocr_pages_limit} {t("dashboard.pages_used")}</span>
-                    </div>
-                    <Progress value={Math.min((subscription.ocr_pages_used / subscription.ocr_pages_limit) * 100, 100)} className="h-1.5" />
-                  </div>
-                  {/* Research */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between gap-2 text-xs text-muted-foreground">
-                      <span className="truncate">{t("dashboard.research_label")}</span>
-                      <span className="flex-shrink-0 text-right">{subscription.research_queries_used} / {subscription.research_queries_limit} {t("dashboard.queries_used")}</span>
-                    </div>
-                    <Progress value={Math.min((subscription.research_queries_used / subscription.research_queries_limit) * 100, 100)} className="h-1.5" />
-                  </div>
+                  <TokenMeter />
                   {(() => {
                     const upgradeKey = getUpgradeLabelKey(subscription.tier);
                     return upgradeKey ? (
@@ -265,11 +235,20 @@ const Dashboard = () => {
                   <div className={`rounded p-1 ${entry.type === "tts" ? "bg-primary/10" : "bg-accent"}`}>
                     {entry.type === "tts" ? (
                       <Volume2 className="h-3.5 w-3.5 text-primary" />
+                    ) : entry.type === "stt" ? (
+                      <Mic className="h-3.5 w-3.5 text-accent-foreground" />
+                    ) : entry.type === "research" || entry.type === "islamic" ? (
+                      <BookOpen className="h-3.5 w-3.5 text-accent-foreground" />
                     ) : (
                       <Image className="h-3.5 w-3.5 text-accent-foreground" />
                     )}
                   </div>
                   <span className="text-foreground truncate flex-1">{entry.label}</span>
+                  {entry.tokensSpent != null && entry.tokensSpent > 0 && (
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      {entry.tokensSpent} tokens
+                    </span>
+                  )}
                   <span className="text-xs text-muted-foreground whitespace-nowrap">{formatTime(entry.timestamp)}</span>
                 </div>
               ))}

@@ -115,6 +115,10 @@ export async function loadResearchSession(
 
 type IncrementRpc = "increment_research_queries" | "increment_islamic_queries";
 
+/**
+ * @deprecated Token deduction is now handled server-side in edge functions.
+ * Kept for backward compatibility — do not call from new code.
+ */
 export async function incrementQueryCount(
   rpc: IncrementRpc,
   userId: string,

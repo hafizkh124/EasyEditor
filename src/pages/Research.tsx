@@ -3,6 +3,7 @@ import { useSeo } from "@/hooks/useSeo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useLimitReached } from "@/hooks/useLimitReached";
+import { useCanAfford } from "@/hooks/useTokenBalance";
 import { useLanguage } from "@/contexts/LanguageContext";
 import AppLayout from "@/components/AppLayout";
 import SourcesPanel from "@/components/research/SourcesPanel";
@@ -42,15 +43,19 @@ const Research = () => {
   const {
     used: researchQueriesUsed,
     limit: researchQueriesLimitRaw,
-    reached: researchLimitReached,
+    reached: legacyResearchLimitReached,
   } = useLimitReached("research");
   const researchQueriesLimit = researchQueriesLimitRaw || 3;
+  const { canAfford: canAffordResearch } = useCanAfford("research", 1);
+  const researchLimitReached = legacyResearchLimitReached || !canAffordResearch;
 
   const {
     used: islamicQueriesUsed,
     limit: islamicQueriesLimit,
-    reached: islamicLimitReached,
+    reached: legacyIslamicLimitReached,
   } = useLimitReached("islamic");
+  const { canAfford: canAffordIslamic } = useCanAfford("islamic", 1);
+  const islamicLimitReached = legacyIslamicLimitReached || !canAffordIslamic;
 
   const [mode, setMode] = usePersistedState<ResearchMode>(
     "research_mode",

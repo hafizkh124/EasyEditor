@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
+import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,21 +31,21 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Use service_role for token operations (RPC needs elevated access)
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = claimsData.claims.sub;
+    const userId = user.id;
 
     // Rate limit: 15 OCR requests per user per minute
     if (isRateLimited(userId, 15, 60_000)) {
@@ -60,28 +61,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check subscription
-    const { data: sub, error: subError } = await supabase
-      .from("subscriptions")
-      .select("tier, transcription_seconds_used, transcription_limit")
-      .eq("user_id", userId)
-      .single();
-
-    if (subError || !sub) {
-      return new Response(
-        JSON.stringify({ error: "Subscription not found" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Use transcription_seconds_used as a general usage counter for OCR too
-    // Each OCR scan counts as 10 seconds of usage
-    const ocrCost = 10;
-    if (sub.tier === "free" && sub.transcription_seconds_used + ocrCost > sub.transcription_limit) {
-      return new Response(
-        JSON.stringify({ error: "Usage limit reached. Upgrade to Pro for more scans." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Token-based quota check: 15 tokens per page
+    const tokenCost = calculateCost("ocr", 1);
+    const tokenResult = await checkAndDeductTokens(
+      supabase, userId, tokenCost, "ocr", "1 page OCR scan",
+    );
+    if (!tokenResult.ok) {
+      return insufficientTokensResponse(tokenResult, corsHeaders);
     }
 
     // Call Gemini via Lovable AI Gateway
@@ -124,6 +110,9 @@ Deno.serve(async (req) => {
     });
 
     if (!aiResponse.ok) {
+      // Refund tokens on AI failure
+      await refundTokens(supabase, userId, tokenCost, "ocr", "AI gateway error");
+
       const errText = await aiResponse.text();
       console.error("AI Gateway error:", aiResponse.status, errText);
 
@@ -149,14 +138,15 @@ Deno.serve(async (req) => {
     const aiData = await aiResponse.json();
     const extractedText = aiData.choices?.[0]?.message?.content || "";
 
-    // Update usage
-    await supabase
+    // Update legacy usage counter (backward compat analytics — now uses correct column!)
+    supabase
       .from("subscriptions")
-      .update({ transcription_seconds_used: sub.transcription_seconds_used + ocrCost })
-      .eq("user_id", userId);
+      .update({ ocr_pages_used: (await supabase.from("subscriptions").select("ocr_pages_used").eq("user_id", userId).single()).data?.ocr_pages_used + 1 })
+      .eq("user_id", userId)
+      .then(() => {});
 
     return new Response(
-      JSON.stringify({ text: extractedText }),
+      JSON.stringify({ text: extractedText, tokens_used: tokenCost }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
+import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -171,6 +172,16 @@ serve(async (req) => {
       });
     }
 
+    // Token-based quota check: 5 tokens per refinement action
+    const tokenCost = calculateCost("refine", 1);
+    const tokenResult = await checkAndDeductTokens(
+      supabase, user.id, tokenCost, "refine",
+      `${action} refinement`,
+    );
+    if (!tokenResult.ok) {
+      return insufficientTokensResponse(tokenResult, corsHeaders);
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
@@ -206,6 +217,9 @@ serve(async (req) => {
     });
 
     if (!aiResponse.ok) {
+      // Refund tokens on AI failure
+      await refundTokens(supabase, user.id, tokenCost, "refine", "AI gateway error");
+
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded, please try again later." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -226,7 +240,7 @@ serve(async (req) => {
     const aiData = await aiResponse.json();
     const refined = aiData.choices?.[0]?.message?.content || "";
 
-    return new Response(JSON.stringify({ text: refined }), {
+    return new Response(JSON.stringify({ text: refined, tokens_used: tokenCost }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

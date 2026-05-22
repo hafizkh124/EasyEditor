@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useLimitReached } from "@/hooks/useLimitReached";
+import { useCanAfford } from "@/hooks/useTokenBalance";
+import TokenCostBadge from "@/components/TokenCostBadge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +34,9 @@ const OCR = () => {
   const upgradeKey = getUpgradeLabelKey(subscription?.tier);
   const navigate = useNavigate();
 
-  const { used: ocrPagesUsed, limit: ocrPagesLimitRaw, reached: ocrLimitReached } = useLimitReached("ocr");
+  const { used: ocrPagesUsed, limit: ocrPagesLimitRaw, reached: legacyOcrLimitReached } = useLimitReached("ocr");
+  const { canAfford: canAffordOcr } = useCanAfford("ocr", 1);
+  const ocrLimitReached = legacyOcrLimitReached || !canAffordOcr;
   const ocrPagesLimit = ocrPagesLimitRaw || 5; // legacy default when tier has no explicit limit
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -251,14 +255,9 @@ const OCR = () => {
             <p className="text-muted-foreground mt-1">{t("ocr.subtitle")}</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {ocrPagesLimit > 0 && (
-              <div className="flex items-center gap-1.5">
-                <ScanLine className="h-4 w-4 text-muted-foreground" />
-                <Badge variant={ocrLimitReached ? "destructive" : "secondary"} className="text-xs">
-                  {ocrPagesUsed} / {ocrPagesLimit} {t("ocr.pages_used")}
-                </Badge>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5">
+              <TokenCostBadge action="ocr" quantity={1} />
+            </div>
             <div className="flex items-center gap-2">
               <Label htmlFor="auto-copy" className="text-xs text-muted-foreground">
                 {t("ocr.auto_copy")}
