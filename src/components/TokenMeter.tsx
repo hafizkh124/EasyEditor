@@ -12,7 +12,7 @@ import { Coins } from "lucide-react";
  */
 export default function TokenMeter({ compact = false }: { compact?: boolean }) {
   const { t } = useLanguage();
-  const { total, monthly, topup, monthlyLimit, monthlyUsed, usagePct, isLow, isZero } = useTokenBalance();
+  const { total, topup, monthlyLimit, monthlyUsed, usagePct, isLow, isZero } = useTokenBalance();
 
   const barColor = isZero
     ? "bg-destructive"

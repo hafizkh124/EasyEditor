@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Camera, Copy, Volume2, Loader2, ImageIcon, X, Crop, ScanLine, SpellCheck, Languages, MessageSquarePlus } from "lucide-react";
+import { Upload, Camera, Copy, Volume2, Loader2, ImageIcon, X, Crop, SpellCheck, Languages, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import AppLayout from "@/components/AppLayout";
@@ -37,7 +37,7 @@ const OCR = () => {
   const { used: ocrPagesUsed, limit: ocrPagesLimitRaw, reached: legacyOcrLimitReached } = useLimitReached("ocr");
   const { canAfford: canAffordOcr } = useCanAfford("ocr", 1);
   const ocrLimitReached = legacyOcrLimitReached || !canAffordOcr;
-  const ocrPagesLimit = ocrPagesLimitRaw || 5; // legacy default when tier has no explicit limit
+  void ocrPagesLimitRaw; // legacy limit no longer surfaced — token meter handles it
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string>("image/jpeg");
