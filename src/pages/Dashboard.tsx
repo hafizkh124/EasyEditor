@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+
 import { Mic, BookOpen, Image, Volume2, Clock, CalendarClock, AlertTriangle, MessageCircle } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { getRecentActivity, type ActivityEntry } from "@/lib/activityLog";
