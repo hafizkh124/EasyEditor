@@ -6,6 +6,13 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Subscription = Tables<"subscriptions">;
 
+/** Token wallet from `token_wallets` table */
+export interface TokenWallet {
+  monthly_balance: number;
+  topup_balance: number;
+  monthly_limit: number;
+}
+
 /**
  * Canonical per-tier DB column values.
  * Used by Admin when approving upgrades so the limit columns always
@@ -47,14 +54,37 @@ export const TIER_LIMITS = {
   },
 } as const;
 
+/** Monthly token allocation per tier (mirrors server-side tokenGuard.ts) */
+export const TOKEN_ALLOCATIONS: Record<string, number> = {
+  free:  0,
+  basic: 5_000,
+  pro:   25_000,
+  ultra: 50_000,
+} as const;
+
+/** Token cost per unit for each action (mirrors server-side TOKEN_COSTS) */
+export const TOKEN_COSTS = {
+  stt:            10,    // per minute of audio
+  ocr:            15,    // per page
+  research:       30,    // per query
+  islamic:        40,    // per query
+  tts_google:     50,    // per 1K characters
+  tts_elevenlabs: 500,   // per 1K characters
+  refine:         5,     // per refinement action
+} as const;
+
+export type TokenActionType = keyof typeof TOKEN_COSTS;
+
 interface SubscriptionContextType {
   subscription: Subscription | null;
+  tokenWallet: TokenWallet | null;
   loading: boolean;
   refetch: () => Promise<void>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType>({
   subscription: null,
+  tokenWallet: null,
   loading: true,
   refetch: async () => {},
 });
@@ -64,29 +94,54 @@ export const useSubscription = () => useContext(SubscriptionContext);
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [tokenWallet, setTokenWallet] = useState<TokenWallet | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchSubscription = useCallback(async () => {
     if (!user) {
       setSubscription(null);
+      setTokenWallet(null);
       setLoading(false);
       return;
     }
     if (import.meta.env.DEV) console.log("[SubscriptionContext] Fetching subscription for user:", user.id);
     setLoading(true);
-    const { data, error } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-    if (error) {
-      handleSupabaseError(error, "load subscription");
+
+    // Fetch subscription and token wallet in parallel
+    const [subResult, walletResult] = await Promise.all([
+      supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", user.id)
+        .single(),
+      supabase
+        .from("token_wallets")
+        .select("monthly_balance, topup_balance, monthly_limit")
+        .eq("user_id", user.id)
+        .single(),
+    ]);
+
+    if (subResult.error) {
+      handleSupabaseError(subResult.error, "load subscription");
     } else {
       if (import.meta.env.DEV) console.log(
-        `[SubscriptionContext] Loaded — tier: ${data.tier} | STT: ${data.transcription_seconds_used}s | TTS: ${data.tts_characters_used} chars | OCR: ${data.ocr_pages_used} pages | Research: ${data.research_queries_used} queries`
+        `[SubscriptionContext] Loaded — tier: ${subResult.data.tier} | STT: ${subResult.data.transcription_seconds_used}s | TTS: ${subResult.data.tts_characters_used} chars | OCR: ${subResult.data.ocr_pages_used} pages | Research: ${subResult.data.research_queries_used} queries`
       );
-      setSubscription(data);
+      setSubscription(subResult.data);
     }
+
+    if (walletResult.error) {
+      // Wallet may not exist for very old users — not fatal
+      if (import.meta.env.DEV) console.warn("[SubscriptionContext] Token wallet not found:", walletResult.error.message);
+      setTokenWallet(null);
+    } else {
+      const w = walletResult.data;
+      if (import.meta.env.DEV) console.log(
+        `[SubscriptionContext] Wallet — monthly: ${w.monthly_balance}/${w.monthly_limit} | topup: ${w.topup_balance} | total: ${w.monthly_balance + w.topup_balance}`
+      );
+      setTokenWallet(w);
+    }
+
     setLoading(false);
   }, [user]);
 
@@ -95,8 +150,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [fetchSubscription]);
 
   const value = useMemo(
-    () => ({ subscription, loading, refetch: fetchSubscription }),
-    [subscription, loading, fetchSubscription]
+    () => ({ subscription, tokenWallet, loading, refetch: fetchSubscription }),
+    [subscription, tokenWallet, loading, fetchSubscription]
   );
 
   return (

@@ -2,8 +2,12 @@
  * check-subscription-expiry — Scheduled edge function
  *
  * Finds subscriptions whose `expires_at` is in the past and drops their tier
- * back to "free" with zeroed limits. Does NOT flip `is_approved` — the user
- * stays a valid account, they just can't use paid features until they renew.
+ * back to "free" with zeroed limits. Also zeros monthly_balance and
+ * monthly_limit in token_wallets (but PRESERVES topup_balance — top-up tokens
+ * never expire, they become inaccessible until renewal).
+ *
+ * Does NOT flip `is_approved` — the user stays a valid account, they just
+ * can't use paid features until they renew.
  *
  * Sends a notification to each affected user. Idempotent: re-running the
  * function does nothing for users already on the free tier.
@@ -110,6 +114,37 @@ serve(async (req) => {
         JSON.stringify({ error: "Failed to downgrade expired subscriptions", details: updErr.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // ── Zero monthly tokens but PRESERVE topup_balance ──────────────────────
+    // Top-up tokens never expire — they become inaccessible until renewal but
+    // are not deleted. monthly_balance and monthly_limit are zeroed so the user
+    // cannot use any features until they renew.
+    const { error: walletErr } = await supabase
+      .from("token_wallets")
+      .update({ monthly_balance: 0, monthly_limit: 0, updated_at: new Date().toISOString() })
+      .in("user_id", userIds);
+
+    if (walletErr) {
+      // Non-fatal: subscription already downgraded, wallet zero is a secondary step
+      console.warn("[check-subscription-expiry] token wallet zero warning:", walletErr.message);
+    }
+
+    // Insert audit trail for each expired user's token expiry
+    const expiryTransactions = userIds.map((user_id) => ({
+      user_id,
+      amount: 0,
+      balance_after: 0,
+      action_type: "expiry",
+      action_detail: "Subscription expired — monthly tokens zeroed, topup preserved",
+      source: "monthly",
+    }));
+    const { error: txErr } = await supabase
+      .from("token_transactions")
+      .insert(expiryTransactions);
+
+    if (txErr) {
+      console.warn("[check-subscription-expiry] token transaction insert warning:", txErr.message);
     }
 
     // Notify each affected user. Non-fatal if notification insert fails.

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
+import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 import {
   NORMAL_SYSTEM_PROMPT,
   STRICT_INSTRUCTION_ON,
@@ -405,6 +406,16 @@ serve(async (req) => {
       });
     }
 
+    // Token-based quota check: 30 tokens per research query
+    const tokenCost = calculateCost("research", 1);
+    const tokenResult = await checkAndDeductTokens(
+      supabase, user.id, tokenCost, "research",
+      `Research query: ${query.slice(0, 60)}`,
+    );
+    if (!tokenResult.ok) {
+      return insufficientTokensResponse(tokenResult, corsHeaders);
+    }
+
     const modes: ResearchAssistMode[] = Array.isArray(rawModes)
       ? (rawModes.filter((m) => m === "spelling" || m === "citations") as ResearchAssistMode[])
       : [];
@@ -556,6 +567,9 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      // Refund tokens on AI failure
+      await refundTokens(supabase, user.id, tokenCost, "research", "AI gateway error");
+
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -572,6 +586,22 @@ serve(async (req) => {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Update legacy usage counter (backward compat analytics — non-blocking)
+    supabase
+      .from("subscriptions")
+      .select("research_queries_used")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data: sub }) => {
+        if (sub) {
+          supabase
+            .from("subscriptions")
+            .update({ research_queries_used: (sub.research_queries_used ?? 0) + 1 })
+            .eq("user_id", user.id)
+            .then(() => {});
+        }
+      });
 
     if (isAssistMode) {
       const completion = await response.json();

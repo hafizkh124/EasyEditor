@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +18,7 @@ import { toast } from "sonner";
 import ReferralCard from "@/components/ReferralCard";
 import ContactInfoCard from "@/components/ContactInfoCard";
 import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
+import TokenMeter from "@/components/TokenMeter";
 
 const Profile = () => {
   useSeo({ title: "Profile — Al-Ulama Easy Editor", description: "Update your profile, display name and account info for Al-Ulama Easy Editor.", path: "/profile" });
@@ -111,16 +111,7 @@ const Profile = () => {
       : tier === "basic" ? t("settings.basic")
       : t("settings.free");
 
-  const meters = subscription
-    ? [
-        { label: t("dashboard.stt_label"), used: subscription.transcription_seconds_used ?? 0, limit: subscription.transcription_limit ?? 300, unit: t("pricing.seconds") },
-        { label: t("dashboard.tts_label"), used: subscription.tts_characters_used ?? 0, limit: subscription.tts_character_limit ?? 10_000, unit: t("pricing.characters") },
-        { label: t("dashboard.ocr_label"), used: subscription.ocr_pages_used ?? 0, limit: subscription.ocr_pages_limit ?? 5, unit: t("dashboard.pages_used") },
-        { label: t("dashboard.research_label"), used: subscription.research_queries_used ?? 0, limit: subscription.research_queries_limit ?? 3, unit: t("dashboard.queries_used") },
-      ]
-    : [];
-
-  const isUnlimited = (limit: number) => limit >= 999_999;
+  // Legacy meters removed — replaced by TokenMeter component
 
   if (profileLoading || subLoading) {
     return (
@@ -253,22 +244,7 @@ const Profile = () => {
               })()}
             </div>
 
-            {meters.map((m) => (
-              <div key={m.label} className="space-y-1.5">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-foreground">{m.label}</span>
-                  <span className="text-muted-foreground">
-                    {isUnlimited(m.limit)
-                      ? `${m.used.toLocaleString()} ${m.unit}`
-                      : `${m.used.toLocaleString()} / ${m.limit.toLocaleString()} ${m.unit}`}
-                  </span>
-                </div>
-                <Progress
-                  value={isUnlimited(m.limit) ? 5 : Math.min((m.used / m.limit) * 100, 100)}
-                  className="h-2"
-                />
-              </div>
-            ))}
+            <TokenMeter />
           </CardContent>
         </Card>
 

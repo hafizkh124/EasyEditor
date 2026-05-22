@@ -13,7 +13,6 @@ import {
   loadLatestResearchSession,
   loadResearchSession,
   deleteResearchSession,
-  incrementQueryCount,
 } from "@/lib/research/persistence";
 
 const errMsg = (e: unknown, fallback: string): string =>
@@ -184,9 +183,8 @@ export function useResearchChat(args: UseResearchChatArgs) {
           return next;
         });
 
-        if (user) {
-          incrementQueryCount("increment_research_queries", user.id).then((ok) => { if (ok) refetch(); });
-        }
+        // Token deduction handled server-side — just refetch wallet balance
+        if (user) refetch();
       } catch (err: unknown) {
         toast.error(errMsg(err, t("research.refine_error")));
       } finally {
@@ -213,9 +211,8 @@ export function useResearchChat(args: UseResearchChatArgs) {
         },
         onDone: () => {
           setIsQuerying(false);
-          if (user) {
-            incrementQueryCount("increment_islamic_queries", user.id).then((ok) => { if (ok) refetch(); });
-          }
+          // Token deduction handled server-side — just refetch wallet balance
+          if (user) refetch();
           setMessages((prev) => { saveSession(prev, finalCitations); return prev; });
         },
         onError: (err) => { toast.error(err); setIsQuerying(false); },
@@ -229,9 +226,8 @@ export function useResearchChat(args: UseResearchChatArgs) {
         onDelta,
         onDone: () => {
           setIsQuerying(false);
-          if (user) {
-            incrementQueryCount("increment_research_queries", user.id).then((ok) => { if (ok) refetch(); });
-          }
+          // Token deduction handled server-side — just refetch wallet balance
+          if (user) refetch();
         },
         onError: (err) => { toast.error(err); setIsQuerying(false); },
       });

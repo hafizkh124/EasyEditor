@@ -18,6 +18,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { logActivity } from "@/lib/activityLog";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useLimitReached } from "@/hooks/useLimitReached";
+import { useCanAfford } from "@/hooks/useTokenBalance";
+import TokenCostBadge from "@/components/TokenCostBadge";
 import { isRtlText } from "@/utils/textUtils";
 import {
   transcribeLongForm,
@@ -57,7 +59,9 @@ const Transcribe = () => {
   const [secondsUsed, setSecondsUsed] = useState(0);
   // Optimistic delta over the persisted value so local increments count.
   const optimisticDelta = Math.max(0, secondsUsed - (subscription?.transcription_seconds_used ?? 0));
-  const { limit: limitRaw, reached: limitReached } = useLimitReached("transcription", optimisticDelta);
+  const { limit: limitRaw, reached: legacyLimitReached } = useLimitReached("transcription", optimisticDelta);
+  const { canAfford: canAffordStt } = useCanAfford("stt", 1);
+  const limitReached = legacyLimitReached || !canAffordStt;
   const limit = limitRaw || 300; // fallback for display when tier has no explicit limit
   const [isUploading, setIsUploading] = useState(false);
   const [progressPhase, setProgressPhase] = useState<ProgressPhase | null>(null);
@@ -327,14 +331,10 @@ const Transcribe = () => {
         </div>
 
         {/* Usage Badge */}
-        {limit > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant={limitReached ? "destructive" : "secondary"}>
-              {secondsUsed}s / {limit}s
-            </Badge>
-            {limitReached && <span className="text-sm text-destructive">{t("stt.limit_reached")}</span>}
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <TokenCostBadge action="stt" quantity={1} />
+          {limitReached && <span className="text-sm text-destructive">{t("stt.limit_reached") || "Insufficient tokens"}</span>}
+        </div>
 
         {/* Long-form Progress (FR-3.3, FR-3.4) */}
         {progressPhase && (

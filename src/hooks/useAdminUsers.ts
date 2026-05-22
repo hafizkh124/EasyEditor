@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { TIER_LIMITS } from "@/contexts/SubscriptionContext";
+import { TIER_LIMITS, TOKEN_ALLOCATIONS } from "@/contexts/SubscriptionContext";
 import type { UserRow, PaidTier, Tier } from "@/components/admin/types";
 import { REFERRAL_CREDIT_AMOUNT } from "@/lib/referral";
 
@@ -138,6 +138,20 @@ export function useAdminUsers(enabled: boolean) {
       return;
     }
 
+    // Set token wallet for the approved plan
+    const tokenAllocation = TOKEN_ALLOCATIONS[plan] ?? 0;
+    const { error: walletError } = await supabase
+      .from("token_wallets")
+      .upsert({
+        user_id: userId,
+        monthly_balance: tokenAllocation,
+        topup_balance: 0,
+        monthly_limit: tokenAllocation,
+      }, { onConflict: "user_id" });
+    if (walletError && import.meta.env.DEV) {
+      console.warn("[Admin] token wallet upsert warning:", walletError.message);
+    }
+
     await sendNotification(
       userId,
       t("notification.account_approved_title"),
@@ -256,6 +270,19 @@ export function useAdminUsers(enabled: boolean) {
     if (error) {
       toast.error(`${t("admin.update_error")}: ${error.message}`);
       return;
+    }
+
+    // Reset monthly tokens to monthly_limit on renewal
+    const { data: wallet } = await supabase
+      .from("token_wallets")
+      .select("monthly_limit")
+      .eq("user_id", userId)
+      .single();
+    if (wallet) {
+      await supabase
+        .from("token_wallets")
+        .update({ monthly_balance: (wallet as { monthly_limit: number }).monthly_limit })
+        .eq("user_id", userId);
     }
 
     await sendNotification(
@@ -382,6 +409,12 @@ export function useAdminUsers(enabled: boolean) {
       return;
     }
 
+    // Zero monthly tokens but preserve topup_balance
+    await supabase
+      .from("token_wallets")
+      .update({ monthly_balance: 0, monthly_limit: 0 })
+      .eq("user_id", userId);
+
     toast.success(t("admin.rejected"));
     setUsers((prev) =>
       prev.map((u) =>
@@ -420,6 +453,16 @@ export function useAdminUsers(enabled: boolean) {
       toast.error(`${t("admin.update_error")}: ${error.message}`);
       return;
     }
+
+    // Update token wallet for new tier (preserve topup_balance)
+    const tokenAllocation = TOKEN_ALLOCATIONS[newTier] ?? 0;
+    await supabase
+      .from("token_wallets")
+      .upsert({
+        user_id: userId,
+        monthly_balance: tokenAllocation,
+        monthly_limit: tokenAllocation,
+      }, { onConflict: "user_id" });
 
     const successMsg =
       newTier === "ultra"
@@ -482,6 +525,110 @@ export function useAdminUsers(enabled: boolean) {
     );
   };
 
+  /** Manually adjust a user's token balance (credit or debit). */
+  const adjustTokens = async (userId: string, amount: number, reason: string) => {
+    const actionType = amount >= 0 ? "admin_adjust" : "admin_adjust";
+    const source = "topup"; // Manual adjustments go to topup pool (persistent)
+
+    const { data, error } = await supabase.rpc("credit_tokens", {
+      p_user_id: userId,
+      p_amount: amount,
+      p_source: source,
+      p_action_type: actionType,
+      p_detail: reason || "Admin manual adjustment",
+    });
+
+    if (error) {
+      toast.error(`Token adjustment failed: ${error.message}`);
+      return;
+    }
+
+    toast.success(`Tokens adjusted: ${amount > 0 ? "+" : ""}${amount}`);
+  };
+
+  /** Approve a pending top-up request. */
+  const approveTopup = async (requestId: string) => {
+    const { data: { user: adminUser } } = await supabase.auth.getUser();
+
+    // Get the request details
+    const { data: req, error: fetchErr } = await supabase
+      .from("topup_requests")
+      .select("user_id, token_amount, status")
+      .eq("id", requestId)
+      .single();
+
+    if (fetchErr || !req) {
+      toast.error("Top-up request not found");
+      return;
+    }
+    if ((req as any).status !== "pending") {
+      toast.error("Request already processed");
+      return;
+    }
+
+    // Credit the tokens
+    const { error: creditErr } = await supabase.rpc("credit_tokens", {
+      p_user_id: (req as any).user_id,
+      p_amount: (req as any).token_amount,
+      p_source: "topup",
+      p_action_type: "topup",
+      p_detail: `Top-up approved (request ${requestId})`,
+    });
+
+    if (creditErr) {
+      toast.error(`Failed to credit tokens: ${creditErr.message}`);
+      return;
+    }
+
+    // Mark request as approved
+    await supabase
+      .from("topup_requests")
+      .update({
+        status: "approved",
+        reviewed_by: adminUser?.id ?? null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", requestId);
+
+    await sendNotification(
+      (req as any).user_id,
+      "Top-up approved",
+      `Your top-up of ${(req as any).token_amount} tokens has been approved and credited to your account.`,
+    );
+
+    toast.success("Top-up approved and tokens credited");
+  };
+
+  /** Reject a pending top-up request. */
+  const rejectTopup = async (requestId: string) => {
+    const { data: { user: adminUser } } = await supabase.auth.getUser();
+
+    const { data: req } = await supabase
+      .from("topup_requests")
+      .select("user_id")
+      .eq("id", requestId)
+      .single();
+
+    await supabase
+      .from("topup_requests")
+      .update({
+        status: "rejected",
+        reviewed_by: adminUser?.id ?? null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", requestId);
+
+    if (req) {
+      await sendNotification(
+        (req as any).user_id,
+        "Top-up rejected",
+        "Your top-up request has been rejected. Please contact admin for more information.",
+      );
+    }
+
+    toast.success("Top-up request rejected");
+  };
+
   const tierLabel = (tier: string) => {
     if (tier === "ultra") return t("settings.ultra");
     if (tier === "pro") return t("settings.pro");
@@ -500,6 +647,9 @@ export function useAdminUsers(enabled: boolean) {
     changeTier,
     approveUpgrade,
     rejectUpgrade,
+    adjustTokens,
+    approveTopup,
+    rejectTopup,
     tierLabel,
   };
 }
