@@ -461,20 +461,20 @@ export function useAdminUsers(enabled: boolean) {
       .from("topup_requests")
       .select("user_id, token_amount, status")
       .eq("id", requestId)
-      .single();
+      .single<{ user_id: string; token_amount: number; status: string }>();
 
     if (fetchErr || !req) {
       toast.error("Top-up request not found");
       return;
     }
-    if ((req as any).status !== "pending") {
+    if (req.status !== "pending") {
       toast.error("Request already processed");
       return;
     }
 
     const { error: creditErr } = await supabase.rpc("credit_tokens", {
-      p_user_id: (req as any).user_id,
-      p_amount: (req as any).token_amount,
+      p_user_id: req.user_id,
+      p_amount: req.token_amount,
       p_source: "topup",
       p_action_type: "topup",
       p_detail: `Top-up approved (request ${requestId})`,
@@ -491,13 +491,13 @@ export function useAdminUsers(enabled: boolean) {
         status: "approved",
         reviewed_by: adminUser?.id ?? null,
         reviewed_at: new Date().toISOString(),
-      })
+      } as never)
       .eq("id", requestId);
 
     await sendNotification(
-      (req as any).user_id,
+      req.user_id,
       "Top-up approved",
-      `Your top-up of ${(req as any).token_amount} tokens has been approved and credited to your account.`,
+      `Your top-up of ${req.token_amount} tokens has been approved and credited to your account.`,
     );
 
     toast.success("Top-up approved and tokens credited");
