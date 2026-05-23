@@ -510,7 +510,7 @@ export function useAdminUsers(enabled: boolean) {
       .from("topup_requests")
       .select("user_id")
       .eq("id", requestId)
-      .single();
+      .single<{ user_id: string }>();
 
     await supabase
       .from("topup_requests")
@@ -518,12 +518,12 @@ export function useAdminUsers(enabled: boolean) {
         status: "rejected",
         reviewed_by: adminUser?.id ?? null,
         reviewed_at: new Date().toISOString(),
-      })
+      } as never)
       .eq("id", requestId);
 
     if (req) {
       await sendNotification(
-        (req as any).user_id,
+        req.user_id,
         "Top-up rejected",
         "Your top-up request has been rejected. Please contact admin for more information.",
       );
