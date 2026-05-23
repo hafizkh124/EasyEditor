@@ -1,10 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { TIER_LIMITS, TOKEN_ALLOCATIONS } from "@/contexts/SubscriptionContext";
-import type { UserRow, PaidTier, Tier } from "@/components/admin/types";
+import type { UserRow, PaidTier, Tier, UserFilters, PaginationState } from "@/components/admin/types";
 import { REFERRAL_CREDIT_AMOUNT } from "@/lib/referral";
+
+const DEFAULT_FILTERS: UserFilters = {
+  search: "",
+  status: "all",
+  country: "",
+  profession: "",
+  dateFrom: null,
+  dateTo: null,
+};
+
+const DEFAULT_PAGINATION: PaginationState = {
+  page: 1,
+  pageSize: 25,
+  totalCount: 0,
+};
 
 const sendNotification = (userId: string, title: string, message: string) =>
   supabase.from("notifications").insert({ user_id: userId, title, message });
@@ -13,78 +28,57 @@ export function useAdminUsers(enabled: boolean) {
   const { t } = useLanguage();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFiltersState] = useState<UserFilters>(DEFAULT_FILTERS);
+  const [pagination, setPaginationState] = useState<PaginationState>(DEFAULT_PAGINATION);
 
-  const fetchUsers = async () => {
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, display_name, is_approved, created_at, rejection_status, rejection_reason, rejected_at, referral_code, referred_by, referral_credits, whatsapp_number, country, profession")
-      .order("created_at", { ascending: false });
+  const fetchUsers = useCallback(async (f: UserFilters, p: PaginationState) => {
+    setLoading(true);
+    const { data, error } = await supabase.rpc("admin_list_users", {
+      p_search: f.search || "",
+      p_status: f.status,
+      p_country: f.country || "",
+      p_profession: f.profession || "",
+      p_date_from: f.dateFrom || undefined,
+      p_date_to: f.dateTo || undefined,
+      p_limit: p.pageSize,
+      p_offset: (p.page - 1) * p.pageSize,
+    });
 
-    const { data: subs } = await supabase
-      .from("subscriptions")
-      .select("user_id, tier, upgrade_requested, pending_tier, payment_reference, last_upgrade_request, activated_at, expires_at, last_renewed_at, renewal_count, billing_cycle_days");
-
-    if (profiles) {
-      const subMap = new Map((subs || []).map((s) => [s.user_id, s]));
-      setUsers(
-        profiles.map((p) => {
-          const profileWithRejection = p as typeof p & {
-            rejection_status?: string | null;
-            rejection_reason?: string | null;
-            rejected_at?: string | null;
-            referral_code?: string | null;
-            referred_by?: string | null;
-            referral_credits?: number | null;
-            whatsapp_number?: string | null;
-            country?: string | null;
-            profession?: string | null;
-          };
-          const sub = subMap.get(p.user_id) as
-            | (NonNullable<typeof subs>[number] & {
-                activated_at?: string | null;
-                expires_at?: string | null;
-                last_renewed_at?: string | null;
-                renewal_count?: number | null;
-                billing_cycle_days?: number | null;
-              })
-            | undefined;
-          return {
-            user_id: p.user_id,
-            display_name: p.display_name,
-            is_approved: p.is_approved,
-            created_at: p.created_at,
-            tier: sub?.tier || "free",
-            upgrade_requested: sub?.upgrade_requested || false,
-            pending_tier: sub?.pending_tier || null,
-            payment_reference: sub?.payment_reference || null,
-            last_upgrade_request: sub?.last_upgrade_request || null,
-            rejection_status: profileWithRejection.rejection_status ?? null,
-            rejection_reason: profileWithRejection.rejection_reason ?? null,
-            rejected_at: profileWithRejection.rejected_at ?? null,
-            activated_at: sub?.activated_at ?? null,
-            expires_at: sub?.expires_at ?? null,
-            last_renewed_at: sub?.last_renewed_at ?? null,
-            renewal_count: sub?.renewal_count ?? 0,
-            billing_cycle_days: sub?.billing_cycle_days ?? 30,
-            referral_code: profileWithRejection.referral_code ?? null,
-            referred_by: profileWithRejection.referred_by ?? null,
-            referral_credits: profileWithRejection.referral_credits ?? 0,
-            whatsapp_number: profileWithRejection.whatsapp_number ?? null,
-            country: profileWithRejection.country ?? null,
-            profession: profileWithRejection.profession ?? null,
-          };
-        })
-      );
+    if (error) {
+      console.error("[AdminUsers] RPC error:", error);
+      toast.error(t("admin.update_error"));
+      setLoading(false);
+      return;
     }
+
+    const rows = (data || []) as unknown as Array<UserRow & { total_count: number }>;
+    const totalCount = rows.length > 0 ? rows[0].total_count : 0;
+
+    setUsers(rows.map(({ total_count: _, ...row }) => row));
+    setPaginationState((prev) => ({ ...prev, totalCount }));
     setLoading(false);
-  };
+  }, [t]);
 
   useEffect(() => {
-    if (enabled) fetchUsers();
-  }, [enabled]);
+    if (enabled) fetchUsers(filters, pagination);
+  }, [enabled, filters, pagination.page, pagination.pageSize]);
+
+  const refetch = () => fetchUsers(filters, pagination);
+
+  const setFilters = (update: Partial<UserFilters>) => {
+    setFiltersState((prev) => ({ ...prev, ...update }));
+    setPaginationState((prev) => ({ ...prev, page: 1 })); // reset to page 1 on filter change
+  };
+
+  const setPage = (page: number) =>
+    setPaginationState((prev) => ({ ...prev, page }));
+
+  const setPageSize = (pageSize: number) =>
+    setPaginationState((prev) => ({ ...prev, pageSize, page: 1 }));
+
+  // --- Mutation functions (unchanged from before) ---
 
   const approveWithPlan = async (userId: string, plan: PaidTier) => {
-    // Clears any prior rejection state — admin may approve a previously rejected user.
     const { error: profileError } = await supabase
       .from("profiles")
       .update({
@@ -101,7 +95,6 @@ export function useAdminUsers(enabled: boolean) {
       return;
     }
 
-    // Read current billing_cycle_days so admins can customize per-user cycles later.
     const { data: currentSub } = await supabase
       .from("subscriptions")
       .select("billing_cycle_days")
@@ -111,7 +104,6 @@ export function useAdminUsers(enabled: boolean) {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + cycleDays * 24 * 60 * 60 * 1000);
 
-    // Admins / team members never expire. Check role and write NULL expiry if so.
     const { data: roleRow } = await supabase
       .from("user_roles")
       .select("role")
@@ -138,7 +130,6 @@ export function useAdminUsers(enabled: boolean) {
       return;
     }
 
-    // Set token wallet for the approved plan
     const tokenAllocation = TOKEN_ALLOCATIONS[plan] ?? 0;
     const { error: walletError } = await supabase
       .from("token_wallets")
@@ -158,10 +149,7 @@ export function useAdminUsers(enabled: boolean) {
       t("notification.account_approved_msg").replace("{plan}", plan.toUpperCase())
     );
 
-    // Grant referral credit if this user was referred. Idempotent via the
-    // UNIQUE(referrer_id, referee_id) constraint on referral_events: a second
-    // approve after a revoke won't double-credit. Failures are non-fatal —
-    // approval has already succeeded.
+    // Referral credit grant
     try {
       const { data: refRow } = await supabase
         .from("profiles")
@@ -177,10 +165,8 @@ export function useAdminUsers(enabled: boolean) {
             referee_id: userId,
             credits_granted: REFERRAL_CREDIT_AMOUNT,
           });
-        // 23505 = unique violation → already granted. Treat as success.
         const isUniqueViolation = eventErr && (eventErr as { code?: string }).code === "23505";
         if (!eventErr) {
-          // Increment the referrer's credit balance.
           const { data: refProfile } = await supabase
             .from("profiles")
             .select("referral_credits")
@@ -208,27 +194,10 @@ export function useAdminUsers(enabled: boolean) {
     }
 
     toast.success(t("admin.approved"));
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.user_id === userId
-          ? {
-              ...u,
-              is_approved: true,
-              tier: plan,
-              rejection_status: null,
-              rejection_reason: null,
-              rejected_at: null,
-              activated_at: now.toISOString(),
-              expires_at: expiresAtIso,
-            }
-          : u,
-      ),
-    );
+    refetch();
   };
 
   const renewSubscription = async (userId: string) => {
-    // Greatest() handles both early renewals (extend from current expiry)
-    // and post-expiry renewals (extend from today).
     const { data: current } = await supabase
       .from("subscriptions")
       .select("expires_at, billing_cycle_days, renewal_count")
@@ -241,7 +210,6 @@ export function useAdminUsers(enabled: boolean) {
       renewal_count?: number | null;
     } | null;
 
-    // Admins never expire — renewing clears any leftover expiry date.
     const { data: roleRow } = await supabase
       .from("user_roles")
       .select("role")
@@ -272,7 +240,6 @@ export function useAdminUsers(enabled: boolean) {
       return;
     }
 
-    // Reset monthly tokens to monthly_limit on renewal
     const { data: wallet } = await supabase
       .from("token_wallets")
       .select("monthly_limit")
@@ -297,18 +264,7 @@ export function useAdminUsers(enabled: boolean) {
     );
 
     toast.success(t("admin.renewed_done") || "Subscription renewed");
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.user_id === userId
-          ? {
-              ...u,
-              expires_at: newExpiry ? newExpiry.toISOString() : null,
-              last_renewed_at: now.toISOString(),
-              renewal_count: (u.renewal_count ?? 0) + 1,
-            }
-          : u,
-      ),
-    );
+    refetch();
   };
 
   const rejectUser = async (userId: string, reason: string) => {
@@ -339,19 +295,7 @@ export function useAdminUsers(enabled: boolean) {
     );
 
     toast.success(t("admin.rejected_done") || "User rejected");
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.user_id === userId
-          ? {
-              ...u,
-              is_approved: false,
-              rejection_status: "rejected",
-              rejection_reason: trimmedReason,
-              rejected_at: new Date().toISOString(),
-            }
-          : u,
-      ),
-    );
+    refetch();
   };
 
   const unrejectUser = async (userId: string) => {
@@ -371,13 +315,7 @@ export function useAdminUsers(enabled: boolean) {
     }
 
     toast.success(t("admin.unrejected_done") || "Returned to pending queue");
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.user_id === userId
-          ? { ...u, rejection_status: null, rejection_reason: null, rejected_at: null }
-          : u,
-      ),
-    );
+    refetch();
   };
 
   const revokeApproval = async (userId: string) => {
@@ -409,27 +347,13 @@ export function useAdminUsers(enabled: boolean) {
       return;
     }
 
-    // Zero monthly tokens but preserve topup_balance
     await supabase
       .from("token_wallets")
       .update({ monthly_balance: 0, monthly_limit: 0 })
       .eq("user_id", userId);
 
     toast.success(t("admin.rejected"));
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.user_id === userId
-          ? {
-              ...u,
-              is_approved: false,
-              tier: "free",
-              activated_at: null,
-              expires_at: null,
-              last_renewed_at: null,
-            }
-          : u,
-      ),
-    );
+    refetch();
   };
 
   const changeTier = async (userId: string, newTier: Tier) => {
@@ -454,7 +378,6 @@ export function useAdminUsers(enabled: boolean) {
       return;
     }
 
-    // Update token wallet for new tier (preserve topup_balance)
     const tokenAllocation = TOKEN_ALLOCATIONS[newTier] ?? 0;
     await supabase
       .from("token_wallets")
@@ -474,13 +397,7 @@ export function useAdminUsers(enabled: boolean) {
         : t("admin.downgraded_free");
 
     toast.success(successMsg);
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.user_id === userId
-          ? { ...u, tier: newTier, upgrade_requested: false, pending_tier: null, payment_reference: null, last_upgrade_request: null }
-          : u
-      )
-    );
+    refetch();
   };
 
   const approveUpgrade = async (userId: string, pendingTier: string) => {
@@ -516,25 +433,15 @@ export function useAdminUsers(enabled: boolean) {
       t("notification.upgrade_rejected_msg")
     );
     toast.success(t("admin.upgrade_rejected"));
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.user_id === userId
-          ? { ...u, upgrade_requested: false, pending_tier: null, payment_reference: null, last_upgrade_request: null }
-          : u
-      )
-    );
+    refetch();
   };
 
-  /** Manually adjust a user's token balance (credit or debit). */
   const adjustTokens = async (userId: string, amount: number, reason: string) => {
-    const actionType = amount >= 0 ? "admin_adjust" : "admin_adjust";
-    const source = "topup"; // Manual adjustments go to topup pool (persistent)
-
     const { error } = await supabase.rpc("credit_tokens", {
       p_user_id: userId,
       p_amount: amount,
-      p_source: source,
-      p_action_type: actionType,
+      p_source: "topup",
+      p_action_type: "admin_adjust",
       p_detail: reason || "Admin manual adjustment",
     });
 
@@ -544,13 +451,12 @@ export function useAdminUsers(enabled: boolean) {
     }
 
     toast.success(`Tokens adjusted: ${amount > 0 ? "+" : ""}${amount}`);
+    refetch();
   };
 
-  /** Approve a pending top-up request. */
   const approveTopup = async (requestId: string) => {
     const { data: { user: adminUser } } = await supabase.auth.getUser();
 
-    // Get the request details
     const { data: req, error: fetchErr } = await supabase
       .from("topup_requests")
       .select("user_id, token_amount, status")
@@ -566,7 +472,6 @@ export function useAdminUsers(enabled: boolean) {
       return;
     }
 
-    // Credit the tokens
     const { error: creditErr } = await supabase.rpc("credit_tokens", {
       p_user_id: (req as any).user_id,
       p_amount: (req as any).token_amount,
@@ -580,7 +485,6 @@ export function useAdminUsers(enabled: boolean) {
       return;
     }
 
-    // Mark request as approved
     await supabase
       .from("topup_requests")
       .update({
@@ -599,7 +503,6 @@ export function useAdminUsers(enabled: boolean) {
     toast.success("Top-up approved and tokens credited");
   };
 
-  /** Reject a pending top-up request. */
   const rejectTopup = async (requestId: string) => {
     const { data: { user: adminUser } } = await supabase.auth.getUser();
 
@@ -639,6 +542,12 @@ export function useAdminUsers(enabled: boolean) {
   return {
     users,
     loading,
+    filters,
+    setFilters,
+    pagination,
+    setPage,
+    setPageSize,
+    refetch,
     approveWithPlan,
     revokeApproval,
     rejectUser,

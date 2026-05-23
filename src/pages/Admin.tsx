@@ -8,10 +8,11 @@ import { Navigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Shield, CreditCard, Database } from "lucide-react";
+import { Users, Shield, CreditCard, Database, Wallet } from "lucide-react";
 import UserManagement from "@/components/admin/UserManagement";
 import UpgradeRequests from "@/components/admin/UpgradeRequests";
 import CorpusPanel from "@/components/admin/CorpusPanel";
+import IncomeDashboard from "@/components/admin/IncomeDashboard";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 
 const Admin = () => {
@@ -53,6 +54,11 @@ const Admin = () => {
   const {
     users,
     loading,
+    filters,
+    setFilters,
+    pagination,
+    setPage,
+    setPageSize,
     approveWithPlan,
     revokeApproval,
     rejectUser,
@@ -71,7 +77,7 @@ const Admin = () => {
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6" dir={direction}>
+      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6" dir={direction}>
         <div className="flex items-center gap-3">
           <Shield className="h-7 w-7 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">{t("admin.title")}</h1>
@@ -92,6 +98,10 @@ const Admin = () => {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="income" className="flex items-center gap-2">
+              <Wallet className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">{t("admin.income_tab")}</span>
+            </TabsTrigger>
             <TabsTrigger value="corpus" className="flex items-center gap-2">
               <Database className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">{t("admin.corpus_tab")}</span>
@@ -102,6 +112,11 @@ const Admin = () => {
             <UserManagement
               users={users}
               loading={loading}
+              filters={filters}
+              setFilters={setFilters}
+              pagination={pagination}
+              setPage={setPage}
+              setPageSize={setPageSize}
               onApprove={approveWithPlan}
               onRevoke={revokeApproval}
               onReject={rejectUser}
@@ -120,6 +135,10 @@ const Admin = () => {
               onReject={rejectUpgrade}
               tierLabel={tierLabel}
             />
+          </TabsContent>
+
+          <TabsContent value="income">
+            <IncomeDashboard />
           </TabsContent>
 
           <TabsContent value="corpus">

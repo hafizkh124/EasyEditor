@@ -41,6 +41,48 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_payments: {
+        Row: {
+          id: string
+          user_id: string
+          amount_pkr: number
+          payment_type: string
+          payment_method: string | null
+          payment_reference: string | null
+          tier_at_payment: string | null
+          notes: string | null
+          recorded_by: string
+          payment_date: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          amount_pkr: number
+          payment_type: string
+          payment_method?: string | null
+          payment_reference?: string | null
+          tier_at_payment?: string | null
+          notes?: string | null
+          recorded_by: string
+          payment_date?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          amount_pkr?: number
+          payment_type?: string
+          payment_method?: string | null
+          payment_reference?: string | null
+          tier_at_payment?: string | null
+          notes?: string | null
+          recorded_by?: string
+          payment_date?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       api_response_cache: {
         Row: {
           cache_key: string
@@ -667,6 +709,52 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_get_income_summary: {
+        Args: { p_date_from?: string; p_date_to?: string }
+        Returns: Json
+      }
+      admin_list_users: {
+        Args: {
+          p_search?: string
+          p_status?: string
+          p_country?: string
+          p_profession?: string
+          p_date_from?: string
+          p_date_to?: string
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: {
+          user_id: string
+          email: string
+          display_name: string
+          is_approved: boolean
+          created_at: string
+          tier: string
+          upgrade_requested: boolean
+          pending_tier: string | null
+          payment_reference: string | null
+          last_upgrade_request: string | null
+          rejection_status: string | null
+          rejection_reason: string | null
+          rejected_at: string | null
+          activated_at: string | null
+          expires_at: string | null
+          last_renewed_at: string | null
+          renewal_count: number
+          billing_cycle_days: number
+          referral_code: string | null
+          referred_by: string | null
+          referral_credits: number
+          whatsapp_number: string | null
+          country: string | null
+          profession: string | null
+          token_monthly_balance: number
+          token_topup_balance: number
+          token_monthly_limit: number
+          total_count: number
+        }[]
+      }
       check_token_balance: { Args: { p_user_id: string }; Returns: Json }
       credit_tokens: {
         Args: {
