@@ -43,43 +43,43 @@ export type Database = {
       }
       admin_payments: {
         Row: {
-          id: string
-          user_id: string
           amount_pkr: number
-          payment_type: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          payment_date: string
           payment_method: string | null
           payment_reference: string | null
-          tier_at_payment: string | null
-          notes: string | null
+          payment_type: string
           recorded_by: string
-          payment_date: string
-          created_at: string
+          tier_at_payment: string | null
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
           amount_pkr: number
-          payment_type: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
           payment_method?: string | null
           payment_reference?: string | null
-          tier_at_payment?: string | null
-          notes?: string | null
+          payment_type: string
           recorded_by: string
-          payment_date?: string
-          created_at?: string
+          tier_at_payment?: string | null
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
           amount_pkr?: number
-          payment_type?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
           payment_method?: string | null
           payment_reference?: string | null
-          tier_at_payment?: string | null
-          notes?: string | null
+          payment_type?: string
           recorded_by?: string
-          payment_date?: string
-          created_at?: string
+          tier_at_payment?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -715,44 +715,44 @@ export type Database = {
       }
       admin_list_users: {
         Args: {
-          p_search?: string
-          p_status?: string
           p_country?: string
-          p_profession?: string
           p_date_from?: string
           p_date_to?: string
           p_limit?: number
           p_offset?: number
+          p_profession?: string
+          p_search?: string
+          p_status?: string
         }
         Returns: {
-          user_id: string
-          email: string
-          display_name: string
-          is_approved: boolean
-          created_at: string
-          tier: string
-          upgrade_requested: boolean
-          pending_tier: string | null
-          payment_reference: string | null
-          last_upgrade_request: string | null
-          rejection_status: string | null
-          rejection_reason: string | null
-          rejected_at: string | null
-          activated_at: string | null
-          expires_at: string | null
-          last_renewed_at: string | null
-          renewal_count: number
+          activated_at: string
           billing_cycle_days: number
-          referral_code: string | null
-          referred_by: string | null
+          country: string
+          created_at: string
+          display_name: string
+          email: string
+          expires_at: string
+          is_approved: boolean
+          last_renewed_at: string
+          last_upgrade_request: string
+          payment_reference: string
+          pending_tier: string
+          profession: string
+          referral_code: string
           referral_credits: number
-          whatsapp_number: string | null
-          country: string | null
-          profession: string | null
+          referred_by: string
+          rejected_at: string
+          rejection_reason: string
+          rejection_status: string
+          renewal_count: number
+          tier: string
           token_monthly_balance: number
-          token_topup_balance: number
           token_monthly_limit: number
+          token_topup_balance: number
           total_count: number
+          upgrade_requested: boolean
+          user_id: string
+          whatsapp_number: string
         }[]
       }
       check_token_balance: { Args: { p_user_id: string }; Returns: Json }
