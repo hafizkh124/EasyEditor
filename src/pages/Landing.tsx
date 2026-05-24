@@ -23,6 +23,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
+import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
+
+const PLAN_STYLE: Record<PaidTier, { icon: typeof Zap; iconClass: string; bg: string }> = {
+  basic: { icon: Zap, iconClass: "text-blue-500", bg: "bg-blue-500/10" },
+  pro: { icon: Crown, iconClass: "text-primary", bg: "bg-primary/15" },
+  ultra: { icon: Star, iconClass: "text-purple-500", bg: "bg-purple-500/10" },
+};
 
 const Landing = () => {
   const { user, loading } = useAuth();
@@ -104,31 +111,16 @@ const Landing = () => {
     { icon: Globe, key: "multilingual" },
   ] as const;
 
-  const plans = [
-    {
-      key: "basic",
-      icon: Zap,
-      price: "1,000 PKR",
-      iconClass: "text-blue-500",
-      bg: "bg-blue-500/10",
-    },
-    {
-      key: "pro",
-      icon: Crown,
-      price: "4,000 PKR",
-      iconClass: "text-primary",
-      bg: "bg-primary/15",
-      popular: true,
-    },
-    {
-      key: "ultra",
-      icon: Star,
-      price: "7,000 PKR",
-      iconClass: "text-purple-500",
-      bg: "bg-purple-500/10",
-      comingSoon: true,
-    },
-  ] as const;
+  const plans = PLAN_TIERS.map((tier) => {
+    const style = PLAN_STYLE[tier.id];
+    return {
+      ...tier,
+      icon: style.icon,
+      iconClass: style.iconClass,
+      bg: style.bg,
+      features: buildFeatures(tier.featureTemplates, t).filter((f) => f.included),
+    };
+  });
 
   return (
     <div dir={direction} className="min-h-screen bg-background text-foreground">
@@ -138,12 +130,12 @@ const Landing = () => {
           <Link to="/" className="flex items-center gap-2.5">
             <img
               src="/favicon.png"
-              alt="EasyEditor"
+              alt="Easy Editor"
               width={26}
               height={26}
               className="rounded"
             />
-            <span className="text-lg font-bold tracking-tight text-foreground">EasyEditor</span>
+            <span className="text-lg font-bold tracking-tight text-foreground">Easy Editor</span>
           </Link>
 
           <nav className="flex items-center gap-1 sm:gap-2">
@@ -283,11 +275,11 @@ const Landing = () => {
           <div className="mx-auto grid max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-3 text-center">
             {plans.map((plan) => {
               const Icon = plan.icon;
-              const popular = "popular" in plan && plan.popular;
-              const comingSoon = "comingSoon" in plan && plan.comingSoon;
+              const popular = plan.popular;
+              const comingSoon = plan.comingSoon;
               return (
                 <Card
-                  key={plan.key}
+                  key={plan.id}
                   className={`relative overflow-hidden transition-shadow hover:shadow-lg ${
                     popular ? "border-primary ring-2 ring-primary/30" : "border-border/60"
                   }`}
@@ -311,7 +303,7 @@ const Landing = () => {
                       <Icon className={`h-6 w-6 ${plan.iconClass}`} />
                     </div>
                     <h3 className="mb-1 text-lg font-semibold">
-                      {t(`landing.plan_${plan.key}_name`)}
+                      {t(plan.nameKey)}
                     </h3>
                     <div className="mb-4">
                       <span className="text-2xl font-bold">{plan.price}</span>
@@ -319,9 +311,14 @@ const Landing = () => {
                         {" "}/ {t("pricing.per_month")}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {t(`landing.plan_${plan.key}_desc`)}
-                    </p>
+                    <ul className="space-y-2 text-start">
+                      {plan.features.map((f, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
+                          <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
+                          <span className="text-foreground/90">{f.label}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </CardContent>
                 </Card>
               );
