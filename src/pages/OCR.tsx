@@ -519,7 +519,7 @@ const OCR = () => {
             <CardContent className="p-4 space-y-4">
               <div className="relative">
                 <img
-                  src={imagePreview}
+                  src={imagePreview ?? undefined}
                   alt={t("ocr.uploaded_alt") || "Uploaded document for text extraction"}
                   className="w-full max-h-64 object-contain rounded-lg bg-muted"
                 />
