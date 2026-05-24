@@ -89,28 +89,99 @@ serve(async (req) => {
       });
     }
 
-    const isAuto = !language || language === "auto";
-    const langName = isAuto ? "auto-detected" : language === "ur-PK" ? "Urdu" : "English";
-    const isUrdu = language === "ur-PK";
-    const scriptRules = isAuto
-      ? `SCRIPT RULES (STRICT — non-negotiable):
-1. Auto-detect the spoken language from the audio (it may be Urdu, English, Arabic, or another language).
-2. Transcribe in the NATIVE script of the detected language:
-   - Urdu → Urdu Nastaliq (Arabic) script. NEVER Roman Urdu (Latin) or Devanagari (Hindi). Transliterate English loanwords into Urdu script (e.g., "school" → "اسکول").
-   - Arabic → Arabic script.
-   - English → standard Latin script.
-   - Any other language → its standard native script.
-3. If the audio mixes languages, write each portion in its own native script.`
-      : isUrdu
-      ? `SCRIPT RULES (STRICT — non-negotiable):
+    // ── Language configuration map ──────────────────────────────────────
+    const LANG_CONFIG: Record<string, { name: string; scriptRules: string }> = {
+      "en-US": {
+        name: "English",
+        scriptRules: `SCRIPT RULES (STRICT):
+1. The ENTIRE output MUST be in standard Latin (English) script.
+2. If a small portion of the audio is genuinely in Urdu/Arabic (a quoted verse, a name in Urdu), you may keep that brief portion in its original script — but English speech that contains Arabic-origin loanwords should still be written in English.`,
+      },
+      "ur-PK": {
+        name: "Urdu",
+        scriptRules: `SCRIPT RULES (STRICT — non-negotiable):
 1. The ENTIRE output MUST be in Urdu Nastaliq (Arabic) script. Every single character.
 2. Do NOT output Roman Urdu (Latin/English letters used to write Urdu words). FORBIDDEN.
 3. Do NOT output Devanagari (Hindi) script. FORBIDDEN.
 4. If you hear an English or Hindi loanword inside Urdu speech (e.g., "school", "mobile", "computer"), TRANSLITERATE it into Urdu script — e.g., write "اسکول" not "school", write "موبائل" not "mobile", write "کمپیوٹر" not "computer". Never leave Latin letters in the output.
-5. If a small portion of the audio is genuinely in English (a quoted sentence, a name read in English), you may keep that brief portion in Latin script — but Urdu speech that merely contains English-origin words must still be written in Urdu script.`
-      : `SCRIPT RULES (STRICT):
-1. The ENTIRE output MUST be in standard Latin (English) script.
-2. If a small portion of the audio is genuinely in Urdu/Arabic (a quoted verse, a name in Urdu), you may keep that brief portion in its original script — but English speech that contains Arabic-origin loanwords should still be written in English.`;
+5. If a small portion of the audio is genuinely in English (a quoted sentence, a name read in English), you may keep that brief portion in Latin script — but Urdu speech that merely contains English-origin words must still be written in Urdu script.`,
+      },
+      ar: {
+        name: "Arabic",
+        scriptRules: `SCRIPT RULES (STRICT — non-negotiable):
+1. The ENTIRE output MUST be in Arabic script.
+2. Use Modern Standard Arabic script and spelling conventions.
+3. If you hear an English loanword, TRANSLITERATE it into Arabic script (e.g., "computer" → "كمبيوتر"). Never leave Latin letters in the output.
+4. If a small portion of the audio is genuinely in English (a quoted sentence, a name), you may keep that brief portion in Latin script.`,
+      },
+      pa: {
+        name: "Punjabi",
+        scriptRules: `SCRIPT RULES (STRICT — non-negotiable):
+1. The ENTIRE output MUST be in Shahmukhi (Arabic-script Punjabi). Every single character.
+2. Do NOT use Gurmukhi script. FORBIDDEN.
+3. Do NOT output Roman Punjabi (Latin letters). FORBIDDEN.
+4. If you hear an English loanword, TRANSLITERATE it into Shahmukhi script.
+5. Use standard Shahmukhi orthographic conventions with proper ا، ب، پ، ت، ٹ characters.
+6. If a small portion of the audio is genuinely in English, you may keep that brief portion in Latin script.`,
+      },
+      ps: {
+        name: "Pashto",
+        scriptRules: `SCRIPT RULES (STRICT — non-negotiable):
+1. The ENTIRE output MUST be in Pashto Arabic script.
+2. Use proper Pashto-specific characters: ټ، ډ، ړ، ږ، ښ، ځ، څ، ۍ، ې.
+3. Do NOT output Roman Pashto (Latin letters). FORBIDDEN.
+4. If you hear an English loanword, TRANSLITERATE it into Pashto script.
+5. If a small portion of the audio is genuinely in English, you may keep that brief portion in Latin script.`,
+      },
+      fa: {
+        name: "Persian",
+        scriptRules: `SCRIPT RULES (STRICT — non-negotiable):
+1. The ENTIRE output MUST be in Persian Arabic script (Farsi script).
+2. Use proper Persian-specific characters: گ، چ، پ، ژ.
+3. Do NOT output Finglish/Roman Persian (Latin letters). FORBIDDEN.
+4. If you hear an English loanword, TRANSLITERATE it into Persian script (e.g., "computer" → "کامپیوتر").
+5. If a small portion of the audio is genuinely in English, you may keep that brief portion in Latin script.`,
+      },
+      sd: {
+        name: "Sindhi",
+        scriptRules: `SCRIPT RULES (STRICT — non-negotiable):
+1. The ENTIRE output MUST be in Sindhi Arabic script.
+2. Use proper Sindhi-specific characters: ٻ، ٽ، ٿ، ڄ، ڃ، ڇ، ڊ، ڌ، ڏ، ڳ، ڱ، ڻ.
+3. Do NOT output Roman Sindhi (Latin letters). FORBIDDEN.
+4. If you hear an English loanword, TRANSLITERATE it into Sindhi script.
+5. If a small portion of the audio is genuinely in English, you may keep that brief portion in Latin script.`,
+      },
+      bal: {
+        name: "Balochi",
+        scriptRules: `SCRIPT RULES (STRICT — non-negotiable):
+1. The ENTIRE output MUST be in Balochi Arabic script.
+2. Use standard Balochi orthography with Arabic-script conventions.
+3. Do NOT output Roman Balochi (Latin letters). FORBIDDEN.
+4. If you hear an English loanword, TRANSLITERATE it into Balochi Arabic script.
+5. If a small portion of the audio is genuinely in English, you may keep that brief portion in Latin script.`,
+      },
+    };
+
+    const isAuto = !language || language === "auto";
+    const langConfig = LANG_CONFIG[language as string];
+    const langName = isAuto ? "auto-detected" : langConfig?.name ?? language;
+
+    const scriptRules = isAuto
+      ? `SCRIPT RULES (STRICT — non-negotiable):
+1. Auto-detect the spoken language from the audio (it may be Urdu, English, Arabic, Punjabi, Pashto, Persian, Sindhi, Balochi, or another language).
+2. Transcribe in the NATIVE script of the detected language:
+   - Urdu → Urdu Nastaliq (Arabic) script. NEVER Roman Urdu or Devanagari.
+   - Arabic → Arabic script.
+   - English → standard Latin script.
+   - Punjabi → Shahmukhi (Arabic script). NEVER Gurmukhi.
+   - Pashto → Pashto Arabic script with proper ټ ډ ړ ږ characters.
+   - Persian → Persian Arabic script with proper گ چ پ ژ characters.
+   - Sindhi → Sindhi Arabic script with proper ٻ ٽ ٿ characters.
+   - Balochi → Balochi Arabic script.
+   - Any other language → its standard native script.
+3. If the audio mixes languages, write each portion in its own native script.
+4. Transliterate English loanwords into the detected language's script.`
+      : langConfig?.scriptRules ?? `SCRIPT RULES: Transcribe in ${langName}.`;
 
     const systemPrompt = isAuto
       ? `You are a speech transcription assistant. The user has recorded audio in an unspecified language.
@@ -139,7 +210,7 @@ Only output the transcription text, nothing else — no introductions, no explan
           {
             role: "user",
             content: [
-              { type: "text", text: isAuto ? "Detect the spoken language and transcribe this audio in its native script:" : `Transcribe this audio recording in ${langName}:` },
+              { type: "text", text: isAuto ? "Detect the spoken language and transcribe this audio accurately in its native script:" : `Transcribe this audio recording accurately in ${langName}:` },
               { type: "image_url", image_url: { url: audio } },
             ],
           },

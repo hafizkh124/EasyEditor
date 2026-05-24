@@ -89,13 +89,13 @@ describe("transcribeLongForm", () => {
     }
   });
 
-  it("rejects audio over the 60-minute hard cap before any network call", async () => {
-    decodeMock.mockResolvedValue({ duration: 60 * 60 + 1 });
+  it("rejects audio over the 120-minute hard cap before any network call", async () => {
+    decodeMock.mockResolvedValue({ duration: 120 * 60 + 1 });
     chunkMock.mockReturnValue([]);
 
     await expect(
       transcribeLongForm({ file: new Blob(["audio"]), language: "en-US" }),
-    ).rejects.toThrow(/60-minute/);
+    ).rejects.toThrow(/120-minute/);
     expect(invokeMock).not.toHaveBeenCalled();
   });
 

@@ -497,6 +497,7 @@ const ChatDisplay = ({
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder={mode === "islamic" ? t("research.ask_placeholder_islamic") : t("research.ask_placeholder")}
+            aria-label={t("research.ask_placeholder")}
             dir={isRtlQuery ? "rtl" : "ltr"}
             className={cn("min-h-[44px] max-h-32 resize-none flex-1", isRtlQuery && "text-right")}
             rows={1}

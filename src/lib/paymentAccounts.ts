@@ -30,5 +30,5 @@ export const PAYMENT_ACCOUNTS: PaymentAccount[] = [
   },
 ];
 
-export const WHATSAPP_CONTACT_NUMBER = "923184269036";
+export const WHATSAPP_CONTACT_NUMBER = "923290010282";
 export const WHATSAPP_CONTACT_URL = `https://wa.me/${WHATSAPP_CONTACT_NUMBER}`;

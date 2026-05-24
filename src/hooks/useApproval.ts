@@ -10,6 +10,7 @@ export const useApproval = () => {
   const [rejectionStatus, setRejectionStatus] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchStatus = useCallback(async () => {
@@ -19,6 +20,7 @@ export const useApproval = () => {
       setRejectionStatus(null);
       setRejectionReason(null);
       setProfileComplete(null);
+      setDisplayName(null);
       setLoading(false);
       return;
     }
@@ -26,7 +28,7 @@ export const useApproval = () => {
     const [profileRes, roleRes] = await Promise.all([
       supabase
         .from("profiles")
-        .select("is_approved, rejection_status, rejection_reason, whatsapp_number")
+        .select("is_approved, rejection_status, rejection_reason, whatsapp_number, display_name")
         .eq("user_id", userId)
         .single(),
       supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
@@ -37,12 +39,14 @@ export const useApproval = () => {
       rejection_status?: string | null;
       rejection_reason?: string | null;
       whatsapp_number?: string | null;
+      display_name?: string | null;
     } | null;
 
     setIsApproved(profileData?.is_approved ?? false);
     setRejectionStatus(profileData?.rejection_status ?? null);
     setRejectionReason(profileData?.rejection_reason ?? null);
     setProfileComplete(!!profileData?.whatsapp_number);
+    setDisplayName(profileData?.display_name ?? null);
     setIsAdmin(roleRes.data === true);
     setLoading(false);
   }, [user, session]);
@@ -57,6 +61,7 @@ export const useApproval = () => {
     rejectionStatus,
     rejectionReason,
     profileComplete,
+    displayName,
     loading,
     refetch: fetchStatus,
   };

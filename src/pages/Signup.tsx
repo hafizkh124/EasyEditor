@@ -89,9 +89,9 @@ const Signup = () => {
         {/* Logo */}
         <div className="flex flex-col items-center gap-2">
           <div className="rounded-2xl bg-primary/10 p-3">
-            <img src="/favicon.webp" alt="EasyEditor" width={40} height={40} className="rounded-lg" />
+            <img src="/favicon.webp" alt="Easy Editor" width={40} height={40} className="rounded-lg" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Sign up for EasyEditor</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Sign up for Easy Editor</h1>
           <p className="text-sm text-muted-foreground">{t("auth.signup")}</p>
         </div>
 

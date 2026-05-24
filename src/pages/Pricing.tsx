@@ -21,10 +21,10 @@ import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
+import { WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
+import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 
 const MotionCard = motion(Card);
-
-type PaidTier = "basic" | "pro" | "ultra";
 
 const TIER_ORDER: Record<string, number> = { free: 0, basic: 1, pro: 2, ultra: 3 };
 
@@ -153,73 +153,18 @@ const Pricing = () => {
     setSubmitting(false);
   };
 
-  /**
-   * Each feature row: { label, included }
-   * TTS + Voice Cloning are Ultra-only → shown with X on Basic/Pro.
-   * Priority Support row removed entirely.
-   */
-  const plans = [
-    {
-      id: "basic" as PaidTier,
-      nameKey: "settings.basic",
-      price: "1,000 PKR",
-      priceAmountKey: "pricing.payment_amount_basic",
-      icon: Zap,
-      iconClass: "text-blue-500",
-      bgClass: "bg-blue-500/10",
-      cardBorder: "border-blue-200/60 dark:border-blue-800/40",
-      gradient: "from-blue-500/5 via-transparent to-blue-500/5",
-      popular: false,
-      comingSoon: false,
-      features: [
-        { label: `30 min ${t("pricing.stt")}`,                         included: true  },
-        { label: `30 ${t("pricing.pages")} ${t("pricing.ocr")}`,       included: true  },
-        { label: `20 ${t("pricing.queries")} ${t("pricing.research")}`, included: true  },
-        { label: t("pricing.tts"),                                      included: false },
-        { label: t("pricing.voice_clone"),                              included: false },
-      ],
-    },
-    {
-      id: "pro" as PaidTier,
-      nameKey: "settings.pro",
-      price: "4,000 PKR",
-      priceAmountKey: "pricing.payment_amount_pro",
-      icon: Crown,
-      iconClass: "text-primary",
-      bgClass: "bg-primary/15",
-      cardBorder: "border-primary/40 shadow-md",
-      gradient: "from-primary/5 via-transparent to-primary/5",
-      popular: true,
-      comingSoon: false,
-      features: [
-        { label: `5 hrs ${t("pricing.stt")}`,                           included: true  },
-        { label: `300 ${t("pricing.pages")} ${t("pricing.ocr")}`,       included: true  },
-        { label: `200 ${t("pricing.queries")} ${t("pricing.research")}`, included: true  },
-        { label: t("pricing.tts"),                                       included: false },
-        { label: t("pricing.voice_clone"),                               included: false },
-      ],
-    },
-    {
-      id: "ultra" as PaidTier,
-      nameKey: "settings.ultra",
-      price: "7,000 PKR",
-      priceAmountKey: "pricing.payment_amount_ultra",
-      icon: Star,
-      iconClass: "text-purple-500",
-      bgClass: "bg-purple-500/10",
-      cardBorder: "border-purple-300/50 dark:border-purple-700/40 opacity-80",
-      gradient: "from-purple-500/5 via-transparent to-purple-500/5",
-      popular: false,
-      comingSoon: true,   // ← disabled: no upgrade request allowed
-      features: [
-        { label: `10 hrs ${t("pricing.stt")}`,                           included: true  },
-        { label: `2,000 ${t("pricing.pages")} ${t("pricing.ocr")}`,      included: true  },
-        { label: `500 ${t("pricing.queries")} ${t("pricing.research")}`,  included: true  },
-        { label: t("pricing.tts"),                                        included: true  },
-        { label: t("pricing.voice_clone"),                                included: true  },
-      ],
-    },
-  ];
+  /** UI-only styling per tier — data comes from shared PLAN_TIERS */
+  const PLAN_STYLE: Record<PaidTier, { icon: typeof Zap; iconClass: string; bgClass: string; cardBorder: string; gradient: string }> = {
+    basic: { icon: Zap, iconClass: "text-blue-500", bgClass: "bg-blue-500/10", cardBorder: "border-blue-200/60 dark:border-blue-800/40", gradient: "from-blue-500/5 via-transparent to-blue-500/5" },
+    pro:   { icon: Crown, iconClass: "text-primary", bgClass: "bg-primary/15", cardBorder: "border-primary/40 shadow-md", gradient: "from-primary/5 via-transparent to-primary/5" },
+    ultra: { icon: Star, iconClass: "text-purple-500", bgClass: "bg-purple-500/10", cardBorder: "border-purple-300/50 dark:border-purple-700/40 opacity-80", gradient: "from-purple-500/5 via-transparent to-purple-500/5" },
+  };
+
+  const plans = PLAN_TIERS.map((tier) => ({
+    ...tier,
+    ...PLAN_STYLE[tier.id],
+    features: buildFeatures(tier.featureTemplates, t),
+  }));
 
   const isCurrent    = (id: PaidTier) => currentTier === id;
   const isBelowCurrent = (id: PaidTier) => TIER_ORDER[id] < TIER_ORDER[currentTier];
@@ -464,7 +409,7 @@ const Pricing = () => {
           </p>
 
           <a
-            href="https://wa.me/923184269036"
+            href={WHATSAPP_CONTACT_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="group mx-auto my-5 flex w-full max-w-sm items-center justify-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 transition-all hover:border-emerald-500/60 hover:bg-emerald-500/20 hover:shadow-md"
@@ -472,7 +417,7 @@ const Pricing = () => {
           >
             <MessageCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             <span className="font-mono text-base font-semibold tracking-wider text-emerald-700 dark:text-emerald-300">
-              +92 318 4269036
+              +{WHATSAPP_CONTACT_NUMBER.replace(/(\d{2})(\d{3})(\d{7})/, "$1 $2 $3")}
             </span>
           </a>
 

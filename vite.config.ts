@@ -42,27 +42,40 @@ export default defineConfig(({ mode }) => {
         registerType: "autoUpdate",
         includeAssets: ["favicon.png"],
         manifest: {
-          name: "Scribe Studio",
-          short_name: "Scribe Studio",
+          name: "Easy Editor",
+          short_name: "Easy Editor",
           description: "AI toolkit (Transcribe, Speak, OCR, Research)",
           theme_color: "#ffffff",
           background_color: "#ffffff",
           display: "standalone",
           icons: [
             {
-              src: "/favicon.png",
+              src: "/icon-192.png",
               sizes: "192x192",
               type: "image/png",
             },
             {
-              src: "/favicon.png",
+              src: "/icon-512.png",
               sizes: "512x512",
               type: "image/png",
+            },
+            {
+              src: "/icon-192-maskable.png",
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "maskable",
+            },
+            {
+              src: "/icon-512-maskable.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable",
             },
           ],
         },
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
+          navigateFallback: "/offline.html",
           navigateFallbackDenylist: [/^\/~oauth(?:\/|$)/],
           runtimeCaching: [
             {
