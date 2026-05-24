@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline — Easy Editor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fafafa;
+      color: #18181b;
+      padding: 1.5rem;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #09090b; color: #fafafa; }
+      .card { background: #18181b; border-color: #27272a; }
+      .btn { background: #0d9488; }
+      .btn:hover { background: #0f766e; }
+    }
+    .card {
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      padding: 2.5rem 2rem;
+      border-radius: 1rem;
+      background: #fff;
+      border: 1px solid #e4e4e7;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .icon { font-size: 3rem; margin-bottom: 1rem; }
+    h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: .5rem; }
+    p { font-size: .9rem; color: #71717a; line-height: 1.6; margin-bottom: 1.5rem; }
+    .btn {
+      display: inline-block;
+      padding: .65rem 1.5rem;
+      border-radius: .5rem;
+      background: #0d9488;
+      color: #fff;
+      font-weight: 500;
+      font-size: .9rem;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .btn:hover { background: #0f766e; }
+    .urdu { direction: rtl; font-size: .85rem; margin-top: 1rem; color: #a1a1aa; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">&#128268;</div>
+    <h1>You're offline</h1>
+    <p>It looks like your internet connection is unavailable. Please check your connection and try again.</p>
+    <button class="btn" onclick="window.location.reload()">Try Again</button>
+    <p class="urdu">انٹرنیٹ کنکشن دستیاب نہیں ہے۔ براہ کرم اپنا کنکشن چیک کریں۔</p>
+  </div>
+</body>
+</html>

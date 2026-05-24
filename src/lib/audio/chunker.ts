@@ -4,6 +4,8 @@
 // We downmix to mono and resample to 16 kHz on encode so each chunk's base64 payload
 // stays small enough for the existing stateless `transcribe` edge function.
 
+import { MAX_FILE_SIZE_BYTES, WARN_FILE_SIZE_BYTES, getFormatLabel } from "./formatSupport";
+
 const TARGET_SAMPLE_RATE = 16_000;
 const DEFAULT_CHUNK_SECONDS = 300; // ~5 minutes per FR-3.2
 const SILENCE_SEARCH_SECONDS = 10; // search ±10s around target boundary for a quiet seam
@@ -17,11 +19,31 @@ function getAudioContextCtor(): AudioCtxCtor {
 }
 
 export async function decodeAudioFile(file: Blob): Promise<AudioBuffer> {
+  // File-size safety checks — prevent browser tab crashes on huge video files.
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    throw new Error(
+      "File is too large (max 1 GB). For large videos, extract the audio first.",
+    );
+  }
+  if (file.size > WARN_FILE_SIZE_BYTES) {
+    console.warn(
+      `[chunker] Large file (${(file.size / 1024 / 1024).toFixed(0)} MB) — decoding may be slow.`,
+    );
+  }
+
   const Ctx = getAudioContextCtor();
   const ctx = new Ctx();
   try {
     const arrayBuf = await file.arrayBuffer();
-    return await ctx.decodeAudioData(arrayBuf.slice(0));
+    try {
+      return await ctx.decodeAudioData(arrayBuf.slice(0));
+    } catch (decodeErr) {
+      // Produce a user-friendly error instead of the cryptic browser DOMException.
+      const label = file instanceof File ? getFormatLabel(file) : "this file";
+      throw new Error(
+        `Your browser cannot decode ${label}. Try converting to MP3 or M4A, or use Chrome.`,
+      );
+    }
   } finally {
     void ctx.close();
   }

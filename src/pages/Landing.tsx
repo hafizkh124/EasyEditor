@@ -22,38 +22,7 @@ import {
   Copy,
 } from "lucide-react";
 import { toast } from "sonner";
-
-interface PaymentAccount {
-  methodKey: string;
-  title: string;
-  rows: { labelKey: string; value: string; mono?: boolean; small?: boolean }[];
-}
-
-const PAYMENT_ACCOUNTS: PaymentAccount[] = [
-  {
-    methodKey: "pricing.payment_method_nbp",
-    title: "Al-Ulama",
-    rows: [
-      { labelKey: "pricing.payment_iban", value: "PK04NBPA1997004243449556", mono: true, small: true },
-      { labelKey: "pricing.payment_branch", value: "Badami Bagh 1997" },
-    ],
-  },
-  {
-    methodKey: "pricing.payment_method_jazzcash_business",
-    title: "Ulama Centre",
-    rows: [{ labelKey: "pricing.payment_till_id", value: "00420745", mono: true }],
-  },
-  {
-    methodKey: "pricing.payment_method_jazzcash_personal",
-    title: "Hafiz Khizar Hayat",
-    rows: [{ labelKey: "pricing.payment_number", value: "0308 4164816", mono: true }],
-  },
-  {
-    methodKey: "pricing.payment_method_easypaisa_personal",
-    title: "Hafiz Khizar Hayat",
-    rows: [{ labelKey: "pricing.payment_number", value: "0308 4164816", mono: true }],
-  },
-];
+import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 
 const Landing = () => {
   const { user, loading } = useAuth();
@@ -419,7 +388,7 @@ const Landing = () => {
             </p>
 
             <a
-              href="https://wa.me/923184269036"
+              href={WHATSAPP_CONTACT_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="group mx-auto my-5 flex w-full max-w-sm items-center justify-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 transition-all hover:border-emerald-500/60 hover:bg-emerald-500/20 hover:shadow-md"
@@ -427,7 +396,7 @@ const Landing = () => {
             >
               <MessageCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               <span className="font-mono text-base font-semibold tracking-wider text-emerald-700 dark:text-emerald-300">
-                +92 318 4269036
+                +{WHATSAPP_CONTACT_NUMBER.replace(/(\d{2})(\d{3})(\d{7})/, "$1 $2 $3")}
               </span>
             </a>
 

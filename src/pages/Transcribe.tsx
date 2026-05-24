@@ -6,7 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { usePageSession } from "@/hooks/usePageSession";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,9 +26,11 @@ import {
   TranscribeCancelledError,
   MAX_DURATION_SECONDS,
   type ProgressPhase,
+  type TranscribeLanguage,
 } from "@/lib/audio/transcribeLongForm";
+import { ACCEPTED_MEDIA, isVideoFile, MAX_FILE_SIZE_BYTES } from "@/lib/audio/formatSupport";
 
-type SttLanguage = "en-US" | "ur-PK" | "auto";
+type SttLanguage = TranscribeLanguage;
 type RefineAction = "formalize" | "humanize" | "shorten" | "citations" | "spelling_check" | "normalize_script";
 
 const refineActions: { action: RefineAction; icon: typeof GraduationCap; labelKey: string }[] = [
@@ -40,7 +42,18 @@ const refineActions: { action: RefineAction; icon: typeof GraduationCap; labelKe
   { action: "citations", icon: BookOpen, labelKey: "stt.citations" },
 ];
 
-const ACCEPTED_AUDIO = ".mp3,.wav,.m4a,.ogg,.webm,.flac,.aac";
+/** Language options for the transcription selector. */
+const STT_LANGUAGES: { code: SttLanguage; labelKey: string }[] = [
+  { code: "auto", labelKey: "stt.lang_auto" },
+  { code: "ur-PK", labelKey: "stt.lang_ur" },
+  { code: "ar", labelKey: "stt.lang_ar" },
+  { code: "en-US", labelKey: "stt.lang_en" },
+  { code: "pa", labelKey: "stt.lang_pa" },
+  { code: "ps", labelKey: "stt.lang_ps" },
+  { code: "fa", labelKey: "stt.lang_fa" },
+  { code: "sd", labelKey: "stt.lang_sd" },
+  { code: "bal", labelKey: "stt.lang_bal" },
+];
 
 const Transcribe = () => {
   useSeo({ title: "Transcribe — Al-Ulama Easy Editor", description: "Speech-to-text in Urdu, Arabic and English with smart AI editing for scholars and students.", path: "/transcribe" });
@@ -81,7 +94,7 @@ const Transcribe = () => {
   const handleRestoreSession = useCallback((metadata: { transcript?: string; originalText?: string; sttLanguage?: SttLanguage }) => {
     if (typeof metadata.transcript === "string") setTranscript(metadata.transcript);
     if (typeof metadata.originalText === "string") setOriginalText(metadata.originalText);
-    if (metadata.sttLanguage === "en-US" || metadata.sttLanguage === "ur-PK") setSttLanguage(metadata.sttLanguage);
+    if (metadata.sttLanguage && STT_LANGUAGES.some((l) => l.code === metadata.sttLanguage)) setSttLanguage(metadata.sttLanguage);
   }, []);
   const { save: saveSession } = usePageSession<{ transcript: string; originalText: string; sttLanguage: SttLanguage }>({
     section: "transcribe",
@@ -120,6 +133,17 @@ const Transcribe = () => {
     if (limitReached) {
       toast.error(t("stt.limit_reached"));
       return;
+    }
+
+    // File-size guard — reject files above 1 GB before attempting decode.
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      toast.error(t("stt.file_too_large"));
+      return;
+    }
+
+    // Show info toast when uploading a video file.
+    if (isVideoFile(file)) {
+      toast.info(t("stt.video_info"));
     }
 
     // FR-3.6: tier quota pre-check — best-effort using file-size heuristic before
@@ -186,8 +210,12 @@ const Transcribe = () => {
         toast.info(t("stt.cancelled"));
       } else {
         const msg = err instanceof Error ? err.message : t("stt.upload_error");
-        const friendly = msg.includes(`${MAX_DURATION_SECONDS / 60}-minute`)
+        const friendly = msg.includes("minute maximum") || msg.includes(`${MAX_DURATION_SECONDS / 60}-minute`)
           ? t("stt.too_long")
+          : msg.includes("too large") || msg.includes("max 1 GB")
+          ? t("stt.file_too_large")
+          : msg.includes("cannot decode")
+          ? t("stt.format_unsupported")
           : msg;
         toast.error(friendly);
       }
@@ -342,6 +370,7 @@ const Transcribe = () => {
             <CardContent className="pt-6 space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium text-foreground">
+                  {progressPhase === "extracting" && t("stt.extracting_audio")}
                   {progressPhase === "decoding" && t("stt.progress.decoding")}
                   {progressPhase === "preparing" && t("stt.progress.preparing")}
                   {progressPhase === "transcribing" && t("stt.progress.transcribing")
@@ -362,7 +391,9 @@ const Transcribe = () => {
               </div>
               <Progress
                 value={
-                  progressPhase === "decoding"
+                  progressPhase === "extracting"
+                    ? 3
+                    : progressPhase === "decoding"
                     ? 5
                     : progressPhase === "preparing"
                     ? 10
@@ -410,9 +441,10 @@ const Transcribe = () => {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept={ACCEPTED_AUDIO}
+                accept={ACCEPTED_MEDIA}
                 className="hidden"
                 onChange={handleFileUpload}
+                aria-label={t("stt.upload_file")}
               />
               <Button
                 variant="outline"
@@ -430,6 +462,28 @@ const Transcribe = () => {
               </Button>
               <span className="text-xs text-muted-foreground">{t("stt.upload_hint")}</span>
             </div>
+          </div>
+
+          {/* Language Selector */}
+          <div className="w-full max-w-xs mx-auto">
+            <Select value={sttLanguage} onValueChange={(v) => setSttLanguage(v as SttLanguage)}>
+              <SelectTrigger className="w-full" aria-label={t("stt.language")}>
+                <SelectValue placeholder={t("stt.language")} />
+              </SelectTrigger>
+              <SelectContent>
+                {STT_LANGUAGES.map(({ code, labelKey }) => (
+                  <SelectItem key={code} value={code}>
+                    {t(labelKey)}
+                    {(code === "sd" || code === "bal") ? " ⚠️" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(sttLanguage === "sd" || sttLanguage === "bal") && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 text-center">
+                {t("stt.low_accuracy_warning")}
+              </p>
+            )}
           </div>
         </div>
 

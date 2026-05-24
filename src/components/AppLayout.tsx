@@ -180,8 +180,8 @@ const SidebarBody = ({
       collapsed ? "justify-center px-2" : "justify-between px-5",
     )}>
       <Link to="/" onClick={onItemClick} className="flex items-center gap-2.5 min-w-0">
-        <img src="/favicon.webp" alt="EasyEditor" width={26} height={26} className="rounded flex-shrink-0" />
-        {!collapsed && <span className="text-lg font-bold text-sidebar-foreground tracking-tight truncate">EasyEditor</span>}
+        <img src="/favicon.webp" alt="Easy Editor" width={26} height={26} className="rounded flex-shrink-0" />
+        {!collapsed && <span className="text-lg font-bold text-sidebar-foreground tracking-tight truncate">Easy Editor</span>}
       </Link>
       {showCollapseButton && !collapsed && onToggleCollapse && (
         <Button
@@ -301,8 +301,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </SheetContent>
           </Sheet>
           <Link to="/" className="flex items-center gap-2 flex-1 min-w-0">
-            <img src="/favicon.webp" alt="EasyEditor" width={24} height={24} className="rounded" />
-            <span className="text-base font-bold text-foreground truncate">EasyEditor</span>
+            <img src="/favicon.webp" alt="Easy Editor" width={24} height={24} className="rounded" />
+            <span className="text-base font-bold text-foreground truncate">Easy Editor</span>
           </Link>
           <NotificationBell />
         </header>

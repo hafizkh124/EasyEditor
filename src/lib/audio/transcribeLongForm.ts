@@ -6,11 +6,12 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { decodeAudioFile, chunkAudioBuffer, encodeChunkToWav, blobToDataUrl, type AudioChunk } from "./chunker";
+import { isVideoFile } from "./formatSupport";
 
-export const MAX_DURATION_SECONDS = 60 * 60; // FR-3.1: 60-minute hard cap
+export const MAX_DURATION_SECONDS = 120 * 60; // FR-3.1: 120-minute (2-hour) hard cap
 export const CHUNK_THRESHOLD_SECONDS = 300;  // files longer than this are auto-chunked
 
-export type ProgressPhase = "decoding" | "preparing" | "transcribing" | "finalizing";
+export type ProgressPhase = "extracting" | "decoding" | "preparing" | "transcribing" | "finalizing";
 
 export interface ProgressEvent {
   phase: ProgressPhase;
@@ -22,7 +23,7 @@ export interface ProgressEvent {
   partialTranscript?: string;
 }
 
-export type TranscribeLanguage = "en-US" | "ur-PK" | "auto";
+export type TranscribeLanguage = "auto" | "en-US" | "ur-PK" | "ar" | "pa" | "ps" | "fa" | "sd" | "bal";
 
 export interface LongFormTranscribeArgs {
   file: Blob;
@@ -75,7 +76,10 @@ export async function transcribeLongForm({
   onProgress,
 }: LongFormTranscribeArgs): Promise<LongFormTranscribeResult> {
   checkSignal(signal);
-  onProgress?.({ phase: "decoding" });
+
+  // For video files, show a distinct "extracting audio" phase before decoding.
+  const isVideo = file instanceof File && isVideoFile(file);
+  onProgress?.({ phase: isVideo ? "extracting" : "decoding" });
 
   const decoded = await decodeAudioFile(file);
   checkSignal(signal);

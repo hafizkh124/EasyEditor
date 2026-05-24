@@ -40,6 +40,7 @@ const TextInputArea = ({
           value={text}
           onChange={(e) => onTextChange(e.target.value.slice(0, charLimit))}
           placeholder={t("tts.placeholder")}
+          aria-label={t("tts.enter_text")}
           dir={effectiveRtl ? "rtl" : "ltr"}
           className={cn("min-h-[120px] resize-none", effectiveRtl && "text-right")}
           maxLength={charLimit}
@@ -59,6 +60,7 @@ const TextInputArea = ({
           max={1.2}
           step={0.1}
           className="w-full"
+          aria-label={t("tts.speed")}
         />
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>0.7x</span>

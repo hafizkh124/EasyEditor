@@ -8,9 +8,9 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { Skeleton } from "@/components/ui/skeleton";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import { Loader2 } from "lucide-react";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -36,8 +36,17 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const queryClient = new QueryClient();
 
 const PageLoader = () => (
-  <div className="flex items-center justify-center h-screen bg-background">
-    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  <div className="h-screen bg-background p-4 md:p-8 space-y-6 max-w-4xl mx-auto pt-16">
+    <Skeleton className="h-8 w-48" />
+    <div className="space-y-4">
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-32 w-full rounded-lg" />
+    </div>
+    <div className="grid grid-cols-2 gap-4">
+      <Skeleton className="h-24 rounded-lg" />
+      <Skeleton className="h-24 rounded-lg" />
+    </div>
   </div>
 );
 
