@@ -23,6 +23,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
+import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
+
+const PLAN_STYLE: Record<PaidTier, { icon: typeof Zap; iconClass: string; bg: string }> = {
+  basic: { icon: Zap, iconClass: "text-blue-500", bg: "bg-blue-500/10" },
+  pro: { icon: Crown, iconClass: "text-primary", bg: "bg-primary/15" },
+  ultra: { icon: Star, iconClass: "text-purple-500", bg: "bg-purple-500/10" },
+};
 
 const Landing = () => {
   const { user, loading } = useAuth();
