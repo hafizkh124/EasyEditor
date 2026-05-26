@@ -42,7 +42,15 @@ export default function Terms() {
         <li>resell, sublicense, or redistribute the Service or its outputs as a competing product;</li>
         <li>reverse-engineer or attempt to derive the source code of the Service except as permitted by law;</li>
         <li>circumvent quota, rate-limit or feature-gating mechanisms;</li>
-        <li>generate content that is unlawful, fraudulent, deceptive, sexually explicit involving minors, encourages violence, promotes hate, or is otherwise abusive.</li>
+        <li>generate content that is unlawful, fraudulent, deceptive, sexually explicit involving minors, encourages violence, promotes hate, or is otherwise abusive;</li>
+        <li>
+          <strong>impersonate any real person</strong> — including, without limitation,
+          celebrities, politicians, religious scholars, public figures, or any third party — by
+          generating images, video, or audio (including cloned voices) of them. The Service
+          does <strong>not</strong> offer celebrity or third-party voice/likeness cloning, and
+          any attempt to upload third-party samples for that purpose is a material breach of
+          these Terms and will result in immediate account termination.
+        </li>
       </ul>
 
       <h2>4. Generative AI &amp; Editing Outputs</h2>
@@ -53,11 +61,20 @@ export default function Terms() {
       <ul>
         <li>Outputs may contain inaccuracies, hallucinations or omissions. You are responsible for verifying any Output before relying on it, particularly for religious rulings, legal, medical, financial or other regulated matters.</li>
         <li>You are responsible for the prompts and content you submit, including ensuring you have the rights to any audio, images, documents or text you upload.</li>
-        <li>You must not use the Service to produce deepfakes, impersonate real people without consent, jailbreak safety mechanisms, or generate prohibited content listed in Section 3.</li>
+        <li>
+          <strong>Voice cloning policy:</strong> personal voice cloning (where a user uploads
+          a sample of <em>their own</em> voice, with full consent, to generate speech in that
+          same voice) is a planned future feature and is <strong>not currently available</strong>
+          on the Service. When released, it will be strictly limited to the user's own voice.
+          Cloning, synthesising or imitating the voice or likeness of any other person —
+          including celebrities, scholars or other public figures — is prohibited.
+        </li>
+        <li>You must not use the Service to produce deepfakes, jailbreak safety mechanisms, or generate prohibited content listed in Section 3.</li>
         <li>Subject to your compliance with these Terms, you own the Outputs you generate, but the underlying model weights, prompts library and software remain ours.</li>
         <li>We may remove or refuse to process content, filter Outputs, suspend features, and suspend or terminate repeat infringers.</li>
         <li>Rights-holders who believe content on the Service infringes their rights may contact us at the address in Section 14 with a takedown request.</li>
       </ul>
+
 
       <h2>5. Subscriptions, Tokens &amp; Manual Payments</h2>
       <p>We offer two payment channels:</p>
