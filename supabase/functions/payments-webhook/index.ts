@@ -30,7 +30,7 @@ function getSupabase() {
 const BILLING_CYCLE_DAYS = 30;
 
 async function handleSubscriptionCreated(data: any, env: PaddleEnv) {
-  const { id, customerId, items, status, currentBillingPeriod, customData } = data;
+  const { id, customerId, items, currentBillingPeriod, customData } = data;
   const userId = customData?.userId;
   if (!userId) {
     console.error('[webhook] subscription.created without customData.userId');
