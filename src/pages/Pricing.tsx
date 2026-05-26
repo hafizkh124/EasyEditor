@@ -17,12 +17,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy } from "lucide-react";
+import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
 import { WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
+import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
+import { isPaddleConfigured } from "@/lib/paddle";
 
 const MotionCard = motion(Card);
 
@@ -115,6 +117,17 @@ const Pricing = () => {
   const [dialogPlan, setDialogPlan] = useState<PaidTier>("basic");
   const [txId, setTxId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { openCheckout, loading: checkoutLoading } = usePaddleCheckout();
+  const cardEnabled = isPaddleConfigured();
+
+  const handleCardCheckout = (plan: PaidTier) => {
+    if (!user) return;
+    openCheckout({
+      priceId: `${plan}_monthly`,
+      userId: user.id,
+      customerEmail: user.email ?? undefined,
+    });
+  };
 
   useEffect(() => {
     if (subscription) {
@@ -384,16 +397,35 @@ const Pricing = () => {
                         </p>
                       </div>
                     ) : showRequest ? (
-                      /* Active upgrade button */
-                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                        <Button
-                          onClick={() => openDialog(plan.id)}
-                          className="w-full h-11 rounded-xl"
-                        >
-                          <Icon className="h-4 w-4 me-2" />
-                          {t("pricing.request_upgrade")}
-                        </Button>
-                      </motion.div>
+                      /* Active upgrade buttons — Card (Paddle) + Manual (PKR) */
+                      <div className="space-y-2">
+                        {cardEnabled && (
+                          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                            <Button
+                              onClick={() => handleCardCheckout(plan.id)}
+                              disabled={checkoutLoading}
+                              className="w-full h-11 rounded-xl"
+                            >
+                              {checkoutLoading ? (
+                                <Loader2 className="h-4 w-4 me-2 animate-spin" />
+                              ) : (
+                                <CreditCard className="h-4 w-4 me-2" />
+                              )}
+                              Pay by card
+                            </Button>
+                          </motion.div>
+                        )}
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                          <Button
+                            onClick={() => openDialog(plan.id)}
+                            variant={cardEnabled ? "outline" : "default"}
+                            className="w-full h-11 rounded-xl"
+                          >
+                            <Icon className="h-4 w-4 me-2" />
+                            {t("pricing.request_upgrade")}
+                          </Button>
+                        </motion.div>
+                      </div>
                     ) : null}
                   </motion.div>
                 </CardContent>

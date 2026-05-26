@@ -32,6 +32,7 @@ const CompleteProfile = lazy(() => import("./pages/CompleteProfile"));
 const About = lazy(() => import("./pages/About"));
 const FaqAiHaram = lazy(() => import("./pages/FaqAiHaram"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ const App = () => (
                   <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
                   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                  <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
