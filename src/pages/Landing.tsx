@@ -152,7 +152,7 @@ const Landing = () => {
       icon: style.icon,
       iconClass: style.iconClass,
       bg: style.bg,
-      features: buildFeatures(tier.featureTemplates, t).filter((f) => f.included),
+      features: buildFeatures(tier.featureTemplates, t).filter((f) => f.included || f.comingSoon),
     };
   });
 
