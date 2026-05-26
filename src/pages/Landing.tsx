@@ -355,20 +355,29 @@ const Landing = () => {
                     <ul className="space-y-2 text-start">
                       {plan.features.map((f, idx) => (
                         <li key={idx} className="flex items-start gap-2 text-sm">
-                          <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
-                          <span className="text-foreground/90">{f.label}</span>
+                          {f.comingSoon ? (
+                            <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
+                          ) : (
+                            <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
+                          )}
+                          <span className="text-foreground/90 flex-1">{f.label}</span>
+                          {f.comingSoon && (
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-amber-400/60 text-amber-600 dark:text-amber-400">
+                              {t("pricing.coming_soon")}
+                            </Badge>
+                          )}
                         </li>
                       ))}
                     </ul>
 
-                    {cardEnabled && !comingSoon && (
+                    {!comingSoon && (
                       <Button
-                        onClick={() => handlePayByCard(plan.id)}
+                        onClick={() => openChoice(plan.id)}
                         className="mt-5 w-full gap-2"
                         size="sm"
                       >
                         <CreditCard className="h-4 w-4" />
-                        {language === "ur" ? "کارڈ سے ادائیگی" : "Pay by card"}
+                        {language === "ur" ? `${t(plan.nameKey)} حاصل کریں` : `Get ${t(plan.nameKey)}`}
                       </Button>
                     )}
                     {comingSoon && (
