@@ -415,35 +415,16 @@ const Pricing = () => {
                         </p>
                       </div>
                     ) : showRequest ? (
-                      /* Active upgrade buttons — Card (Paddle) + Manual (PKR) */
-                      <div className="space-y-2">
-                        {cardEnabled && (
-                          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                            <Button
-                              onClick={() => handleCardCheckout(plan.id)}
-                              disabled={checkoutLoading}
-                              className="w-full h-11 rounded-xl"
-                            >
-                              {checkoutLoading ? (
-                                <Loader2 className="h-4 w-4 me-2 animate-spin" />
-                              ) : (
-                                <CreditCard className="h-4 w-4 me-2" />
-                              )}
-                              Pay by card
-                            </Button>
-                          </motion.div>
-                        )}
-                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                          <Button
-                            onClick={() => openDialog(plan.id)}
-                            variant={cardEnabled ? "outline" : "default"}
-                            className="w-full h-11 rounded-xl"
-                          >
-                            <Icon className="h-4 w-4 me-2" />
-                            {t("pricing.request_upgrade")}
-                          </Button>
-                        </motion.div>
-                      </div>
+                      /* Single CTA — opens choice dialog (card vs manual) */
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button
+                          onClick={() => { setChoicePlan(plan.id); setChoiceOpen(true); }}
+                          className="w-full h-11 rounded-xl"
+                        >
+                          <Icon className="h-4 w-4 me-2" />
+                          {language === "ur" ? `${t(plan.nameKey)} حاصل کریں` : `Get ${t(plan.nameKey)}`}
+                        </Button>
+                      </motion.div>
                     ) : null}
                   </motion.div>
                 </CardContent>
