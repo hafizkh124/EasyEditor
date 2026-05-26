@@ -13,6 +13,8 @@ export interface PlanFeatureTemplate {
   /** Optional second i18n key appended after the name, e.g. "pricing.ocr" */
   suffixKey?: string;
   included: boolean;
+  /** When true, shown with a "coming soon" badge instead of strikethrough */
+  comingSoon?: boolean;
 }
 
 export interface PlanTier {
@@ -73,8 +75,8 @@ export const PLAN_TIERS: PlanTier[] = [
       { qty: "10 hrs",    nameKey: "pricing.stt",      included: true },
       { qty: "2,000",     nameKey: "pricing.pages",     suffixKey: "pricing.ocr", included: true },
       { qty: "500",       nameKey: "pricing.queries",   suffixKey: "pricing.research", included: true },
-      { qty: "",          nameKey: "pricing.tts",       included: true },
-      { qty: "",          nameKey: "pricing.voice_clone", included: true },
+      { qty: "",          nameKey: "pricing.tts",       included: false, comingSoon: true },
+      { qty: "",          nameKey: "pricing.voice_clone", included: false, comingSoon: true },
     ],
   },
 ];
@@ -83,10 +85,10 @@ export const PLAN_TIERS: PlanTier[] = [
 export function buildFeatures(
   templates: PlanFeatureTemplate[],
   t: (k: string) => string,
-): { label: string; included: boolean }[] {
+): { label: string; included: boolean; comingSoon?: boolean }[] {
   return templates.map((f) => {
     const parts = [f.qty, t(f.nameKey)].filter(Boolean);
     if (f.suffixKey) parts.push(t(f.suffixKey));
-    return { label: parts.join(" "), included: f.included };
+    return { label: parts.join(" "), included: f.included, comingSoon: f.comingSoon };
   });
 }
