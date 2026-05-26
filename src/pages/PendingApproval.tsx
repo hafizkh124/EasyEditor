@@ -16,6 +16,7 @@ import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { isPaddleConfigured } from "@/lib/paddle";
 
 const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
+const PENDING_CHECKOUT_METHOD_KEY = "pendingCheckoutMethod";
 
 const PLAN_ICONS: Record<PaidTier, typeof Zap> = { basic: Zap, pro: Crown, ultra: Star };
 const PLAN_COLORS: Record<PaidTier, { icon: string; border: string; bg: string; selectedBorder: string }> = {
@@ -50,12 +51,14 @@ const PendingApproval = () => {
   const cardEnabled = isPaddleConfigured();
 
   // Honor a pending checkout intent stored on the landing page before signup.
-  // Auto-selects the chosen plan and opens the Paddle checkout once.
+  // Auto-selects the chosen plan. Auto-opens Paddle only if method === "card".
   useEffect(() => {
-    if (!user || !cardEnabled) return;
+    if (!user) return;
     let pending: string | null = null;
+    let method: string | null = null;
     try {
       pending = sessionStorage.getItem(PENDING_CHECKOUT_KEY);
+      method = sessionStorage.getItem(PENDING_CHECKOUT_METHOD_KEY);
     } catch {
       pending = null;
     }
@@ -63,16 +66,19 @@ const PendingApproval = () => {
     const plan = PLAN_TIERS.find((p) => p.id === pending && !p.comingSoon);
     try {
       sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+      sessionStorage.removeItem(PENDING_CHECKOUT_METHOD_KEY);
     } catch {
       // ignore
     }
     if (!plan) return;
     setSelectedPackage(plan.id);
-    openCheckout({
-      priceId: `${plan.id}_monthly`,
-      userId: user.id,
-      customerEmail: user.email ?? undefined,
-    });
+    if (method === "card" && cardEnabled) {
+      openCheckout({
+        priceId: `${plan.id}_monthly`,
+        userId: user.id,
+        customerEmail: user.email ?? undefined,
+      });
+    }
   }, [user, cardEnabled, openCheckout]);
 
   const handlePayByCard = () => {
