@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy, CreditCard } from "lucide-react";
+import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
@@ -25,6 +25,7 @@ import { WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAcco
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { isPaddleConfigured } from "@/lib/paddle";
+import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
 
 const MotionCard = motion(Card);
 
@@ -108,7 +109,7 @@ const Pricing = () => {
   useSeo({ title: "Pricing — Al-Ulama Easy Editor", description: "Compare Basic, Pro and Ultra plans for Al-Ulama Easy Editor and pick what fits you.", path: "/pricing" });
 
   const { user } = useAuth();
-  const { t, direction } = useLanguage();
+  const { t, direction, language } = useLanguage();
   const { subscription, loading, refetch } = useSubscription();
   const currentTier = subscription?.tier ?? "free";
 
@@ -117,6 +118,8 @@ const Pricing = () => {
   const [dialogPlan, setDialogPlan] = useState<PaidTier>("basic");
   const [txId, setTxId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [choiceOpen, setChoiceOpen] = useState(false);
+  const [choicePlan, setChoicePlan] = useState<PaidTier>("basic");
   const { openCheckout, loading: checkoutLoading } = usePaddleCheckout();
   const cardEnabled = isPaddleConfigured();
 
@@ -345,10 +348,10 @@ const Pricing = () => {
                     <motion.div
                       key={f.label}
                       className={`flex items-center gap-2.5 text-sm rounded-lg px-2.5 py-2 transition-colors ${
-                        f.included ? "hover:bg-accent/50" : "opacity-50"
+                        f.included ? "hover:bg-accent/50" : f.comingSoon ? "" : "opacity-50"
                       }`}
                       initial={{ opacity: 0, x: -15 }}
-                      animate={{ opacity: f.included ? 1 : 0.5, x: 0 }}
+                      animate={{ opacity: f.included || f.comingSoon ? 1 : 0.5, x: 0 }}
                       transition={{ delay: 0.25 + i * 0.06 }}
                     >
                       <div
@@ -358,6 +361,8 @@ const Pricing = () => {
                       >
                         {f.included ? (
                           <Check className={`h-3 w-3 ${plan.iconClass}`} />
+                        ) : f.comingSoon ? (
+                          <Clock className="h-3 w-3 text-amber-500" />
                         ) : (
                           <X className="h-3 w-3 text-muted-foreground" />
                         )}
@@ -366,11 +371,18 @@ const Pricing = () => {
                         className={
                           f.included
                             ? "text-foreground font-medium"
-                            : "text-muted-foreground line-through"
+                            : f.comingSoon
+                              ? "text-foreground/80"
+                              : "text-muted-foreground line-through"
                         }
                       >
                         {f.label}
                       </span>
+                      {f.comingSoon && (
+                        <Badge variant="outline" className="ms-auto text-[10px] py-0 px-1.5 border-amber-400/60 text-amber-600 dark:text-amber-400">
+                          {t("pricing.coming_soon")}
+                        </Badge>
+                      )}
                     </motion.div>
                   ))}
 
@@ -403,35 +415,16 @@ const Pricing = () => {
                         </p>
                       </div>
                     ) : showRequest ? (
-                      /* Active upgrade buttons — Card (Paddle) + Manual (PKR) */
-                      <div className="space-y-2">
-                        {cardEnabled && (
-                          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                            <Button
-                              onClick={() => handleCardCheckout(plan.id)}
-                              disabled={checkoutLoading}
-                              className="w-full h-11 rounded-xl"
-                            >
-                              {checkoutLoading ? (
-                                <Loader2 className="h-4 w-4 me-2 animate-spin" />
-                              ) : (
-                                <CreditCard className="h-4 w-4 me-2" />
-                              )}
-                              Pay by card
-                            </Button>
-                          </motion.div>
-                        )}
-                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                          <Button
-                            onClick={() => openDialog(plan.id)}
-                            variant={cardEnabled ? "outline" : "default"}
-                            className="w-full h-11 rounded-xl"
-                          >
-                            <Icon className="h-4 w-4 me-2" />
-                            {t("pricing.request_upgrade")}
-                          </Button>
-                        </motion.div>
-                      </div>
+                      /* Single CTA — opens choice dialog (card vs manual) */
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button
+                          onClick={() => { setChoicePlan(plan.id); setChoiceOpen(true); }}
+                          className="w-full h-11 rounded-xl"
+                        >
+                          <Icon className="h-4 w-4 me-2" />
+                          {language === "ur" ? `${t(plan.nameKey)} حاصل کریں` : `Get ${t(plan.nameKey)}`}
+                        </Button>
+                      </motion.div>
                     ) : null}
                   </motion.div>
                 </CardContent>
@@ -573,6 +566,19 @@ const Pricing = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Choice dialog — Card vs Manual */}
+      <PlanCheckoutChoiceDialog
+        open={choiceOpen}
+        onOpenChange={setChoiceOpen}
+        planName={t(plans.find((p) => p.id === choicePlan)?.nameKey ?? "")}
+        cardPrice={plans.find((p) => p.id === choicePlan)?.cardPrice ?? ""}
+        manualPrice={plans.find((p) => p.id === choicePlan)?.price ?? ""}
+        cardEnabled={cardEnabled}
+        cardLoading={checkoutLoading}
+        onPayByCard={() => { handleCardCheckout(choicePlan); setChoiceOpen(false); }}
+        onManual={() => { setChoiceOpen(false); openDialog(choicePlan); }}
+      />
     </AppLayout>
   );
 };

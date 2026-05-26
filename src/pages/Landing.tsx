@@ -1,4 +1,4 @@
-import { useEffect, Fragment } from "react";
+import { useEffect, Fragment, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -21,11 +21,13 @@ import {
   MessageCircle,
   Copy,
   CreditCard,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { isPaddleConfigured } from "@/lib/paddle";
+import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
 
 export const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 
@@ -41,6 +43,9 @@ const Landing = () => {
   const navigate = useNavigate();
   const cardEnabled = isPaddleConfigured();
 
+  const [choiceOpen, setChoiceOpen] = useState(false);
+  const [choicePlan, setChoicePlan] = useState<PaidTier>("pro");
+
   const handlePayByCard = (planId: PaidTier) => {
     try {
       sessionStorage.setItem(PENDING_CHECKOUT_KEY, planId);
@@ -49,6 +54,19 @@ const Landing = () => {
     }
     navigate(`/signup?checkout=${planId}`);
   };
+
+  const handleManual = () => {
+    setChoiceOpen(false);
+    requestAnimationFrame(() => {
+      document.getElementById("payment-accounts")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const openChoice = (planId: PaidTier) => {
+    setChoicePlan(planId);
+    setChoiceOpen(true);
+  };
+
 
 
   // Dynamic SEO per language
@@ -134,7 +152,7 @@ const Landing = () => {
       icon: style.icon,
       iconClass: style.iconClass,
       bg: style.bg,
-      features: buildFeatures(tier.featureTemplates, t).filter((f) => f.included),
+      features: buildFeatures(tier.featureTemplates, t).filter((f) => f.included || f.comingSoon),
     };
   });
 
@@ -337,20 +355,29 @@ const Landing = () => {
                     <ul className="space-y-2 text-start">
                       {plan.features.map((f, idx) => (
                         <li key={idx} className="flex items-start gap-2 text-sm">
-                          <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
-                          <span className="text-foreground/90">{f.label}</span>
+                          {f.comingSoon ? (
+                            <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
+                          ) : (
+                            <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
+                          )}
+                          <span className="text-foreground/90 flex-1">{f.label}</span>
+                          {f.comingSoon && (
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-amber-400/60 text-amber-600 dark:text-amber-400">
+                              {t("pricing.coming_soon")}
+                            </Badge>
+                          )}
                         </li>
                       ))}
                     </ul>
 
-                    {cardEnabled && !comingSoon && (
+                    {!comingSoon && (
                       <Button
-                        onClick={() => handlePayByCard(plan.id)}
+                        onClick={() => openChoice(plan.id)}
                         className="mt-5 w-full gap-2"
                         size="sm"
                       >
                         <CreditCard className="h-4 w-4" />
-                        {language === "ur" ? "کارڈ سے ادائیگی" : "Pay by card"}
+                        {language === "ur" ? `${t(plan.nameKey)} حاصل کریں` : `Get ${t(plan.nameKey)}`}
                       </Button>
                     )}
                     {comingSoon && (
@@ -504,6 +531,17 @@ const Landing = () => {
           </div>
         </div>
       </footer>
+
+      <PlanCheckoutChoiceDialog
+        open={choiceOpen}
+        onOpenChange={setChoiceOpen}
+        planName={t(plans.find((p) => p.id === choicePlan)?.nameKey ?? "")}
+        cardPrice={plans.find((p) => p.id === choicePlan)?.cardPrice ?? ""}
+        manualPrice={plans.find((p) => p.id === choicePlan)?.price ?? ""}
+        cardEnabled={cardEnabled}
+        onPayByCard={() => { handlePayByCard(choicePlan); setChoiceOpen(false); }}
+        onManual={handleManual}
+      />
     </div>
   );
 };
