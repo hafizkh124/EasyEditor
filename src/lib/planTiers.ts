@@ -34,7 +34,7 @@ export const PLAN_TIERS: PlanTier[] = [
   {
     id: "basic",
     nameKey: "settings.basic",
-    price: "1,800 PKR",
+    price: "1,400 PKR",
     cardPrice: "$5",
     priceAmountKey: "pricing.payment_amount_basic",
     popular: false,
@@ -50,7 +50,7 @@ export const PLAN_TIERS: PlanTier[] = [
   {
     id: "pro",
     nameKey: "settings.pro",
-    price: "6,500 PKR",
+    price: "5,400 PKR",
     cardPrice: "$19",
     priceAmountKey: "pricing.payment_amount_pro",
     popular: true,
@@ -66,7 +66,7 @@ export const PLAN_TIERS: PlanTier[] = [
   {
     id: "ultra",
     nameKey: "settings.ultra",
-    price: "9,500 PKR",
+    price: "8,400 PKR",
     cardPrice: "$29",
     priceAmountKey: "pricing.payment_amount_ultra",
     popular: false,
