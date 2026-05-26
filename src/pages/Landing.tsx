@@ -476,9 +476,21 @@ const Landing = () => {
             <img src="/favicon.png" alt="" width={24} height={24} className="rounded" />
             <span>© {new Date().getFullYear()} EasyEditor</span>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <Link to="/about" className="hover:text-foreground">
               {language === "ur" ? "ہمارے بارے میں" : "About"}
+            </Link>
+            <Link to="/pricing-info" className="hover:text-foreground">
+              {language === "ur" ? "پرائسنگ" : "Pricing"}
+            </Link>
+            <Link to="/terms" className="hover:text-foreground">
+              {language === "ur" ? "شرائط" : "Terms"}
+            </Link>
+            <Link to="/privacy" className="hover:text-foreground">
+              {language === "ur" ? "پرائیویسی" : "Privacy"}
+            </Link>
+            <Link to="/refund-policy" className="hover:text-foreground">
+              {language === "ur" ? "ریفنڈ" : "Refunds"}
             </Link>
             <Link to="/faq/is-ai-haram-in-islam" className="hover:text-foreground">
               {language === "ur" ? "سوالات" : "FAQ"}
