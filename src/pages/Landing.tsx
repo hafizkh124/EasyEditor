@@ -1,5 +1,5 @@
 import { useEffect, Fragment } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,14 @@ import {
   Star,
   MessageCircle,
   Copy,
+  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
+import { isPaddleConfigured } from "@/lib/paddle";
+
+export const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 
 const PLAN_STYLE: Record<PaidTier, { icon: typeof Zap; iconClass: string; bg: string }> = {
   basic: { icon: Zap, iconClass: "text-blue-500", bg: "bg-blue-500/10" },
