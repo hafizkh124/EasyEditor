@@ -656,7 +656,7 @@
   "landing.feature_ocr_title": "تصویر سے متن (OCR)",
   "landing.feature_ocr_desc": "تصاویر، اسکین اور کتب سے متن نکالیں — بشمول اردو اور عربی رسم الخط۔",
   "landing.feature_tts_title": "ٹیکسٹ ٹو اسپیچ",
-  "landing.feature_tts_desc": "قدرتی کثیر اللسانی آوازیں اور ذاتی آواز کلوننگ (الٹرا پلان میں)۔",
+  "landing.feature_tts_desc": "قدرتی کثیر اللسانی آوازیں۔ ذاتی آواز کلوننگ (صرف صارف کی اپنی آواز) جلد آ رہی ہے — ہم مشہور شخصیات یا کسی تیسرے فرد کی آواز کلون کرنے کی سہولت بالکل نہیں دیتے۔",
   "landing.feature_ai_refine_title": "AI ترمیم",
   "landing.feature_ai_refine_desc": "ایک کلک میں متن کو رسمی، قدرتی، مختصر بنائیں یا حوالہ جات شامل کریں۔",
   "landing.feature_multilingual_title": "کثیر اللسانی اور RTL",
