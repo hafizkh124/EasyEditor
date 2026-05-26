@@ -390,6 +390,9 @@ const Landing = () => {
               );
             })}
           </div>
+        </div>
+      </section>
+
 
 
       {/* CTA */}
