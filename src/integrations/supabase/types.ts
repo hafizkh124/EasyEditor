@@ -459,7 +459,9 @@ export type Database = {
         Row: {
           activated_at: string | null
           billing_cycle_days: number
+          cancel_at_period_end: boolean
           created_at: string
+          environment: string | null
           expires_at: string | null
           id: string
           islamic_queries_limit: number
@@ -468,7 +470,10 @@ export type Database = {
           last_upgrade_request: string | null
           ocr_pages_limit: number
           ocr_pages_used: number
+          paddle_customer_id: string | null
+          paddle_subscription_id: string | null
           payment_reference: string | null
+          payment_source: string
           pending_tier: string | null
           renewal_count: number
           research_queries_limit: number
@@ -485,7 +490,9 @@ export type Database = {
         Insert: {
           activated_at?: string | null
           billing_cycle_days?: number
+          cancel_at_period_end?: boolean
           created_at?: string
+          environment?: string | null
           expires_at?: string | null
           id?: string
           islamic_queries_limit?: number
@@ -494,7 +501,10 @@ export type Database = {
           last_upgrade_request?: string | null
           ocr_pages_limit?: number
           ocr_pages_used?: number
+          paddle_customer_id?: string | null
+          paddle_subscription_id?: string | null
           payment_reference?: string | null
+          payment_source?: string
           pending_tier?: string | null
           renewal_count?: number
           research_queries_limit?: number
@@ -511,7 +521,9 @@ export type Database = {
         Update: {
           activated_at?: string | null
           billing_cycle_days?: number
+          cancel_at_period_end?: boolean
           created_at?: string
+          environment?: string | null
           expires_at?: string | null
           id?: string
           islamic_queries_limit?: number
@@ -520,7 +532,10 @@ export type Database = {
           last_upgrade_request?: string | null
           ocr_pages_limit?: number
           ocr_pages_used?: number
+          paddle_customer_id?: string | null
+          paddle_subscription_id?: string | null
           payment_reference?: string | null
+          payment_source?: string
           pending_tier?: string | null
           renewal_count?: number
           research_queries_limit?: number
