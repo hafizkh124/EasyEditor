@@ -46,6 +46,46 @@ const PendingApproval = () => {
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PaidTier>("basic");
+  const { openCheckout, loading: checkoutLoading } = usePaddleCheckout();
+  const cardEnabled = isPaddleConfigured();
+
+  // Honor a pending checkout intent stored on the landing page before signup.
+  // Auto-selects the chosen plan and opens the Paddle checkout once.
+  useEffect(() => {
+    if (!user || !cardEnabled) return;
+    let pending: string | null = null;
+    try {
+      pending = sessionStorage.getItem(PENDING_CHECKOUT_KEY);
+    } catch {
+      pending = null;
+    }
+    if (!pending) return;
+    const plan = PLAN_TIERS.find((p) => p.id === pending && !p.comingSoon);
+    try {
+      sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+    } catch {
+      // ignore
+    }
+    if (!plan) return;
+    setSelectedPackage(plan.id);
+    openCheckout({
+      priceId: `${plan.id}_monthly`,
+      userId: user.id,
+      customerEmail: user.email ?? undefined,
+    });
+  }, [user, cardEnabled, openCheckout]);
+
+  const handlePayByCard = () => {
+    if (!user || selectedPlanIsComingSoon()) return;
+    openCheckout({
+      priceId: `${selectedPackage}_monthly`,
+      userId: user.id,
+      customerEmail: user.email ?? undefined,
+    });
+  };
+
+  const selectedPlanIsComingSoon = () =>
+    PLAN_TIERS.find((p) => p.id === selectedPackage)?.comingSoon === true;
 
   // Poll approval status every 30s so the page auto-unlocks shortly after admin approves.
   useEffect(() => {
