@@ -656,7 +656,7 @@
   "landing.feature_ocr_title": "Image to Text (OCR)",
   "landing.feature_ocr_desc": "Extract text from photos, scans and books — including Urdu and Arabic scripts.",
   "landing.feature_tts_title": "Text to Speech",
-  "landing.feature_tts_desc": "Natural multilingual voices and personal voice cloning (Ultra plan).",
+  "landing.feature_tts_desc": "Natural multilingual voices. Personal voice cloning (your own voice only) is coming soon — we do not support cloning of celebrities or third parties.",
   "landing.feature_ai_refine_title": "AI Refinement",
   "landing.feature_ai_refine_desc": "Formalize, humanize, shorten and add citations to any text in one click.",
   "landing.feature_multilingual_title": "Multilingual & RTL",
