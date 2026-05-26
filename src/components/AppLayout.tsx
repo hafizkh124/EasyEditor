@@ -279,6 +279,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col min-w-0">
+        <PaymentTestModeBanner />
         {/* Mobile Top Bar */}
         <header className="flex h-14 items-center gap-3 border-b border-border px-4 md:hidden bg-background/95 backdrop-blur-sm sticky top-0 z-30">
           <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
