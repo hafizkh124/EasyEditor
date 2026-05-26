@@ -1,5 +1,5 @@
 import { useEffect, Fragment } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,14 @@ import {
   Star,
   MessageCircle,
   Copy,
+  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
+import { isPaddleConfigured } from "@/lib/paddle";
+
+export const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 
 const PLAN_STYLE: Record<PaidTier, { icon: typeof Zap; iconClass: string; bg: string }> = {
   basic: { icon: Zap, iconClass: "text-blue-500", bg: "bg-blue-500/10" },
@@ -34,6 +38,18 @@ const PLAN_STYLE: Record<PaidTier, { icon: typeof Zap; iconClass: string; bg: st
 const Landing = () => {
   const { user, loading } = useAuth();
   const { t, language, setLanguage, direction } = useLanguage();
+  const navigate = useNavigate();
+  const cardEnabled = isPaddleConfigured();
+
+  const handlePayByCard = (planId: PaidTier) => {
+    try {
+      sessionStorage.setItem(PENDING_CHECKOUT_KEY, planId);
+    } catch {
+      // ignore storage errors (e.g. private mode)
+    }
+    navigate(`/signup?checkout=${planId}`);
+  };
+
 
   // Dynamic SEO per language
   useEffect(() => {
@@ -319,6 +335,22 @@ const Landing = () => {
                         </li>
                       ))}
                     </ul>
+
+                    {cardEnabled && !comingSoon && (
+                      <Button
+                        onClick={() => handlePayByCard(plan.id)}
+                        className="mt-5 w-full gap-2"
+                        size="sm"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        {language === "ur" ? "کارڈ سے ادائیگی" : "Pay by card"}
+                      </Button>
+                    )}
+                    {comingSoon && (
+                      <Button disabled variant="outline" className="mt-5 w-full" size="sm">
+                        {t("pricing.coming_soon")}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               );

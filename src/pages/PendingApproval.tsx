@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, ShieldAlert, RefreshCw, LogOut, MessageCircle, Loader2, Check, Crown, Zap, Star, Construction } from "lucide-react";
+import { Copy, ShieldAlert, RefreshCw, LogOut, MessageCircle, Loader2, Check, Crown, Zap, Star, Construction, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApproval } from "@/hooks/useApproval";
@@ -12,6 +12,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { cn } from "@/lib/utils";
+import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
+import { isPaddleConfigured } from "@/lib/paddle";
+
+const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 
 const PLAN_ICONS: Record<PaidTier, typeof Zap> = { basic: Zap, pro: Crown, ultra: Star };
 const PLAN_COLORS: Record<PaidTier, { icon: string; border: string; bg: string; selectedBorder: string }> = {
@@ -42,6 +46,46 @@ const PendingApproval = () => {
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PaidTier>("basic");
+  const { openCheckout, loading: checkoutLoading } = usePaddleCheckout();
+  const cardEnabled = isPaddleConfigured();
+
+  // Honor a pending checkout intent stored on the landing page before signup.
+  // Auto-selects the chosen plan and opens the Paddle checkout once.
+  useEffect(() => {
+    if (!user || !cardEnabled) return;
+    let pending: string | null = null;
+    try {
+      pending = sessionStorage.getItem(PENDING_CHECKOUT_KEY);
+    } catch {
+      pending = null;
+    }
+    if (!pending) return;
+    const plan = PLAN_TIERS.find((p) => p.id === pending && !p.comingSoon);
+    try {
+      sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+    } catch {
+      // ignore
+    }
+    if (!plan) return;
+    setSelectedPackage(plan.id);
+    openCheckout({
+      priceId: `${plan.id}_monthly`,
+      userId: user.id,
+      customerEmail: user.email ?? undefined,
+    });
+  }, [user, cardEnabled, openCheckout]);
+
+  const handlePayByCard = () => {
+    if (!user || selectedPlanIsComingSoon()) return;
+    openCheckout({
+      priceId: `${selectedPackage}_monthly`,
+      userId: user.id,
+      customerEmail: user.email ?? undefined,
+    });
+  };
+
+  const selectedPlanIsComingSoon = () =>
+    PLAN_TIERS.find((p) => p.id === selectedPackage)?.comingSoon === true;
 
   // Poll approval status every 30s so the page auto-unlocks shortly after admin approves.
   useEffect(() => {
@@ -222,6 +266,40 @@ const PendingApproval = () => {
             })}
           </CardContent>
         </Card>
+
+        {/* Pay by card — instant activation (Paddle) */}
+        {cardEnabled && !selectedPlanIsComingSoon() && (
+          <Card className="border-primary/40 bg-primary/5">
+            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+              <div className="space-y-0.5">
+                <p className="font-medium text-sm">
+                  {t("pending.pay_by_card_title") ||
+                    (direction === "rtl"
+                      ? "کارڈ سے ادائیگی — اکاؤنٹ فوراً فعال"
+                      : "Pay by card — instant activation")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {direction === "rtl"
+                    ? "بین الاقوامی کارڈ سے ادائیگی پر کوئی منظوری درکار نہیں — اکاؤنٹ فوراً فعال ہو جائے گا۔"
+                    : "International card payment auto-activates your account — no manual approval needed."}
+                </p>
+              </div>
+              <Button
+                onClick={handlePayByCard}
+                disabled={checkoutLoading}
+                className="gap-2"
+                data-approval-allow
+              >
+                {checkoutLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4" />
+                )}
+                {direction === "rtl" ? "کارڈ سے ادائیگی" : "Pay by card"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Payment Accounts */}
         <Card>
