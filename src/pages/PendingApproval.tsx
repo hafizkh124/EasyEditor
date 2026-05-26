@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, ShieldAlert, RefreshCw, LogOut, MessageCircle, Loader2, Check, Crown, Zap, Star, Construction } from "lucide-react";
+import { Copy, ShieldAlert, RefreshCw, LogOut, MessageCircle, Loader2, Check, Crown, Zap, Star, Construction, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApproval } from "@/hooks/useApproval";
@@ -12,6 +12,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { cn } from "@/lib/utils";
+import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
+import { isPaddleConfigured } from "@/lib/paddle";
+
+const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 
 const PLAN_ICONS: Record<PaidTier, typeof Zap> = { basic: Zap, pro: Crown, ultra: Star };
 const PLAN_COLORS: Record<PaidTier, { icon: string; border: string; bg: string; selectedBorder: string }> = {
