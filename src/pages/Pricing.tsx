@@ -348,10 +348,10 @@ const Pricing = () => {
                     <motion.div
                       key={f.label}
                       className={`flex items-center gap-2.5 text-sm rounded-lg px-2.5 py-2 transition-colors ${
-                        f.included ? "hover:bg-accent/50" : "opacity-50"
+                        f.included ? "hover:bg-accent/50" : f.comingSoon ? "" : "opacity-50"
                       }`}
                       initial={{ opacity: 0, x: -15 }}
-                      animate={{ opacity: f.included ? 1 : 0.5, x: 0 }}
+                      animate={{ opacity: f.included || f.comingSoon ? 1 : 0.5, x: 0 }}
                       transition={{ delay: 0.25 + i * 0.06 }}
                     >
                       <div
@@ -361,6 +361,8 @@ const Pricing = () => {
                       >
                         {f.included ? (
                           <Check className={`h-3 w-3 ${plan.iconClass}`} />
+                        ) : f.comingSoon ? (
+                          <Clock className="h-3 w-3 text-amber-500" />
                         ) : (
                           <X className="h-3 w-3 text-muted-foreground" />
                         )}
@@ -369,11 +371,18 @@ const Pricing = () => {
                         className={
                           f.included
                             ? "text-foreground font-medium"
-                            : "text-muted-foreground line-through"
+                            : f.comingSoon
+                              ? "text-foreground/80"
+                              : "text-muted-foreground line-through"
                         }
                       >
                         {f.label}
                       </span>
+                      {f.comingSoon && (
+                        <Badge variant="outline" className="ms-auto text-[10px] py-0 px-1.5 border-amber-400/60 text-amber-600 dark:text-amber-400">
+                          {t("pricing.coming_soon")}
+                        </Badge>
+                      )}
                     </motion.div>
                   ))}
 
