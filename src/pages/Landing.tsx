@@ -1,4 +1,4 @@
-import { useEffect, Fragment } from "react";
+import { useEffect, Fragment, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -21,11 +21,13 @@ import {
   MessageCircle,
   Copy,
   CreditCard,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { isPaddleConfigured } from "@/lib/paddle";
+import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
 
 export const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 
@@ -41,6 +43,9 @@ const Landing = () => {
   const navigate = useNavigate();
   const cardEnabled = isPaddleConfigured();
 
+  const [choiceOpen, setChoiceOpen] = useState(false);
+  const [choicePlan, setChoicePlan] = useState<PaidTier>("pro");
+
   const handlePayByCard = (planId: PaidTier) => {
     try {
       sessionStorage.setItem(PENDING_CHECKOUT_KEY, planId);
@@ -49,6 +54,19 @@ const Landing = () => {
     }
     navigate(`/signup?checkout=${planId}`);
   };
+
+  const handleManual = () => {
+    setChoiceOpen(false);
+    requestAnimationFrame(() => {
+      document.getElementById("payment-accounts")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const openChoice = (planId: PaidTier) => {
+    setChoicePlan(planId);
+    setChoiceOpen(true);
+  };
+
 
 
   // Dynamic SEO per language
