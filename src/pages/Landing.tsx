@@ -335,6 +335,22 @@ const Landing = () => {
                         </li>
                       ))}
                     </ul>
+
+                    {cardEnabled && !comingSoon && (
+                      <Button
+                        onClick={() => handlePayByCard(plan.id)}
+                        className="mt-5 w-full gap-2"
+                        size="sm"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        {language === "ur" ? "کارڈ سے ادائیگی" : "Pay by card"}
+                      </Button>
+                    )}
+                    {comingSoon && (
+                      <Button disabled variant="outline" className="mt-5 w-full" size="sm">
+                        {t("pricing.coming_soon")}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               );
