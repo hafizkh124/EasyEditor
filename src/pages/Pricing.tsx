@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy, CreditCard } from "lucide-react";
+import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
@@ -109,7 +109,7 @@ const Pricing = () => {
   useSeo({ title: "Pricing — Al-Ulama Easy Editor", description: "Compare Basic, Pro and Ultra plans for Al-Ulama Easy Editor and pick what fits you.", path: "/pricing" });
 
   const { user } = useAuth();
-  const { t, direction } = useLanguage();
+  const { t, direction, language } = useLanguage();
   const { subscription, loading, refetch } = useSubscription();
   const currentTier = subscription?.tier ?? "free";
 
@@ -566,6 +566,19 @@ const Pricing = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Choice dialog — Card vs Manual */}
+      <PlanCheckoutChoiceDialog
+        open={choiceOpen}
+        onOpenChange={setChoiceOpen}
+        planName={t(plans.find((p) => p.id === choicePlan)?.nameKey ?? "")}
+        cardPrice={plans.find((p) => p.id === choicePlan)?.cardPrice ?? ""}
+        manualPrice={plans.find((p) => p.id === choicePlan)?.price ?? ""}
+        cardEnabled={cardEnabled}
+        cardLoading={checkoutLoading}
+        onPayByCard={() => { handleCardCheckout(choicePlan); setChoiceOpen(false); }}
+        onManual={() => { setChoiceOpen(false); openDialog(choicePlan); }}
+      />
     </AppLayout>
   );
 };
