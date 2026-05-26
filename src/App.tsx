@@ -33,6 +33,10 @@ const About = lazy(() => import("./pages/About"));
 const FaqAiHaram = lazy(() => import("./pages/FaqAiHaram"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
+const Terms = lazy(() => import("./pages/legal/Terms"));
+const Privacy = lazy(() => import("./pages/legal/Privacy"));
+const Refund = lazy(() => import("./pages/legal/Refund"));
+const PricingInfo = lazy(() => import("./pages/legal/PricingInfo"));
 
 const queryClient = new QueryClient();
 
@@ -74,6 +78,10 @@ const App = () => (
                   <Route path="/complete-profile" element={<CompleteProfile />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/faq/is-ai-haram-in-islam" element={<FaqAiHaram />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/refund-policy" element={<Refund />} />
+                  <Route path="/pricing-info" element={<PricingInfo />} />
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/transcribe" element={<ProtectedRoute><ErrorBoundary><Transcribe /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/speak" element={<ProtectedRoute><ErrorBoundary><Speak /></ErrorBoundary></ProtectedRoute>} />
