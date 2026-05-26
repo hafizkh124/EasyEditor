@@ -18,7 +18,10 @@ export interface PlanFeatureTemplate {
 export interface PlanTier {
   id: PaidTier;
   nameKey: string;
+  /** Manual PKR price (shown alongside card USD on pricing UI) */
   price: string;
+  /** Card price in USD via Paddle — instant activation */
+  cardPrice: string;
   priceAmountKey: string;
   popular: boolean;
   comingSoon: boolean;
@@ -29,7 +32,8 @@ export const PLAN_TIERS: PlanTier[] = [
   {
     id: "basic",
     nameKey: "settings.basic",
-    price: "1,000 PKR",
+    price: "1,800 PKR",
+    cardPrice: "$5",
     priceAmountKey: "pricing.payment_amount_basic",
     popular: false,
     comingSoon: false,
@@ -44,7 +48,8 @@ export const PLAN_TIERS: PlanTier[] = [
   {
     id: "pro",
     nameKey: "settings.pro",
-    price: "4,000 PKR",
+    price: "6,500 PKR",
+    cardPrice: "$19",
     priceAmountKey: "pricing.payment_amount_pro",
     popular: true,
     comingSoon: false,
@@ -59,10 +64,11 @@ export const PLAN_TIERS: PlanTier[] = [
   {
     id: "ultra",
     nameKey: "settings.ultra",
-    price: "7,000 PKR",
+    price: "9,500 PKR",
+    cardPrice: "$29",
     priceAmountKey: "pricing.payment_amount_ultra",
     popular: false,
-    comingSoon: true,
+    comingSoon: false,
     featureTemplates: [
       { qty: "10 hrs",    nameKey: "pricing.stt",      included: true },
       { qty: "2,000",     nameKey: "pricing.pages",     suffixKey: "pricing.ocr", included: true },
