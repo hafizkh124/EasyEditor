@@ -38,6 +38,18 @@ const PLAN_STYLE: Record<PaidTier, { icon: typeof Zap; iconClass: string; bg: st
 const Landing = () => {
   const { user, loading } = useAuth();
   const { t, language, setLanguage, direction } = useLanguage();
+  const navigate = useNavigate();
+  const cardEnabled = isPaddleConfigured();
+
+  const handlePayByCard = (planId: PaidTier) => {
+    try {
+      sessionStorage.setItem(PENDING_CHECKOUT_KEY, planId);
+    } catch {
+      // ignore storage errors (e.g. private mode)
+    }
+    navigate(`/signup?checkout=${planId}`);
+  };
+
 
   // Dynamic SEO per language
   useEffect(() => {
