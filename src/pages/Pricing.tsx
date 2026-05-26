@@ -17,11 +17,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy } from "lucide-react";
+import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, Copy } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
-import { WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
+
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { isPaddleConfigured } from "@/lib/paddle";
@@ -433,29 +433,6 @@ const Pricing = () => {
           })}
         </div>
 
-        {/* Footer note */}
-        <div className="mx-auto mb-6 max-w-2xl rounded-2xl border border-border/60 bg-card/40 p-6 shadow-sm backdrop-blur-sm sm:p-8">
-          <p className="text-center text-sm leading-relaxed text-muted-foreground">
-            {t("pricing.manual_note_intro")}
-          </p>
-
-          <a
-            href={WHATSAPP_CONTACT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group mx-auto my-5 flex w-full max-w-sm items-center justify-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 transition-all hover:border-emerald-500/60 hover:bg-emerald-500/20 hover:shadow-md"
-            dir="ltr"
-          >
-            <MessageCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            <span className="font-mono text-base font-semibold tracking-wider text-emerald-700 dark:text-emerald-300">
-              +{WHATSAPP_CONTACT_NUMBER.replace(/(\d{2})(\d{3})(\d{7})/, "$1 $2 $3")}
-            </span>
-          </a>
-
-          <p className="text-center text-sm leading-relaxed text-muted-foreground">
-            {t("pricing.manual_note_outro")}
-          </p>
-        </div>
       </div>
 
       {/* Payment Dialog */}
