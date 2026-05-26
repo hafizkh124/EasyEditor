@@ -1,4 +1,4 @@
-import { useEffect, Fragment, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -18,12 +18,9 @@ import {
   Crown,
   Zap,
   Star,
-  MessageCircle,
-  Copy,
   CreditCard,
   Clock,
 } from "lucide-react";
-import { toast } from "sonner";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { isPaddleConfigured } from "@/lib/paddle";
 import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
