@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import SidebarHistory from "@/components/SidebarHistory";
+import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import type { SessionSection } from "@/hooks/useSessionHistory";
 
 // FR-2.2: Research, Transcribe, OCR, Speak, Admin (admin conditional)
