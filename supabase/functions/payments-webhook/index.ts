@@ -77,7 +77,6 @@ async function handleSubscriptionCreated(data: any, env: PaddleEnv) {
     cancel_at_period_end: false,
     upgrade_requested: false,
     pending_tier: null,
-    status: status,
     updated_at: now.toISOString(),
   }).eq('user_id', userId);
 
@@ -110,10 +109,9 @@ async function handleSubscriptionCreated(data: any, env: PaddleEnv) {
 }
 
 async function handleSubscriptionUpdated(data: any, env: PaddleEnv) {
-  const { id, status, currentBillingPeriod, scheduledChange, items } = data;
+  const { id, currentBillingPeriod, scheduledChange, items } = data;
   const sb = getSupabase();
   const update: Record<string, unknown> = {
-    status,
     cancel_at_period_end: scheduledChange?.action === 'cancel',
     updated_at: new Date().toISOString(),
   };
@@ -136,7 +134,7 @@ async function handleSubscriptionUpdated(data: any, env: PaddleEnv) {
 
 async function handleSubscriptionCanceled(data: any, env: PaddleEnv) {
   await getSupabase().from('subscriptions')
-    .update({ status: 'canceled', cancel_at_period_end: true, updated_at: new Date().toISOString() })
+    .update({ cancel_at_period_end: true, updated_at: new Date().toISOString() })
     .eq('paddle_subscription_id', data.id)
     .eq('environment', env);
 }
