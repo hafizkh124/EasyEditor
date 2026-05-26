@@ -25,6 +25,7 @@ import { WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAcco
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { isPaddleConfigured } from "@/lib/paddle";
+import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
 
 const MotionCard = motion(Card);
 
@@ -117,6 +118,8 @@ const Pricing = () => {
   const [dialogPlan, setDialogPlan] = useState<PaidTier>("basic");
   const [txId, setTxId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [choiceOpen, setChoiceOpen] = useState(false);
+  const [choicePlan, setChoicePlan] = useState<PaidTier>("basic");
   const { openCheckout, loading: checkoutLoading } = usePaddleCheckout();
   const cardEnabled = isPaddleConfigured();
 
