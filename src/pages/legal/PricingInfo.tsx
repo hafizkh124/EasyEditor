@@ -113,6 +113,19 @@ export default function PricingInfo() {
         before subscribing. No card required to sign up.
       </p>
 
+      <h2>Acceptable use — voice &amp; likeness</h2>
+      <p>
+        Al-Ulama Easy Editor is built for authentic personal and scholarly work. We do
+        <strong> not</strong> offer — and we strictly prohibit — generating images, video, or
+        audio that impersonates celebrities, politicians, religious scholars, or any other
+        real person. Our text-to-speech feature uses a fixed set of generic synthetic voices.
+        Personal voice cloning (where a user uploads a sample of <em>their own</em> voice,
+        with full consent, to generate speech in that same voice) is a planned future feature
+        and is not currently available; when released it will be limited to the user's own
+        voice only. See our <Link to="/terms">Terms of Service</Link> for full details.
+      </p>
+
+
       <h2>Taxes</h2>
       <p>
         Card prices are exclusive of any local sales tax / VAT. Taxes (if applicable in your
