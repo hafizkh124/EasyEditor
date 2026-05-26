@@ -24,12 +24,12 @@ import {
   Clock,
 } from "lucide-react";
 import { toast } from "sonner";
-import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { isPaddleConfigured } from "@/lib/paddle";
 import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
 
 export const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
+export const PENDING_CHECKOUT_METHOD_KEY = "pendingCheckoutMethod";
 
 const PLAN_STYLE: Record<PaidTier, { icon: typeof Zap; iconClass: string; bg: string }> = {
   basic: { icon: Zap, iconClass: "text-blue-500", bg: "bg-blue-500/10" },
@@ -46,20 +46,20 @@ const Landing = () => {
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [choicePlan, setChoicePlan] = useState<PaidTier>("pro");
 
-  const handlePayByCard = (planId: PaidTier) => {
+  const stashIntent = (planId: PaidTier, method: "card" | "manual") => {
     try {
       sessionStorage.setItem(PENDING_CHECKOUT_KEY, planId);
+      sessionStorage.setItem(PENDING_CHECKOUT_METHOD_KEY, method);
     } catch {
       // ignore storage errors (e.g. private mode)
     }
-    navigate(`/signup?checkout=${planId}`);
+    navigate(`/signup?checkout=${planId}&method=${method}`);
   };
 
+  const handlePayByCard = (planId: PaidTier) => stashIntent(planId, "card");
   const handleManual = () => {
     setChoiceOpen(false);
-    requestAnimationFrame(() => {
-      document.getElementById("payment-accounts")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    stashIntent(choicePlan, "manual");
   };
 
   const openChoice = (planId: PaidTier) => {
