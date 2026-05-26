@@ -531,6 +531,17 @@ const Landing = () => {
           </div>
         </div>
       </footer>
+
+      <PlanCheckoutChoiceDialog
+        open={choiceOpen}
+        onOpenChange={setChoiceOpen}
+        planName={t(plans.find((p) => p.id === choicePlan)?.nameKey ?? "")}
+        cardPrice={plans.find((p) => p.id === choicePlan)?.cardPrice ?? ""}
+        manualPrice={plans.find((p) => p.id === choicePlan)?.price ?? ""}
+        cardEnabled={cardEnabled}
+        onPayByCard={() => { handlePayByCard(choicePlan); setChoiceOpen(false); }}
+        onManual={handleManual}
+      />
     </div>
   );
 };
