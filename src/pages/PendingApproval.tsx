@@ -267,6 +267,40 @@ const PendingApproval = () => {
           </CardContent>
         </Card>
 
+        {/* Pay by card — instant activation (Paddle) */}
+        {cardEnabled && !selectedPlanIsComingSoon() && (
+          <Card className="border-primary/40 bg-primary/5">
+            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+              <div className="space-y-0.5">
+                <p className="font-medium text-sm">
+                  {t("pending.pay_by_card_title") ||
+                    (direction === "rtl"
+                      ? "کارڈ سے ادائیگی — اکاؤنٹ فوراً فعال"
+                      : "Pay by card — instant activation")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {direction === "rtl"
+                    ? "بین الاقوامی کارڈ سے ادائیگی پر کوئی منظوری درکار نہیں — اکاؤنٹ فوراً فعال ہو جائے گا۔"
+                    : "International card payment auto-activates your account — no manual approval needed."}
+                </p>
+              </div>
+              <Button
+                onClick={handlePayByCard}
+                disabled={checkoutLoading}
+                className="gap-2"
+                data-approval-allow
+              >
+                {checkoutLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4" />
+                )}
+                {direction === "rtl" ? "کارڈ سے ادائیگی" : "Pay by card"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Payment Accounts */}
         <Card>
           <CardHeader>
