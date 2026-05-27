@@ -128,16 +128,14 @@ export default function PricingInfo() {
 
       <h2>Taxes</h2>
       <p>
-        Card prices are exclusive of any local sales tax / VAT. Taxes (if applicable in your
-        country) are calculated and collected by Paddle at checkout.
+        Card / wallet prices are exclusive of any local sales tax / VAT where applicable.
       </p>
 
       <h2>Refunds &amp; cancellation</h2>
       <p>
         See our <Link to="/refund-policy">Refund Policy</Link> — 30-day money-back guarantee
-        on both payment channels. Cancel a card subscription anytime via{" "}
-        <a href="https://paddle.net" target="_blank" rel="noopener noreferrer">paddle.net</a>
-        {" "}or from your in-app Settings page.
+        on both payment channels. Cancel a subscription anytime from your in-app Settings page
+        or by emailing <a href="mailto:support@alulama.org">support@alulama.org</a>.
       </p>
 
       <h2>Ready to start?</h2>
