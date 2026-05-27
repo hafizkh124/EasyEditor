@@ -74,33 +74,53 @@ Deno.serve(async (req) => {
     };
 
     let amount: number;
-    const metadata: Record<string, string> = { userId: user.id, kind };
+    let tokens: number | null = null;
+    let resolvedTier: string | null = null;
+    let resolvedTopupKey: string | null = null;
     if (kind === "subscription") {
       const plan = tier && PLAN_PRICES[tier];
       if (!plan) throw new Error("Invalid tier");
       amount = plan.amount;
-      metadata.tier = plan.tier;
+      resolvedTier = plan.tier;
     } else if (kind === "topup") {
       const pack = topupKey && TOPUP_PRICES[topupKey];
       if (!pack) throw new Error("Invalid topup pack");
       amount = pack.amount;
-      metadata.topupKey = topupKey!;
-      metadata.tokens = String(pack.tokens);
+      tokens = pack.tokens;
+      resolvedTopupKey = topupKey!;
     } else {
       throw new Error("Invalid kind");
     }
 
-    // 1) Create payment session (tracker)
+    // 1) Create payment session (tracker) — SafePay rejects unknown metadata keys,
+    //    so we do NOT send metadata here; instead we persist a pending record
+    //    keyed by tracker token and the webhook looks it up.
     const sessionRes = await safepayPost("/order/payments/v3/", {
       merchant_api_key: SAFEPAY_PUBLIC,
       intent: "CYBERSOURCE",
       mode: "payment",
       currency: "PKR",
-      amount, // PKR in whole rupees
-      metadata,
+      amount,
     });
     const trackerToken: string = sessionRes?.data?.tracker?.token;
     if (!trackerToken) throw new Error(`No tracker in response: ${JSON.stringify(sessionRes)}`);
+
+    // Persist intent so the webhook can credit the correct account.
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const { error: insErr } = await serviceClient.from("safepay_pending_checkouts").insert({
+      tracker_token: trackerToken,
+      user_id: user.id,
+      kind,
+      tier: resolvedTier,
+      topup_key: resolvedTopupKey,
+      tokens,
+      amount_pkr: amount,
+    });
+    if (insErr) console.error("[safepay-checkout] could not persist pending:", insErr);
+
 
     // 2) Create auth token (passport)
     const passportRes = await safepayPost("/client/passport/v1/token", {});
