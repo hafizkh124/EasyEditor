@@ -9,18 +9,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { Coins, ArrowUpCircle, CreditCard, Loader2 } from "lucide-react";
-import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
-import { isPaddleConfigured } from "@/lib/paddle";
+import { useSafepayCheckout, isSafepayEnabled, type SafepayTopupKey } from "@/hooks/useSafepayCheckout";
 
 /**
  * UpsellModal — shown when user's tokens are low.
- * Three options: upgrade plan, pay-by-card top-up (Paddle), or manual top-up request.
+ * Three options: upgrade plan, pay-by-card top-up (SafePay), or manual top-up request.
  */
-const TOPUP_PACKS = [
-  { priceId: "topup_small_once",  tokens: 2_500,  usd: 3,  pkr: 850 },
-  { priceId: "topup_medium_once", tokens: 10_000, usd: 10, pkr: 2_800 },
-  { priceId: "topup_large_once",  tokens: 25_000, usd: 20, pkr: 5_600 },
-] as const;
+const TOPUP_PACKS: { key: SafepayTopupKey; tokens: number; pkr: number }[] = [
+  { key: "small",  tokens: 2_500,  pkr: 850 },
+  { key: "medium", tokens: 10_000, pkr: 2_800 },
+  { key: "large",  tokens: 25_000, pkr: 5_600 },
+];
 
 export default function UpsellModal({
   open,
@@ -32,8 +31,8 @@ export default function UpsellModal({
   const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { openCheckout, loading: checkoutLoading } = usePaddleCheckout();
-  const cardEnabled = isPaddleConfigured();
+  const { openCheckout, loading: checkoutLoading } = useSafepayCheckout();
+  const cardEnabled = isSafepayEnabled();
 
   const [view, setView] = useState<"main" | "card" | "manual">("main");
   const [tokenAmount, setTokenAmount] = useState(2500);
@@ -48,9 +47,9 @@ export default function UpsellModal({
     setPaymentRef("");
   };
 
-  const handleCardTopup = (priceId: string) => {
+  const handleCardTopup = (topupKey: SafepayTopupKey) => {
     if (!user) return;
-    openCheckout({ priceId, userId: user.id, customerEmail: user.email ?? undefined });
+    openCheckout({ kind: "topup", topupKey });
   };
 
   const handleManualTopup = async () => {
@@ -116,18 +115,18 @@ export default function UpsellModal({
             <p className="text-xs text-muted-foreground">Pick a pack — tokens are credited instantly after payment.</p>
             {TOPUP_PACKS.map((p) => (
               <button
-                key={p.priceId}
+                key={p.key}
                 type="button"
                 disabled={checkoutLoading}
-                onClick={() => handleCardTopup(p.priceId)}
+                onClick={() => handleCardTopup(p.key)}
                 className="w-full rounded-lg border border-border bg-card hover:border-primary hover:bg-accent/40 transition-colors p-3 text-start flex items-center justify-between disabled:opacity-50"
               >
                 <div>
                   <div className="font-semibold text-foreground">{p.tokens.toLocaleString()} tokens</div>
-                  <div className="text-xs text-muted-foreground">≈ PKR {p.pkr.toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground">SafePay (Card / Easypaisa / JazzCash)</div>
                 </div>
                 <div className="text-end">
-                  <div className="font-bold text-primary">${p.usd}</div>
+                  <div className="font-bold text-primary">PKR {p.pkr.toLocaleString()}</div>
                   {checkoutLoading && <Loader2 className="h-3 w-3 animate-spin inline" />}
                 </div>
               </button>

@@ -23,8 +23,7 @@ import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
 
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
-import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
-import { isPaddleConfigured } from "@/lib/paddle";
+import { useSafepayCheckout, isSafepayEnabled } from "@/hooks/useSafepayCheckout";
 import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
 
 const MotionCard = motion(Card);
@@ -120,16 +119,12 @@ const Pricing = () => {
   const [submitting, setSubmitting] = useState(false);
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [choicePlan, setChoicePlan] = useState<PaidTier>("basic");
-  const { openCheckout, loading: checkoutLoading } = usePaddleCheckout();
-  const cardEnabled = isPaddleConfigured();
+  const { openCheckout, loading: checkoutLoading } = useSafepayCheckout();
+  const cardEnabled = isSafepayEnabled();
 
   const handleCardCheckout = (plan: PaidTier) => {
     if (!user) return;
-    openCheckout({
-      priceId: `${plan}_monthly`,
-      userId: user.id,
-      customerEmail: user.email ?? undefined,
-    });
+    openCheckout({ kind: "subscription", tier: plan });
   };
 
   useEffect(() => {

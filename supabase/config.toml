@@ -26,3 +26,6 @@ verify_jwt = true
 
 [functions.citation-lookup]
 verify_jwt = false
+
+[functions.safepay-webhook]
+verify_jwt = false
