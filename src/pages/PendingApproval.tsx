@@ -72,21 +72,13 @@ const PendingApproval = () => {
     if (!plan) return;
     setSelectedPackage(plan.id);
     if (method === "card" && cardEnabled) {
-      openCheckout({
-        priceId: `${plan.id}_monthly`,
-        userId: user.id,
-        customerEmail: user.email ?? undefined,
-      });
+      openCheckout({ kind: "subscription", tier: plan.id });
     }
   }, [user, cardEnabled, openCheckout]);
 
   const handlePayByCard = () => {
     if (!user || selectedPlanIsComingSoon()) return;
-    openCheckout({
-      priceId: `${selectedPackage}_monthly`,
-      userId: user.id,
-      customerEmail: user.email ?? undefined,
-    });
+    openCheckout({ kind: "subscription", tier: selectedPackage });
   };
 
   const selectedPlanIsComingSoon = () =>
