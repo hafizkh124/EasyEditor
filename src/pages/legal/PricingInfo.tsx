@@ -5,8 +5,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Check, X, CreditCard, Clock, Zap } from "lucide-react";
 
 /**
- * Public, unauthenticated pricing page required by Paddle verification.
- * Shows full catalog + the two payment channels (card = instant, manual = approval delay).
+ * Public, unauthenticated pricing page.
+ * Shows full catalog + the two payment channels (card/wallet via SafePay = instant,
+ * manual bank/wallet transfer = approval delay).
  */
 export default function PricingInfo() {
   const { t } = useLanguage();
