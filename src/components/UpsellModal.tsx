@@ -115,18 +115,18 @@ export default function UpsellModal({
             <p className="text-xs text-muted-foreground">Pick a pack — tokens are credited instantly after payment.</p>
             {TOPUP_PACKS.map((p) => (
               <button
-                key={p.priceId}
+                key={p.key}
                 type="button"
                 disabled={checkoutLoading}
-                onClick={() => handleCardTopup(p.priceId)}
+                onClick={() => handleCardTopup(p.key)}
                 className="w-full rounded-lg border border-border bg-card hover:border-primary hover:bg-accent/40 transition-colors p-3 text-start flex items-center justify-between disabled:opacity-50"
               >
                 <div>
                   <div className="font-semibold text-foreground">{p.tokens.toLocaleString()} tokens</div>
-                  <div className="text-xs text-muted-foreground">≈ PKR {p.pkr.toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground">SafePay (Card / Easypaisa / JazzCash)</div>
                 </div>
                 <div className="text-end">
-                  <div className="font-bold text-primary">${p.usd}</div>
+                  <div className="font-bold text-primary">PKR {p.pkr.toLocaleString()}</div>
                   {checkoutLoading && <Loader2 className="h-3 w-3 animate-spin inline" />}
                 </div>
               </button>
