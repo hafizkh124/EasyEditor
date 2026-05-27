@@ -5,8 +5,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Check, X, CreditCard, Clock, Zap } from "lucide-react";
 
 /**
- * Public, unauthenticated pricing page required by Paddle verification.
- * Shows full catalog + the two payment channels (card = instant, manual = approval delay).
+ * Public, unauthenticated pricing page.
+ * Shows full catalog + the two payment channels (card/wallet via SafePay = instant,
+ * manual bank/wallet transfer = approval delay).
  */
 export default function PricingInfo() {
   const { t } = useLanguage();
@@ -29,14 +30,13 @@ export default function PricingInfo() {
       <div className="not-prose grid gap-4 sm:grid-cols-2 my-6">
         <div className="rounded-2xl border-2 border-primary/50 bg-primary/5 p-5">
           <div className="flex items-center gap-2 mb-2 text-primary font-semibold">
-            <CreditCard className="h-5 w-5" /> Pay by card — recommended
+            <CreditCard className="h-5 w-5" /> Pay by card or wallet — recommended
           </div>
           <ul className="text-sm text-foreground/90 space-y-1.5">
             <li className="flex gap-2"><Zap className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> <strong>Instant activation</strong> — your account is upgraded within seconds.</li>
             <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Auto-renews monthly. Cancel anytime, no questions asked.</li>
-            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Lower price (USD) — no manual handling fee.</li>
-            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Self-serve invoices, refunds and cancellation via paddle.net.</li>
-            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Processed by <strong>Paddle</strong> (our Merchant of Record).</li>
+            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Visa, Mastercard, <strong>Easypaisa</strong>, <strong>JazzCash</strong> &amp; bank.</li>
+            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Processed securely by <strong>SafePay</strong> (PCI-DSS, SBP-licensed).</li>
           </ul>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
@@ -128,16 +128,14 @@ export default function PricingInfo() {
 
       <h2>Taxes</h2>
       <p>
-        Card prices are exclusive of any local sales tax / VAT. Taxes (if applicable in your
-        country) are calculated and collected by Paddle at checkout.
+        Card / wallet prices are exclusive of any local sales tax / VAT where applicable.
       </p>
 
       <h2>Refunds &amp; cancellation</h2>
       <p>
         See our <Link to="/refund-policy">Refund Policy</Link> — 30-day money-back guarantee
-        on both payment channels. Cancel a card subscription anytime via{" "}
-        <a href="https://paddle.net" target="_blank" rel="noopener noreferrer">paddle.net</a>
-        {" "}or from your in-app Settings page.
+        on both payment channels. Cancel a subscription anytime from your in-app Settings page
+        or by emailing <a href="mailto:support@alulama.org">support@alulama.org</a>.
       </p>
 
       <h2>Ready to start?</h2>

@@ -12,8 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { cn } from "@/lib/utils";
-import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
-import { isPaddleConfigured } from "@/lib/paddle";
+import { useSafepayCheckout, isSafepayEnabled } from "@/hooks/useSafepayCheckout";
 
 const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 const PENDING_CHECKOUT_METHOD_KEY = "pendingCheckoutMethod";
@@ -47,11 +46,11 @@ const PendingApproval = () => {
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PaidTier>("basic");
-  const { openCheckout, loading: checkoutLoading } = usePaddleCheckout();
-  const cardEnabled = isPaddleConfigured();
+  const { openCheckout, loading: checkoutLoading } = useSafepayCheckout();
+  const cardEnabled = isSafepayEnabled();
 
   // Honor a pending checkout intent stored on the landing page before signup.
-  // Auto-selects the chosen plan. Auto-opens Paddle only if method === "card".
+  // Auto-selects the chosen plan. Auto-opens SafePay only if method === "card".
   useEffect(() => {
     if (!user) return;
     let pending: string | null = null;
@@ -73,21 +72,13 @@ const PendingApproval = () => {
     if (!plan) return;
     setSelectedPackage(plan.id);
     if (method === "card" && cardEnabled) {
-      openCheckout({
-        priceId: `${plan.id}_monthly`,
-        userId: user.id,
-        customerEmail: user.email ?? undefined,
-      });
+      openCheckout({ kind: "subscription", tier: plan.id });
     }
   }, [user, cardEnabled, openCheckout]);
 
   const handlePayByCard = () => {
     if (!user || selectedPlanIsComingSoon()) return;
-    openCheckout({
-      priceId: `${selectedPackage}_monthly`,
-      userId: user.id,
-      customerEmail: user.email ?? undefined,
-    });
+    openCheckout({ kind: "subscription", tier: selectedPackage });
   };
 
   const selectedPlanIsComingSoon = () =>
@@ -273,7 +264,7 @@ const PendingApproval = () => {
           </CardContent>
         </Card>
 
-        {/* Pay by card — instant activation (Paddle) */}
+        {/* Pay by card — instant activation (SafePay) */}
         {cardEnabled && !selectedPlanIsComingSoon() && (
           <Card className="border-primary/40 bg-primary/5">
             <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
