@@ -46,8 +46,8 @@ const PendingApproval = () => {
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PaidTier>("basic");
-  const { openCheckout, loading: checkoutLoading } = usePaddleCheckout();
-  const cardEnabled = isPaddleConfigured();
+  const { openCheckout, loading: checkoutLoading } = useSafepayCheckout();
+  const cardEnabled = isSafepayEnabled();
 
   // Honor a pending checkout intent stored on the landing page before signup.
   // Auto-selects the chosen plan. Auto-opens Paddle only if method === "card".
