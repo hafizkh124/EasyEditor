@@ -45,10 +45,10 @@ export default function Privacy() {
       <h2>3. Who We Share Data With</h2>
       <ul>
         <li>
-          <strong>Paddle.com Market Ltd</strong> — our Merchant of Record for card payments.
-          Paddle processes payment information, calculates taxes, handles subscription billing,
-          invoicing and refunds. See{" "}
-          <a href="https://www.paddle.com/legal/privacy" target="_blank" rel="noopener noreferrer">Paddle's Privacy Notice</a>.
+          <strong>SafePay (Pakistan):</strong> our payment gateway for card and wallet
+          (Easypaisa, JazzCash) transactions. SafePay processes payment information securely
+          under PCI-DSS. See{" "}
+          <a href="https://getsafepay.com/privacy" target="_blank" rel="noopener noreferrer">SafePay's Privacy Notice</a>.
         </li>
         <li>
           <strong>Hosting &amp; backend (Supabase, Vercel/Lovable infrastructure):</strong>
