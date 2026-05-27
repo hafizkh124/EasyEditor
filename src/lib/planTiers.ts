@@ -22,7 +22,7 @@ export interface PlanTier {
   nameKey: string;
   /** Manual PKR price (shown alongside card USD on pricing UI) */
   price: string;
-  /** Card price in USD via Paddle — instant activation */
+  /** Card price in USD via SafePay — instant activation */
   cardPrice: string;
   priceAmountKey: string;
   popular: boolean;
