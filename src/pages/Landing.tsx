@@ -22,7 +22,7 @@ import {
   Clock,
 } from "lucide-react";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
-import { isPaddleConfigured } from "@/lib/paddle";
+import { isSafepayEnabled } from "@/hooks/useSafepayCheckout";
 import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
 
 export const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
