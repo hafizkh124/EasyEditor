@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-export type SessionSection = "transcribe" | "speak" | "ocr" | "research";
+export type SessionSection = "transcribe" | "speak" | "ocr" | "research" | "editor" | "translate";
 
 export interface SessionHistoryItem {
   id: string;

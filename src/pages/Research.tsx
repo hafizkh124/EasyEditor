@@ -202,6 +202,7 @@ const Research = () => {
           citations={chat.citations}
           assistModes={assistModes}
           onAssistModesChange={setAssistModes}
+          onContinue={chat.handleContinue}
         />
         </div>
       </div>

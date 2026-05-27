@@ -1,7 +1,7 @@
 import { useLocation, Link, useMatch } from "react-router-dom";
 import {
   Mic, Volume2, Image, BookOpen, Menu, Shield,
-  Bell, User, ChevronLeft, ChevronRight,
+  Bell, User, ChevronLeft, ChevronRight, FileText, Languages,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,6 +24,8 @@ const sectionNav = [
   { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe", section: "transcribe" as SessionSection },
   { path: "/ocr", icon: Image, labelKey: "nav.ocr", section: "ocr" as SessionSection },
   { path: "/speak", icon: Volume2, labelKey: "nav.speak", section: "speak" as SessionSection },
+  { path: "/editor", icon: FileText, labelKey: "nav.editor", section: "editor" as SessionSection },
+  { path: "/translate", icon: Languages, labelKey: "nav.translate", section: "translate" as SessionSection },
 ];
 const adminNavItem = { path: "/admin", icon: Shield, labelKey: "nav.admin", section: null };
 

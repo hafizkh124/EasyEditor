@@ -561,7 +561,7 @@ serve(async (req) => {
         // and can be larger; normal/streaming chat is conversational so the
         // 2048-token cap is comfortable for General-tab answers and still
         // generous for Custom-mode source-grounded answers.
-        max_tokens: isAssistMode ? 4096 : 2048,
+        max_tokens: isAssistMode ? 4096 : 8192,
         ...(isAssistMode ? { response_format: { type: "json_object" } } : {}),
       }),
     });

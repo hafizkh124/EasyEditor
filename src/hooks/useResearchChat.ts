@@ -362,6 +362,17 @@ export function useResearchChat(args: UseResearchChatArgs) {
     }
   };
 
+  const handleContinue = async () => {
+    if (!session?.access_token) return;
+    const limitReached = mode === "islamic" ? islamicLimitReached : researchLimitReached;
+    if (limitReached) { toast.error(t("research.limit_reached")); return; }
+
+    const continueMsg: ChatMessage = { role: "user", content: t("research.continue_prompt") || "Continue from where you left off. Do not repeat what was already said." };
+    const prevMessages = [...messages];
+    setMessages((prev) => [...prev, continueMsg]);
+    await runQuery(continueMsg.content, prevMessages);
+  };
+
   return {
     messages,
     query,
@@ -377,6 +388,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
     handleRefine,
     handleCopyOutput,
     handleClearChat,
+    handleContinue,
     // Phase 10.5 sidebar API
     activeSessionId,
     sessionsVersion,
