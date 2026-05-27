@@ -264,7 +264,7 @@ const PendingApproval = () => {
           </CardContent>
         </Card>
 
-        {/* Pay by card — instant activation (Paddle) */}
+        {/* Pay by card — instant activation (SafePay) */}
         {cardEnabled && !selectedPlanIsComingSoon() && (
           <Card className="border-primary/40 bg-primary/5">
             <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
