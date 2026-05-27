@@ -38,7 +38,7 @@ const Landing = () => {
   const { user, loading } = useAuth();
   const { t, language, setLanguage, direction } = useLanguage();
   const navigate = useNavigate();
-  const cardEnabled = isPaddleConfigured();
+  const cardEnabled = isSafepayEnabled();
 
   const [choiceOpen, setChoiceOpen] = useState(false);
   const [choicePlan, setChoicePlan] = useState<PaidTier>("pro");
