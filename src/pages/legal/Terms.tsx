@@ -80,9 +80,10 @@ export default function Terms() {
       <p>We offer two payment channels:</p>
       <ul>
         <li>
-          <strong>Card payments (instant activation):</strong> processed through our reseller
-          Paddle. Subscriptions renew automatically each month until canceled. Card customers
-          receive immediate access on successful payment.
+          <strong>Card / wallet payments (instant activation):</strong> processed through our
+          payment partner SafePay (Visa, Mastercard, Easypaisa, JazzCash, bank). Subscriptions
+          renew automatically each month until canceled. Customers receive immediate access on
+          successful payment.
         </li>
         <li>
           <strong>Manual bank / mobile-wallet transfers (PKR):</strong> users submit a payment
@@ -96,14 +97,14 @@ export default function Terms() {
         unused balance under the policy in Section 7.
       </p>
 
-      <h2>6. Paddle as Merchant of Record</h2>
+      <h2>6. SafePay as Payment Processor</h2>
       <p>
-        Our order process for card payments is conducted by our online reseller{" "}
-        <strong>Paddle.com Market Ltd</strong> (<a href="https://www.paddle.com" target="_blank" rel="noopener noreferrer">www.paddle.com</a>).
-        Paddle.com is the <strong>Merchant of Record</strong> for all card orders. Paddle
-        provides customer service for billing inquiries, handles taxes and chargebacks, and
-        manages refunds in accordance with its{" "}
-        <a href="https://www.paddle.com/legal/checkout-buyer-terms" target="_blank" rel="noopener noreferrer">Buyer Terms</a> and our refund policy.
+        Card and wallet payments are processed by{" "}
+        <strong>SafePay</strong> (<a href="https://getsafepay.com" target="_blank" rel="noopener noreferrer">getsafepay.com</a>),
+        a State Bank of Pakistan licensed payment gateway. SafePay handles secure card
+        processing, mobile-wallet routing (Easypaisa, JazzCash), and PCI-DSS compliance.
+        Alulama remains the merchant of record and is responsible for refunds and customer
+        support.
       </p>
 
       <h2>7. Refunds</h2>

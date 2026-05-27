@@ -23,7 +23,7 @@ export default function Privacy() {
         <li><strong>Usage &amp; telemetry:</strong> feature usage, token consumption, error logs, device and browser metadata, IP address, approximate location derived from IP.</li>
         <li><strong>Support &amp; communications:</strong> messages you send us via WhatsApp, email or the in-app contact form.</li>
         <li><strong>Manual-payment data:</strong> bank/mobile-wallet transaction references you submit for manual approval.</li>
-        <li><strong>Card-payment data:</strong> collected directly by our reseller Paddle. We never see or store your full card details.</li>
+        <li><strong>Card-payment data:</strong> collected directly by our payment partner SafePay. We never see or store your full card details.</li>
       </ul>
 
       <h2>2. Why We Use Your Data &amp; Legal Basis</h2>
@@ -45,10 +45,10 @@ export default function Privacy() {
       <h2>3. Who We Share Data With</h2>
       <ul>
         <li>
-          <strong>Paddle.com Market Ltd</strong> — our Merchant of Record for card payments.
-          Paddle processes payment information, calculates taxes, handles subscription billing,
-          invoicing and refunds. See{" "}
-          <a href="https://www.paddle.com/legal/privacy" target="_blank" rel="noopener noreferrer">Paddle's Privacy Notice</a>.
+          <strong>SafePay (Pakistan):</strong> our payment gateway for card and wallet
+          (Easypaisa, JazzCash) transactions. SafePay processes payment information securely
+          under PCI-DSS. See{" "}
+          <a href="https://getsafepay.com/privacy" target="_blank" rel="noopener noreferrer">SafePay's Privacy Notice</a>.
         </li>
         <li>
           <strong>Hosting &amp; backend (Supabase, Vercel/Lovable infrastructure):</strong>
@@ -109,8 +109,8 @@ export default function Privacy() {
       <p>
         We use only strictly necessary cookies and local storage (authentication session,
         language preference, theme, recent activity log). We do not use third-party analytics
-        or advertising cookies. The Paddle checkout overlay sets its own cookies governed by
-        Paddle's privacy notice.
+        or advertising cookies. The SafePay checkout page sets its own cookies governed by
+        SafePay's privacy notice.
       </p>
 
       <h2>9. Children</h2>

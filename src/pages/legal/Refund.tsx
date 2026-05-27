@@ -14,12 +14,12 @@ export default function Refund() {
         described below.
       </p>
 
-      <h2>1. Subscriptions (Card Payments via Paddle)</h2>
+      <h2>1. Subscriptions (Card / Wallet Payments via SafePay)</h2>
       <ul>
         <li>You may request a full refund of your most recent monthly subscription charge within <strong>30 days</strong> of the payment date.</li>
         <li>Renewal charges are independently refundable within 30 days of each renewal.</li>
-        <li>Refunds are processed by our reseller <strong>Paddle</strong>, the Merchant of Record for card orders.</li>
-        <li>To request a refund, visit <a href="https://paddle.net" target="_blank" rel="noopener noreferrer">paddle.net</a> using the email you used at checkout, or email <a href="mailto:support@alulama.org">support@alulama.org</a> and we will forward the request.</li>
+        <li>Refunds are processed back to the original card or wallet through our payment partner <strong>SafePay</strong>.</li>
+        <li>To request a refund, email <a href="mailto:support@alulama.org">support@alulama.org</a> with the email and transaction reference used at checkout.</li>
       </ul>
 
       <h2>2. One-Time Token Top-Ups (Card Payments)</h2>
@@ -57,8 +57,7 @@ export default function Refund() {
       <h2>7. Contact</h2>
       <p>
         Email: <a href="mailto:support@alulama.org">support@alulama.org</a><br />
-        WhatsApp: <a href="https://wa.me/923290010282">+92 329 0010282</a><br />
-        Card-payment self-service: <a href="https://paddle.net" target="_blank" rel="noopener noreferrer">paddle.net</a>
+        WhatsApp: <a href="https://wa.me/923290010282">+92 329 0010282</a>
       </p>
     </LegalLayout>
   );
