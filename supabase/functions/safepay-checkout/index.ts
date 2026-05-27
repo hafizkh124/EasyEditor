@@ -130,14 +130,17 @@ Deno.serve(async (req) => {
     // 3) Build hosted checkout URL
     const baseOrigin = origin || req.headers.get("origin") || "";
     const params = new URLSearchParams({
-      env: SAFEPAY_ENV,
-      beacon: trackerToken,
+      environment: SAFEPAY_ENV,
       tbt,
+      tracker: trackerToken,
       source: "hosted",
       redirect_url: `${baseOrigin}/checkout/success?tracker=${trackerToken}`,
       cancel_url: `${baseOrigin}/pricing?cancelled=1`,
     });
-    const checkoutUrl = `${SAFEPAY_HOST}/embedded/?${params.toString()}`;
+    const embeddedBase = SAFEPAY_ENV === "production"
+      ? "https://getsafepay.com/embedded/"
+      : "https://sandbox.api.getsafepay.com/embedded/";
+    const checkoutUrl = `${embeddedBase}?${params.toString()}`;
 
     return new Response(JSON.stringify({ checkoutUrl, tracker: trackerToken }), {
       status: 200,
