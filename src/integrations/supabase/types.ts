@@ -413,6 +413,42 @@ export type Database = {
         }
         Relationships: []
       }
+      safepay_pending_checkouts: {
+        Row: {
+          amount_pkr: number
+          consumed_at: string | null
+          created_at: string
+          kind: string
+          tier: string | null
+          tokens: number | null
+          topup_key: string | null
+          tracker_token: string
+          user_id: string
+        }
+        Insert: {
+          amount_pkr: number
+          consumed_at?: string | null
+          created_at?: string
+          kind: string
+          tier?: string | null
+          tokens?: number | null
+          topup_key?: string | null
+          tracker_token: string
+          user_id: string
+        }
+        Update: {
+          amount_pkr?: number
+          consumed_at?: string | null
+          created_at?: string
+          kind?: string
+          tier?: string | null
+          tokens?: number | null
+          topup_key?: string | null
+          tracker_token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       scholarly_documents: {
         Row: {
           citation_ref: Json
