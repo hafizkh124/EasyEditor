@@ -9,18 +9,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { Coins, ArrowUpCircle, CreditCard, Loader2 } from "lucide-react";
-import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
-import { isPaddleConfigured } from "@/lib/paddle";
+import { useSafepayCheckout, isSafepayEnabled, type SafepayTopupKey } from "@/hooks/useSafepayCheckout";
 
 /**
  * UpsellModal — shown when user's tokens are low.
- * Three options: upgrade plan, pay-by-card top-up (Paddle), or manual top-up request.
+ * Three options: upgrade plan, pay-by-card top-up (SafePay), or manual top-up request.
  */
-const TOPUP_PACKS = [
-  { priceId: "topup_small_once",  tokens: 2_500,  usd: 3,  pkr: 850 },
-  { priceId: "topup_medium_once", tokens: 10_000, usd: 10, pkr: 2_800 },
-  { priceId: "topup_large_once",  tokens: 25_000, usd: 20, pkr: 5_600 },
-] as const;
+const TOPUP_PACKS: { key: SafepayTopupKey; tokens: number; pkr: number }[] = [
+  { key: "small",  tokens: 2_500,  pkr: 850 },
+  { key: "medium", tokens: 10_000, pkr: 2_800 },
+  { key: "large",  tokens: 25_000, pkr: 5_600 },
+];
 
 export default function UpsellModal({
   open,
@@ -32,8 +31,8 @@ export default function UpsellModal({
   const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { openCheckout, loading: checkoutLoading } = usePaddleCheckout();
-  const cardEnabled = isPaddleConfigured();
+  const { openCheckout, loading: checkoutLoading } = useSafepayCheckout();
+  const cardEnabled = isSafepayEnabled();
 
   const [view, setView] = useState<"main" | "card" | "manual">("main");
   const [tokenAmount, setTokenAmount] = useState(2500);
@@ -48,9 +47,9 @@ export default function UpsellModal({
     setPaymentRef("");
   };
 
-  const handleCardTopup = (priceId: string) => {
+  const handleCardTopup = (topupKey: SafepayTopupKey) => {
     if (!user) return;
-    openCheckout({ priceId, userId: user.id, customerEmail: user.email ?? undefined });
+    openCheckout({ kind: "topup", topupKey });
   };
 
   const handleManualTopup = async () => {
