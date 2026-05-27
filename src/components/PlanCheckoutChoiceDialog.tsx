@@ -71,8 +71,8 @@ export default function PlanCheckoutChoiceDialog({
                   </div>
                   <p className="mt-1.5 text-xs text-muted-foreground">
                     {ur
-                      ? "Visa, Mastercard، اور دیگر بین الاقوامی کارڈز — محفوظ Paddle چیک‌آؤٹ"
-                      : "Visa, Mastercard & international cards via secure Paddle checkout"}
+                      ? "Visa, Mastercard، Easypaisa، JazzCash — محفوظ SafePay چیک‌آؤٹ"
+                      : "Visa, Mastercard, Easypaisa & JazzCash via secure SafePay checkout"}
                   </p>
                 </div>
               </div>
