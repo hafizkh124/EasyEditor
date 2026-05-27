@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { renderPdfPages, type PdfPageResult } from "@/lib/ocr/pdfRenderer";
+import { renderPdfPages } from "@/lib/ocr/pdfRenderer";
 
 export interface OcrPageData {
   pageNum: number;
