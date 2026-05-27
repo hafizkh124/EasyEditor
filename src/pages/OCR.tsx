@@ -445,13 +445,23 @@ const OCR = () => {
               )}
 
               {!pdfProcessing && (
-                <Button
-                  onClick={handleExtract}
-                  disabled={isProcessing || ocrLimitReached}
-                  className="w-full"
-                >
-                  {t("ocr.extract")} ({pdfPageCount} {t("ocr.page_label") || "pages"})
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    onClick={handleExtract}
+                    disabled={isProcessing || ocrLimitReached}
+                    className="w-full"
+                  >
+                    {t("ocr.extract")} ({pdfPageCount} {t("ocr.page_label") || "pages"})
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate("/ocr/review")}
+                    className="w-full gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    {t("ocr_review.page_review_btn")}
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -604,10 +614,14 @@ const OCR = () => {
                 {t("ocr.normalize_script")}
               </Button>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
               <Button onClick={handleCopy} variant="outline" className="flex-1 sm:flex-none">
                 <Copy className="h-4 w-4" />
                 {t("ocr.copy")}
+              </Button>
+              <Button onClick={() => navigate("/editor", { state: { content: extractedText, source: "ocr" } })} variant="outline" className="flex-1 sm:flex-none">
+                <FileText className="h-4 w-4" />
+                {t("editor.open_in_editor")}
               </Button>
               <Button onClick={handleListenNow} className="flex-1 sm:flex-none">
                 <Volume2 className="h-4 w-4" />

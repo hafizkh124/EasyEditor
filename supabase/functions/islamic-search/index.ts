@@ -475,7 +475,7 @@ serve(async (req) => {
         // Phase 10.2: explicit cap so long Islamic answers (full Arabic
         // quotes + Urdu translations + summaries) don't get cut off at
         // the gateway's conservative default.
-        max_tokens: 4096,
+        max_tokens: 8192,
       }),
     });
 

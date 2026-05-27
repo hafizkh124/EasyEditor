@@ -22,6 +22,7 @@ export const TOKEN_COSTS = {
   tts_google:     50,    // per 1,000 characters (Google TTS)
   tts_elevenlabs: 500,   // per 1,000 characters (ElevenLabs TTS)
   refine:         5,     // per refinement action (formalize, humanize, etc.)
+  translate:      20,    // per page/segment translated
 } as const;
 
 export type ActionType = keyof typeof TOKEN_COSTS;

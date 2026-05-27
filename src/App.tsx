@@ -31,6 +31,9 @@ const AccountRejected = lazy(() => import("./pages/AccountRejected"));
 const CompleteProfile = lazy(() => import("./pages/CompleteProfile"));
 const About = lazy(() => import("./pages/About"));
 const FaqAiHaram = lazy(() => import("./pages/FaqAiHaram"));
+const Editor = lazy(() => import("./pages/Editor"));
+const OcrReview = lazy(() => import("./pages/OcrReview"));
+const Translate = lazy(() => import("./pages/Translate"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const Terms = lazy(() => import("./pages/legal/Terms"));
@@ -87,6 +90,9 @@ const App = () => (
                   <Route path="/speak" element={<ProtectedRoute><ErrorBoundary><Speak /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/ocr" element={<ProtectedRoute><ErrorBoundary><OCR /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/research" element={<ProtectedRoute><ErrorBoundary><Research /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/editor" element={<ProtectedRoute><ErrorBoundary><Editor /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/ocr/review" element={<ProtectedRoute><ErrorBoundary><OcrReview /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/translate" element={<ProtectedRoute><ErrorBoundary><Translate /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                   <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSeo } from "@/hooks/useSeo";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mic, MicOff, Copy, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight, Upload, X, SpellCheck, Languages, MessageSquarePlus } from "lucide-react";
+import { Mic, MicOff, Copy, Loader2, GraduationCap, Heart, Scissors, BookOpen, ArrowLeftRight, Upload, X, SpellCheck, Languages, MessageSquarePlus, FileText } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
@@ -60,6 +61,7 @@ const Transcribe = () => {
 
   const { session } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -499,6 +501,9 @@ const Transcribe = () => {
               <div className="flex gap-1">
                 <Button variant="ghost" size="icon" aria-label={t("stt.copy")} onClick={handleCopy}>
                   <Copy className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" aria-label={t("editor.open_in_editor")} title={t("editor.open_in_editor")} onClick={() => navigate("/editor", { state: { content: transcript, source: "transcribe" } })}>
+                  <FileText className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="icon" aria-label={t("common.new_chat")} title={t("common.new_chat")} onClick={handleNewSession}>
                   <MessageSquarePlus className="h-4 w-4" />
