@@ -17,6 +17,8 @@ const SECTION_ROUTES: Record<SessionSection, string> = {
   speak: "/speak",
   ocr: "/ocr",
   research: "/research",
+  editor: "/editor",
+  translate: "/translate",
 };
 
 function relativeTime(iso: string): string {
