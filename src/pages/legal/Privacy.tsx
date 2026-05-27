@@ -23,7 +23,7 @@ export default function Privacy() {
         <li><strong>Usage &amp; telemetry:</strong> feature usage, token consumption, error logs, device and browser metadata, IP address, approximate location derived from IP.</li>
         <li><strong>Support &amp; communications:</strong> messages you send us via WhatsApp, email or the in-app contact form.</li>
         <li><strong>Manual-payment data:</strong> bank/mobile-wallet transaction references you submit for manual approval.</li>
-        <li><strong>Card-payment data:</strong> collected directly by our reseller Paddle. We never see or store your full card details.</li>
+        <li><strong>Card-payment data:</strong> collected directly by our payment partner SafePay. We never see or store your full card details.</li>
       </ul>
 
       <h2>2. Why We Use Your Data &amp; Legal Basis</h2>
