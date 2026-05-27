@@ -50,7 +50,7 @@ const PendingApproval = () => {
   const cardEnabled = isSafepayEnabled();
 
   // Honor a pending checkout intent stored on the landing page before signup.
-  // Auto-selects the chosen plan. Auto-opens Paddle only if method === "card".
+  // Auto-selects the chosen plan. Auto-opens SafePay only if method === "card".
   useEffect(() => {
     if (!user) return;
     let pending: string | null = null;
