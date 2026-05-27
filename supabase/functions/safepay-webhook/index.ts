@@ -161,32 +161,55 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Extract metadata + amount from various possible shapes
-    const md = payload?.metadata || payload?.tracker?.metadata || payload?.order?.metadata || {};
-    const trackerId = payload?.tracker?.token || payload?.tracker_id || payload?.id || "unknown";
+    // Extract tracker + amount from various possible shapes
+    const trackerId: string =
+      payload?.tracker?.token || payload?.tracker_id || payload?.token || payload?.id || "";
     const amount = Number(
       payload?.tracker?.purchase_totals?.base_amount?.amount ??
       payload?.amount ??
       0,
     );
 
-    const userId = md.userId;
-    if (!userId) {
-      console.warn("[safepay-webhook] no userId in metadata, skipping");
+    if (!trackerId) {
+      console.warn("[safepay-webhook] no tracker token in payload");
       return new Response(JSON.stringify({ received: true }), { status: 200 });
     }
 
-    if (md.kind === "subscription" && md.tier) {
-      await handleSubscriptionPayment(userId, md.tier, amount, trackerId, env);
-    } else if (md.kind === "topup" && md.tokens) {
-      await handleTopupPayment(userId, Number(md.tokens), amount, trackerId, env);
-    } else {
-      console.warn("[safepay-webhook] unknown metadata shape:", md);
+    // Look up the pending intent we stored at checkout creation
+    const { data: pending, error: lookupErr } = await sb()
+      .from("safepay_pending_checkouts")
+      .select("*")
+      .eq("tracker_token", trackerId)
+      .maybeSingle();
+    if (lookupErr || !pending) {
+      console.warn("[safepay-webhook] no pending record for tracker:", trackerId, lookupErr);
+      return new Response(JSON.stringify({ received: true }), { status: 200 });
     }
+    if (pending.consumed_at) {
+      console.log("[safepay-webhook] already consumed:", trackerId);
+      return new Response(JSON.stringify({ received: true }), { status: 200 });
+    }
+
+    const userId = pending.user_id as string;
+    const paidAmount = amount || pending.amount_pkr;
+
+    if (pending.kind === "subscription" && pending.tier) {
+      await handleSubscriptionPayment(userId, pending.tier, paidAmount, trackerId, env);
+    } else if (pending.kind === "topup" && pending.tokens) {
+      await handleTopupPayment(userId, Number(pending.tokens), paidAmount, trackerId, env);
+    } else {
+      console.warn("[safepay-webhook] unknown pending shape:", pending);
+    }
+
+    await sb()
+      .from("safepay_pending_checkouts")
+      .update({ consumed_at: new Date().toISOString() })
+      .eq("tracker_token", trackerId);
 
     return new Response(JSON.stringify({ received: true }), {
       status: 200, headers: { "Content-Type": "application/json" },
     });
+
   } catch (e) {
     console.error("[safepay-webhook] handler error:", e);
     return new Response("Handler error", { status: 500 });
