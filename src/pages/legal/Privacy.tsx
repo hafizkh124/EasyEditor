@@ -109,8 +109,8 @@ export default function Privacy() {
       <p>
         We use only strictly necessary cookies and local storage (authentication session,
         language preference, theme, recent activity log). We do not use third-party analytics
-        or advertising cookies. The Paddle checkout overlay sets its own cookies governed by
-        Paddle's privacy notice.
+        or advertising cookies. The SafePay checkout page sets its own cookies governed by
+        SafePay's privacy notice.
       </p>
 
       <h2>9. Children</h2>
