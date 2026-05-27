@@ -57,8 +57,7 @@ export default function Refund() {
       <h2>7. Contact</h2>
       <p>
         Email: <a href="mailto:support@alulama.org">support@alulama.org</a><br />
-        WhatsApp: <a href="https://wa.me/923290010282">+92 329 0010282</a><br />
-        Card-payment self-service: <a href="https://paddle.net" target="_blank" rel="noopener noreferrer">paddle.net</a>
+        WhatsApp: <a href="https://wa.me/923290010282">+92 329 0010282</a>
       </p>
     </LegalLayout>
   );
