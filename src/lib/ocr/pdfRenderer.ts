@@ -5,10 +5,11 @@
 // sequentially to keep memory bounded.
 
 import * as pdfjsLib from "pdfjs-dist";
+// Bundle the worker locally via Vite so its version always matches the
+// installed pdfjs-dist (CDN URLs 404 when a version isn't mirrored).
+import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-// Use the CDN-hosted worker to avoid Vite/Lovable bundling issues.
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 export interface PdfPageResult {
   pageNum: number;

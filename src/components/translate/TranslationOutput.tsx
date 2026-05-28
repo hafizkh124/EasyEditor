@@ -1,9 +1,17 @@
 import { useState } from "react";
-import { Sparkles, Mic, PenLine, Loader2, MicOff } from "lucide-react";
+import { Sparkles, Mic, PenLine, Loader2, MicOff, SpellCheck, BookOpen, ChevronDown, Type, Search } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { isRtlText } from "@/utils/textUtils";
+import { stripHarakat } from "@/utils/arabicUtils";
+import { useAuth } from "@/contexts/AuthContext";
+import { callRefineText, type RefineTextAction } from "@/lib/editor/aiActions";
+import ResourceSearchDialog from "@/components/editor/ResourceSearchDialog";
 import type { TranslationMode } from "@/hooks/useTranslation";
 
 interface TranslationOutputProps {
@@ -20,12 +28,46 @@ const TranslationOutput = ({
   translationText, streamingText, isTranslating,
   onTranslateAi, onUpdateText, onVoiceResult, t,
 }: TranslationOutputProps) => {
+  const { session } = useAuth();
   const [activeMode, setActiveMode] = useState<TranslationMode>("ai");
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [aiBusy, setAiBusy] = useState<string | null>(null);
+  const [resourceOpen, setResourceOpen] = useState(false);
 
   const displayText = isTranslating ? streamingText : translationText;
   const isRtl = isRtlText(displayText);
+
+  // ── AI actions on the output text (add harakat / spell check) ──
+  const runTextAction = async (action: RefineTextAction, busyKey: string) => {
+    if (!session?.access_token || !displayText.trim() || aiBusy) return;
+    setAiBusy(busyKey);
+    try {
+      const result = await callRefineText(displayText, action, session.access_token);
+      if (result) {
+        onUpdateText(result);
+        toast.success(t("editor.ai_done"));
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("editor.ai_error"));
+    } finally {
+      setAiBusy(null);
+    }
+  };
+
+  const handleRemoveHarakat = () => {
+    if (!displayText.trim()) return;
+    onUpdateText(stripHarakat(displayText));
+    toast.success(t("editor.ai_done"));
+  };
+
+  const handleInsertResource = (text: string, citation: string) => {
+    const block = `${text}\n[${citation}]`;
+    onUpdateText(displayText.trim() ? `${displayText}\n\n${block}` : block);
+    toast.success(t("editor.reference_inserted"));
+  };
+
+  const aiDisabled = aiBusy !== null || !displayText.trim();
 
   const modes = [
     { key: "ai" as TranslationMode, icon: Sparkles, label: t("translate.mode_ai") },
@@ -116,6 +158,41 @@ const TranslationOutput = ({
         )}
       </div>
 
+      {/* AI tools on output text */}
+      <div className="flex items-center gap-1 px-3 py-2 border-b border-border flex-wrap">
+        {/* اعراب dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" disabled={aiDisabled}>
+              {aiBusy === "add_harakat" ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="text-sm leading-none">اِعراب</span>}
+              <ChevronDown className="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => runTextAction("add_harakat", "add_harakat")} disabled={aiDisabled} className="cursor-pointer gap-2">
+              <Sparkles className="h-4 w-4" />
+              {t("editor.add_harakat")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleRemoveHarakat} disabled={!displayText.trim()} className="cursor-pointer gap-2">
+              <Type className="h-4 w-4" />
+              {t("editor.remove_harakat")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Resource search (حوالہ) */}
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs" onClick={() => setResourceOpen(true)} disabled={aiBusy !== null}>
+          <Search className="h-4 w-4" />
+          <span className="hidden sm:inline">{t("editor.search_resources")}</span>
+        </Button>
+
+        {/* Spell check */}
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs" onClick={() => runTextAction("spelling_check", "spelling_check")} disabled={aiDisabled}>
+          {aiBusy === "spelling_check" ? <Loader2 className="h-4 w-4 animate-spin" /> : <SpellCheck className="h-4 w-4" />}
+          <span className="hidden sm:inline">{t("editor.spell_check")}</span>
+        </Button>
+      </div>
+
       {/* Translation text area */}
       <div className="flex-1 p-3">
         <Textarea
@@ -130,6 +207,13 @@ const TranslationOutput = ({
           readOnly={activeMode === "ai" && isTranslating}
         />
       </div>
+
+      <ResourceSearchDialog
+        open={resourceOpen}
+        onOpenChange={setResourceOpen}
+        onInsert={handleInsertResource}
+        t={t}
+      />
     </div>
   );
 };

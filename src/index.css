@@ -1,6 +1,12 @@
 @import url("https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap");
+/* Multi-language editor fonts (Urdu/Arabic/Persian/Quran) */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Amiri+Quran&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -157,6 +163,13 @@ All colors MUST be HSL.
   .page-container {
     @apply mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8;
   }
+
+  /* Editor font-family utilities (applied via TipTap FontFamily extension) */
+  .font-nastaliq { font-family: "Noto Nastaliq Urdu", serif; }
+  .font-naskh    { font-family: "Noto Naskh Arabic", "Amiri", serif; }
+  .font-amiri    { font-family: "Amiri", serif; }
+  .font-quran    { font-family: "Amiri Quran", "Amiri", serif; }
+  .font-vazir    { font-family: "Vazirmatn", sans-serif; }
 
   /* Prevent iOS auto-zoom on focus: inputs must render at >=16px on touch devices. */
   @media (max-width: 767px) {
