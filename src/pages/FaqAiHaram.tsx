@@ -118,7 +118,7 @@ const FaqAiHaram = () => {
             </Link>
             <Link to="/about">
               <Button variant="outline" size="lg" className="h-11 px-5">
-                {isUr ? "مزید جانیں" : "Learn more"}
+                {isUr ? "ہمارے مشن کے بارے میں مزید جانیں" : "Learn more about our mission"}
               </Button>
             </Link>
           </div>
