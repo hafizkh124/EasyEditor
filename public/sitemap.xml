@@ -11,6 +11,7 @@
   <url><loc>https://editor.alulama.org/research</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://editor.alulama.org/transcribe</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://editor.alulama.org/ocr</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://editor.alulama.org/editor</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://editor.alulama.org/speak</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://editor.alulama.org/pricing</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://editor.alulama.org/pricing-info</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
