@@ -14,6 +14,7 @@ import {
   loadResearchSession,
   deleteResearchSession,
 } from "@/lib/research/persistence";
+import { callRefineText, isRefineTextAction } from "@/lib/editor/aiActions";
 
 const errMsg = (e: unknown, fallback: string): string =>
   e instanceof Error ? e.message : fallback;
@@ -271,18 +272,13 @@ export function useResearchChat(args: UseResearchChatArgs) {
   const handleRefine = async (action: string) => {
     if (!lastAssistantMessage || !session?.access_token) return;
     const sourceText = (lastAssistantMessage.content ?? "").trim();
-    if (!sourceText) {
+    if (!sourceText || !isRefineTextAction(action)) {
       toast.error(t("research.refine_error"));
       return;
     }
     setIsRefining(true);
     try {
-      const { data, error } = await supabase.functions.invoke("refine-text", {
-        body: { text: lastAssistantMessage.content, action },
-      });
-      if (error) throw error;
-      if (data?.error) { toast.error(data.error); setIsRefining(false); return; }
-      const refined = data?.text;
+      const refined = await callRefineText(sourceText, action, session.access_token);
       if (refined) {
         setMessages((prev) =>
           prev.map((m, i) =>
