@@ -20,6 +20,23 @@ export type RefineTextAction =
   | "paraphrase"
   | "summarize";
 
+const SUPPORTED_REFINE_TEXT_ACTIONS = new Set<RefineTextAction>([
+  "formalize",
+  "humanize",
+  "shorten",
+  "citations",
+  "spelling_check",
+  "normalize_script",
+  "add_harakat",
+  "auto_format",
+  "paraphrase",
+  "summarize",
+]);
+
+export function isRefineTextAction(action: string): action is RefineTextAction {
+  return SUPPORTED_REFINE_TEXT_ACTIONS.has(action as RefineTextAction);
+}
+
 /**
  * Calls refine-text and returns the refined output (text or HTML, depending on
  * the action). Throws on HTTP / network errors with a human-readable message.
@@ -29,6 +46,9 @@ export async function callRefineText(
   action: RefineTextAction,
   accessToken: string,
 ): Promise<string> {
+  const sourceText = text.trim();
+  if (!sourceText) return "";
+
   const response = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-text`,
     {
@@ -38,7 +58,7 @@ export async function callRefineText(
         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ text, action }),
+      body: JSON.stringify({ text: sourceText, action }),
     },
   );
 
