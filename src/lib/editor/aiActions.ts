@@ -16,7 +16,9 @@ export type RefineTextAction =
   | "spelling_check"
   | "normalize_script"
   | "add_harakat"
-  | "auto_format";
+  | "auto_format"
+  | "paraphrase"
+  | "summarize";
 
 /**
  * Calls refine-text and returns the refined output (text or HTML, depending on
