@@ -1,21 +1,51 @@
 import { type Editor } from "@tiptap/react";
 import { Toggle } from "@/components/ui/toggle";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3,
   List, ListOrdered, Quote, Undo2, Redo2, AlignLeft, AlignCenter, AlignRight,
-  Pilcrow,
+  Pilcrow, Type, Sparkles, SpellCheck, BookOpen, Search, Loader2, ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 interface EditorToolbarProps {
   editor: Editor | null;
   isRtl: boolean;
   onToggleDirection: () => void;
+  t: (k: string) => string;
+  aiBusy: string | null;
+  onAddHarakat: () => void;
+  onRemoveHarakat: () => void;
+  onSpellCheck: () => void;
+  onAutoFormat: () => void;
+  onCitations: () => void;
+  onOpenResources: () => void;
+  onSetFont: (fontFamily: string) => void;
 }
 
-const EditorToolbar = ({ editor, isRtl, onToggleDirection }: EditorToolbarProps) => {
+/** Named editor fonts → CSS font-family values. Labels render in their own font for preview. */
+const FONT_OPTIONS: { labelKey: string; value: string; className: string }[] = [
+  { labelKey: "editor.font_default", value: "", className: "" },
+  { labelKey: "editor.font_nastaliq", value: "Noto Nastaliq Urdu", className: "font-nastaliq" },
+  { labelKey: "editor.font_naskh", value: "Noto Naskh Arabic", className: "font-naskh" },
+  { labelKey: "editor.font_amiri", value: "Amiri", className: "font-amiri" },
+  { labelKey: "editor.font_quran", value: "Amiri Quran", className: "font-quran" },
+  { labelKey: "editor.font_vazir", value: "Vazirmatn", className: "font-vazir" },
+];
+
+const EditorToolbar = ({
+  editor, isRtl, onToggleDirection, t, aiBusy,
+  onAddHarakat, onRemoveHarakat, onSpellCheck, onAutoFormat, onCitations, onOpenResources, onSetFont,
+}: EditorToolbarProps) => {
   if (!editor) return null;
+
+  const busy = (key: string) => aiBusy === key;
+  const anyBusy = aiBusy !== null;
 
   const groups = [
     [
@@ -73,6 +103,90 @@ const EditorToolbar = ({ editor, isRtl, onToggleDirection }: EditorToolbarProps)
         <Pilcrow className={cn("h-4 w-4", isRtl && "scale-x-[-1]")} />
         {isRtl ? "RTL" : "LTR"}
       </Toggle>
+
+      <Separator orientation="vertical" className="h-6 mx-1" />
+
+      {/* Font family dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" aria-label={t("editor.font")}>
+            <Type className="h-4 w-4" />
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuLabel>{t("editor.font")}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {FONT_OPTIONS.map((f) => (
+            <DropdownMenuItem
+              key={f.value || "default"}
+              onClick={() => onSetFont(f.value)}
+              className={cn("cursor-pointer", f.className)}
+            >
+              {t(f.labelKey)}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Separator orientation="vertical" className="h-6 mx-1" />
+
+      {/* AI: اعراب (diacritics) dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" disabled={anyBusy} aria-label={t("editor.harakat")}>
+            {busy("add_harakat") ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="text-sm leading-none">اِعراب</span>}
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={onAddHarakat} disabled={anyBusy} className="cursor-pointer gap-2">
+            <Sparkles className="h-4 w-4" />
+            {t("editor.add_harakat")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onRemoveHarakat} disabled={anyBusy} className="cursor-pointer gap-2">
+            <Type className="h-4 w-4" />
+            {t("editor.remove_harakat")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* AI: حوالہ (references) dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" disabled={anyBusy} aria-label={t("editor.citations")}>
+            {busy("citations") ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={onOpenResources} disabled={anyBusy} className="cursor-pointer gap-2">
+            <Search className="h-4 w-4" />
+            {t("editor.search_resources")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onCitations} disabled={anyBusy} className="cursor-pointer gap-2">
+            <BookOpen className="h-4 w-4" />
+            {t("editor.auto_sources")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* AI: Spell check */}
+      <Button
+        variant="ghost" size="sm" className="h-8 w-8 p-0"
+        onClick={onSpellCheck} disabled={anyBusy} aria-label={t("editor.spell_check")} title={t("editor.spell_check")}
+      >
+        {busy("spelling_check") ? <Loader2 className="h-4 w-4 animate-spin" /> : <SpellCheck className="h-4 w-4" />}
+      </Button>
+
+      {/* AI: Auto-format */}
+      <Button
+        variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs"
+        onClick={onAutoFormat} disabled={anyBusy} aria-label={t("editor.auto_format")} title={t("editor.auto_format")}
+      >
+        {busy("auto_format") ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+        <span className="hidden sm:inline">{busy("auto_format") ? t("editor.formatting") : t("editor.auto_format")}</span>
+      </Button>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 

@@ -42,6 +42,25 @@ PROCEDURE:
 3. Do NOT paraphrase, rephrase, summarize, expand, or "improve" the text. Wording, sentence order, punctuation, and line breaks must be preserved.
 4. Do NOT correct spelling errors — that is a different tool. Only fix script inconsistencies.
 5. Output ONLY the normalized text — no commentary, no markdown, no explanations.`,
+
+  add_harakat: `You are an expert in Arabic and Urdu orthography (تشکیل / اِعراب). Your ONLY job is to add full, correct diacritics (harakat) to the user's text.
+
+HARD RULES:
+1. Add fatha, kasra, damma, shadda, sukun, tanwin, and any other appropriate diacritics so the text is fully voweled and unambiguous to read.
+2. Do NOT change, add, remove, reorder, translate, or rephrase any base letters or words. Only ADD diacritic marks above/below existing letters.
+3. Preserve all punctuation, line breaks, spacing, and the original script (Arabic stays Arabic, Urdu stays Urdu).
+4. For Quranic verses, use the standard mushaf tashkeel. For Urdu, use conventional Urdu اِعراب.
+5. Output ONLY the diacritized text — no commentary, no markdown fences, no explanations.`,
+
+  auto_format: `You are a professional document formatter. Convert the user's raw text into clean, well-structured semantic HTML.
+
+RULES:
+1. Output VALID HTML fragment only (no <html>, <head>, or <body> wrapper, no markdown fences, no commentary).
+2. Use appropriate tags: <h1>/<h2>/<h3> for headings, <p> for paragraphs, <ul>/<ol>/<li> for lists, <blockquote> for quotations, <strong>/<em> for emphasis.
+3. Infer structure from the content: titles become headings, enumerated points become lists, quoted material becomes blockquotes.
+4. Do NOT change, translate, summarize, expand, or rephrase the wording. Preserve the original language and script exactly (Urdu stays Urdu, Arabic stays Arabic, English stays English).
+5. Preserve right-to-left text as-is; do not add dir attributes.
+6. Output ONLY the HTML.`,
 };
 
 // ── Build a citations-with-Islamic-sources prompt using retrieved RAG context ──

@@ -1,13 +1,17 @@
 import { useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FileText, Download, Copy, ArrowLeft } from "lucide-react";
+import { FileText, Download, Copy, ArrowLeft, ChevronDown, FileType, FileCode, File } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import RichEditor from "@/components/editor/RichEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSeo } from "@/hooks/useSeo";
+import { exportTxt, exportHtml, exportDoc, exportPdf } from "@/lib/editor/exporters";
 
 interface EditorLocationState {
   content?: string;
@@ -42,27 +46,14 @@ const Editor = () => {
     toast.success(t("editor.copied"));
   };
 
-  const handleExportTxt = () => {
-    const blob = new Blob([currentText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title || "document"}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(t("editor.exported"));
-  };
-
-  const handleExportHtml = () => {
-    const fullHtml = `<!DOCTYPE html><html dir="auto"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:system-ui,sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem;line-height:1.7}</style></head><body>${currentHtml}</body></html>`;
-    const blob = new Blob([fullHtml], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title || "document"}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(t("editor.exported"));
+  const handleDownload = (format: "word" | "pdf" | "html" | "txt") => {
+    switch (format) {
+      case "word": exportDoc(currentHtml, title); break;
+      case "pdf": exportPdf(currentHtml, title); break;
+      case "html": exportHtml(currentHtml, title); break;
+      case "txt": exportTxt(currentText, title); break;
+    }
+    if (format !== "pdf") toast.success(t("editor.exported"));
   };
 
   return (
@@ -86,14 +77,33 @@ const Editor = () => {
               <Copy className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">{t("editor.copy")}</span>
             </Button>
-            <Button variant="ghost" size="sm" className="gap-1.5 h-8 text-xs" onClick={handleExportTxt}>
-              <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">TXT</span>
-            </Button>
-            <Button variant="ghost" size="sm" className="gap-1.5 h-8 text-xs" onClick={handleExportHtml}>
-              <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">HTML</span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1.5 h-8 text-xs">
+                  <Download className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t("editor.download")}</span>
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleDownload("word")} className="cursor-pointer gap-2">
+                  <FileType className="h-4 w-4" />
+                  {t("editor.download_word")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload("pdf")} className="cursor-pointer gap-2">
+                  <File className="h-4 w-4" />
+                  {t("editor.download_pdf")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload("html")} className="cursor-pointer gap-2">
+                  <FileCode className="h-4 w-4" />
+                  {t("editor.download_html")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload("txt")} className="cursor-pointer gap-2">
+                  <FileText className="h-4 w-4" />
+                  {t("editor.download_txt")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

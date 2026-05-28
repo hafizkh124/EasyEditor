@@ -17,6 +17,19 @@ export function normalizeArabic(text: string): string {
 }
 
 /**
+ * Removes all Arabic/Urdu diacritics (harakat / tashkeel) from text while
+ * leaving the base letters and everything else untouched. Covers the standard
+ * harakat block (fatha, kasra, damma, shadda, sukun, tanwin, etc.), the dagger
+ * alef, and the Quranic annotation signs.
+ *
+ * Unlike normalizeArabic(), this does NOT fold alef/ta-marbuta/ya variants —
+ * it is purely diacritic stripping for the editor "remove اعراب" action.
+ */
+export function stripHarakat(text: string): string {
+  return text.replace(/[ً-ٰٟۖ-ۜ۟-۪ۨ-ۭ]/g, "");
+}
+
+/**
  * Returns true if a string is primarily RTL (Arabic/Urdu) text.
  * Simple heuristic: if >30% of word characters are Arabic/Urdu script.
  */

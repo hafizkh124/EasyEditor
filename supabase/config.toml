@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.safepay-webhook]
 verify_jwt = false
+
+[functions.translate-page]
+verify_jwt = false
+
+[functions.resource-search]
+verify_jwt = false
