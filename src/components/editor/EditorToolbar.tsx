@@ -6,6 +6,8 @@ import {
   Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3,
   List, ListOrdered, Quote, Undo2, Redo2, AlignLeft, AlignCenter, AlignRight,
   Pilcrow, Type, Sparkles, SpellCheck, BookOpen, Search, Loader2, ChevronDown,
+  Table as TableIcon, Maximize2, Minimize2, Paintbrush, RefreshCw, FileText,
+  GitCompare, Check, X, Wand2,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -23,9 +25,22 @@ interface EditorToolbarProps {
   onRemoveHarakat: () => void;
   onSpellCheck: () => void;
   onAutoFormat: () => void;
+  onParaphrase: () => void;
+  onSummarize: () => void;
   onCitations: () => void;
   onOpenResources: () => void;
   onSetFont: (fontFamily: string) => void;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
+  brushActive: boolean;
+  onToggleBrush: () => void;
+  trackMode: "edit" | "suggest" | "view";
+  onSetTrackMode: (mode: "edit" | "suggest" | "view") => void;
+  aiReview: boolean;
+  onToggleAiReview: () => void;
+  pendingCount: number;
+  onAcceptAll: () => void;
+  onRejectAll: () => void;
 }
 
 /** Named editor fonts → CSS font-family values. Labels render in their own font for preview. */
@@ -40,7 +55,9 @@ const FONT_OPTIONS: { labelKey: string; value: string; className: string }[] = [
 
 const EditorToolbar = ({
   editor, isRtl, onToggleDirection, t, aiBusy,
-  onAddHarakat, onRemoveHarakat, onSpellCheck, onAutoFormat, onCitations, onOpenResources, onSetFont,
+  onAddHarakat, onRemoveHarakat, onSpellCheck, onAutoFormat, onParaphrase, onSummarize, onCitations, onOpenResources, onSetFont,
+  isFullscreen, onToggleFullscreen, brushActive, onToggleBrush,
+  trackMode, onSetTrackMode, aiReview, onToggleAiReview, pendingCount, onAcceptAll, onRejectAll,
 }: EditorToolbarProps) => {
   if (!editor) return null;
 
@@ -129,6 +146,53 @@ const EditorToolbar = ({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* Format brush */}
+      <Toggle
+        size="sm"
+        pressed={brushActive}
+        onPressedChange={onToggleBrush}
+        aria-label={t("editor.format_brush")}
+        title={t("editor.format_brush")}
+        className="h-8 w-8 p-0"
+      >
+        <Paintbrush className="h-4 w-4" />
+      </Toggle>
+
+      {/* Table menu */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" aria-label={t("editor.table")}>
+            <TableIcon className="h-4 w-4" />
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} className="cursor-pointer">
+            {t("editor.table_insert")}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => editor.chain().focus().addRowAfter().run()} disabled={!editor.can().addRowAfter()} className="cursor-pointer">
+            {t("editor.table_add_row")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => editor.chain().focus().addColumnAfter().run()} disabled={!editor.can().addColumnAfter()} className="cursor-pointer">
+            {t("editor.table_add_col")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => editor.chain().focus().deleteRow().run()} disabled={!editor.can().deleteRow()} className="cursor-pointer">
+            {t("editor.table_del_row")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => editor.chain().focus().deleteColumn().run()} disabled={!editor.can().deleteColumn()} className="cursor-pointer">
+            {t("editor.table_del_col")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeaderRow().run()} disabled={!editor.can().toggleHeaderRow()} className="cursor-pointer">
+            {t("editor.table_header")}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => editor.chain().focus().deleteTable().run()} disabled={!editor.can().deleteTable()} className="cursor-pointer text-destructive">
+            {t("editor.table_delete")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* AI: اعراب (diacritics) dropdown */}
@@ -179,6 +243,22 @@ const EditorToolbar = ({
         {busy("spelling_check") ? <Loader2 className="h-4 w-4 animate-spin" /> : <SpellCheck className="h-4 w-4" />}
       </Button>
 
+      {/* AI: Paraphrase */}
+      <Button
+        variant="ghost" size="sm" className="h-8 w-8 p-0"
+        onClick={onParaphrase} disabled={anyBusy} aria-label={t("editor.paraphrase")} title={t("editor.paraphrase")}
+      >
+        {busy("paraphrase") ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+      </Button>
+
+      {/* AI: Summarize */}
+      <Button
+        variant="ghost" size="sm" className="h-8 w-8 p-0"
+        onClick={onSummarize} disabled={anyBusy} aria-label={t("editor.summarize")} title={t("editor.summarize")}
+      >
+        {busy("summarize") ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+      </Button>
+
       {/* AI: Auto-format */}
       <Button
         variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs"
@@ -188,7 +268,75 @@ const EditorToolbar = ({
         <span className="hidden sm:inline">{busy("auto_format") ? t("editor.formatting") : t("editor.auto_format")}</span>
       </Button>
 
+      {/* AI review toggle: capture AI edits as accept/reject suggestions */}
+      <Toggle
+        size="sm"
+        pressed={aiReview}
+        onPressedChange={onToggleAiReview}
+        aria-label={t("editor.ai_review")}
+        title={t("editor.ai_review")}
+        className="h-8 gap-1 px-2 text-xs"
+      >
+        <Wand2 className="h-4 w-4" />
+        <span className="hidden sm:inline">{t("editor.ai_review")}</span>
+      </Toggle>
+
       <Separator orientation="vertical" className="h-6 mx-1" />
+
+      {/* Track changes: mode + accept/reject */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant={trackMode === "edit" ? "ghost" : "secondary"} size="sm" className="h-8 gap-1 px-2 text-xs" aria-label={t("editor.track_changes")} title={t("editor.track_changes")}>
+            <GitCompare className="h-4 w-4" />
+            <span className="hidden sm:inline">{t(`editor.mode_${trackMode}`)}</span>
+            {pendingCount > 0 && <span className="ml-0.5 rounded-full bg-primary px-1.5 text-[10px] leading-4 text-primary-foreground">{pendingCount}</span>}
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuLabel>{t("editor.track_changes")}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => onSetTrackMode("edit")} className={cn("cursor-pointer", trackMode === "edit" && "font-semibold")}>
+            {t("editor.mode_edit")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onSetTrackMode("suggest")} className={cn("cursor-pointer", trackMode === "suggest" && "font-semibold")}>
+            {t("editor.mode_suggest")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onSetTrackMode("view")} className={cn("cursor-pointer", trackMode === "view" && "font-semibold")}>
+            {t("editor.mode_view")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Accept all */}
+      <Button
+        variant="ghost" size="sm" className="h-8 w-8 p-0 text-emerald-600"
+        onClick={onAcceptAll} disabled={pendingCount === 0} aria-label={t("editor.accept_all")} title={t("editor.accept_all")}
+      >
+        <Check className="h-4 w-4" />
+      </Button>
+
+      {/* Reject all */}
+      <Button
+        variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive"
+        onClick={onRejectAll} disabled={pendingCount === 0} aria-label={t("editor.reject_all")} title={t("editor.reject_all")}
+      >
+        <X className="h-4 w-4" />
+      </Button>
+
+      <Separator orientation="vertical" className="h-6 mx-1" />
+
+      {/* Fullscreen toggle */}
+      <Toggle
+        size="sm"
+        pressed={isFullscreen}
+        onPressedChange={onToggleFullscreen}
+        aria-label={isFullscreen ? t("editor.exit_fullscreen") : t("editor.fullscreen")}
+        title={isFullscreen ? t("editor.exit_fullscreen") : t("editor.fullscreen")}
+        className="h-8 w-8 p-0"
+      >
+        {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+      </Toggle>
 
       {/* Undo/Redo */}
       <Toggle

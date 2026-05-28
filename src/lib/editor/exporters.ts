@@ -17,12 +17,35 @@ const FONT_CSS = `
   body { font-family: 'Work Sans', 'Noto Naskh Arabic', system-ui, sans-serif; line-height: 1.8; color: #1a1a1a; }
   h1, h2, h3 { font-family: 'Lora', 'Noto Naskh Arabic', serif; line-height: 1.4; }
   blockquote { border-inline-start: 3px solid #ccc; margin-inline-start: 0; padding-inline-start: 1rem; color: #444; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #999; padding: 0.5rem 0.75rem; vertical-align: top; }
+  th { background: #f0f0f0; font-weight: 600; text-align: start; }
   .font-nastaliq { font-family: 'Noto Nastaliq Urdu', serif; }
   .font-naskh { font-family: 'Noto Naskh Arabic', 'Amiri', serif; }
   .font-amiri { font-family: 'Amiri', serif; }
   .font-quran { font-family: 'Amiri Quran', 'Amiri', serif; }
   .font-vazir { font-family: 'Vazirmatn', sans-serif; }
 `;
+
+/**
+ * Resolve track-changes suggestions to a clean document (accept-all implied):
+ * drop deletion marks (`<del>`) entirely and unwrap insertion marks (`<ins>`),
+ * keeping their text. Exported documents never contain raw suggestion markup.
+ */
+export function stripSuggestions(html: string): string {
+  if (!html || (!html.includes("<del") && !html.includes("<ins"))) return html;
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("del[data-change-id], del").forEach((el) => el.remove());
+    doc.querySelectorAll("ins[data-change-id], ins").forEach((el) => {
+      while (el.firstChild) el.parentNode?.insertBefore(el.firstChild, el);
+      el.remove();
+    });
+    return doc.body.innerHTML;
+  } catch {
+    return html;
+  }
+}
 
 function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
@@ -53,7 +76,7 @@ export function exportTxt(text: string, title: string): void {
 
 export function exportHtml(html: string, title: string): void {
   triggerDownload(
-    new Blob([buildHtmlDocument(title, html)], { type: "text/html;charset=utf-8" }),
+    new Blob([buildHtmlDocument(title, stripSuggestions(html))], { type: "text/html;charset=utf-8" }),
     `${safeName(title)}.html`,
   );
 }
@@ -69,7 +92,7 @@ export function exportDoc(html: string, title: string): void {
     `xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">` +
     `<head><meta charset="utf-8"><title>${title}</title>` +
     `<style>${FONT_CSS}</style></head>` +
-    `<body dir="auto">${html}</body></html>`;
+    `<body dir="auto">${stripSuggestions(html)}</body></html>`;
   triggerDownload(new Blob([docHtml], { type: "application/msword;charset=utf-8" }), `${safeName(title)}.doc`);
 }
 
@@ -81,7 +104,7 @@ export function exportDoc(html: string, title: string): void {
 export function exportPdf(html: string, title: string): void {
   const win = window.open("", "_blank", "width=820,height=1000");
   if (!win) return;
-  win.document.write(buildHtmlDocument(title, html));
+  win.document.write(buildHtmlDocument(title, stripSuggestions(html)));
   win.document.close();
   win.focus();
   // Give fonts a moment to load before printing.

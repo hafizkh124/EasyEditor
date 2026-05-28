@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Mic, PenLine, Loader2, MicOff, SpellCheck, BookOpen, ChevronDown, Type, Search } from "lucide-react";
+import { Sparkles, Mic, PenLine, Loader2, MicOff, SpellCheck, BookOpen, ChevronDown, Type, Search, RefreshCw, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -190,6 +190,18 @@ const TranslationOutput = ({
         <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs" onClick={() => runTextAction("spelling_check", "spelling_check")} disabled={aiDisabled}>
           {aiBusy === "spelling_check" ? <Loader2 className="h-4 w-4 animate-spin" /> : <SpellCheck className="h-4 w-4" />}
           <span className="hidden sm:inline">{t("editor.spell_check")}</span>
+        </Button>
+
+        {/* Paraphrase */}
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs" onClick={() => runTextAction("paraphrase", "paraphrase")} disabled={aiDisabled}>
+          {aiBusy === "paraphrase" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          <span className="hidden sm:inline">{t("editor.paraphrase")}</span>
+        </Button>
+
+        {/* Summarize */}
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs" onClick={() => runTextAction("summarize", "summarize")} disabled={aiDisabled}>
+          {aiBusy === "summarize" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+          <span className="hidden sm:inline">{t("editor.summarize")}</span>
         </Button>
       </div>
 

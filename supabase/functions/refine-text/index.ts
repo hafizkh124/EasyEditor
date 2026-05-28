@@ -52,6 +52,25 @@ HARD RULES:
 4. For Quranic verses, use the standard mushaf tashkeel. For Urdu, use conventional Urdu اِعراب.
 5. Output ONLY the diacritized text — no commentary, no markdown fences, no explanations.`,
 
+  paraphrase: `You are a skilled editor. Reword the following text so it expresses the SAME meaning in different words.
+
+HARD RULES:
+1. Preserve the original meaning, intent, and all factual content — do not add, omit, or distort information.
+2. Keep the SAME language and script as the input (Urdu stays Urdu Nastaliq, Arabic stays Arabic, English stays English). Never translate.
+3. Preserve any existing diacritics (harakat) on Arabic/Urdu words.
+4. Quoted Quranic verses or hadith text inside quotation marks must be kept VERBATIM — paraphrase only the surrounding prose.
+5. Keep a similar length and the same level of formality as the original.
+6. Output ONLY the paraphrased text — no commentary, no markdown fences, no explanations.`,
+
+  summarize: `You are an expert summarizer. Produce a clear, coherent summary of the following text.
+
+HARD RULES:
+1. Capture the main ideas and key points faithfully; do not invent or add information not present in the source.
+2. Write the summary in the SAME language and script as the input (Urdu stays Urdu Nastaliq, Arabic stays Arabic, English stays English). Never translate.
+3. Aim for roughly 20–30% of the original length, as flowing prose (use short paragraphs; bullet points only if the source is clearly a list).
+4. Do NOT quote Quranic verses or hadith from memory; only reference them as they appear in the source.
+5. Output ONLY the summary text — no commentary, no markdown fences, no preamble like "Summary:".`,
+
   auto_format: `You are a professional document formatter. Convert the user's raw text into clean, well-structured semantic HTML.
 
 RULES:

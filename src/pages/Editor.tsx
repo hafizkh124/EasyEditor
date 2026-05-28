@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSeo } from "@/hooks/useSeo";
-import { exportTxt, exportHtml, exportDoc, exportPdf } from "@/lib/editor/exporters";
+import { exportTxt, exportHtml, exportDoc, exportPdf, stripSuggestions } from "@/lib/editor/exporters";
 
 interface EditorLocationState {
   content?: string;
@@ -51,7 +51,15 @@ const Editor = () => {
       case "word": exportDoc(currentHtml, title); break;
       case "pdf": exportPdf(currentHtml, title); break;
       case "html": exportHtml(currentHtml, title); break;
-      case "txt": exportTxt(currentText, title); break;
+      case "txt": {
+        // Accept-all implied: drop suggestion markup, then extract plain text.
+        const clean = stripSuggestions(currentHtml);
+        const text = clean === currentHtml
+          ? currentText
+          : (new DOMParser().parseFromString(clean, "text/html").body.textContent ?? currentText);
+        exportTxt(text, title);
+        break;
+      }
     }
     if (format !== "pdf") toast.success(t("editor.exported"));
   };

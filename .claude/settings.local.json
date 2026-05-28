@@ -38,7 +38,12 @@
       "Bash(node -e \"console.log\\(require\\('sharp'\\)?'sharp installed':'no sharp'\\)\")",
       "Bash(node -e \"const sharp=require\\('sharp'\\);const fs=require\\('fs'\\);sharp\\('public/favicon.png'\\).webp\\({quality:90}\\).toFile\\('public/favicon.webp'\\).then\\(info=>{const p=fs.statSync\\('public/favicon.png'\\).size;const w=fs.statSync\\('public/favicon.webp'\\).size;console.log\\('PNG:'+p+'B WEBP:'+w+'B saved:'+\\(p-w\\)+'B \\('+Math.round\\(\\(1-w/p\\)*100\\)+'%\\)'\\);}\\);\")",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "WebFetch(domain:wordvice.ai)",
+      "WebFetch(domain:typli.ai)",
+      "WebFetch(domain:editgpt.app)",
+      "WebSearch",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
