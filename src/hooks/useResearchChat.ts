@@ -270,6 +270,11 @@ export function useResearchChat(args: UseResearchChatArgs) {
 
   const handleRefine = async (action: string) => {
     if (!lastAssistantMessage || !session?.access_token) return;
+    const sourceText = (lastAssistantMessage.content ?? "").trim();
+    if (!sourceText) {
+      toast.error(t("research.refine_error"));
+      return;
+    }
     setIsRefining(true);
     try {
       const { data, error } = await supabase.functions.invoke("refine-text", {

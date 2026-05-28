@@ -38,6 +38,10 @@
         "@tanstack/react-query": "^5.83.0",
         "@tiptap/extension-font-family": "^3.23.6",
         "@tiptap/extension-placeholder": "^3.23.6",
+        "@tiptap/extension-table": "^3.23.6",
+        "@tiptap/extension-table-cell": "^3.23.6",
+        "@tiptap/extension-table-header": "^3.23.6",
+        "@tiptap/extension-table-row": "^3.23.6",
         "@tiptap/extension-text-align": "^3.23.6",
         "@tiptap/extension-text-style": "^3.23.6",
         "@tiptap/extension-underline": "^3.23.6",
@@ -67,6 +71,7 @@
         "sonner": "^1.7.4",
         "tailwind-merge": "^2.6.0",
         "tailwindcss-animate": "^1.0.7",
+        "tiptap-track-changes": "^0.2.1",
         "vaul": "^0.9.9",
         "vite-plugin-pwa": "^1.2.0",
         "zod": "^3.25.76",
@@ -733,6 +738,14 @@
     "@tiptap/extension-placeholder": ["@tiptap/extension-placeholder@3.23.6", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@tiptap/extension-placeholder/-/extension-placeholder-3.23.6.tgz", { "peerDependencies": { "@tiptap/extensions": "3.23.6" } }, "sha512-8I6b2aevF74aLgymKMxbDxSLxWA2y+2dh0zZDeI8sRZ2m6WHHes+Kyuuwkq1HIPcR+ZLpbec74cmf6lcL/yvqQ=="],
 
     "@tiptap/extension-strike": ["@tiptap/extension-strike@3.23.6", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@tiptap/extension-strike/-/extension-strike-3.23.6.tgz", { "peerDependencies": { "@tiptap/core": "3.23.6" } }, "sha512-oF7FEZ37f15aCe5kPgzGDYf/m+hr7VdQ/Ko/Hds/UM9pX7AG1fdtmRrl6wqkRqDM/incZaC/AQR2/Dpo2VCNGQ=="],
+
+    "@tiptap/extension-table": ["@tiptap/extension-table@3.23.6", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@tiptap/extension-table/-/extension-table-3.23.6.tgz", { "peerDependencies": { "@tiptap/core": "3.23.6", "@tiptap/pm": "3.23.6" } }, "sha512-XbhZXjhsS6AP7ThoZxjAnNs+NiR81YRori25l6E+ORqB7quiPkIXOAi5h4AIpkn/CYIqze6ere11lWsYpDjtaQ=="],
+
+    "@tiptap/extension-table-cell": ["@tiptap/extension-table-cell@3.23.6", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@tiptap/extension-table-cell/-/extension-table-cell-3.23.6.tgz", { "peerDependencies": { "@tiptap/extension-table": "3.23.6" } }, "sha512-hS9TmmvRlT9/ikT+0ukACS+hmJuii4zQaH47cg3oJkz/Fv7O7tL7GZniKtK6l2OUZGPhY+4SV2RkDB6bD7DXfw=="],
+
+    "@tiptap/extension-table-header": ["@tiptap/extension-table-header@3.23.6", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@tiptap/extension-table-header/-/extension-table-header-3.23.6.tgz", { "peerDependencies": { "@tiptap/extension-table": "3.23.6" } }, "sha512-D6o0a1cJXUU0xWakainBFGPnGHinQkPcdu1YqGd/PoFANY38lnuZt/NW2O/OLfLXu5LXDRfpqF1+dsKww27dUA=="],
+
+    "@tiptap/extension-table-row": ["@tiptap/extension-table-row@3.23.6", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@tiptap/extension-table-row/-/extension-table-row-3.23.6.tgz", { "peerDependencies": { "@tiptap/extension-table": "3.23.6" } }, "sha512-OauWVzkyRQg0rKOqM/a3PuKPc1S7YXMb1LRN7Nh8Ytvglvd7GFRTbl1lVqdZRaz4Jzopag4PQnriIZfMPUpxWw=="],
 
     "@tiptap/extension-text": ["@tiptap/extension-text@3.23.6", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@tiptap/extension-text/-/extension-text-3.23.6.tgz", { "peerDependencies": { "@tiptap/core": "3.23.6" } }, "sha512-ipoC2TkIAIOTiF5ByiGgvQB1DqDyfP90wrUB3mohBcgvp7lQnwHszCDGv8dNnmcUek8uXV/uoLu2VXeVQlxjPA=="],
 
@@ -1851,6 +1864,8 @@
     "tinyrainbow": ["tinyrainbow@2.0.0", "", {}, "sha512-op4nsTR47R6p0vMUUoYl/a+ljLFVtlfaXkLQmqfLR1qHma1h/ysYk4hEXZ880bf2CYgTskvTa/e196Vd5dDQXw=="],
 
     "tinyspy": ["tinyspy@4.0.4", "", {}, "sha512-azl+t0z7pw/z958Gy9svOTuzqIk6xq+NSheJzn5MMWtWTFywIacg2wUlzKFGtt3cthx0r2SxMK0yzJOR0IES7Q=="],
+
+    "tiptap-track-changes": ["tiptap-track-changes@0.2.1", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/tiptap-track-changes/-/tiptap-track-changes-0.2.1.tgz", { "peerDependencies": { "@tiptap/core": "^2.0.0 || ^3.0.0", "@tiptap/pm": "^2.0.0 || ^3.0.0" } }, "sha512-FIyh5nB1UX/u4uxTGxAP+I4t2xQff8XnZvqTHVboSY9mePcWoVErovK11zxQbr8ZD4u3AZjpdaLN4U8iIlKMWw=="],
 
     "to-regex-range": ["to-regex-range@5.0.1", "", { "dependencies": { "is-number": "^7.0.0" } }, "sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ=="],
 
