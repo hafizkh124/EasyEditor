@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Mic, PenLine, Loader2, MicOff, SpellCheck, BookOpen, ChevronDown, Type, Search, RefreshCw, FileText } from "lucide-react";
+import { Sparkles, Mic, PenLine, Loader2, MicOff, SpellCheck, ChevronDown, Type, Search, RefreshCw, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
