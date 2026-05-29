@@ -7,7 +7,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useSeo } from "@/hooks/useSeo";
 
 const CheckoutSuccess = () => {
-  useSeo({ title: "Payment successful — Easy Editor", description: "Your payment was successful.", path: "/checkout/success" });
+  useSeo({ title: "Payment successful — Easy Editor", description: "Your payment was received successfully. Your Easy Editor account is being activated — this usually takes just a few seconds.", path: "/checkout/success" });
   const { refetch } = useSubscription();
 
   // Poll for the webhook-driven update so the user sees their new tier quickly.
