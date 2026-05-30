@@ -6,12 +6,14 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Link2, Upload, FileText, Trash2, Loader2, BookOpen, Globe, Lock, AlertTriangle } from "lucide-react";
+import { Link2, Upload, FileText, Trash2, Loader2, BookOpen, Globe, Lock, AlertTriangle, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Source } from "./types";
 import IslamicResearchPanel from "./IslamicResearchPanel";
 import type { ResearchMode } from "./ResearchModeSwitcher";
 import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
+import { Input } from "@/components/ui/input";
+import { CUSTOM_SOURCE_WARNING } from "@/lib/research/scrapingWhitelist";
 import {
   AlertDialog,
   AlertDialogAction,
