@@ -32,7 +32,7 @@ function mergeCitations(existing: CitationItem[], fetched: CitationItem[]): Cita
 interface UseResearchChatArgs {
   user: User | null;
   session: Session | null;
-  mode: "general" | "islamic";
+  mode: "general" | "islamic" | "custom";
   tier: string;
   sources: Source[];
   strictMode: boolean;
