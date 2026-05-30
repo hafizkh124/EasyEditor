@@ -391,12 +391,14 @@ serve(async (req) => {
       strictMode,
       chatHistory,
       modes: rawModes,
+      mode: researchMode,
     }: {
       query?: string;
       sources?: unknown[];
       strictMode?: boolean;
       chatHistory?: Array<{ role: string; content: string }>;
       modes?: unknown;
+      mode?: string;
     } = body ?? {};
 
     if (!query) {
