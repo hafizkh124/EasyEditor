@@ -223,6 +223,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         sources,
         strictMode,
         chatHistory: prevMessages,
+        mode,
         onDelta,
         onDone: () => {
           setIsQuerying(false);
