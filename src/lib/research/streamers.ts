@@ -74,6 +74,7 @@ export async function streamResearchQuery({
   sources,
   strictMode,
   chatHistory,
+  mode,
   onDelta,
   onDone,
   onError,
