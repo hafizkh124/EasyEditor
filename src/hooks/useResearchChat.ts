@@ -124,7 +124,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         next.delete("session");
         setSearchParams(next, { replace: true });
       }
-      const data = await loadLatestResearchSession(user.id, mode);
+      const data = await loadLatestResearchSession(user.id, mode === "islamic" ? "islamic" : "general");
       if (data) {
         sessionIdRef.current = data.id;
         setActiveSessionId(data.id);
