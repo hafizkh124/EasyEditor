@@ -228,6 +228,29 @@ const SourcesPanel = ({
       </div>
 
       <div className="p-3 space-y-2 border-b border-border">
+        <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-[11px] text-amber-700 dark:text-amber-300">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>{CUSTOM_SOURCE_WARNING}</span>
+        </div>
+
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (!_isAddingUrl) _onAddUrl(); }}
+          className="flex gap-1.5"
+        >
+          <Input
+            type="url"
+            inputMode="url"
+            placeholder="https://example.com/article"
+            value={_urlInput}
+            onChange={(e) => _onUrlInputChange(e.target.value)}
+            disabled={_isAddingUrl}
+            className="h-9 text-xs"
+          />
+          <Button type="submit" size="sm" disabled={_isAddingUrl || !_urlInput.trim()} className="h-9 px-2 gap-1">
+            {_isAddingUrl ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+          </Button>
+        </form>
+
         <DropZone onFileDrop={onFileDrop} isUploading={isUploading} t={t} />
         <Button
           variant="outline"
@@ -241,6 +264,7 @@ const SourcesPanel = ({
         </Button>
         <input ref={fileInputRef} type="file" accept=".pdf,.docx" onChange={onFileUpload} className="hidden" />
       </div>
+
 
       <ScrollArea className="flex-1 max-h-64 lg:max-h-none">
         <div className="p-3 space-y-1.5">
