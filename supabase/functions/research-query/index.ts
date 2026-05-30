@@ -481,8 +481,15 @@ serve(async (req) => {
       console.log(`[Research] Parallel fetch initiated for ${sources.length} source(s)`);
       const startTime = Date.now();
 
+      // Context-aware scraping: Islamic & General modes are whitelist-only.
+      // Custom mode (or unspecified) bypasses the gate.
+      const enforceWhitelist = researchMode === "islamic" || researchMode === "general";
+
       const fetchPromises = sources.map(async (source: any) => {
         if (source.source_type === "url" && source.url) {
+          if (enforceWhitelist && !isWhitelistedUrl(source.url)) {
+            return `--- Source: ${source.title} (${source.url}) ---\n[${WHITELIST_REJECTION_MESSAGE}]`;
+          }
           const content = await fetchUrlContent(source.url);
           return `--- Source: ${source.title} (${source.url}) ---\n${content}`;
         } else if (source.storage_path) {
