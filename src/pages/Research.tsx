@@ -90,9 +90,10 @@ const Research = () => {
 
   const [strictMode, setStrictMode] = useState(true);
 
-  // Map 3-tab UI mode → current hook's 2-mode contract.
-  // Custom behaves like general (user-provided sources + research-query edge fn).
-  const hookMode: "general" | "islamic" = mode === "islamic" ? "islamic" : "general";
+  // Pass the full UI mode through so the chat hook and edge function can
+  // apply context-aware behavior (e.g. whitelist enforcement in islamic/general
+  // and bypass in custom).
+  const hookMode: "general" | "islamic" | "custom" = mode;
 
   const sourcesApi = useResearchSources(user);
   const chat = useResearchChat({
