@@ -74,6 +74,7 @@ export async function streamResearchQuery({
   sources,
   strictMode,
   chatHistory,
+  mode,
   onDelta,
   onDone,
   onError,
@@ -82,6 +83,7 @@ export async function streamResearchQuery({
   sources: Source[];
   strictMode: boolean;
   chatHistory: ChatMessage[];
+  mode?: "general" | "custom";
 } & StreamCallbacks): Promise<void> {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/research-query`;
   try {
@@ -94,7 +96,7 @@ export async function streamResearchQuery({
     const resp = await fetch(url, {
       method: "POST",
       headers: getAuthHeaders(accessToken),
-      body: JSON.stringify({ query, sources, strictMode, chatHistory, modes: [] }),
+      body: JSON.stringify({ query, sources, strictMode, chatHistory, modes: [], mode }),
     });
 
     if (!resp.ok) {
