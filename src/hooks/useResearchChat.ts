@@ -32,7 +32,7 @@ function mergeCitations(existing: CitationItem[], fetched: CitationItem[]): Cita
 interface UseResearchChatArgs {
   user: User | null;
   session: Session | null;
-  mode: "general" | "islamic";
+  mode: "general" | "islamic" | "custom";
   tier: string;
   sources: Source[];
   strictMode: boolean;
@@ -82,7 +82,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         id: sessionIdRef.current,
         userId: user.id,
         title,
-        mode,
+        mode: mode === "islamic" ? "islamic" : "general",
         messages: updatedMessages,
         citations: updatedCitations,
         selectedDomains: mode === "islamic" ? islamicDomains : [],
@@ -124,7 +124,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         next.delete("session");
         setSearchParams(next, { replace: true });
       }
-      const data = await loadLatestResearchSession(user.id, mode);
+      const data = await loadLatestResearchSession(user.id, mode === "islamic" ? "islamic" : "general");
       if (data) {
         sessionIdRef.current = data.id;
         setActiveSessionId(data.id);
@@ -223,6 +223,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         sources,
         strictMode,
         chatHistory: prevMessages,
+        mode,
         onDelta,
         onDone: () => {
           setIsQuerying(false);

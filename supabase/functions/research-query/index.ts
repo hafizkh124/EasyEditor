@@ -25,6 +25,33 @@ const corsHeaders = {
 
 const SOURCE_CHAR_LIMIT = 20_000;
 
+// Context-aware scraping whitelist. Islamic & General research modes are
+// restricted to these trusted scholarly domains. Custom Sources mode bypasses
+// this gate (the user takes responsibility).
+const SCRAPING_WHITELIST = [
+  "alulama.org",
+  "magazine.mohaddis.com",
+  "mohaddis.org",
+  "urdufatwa.com",
+  "islamfort.com",
+  "alminasa.ai",
+  "shamela.ws",
+  "islamicurdubooks.com",
+  "islamqa.info",
+];
+
+const WHITELIST_REJECTION_MESSAGE =
+  "معذرت، اسلامی اور جنرل ریسرچ کے لیے ہم صرف مستند علمی ذرائع سے معلومات لینے کے پابند ہیں۔";
+
+function isWhitelistedUrl(rawUrl: string): boolean {
+  try {
+    const host = new URL(rawUrl).hostname.toLowerCase().replace(/^www\./, "");
+    return SCRAPING_WHITELIST.some((d) => host === d || host.endsWith("." + d));
+  } catch {
+    return false;
+  }
+}
+
 async function fetchUrlContent(url: string): Promise<string> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10_000);
@@ -391,12 +418,14 @@ serve(async (req) => {
       strictMode,
       chatHistory,
       modes: rawModes,
+      mode: researchMode,
     }: {
       query?: string;
       sources?: unknown[];
       strictMode?: boolean;
       chatHistory?: Array<{ role: string; content: string }>;
       modes?: unknown;
+      mode?: string;
     } = body ?? {};
 
     if (!query) {
@@ -452,8 +481,15 @@ serve(async (req) => {
       console.log(`[Research] Parallel fetch initiated for ${sources.length} source(s)`);
       const startTime = Date.now();
 
+      // Context-aware scraping: Islamic & General modes are whitelist-only.
+      // Custom mode (or unspecified) bypasses the gate.
+      const enforceWhitelist = researchMode === "islamic" || researchMode === "general";
+
       const fetchPromises = sources.map(async (source: any) => {
         if (source.source_type === "url" && source.url) {
+          if (enforceWhitelist && !isWhitelistedUrl(source.url)) {
+            return `--- Source: ${source.title} (${source.url}) ---\n[${WHITELIST_REJECTION_MESSAGE}]`;
+          }
           const content = await fetchUrlContent(source.url);
           return `--- Source: ${source.title} (${source.url}) ---\n${content}`;
         } else if (source.storage_path) {
