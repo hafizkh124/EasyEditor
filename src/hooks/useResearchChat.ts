@@ -82,7 +82,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         id: sessionIdRef.current,
         userId: user.id,
         title,
-        mode,
+        mode: mode === "islamic" ? "islamic" : "general",
         messages: updatedMessages,
         citations: updatedCitations,
         selectedDomains: mode === "islamic" ? islamicDomains : [],
