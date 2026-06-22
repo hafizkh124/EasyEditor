@@ -8,18 +8,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import { Coins, ArrowUpCircle, CreditCard, Loader2 } from "lucide-react";
-import { useSafepayCheckout, isSafepayEnabled, type SafepayTopupKey } from "@/hooks/useSafepayCheckout";
+import { Coins, ArrowUpCircle } from "lucide-react";
 
 /**
  * UpsellModal — shown when user's tokens are low.
- * Three options: upgrade plan, pay-by-card top-up (SafePay), or manual top-up request.
+ * Two options: upgrade plan or manual top-up request (admin-approved).
  */
-const TOPUP_PACKS: { key: SafepayTopupKey; tokens: number; pkr: number }[] = [
-  { key: "small",  tokens: 2_500,  pkr: 850 },
-  { key: "medium", tokens: 10_000, pkr: 2_800 },
-  { key: "large",  tokens: 25_000, pkr: 5_600 },
-];
 
 export default function UpsellModal({
   open,
@@ -31,10 +25,8 @@ export default function UpsellModal({
   const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { openCheckout, loading: checkoutLoading } = useSafepayCheckout();
-  const cardEnabled = isSafepayEnabled();
 
-  const [view, setView] = useState<"main" | "card" | "manual">("main");
+  const [view, setView] = useState<"main" | "manual">("main");
   const [tokenAmount, setTokenAmount] = useState(2500);
   const [paymentRef, setPaymentRef] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -45,11 +37,6 @@ export default function UpsellModal({
     setView("main");
     setTokenAmount(2500);
     setPaymentRef("");
-  };
-
-  const handleCardTopup = (topupKey: SafepayTopupKey) => {
-    if (!user) return;
-    openCheckout({ kind: "topup", topupKey });
   };
 
   const handleManualTopup = async () => {
@@ -97,12 +84,6 @@ export default function UpsellModal({
                 {t("tokens.upgrade_plan") || "Upgrade Plan"}
               </Link>
             </Button>
-            {cardEnabled && (
-              <Button variant="outline" className="w-full" onClick={() => setView("card")}>
-                <CreditCard className="h-4 w-4 me-2" />
-                Top up with card
-              </Button>
-            )}
             <Button variant="outline" className="w-full" onClick={() => setView("manual")}>
               <Coins className="h-4 w-4 me-2" />
               {t("tokens.request_topup") || "Manual top-up (PKR)"}
@@ -110,32 +91,6 @@ export default function UpsellModal({
           </div>
         )}
 
-        {view === "card" && (
-          <div className="space-y-3 py-2">
-            <p className="text-xs text-muted-foreground">Pick a pack — tokens are credited instantly after payment.</p>
-            {TOPUP_PACKS.map((p) => (
-              <button
-                key={p.key}
-                type="button"
-                disabled={checkoutLoading}
-                onClick={() => handleCardTopup(p.key)}
-                className="w-full rounded-lg border border-border bg-card hover:border-primary hover:bg-accent/40 transition-colors p-3 text-start flex items-center justify-between disabled:opacity-50"
-              >
-                <div>
-                  <div className="font-semibold text-foreground">{p.tokens.toLocaleString()} tokens</div>
-                  <div className="text-xs text-muted-foreground">SafePay (Card / Easypaisa / JazzCash)</div>
-                </div>
-                <div className="text-end">
-                  <div className="font-bold text-primary">PKR {p.pkr.toLocaleString()}</div>
-                  {checkoutLoading && <Loader2 className="h-3 w-3 animate-spin inline" />}
-                </div>
-              </button>
-            ))}
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setView("main")}>{t("common.back") || "Back"}</Button>
-            </DialogFooter>
-          </div>
-        )}
 
         {view === "manual" && (
           <div className="space-y-4 py-2">

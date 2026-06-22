@@ -27,8 +27,11 @@ verify_jwt = true
 [functions.citation-lookup]
 verify_jwt = false
 
-[functions.safepay-webhook]
-verify_jwt = false
+[functions.verify-receipt]
+verify_jwt = true
+
+[functions.verify-renewal-receipt]
+verify_jwt = true
 
 [functions.translate-page]
 verify_jwt = false

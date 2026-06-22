@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useSeo } from "@/hooks/useSeo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,14 +18,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy } from "lucide-react";
+import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
 
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
-import { useSafepayCheckout, isSafepayEnabled } from "@/hooks/useSafepayCheckout";
-import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
 
 const MotionCard = motion(Card);
 
@@ -116,16 +115,13 @@ const Pricing = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogPlan, setDialogPlan] = useState<PaidTier>("basic");
   const [txId, setTxId] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [choiceOpen, setChoiceOpen] = useState(false);
-  const [choicePlan, setChoicePlan] = useState<PaidTier>("basic");
-  const { openCheckout, loading: checkoutLoading } = useSafepayCheckout();
-  const cardEnabled = isSafepayEnabled();
-
-  const handleCardCheckout = (plan: PaidTier) => {
-    if (!user) return;
-    openCheckout({ kind: "subscription", tier: plan });
-  };
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchParams] = useSearchParams();
+  const isExpiredFlow = searchParams.get("expired") === "true";
+  // Renewal = user already has a paid tier with an activation date on file.
+  const isRenewal = currentTier !== "free" && !!subscription?.activated_at;
 
   useEffect(() => {
     if (subscription) {
@@ -136,32 +132,57 @@ const Pricing = () => {
   const openDialog = (plan: PaidTier) => {
     setDialogPlan(plan);
     setTxId("");
+    setReceiptFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setDialogOpen(true);
   };
 
   const submitUpgradeRequest = async () => {
-    if (!user || !txId.trim()) return;
-    setSubmitting(true);
-    const { error } = await supabase
-      .from("subscriptions")
-      .update({
-        upgrade_requested: true,
-        pending_tier: dialogPlan,
-        payment_reference: txId.trim(),
-        last_upgrade_request: new Date().toISOString(),
-      })
-      .eq("user_id", user.id);
-
-    if (error) {
-      toast.error(t("pricing.request_error"));
-    } else {
-      setUpgradeRequested(true);
-      setDialogOpen(false);
-      setTxId("");
-      toast.success(t("pricing.request_submitted"));
-      refetch();
+    if (!user || !txId.trim() || !receiptFile) return;
+    if (receiptFile.size > 5 * 1024 * 1024) {
+      toast.error(language === "ur" ? "تصویر 5MB سے کم ہونی چاہیے" : "Image must be smaller than 5MB");
+      return;
     }
-    setSubmitting(false);
+    setSubmitting(true);
+    try {
+      // 1. Upload receipt to private storage bucket
+      const ext = (receiptFile.name.split(".").pop() || "jpg").toLowerCase();
+      const storagePath = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("payment-receipts")
+        .upload(storagePath, receiptFile, { contentType: receiptFile.type, upsert: false });
+      if (upErr) throw new Error(upErr.message);
+
+      // 2. Invoke AI verifier — renewal endpoint for already-active users
+      const fnName = isRenewal ? "verify-renewal-receipt" : "verify-receipt";
+      const fnBody = isRenewal
+        ? { referenceNo: txId.trim(), storagePath }
+        : { planId: dialogPlan, referenceNo: txId.trim(), storagePath };
+      const { data, error: fnErr } = await supabase.functions.invoke(fnName, { body: fnBody });
+      if (fnErr) throw new Error(fnErr.message);
+      if (data?.error) throw new Error(String(data.error));
+
+      if (data?.autoApproved) {
+        toast.success(language === "ur"
+          ? "آپ کا اکاؤنٹ فوری طور پر فعال ہو گیا!"
+          : "Your account is now active!");
+        setDialogOpen(false);
+        await refetch();
+        setTimeout(() => { window.location.href = "/dashboard"; }, 800);
+      } else {
+        setUpgradeRequested(true);
+        setDialogOpen(false);
+        toast.success(language === "ur"
+          ? "آپ کی receipt admin کو review کے لیے بھیج دی گئی ہے۔"
+          : "Receipt sent to admin for review.");
+        await refetch();
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || t("pricing.request_error"));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   /** UI-only styling per tier — data comes from shared PLAN_TIERS */
@@ -217,6 +238,14 @@ const Pricing = () => {
   return (
     <AppLayout>
       <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-10" dir={direction}>
+
+        {isExpiredFlow && (
+          <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-900 dark:text-red-200">
+            {language === "ur"
+              ? "آپ کی سبسکرپشن ختم ہو چکی ہے۔ Renew کرنے کے لیے اپنے موجودہ پلان پر receipt اپلوڈ کریں۔"
+              : "Your subscription has lapsed. Upload a renewal receipt for your current plan to restore access."}
+          </div>
+        )}
 
         {/* Header */}
         <motion.div
@@ -315,14 +344,11 @@ const Pricing = () => {
                   <CardTitle className="text-xl">{t(plan.nameKey)}</CardTitle>
                   <div className="mt-2 space-y-1">
                     <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-3xl font-bold text-primary">{plan.cardPrice}</span>
+                      <span className="text-3xl font-bold text-primary">{plan.price}</span>
                       <span className="text-sm text-muted-foreground">/ {t("pricing.per_month")}</span>
                     </div>
                     <div className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                      <Zap className="h-3 w-3" /> Card · instant activation
-                    </div>
-                    <div className="text-xs text-muted-foreground pt-1">
-                      or {plan.price} <span className="opacity-70">· manual, 1–2 days</span>
+                      <Sparkles className="h-3 w-3" /> {language === "ur" ? "AI سے فوری تصدیق" : "AI-verified instant activation"}
                     </div>
                   </div>
 
@@ -410,10 +436,9 @@ const Pricing = () => {
                         </p>
                       </div>
                     ) : showRequest ? (
-                      /* Single CTA — opens choice dialog (card vs manual) */
                       <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                         <Button
-                          onClick={() => { setChoicePlan(plan.id); setChoiceOpen(true); }}
+                          onClick={() => openDialog(plan.id)}
                           className="w-full h-11 rounded-xl"
                         >
                           <Icon className="h-4 w-4 me-2" />
@@ -515,17 +540,37 @@ const Pricing = () => {
                 placeholder={t("pricing.transaction_id_placeholder")}
                 value={txId}
                 onChange={(e) => setTxId(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && !submitting && txId.trim() && submitUpgradeRequest()
-                }
               />
             </div>
 
-            <p className="text-xs text-muted-foreground">{t("pricing.payment_note")}</p>
+            {/* Receipt upload */}
+            <div className="space-y-1.5">
+              <Label htmlFor="receipt">
+                {language === "ur" ? "Receipt کی تصویر (JPG/PNG, ≤5MB)" : "Receipt image (JPG/PNG, ≤5MB)"}
+              </Label>
+              <Input
+                id="receipt"
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+              />
+              {receiptFile && (
+                <p className="text-xs text-muted-foreground">
+                  {receiptFile.name} · {(receiptFile.size / 1024).toFixed(0)} KB
+                </p>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              {language === "ur"
+                ? "AI آپ کی receipt کی تصدیق کرے گا۔ صحیح ہونے پر اکاؤنٹ فوری فعال ہو جائے گا، ورنہ admin خود review کرے گا۔"
+                : "Our AI verifies your receipt. If valid, your account activates instantly — otherwise an admin will review it."}
+            </p>
 
             <Button
               onClick={submitUpgradeRequest}
-              disabled={submitting || !txId.trim()}
+              disabled={submitting || !txId.trim() || !receiptFile}
               className="w-full"
             >
               {submitting ? (
@@ -533,24 +578,12 @@ const Pricing = () => {
               ) : (
                 <Crown className="h-4 w-4 me-2" />
               )}
-              {t("pricing.submit_payment")}
+              {language === "ur" ? "تصدیق کے لیے بھیجیں" : "Verify & activate"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Choice dialog — Card vs Manual */}
-      <PlanCheckoutChoiceDialog
-        open={choiceOpen}
-        onOpenChange={setChoiceOpen}
-        planName={t(plans.find((p) => p.id === choicePlan)?.nameKey ?? "")}
-        cardPrice={plans.find((p) => p.id === choicePlan)?.cardPrice ?? ""}
-        manualPrice={plans.find((p) => p.id === choicePlan)?.price ?? ""}
-        cardEnabled={cardEnabled}
-        cardLoading={checkoutLoading}
-        onPayByCard={() => { handleCardCheckout(choicePlan); setChoiceOpen(false); }}
-        onManual={() => { setChoiceOpen(false); openDialog(choicePlan); }}
-      />
     </AppLayout>
   );
 };

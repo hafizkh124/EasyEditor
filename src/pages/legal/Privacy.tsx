@@ -22,8 +22,7 @@ export default function Privacy() {
         <li><strong>Content you submit:</strong> audio uploads, images/PDFs for OCR, research queries, prompts and generated outputs.</li>
         <li><strong>Usage &amp; telemetry:</strong> feature usage, token consumption, error logs, device and browser metadata, IP address, approximate location derived from IP.</li>
         <li><strong>Support &amp; communications:</strong> messages you send us via WhatsApp, email or the in-app contact form.</li>
-        <li><strong>Manual-payment data:</strong> bank/mobile-wallet transaction references you submit for manual approval.</li>
-        <li><strong>Card-payment data:</strong> collected directly by our payment partner SafePay. We never see or store your full card details.</li>
+        <li><strong>Payment data:</strong> bank/mobile-wallet transaction reference and uploaded receipt screenshot you submit for AI/admin verification. Receipt images are stored privately and accessible only to you and our admin team.</li>
       </ul>
 
       <h2>2. Why We Use Your Data &amp; Legal Basis</h2>
@@ -45,10 +44,9 @@ export default function Privacy() {
       <h2>3. Who We Share Data With</h2>
       <ul>
         <li>
-          <strong>SafePay (Pakistan):</strong> our payment gateway for card and wallet
-          (Easypaisa, JazzCash) transactions. SafePay processes payment information securely
-          under PCI-DSS. See{" "}
-          <a href="https://getsafepay.com/privacy" target="_blank" rel="noopener noreferrer">SafePay's Privacy Notice</a>.
+          <strong>Payment recipients:</strong> manual transfers are sent directly to our
+          published NBP, JazzCash and EasyPaisa accounts. We do not share your payment data
+          with any third-party payment processor.
         </li>
         <li>
           <strong>Hosting &amp; backend (Supabase, Vercel/Lovable infrastructure):</strong>
@@ -109,8 +107,7 @@ export default function Privacy() {
       <p>
         We use only strictly necessary cookies and local storage (authentication session,
         language preference, theme, recent activity log). We do not use third-party analytics
-        or advertising cookies. The SafePay checkout page sets its own cookies governed by
-        SafePay's privacy notice.
+        or advertising cookies.
       </p>
 
       <h2>9. Children</h2>

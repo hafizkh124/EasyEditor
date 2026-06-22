@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -22,8 +22,6 @@ import {
   Clock,
 } from "lucide-react";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
-import { isSafepayEnabled } from "@/hooks/useSafepayCheckout";
-import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
 
 export const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 export const PENDING_CHECKOUT_METHOD_KEY = "pendingCheckoutMethod";
@@ -38,30 +36,15 @@ const Landing = () => {
   const { user, loading } = useAuth();
   const { t, language, setLanguage, direction } = useLanguage();
   const navigate = useNavigate();
-  const cardEnabled = isSafepayEnabled();
-
-  const [choiceOpen, setChoiceOpen] = useState(false);
-  const [choicePlan, setChoicePlan] = useState<PaidTier>("pro");
-
-  const stashIntent = (planId: PaidTier, method: "card" | "manual") => {
-    try {
-      sessionStorage.setItem(PENDING_CHECKOUT_KEY, planId);
-      sessionStorage.setItem(PENDING_CHECKOUT_METHOD_KEY, method);
-    } catch {
-      // ignore storage errors (e.g. private mode)
-    }
-    navigate(`/signup?checkout=${planId}&method=${method}`);
-  };
-
-  const handlePayByCard = (planId: PaidTier) => stashIntent(planId, "card");
-  const handleManual = () => {
-    setChoiceOpen(false);
-    stashIntent(choicePlan, "manual");
-  };
 
   const openChoice = (planId: PaidTier) => {
-    setChoicePlan(planId);
-    setChoiceOpen(true);
+    try {
+      sessionStorage.setItem(PENDING_CHECKOUT_KEY, planId);
+      sessionStorage.setItem(PENDING_CHECKOUT_METHOD_KEY, "manual");
+    } catch {
+      // ignore storage errors
+    }
+    navigate(`/signup?checkout=${planId}&method=manual`);
   };
 
 
@@ -337,17 +320,13 @@ const Landing = () => {
                       {t(plan.nameKey)}
                     </h3>
                     <div className="mb-1">
-                      <span className="text-2xl font-bold text-primary">{plan.cardPrice}</span>
+                      <span className="text-2xl font-bold text-primary">{plan.price}</span>
                       <span className="text-sm text-muted-foreground">
                         {" "}/ {t("pricing.per_month")}
                       </span>
                     </div>
-                    <div className="mb-1 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-                      <Zap className="h-3 w-3" /> {language === "ur" ? "کارڈ · فوری فعال" : "Card · instant"}
-                    </div>
-                    <div className="mb-4 text-xs text-muted-foreground">
-                      {language === "ur" ? "یا " : "or "}{plan.price}
-                      <span className="opacity-70"> · {language === "ur" ? "مینول، 1–2 دن" : "manual, 1–2 days"}</span>
+                    <div className="mb-4 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                      <Zap className="h-3 w-3" /> {language === "ur" ? "AI سے فوری تصدیق" : "AI-verified instant activation"}
                     </div>
                     <ul className="space-y-2 text-start">
                       {plan.features.map((f, idx) => (
@@ -454,16 +433,6 @@ const Landing = () => {
         </div>
       </footer>
 
-      <PlanCheckoutChoiceDialog
-        open={choiceOpen}
-        onOpenChange={setChoiceOpen}
-        planName={t(plans.find((p) => p.id === choicePlan)?.nameKey ?? "")}
-        cardPrice={plans.find((p) => p.id === choicePlan)?.cardPrice ?? ""}
-        manualPrice={plans.find((p) => p.id === choicePlan)?.price ?? ""}
-        cardEnabled={cardEnabled}
-        onPayByCard={() => { handlePayByCard(choicePlan); setChoiceOpen(false); }}
-        onManual={handleManual}
-      />
     </div>
   );
 };

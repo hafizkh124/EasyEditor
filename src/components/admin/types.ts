@@ -26,6 +26,10 @@ export interface UserRow {
   token_monthly_balance: number;
   token_topup_balance: number;
   token_monthly_limit: number;
+  payment_proof_url: string | null;
+  ai_verification_status: string | null;
+  ai_confidence_score: number | null;
+  ai_verification_details: Record<string, unknown> | null;
 }
 
 export type PaidTier = "basic" | "pro" | "ultra";
