@@ -77,34 +77,25 @@ export default function Terms() {
 
 
       <h2>5. Subscriptions, Tokens &amp; Manual Payments</h2>
-      <p>We offer two payment channels:</p>
-      <ul>
-        <li>
-          <strong>Card / wallet payments (instant activation):</strong> processed through our
-          payment partner SafePay (Visa, Mastercard, Easypaisa, JazzCash, bank). Subscriptions
-          renew automatically each month until canceled. Customers receive immediate access on
-          successful payment.
-        </li>
-        <li>
-          <strong>Manual bank / mobile-wallet transfers (PKR):</strong> users submit a payment
-          reference, which our team approves manually. Activation typically takes one to two
-          business days. Manual payments do not auto-renew; you must submit a new request each
-          cycle.
-        </li>
-      </ul>
+      <p>
+        Payments are accepted exclusively via manual bank transfer, JazzCash, or EasyPaisa.
+        Users transfer the subscription fee to one of our published accounts and then upload a
+        screenshot of the receipt together with the transaction reference. An AI verifier
+        checks the receipt; if the receipt is clearly genuine the account is activated
+        immediately, otherwise our admin team reviews it manually (usually within 1–2 business
+        days). Subscriptions do not auto-renew — a new payment and receipt upload are required
+        each cycle.
+      </p>
       <p>
         Tokens (one-time top-ups) are non-refundable once consumed but can be refunded on the
         unused balance under the policy in Section 7.
       </p>
 
-      <h2>6. SafePay as Payment Processor</h2>
+      <h2>6. Payment Methods</h2>
       <p>
-        Card and wallet payments are processed by{" "}
-        <strong>SafePay</strong> (<a href="https://getsafepay.com" target="_blank" rel="noopener noreferrer">getsafepay.com</a>),
-        a State Bank of Pakistan licensed payment gateway. SafePay handles secure card
-        processing, mobile-wallet routing (Easypaisa, JazzCash), and PCI-DSS compliance.
-        Alulama remains the merchant of record and is responsible for refunds and customer
-        support.
+        We accept payments via National Bank of Pakistan (NBP) bank transfer, JazzCash, and
+        EasyPaisa. We do not currently offer card payments. Alulama is the merchant of record
+        and is responsible for refunds and customer support.
       </p>
 
       <h2>7. Refunds</h2>
