@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, ShieldAlert, RefreshCw, LogOut, MessageCircle, Loader2, Check, Crown, Zap, Star, Construction, CreditCard } from "lucide-react";
+import { Copy, ShieldAlert, RefreshCw, LogOut, MessageCircle, Loader2, Check, Crown, Zap, Star, Construction } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApproval } from "@/hooks/useApproval";
@@ -69,8 +69,9 @@ const PendingApproval = () => {
     setSelectedPackage(plan.id);
   }, [user]);
 
-  const selectedPlanIsComingSoon = () =>
-    PLAN_TIERS.find((p) => p.id === selectedPackage)?.comingSoon === true;
+  const isComingSoon = (id: PaidTier) =>
+    PLAN_TIERS.find((p) => p.id === id)?.comingSoon === true;
+  void isComingSoon;
 
   // Poll approval status every 30s so the page auto-unlocks shortly after admin approves.
   useEffect(() => {
