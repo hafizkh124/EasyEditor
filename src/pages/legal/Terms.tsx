@@ -79,12 +79,12 @@ export default function Terms() {
       <h2>5. Subscriptions, Tokens &amp; Manual Payments</h2>
       <p>
         Payments are accepted exclusively via manual bank transfer, JazzCash, or EasyPaisa.
-        Users transfer the subscription fee to one of our published accounts and then upload a
-        screenshot of the receipt together with the transaction reference. An AI verifier
-        checks the receipt; if the receipt is clearly genuine the account is activated
-        immediately, otherwise our admin team reviews it manually (usually within 1–2 business
-        days). Subscriptions do not auto-renew — a new payment and receipt upload are required
-        each cycle.
+        Pakistani users pay in PKR and international users pay in USD. Users transfer the
+        subscription fee to one of our published accounts and then upload a screenshot of the
+        receipt together with the transaction reference. Our system verifies the receipt; if
+        the receipt is clearly genuine the account is activated immediately, otherwise our
+        team reviews it manually (usually within 1–2 business days). Subscriptions do not
+        auto-renew — a new payment and receipt upload are required each cycle.
       </p>
       <p>
         Tokens (one-time top-ups) are non-refundable once consumed but can be refunded on the
