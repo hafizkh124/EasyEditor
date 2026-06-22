@@ -20,9 +20,11 @@ export interface PlanFeatureTemplate {
 export interface PlanTier {
   id: PaidTier;
   nameKey: string;
-  /** Manual PKR price (shown alongside card USD on pricing UI) */
+  /** Pakistani Rupee price for Pakistani users */
   price: string;
-  /** Card price in USD via SafePay — instant activation */
+  /** US Dollar price for international users */
+  priceUsd: string;
+  /** @deprecated kept for back-compat — same as priceUsd */
   cardPrice: string;
   priceAmountKey: string;
   popular: boolean;
@@ -35,6 +37,7 @@ export const PLAN_TIERS: PlanTier[] = [
     id: "basic",
     nameKey: "settings.basic",
     price: "1,400 PKR",
+    priceUsd: "$5",
     cardPrice: "$5",
     priceAmountKey: "pricing.payment_amount_basic",
     popular: false,
@@ -51,6 +54,7 @@ export const PLAN_TIERS: PlanTier[] = [
     id: "pro",
     nameKey: "settings.pro",
     price: "5,400 PKR",
+    priceUsd: "$19",
     cardPrice: "$19",
     priceAmountKey: "pricing.payment_amount_pro",
     popular: true,
@@ -67,6 +71,7 @@ export const PLAN_TIERS: PlanTier[] = [
     id: "ultra",
     nameKey: "settings.ultra",
     price: "8,400 PKR",
+    priceUsd: "$29",
     cardPrice: "$29",
     priceAmountKey: "pricing.payment_amount_ultra",
     popular: false,
@@ -80,6 +85,11 @@ export const PLAN_TIERS: PlanTier[] = [
     ],
   },
 ];
+
+/** Returns the price string to display based on the user's currency. */
+export function priceForCurrency(tier: PlanTier, currency: "PKR" | "USD"): string {
+  return currency === "USD" ? tier.priceUsd : tier.price;
+}
 
 /** Build translated feature labels from templates. */
 export function buildFeatures(
