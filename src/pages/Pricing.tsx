@@ -115,15 +115,8 @@ const Pricing = () => {
   const [dialogPlan, setDialogPlan] = useState<PaidTier>("basic");
   const [txId, setTxId] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [choiceOpen, setChoiceOpen] = useState(false);
-  const [choicePlan, setChoicePlan] = useState<PaidTier>("basic");
-  const { openCheckout, loading: checkoutLoading } = useSafepayCheckout();
-  const cardEnabled = isSafepayEnabled();
 
-  const handleCardCheckout = (plan: PaidTier) => {
-    if (!user) return;
-    openCheckout({ kind: "subscription", tier: plan });
-  };
+
 
   useEffect(() => {
     if (subscription) {

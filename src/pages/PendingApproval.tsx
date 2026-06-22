@@ -46,18 +46,14 @@ const PendingApproval = () => {
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PaidTier>("basic");
-  const { openCheckout, loading: checkoutLoading } = useSafepayCheckout();
-  const cardEnabled = isSafepayEnabled();
 
   // Honor a pending checkout intent stored on the landing page before signup.
-  // Auto-selects the chosen plan. Auto-opens SafePay only if method === "card".
+  // Auto-selects the chosen plan (manual flow only — no card checkout).
   useEffect(() => {
     if (!user) return;
     let pending: string | null = null;
-    let method: string | null = null;
     try {
       pending = sessionStorage.getItem(PENDING_CHECKOUT_KEY);
-      method = sessionStorage.getItem(PENDING_CHECKOUT_METHOD_KEY);
     } catch {
       pending = null;
     }
@@ -71,15 +67,7 @@ const PendingApproval = () => {
     }
     if (!plan) return;
     setSelectedPackage(plan.id);
-    if (method === "card" && cardEnabled) {
-      openCheckout({ kind: "subscription", tier: plan.id });
-    }
-  }, [user, cardEnabled, openCheckout]);
-
-  const handlePayByCard = () => {
-    if (!user || selectedPlanIsComingSoon()) return;
-    openCheckout({ kind: "subscription", tier: selectedPackage });
-  };
+  }, [user]);
 
   const selectedPlanIsComingSoon = () =>
     PLAN_TIERS.find((p) => p.id === selectedPackage)?.comingSoon === true;
@@ -264,39 +252,8 @@ const PendingApproval = () => {
           </CardContent>
         </Card>
 
-        {/* Pay by card — instant activation (SafePay) */}
-        {cardEnabled && !selectedPlanIsComingSoon() && (
-          <Card className="border-primary/40 bg-primary/5">
-            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
-              <div className="space-y-0.5">
-                <p className="font-medium text-sm">
-                  {t("pending.pay_by_card_title") ||
-                    (direction === "rtl"
-                      ? "کارڈ سے ادائیگی — اکاؤنٹ فوراً فعال"
-                      : "Pay by card — instant activation")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {direction === "rtl"
-                    ? "بین الاقوامی کارڈ سے ادائیگی پر کوئی منظوری درکار نہیں — اکاؤنٹ فوراً فعال ہو جائے گا۔"
-                    : "International card payment auto-activates your account — no manual approval needed."}
-                </p>
-              </div>
-              <Button
-                onClick={handlePayByCard}
-                disabled={checkoutLoading}
-                className="gap-2"
-                data-approval-allow
-              >
-                {checkoutLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CreditCard className="h-4 w-4" />
-                )}
-                {direction === "rtl" ? "کارڈ سے ادائیگی" : "Pay by card"}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {/* Card payment section removed — manual receipt verification only */}
+
 
         {/* Payment Accounts */}
         <Card>
