@@ -48,6 +48,54 @@ const PendingApproval = () => {
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PaidTier>("basic");
+  const [txId, setTxId] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleVerifyReceipt = async () => {
+    if (!user || !txId.trim() || !receiptFile) {
+      toast.error(direction === "rtl" ? "Transaction ID اور receipt دونوں ضروری ہیں" : "Both transaction ID and receipt are required");
+      return;
+    }
+    if (receiptFile.size > 5 * 1024 * 1024) {
+      toast.error(direction === "rtl" ? "تصویر 5MB سے کم ہونی چاہیے" : "Image must be smaller than 5MB");
+      return;
+    }
+    setVerifying(true);
+    try {
+      const ext = (receiptFile.name.split(".").pop() || "jpg").toLowerCase();
+      const storagePath = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("payment-receipts")
+        .upload(storagePath, receiptFile, { contentType: receiptFile.type, upsert: false });
+      if (upErr) throw new Error(upErr.message);
+
+      const { data, error } = await supabase.functions.invoke("verify-receipt", {
+        body: { planId: selectedPackage, referenceNo: txId.trim(), storagePath },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(String(data.error));
+
+      if (data?.autoApproved) {
+        toast.success(direction === "rtl"
+          ? "آپ کا اکاؤنٹ فوری فعال ہو گیا!"
+          : "Your account is now active!");
+        setTimeout(() => navigate("/dashboard", { replace: true }), 600);
+      } else {
+        setTxId("");
+        setReceiptFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        toast.success(direction === "rtl"
+          ? "Receipt admin کو review کے لیے بھیج دی گئی۔"
+          : "Receipt sent to admin for review.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Verification failed");
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   // Honor a pending checkout intent stored on the landing page before signup.
   // Auto-selects the chosen plan (manual flow only — no card checkout).
