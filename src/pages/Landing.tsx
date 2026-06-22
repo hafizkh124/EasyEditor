@@ -22,8 +22,6 @@ import {
   Clock,
 } from "lucide-react";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
-import { isSafepayEnabled } from "@/hooks/useSafepayCheckout";
-import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
 
 export const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 export const PENDING_CHECKOUT_METHOD_KEY = "pendingCheckoutMethod";
@@ -38,30 +36,15 @@ const Landing = () => {
   const { user, loading } = useAuth();
   const { t, language, setLanguage, direction } = useLanguage();
   const navigate = useNavigate();
-  const cardEnabled = isSafepayEnabled();
-
-  const [choiceOpen, setChoiceOpen] = useState(false);
-  const [choicePlan, setChoicePlan] = useState<PaidTier>("pro");
-
-  const stashIntent = (planId: PaidTier, method: "card" | "manual") => {
-    try {
-      sessionStorage.setItem(PENDING_CHECKOUT_KEY, planId);
-      sessionStorage.setItem(PENDING_CHECKOUT_METHOD_KEY, method);
-    } catch {
-      // ignore storage errors (e.g. private mode)
-    }
-    navigate(`/signup?checkout=${planId}&method=${method}`);
-  };
-
-  const handlePayByCard = (planId: PaidTier) => stashIntent(planId, "card");
-  const handleManual = () => {
-    setChoiceOpen(false);
-    stashIntent(choicePlan, "manual");
-  };
 
   const openChoice = (planId: PaidTier) => {
-    setChoicePlan(planId);
-    setChoiceOpen(true);
+    try {
+      sessionStorage.setItem(PENDING_CHECKOUT_KEY, planId);
+      sessionStorage.setItem(PENDING_CHECKOUT_METHOD_KEY, "manual");
+    } catch {
+      // ignore storage errors
+    }
+    navigate(`/signup?checkout=${planId}&method=manual`);
   };
 
 
@@ -454,16 +437,6 @@ const Landing = () => {
         </div>
       </footer>
 
-      <PlanCheckoutChoiceDialog
-        open={choiceOpen}
-        onOpenChange={setChoiceOpen}
-        planName={t(plans.find((p) => p.id === choicePlan)?.nameKey ?? "")}
-        cardPrice={plans.find((p) => p.id === choicePlan)?.cardPrice ?? ""}
-        manualPrice={plans.find((p) => p.id === choicePlan)?.price ?? ""}
-        cardEnabled={cardEnabled}
-        onPayByCard={() => { handlePayByCard(choicePlan); setChoiceOpen(false); }}
-        onManual={handleManual}
-      />
     </div>
   );
 };
