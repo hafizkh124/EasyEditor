@@ -76,10 +76,19 @@ export const TOKEN_COSTS = {
 
 export type TokenActionType = keyof typeof TOKEN_COSTS;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const GRACE_DAYS = 7;
+
 interface SubscriptionContextType {
   subscription: Subscription | null;
   tokenWallet: TokenWallet | null;
   loading: boolean;
+  /** True when expires_at is in the past (any user with an expiry date). */
+  isExpired: boolean;
+  /** True when expires_at + 7 days is also in the past — feature access should be blocked. */
+  isLapsed: boolean;
+  /** Days left in the grace period (0–7). Null when not in grace. */
+  daysUntilLapse: number | null;
   refetch: () => Promise<void>;
 }
 
@@ -87,6 +96,9 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   subscription: null,
   tokenWallet: null,
   loading: true,
+  isExpired: false,
+  isLapsed: false,
+  daysUntilLapse: null,
   refetch: async () => {},
 });
 
@@ -150,9 +162,30 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     fetchSubscription();
   }, [fetchSubscription]);
 
+  const { isExpired, isLapsed, daysUntilLapse } = useMemo(() => {
+    const expiresAtStr = (subscription as { expires_at?: string | null } | null)?.expires_at;
+    if (!expiresAtStr) {
+      return { isExpired: false, isLapsed: false, daysUntilLapse: null as number | null };
+    }
+    const expiresAt = new Date(expiresAtStr).getTime();
+    const now = Date.now();
+    const expired = now > expiresAt;
+    if (!expired) {
+      return { isExpired: false, isLapsed: false, daysUntilLapse: null as number | null };
+    }
+    const daysSinceExpiry = Math.floor((now - expiresAt) / DAY_MS);
+    const remaining = GRACE_DAYS - daysSinceExpiry;
+    const lapsed = remaining <= 0;
+    return {
+      isExpired: true,
+      isLapsed: lapsed,
+      daysUntilLapse: lapsed ? 0 : Math.max(0, remaining),
+    };
+  }, [subscription]);
+
   const value = useMemo(
-    () => ({ subscription, tokenWallet, loading, refetch: fetchSubscription }),
-    [subscription, tokenWallet, loading, fetchSubscription]
+    () => ({ subscription, tokenWallet, loading, isExpired, isLapsed, daysUntilLapse, refetch: fetchSubscription }),
+    [subscription, tokenWallet, loading, isExpired, isLapsed, daysUntilLapse, fetchSubscription]
   );
 
   return (
