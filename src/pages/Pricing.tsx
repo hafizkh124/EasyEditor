@@ -239,6 +239,14 @@ const Pricing = () => {
     <AppLayout>
       <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-10" dir={direction}>
 
+        {isExpiredFlow && (
+          <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-900 dark:text-red-200">
+            {language === "ur"
+              ? "آپ کی سبسکرپشن ختم ہو چکی ہے۔ Renew کرنے کے لیے اپنے موجودہ پلان پر receipt اپلوڈ کریں۔"
+              : "Your subscription has lapsed. Upload a renewal receipt for your current plan to restore access."}
+          </div>
+        )}
+
         {/* Header */}
         <motion.div
           className="text-center space-y-3"
