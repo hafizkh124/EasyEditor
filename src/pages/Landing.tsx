@@ -21,7 +21,8 @@ import {
   CreditCard,
   Clock,
 } from "lucide-react";
-import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
+import { PLAN_TIERS, buildFeatures, priceForCurrency, type PaidTier } from "@/lib/planTiers";
+import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
 
 export const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 export const PENDING_CHECKOUT_METHOD_KEY = "pendingCheckoutMethod";
@@ -35,6 +36,7 @@ const PLAN_STYLE: Record<PaidTier, { icon: typeof Zap; iconClass: string; bg: st
 const Landing = () => {
   const { user, loading } = useAuth();
   const { t, language, setLanguage, direction } = useLanguage();
+  const currency = useDisplayCurrency();
   const navigate = useNavigate();
 
   const openChoice = (planId: PaidTier) => {
@@ -320,13 +322,13 @@ const Landing = () => {
                       {t(plan.nameKey)}
                     </h3>
                     <div className="mb-1">
-                      <span className="text-2xl font-bold text-primary">{plan.price}</span>
+                      <span className="text-2xl font-bold text-primary">{priceForCurrency(plan, currency)}</span>
                       <span className="text-sm text-muted-foreground">
                         {" "}/ {t("pricing.per_month")}
                       </span>
                     </div>
                     <div className="mb-4 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-                      <Zap className="h-3 w-3" /> {language === "ur" ? "AI سے فوری تصدیق" : "AI-verified instant activation"}
+                      <Zap className="h-3 w-3" /> {language === "ur" ? "سسٹم سے فوری تصدیق" : "Instant system verification"}
                     </div>
                     <ul className="space-y-2 text-start">
                       {plan.features.map((f, idx) => (
