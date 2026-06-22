@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy } from "lucide-react";
+import { Check, X, Crown, Zap, Loader2, Star, Clock, Construction, MessageCircle, Copy, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
