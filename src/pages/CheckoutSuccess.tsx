@@ -7,21 +7,15 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useSeo } from "@/hooks/useSeo";
 
 const CheckoutSuccess = () => {
-  useSeo({ title: "Payment successful — Easy Editor", description: "Your payment was received successfully. Your Easy Editor account is being activated — this usually takes just a few seconds.", path: "/checkout/success" });
+  useSeo({
+    title: "Payment received — Easy Editor",
+    description: "Your payment was received. Your Easy Editor account is being activated.",
+    path: "/checkout/success",
+  });
   const { refetch } = useSubscription();
 
-  // Poll for the webhook-driven update so the user sees their new tier quickly.
   useEffect(() => {
-    let cancelled = false;
-    let attempts = 0;
-    const tick = async () => {
-      if (cancelled) return;
-      await refetch();
-      attempts++;
-      if (attempts < 8) setTimeout(tick, 1500);
-    };
-    tick();
-    return () => { cancelled = true; };
+    refetch();
   }, [refetch]);
 
   return (
@@ -31,9 +25,9 @@ const CheckoutSuccess = () => {
           <div className="mx-auto rounded-full bg-emerald-500/10 p-4 w-fit">
             <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Payment successful</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Payment received</h1>
           <p className="text-muted-foreground text-sm">
-            Thank you! Your account is being activated. This may take a few seconds.
+            Thank you! Your account has been activated.
           </p>
           <div className="flex gap-2 justify-center pt-2">
             <Button asChild>
