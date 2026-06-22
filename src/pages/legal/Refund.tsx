@@ -14,15 +14,15 @@ export default function Refund() {
         described below.
       </p>
 
-      <h2>1. Subscriptions (Card / Wallet Payments via SafePay)</h2>
+      <h2>1. Subscriptions (Manual Bank / Wallet Transfers)</h2>
       <ul>
-        <li>You may request a full refund of your most recent monthly subscription charge within <strong>30 days</strong> of the payment date.</li>
-        <li>Renewal charges are independently refundable within 30 days of each renewal.</li>
-        <li>Refunds are processed back to the original card or wallet through our payment partner <strong>SafePay</strong>.</li>
-        <li>To request a refund, email <a href="mailto:support@alulama.org">support@alulama.org</a> with the email and transaction reference used at checkout.</li>
+        <li>You may request a full refund of your most recent monthly subscription payment within <strong>30 days</strong> of the payment date.</li>
+        <li>Renewal payments are independently refundable within 30 days of each renewal.</li>
+        <li>Refunds are processed back to the original sending bank account or mobile-wallet number that was used for the transfer.</li>
+        <li>To request a refund, email <a href="mailto:support@alulama.org">support@alulama.org</a> with the email and transaction reference used for payment.</li>
       </ul>
 
-      <h2>2. One-Time Token Top-Ups (Card Payments)</h2>
+      <h2>2. One-Time Token Top-Ups</h2>
       <ul>
         <li>Unused tokens may be refunded within 30 days of purchase on a pro-rata basis (refund = paid amount × unused tokens / purchased tokens).</li>
         <li>Tokens that have already been consumed are non-refundable.</li>

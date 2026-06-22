@@ -2,12 +2,11 @@ import LegalLayout from "./LegalLayout";
 import { Link } from "react-router-dom";
 import { PLAN_TIERS, buildFeatures } from "@/lib/planTiers";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Check, X, CreditCard, Clock, Zap } from "lucide-react";
+import { Check, X, Clock, Sparkles, Upload } from "lucide-react";
 
 /**
  * Public, unauthenticated pricing page.
- * Shows full catalog + the two payment channels (card/wallet via SafePay = instant,
- * manual bank/wallet transfer = approval delay).
+ * Manual receipt upload only — AI auto-verifies; admin reviews flagged ones.
  */
 export default function PricingInfo() {
   const { t } = useLanguage();
@@ -15,39 +14,37 @@ export default function PricingInfo() {
   return (
     <LegalLayout
       title="Pricing"
-      description="Plans, token top-ups and payment methods for Al-Ulama Easy Editor — pay by card for instant activation, or by manual PKR transfer."
+      description="Plans, token top-ups and payment methods for Al-Ulama Easy Editor — pay via NBP bank transfer, JazzCash or EasyPaisa with AI-verified instant activation."
       path="/pricing-info"
-      lastUpdated="26 May 2026"
+      lastUpdated="22 June 2026"
     >
       <p>
         <strong>Al-Ulama Easy Editor</strong> is an AI-powered Islamic research, transcription
         (speech-to-text), OCR and text-to-speech editor for Urdu, Arabic and English. We sell
-        monthly subscriptions and one-time token top-ups. All prices are listed below in both
-        US Dollars (card) and Pakistani Rupees (manual transfer).
+        monthly subscriptions and one-time token top-ups in Pakistani Rupees.
       </p>
 
-      <h2>Two ways to pay</h2>
+      <h2>How payment works</h2>
       <div className="not-prose grid gap-4 sm:grid-cols-2 my-6">
         <div className="rounded-2xl border-2 border-primary/50 bg-primary/5 p-5">
           <div className="flex items-center gap-2 mb-2 text-primary font-semibold">
-            <CreditCard className="h-5 w-5" /> Pay by card or wallet — recommended
+            <Sparkles className="h-5 w-5" /> AI auto-verification (most users)
           </div>
           <ul className="text-sm text-foreground/90 space-y-1.5">
-            <li className="flex gap-2"><Zap className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> <strong>Instant activation</strong> — your account is upgraded within seconds.</li>
-            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Auto-renews monthly. Cancel anytime, no questions asked.</li>
-            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Visa, Mastercard, <strong>Easypaisa</strong>, <strong>JazzCash</strong> &amp; bank.</li>
-            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Processed securely by <strong>SafePay</strong> (PCI-DSS, SBP-licensed).</li>
+            <li className="flex gap-2"><Upload className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Transfer the fee, then upload a screenshot of the receipt.</li>
+            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Our AI verifier checks amount, receiver and authenticity.</li>
+            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> If valid, your account is activated <strong>instantly</strong>.</li>
+            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Accepts NBP bank transfer, JazzCash and EasyPaisa.</li>
           </ul>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center gap-2 mb-2 font-semibold">
-            <Clock className="h-5 w-5 text-amber-500" /> Manual bank / wallet transfer (PKR)
+            <Clock className="h-5 w-5 text-amber-500" /> Admin review (if AI flags it)
           </div>
           <ul className="text-sm text-foreground/90 space-y-1.5">
-            <li className="flex gap-2"><Clock className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" /> <strong>Manual approval — 1 to 2 business days</strong> before your account is activated.</li>
-            <li className="flex gap-2"><X className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" /> Does not auto-renew — you must submit a new payment each cycle.</li>
-            <li className="flex gap-2"><X className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" /> Higher PKR price to cover manual processing.</li>
-            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Suitable if your card does not work for international transactions.</li>
+            <li className="flex gap-2"><Clock className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" /> If the receipt is blurry, edited, or doesn't match expectations, an admin reviews it manually within 1–2 business days.</li>
+            <li className="flex gap-2"><X className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" /> Subscriptions do not auto-renew — a new payment is required each cycle.</li>
+            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> You can always reach us on WhatsApp for help.</li>
           </ul>
         </div>
       </div>
