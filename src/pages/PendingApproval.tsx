@@ -347,6 +347,58 @@ const PendingApproval = () => {
           </CardContent>
         </Card>
 
+        {/* AI Receipt Verification */}
+        <Card className="border-primary/40 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-primary" />
+              {direction === "rtl" ? "AI سے فوری تصدیق" : "Instant AI Verification"}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {direction === "rtl"
+                ? "Receipt اپلوڈ کریں۔ AI تصدیق کے بعد آپ کا اکاؤنٹ فوری فعال ہو جائے گا۔ مشکوک ہونے پر admin manually review کرے گا۔"
+                : "Upload your receipt — if our AI verifies it, your account activates instantly. Otherwise admin reviews it manually."}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="pa-txid">Transaction ID</Label>
+              <Input
+                id="pa-txid"
+                value={txId}
+                onChange={(e) => setTxId(e.target.value)}
+                placeholder={direction === "rtl" ? "مثلاً JazzCash TXN #12345" : "e.g. JazzCash TXN #12345"}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="pa-receipt">
+                {direction === "rtl" ? "Receipt کی تصویر (JPG/PNG, ≤5MB)" : "Receipt image (JPG/PNG, ≤5MB)"}
+              </Label>
+              <Input
+                id="pa-receipt"
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+              />
+              {receiptFile && (
+                <p className="text-xs text-muted-foreground">
+                  {receiptFile.name} · {(receiptFile.size / 1024).toFixed(0)} KB
+                </p>
+              )}
+            </div>
+            <Button
+              onClick={handleVerifyReceipt}
+              disabled={verifying || !txId.trim() || !receiptFile}
+              className="w-full"
+              data-approval-allow
+            >
+              {verifying ? <Loader2 className="h-4 w-4 me-2 animate-spin" /> : <Upload className="h-4 w-4 me-2" />}
+              {direction === "rtl" ? "تصدیق کے لیے بھیجیں" : "Verify & activate"}
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* WhatsApp Card */}
         <Card className="border-green-500/30 bg-green-500/5">
           <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
