@@ -23,7 +23,8 @@ import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
 
-import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
+import { PLAN_TIERS, buildFeatures, priceForCurrency, type PaidTier } from "@/lib/planTiers";
+import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
 
 const MotionCard = motion(Card);
 
@@ -109,6 +110,7 @@ const Pricing = () => {
   const { user } = useAuth();
   const { t, direction, language } = useLanguage();
   const { subscription, loading, refetch } = useSubscription();
+  const currency = useDisplayCurrency();
   const currentTier = subscription?.tier ?? "free";
 
   const [upgradeRequested, setUpgradeRequested] = useState(false);
@@ -153,7 +155,7 @@ const Pricing = () => {
         .upload(storagePath, receiptFile, { contentType: receiptFile.type, upsert: false });
       if (upErr) throw new Error(upErr.message);
 
-      // 2. Invoke AI verifier — renewal endpoint for already-active users
+      // 2. Submit to verification endpoint — renewal endpoint for already-active users
       const fnName = isRenewal ? "verify-renewal-receipt" : "verify-receipt";
       const fnBody = isRenewal
         ? { referenceNo: txId.trim(), storagePath }
@@ -344,11 +346,11 @@ const Pricing = () => {
                   <CardTitle className="text-xl">{t(plan.nameKey)}</CardTitle>
                   <div className="mt-2 space-y-1">
                     <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-3xl font-bold text-primary">{plan.price}</span>
+                      <span className="text-3xl font-bold text-primary">{priceForCurrency(plan, currency)}</span>
                       <span className="text-sm text-muted-foreground">/ {t("pricing.per_month")}</span>
                     </div>
                     <div className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                      <Sparkles className="h-3 w-3" /> {language === "ur" ? "AI سے فوری تصدیق" : "AI-verified instant activation"}
+                      <Sparkles className="h-3 w-3" /> {language === "ur" ? "سسٹم سے فوری تصدیق" : "Instant system verification"}
                     </div>
                   </div>
 
@@ -564,8 +566,8 @@ const Pricing = () => {
 
             <p className="text-xs text-muted-foreground">
               {language === "ur"
-                ? "AI آپ کی receipt کی تصدیق کرے گا۔ صحیح ہونے پر اکاؤنٹ فوری فعال ہو جائے گا، ورنہ admin خود review کرے گا۔"
-                : "Our AI verifies your receipt. If valid, your account activates instantly — otherwise an admin will review it."}
+                ? "ہمارا سسٹم آپ کی receipt کی تصدیق کرے گا۔ صحیح ہونے پر اکاؤنٹ فوری فعال ہو جائے گا، ورنہ ہماری ٹیم اسے manually review کرے گی۔"
+                : "Our system verifies your receipt. If valid, your account activates instantly — otherwise our team will review it manually."}
             </p>
 
             <Button
