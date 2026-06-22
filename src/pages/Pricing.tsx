@@ -344,14 +344,11 @@ const Pricing = () => {
                   <CardTitle className="text-xl">{t(plan.nameKey)}</CardTitle>
                   <div className="mt-2 space-y-1">
                     <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-3xl font-bold text-primary">{plan.cardPrice}</span>
+                      <span className="text-3xl font-bold text-primary">{plan.price}</span>
                       <span className="text-sm text-muted-foreground">/ {t("pricing.per_month")}</span>
                     </div>
                     <div className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                      <Zap className="h-3 w-3" /> Card · instant activation
-                    </div>
-                    <div className="text-xs text-muted-foreground pt-1">
-                      or {plan.price} <span className="opacity-70">· manual, 1–2 days</span>
+                      <Sparkles className="h-3 w-3" /> {language === "ur" ? "AI سے فوری تصدیق" : "AI-verified instant activation"}
                     </div>
                   </div>
 
