@@ -347,17 +347,17 @@ const PendingApproval = () => {
           </CardContent>
         </Card>
 
-        {/* AI Receipt Verification */}
+        {/* Receipt Verification */}
         <Card className="border-primary/40 bg-primary/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Sparkles className="h-5 w-5 text-primary" />
-              {direction === "rtl" ? "AI سے فوری تصدیق" : "Instant AI Verification"}
+              {direction === "rtl" ? "سسٹم سے فوری تصدیق" : "Instant System Verification"}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
               {direction === "rtl"
-                ? "Receipt اپلوڈ کریں۔ AI تصدیق کے بعد آپ کا اکاؤنٹ فوری فعال ہو جائے گا۔ مشکوک ہونے پر admin manually review کرے گا۔"
-                : "Upload your receipt — if our AI verifies it, your account activates instantly. Otherwise admin reviews it manually."}
+                ? "Receipt اپلوڈ کریں۔ سسٹم تصدیق کے بعد آپ کا اکاؤنٹ فوری فعال ہو جائے گا۔ کوئی مسئلہ ہونے پر ہماری ٹیم manually review کرے گی۔"
+                : "Upload your receipt — once our system verifies it, your account activates instantly. If there is any issue, our team will review it manually."}
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
