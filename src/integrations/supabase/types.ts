@@ -413,42 +413,6 @@ export type Database = {
         }
         Relationships: []
       }
-      safepay_pending_checkouts: {
-        Row: {
-          amount_pkr: number
-          consumed_at: string | null
-          created_at: string
-          kind: string
-          tier: string | null
-          tokens: number | null
-          topup_key: string | null
-          tracker_token: string
-          user_id: string
-        }
-        Insert: {
-          amount_pkr: number
-          consumed_at?: string | null
-          created_at?: string
-          kind: string
-          tier?: string | null
-          tokens?: number | null
-          topup_key?: string | null
-          tracker_token: string
-          user_id: string
-        }
-        Update: {
-          amount_pkr?: number
-          consumed_at?: string | null
-          created_at?: string
-          kind?: string
-          tier?: string | null
-          tokens?: number | null
-          topup_key?: string | null
-          tracker_token?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       scholarly_documents: {
         Row: {
           citation_ref: Json
@@ -494,6 +458,9 @@ export type Database = {
       subscriptions: {
         Row: {
           activated_at: string | null
+          ai_confidence_score: number | null
+          ai_verification_details: Json | null
+          ai_verification_status: string
           billing_cycle_days: number
           cancel_at_period_end: boolean
           created_at: string
@@ -508,6 +475,7 @@ export type Database = {
           ocr_pages_used: number
           paddle_customer_id: string | null
           paddle_subscription_id: string | null
+          payment_proof_url: string | null
           payment_reference: string | null
           payment_source: string
           pending_tier: string | null
@@ -525,6 +493,9 @@ export type Database = {
         }
         Insert: {
           activated_at?: string | null
+          ai_confidence_score?: number | null
+          ai_verification_details?: Json | null
+          ai_verification_status?: string
           billing_cycle_days?: number
           cancel_at_period_end?: boolean
           created_at?: string
@@ -539,6 +510,7 @@ export type Database = {
           ocr_pages_used?: number
           paddle_customer_id?: string | null
           paddle_subscription_id?: string | null
+          payment_proof_url?: string | null
           payment_reference?: string | null
           payment_source?: string
           pending_tier?: string | null
@@ -556,6 +528,9 @@ export type Database = {
         }
         Update: {
           activated_at?: string | null
+          ai_confidence_score?: number | null
+          ai_verification_details?: Json | null
+          ai_verification_status?: string
           billing_cycle_days?: number
           cancel_at_period_end?: boolean
           created_at?: string
@@ -570,6 +545,7 @@ export type Database = {
           ocr_pages_used?: number
           paddle_customer_id?: string | null
           paddle_subscription_id?: string | null
+          payment_proof_url?: string | null
           payment_reference?: string | null
           payment_source?: string
           pending_tier?: string | null
@@ -777,6 +753,9 @@ export type Database = {
         }
         Returns: {
           activated_at: string
+          ai_confidence_score: number
+          ai_verification_details: Json
+          ai_verification_status: string
           billing_cycle_days: number
           country: string
           created_at: string
@@ -786,6 +765,7 @@ export type Database = {
           is_approved: boolean
           last_renewed_at: string
           last_upgrade_request: string
+          payment_proof_url: string
           payment_reference: string
           pending_tier: string
           profession: string
