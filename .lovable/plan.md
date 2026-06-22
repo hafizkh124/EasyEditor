@@ -1,80 +1,184 @@
 
-# Plan: Paddle card checkout alongside manual PKR flow
+# AI-Verified Manual Payment + Subscription Expiry Gating
 
-## Goal
-Add a self-serve "Pay by card" path that runs alongside the existing manual JazzCash/EasyPaisa/bank flow. Card payments auto-provision the tier (no admin step). Manual flow stays untouched.
+## فیصلے (User-confirmed)
 
-## What you get
-- 3 subscription products in Paddle: Basic $5/mo, Pro $19/mo, Ultra $29/mo
-- 3 token top-up products: 2,500 / 10,000 / 25,000 tokens (one-time purchases)
-- "Pay by card" button next to the existing "Request upgrade" button on `/pricing`
-- Same on the top-up modal
-- Webhook handler that, on successful payment: sets `is_approved=true`, sets tier + limits + 30-day window, seeds the token wallet, records the payment in `admin_payments` for income reporting, and sends a "Subscription activated" notification
-- Auto-renew handled by Paddle: webhook extends `expires_at` each cycle, so your existing daily expiry cron continues to work untouched
-- Cancellations: user keeps access until `current_period_end`; cron drops to free after that
-- Test-mode banner in preview; legal pages (Terms, Refund Policy, Privacy Notice) for Paddle go-live
+- SafePay مکمل طور پر codebase سے ہٹایا جائے گا (edge functions، webhook، hook، dialog، secrets)
+- AI confidence ≥ 90% → تمام tiers (Basic/Pro/Ultra) auto-approve
+- Grace period (7 دن): مکمل feature access + warning banner
+- Renewal کے لیے الگ `verify-renewal-receipt` edge function (renewal_count, last_renewed_at update کرے)
 
-## One thing I need from you before coding
-What's your **legal business name** (or your own name if you're not a registered business)? Paddle requires it on the Terms and Privacy pages. From the codebase it looks like "Al-Ulama" / Hafiz Khurram — please confirm the exact legal name.
+---
 
-## Steps
+## 1. Database & Storage
 
-### 1. Catalog (Paddle test env)
-Create products + prices with human-readable IDs that map cleanly to your tier system:
-- `basic_plan` / `basic_monthly` — $5/mo
-- `pro_plan` / `pro_monthly` — $19/mo
-- `ultra_plan` / `ultra_monthly` — $29/mo
-- `topup_small` / `topup_small_once` — $3 = 2,500 tokens
-- `topup_medium` / `topup_medium_once` — $10 = 10,000 tokens
-- `topup_large` / `topup_large_once` — $20 = 25,000 tokens
-Ultra also flips from "Coming Soon" to active.
+### Migration: `ai_payment_workflow`
 
-### 2. Database
-Add to `subscriptions`: `paddle_subscription_id`, `paddle_customer_id`, `environment` (sandbox/live), `payment_source` ('manual' | 'paddle'). Doesn't break any existing rows.
+- نیا private bucket `payment-receipts` (storage tool سے بنایا جائے گا)
+- `storage.objects` پر RLS:
+  - users: صرف اپنی `{userId}/...` فولڈر پر insert/select
+  - admins: تمام objects select
+- `subscriptions` table میں نئے کالم:
+  - `payment_proof_url TEXT`
+  - `ai_verification_status TEXT DEFAULT 'none'` (none | auto_approved | manual_review | rejected)
+  - `ai_confidence_score INTEGER`
+  - `ai_verification_details JSONB`
+- `admin_list_users` RPC update — یہ نئے کالم return کرے
+- `prevent_subscription_self_escalation` trigger میں ان نئے کالموں کو بھی include کریں (تاکہ user خود set نہ کر سکے)
 
-### 3. Frontend
-- `src/lib/paddle.ts` — Paddle.js init + price resolver
-- `usePaddleCheckout` hook
-- `PaymentTestModeBanner` (visible only in preview)
-- `/pricing`: add "Pay by card" button next to existing "Request upgrade" on each plan card
-- `UpsellModal`: add "Buy with card" option next to existing manual top-up
-- `/checkout/success` page
+---
 
-### 4. Edge functions
-- `get-paddle-price` — resolves human-readable IDs to Paddle internal IDs
-- `payments-webhook` — handles `subscription.created/updated/canceled` and `transaction.completed`. For subscriptions: upserts the row, sets tier + limits via `TIER_LIMITS`, seeds token wallet via `TOKEN_ALLOCATIONS`, flips `is_approved`, inserts `admin_payments` row, sends notification. For top-up `transaction.completed` (one-time): credits tokens via `credit_tokens` RPC and inserts `admin_payments`.
+## 2. Edge Functions
 
-### 5. Legal pages (required for Paddle go-live)
-- `/terms` — includes Paddle MoR disclosure + GenAI/editing-software clauses (your product fits both)
-- `/refund-policy` — 30-day money-back guarantee
-- `/privacy` — data controller, categories, Paddle as recipient
-Add footer links from Landing, Login, Signup.
+### نیا: `verify-receipt` (نئے activation کے لیے)
 
-### 6. Lifecycle integration
-- Webhook updates `expires_at` on renewal → existing `check-subscription-expiry` cron stays as-is
-- Cancellation webhook sets `cancel_at_period_end=true` but keeps access until period end
-- Existing manual flow (admin approval / `renewSubscription` / `admin_payments` recording) is unchanged — admin panel keeps working for PKR payers
+Workflow:
+1. JWT validate → userId نکالیں
+2. Body: `{ planId, referenceNo, storagePath }` (Zod validation)
+3. Replay-attack check: `subscriptions.payment_reference` اور `admin_payments.payment_reference` میں `referenceNo` نہ ہو
+4. Storage سے image fetch → base64
+5. Lovable AI Gateway (`google/gemini-2.5-flash`) کو vision call:
+   - OCR کریں؛ amount, sender, receiver, transaction ID, date نکالیں
+   - cross-check: amount tier price سے match (Basic 1000, Pro 4000, Ultra 7000)
+   - receiver `PAYMENT_ACCOUNTS` میں سے کوئی ایک ہو (NBP / JazzCash / EasyPaisa)
+   - tampering signals (font mismatch, pixelation) کا اندازہ
+   - structured JSON output: `{ confidence: 0-100, amount, receiver, txnId, reasons: [] }`
+6. اگر confidence ≥ 90% اور checks pass:
+   - `profiles.is_approved = true`
+   - `subscriptions`: tier, TIER_LIMITS سے quotas, `activated_at = now()`, `expires_at = now() + 30d`, `payment_reference`, `payment_proof_url`, `ai_verification_status='auto_approved'`, `ai_confidence_score`, `ai_verification_details`
+   - `token_wallets.monthly_balance = TOKEN_ALLOCATIONS[tier]`
+   - `admin_payments` میں log
+   - `notifications` میں welcome
+   - `{ success: true, autoApproved: true }`
+7. ورنہ:
+   - `upgrade_requested=true, pending_tier, payment_reference, payment_proof_url, ai_verification_status='manual_review'`
+   - `{ success: true, autoApproved: false, reasons }`
 
-## Testing in preview (after I'm done)
+### نیا: `verify-renewal-receipt` (lapsed/expiring users کے لیے)
 
-The preview always uses Paddle's test environment, so nothing you do here charges real money. The orange "test mode" banner across the top will confirm that.
+ویسی ہی AI verification، لیکن DB writes:
+- اسی tier پر `expires_at = max(now(), expires_at) + 30d`
+- `last_renewed_at = now()`, `renewal_count = renewal_count + 1`
+- token wallet کو `monthly_balance = monthly_limit` پر reset
+- `admin_payments.payment_type = 'renewal'`
 
-1. Open `/pricing` while logged in. Each plan card has two buttons: "Request upgrade" (existing manual flow) and "Pay by card" (new).
-2. Click "Pay by card" on the Pro plan. Paddle's overlay opens.
-3. Fill in any name, any email, and use test card **`4242 4242 4242 4242`**, CVC **`123`**, any future expiry. Country: any.
-4. Submit. The overlay closes and you land on `/checkout/success`.
-5. Within ~5 seconds, refresh `/dashboard` — your tier should now be Pro, token wallet at 25,000, `is_approved` true. A notification appears in the bell icon.
-6. Check `/admin → Income` — the payment shows up as a Paddle transaction.
-7. For top-ups: open the upsell modal, click "Buy with card" on the 10K pack, same test card → tokens credited immediately.
-8. Other useful test cards: `4000 0000 0000 0002` (always declined), `4000 0000 0000 3220` (3D Secure challenge).
+### حذف: SafePay edge functions
 
-To test cancellation: cancel a subscription from the Paddle test dashboard or via API. Webhook flips `cancel_at_period_end=true`; you keep access until `current_period_end`.
+- `supabase/functions/safepay-checkout/` delete
+- `supabase/functions/safepay-webhook/` delete
+- Secrets delete: `SAFEPAY_API_KEY`, `SAFEPAY_SECRET_KEY`, `SAFEPAY_WEBHOOK_SECRET`, `SAFEPAY_ENV`
+- `safepay_pending_checkouts` table drop migration
 
-## Going live (separate later step)
-After you've tested in preview and want to accept real cards, you publish the app, complete Paddle's identity verification (your details + business info) from the Payments tab, and Paddle reviews the site (they check that Terms/Refund/Privacy pages are reachable and contain the required clauses — that's why step 5 exists). Until verification completes, the live checkout will show an error; preview test checkout keeps working the whole time.
+---
 
-## Out of scope
-- Annual billing (can add later)
-- Discount codes (can add later)
-- Customer portal page inside the app (Paddle hosts one; we'll link to it from `/settings`)
-- Migrating existing manual-flow PKR users to Paddle (they stay on manual until they choose to switch)
+## 3. Frontend — Core Layout & Gating
+
+### `SubscriptionContext.tsx` — نئے computed fields
+
+```ts
+isExpired: boolean         // now > expires_at
+daysUntilLapse: number     // 7 - days since expires_at (grace)
+isLapsed: boolean          // now > expires_at + 7d
+```
+
+Admins ہمیشہ false رہیں گے (exempt)۔
+
+### `ProtectedRoute.tsx`
+
+اگر `isLapsed === true` اور route ∉ {`/pricing`, `/checkout/success`, `/profile`, `/settings`}: redirect → `/pricing?expired=true`
+
+### نیا: `SubscriptionBanner.tsx`
+
+- `isExpired && !isLapsed` → amber warning: "آپ کی سبسکرپشن ختم ہو چکی ہے۔ {daysUntilLapse} دن میں access بند ہو جائے گا۔" + "ابھی renew کریں" button (→ `/pricing`)
+- `isLapsed` → red: "آپ کی سبسکرپشن ختم ہو گئی ہے۔ Renew کریں۔"
+- `AppLayout` کے top nav کے بالکل نیچے render
+
+---
+
+## 4. User Payment Pages
+
+### `Pricing.tsx`
+
+- `PlanCheckoutChoiceDialog` references ہٹائیں
+- `useSafepayCheckout` import ہٹائیں
+- "Get Plan" button براہِ راست `ManualPaymentDialog` کھولے
+- اگر URL میں `?expired=true` → top پر "آپ کی سبسکرپشن ختم ہو گئی ہے" alert
+
+### نیا یا توسیع شدہ: `ManualPaymentDialog.tsx` / `PaymentSubmitForm.tsx`
+
+- بینک تفصیلات (PAYMENT_ACCOUNTS سے) دکھائیں
+- Transaction ID input
+- Receipt image uploader (jpg/png/webp, ≤ 5MB)
+- Submit پر:
+  1. `payment-receipts/{userId}/{uuid}.{ext}` پر upload
+  2. `verify-receipt` یا `verify-renewal-receipt` (پہلے سے approved + expired → renewal endpoint)
+  3. `autoApproved` → toast "آپ کا اکاؤنٹ فعال ہو گیا!" + `subscription.refetch()` + redirect dashboard
+  4. ورنہ → toast "آپ کی receipt admin کو review کے لیے بھیج دی گئی" + redirect `/pending-approval`
+
+### `PendingApproval.tsx`
+
+- SafePay card section ہٹائیں
+- وہی receipt upload flow include کریں
+- Status messaging update: "AI خودکار تصدیق کے بعد فوری فعال؛ ورنہ admin manually review کرے گا"
+
+### حذف
+
+- `src/components/PlanCheckoutChoiceDialog.tsx`
+- `src/hooks/useSafepayCheckout.ts`
+- `src/pages/CheckoutSuccess.tsx` میں SafePay-specific branches simplify (manual flow کے لیے generic success)
+- `PaymentTestModeBanner.tsx` (SafePay test mode کا تھا)
+
+---
+
+## 5. Admin Panel
+
+### `admin/types.ts` — `UserRow` میں اضافے
+
+```ts
+payment_proof_url: string | null;
+ai_verification_status: string | null;
+ai_confidence_score: number | null;
+ai_verification_details: Record<string, unknown> | null;
+```
+
+### `UpgradeRequests.tsx`
+
+ہر request پر:
+- AI badge: `auto_approved` (green) / `manual_review` (amber) / `none`
+- Confidence score (e.g. "AI: 72%")
+- اگر `ai_verification_details.reasons` ہو تو tooltip میں دکھائیں
+- "Receipt دیکھیں" button → `supabase.storage.from('payment-receipts').createSignedUrl(payment_proof_url, 300)` → نئی tab میں کھولیں
+
+---
+
+## Technical Details
+
+- **AI model**: `google/gemini-2.5-flash` Lovable AI Gateway کے ذریعے (vision + structured JSON output)۔ Schema چھوٹا رکھیں (Gemini state-limit)
+- **Image handling**: edge function میں storage سے download → base64 → `image_url: data:image/...;base64,...`
+- **Idempotency**: replay check + `payment_reference` پر unique constraint (نئی migration)
+- **Security**: receipt download admin signed URL سے (5 min expiry)؛ verify-receipt service role سے DB writes کرے
+- **Cron**: `check-subscription-expiry` already موجود — اسے بحال رکھیں، صرف notification messages update کریں (grace ending warning)
+- **Token costs**: vision call ~3-5k tokens (~PKR چند روپے فی receipt)؛ ٹھیک ہے
+
+---
+
+## Verification
+
+1. Migration run → bucket + columns بنیں
+2. Edge function unit test: mocked Gemini response (high/low confidence دونوں)
+3. Replay-attack: وہی `referenceNo` دوبارہ → reject
+4. End-to-end:
+   - نیا user → `/pricing` → Pro select → receipt upload → auto-activate
+   - blurry receipt → manual review queue → admin panel میں receipt thumbnail + AI reasons
+5. Expiry simulation (`expires_at` manually edit):
+   - 3 دن پہلے → amber banner، access intact
+   - 10 دن پہلے → red banner، `/pricing?expired=true` پر redirect
+6. Renewal: lapsed user → receipt upload → `verify-renewal-receipt` → `expires_at` +30d، `renewal_count++`
+
+---
+
+## Out of Scope
+
+- WhatsApp/SMS notifications (موجودہ email infra کافی ہے)
+- SafePay واپس لانے کا feature flag (مکمل deletion)
+- Multi-currency / international cards
