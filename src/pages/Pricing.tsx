@@ -23,8 +23,6 @@ import AppLayout from "@/components/AppLayout";
 import { motion } from "framer-motion";
 
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
-import { useSafepayCheckout, isSafepayEnabled } from "@/hooks/useSafepayCheckout";
-import PlanCheckoutChoiceDialog from "@/components/PlanCheckoutChoiceDialog";
 
 const MotionCard = motion(Card);
 

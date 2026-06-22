@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { cn } from "@/lib/utils";
-import { useSafepayCheckout, isSafepayEnabled } from "@/hooks/useSafepayCheckout";
+
 
 const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 const PENDING_CHECKOUT_METHOD_KEY = "pendingCheckoutMethod";
