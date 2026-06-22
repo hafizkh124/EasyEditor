@@ -120,7 +120,8 @@ const Pricing = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchParams] = useSearchParams();
   const isExpiredFlow = searchParams.get("expired") === "true";
-  const isRenewal = currentTier !== "free" && (subscription?.is_approved ?? false);
+  // Renewal = user already has a paid tier with an activation date on file.
+  const isRenewal = currentTier !== "free" && !!subscription?.activated_at;
 
   useEffect(() => {
     if (subscription) {
