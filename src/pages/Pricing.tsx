@@ -401,10 +401,9 @@ const Pricing = () => {
                         </p>
                       </div>
                     ) : showRequest ? (
-                      /* Single CTA — opens choice dialog (card vs manual) */
                       <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                         <Button
-                          onClick={() => { setChoicePlan(plan.id); setChoiceOpen(true); }}
+                          onClick={() => openDialog(plan.id)}
                           className="w-full h-11 rounded-xl"
                         >
                           <Icon className="h-4 w-4 me-2" />
@@ -530,18 +529,6 @@ const Pricing = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Choice dialog — Card vs Manual */}
-      <PlanCheckoutChoiceDialog
-        open={choiceOpen}
-        onOpenChange={setChoiceOpen}
-        planName={t(plans.find((p) => p.id === choicePlan)?.nameKey ?? "")}
-        cardPrice={plans.find((p) => p.id === choicePlan)?.cardPrice ?? ""}
-        manualPrice={plans.find((p) => p.id === choicePlan)?.price ?? ""}
-        cardEnabled={cardEnabled}
-        cardLoading={checkoutLoading}
-        onPayByCard={() => { handleCardCheckout(choicePlan); setChoiceOpen(false); }}
-        onManual={() => { setChoiceOpen(false); openDialog(choicePlan); }}
-      />
     </AppLayout>
   );
 };
