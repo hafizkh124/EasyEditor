@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, ShieldAlert, RefreshCw, LogOut, MessageCircle, Loader2, Check, Crown, Zap, Star, Construction, CreditCard } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Copy, ShieldAlert, RefreshCw, LogOut, MessageCircle, Loader2, Check, Crown, Zap, Star, Construction, Upload, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApproval } from "@/hooks/useApproval";
@@ -12,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PAYMENT_ACCOUNTS, WHATSAPP_CONTACT_URL, WHATSAPP_CONTACT_NUMBER } from "@/lib/paymentAccounts";
 import { PLAN_TIERS, buildFeatures, type PaidTier } from "@/lib/planTiers";
 import { cn } from "@/lib/utils";
-import { useSafepayCheckout, isSafepayEnabled } from "@/hooks/useSafepayCheckout";
+
 
 const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 const PENDING_CHECKOUT_METHOD_KEY = "pendingCheckoutMethod";
@@ -46,18 +48,62 @@ const PendingApproval = () => {
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PaidTier>("basic");
-  const { openCheckout, loading: checkoutLoading } = useSafepayCheckout();
-  const cardEnabled = isSafepayEnabled();
+  const [txId, setTxId] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleVerifyReceipt = async () => {
+    if (!user || !txId.trim() || !receiptFile) {
+      toast.error(direction === "rtl" ? "Transaction ID اور receipt دونوں ضروری ہیں" : "Both transaction ID and receipt are required");
+      return;
+    }
+    if (receiptFile.size > 5 * 1024 * 1024) {
+      toast.error(direction === "rtl" ? "تصویر 5MB سے کم ہونی چاہیے" : "Image must be smaller than 5MB");
+      return;
+    }
+    setVerifying(true);
+    try {
+      const ext = (receiptFile.name.split(".").pop() || "jpg").toLowerCase();
+      const storagePath = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("payment-receipts")
+        .upload(storagePath, receiptFile, { contentType: receiptFile.type, upsert: false });
+      if (upErr) throw new Error(upErr.message);
+
+      const { data, error } = await supabase.functions.invoke("verify-receipt", {
+        body: { planId: selectedPackage, referenceNo: txId.trim(), storagePath },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(String(data.error));
+
+      if (data?.autoApproved) {
+        toast.success(direction === "rtl"
+          ? "آپ کا اکاؤنٹ فوری فعال ہو گیا!"
+          : "Your account is now active!");
+        setTimeout(() => navigate("/dashboard", { replace: true }), 600);
+      } else {
+        setTxId("");
+        setReceiptFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        toast.success(direction === "rtl"
+          ? "Receipt admin کو review کے لیے بھیج دی گئی۔"
+          : "Receipt sent to admin for review.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Verification failed");
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   // Honor a pending checkout intent stored on the landing page before signup.
-  // Auto-selects the chosen plan. Auto-opens SafePay only if method === "card".
+  // Auto-selects the chosen plan (manual flow only — no card checkout).
   useEffect(() => {
     if (!user) return;
     let pending: string | null = null;
-    let method: string | null = null;
     try {
       pending = sessionStorage.getItem(PENDING_CHECKOUT_KEY);
-      method = sessionStorage.getItem(PENDING_CHECKOUT_METHOD_KEY);
     } catch {
       pending = null;
     }
@@ -71,18 +117,11 @@ const PendingApproval = () => {
     }
     if (!plan) return;
     setSelectedPackage(plan.id);
-    if (method === "card" && cardEnabled) {
-      openCheckout({ kind: "subscription", tier: plan.id });
-    }
-  }, [user, cardEnabled, openCheckout]);
+  }, [user]);
 
-  const handlePayByCard = () => {
-    if (!user || selectedPlanIsComingSoon()) return;
-    openCheckout({ kind: "subscription", tier: selectedPackage });
-  };
-
-  const selectedPlanIsComingSoon = () =>
-    PLAN_TIERS.find((p) => p.id === selectedPackage)?.comingSoon === true;
+  const isComingSoon = (id: PaidTier) =>
+    PLAN_TIERS.find((p) => p.id === id)?.comingSoon === true;
+  void isComingSoon;
 
   // Poll approval status every 30s so the page auto-unlocks shortly after admin approves.
   useEffect(() => {
@@ -264,39 +303,8 @@ const PendingApproval = () => {
           </CardContent>
         </Card>
 
-        {/* Pay by card — instant activation (SafePay) */}
-        {cardEnabled && !selectedPlanIsComingSoon() && (
-          <Card className="border-primary/40 bg-primary/5">
-            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
-              <div className="space-y-0.5">
-                <p className="font-medium text-sm">
-                  {t("pending.pay_by_card_title") ||
-                    (direction === "rtl"
-                      ? "کارڈ سے ادائیگی — اکاؤنٹ فوراً فعال"
-                      : "Pay by card — instant activation")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {direction === "rtl"
-                    ? "بین الاقوامی کارڈ سے ادائیگی پر کوئی منظوری درکار نہیں — اکاؤنٹ فوراً فعال ہو جائے گا۔"
-                    : "International card payment auto-activates your account — no manual approval needed."}
-                </p>
-              </div>
-              <Button
-                onClick={handlePayByCard}
-                disabled={checkoutLoading}
-                className="gap-2"
-                data-approval-allow
-              >
-                {checkoutLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CreditCard className="h-4 w-4" />
-                )}
-                {direction === "rtl" ? "کارڈ سے ادائیگی" : "Pay by card"}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {/* Card payment section removed — manual receipt verification only */}
+
 
         {/* Payment Accounts */}
         <Card>
@@ -336,6 +344,58 @@ const PendingApproval = () => {
                 </div>
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        {/* AI Receipt Verification */}
+        <Card className="border-primary/40 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-primary" />
+              {direction === "rtl" ? "AI سے فوری تصدیق" : "Instant AI Verification"}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {direction === "rtl"
+                ? "Receipt اپلوڈ کریں۔ AI تصدیق کے بعد آپ کا اکاؤنٹ فوری فعال ہو جائے گا۔ مشکوک ہونے پر admin manually review کرے گا۔"
+                : "Upload your receipt — if our AI verifies it, your account activates instantly. Otherwise admin reviews it manually."}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="pa-txid">Transaction ID</Label>
+              <Input
+                id="pa-txid"
+                value={txId}
+                onChange={(e) => setTxId(e.target.value)}
+                placeholder={direction === "rtl" ? "مثلاً JazzCash TXN #12345" : "e.g. JazzCash TXN #12345"}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="pa-receipt">
+                {direction === "rtl" ? "Receipt کی تصویر (JPG/PNG, ≤5MB)" : "Receipt image (JPG/PNG, ≤5MB)"}
+              </Label>
+              <Input
+                id="pa-receipt"
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+              />
+              {receiptFile && (
+                <p className="text-xs text-muted-foreground">
+                  {receiptFile.name} · {(receiptFile.size / 1024).toFixed(0)} KB
+                </p>
+              )}
+            </div>
+            <Button
+              onClick={handleVerifyReceipt}
+              disabled={verifying || !txId.trim() || !receiptFile}
+              className="w-full"
+              data-approval-allow
+            >
+              {verifying ? <Loader2 className="h-4 w-4 me-2 animate-spin" /> : <Upload className="h-4 w-4 me-2" />}
+              {direction === "rtl" ? "تصدیق کے لیے بھیجیں" : "Verify & activate"}
+            </Button>
           </CardContent>
         </Card>
 
