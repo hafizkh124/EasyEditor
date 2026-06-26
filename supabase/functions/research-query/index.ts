@@ -239,20 +239,13 @@ async function runCitationsPipeline(input: CitationsPipelineInput): Promise<Cita
     },
   ];
 
-  const llmRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${input.lovableKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages,
-      response_format: { type: "json_object" },
-      // Phase 10.2: cap is high because citations pipeline returns one JSON
-      // object that may contain many `picks`; we don't want it truncated.
-      max_tokens: 4096,
-    }),
+  const llmRes = await callChatCompletions({
+    model: "google/gemini-2.5-flash",
+    messages,
+    response_format: { type: "json_object" },
+    // Phase 10.2: cap is high because citations pipeline returns one JSON
+    // object that may contain many `picks`; we don't want it truncated.
+    max_tokens: 4096,
   });
 
   if (!llmRes.ok) {
