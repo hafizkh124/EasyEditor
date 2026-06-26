@@ -99,11 +99,11 @@ Deno.serve(async (req) => {
   const base64 = btoa(String.fromCharCode(...buf));
   const mime = fileBlob.type || "image/jpeg";
 
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!lovableKey) return json({ error: "AI gateway not configured" }, 500);
+  const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+  if (!hasAnyKey) return json({ error: "AI gateway not configured" }, 500);
 
   const expectedPkr = TIER_PRICES_PKR[tier];
-  const ai = await verifyWithAI(base64, mime, expectedPkr, lovableKey);
+  const ai = await verifyWithAI(base64, mime, expectedPkr);
   if (!ai) return json({ error: "AI verification temporarily unavailable" }, 503);
 
   const amountMatches = ai.amount !== null && Math.abs(ai.amount - expectedPkr) <= Math.max(50, expectedPkr * 0.02);
