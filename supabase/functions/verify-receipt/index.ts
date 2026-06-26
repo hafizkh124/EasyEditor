@@ -277,7 +277,6 @@ async function verifyWithAI(
   base64: string,
   mime: string,
   expectedPkr: number,
-  key: string,
 ): Promise<AIResult | null> {
   const systemPrompt = `You are a payment receipt verifier for an Islamic-research SaaS in Pakistan.
 You receive an uploaded receipt image (bank transfer, JazzCash, EasyPaisa, or screenshot).
@@ -294,26 +293,19 @@ Output JSON only:
   const userPrompt = `Verify this receipt. Extract amount in PKR (number only, no commas), receiver name OR account/till number, transaction ID, and date. Then give a confidence score 0-100 reflecting how likely this is a genuine payment of ${expectedPkr} PKR to one of the listed receivers.`;
 
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Lovable-API-Key": key,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: userPrompt },
-              { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
-            ],
-          },
-        ],
-        response_format: { type: "json_object" },
-      }),
+    const res = await callChatCompletions({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: userPrompt },
+            { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
     });
     if (!res.ok) {
       const text = await res.text();
