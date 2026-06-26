@@ -10,7 +10,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 // ── helpers ────────────────────────────────────────────────────────────────
 
 function pgError(code: string, message = "db error"): PostgrestError {
-  return { code, message, details: "", hint: "", name: "PostgrestError" };
+  return { code, message, details: "", hint: "", name: "PostgrestError", toJSON: () => ({}) } as unknown as PostgrestError;
 }
 
 function httpError(status: number, message = "http error") {
