@@ -54,18 +54,13 @@ interface IngestDoc {
 }
 
 // ── Embed up to 100 texts in one API call ─────────────────────────────────────
-async function embedBatch(texts: string[], apiKey: string): Promise<number[][]> {
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/text-embedding-004",
-      input: texts,
-    }),
-    signal: AbortSignal.timeout(30_000),
+// Uses Gemini direct (primary) with Lovable AI Gateway as fallback.
+import { callEmbeddings } from "../_shared/aiGateway.ts";
+
+async function embedBatch(texts: string[]): Promise<number[][]> {
+  const res = await callEmbeddings({
+    model: "google/text-embedding-004",
+    input: texts,
   });
 
   if (!res.ok) {
