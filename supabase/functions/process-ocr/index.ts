@@ -15,8 +15,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    // Note: AI provider key existence is enforced inside callChatCompletions —
+    // it falls back from Gemini direct to Lovable AI automatically.
+    const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+    if (!hasAnyKey) {
       return new Response(
         JSON.stringify({ error: "AI API key not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
