@@ -82,8 +82,9 @@ serve(async (req) => {
     }
 
     // Call Lovable AI Gateway to refine/process the audio transcription
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    // AI provider key check (Gemini-direct primary, Lovable fallback inside helper)
+    const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+    if (!hasAnyKey) {
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
