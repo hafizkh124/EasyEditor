@@ -368,7 +368,7 @@ export function useAdminUsers(enabled: boolean) {
 
     const { error } = await supabase
       .from("subscriptions")
-      .update(updates)
+      .update(updates as never)
       .eq("user_id", userId);
 
     if (error) {
