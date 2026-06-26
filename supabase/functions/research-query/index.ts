@@ -575,23 +575,16 @@ serve(async (req) => {
 
     messages.push({ role: "user", content: query });
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-        stream: !isAssistMode,
-        // Phase 10.2: explicit cap. Assist (spelling/citations) is JSON-bound
-        // and can be larger; normal/streaming chat is conversational so the
-        // 2048-token cap is comfortable for General-tab answers and still
-        // generous for Custom-mode source-grounded answers.
-        max_tokens: isAssistMode ? 4096 : 8192,
-        ...(isAssistMode ? { response_format: { type: "json_object" } } : {}),
-      }),
+    const response = await callChatCompletions({
+      model: "google/gemini-2.5-flash",
+      messages,
+      stream: !isAssistMode,
+      // Phase 10.2: explicit cap. Assist (spelling/citations) is JSON-bound
+      // and can be larger; normal/streaming chat is conversational so the
+      // 2048-token cap is comfortable for General-tab answers and still
+      // generous for Custom-mode source-grounded answers.
+      max_tokens: isAssistMode ? 4096 : 8192,
+      ...(isAssistMode ? { response_format: { type: "json_object" } } : {}),
     });
 
     if (!response.ok) {
