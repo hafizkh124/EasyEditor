@@ -4,6 +4,7 @@
 // after grace/lapse. Same AI verification logic as verify-receipt, but the
 // approved write extends expires_at rather than starting fresh.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,11 +99,11 @@ Deno.serve(async (req) => {
   const base64 = btoa(String.fromCharCode(...buf));
   const mime = fileBlob.type || "image/jpeg";
 
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!lovableKey) return json({ error: "AI gateway not configured" }, 500);
+  const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+  if (!hasAnyKey) return json({ error: "AI gateway not configured" }, 500);
 
   const expectedPkr = TIER_PRICES_PKR[tier];
-  const ai = await verifyWithAI(base64, mime, expectedPkr, lovableKey);
+  const ai = await verifyWithAI(base64, mime, expectedPkr);
   if (!ai) return json({ error: "AI verification temporarily unavailable" }, 503);
 
   const amountMatches = ai.amount !== null && Math.abs(ai.amount - expectedPkr) <= Math.max(50, expectedPkr * 0.02);
@@ -195,7 +196,7 @@ Deno.serve(async (req) => {
   return json({ success: true, autoApproved: false, confidence: ai.confidence, reasons: ai.reasons });
 });
 
-async function verifyWithAI(base64: string, mime: string, expectedPkr: number, key: string): Promise<AIResult | null> {
+async function verifyWithAI(base64: string, mime: string, expectedPkr: number): Promise<AIResult | null> {
   const systemPrompt = `You are a payment receipt verifier for an Islamic-research SaaS in Pakistan.
 You receive an uploaded receipt image (bank, JazzCash, EasyPaisa). This is a RENEWAL receipt.
 Valid receivers: Al-Ulama (NBP IBAN PK04NBPA1997004243449556), Ulama Centre (JazzCash Till 00420745),
@@ -205,20 +206,16 @@ Output JSON only:
 {"confidence": <0-100>, "amount": <number|null>, "receiver": <string|null>, "txnId": <string|null>, "date": <string|null>, "tampered": <bool>, "reasons": <string[]>}`;
 
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Lovable-API-Key": key, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: [
-            { type: "text", text: `Verify this renewal receipt for ${expectedPkr} PKR.` },
-            { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
-          ] },
-        ],
-        response_format: { type: "json_object" },
-      }),
+    const res = await callChatCompletions({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: [
+          { type: "text", text: `Verify this renewal receipt for ${expectedPkr} PKR.` },
+          { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
+        ] },
+      ],
+      response_format: { type: "json_object" },
     });
     if (!res.ok) {
       console.error("[verify-renewal-receipt] AI gateway error", res.status, await res.text());

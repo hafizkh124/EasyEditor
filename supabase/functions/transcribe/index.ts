@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
 import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,8 +82,9 @@ serve(async (req) => {
     }
 
     // Call Lovable AI Gateway to refine/process the audio transcription
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    // AI provider key check (Gemini-direct primary, Lovable fallback inside helper)
+    const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+    if (!hasAnyKey) {
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -197,25 +199,18 @@ ${scriptRules}
 
 Only output the transcription text, nothing else — no introductions, no explanations, no markdown.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: isAuto ? "Detect the spoken language and transcribe this audio accurately in its native script:" : `Transcribe this audio recording accurately in ${langName}:` },
-              { type: "image_url", image_url: { url: audio } },
-            ],
-          },
-        ],
-      }),
+    const aiResponse = await callChatCompletions({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: isAuto ? "Detect the spoken language and transcribe this audio accurately in its native script:" : `Transcribe this audio recording accurately in ${langName}:` },
+            { type: "image_url", image_url: { url: audio } },
+          ],
+        },
+      ],
     });
 
     if (!aiResponse.ok) {

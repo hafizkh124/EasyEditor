@@ -11,6 +11,7 @@
 //   6. Otherwise → flag for manual review (upgrade_requested=true,
 //      ai_verification_status='manual_review')
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -146,11 +147,11 @@ Deno.serve(async (req) => {
   const base64 = btoa(String.fromCharCode(...buf));
   const mime = fileBlob.type || "image/jpeg";
 
-  // ── 6. AI verification via Lovable AI Gateway
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!lovableKey) return json({ error: "AI gateway not configured" }, 500);
+  // ── 6. AI verification (Gemini direct primary, Lovable fallback)
+  const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+  if (!hasAnyKey) return json({ error: "AI gateway not configured" }, 500);
 
-  const ai = await verifyWithAI(base64, mime, expectedPkr, lovableKey);
+  const ai = await verifyWithAI(base64, mime, expectedPkr);
   if (!ai) {
     return json({ error: "AI verification temporarily unavailable. Please try again." }, 503);
   }
@@ -276,7 +277,6 @@ async function verifyWithAI(
   base64: string,
   mime: string,
   expectedPkr: number,
-  key: string,
 ): Promise<AIResult | null> {
   const systemPrompt = `You are a payment receipt verifier for an Islamic-research SaaS in Pakistan.
 You receive an uploaded receipt image (bank transfer, JazzCash, EasyPaisa, or screenshot).
@@ -293,26 +293,19 @@ Output JSON only:
   const userPrompt = `Verify this receipt. Extract amount in PKR (number only, no commas), receiver name OR account/till number, transaction ID, and date. Then give a confidence score 0-100 reflecting how likely this is a genuine payment of ${expectedPkr} PKR to one of the listed receivers.`;
 
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Lovable-API-Key": key,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: userPrompt },
-              { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
-            ],
-          },
-        ],
-        response_format: { type: "json_object" },
-      }),
+    const res = await callChatCompletions({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: userPrompt },
+            { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
     });
     if (!res.ok) {
       const text = await res.text();

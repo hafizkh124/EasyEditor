@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
 import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,8 +15,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    // Note: AI provider key existence is enforced inside callChatCompletions —
+    // it falls back from Gemini direct to Lovable AI automatically.
+    const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+    if (!hasAnyKey) {
       return new Response(
         JSON.stringify({ error: "AI API key not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -70,43 +73,36 @@ Deno.serve(async (req) => {
       return insufficientTokensResponse(tokenResult, corsHeaders);
     }
 
-    // Call Gemini via Lovable AI Gateway
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert OCR system. Extract ALL text visible in the provided image. Follow these rules:
+    // Call Gemini direct (primary) → Lovable AI Gateway (fallback)
+    const aiResponse = await callChatCompletions({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert OCR system. Extract ALL text visible in the provided image. Follow these rules:
 1. Extract text in ALL languages present (Urdu, Arabic, English, or any other).
 2. Preserve the original formatting, layout, and paragraph structure as much as possible.
 3. For right-to-left languages (Urdu, Arabic), maintain proper RTL text direction.
 4. If there are tables, try to preserve the table structure using plain text formatting.
 5. If text is unclear, make your best guess and mark uncertain parts with [?].
 6. Return ONLY the extracted text, no explanations or metadata.`,
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Extract all text from this image. Preserve formatting and support Urdu, Arabic, and English.",
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Extract all text from this image. Preserve formatting and support Urdu, Arabic, and English.",
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${mimeType || "image/jpeg"};base64,${imageBase64}`,
               },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mimeType || "image/jpeg"};base64,${imageBase64}`,
-                },
-              },
-            ],
-          },
-        ],
-      }),
+            },
+          ],
+        },
+      ],
     });
 
     if (!aiResponse.ok) {

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
 import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
+import { callChatCompletions, callEmbeddings } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -109,21 +110,12 @@ ${contextBlock}`;
 async function fetchIslamicContext(
   supabase: any,
   text: string,
-  lovableKey: string,
 ): Promise<string> {
-  // 1. Embed the text via Lovable AI gateway (use a small embedding model if available, otherwise fall back)
-  // The project already uses match_scholarly_documents elsewhere; we keep it simple here.
+  // 1. Embed via Gemini direct (primary) → Lovable AI (fallback).
   try {
-    const embedResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/text-embedding-004",
-        input: text.slice(0, 4000),
-      }),
+    const embedResp = await callEmbeddings({
+      model: "google/text-embedding-004",
+      input: text.slice(0, 4000),
     });
 
     if (!embedResp.ok) {
@@ -220,8 +212,8 @@ serve(async (req) => {
       return insufficientTokensResponse(tokenResult, corsHeaders);
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+    if (!hasAnyKey) {
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -231,7 +223,7 @@ serve(async (req) => {
     // Build system prompt — for citations, retrieve Islamic context first
     let systemPrompt: string;
     if (isCitations) {
-      const contextBlock = await fetchIslamicContext(supabase, text, LOVABLE_API_KEY);
+      const contextBlock = await fetchIslamicContext(supabase, text);
       systemPrompt = buildIslamicCitationsPrompt(contextBlock);
     } else {
       systemPrompt = actionPrompts[action];
@@ -239,19 +231,12 @@ serve(async (req) => {
 
     const model = isCitations ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: text },
-        ],
-      }),
+    const aiResponse = await callChatCompletions({
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: text },
+      ],
     });
 
     if (!aiResponse.ok) {
