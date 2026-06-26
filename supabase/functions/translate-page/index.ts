@@ -105,21 +105,14 @@ Rules:
       });
     }
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        stream: true,
-        max_tokens: 8192,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-      }),
+    const aiResponse = await callChatCompletions({
+      model: "google/gemini-2.5-flash",
+      stream: true,
+      max_tokens: 8192,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
     });
 
     if (!aiResponse.ok) {
