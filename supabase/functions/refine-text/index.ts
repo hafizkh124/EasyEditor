@@ -212,8 +212,8 @@ serve(async (req) => {
       return insufficientTokensResponse(tokenResult, corsHeaders);
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+    if (!hasAnyKey) {
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -223,7 +223,7 @@ serve(async (req) => {
     // Build system prompt — for citations, retrieve Islamic context first
     let systemPrompt: string;
     if (isCitations) {
-      const contextBlock = await fetchIslamicContext(supabase, text, LOVABLE_API_KEY);
+      const contextBlock = await fetchIslamicContext(supabase, text);
       systemPrompt = buildIslamicCitationsPrompt(contextBlock);
     } else {
       systemPrompt = actionPrompts[action];
@@ -231,19 +231,12 @@ serve(async (req) => {
 
     const model = isCitations ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: text },
-        ],
-      }),
+    const aiResponse = await callChatCompletions({
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: text },
+      ],
     });
 
     if (!aiResponse.ok) {
