@@ -462,22 +462,15 @@ serve(async (req) => {
     }
     messages.push({ role: "user", content: query });
 
-    // Call Gemini
-    const geminiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-        stream: true,
-        // Phase 10.2: explicit cap so long Islamic answers (full Arabic
-        // quotes + Urdu translations + summaries) don't get cut off at
-        // the gateway's conservative default.
-        max_tokens: 8192,
-      }),
+    // Call Gemini direct → Lovable fallback (helper handles auth + URL)
+    const geminiRes = await callChatCompletions({
+      model: "google/gemini-2.5-flash",
+      messages,
+      stream: true,
+      // Phase 10.2: explicit cap so long Islamic answers (full Arabic
+      // quotes + Urdu translations + summaries) don't get cut off at
+      // the gateway's conservative default.
+      max_tokens: 8192,
     });
 
     if (!geminiRes.ok) {
