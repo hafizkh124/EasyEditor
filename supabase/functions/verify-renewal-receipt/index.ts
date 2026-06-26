@@ -4,6 +4,7 @@
 // after grace/lapse. Same AI verification logic as verify-receipt, but the
 // approved write extends expires_at rather than starting fresh.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
