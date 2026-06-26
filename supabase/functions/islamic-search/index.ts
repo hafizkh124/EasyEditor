@@ -5,6 +5,7 @@ import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensRe
 import { expandQueryTerms } from "../_shared/bilingualMap.ts";
 import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 /** Strip Arabic diacritics/harakat so an "الصدقة" search matches stored
  *  "الصَّدَقَةُ". Mirrors normalizeArabic in vector-search and _shared. */
@@ -183,8 +184,8 @@ serve(async (req) => {
       return insufficientTokensResponse(tokenResult, corsHeaders);
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+    if (!hasAnyKey) {
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -461,22 +462,15 @@ serve(async (req) => {
     }
     messages.push({ role: "user", content: query });
 
-    // Call Gemini
-    const geminiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-        stream: true,
-        // Phase 10.2: explicit cap so long Islamic answers (full Arabic
-        // quotes + Urdu translations + summaries) don't get cut off at
-        // the gateway's conservative default.
-        max_tokens: 8192,
-      }),
+    // Call Gemini direct → Lovable fallback (helper handles auth + URL)
+    const geminiRes = await callChatCompletions({
+      model: "google/gemini-2.5-flash",
+      messages,
+      stream: true,
+      // Phase 10.2: explicit cap so long Islamic answers (full Arabic
+      // quotes + Urdu translations + summaries) don't get cut off at
+      // the gateway's conservative default.
+      max_tokens: 8192,
     });
 
     if (!geminiRes.ok) {

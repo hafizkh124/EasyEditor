@@ -16,6 +16,7 @@ import {
 import { segmentClaims } from "../_shared/segmentClaims.ts";
 import { findCitationCandidates, type CitationCandidate } from "../_shared/citationCandidates.ts";
 import { verifyAll } from "../_shared/citationVerifier.ts";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -163,7 +164,6 @@ async function fetchFileContent(supabase: any, storagePath: string): Promise<str
 interface CitationsPipelineInput {
   text:       string;
   supabase:   any;
-  lovableKey: string;
 }
 
 interface CitationsPipelineOutput {
@@ -239,20 +239,13 @@ async function runCitationsPipeline(input: CitationsPipelineInput): Promise<Cita
     },
   ];
 
-  const llmRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${input.lovableKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages,
-      response_format: { type: "json_object" },
-      // Phase 10.2: cap is high because citations pipeline returns one JSON
-      // object that may contain many `picks`; we don't want it truncated.
-      max_tokens: 4096,
-    }),
+  const llmRes = await callChatCompletions({
+    model: "google/gemini-2.5-flash",
+    messages,
+    response_format: { type: "json_object" },
+    // Phase 10.2: cap is high because citations pipeline returns one JSON
+    // object that may contain many `picks`; we don't want it truncated.
+    max_tokens: 4096,
   });
 
   if (!llmRes.ok) {
@@ -450,9 +443,9 @@ serve(async (req) => {
       : [];
     const promptKey = pickPromptKey(modes);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
+    const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+    if (!hasAnyKey) {
+      return new Response(JSON.stringify({ error: "No AI provider configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -468,7 +461,6 @@ serve(async (req) => {
       const result = await runCitationsPipeline({
         text: query,
         supabase,
-        lovableKey: LOVABLE_API_KEY,
       });
       return new Response(JSON.stringify({ promptKey, ...result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -583,23 +575,16 @@ serve(async (req) => {
 
     messages.push({ role: "user", content: query });
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-        stream: !isAssistMode,
-        // Phase 10.2: explicit cap. Assist (spelling/citations) is JSON-bound
-        // and can be larger; normal/streaming chat is conversational so the
-        // 2048-token cap is comfortable for General-tab answers and still
-        // generous for Custom-mode source-grounded answers.
-        max_tokens: isAssistMode ? 4096 : 8192,
-        ...(isAssistMode ? { response_format: { type: "json_object" } } : {}),
-      }),
+    const response = await callChatCompletions({
+      model: "google/gemini-2.5-flash",
+      messages,
+      stream: !isAssistMode,
+      // Phase 10.2: explicit cap. Assist (spelling/citations) is JSON-bound
+      // and can be larger; normal/streaming chat is conversational so the
+      // 2048-token cap is comfortable for General-tab answers and still
+      // generous for Custom-mode source-grounded answers.
+      max_tokens: isAssistMode ? 4096 : 8192,
+      ...(isAssistMode ? { response_format: { type: "json_object" } } : {}),
     });
 
     if (!response.ok) {
