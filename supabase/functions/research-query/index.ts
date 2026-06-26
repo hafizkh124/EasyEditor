@@ -164,7 +164,6 @@ async function fetchFileContent(supabase: any, storagePath: string): Promise<str
 interface CitationsPipelineInput {
   text:       string;
   supabase:   any;
-  lovableKey: string;
 }
 
 interface CitationsPipelineOutput {
