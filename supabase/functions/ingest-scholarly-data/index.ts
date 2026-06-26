@@ -177,7 +177,7 @@ serve(async (req) => {
 
       let embeddings: number[][];
       try {
-        embeddings = await embedBatch(embedTexts, LOVABLE_API_KEY);
+        embeddings = await embedBatch(embedTexts);
       } catch (embErr) {
         console.error(`Embedding chunk ${i} failed:`, embErr);
         errors += chunk.length;
