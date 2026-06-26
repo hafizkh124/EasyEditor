@@ -5,6 +5,7 @@ import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensRe
 import { expandQueryTerms } from "../_shared/bilingualMap.ts";
 import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 /** Strip Arabic diacritics/harakat so an "الصدقة" search matches stored
  *  "الصَّدَقَةُ". Mirrors normalizeArabic in vector-search and _shared. */
