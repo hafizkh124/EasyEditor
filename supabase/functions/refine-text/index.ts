@@ -110,21 +110,12 @@ ${contextBlock}`;
 async function fetchIslamicContext(
   supabase: any,
   text: string,
-  lovableKey: string,
 ): Promise<string> {
-  // 1. Embed the text via Lovable AI gateway (use a small embedding model if available, otherwise fall back)
-  // The project already uses match_scholarly_documents elsewhere; we keep it simple here.
+  // 1. Embed via Gemini direct (primary) → Lovable AI (fallback).
   try {
-    const embedResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/text-embedding-004",
-        input: text.slice(0, 4000),
-      }),
+    const embedResp = await callEmbeddings({
+      model: "google/text-embedding-004",
+      input: text.slice(0, 4000),
     });
 
     if (!embedResp.ok) {
