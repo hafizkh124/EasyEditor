@@ -147,11 +147,11 @@ Deno.serve(async (req) => {
   const base64 = btoa(String.fromCharCode(...buf));
   const mime = fileBlob.type || "image/jpeg";
 
-  // ── 6. AI verification via Lovable AI Gateway
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!lovableKey) return json({ error: "AI gateway not configured" }, 500);
+  // ── 6. AI verification (Gemini direct primary, Lovable fallback)
+  const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+  if (!hasAnyKey) return json({ error: "AI gateway not configured" }, 500);
 
-  const ai = await verifyWithAI(base64, mime, expectedPkr, lovableKey);
+  const ai = await verifyWithAI(base64, mime, expectedPkr);
   if (!ai) {
     return json({ error: "AI verification temporarily unavailable. Please try again." }, 503);
   }
