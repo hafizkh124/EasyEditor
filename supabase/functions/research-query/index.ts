@@ -16,6 +16,7 @@ import {
 import { segmentClaims } from "../_shared/segmentClaims.ts";
 import { findCitationCandidates, type CitationCandidate } from "../_shared/citationCandidates.ts";
 import { verifyAll } from "../_shared/citationVerifier.ts";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
