@@ -11,6 +11,7 @@
 //   6. Otherwise → flag for manual review (upgrade_requested=true,
 //      ai_verification_status='manual_review')
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
