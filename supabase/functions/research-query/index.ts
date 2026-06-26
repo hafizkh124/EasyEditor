@@ -443,9 +443,9 @@ serve(async (req) => {
       : [];
     const promptKey = pickPromptKey(modes);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
+    const hasAnyKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+    if (!hasAnyKey) {
+      return new Response(JSON.stringify({ error: "No AI provider configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -461,7 +461,6 @@ serve(async (req) => {
       const result = await runCitationsPipeline({
         text: query,
         supabase,
-        lovableKey: LOVABLE_API_KEY,
       });
       return new Response(JSON.stringify({ promptKey, ...result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
