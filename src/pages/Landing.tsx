@@ -358,7 +358,7 @@ const Landing = () => {
                       </span>
                     </div>
                     <div className="mb-4 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-                      <Zap className="h-3 w-3" /> {language === "ur" ? "سسٹم سے فوری تصدیق" : "Instant system verification"}
+                      <Zap className="h-3 w-3" /> {language === "ar" ? "تحقّق فوري من النظام" : language === "ur" ? "سسٹم سے فوری تصدیق" : "Instant system verification"}
                     </div>
                     <ul className="space-y-2 text-start">
                       {plan.features.map((f, idx) => (
@@ -385,7 +385,7 @@ const Landing = () => {
                         size="sm"
                       >
                         <CreditCard className="h-4 w-4" />
-                        {language === "ur" ? `${t(plan.nameKey)} حاصل کریں` : `Get ${t(plan.nameKey)}`}
+                        {language === "ar" ? `اشترك في ${t(plan.nameKey)}` : language === "ur" ? `${t(plan.nameKey)} حاصل کریں` : `Get ${t(plan.nameKey)}`}
                       </Button>
                     )}
                     {comingSoon && (
@@ -438,22 +438,22 @@ const Landing = () => {
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <Link to="/about" className="hover:text-foreground">
-              {language === "ur" ? "ہمارے بارے میں" : "About"}
+              {language === "ar" ? "من نحن" : language === "ur" ? "ہمارے بارے میں" : "About"}
             </Link>
             <Link to="/pricing-info" className="hover:text-foreground">
-              {language === "ur" ? "پرائسنگ" : "Pricing"}
+              {language === "ar" ? "الأسعار" : language === "ur" ? "پرائسنگ" : "Pricing"}
             </Link>
             <Link to="/terms" className="hover:text-foreground">
-              {language === "ur" ? "شرائط" : "Terms"}
+              {language === "ar" ? "الشروط" : language === "ur" ? "شرائط" : "Terms"}
             </Link>
             <Link to="/privacy" className="hover:text-foreground">
-              {language === "ur" ? "پرائیویسی" : "Privacy"}
+              {language === "ar" ? "الخصوصية" : language === "ur" ? "پرائیویسی" : "Privacy"}
             </Link>
             <Link to="/refund-policy" className="hover:text-foreground">
-              {language === "ur" ? "ریفنڈ" : "Refunds"}
+              {language === "ar" ? "الاسترداد" : language === "ur" ? "ریفنڈ" : "Refunds"}
             </Link>
             <Link to="/faq/is-ai-haram-in-islam" className="hover:text-foreground">
-              {language === "ur" ? "سوالات" : "FAQ"}
+              {language === "ar" ? "الأسئلة الشائعة" : language === "ur" ? "سوالات" : "FAQ"}
             </Link>
             <Link to="/login" className="hover:text-foreground">
               {t("auth.login")}
