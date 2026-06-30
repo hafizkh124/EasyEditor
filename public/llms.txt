@@ -17,3 +17,15 @@ Al-Ulama Easy Editor (EasyEditor) provides a grounded Islamic GPT research assis
 - [Transcribe](/transcribe): Urdu, Arabic, and English audio transcription.
 - [OCR](/ocr): Extract Urdu, Arabic, and English text from images.
 - [Speak](/speak): Multilingual text-to-speech with multiple voices.
+
+## Languages / Locales
+
+The marketing site is published in three locales with full `hreflang` SEO:
+
+- English (default): `/`, `/about`, `/pricing-info`, `/terms`, `/privacy`, `/refund-policy`, `/faq/is-ai-haram-in-islam`
+- اردو (Urdu): `/ur`, `/ur/about`, `/ur/pricing-info`, `/ur/terms`, `/ur/privacy`, `/ur/refund-policy`, `/ur/faq/is-ai-haram-in-islam`
+- العربية (Arabic): `/ar`, `/ar/about`, `/ar/pricing-info`, `/ar/terms`, `/ar/privacy`, `/ar/refund-policy`, `/ar/faq/is-ai-haram-in-islam`
+
+## نبذة (بالعربية)
+
+Al-Ulama Easy Editor هو مساعد ذكاء اصطناعي إسلامي للعلماء وطلبة العلم، مبني على القرآن والسنّة. يدعم البحث المرجعي، والتفريغ الصوتي طويل المدى، والتعرّف الضوئي على النصوص العربية والأردية والإنجليزية، وتحويل النص إلى كلام بأصوات طبيعية.
