@@ -1,25 +1,45 @@
 import { useEffect } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const SITE_ORIGIN = "https://editor.alulama.org";
 
 interface SeoOptions {
   title: string;
   description?: string;
+  /**
+   * Canonical base path WITHOUT a locale prefix (e.g. "/about", "/privacy").
+   * The hook prepends "/ar" or "/ur" automatically based on current language.
+   * Defaults to the current window pathname (with any locale prefix stripped).
+   */
   path?: string;
 }
 
 /**
  * Sets per-route <title>, <meta name="description">, <link rel="canonical">,
- * and Open Graph / Twitter title, description and URL.
+ * Open Graph / Twitter title-description-url, AND hreflang alternates for
+ * English / Urdu / Arabic / x-default.
+ *
+ * The canonical points at the current locale's URL (per Google's guidance for
+ * localized variants).
  */
 export function useSeo({ title, description, path }: SeoOptions) {
+  const { language } = useLanguage();
+
   useEffect(() => {
     if (title) document.title = title;
 
-    const canonicalPath = path ?? window.location.pathname;
-    const url = SITE_ORIGIN + canonicalPath;
+    const stripLocale = (p: string) => p.replace(/^\/(ar|ur)(?=\/|$)/, "") || "/";
+    const basePath = path ?? stripLocale(window.location.pathname);
+    const localePrefix = language === "en" ? "" : `/${language}`;
+    const currentPath = basePath === "/" ? localePrefix || "/" : `${localePrefix}${basePath}`;
+    const url = SITE_ORIGIN + currentPath;
 
-    const setMeta = (selector: string, attr: "name" | "property", key: string, value: string) => {
+    const setMeta = (
+      selector: string,
+      attr: "name" | "property",
+      key: string,
+      value: string,
+    ) => {
       let el = document.head.querySelector<HTMLMetaElement>(selector);
       if (!el) {
         el = document.createElement("meta");
@@ -39,7 +59,9 @@ export function useSeo({ title, description, path }: SeoOptions) {
       setMeta('meta[name="twitter:title"]', "name", "twitter:title", title);
     }
     setMeta('meta[property="og:url"]', "property", "og:url", url);
+    setMeta('meta[property="og:locale"]', "property", "og:locale", language === "ar" ? "ar_SA" : language === "ur" ? "ur_PK" : "en_US");
 
+    // Canonical
     let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     if (!link) {
       link = document.createElement("link");
@@ -47,5 +69,25 @@ export function useSeo({ title, description, path }: SeoOptions) {
       document.head.appendChild(link);
     }
     link.setAttribute("href", url);
-  }, [title, description, path]);
+
+    // hreflang alternates — remove old, then add fresh.
+    document.head
+      .querySelectorAll('link[rel="alternate"][data-managed="seo-hook"]')
+      .forEach((el) => el.remove());
+
+    const alternates: Array<{ hreflang: string; path: string }> = [
+      { hreflang: "en", path: basePath },
+      { hreflang: "ur", path: `/ur${basePath === "/" ? "" : basePath}` || "/ur" },
+      { hreflang: "ar", path: `/ar${basePath === "/" ? "" : basePath}` || "/ar" },
+      { hreflang: "x-default", path: basePath },
+    ];
+    for (const alt of alternates) {
+      const a = document.createElement("link");
+      a.setAttribute("rel", "alternate");
+      a.setAttribute("hreflang", alt.hreflang);
+      a.setAttribute("href", SITE_ORIGIN + (alt.path || "/"));
+      a.setAttribute("data-managed", "seo-hook");
+      document.head.appendChild(a);
+    }
+  }, [title, description, path, language]);
 }
