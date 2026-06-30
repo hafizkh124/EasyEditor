@@ -53,16 +53,21 @@ const Landing = () => {
 
   // Dynamic SEO per language
   useEffect(() => {
-    const isUr = language === "ur";
-    const title = isUr
-      ? "العلماء ایزی ایڈیٹر — اسلامی AI ریسرچ اسسٹنٹ"
-      : "Al-Ulama Easy Editor — Islamic AI Research Assistant";
-    const desc = isUr
-      ? "العلماء ایزی ایڈیٹر: قرآن و حدیث پر مبنی اسلامی AI اسسٹنٹ، اردو/عربی/انگریزی ریسرچ، ٹرانسکرپشن، OCR اور ٹیکسٹ ٹو اسپیچ — علماء و طلبہ کے لیے۔"
-      : "Al-Ulama Easy Editor: Islamic AI assistant grounded in Quran & Hadith. Muslim AI for Urdu, Arabic and English research, transcription, OCR and text-to-speech.";
+    const title =
+      language === "ar"
+        ? "Al-Ulama Easy Editor — مساعد ذكاء اصطناعي إسلامي للبحث"
+        : language === "ur"
+        ? "العلماء ایزی ایڈیٹر — اسلامی AI ریسرچ اسسٹنٹ"
+        : "Al-Ulama Easy Editor — Islamic AI Research Assistant";
+    const desc =
+      language === "ar"
+        ? "Al-Ulama Easy Editor: مساعد ذكاء اصطناعي إسلامي مبني على القرآن والحديث. بحث وتفريغ صوتي وتعرّف ضوئي على النصوص وتحويل نص إلى كلام للعربية والأردية والإنجليزية."
+        : language === "ur"
+        ? "العلماء ایزی ایڈیٹر: قرآن و حدیث پر مبنی اسلامی AI اسسٹنٹ، اردو/عربی/انگریزی ریسرچ، ٹرانسکرپشن، OCR اور ٹیکسٹ ٹو اسپیچ — علماء و طلبہ کے لیے۔"
+        : "Al-Ulama Easy Editor: Islamic AI assistant grounded in Quran & Hadith. Muslim AI for Urdu, Arabic and English research, transcription, OCR and text-to-speech.";
 
     document.title = title;
-    document.documentElement.lang = isUr ? "ur" : "en";
+    document.documentElement.lang = language;
 
     const setMeta = (selector: string, attr: string, value: string) => {
       let el = document.head.querySelector<HTMLMetaElement>(selector);
@@ -88,7 +93,25 @@ const Landing = () => {
       link.rel = "canonical";
       document.head.appendChild(link);
     }
-    link.href = window.location.origin + "/";
+    const localePrefix = language === "en" ? "" : `/${language}`;
+    link.href = window.location.origin + (localePrefix || "/");
+
+    // hreflang alternates
+    document.head.querySelectorAll('link[rel="alternate"][data-managed="landing-hreflang"]').forEach((el) => el.remove());
+    (["en", "ur", "ar"] as const).forEach((l) => {
+      const a = document.createElement("link");
+      a.setAttribute("rel", "alternate");
+      a.setAttribute("hreflang", l);
+      a.setAttribute("href", window.location.origin + (l === "en" ? "/" : `/${l}`));
+      a.setAttribute("data-managed", "landing-hreflang");
+      document.head.appendChild(a);
+    });
+    const xdef = document.createElement("link");
+    xdef.setAttribute("rel", "alternate");
+    xdef.setAttribute("hreflang", "x-default");
+    xdef.setAttribute("href", window.location.origin + "/");
+    xdef.setAttribute("data-managed", "landing-hreflang");
+    document.head.appendChild(xdef);
 
     // JSON-LD structured data
     const ldId = "ld-software-app";
