@@ -433,7 +433,7 @@ const Landing = () => {
       <footer className="border-t border-border/60 py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground md:flex-row">
           <div className="flex items-center gap-2">
-            <img src="/favicon.png" alt="" width={24} height={24} className="rounded" />
+            <img src="/favicon.png" alt="Easy Editor" width={24} height={24} className="rounded" />
             <span>© {new Date().getFullYear()} EasyEditor</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
