@@ -41,7 +41,7 @@ export default function LegalLayout({
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2.5">
-            <img src="/favicon.png" alt="" width={24} height={24} className="rounded" />
+            <img src="/favicon.png" alt="Easy Editor" width={24} height={24} className="rounded" />
             <span className="text-base font-bold tracking-tight">Easy Editor</span>
           </Link>
           <nav className="flex items-center gap-4 text-sm text-muted-foreground">
