@@ -11,6 +11,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import LocalePrefixSync from "@/components/LocalePrefixSync";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -69,6 +70,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <ErrorBoundary>
+              <LocalePrefixSync />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/login" element={<Login />} />
@@ -85,6 +87,22 @@ const App = () => (
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/refund-policy" element={<Refund />} />
                   <Route path="/pricing-info" element={<PricingInfo />} />
+                  {/* Arabic locale mirror — same components, LocalePrefixSync sets language to "ar" */}
+                  <Route path="/ar" element={<Landing />} />
+                  <Route path="/ar/about" element={<About />} />
+                  <Route path="/ar/faq/is-ai-haram-in-islam" element={<FaqAiHaram />} />
+                  <Route path="/ar/terms" element={<Terms />} />
+                  <Route path="/ar/privacy" element={<Privacy />} />
+                  <Route path="/ar/refund-policy" element={<Refund />} />
+                  <Route path="/ar/pricing-info" element={<PricingInfo />} />
+                  {/* Urdu locale mirror */}
+                  <Route path="/ur" element={<Landing />} />
+                  <Route path="/ur/about" element={<About />} />
+                  <Route path="/ur/faq/is-ai-haram-in-islam" element={<FaqAiHaram />} />
+                  <Route path="/ur/terms" element={<Terms />} />
+                  <Route path="/ur/privacy" element={<Privacy />} />
+                  <Route path="/ur/refund-policy" element={<Refund />} />
+                  <Route path="/ur/pricing-info" element={<PricingInfo />} />
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/transcribe" element={<ProtectedRoute><ErrorBoundary><Transcribe /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/speak" element={<ProtectedRoute><ErrorBoundary><Speak /></ErrorBoundary></ProtectedRoute>} />

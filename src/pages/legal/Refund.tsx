@@ -4,8 +4,11 @@ export default function Refund() {
   return (
     <LegalLayout
       title="Refund Policy"
+      titleAr="سياسة الاسترداد"
       description="30-day money-back guarantee for Al-Ulama Easy Editor subscriptions and unused token packs."
+      descriptionAr="ضمان استرداد المال خلال 30 يومًا لاشتراكات Al-Ulama Easy Editor وأرصدة الرموز غير المُستهلكة."
       path="/refund-policy"
+      slug="refund"
       lastUpdated="26 May 2026"
     >
       <p>

@@ -1,184 +1,47 @@
 
-# AI-Verified Manual Payment + Subscription Expiry Gating
+## مقصد
+پوری ایپ کو عربی (Modern Standard Arabic) میں ٹرانسلیٹ کرنا، اور تمام public پیجز (Landing, About, Pricing, FAQ, Legal pages) کو `/ar/...` prefix پر SEO-friendly اردو/انگلش کی طرز پر سرو کرنا۔
 
-## فیصلے (User-confirmed)
+## بڑے قدم
 
-- SafePay مکمل طور پر codebase سے ہٹایا جائے گا (edge functions، webhook، hook، dialog، secrets)
-- AI confidence ≥ 90% → تمام tiers (Basic/Pro/Ultra) auto-approve
-- Grace period (7 دن): مکمل feature access + warning banner
-- Renewal کے لیے الگ `verify-renewal-receipt` edge function (renewal_count, last_renewed_at update کرے)
+### 1. Language infrastructure
+- `LanguageContext.tsx` میں `"ar"` کا اضافہ، direction = `rtl`، localStorage key وہی۔
+- نیا `src/locales/ar.json` بنانا — `en.json` (820 keys) کی پروفیشنل MSA ترجمہ شدہ کاپی۔ AI gateway script (`google/gemini-2.5-pro`) سے ترجمہ کر کے بیچ میں آپ کے لیے editable ہوگا۔
+- `translationMap` میں `ar` رجسٹر۔
+- RTL fonts: مناسب Arabic فونٹ (Noto Naskh Arabic یا موجودہ Urdu فونٹ) tailwind میں ensure۔
 
----
+### 2. `/ar/...` routing
+- ایک `LocalePrefixSwitcher` کمپوننٹ جو URL سے `/ar/` detect کر کے `setLanguage("ar")` کرے، اور language change پر URL کو بھی sync کرے۔
+- `App.tsx` میں ہر public route کا `/ar/...` mirror:
+  - `/ar`, `/ar/about`, `/ar/pricing-info`, `/ar/faq/is-ai-haram-in-islam`, `/ar/terms`, `/ar/privacy`, `/ar/refund-policy`، plus `/ar/login`, `/ar/signup`، اور moved-pricing وغیرہ۔
+- Protected/app routes (`/dashboard`, `/editor`, ...) `/ar/` prefix کے بغیر رہیں گے — صرف public marketing سرفیس i18n‌ـsensitive ہے۔ ان میں language toggle سے اردو/انگلش/عربی switch ہوتی رہے گی۔
 
-## 1. Database & Storage
+### 3. SEO: hreflang + canonical + sitemap
+- `useSeo` hook کو expand کریں تاکہ ہر public پیج پر `hreflang` کے 3 alternate ٹیگ (`en`, `ur`, `ar`, plus `x-default`) inject ہوں — canonical اسی locale variant پر۔
+- `public/sitemap.xml` میں ہر public URL کے `en`, `ur`, `ar` ورژن، اور `<xhtml:link rel="alternate" hreflang=...>` annotations۔
+- `public/robots.txt` بغیر تبدیلی۔
+- `index.html` کی `<html lang>` runtime پر LanguageContext پہلے سے update کرتا ہے — کوئی تبدیلی نہیں۔
+- `public/llms.txt` میں عربی section شامل۔
 
-### Migration: `ai_payment_workflow`
+### 4. Public پیجز کی hard-coded strings کو i18n میں منتقل
+- `Landing`, `About`, `FaqAiHaram` (پہلے سے bilingual hard-coded ur/en — اب 3-way object کی صورت میں ar شامل)۔
+- `PricingInfo`, `Terms`, `Privacy`, `Refund` (انگلش ہارڈ کوڈ شدہ) — ان کی عربی mirror cleanly رینڈر کریں: ہر پیج میں ایک locale-conditional content block (en/ur/ar) ڈالا جائے گا تاکہ legal content کا full faithful ترجمہ alongside لینڈ ہو۔
+- `PublicLayout`, `Pricing` (login سے پہلے دکھنے والی صورت), navigation labels۔
 
-- نیا private bucket `payment-receipts` (storage tool سے بنایا جائے گا)
-- `storage.objects` پر RLS:
-  - users: صرف اپنی `{userId}/...` فولڈر پر insert/select
-  - admins: تمام objects select
-- `subscriptions` table میں نئے کالم:
-  - `payment_proof_url TEXT`
-  - `ai_verification_status TEXT DEFAULT 'none'` (none | auto_approved | manual_review | rejected)
-  - `ai_confidence_score INTEGER`
-  - `ai_verification_details JSONB`
-- `admin_list_users` RPC update — یہ نئے کالم return کرے
-- `prevent_subscription_self_escalation` trigger میں ان نئے کالموں کو بھی include کریں (تاکہ user خود set نہ کر سکے)
+### 5. Language switcher UI
+- `PublicLayout` میں موجودہ EN/UR toggle کو 3-way dropdown (EN / اردو / العربية) سے بدلیں۔ منتخب language URL میں `/ar/` add/remove کرے بغیر page reload۔
 
----
+### 6. AI ترجمہ pipeline
+- `lovable_ai.py` skill استعمال کرتے ہوئے بیچ ٹرانسلیشن:
+  1. `src/locales/en.json` → `src/locales/ar.json` (MSA, professional, technical terms preserved مثلاً "OCR", "AI", product names)۔
+  2. ہر public پیج کے انگلش پیراگرافس → ar variants۔
+- ترجمہ JSON-validated، product names "Easy Editor", "Al-Ulama", "Hafiz Khizar Hayat" وغیرہ untouched۔
 
-## 2. Edge Functions
+### 7. Verification
+- `tsgo` typecheck۔
+- Playwright سے `/ar`, `/ar/about`, `/ar/privacy` پر screenshot لیں — RTL layout، Arabic فونٹ، hreflang ٹیگز DOM میں confirm۔
 
-### نیا: `verify-receipt` (نئے activation کے لیے)
-
-Workflow:
-1. JWT validate → userId نکالیں
-2. Body: `{ planId, referenceNo, storagePath }` (Zod validation)
-3. Replay-attack check: `subscriptions.payment_reference` اور `admin_payments.payment_reference` میں `referenceNo` نہ ہو
-4. Storage سے image fetch → base64
-5. Lovable AI Gateway (`google/gemini-2.5-flash`) کو vision call:
-   - OCR کریں؛ amount, sender, receiver, transaction ID, date نکالیں
-   - cross-check: amount tier price سے match (Basic 1000, Pro 4000, Ultra 7000)
-   - receiver `PAYMENT_ACCOUNTS` میں سے کوئی ایک ہو (NBP / JazzCash / EasyPaisa)
-   - tampering signals (font mismatch, pixelation) کا اندازہ
-   - structured JSON output: `{ confidence: 0-100, amount, receiver, txnId, reasons: [] }`
-6. اگر confidence ≥ 90% اور checks pass:
-   - `profiles.is_approved = true`
-   - `subscriptions`: tier, TIER_LIMITS سے quotas, `activated_at = now()`, `expires_at = now() + 30d`, `payment_reference`, `payment_proof_url`, `ai_verification_status='auto_approved'`, `ai_confidence_score`, `ai_verification_details`
-   - `token_wallets.monthly_balance = TOKEN_ALLOCATIONS[tier]`
-   - `admin_payments` میں log
-   - `notifications` میں welcome
-   - `{ success: true, autoApproved: true }`
-7. ورنہ:
-   - `upgrade_requested=true, pending_tier, payment_reference, payment_proof_url, ai_verification_status='manual_review'`
-   - `{ success: true, autoApproved: false, reasons }`
-
-### نیا: `verify-renewal-receipt` (lapsed/expiring users کے لیے)
-
-ویسی ہی AI verification، لیکن DB writes:
-- اسی tier پر `expires_at = max(now(), expires_at) + 30d`
-- `last_renewed_at = now()`, `renewal_count = renewal_count + 1`
-- token wallet کو `monthly_balance = monthly_limit` پر reset
-- `admin_payments.payment_type = 'renewal'`
-
-### حذف: SafePay edge functions
-
-- `supabase/functions/safepay-checkout/` delete
-- `supabase/functions/safepay-webhook/` delete
-- Secrets delete: `SAFEPAY_API_KEY`, `SAFEPAY_SECRET_KEY`, `SAFEPAY_WEBHOOK_SECRET`, `SAFEPAY_ENV`
-- `safepay_pending_checkouts` table drop migration
-
----
-
-## 3. Frontend — Core Layout & Gating
-
-### `SubscriptionContext.tsx` — نئے computed fields
-
-```ts
-isExpired: boolean         // now > expires_at
-daysUntilLapse: number     // 7 - days since expires_at (grace)
-isLapsed: boolean          // now > expires_at + 7d
-```
-
-Admins ہمیشہ false رہیں گے (exempt)۔
-
-### `ProtectedRoute.tsx`
-
-اگر `isLapsed === true` اور route ∉ {`/pricing`, `/checkout/success`, `/profile`, `/settings`}: redirect → `/pricing?expired=true`
-
-### نیا: `SubscriptionBanner.tsx`
-
-- `isExpired && !isLapsed` → amber warning: "آپ کی سبسکرپشن ختم ہو چکی ہے۔ {daysUntilLapse} دن میں access بند ہو جائے گا۔" + "ابھی renew کریں" button (→ `/pricing`)
-- `isLapsed` → red: "آپ کی سبسکرپشن ختم ہو گئی ہے۔ Renew کریں۔"
-- `AppLayout` کے top nav کے بالکل نیچے render
-
----
-
-## 4. User Payment Pages
-
-### `Pricing.tsx`
-
-- `PlanCheckoutChoiceDialog` references ہٹائیں
-- `useSafepayCheckout` import ہٹائیں
-- "Get Plan" button براہِ راست `ManualPaymentDialog` کھولے
-- اگر URL میں `?expired=true` → top پر "آپ کی سبسکرپشن ختم ہو گئی ہے" alert
-
-### نیا یا توسیع شدہ: `ManualPaymentDialog.tsx` / `PaymentSubmitForm.tsx`
-
-- بینک تفصیلات (PAYMENT_ACCOUNTS سے) دکھائیں
-- Transaction ID input
-- Receipt image uploader (jpg/png/webp, ≤ 5MB)
-- Submit پر:
-  1. `payment-receipts/{userId}/{uuid}.{ext}` پر upload
-  2. `verify-receipt` یا `verify-renewal-receipt` (پہلے سے approved + expired → renewal endpoint)
-  3. `autoApproved` → toast "آپ کا اکاؤنٹ فعال ہو گیا!" + `subscription.refetch()` + redirect dashboard
-  4. ورنہ → toast "آپ کی receipt admin کو review کے لیے بھیج دی گئی" + redirect `/pending-approval`
-
-### `PendingApproval.tsx`
-
-- SafePay card section ہٹائیں
-- وہی receipt upload flow include کریں
-- Status messaging update: "AI خودکار تصدیق کے بعد فوری فعال؛ ورنہ admin manually review کرے گا"
-
-### حذف
-
-- `src/components/PlanCheckoutChoiceDialog.tsx`
-- `src/hooks/useSafepayCheckout.ts`
-- `src/pages/CheckoutSuccess.tsx` میں SafePay-specific branches simplify (manual flow کے لیے generic success)
-- `PaymentTestModeBanner.tsx` (SafePay test mode کا تھا)
-
----
-
-## 5. Admin Panel
-
-### `admin/types.ts` — `UserRow` میں اضافے
-
-```ts
-payment_proof_url: string | null;
-ai_verification_status: string | null;
-ai_confidence_score: number | null;
-ai_verification_details: Record<string, unknown> | null;
-```
-
-### `UpgradeRequests.tsx`
-
-ہر request پر:
-- AI badge: `auto_approved` (green) / `manual_review` (amber) / `none`
-- Confidence score (e.g. "AI: 72%")
-- اگر `ai_verification_details.reasons` ہو تو tooltip میں دکھائیں
-- "Receipt دیکھیں" button → `supabase.storage.from('payment-receipts').createSignedUrl(payment_proof_url, 300)` → نئی tab میں کھولیں
-
----
-
-## Technical Details
-
-- **AI model**: `google/gemini-2.5-flash` Lovable AI Gateway کے ذریعے (vision + structured JSON output)۔ Schema چھوٹا رکھیں (Gemini state-limit)
-- **Image handling**: edge function میں storage سے download → base64 → `image_url: data:image/...;base64,...`
-- **Idempotency**: replay check + `payment_reference` پر unique constraint (نئی migration)
-- **Security**: receipt download admin signed URL سے (5 min expiry)؛ verify-receipt service role سے DB writes کرے
-- **Cron**: `check-subscription-expiry` already موجود — اسے بحال رکھیں، صرف notification messages update کریں (grace ending warning)
-- **Token costs**: vision call ~3-5k tokens (~PKR چند روپے فی receipt)؛ ٹھیک ہے
-
----
-
-## Verification
-
-1. Migration run → bucket + columns بنیں
-2. Edge function unit test: mocked Gemini response (high/low confidence دونوں)
-3. Replay-attack: وہی `referenceNo` دوبارہ → reject
-4. End-to-end:
-   - نیا user → `/pricing` → Pro select → receipt upload → auto-activate
-   - blurry receipt → manual review queue → admin panel میں receipt thumbnail + AI reasons
-5. Expiry simulation (`expires_at` manually edit):
-   - 3 دن پہلے → amber banner، access intact
-   - 10 دن پہلے → red banner، `/pricing?expired=true` پر redirect
-6. Renewal: lapsed user → receipt upload → `verify-renewal-receipt` → `expires_at` +30d، `renewal_count++`
-
----
-
-## Out of Scope
-
-- WhatsApp/SMS notifications (موجودہ email infra کافی ہے)
-- SafePay واپس لانے کا feature flag (مکمل deletion)
-- Multi-currency / international cards
+## آپ کے لیے نوٹس
+- ترجمہ AI سے professional MSA انداز میں ہوگا، لیکن `src/locales/ar.json` اور legal/marketing strings آپ بعد میں آرام سے edit کر سکتے ہیں — سب ایک ہی جگہ keyed ہیں۔
+- App کے اندرونی (logged-in) صفحات کا UI: locale keys سب translated ہوں گے، یعنی toggle سے dashboard وغیرہ بھی عربی میں آ جائے گا۔
+- Credits کا خیال: ~820 keys + ~6 long pages کا ترجمہ Lovable AI Gateway سے ہوگا۔ یہ ایک بار کا cost ہے۔

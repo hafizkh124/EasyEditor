@@ -14,8 +14,11 @@ export default function PricingInfo() {
   return (
     <LegalLayout
       title="Pricing"
+      titleAr="الأسعار"
       description="Plans, token top-ups and payment methods for Al-Ulama Easy Editor — pay via NBP bank transfer, JazzCash or EasyPaisa with instant system verification."
+      descriptionAr="الباقات وشحن الرصيد ووسائل الدفع لـ Al-Ulama Easy Editor — ادفع عبر تحويل NBP أو JazzCash أو EasyPaisa مع تحقّق فوري من النظام."
       path="/pricing-info"
+      slug="pricing_info"
       lastUpdated="22 June 2026"
     >
       <p>
