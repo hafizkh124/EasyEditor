@@ -21,6 +21,7 @@ import {
   CreditCard,
   Clock,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PLAN_TIERS, buildFeatures, priceForCurrency, type PaidTier } from "@/lib/planTiers";
 import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
 
