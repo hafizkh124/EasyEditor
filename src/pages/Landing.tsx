@@ -21,6 +21,7 @@ import {
   CreditCard,
   Clock,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PLAN_TIERS, buildFeatures, priceForCurrency, type PaidTier } from "@/lib/planTiers";
 import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
 
@@ -53,16 +54,21 @@ const Landing = () => {
 
   // Dynamic SEO per language
   useEffect(() => {
-    const isUr = language === "ur";
-    const title = isUr
-      ? "العلماء ایزی ایڈیٹر — اسلامی AI ریسرچ اسسٹنٹ"
-      : "Al-Ulama Easy Editor — Islamic AI Research Assistant";
-    const desc = isUr
-      ? "العلماء ایزی ایڈیٹر: قرآن و حدیث پر مبنی اسلامی AI اسسٹنٹ، اردو/عربی/انگریزی ریسرچ، ٹرانسکرپشن، OCR اور ٹیکسٹ ٹو اسپیچ — علماء و طلبہ کے لیے۔"
-      : "Al-Ulama Easy Editor: Islamic AI assistant grounded in Quran & Hadith. Muslim AI for Urdu, Arabic and English research, transcription, OCR and text-to-speech.";
+    const title =
+      language === "ar"
+        ? "Al-Ulama Easy Editor — مساعد ذكاء اصطناعي إسلامي للبحث"
+        : language === "ur"
+        ? "العلماء ایزی ایڈیٹر — اسلامی AI ریسرچ اسسٹنٹ"
+        : "Al-Ulama Easy Editor — Islamic AI Research Assistant";
+    const desc =
+      language === "ar"
+        ? "Al-Ulama Easy Editor: مساعد ذكاء اصطناعي إسلامي مبني على القرآن والحديث. بحث وتفريغ صوتي وتعرّف ضوئي على النصوص وتحويل نص إلى كلام للعربية والأردية والإنجليزية."
+        : language === "ur"
+        ? "العلماء ایزی ایڈیٹر: قرآن و حدیث پر مبنی اسلامی AI اسسٹنٹ، اردو/عربی/انگریزی ریسرچ، ٹرانسکرپشن، OCR اور ٹیکسٹ ٹو اسپیچ — علماء و طلبہ کے لیے۔"
+        : "Al-Ulama Easy Editor: Islamic AI assistant grounded in Quran & Hadith. Muslim AI for Urdu, Arabic and English research, transcription, OCR and text-to-speech.";
 
     document.title = title;
-    document.documentElement.lang = isUr ? "ur" : "en";
+    document.documentElement.lang = language;
 
     const setMeta = (selector: string, attr: string, value: string) => {
       let el = document.head.querySelector<HTMLMetaElement>(selector);
@@ -88,7 +94,25 @@ const Landing = () => {
       link.rel = "canonical";
       document.head.appendChild(link);
     }
-    link.href = window.location.origin + "/";
+    const localePrefix = language === "en" ? "" : `/${language}`;
+    link.href = window.location.origin + (localePrefix || "/");
+
+    // hreflang alternates
+    document.head.querySelectorAll('link[rel="alternate"][data-managed="landing-hreflang"]').forEach((el) => el.remove());
+    (["en", "ur", "ar"] as const).forEach((l) => {
+      const a = document.createElement("link");
+      a.setAttribute("rel", "alternate");
+      a.setAttribute("hreflang", l);
+      a.setAttribute("href", window.location.origin + (l === "en" ? "/" : `/${l}`));
+      a.setAttribute("data-managed", "landing-hreflang");
+      document.head.appendChild(a);
+    });
+    const xdef = document.createElement("link");
+    xdef.setAttribute("rel", "alternate");
+    xdef.setAttribute("hreflang", "x-default");
+    xdef.setAttribute("href", window.location.origin + "/");
+    xdef.setAttribute("data-managed", "landing-hreflang");
+    document.head.appendChild(xdef);
 
     // JSON-LD structured data
     const ldId = "ld-software-app";
@@ -156,20 +180,24 @@ const Landing = () => {
 
           <nav className="flex items-center gap-1 sm:gap-2">
             <Link to="/about" className="hidden sm:inline-flex px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-              {language === "ur" ? "ہمارے بارے میں" : "About"}
+              {language === "ar" ? "من نحن" : language === "ur" ? "ہمارے بارے میں" : "About"}
             </Link>
             <Link to="/faq/is-ai-haram-in-islam" className="hidden md:inline-flex px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-              {language === "ur" ? "سوالات" : "FAQ"}
+              {language === "ar" ? "الأسئلة الشائعة" : language === "ur" ? "سوالات" : "FAQ"}
             </Link>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLanguage(language === "ur" ? "en" : "ur")}
-              className="gap-1.5"
-            >
-              <Languages className="h-4 w-4" />
-              {language === "ur" ? "EN" : "اردو"}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1.5">
+                  <Languages className="h-4 w-4" />
+                  {language === "ar" ? "العربية" : language === "ur" ? "اردو" : "EN"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setLanguage("en")}>English</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage("ur")}>اردو</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage("ar")}>العربية</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
         </div>
       </header>
@@ -225,7 +253,9 @@ const Landing = () => {
             <img
               src="/og-image.png"
               alt={
-                language === "ur"
+                language === "ar"
+                  ? "Al-Ulama Easy Editor — مجموعة بحث وتحرير إسلامية مدعومة بالذكاء الاصطناعي"
+                  : language === "ur"
                   ? "العلماء ایزی ایڈیٹر — AI-Powered Islamic Research & Editing Suite"
                   : "Al-Ulama Easy Editor — AI-Powered Islamic Research & Editing Suite"
               }
@@ -328,7 +358,7 @@ const Landing = () => {
                       </span>
                     </div>
                     <div className="mb-4 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-                      <Zap className="h-3 w-3" /> {language === "ur" ? "سسٹم سے فوری تصدیق" : "Instant system verification"}
+                      <Zap className="h-3 w-3" /> {language === "ar" ? "تحقّق فوري من النظام" : language === "ur" ? "سسٹم سے فوری تصدیق" : "Instant system verification"}
                     </div>
                     <ul className="space-y-2 text-start">
                       {plan.features.map((f, idx) => (
@@ -355,7 +385,7 @@ const Landing = () => {
                         size="sm"
                       >
                         <CreditCard className="h-4 w-4" />
-                        {language === "ur" ? `${t(plan.nameKey)} حاصل کریں` : `Get ${t(plan.nameKey)}`}
+                        {language === "ar" ? `اشترك في ${t(plan.nameKey)}` : language === "ur" ? `${t(plan.nameKey)} حاصل کریں` : `Get ${t(plan.nameKey)}`}
                       </Button>
                     )}
                     {comingSoon && (
@@ -408,22 +438,22 @@ const Landing = () => {
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <Link to="/about" className="hover:text-foreground">
-              {language === "ur" ? "ہمارے بارے میں" : "About"}
+              {language === "ar" ? "من نحن" : language === "ur" ? "ہمارے بارے میں" : "About"}
             </Link>
             <Link to="/pricing-info" className="hover:text-foreground">
-              {language === "ur" ? "پرائسنگ" : "Pricing"}
+              {language === "ar" ? "الأسعار" : language === "ur" ? "پرائسنگ" : "Pricing"}
             </Link>
             <Link to="/terms" className="hover:text-foreground">
-              {language === "ur" ? "شرائط" : "Terms"}
+              {language === "ar" ? "الشروط" : language === "ur" ? "شرائط" : "Terms"}
             </Link>
             <Link to="/privacy" className="hover:text-foreground">
-              {language === "ur" ? "پرائیویسی" : "Privacy"}
+              {language === "ar" ? "الخصوصية" : language === "ur" ? "پرائیویسی" : "Privacy"}
             </Link>
             <Link to="/refund-policy" className="hover:text-foreground">
-              {language === "ur" ? "ریفنڈ" : "Refunds"}
+              {language === "ar" ? "الاسترداد" : language === "ur" ? "ریفنڈ" : "Refunds"}
             </Link>
             <Link to="/faq/is-ai-haram-in-islam" className="hover:text-foreground">
-              {language === "ur" ? "سوالات" : "FAQ"}
+              {language === "ar" ? "الأسئلة الشائعة" : language === "ur" ? "سوالات" : "FAQ"}
             </Link>
             <Link to="/login" className="hover:text-foreground">
               {t("auth.login")}
