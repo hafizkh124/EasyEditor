@@ -4,8 +4,11 @@ export default function Terms() {
   return (
     <LegalLayout
       title="Terms of Service"
+      titleAr="شروط الخدمة"
       description="Terms of Service for Al-Ulama Easy Editor — the agreement between you and Hafiz Khizar Hayat for use of the service."
+      descriptionAr="شروط خدمة Al-Ulama Easy Editor — الاتفاقية بينك وبين Hafiz Khizar Hayat لاستخدام الخدمة."
       path="/terms"
+      slug="terms"
       lastUpdated="26 May 2026"
     >
       <p>

@@ -4,8 +4,11 @@ export default function Privacy() {
   return (
     <LegalLayout
       title="Privacy Notice"
+      titleAr="إشعار الخصوصية"
       description="How Al-Ulama Easy Editor collects, uses and shares your personal data."
+      descriptionAr="كيف يجمع Al-Ulama Easy Editor بياناتك الشخصية ويستخدمها ويُشاركها."
       path="/privacy"
+      slug="privacy"
       lastUpdated="26 May 2026"
     >
       <p>
