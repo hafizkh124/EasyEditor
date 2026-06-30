@@ -179,20 +179,24 @@ const Landing = () => {
 
           <nav className="flex items-center gap-1 sm:gap-2">
             <Link to="/about" className="hidden sm:inline-flex px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-              {language === "ur" ? "ہمارے بارے میں" : "About"}
+              {language === "ar" ? "من نحن" : language === "ur" ? "ہمارے بارے میں" : "About"}
             </Link>
             <Link to="/faq/is-ai-haram-in-islam" className="hidden md:inline-flex px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-              {language === "ur" ? "سوالات" : "FAQ"}
+              {language === "ar" ? "الأسئلة الشائعة" : language === "ur" ? "سوالات" : "FAQ"}
             </Link>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLanguage(language === "ur" ? "en" : "ur")}
-              className="gap-1.5"
-            >
-              <Languages className="h-4 w-4" />
-              {language === "ur" ? "EN" : "اردو"}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1.5">
+                  <Languages className="h-4 w-4" />
+                  {language === "ar" ? "العربية" : language === "ur" ? "اردو" : "EN"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setLanguage("en")}>English</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage("ur")}>اردو</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage("ar")}>العربية</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
         </div>
       </header>
@@ -248,7 +252,9 @@ const Landing = () => {
             <img
               src="/og-image.png"
               alt={
-                language === "ur"
+                language === "ar"
+                  ? "Al-Ulama Easy Editor — مجموعة بحث وتحرير إسلامية مدعومة بالذكاء الاصطناعي"
+                  : language === "ur"
                   ? "العلماء ایزی ایڈیٹر — AI-Powered Islamic Research & Editing Suite"
                   : "Al-Ulama Easy Editor — AI-Powered Islamic Research & Editing Suite"
               }
