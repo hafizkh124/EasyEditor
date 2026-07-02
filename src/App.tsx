@@ -41,6 +41,7 @@ const Terms = lazy(() => import("./pages/legal/Terms"));
 const Privacy = lazy(() => import("./pages/legal/Privacy"));
 const Refund = lazy(() => import("./pages/legal/Refund"));
 const PricingInfo = lazy(() => import("./pages/legal/PricingInfo"));
+const MaktabaShamilaGuide = lazy(() => import("./pages/guides/MaktabaShamila"));
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,9 @@ const App = () => (
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/refund-policy" element={<Refund />} />
                   <Route path="/pricing-info" element={<PricingInfo />} />
+                  <Route path="/guides/maktaba-shamila-tutorial" element={<MaktabaShamilaGuide />} />
+                  <Route path="/ur/guides/maktaba-shamila-tutorial" element={<MaktabaShamilaGuide />} />
+                  <Route path="/ar/guides/maktaba-shamila-tutorial" element={<MaktabaShamilaGuide />} />
                   {/* Arabic locale mirror — same components, LocalePrefixSync sets language to "ar" */}
                   <Route path="/ar" element={<Landing />} />
                   <Route path="/ar/about" element={<About />} />

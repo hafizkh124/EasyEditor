@@ -251,7 +251,7 @@ const Landing = () => {
 
           <div className="flex items-center justify-center">
             <img
-              src="/og-image.png"
+              src="/og-image.webp"
               alt={
                 language === "ar"
                   ? "Al-Ulama Easy Editor — مجموعة بحث وتحرير إسلامية مدعومة بالذكاء الاصطناعي"

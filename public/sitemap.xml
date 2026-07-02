@@ -91,6 +91,14 @@
   </url>
   <url><loc>https://editor.alulama.org/ur/refund-policy</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
   <url><loc>https://editor.alulama.org/ar/refund-policy</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://editor.alulama.org/guides/maktaba-shamila-tutorial</loc><changefreq>monthly</changefreq><priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://editor.alulama.org/guides/maktaba-shamila-tutorial" />
+    <xhtml:link rel="alternate" hreflang="ur" href="https://editor.alulama.org/ur/guides/maktaba-shamila-tutorial" />
+    <xhtml:link rel="alternate" hreflang="ar" href="https://editor.alulama.org/ar/guides/maktaba-shamila-tutorial" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://editor.alulama.org/guides/maktaba-shamila-tutorial" />
+  </url>
+  <url><loc>https://editor.alulama.org/ur/guides/maktaba-shamila-tutorial</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://editor.alulama.org/ar/guides/maktaba-shamila-tutorial</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://editor.alulama.org/login</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://editor.alulama.org/signup</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://editor.alulama.org/forgot-password</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
