@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSeo } from "@/hooks/useSeo";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,12 +17,19 @@ const Login = () => {
 
   const { user, loading } = useAuth();
   const { t, direction } = useLanguage();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Preserve ?next= across auth so OAuth consent (and other deep links)
+  // return the user to where they came from. Only accept same-origin
+  // relative paths — never external URLs.
+  const rawNext = searchParams.get("next");
+  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+
   if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to={next ?? "/dashboard"} replace />;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +41,7 @@ const Login = () => {
 
   const handleGoogle = async () => {
     const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: window.location.origin + (next ?? ""),
     });
     if (error) toast.error(error.message);
   };

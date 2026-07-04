@@ -4,6 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
+import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -37,6 +38,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      mcpPlugin(),
       mode === "development" && componentTagger(),
       VitePWA({
         registerType: "autoUpdate",
@@ -76,7 +78,7 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
           navigateFallback: "/index.html",
-          navigateFallbackDenylist: [/^\/~oauth(?:\/|$)/],
+          navigateFallbackDenylist: [/^\/~oauth(?:\/|$)/, /^\/\.lovable(?:\/|$)/],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
