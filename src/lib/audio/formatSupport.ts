@@ -15,7 +15,7 @@ export const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024;
 export const WARN_FILE_SIZE_BYTES = 500 * 1024 * 1024;
 
 const VIDEO_MIME_PREFIXES = ["video/"];
-const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".m4v", ".webm", ".3gp", ".3gpp", ".mkv", ".avi"]);
+const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".m4v", ".webm", ".3gp", ".3gpp", ".mkv", ".avi", ".flv", ".wmv", ".ts", ".mts", ".m2ts", ".ogv"]);
 
 /** Returns `true` when the file is a video container (audio will be extracted). */
 export function isVideoFile(file: File): boolean {
