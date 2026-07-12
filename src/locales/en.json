@@ -68,7 +68,7 @@
   "stt.upload_error": "Failed to transcribe audio file.",
   "stt.file_too_large": "File is too large (max 1 GB). For large videos, extract the audio first.",
   "stt.too_long": "File exceeds the 120-minute maximum.",
-  "stt.format_unsupported": "Your browser cannot decode this file format. Try converting to MP3 or use Chrome.",
+  "stt.format_unsupported": "Your browser cannot decode this file. Please convert it to MP3, WAV, or MP4 and try again (any converter or VLC works).",
   "stt.extracting_audio": "Extracting audio from video…",
   "stt.video_info": "Audio will be extracted from video for transcription.",
   "stt.quota_insufficient": "Not enough remaining minutes on your plan for this file.",
