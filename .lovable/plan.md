@@ -1,39 +1,35 @@
-# Sync all plan prices to 1,400 / 5,400 / 8,400 PKR
+## تصدیق: جی ہاں، ٹرانسکرائب اپلوڈ پر پابندیاں لگی ہوئی ہیں
 
-Currently the Pricing page (`src/lib/planTiers.ts`) shows the new prices — **Basic 1,400 / Pro 5,400 / Ultra 8,400 PKR** — but the admin panel dropdown and the payment-instruction messages still show the old **1,000 / 4,000 / 7,000 PKR** in every locale.
+`src/lib/audio/formatSupport.ts` اور `src/lib/audio/transcribeLongForm.ts` میں یہ حدود موجود ہیں:
 
-## Files to update
+| پابندی | موجودہ ویلیو | جگہ |
+|---|---|---|
+| قابلِ قبول فارمیٹس | صرف mp3, wav, m4a, ogg, webm, flac, aac, mp4, mov, m4v, 3gp, opus | `ACCEPTED_MEDIA` |
+| زیادہ سے زیادہ فائل سائز | 1 GB (500 MB سے اوپر warning) | `MAX_FILE_SIZE_BYTES` |
+| زیادہ سے زیادہ دورانیہ | 120 منٹ (2 گھنٹے) | `MAX_DURATION_SECONDS` |
+| ویڈیو ڈیٹیکشن | صرف mp4, mov, m4v, webm, 3gp, mkv, avi | `VIDEO_EXTENSIONS` |
 
-### 1. Admin panel dropdown labels (used in `UserTable.tsx` plan selectors)
+### مسئلہ
+- **`.mkv`, `.avi`, `.flv`, `.wmv`, `.wma`, `.amr`, `.aiff`** جیسی کامن فائلز `<input accept>` سے بلاک ہو جاتی ہیں — موبائل/ڈیسکٹاپ فائل پکر میں یہ گرے آؤٹ نظر آتی ہیں۔
+- ٹوکن/کوٹا حدود الگ ہیں (یہ برقرار رہیں گی، صرف فارمیٹ کی پابندی ہٹانی ہے)۔
 
-- `src/locales/en.json`
-  - `admin.basic_plan`: `"Basic (1,400 PKR)"`
-  - `admin.pro_plan_label`: `"Pro (5,400 PKR)"`
-  - `admin.ultra_plan_label`: `"Ultra (8,400 PKR)"`
-- `src/locales/ur.json`
-  - `admin.basic_plan`: `"بیسک (1,400 PKR)"`
-  - `admin.pro_plan_label`: `"پرو (5,400 PKR)"`
-  - `admin.ultra_plan_label`: `"الٹرا (8,400 PKR)"`
-- `src/locales/ar.json`
-  - `admin.basic_plan`: `"باقة Basic (1,400 PKR)"`
-  - `admin.pro_plan_label`: `"باقة Pro (5,400 PKR)"`
-  - `admin.ultra_plan_label`: `"باقة Ultra (8,400 PKR)"`
+## حل کا پلان (صرف فرنٹ اینڈ)
 
-### 2. Payment-instruction amount strings (shown on Pricing / checkout screens)
+### 1. `src/lib/audio/formatSupport.ts`
+- `ACCEPTED_MEDIA` کو کھول کر صرف `audio/*,video/*` کر دیں تاکہ براؤزر ہر آڈیو/ویڈیو MIME قبول کرے۔ ایکسٹینشن فال بیک کے لیے common lesser-known extensions بھی شامل کریں: `.mkv,.avi,.flv,.wmv,.wma,.amr,.aiff,.aif,.opus,.oga,.mka` — تاکہ جن سسٹمز پر MIME خالی آتا ہے وہاں بھی pass ہوں۔
+- `VIDEO_EXTENSIONS` سیٹ میں `.flv`, `.wmv`, `.ts`, `.mts`, `.m2ts`, `.ogv` بھی جوڑ دیں۔
 
-Update in `en.json`, `ur.json`, `ar.json`:
+### 2. `src/pages/Transcribe.tsx` — ایرر پیغام بہتری
+- جب براؤزر کا `AudioContext.decodeAudioData` کسی فارمیٹ (مثلاً WMA) کو decode نہ کر سکے، صارف کو واضح پیغام دیں: "یہ فارمیٹ آپ کے براؤزر میں سپورٹ نہیں — براہِ کرم MP3/MP4/WAV میں تبدیل کر کے اپلوڈ کریں۔"
+- موجودہ `t("stt.format_unsupported")` کی زبانوں میں بہتر لفظیت۔
 
-- `pricing.payment_amount_basic` → 1,400 PKR / month
-- `pricing.payment_amount_pro`   → 5,400 PKR / month
-- `pricing.payment_amount_ultra` → 8,400 PKR / month
+### 3. `src/locales/{en,ur,ar}.json`
+- `stt.format_unsupported` کی سٹرنگ کو مزید معلوماتی بنائیں (کن فارمیٹس کو convert کرنا ہے)۔
 
-(Preserving each locale's existing phrasing, e.g. `"Amount: PKR 1,400 / month"`, `"رقم: PKR 1,400 / ماہ"`, `"المبلغ: 1,400 PKR / شهر"`.)
+### جو **تبدیل نہیں** ہوگا (اور کیوں)
+- **1 GB سائز کیپ** — موبائل tab crash سے بچاؤ کے لیے۔
+- **2 گھنٹہ دورانیہ کیپ** — edge function کی lifetime اور cost/rate-limit کے لیے۔
+- **کلائنٹ‑سائیڈ ڈی کوڈنگ** — یہ براؤزر کے `AudioContext` پر انحصار کرتی ہے، اس لیے WMA/AVI-with-obscure-codecs جیسی فائلیں decode مرحلے پر ناکام ہو سکتی ہیں چاہے accept ہو جائیں۔ اس لیے حل میں (2) کا واضح ایرر شامل ہے۔ اگر آپ چاہیں تو ایک **الگ پلان** میں سرور‑سائیڈ ffmpeg conversion (ایک نئی edge function) شامل کر سکتے ہیں تاکہ ہر فارمیٹ واقعی چلے۔
 
-## Not changed
-
-- `src/lib/planTiers.ts` already has 1,400 / 5,400 / 8,400 — no change needed.
-- No code, database, or feature-limit changes; this is purely a display/label update.
-
-## Verification
-
-After the edits, open the admin panel plan dropdown and the Pricing page and confirm all three tiers show the new PKR amounts consistently in English, Urdu, and Arabic.
+### نتیجہ
+اس پلان کے بعد فائل پکر ہر آڈیو/ویڈیو دکھائے گا، MIME/extension کی وجہ سے کوئی فائل reject نہیں ہوگی، اور اگر براؤزر واقعی decode نہ کر سکے تو صارف کو صاف ہدایت ملے گی۔
