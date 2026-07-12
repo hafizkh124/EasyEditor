@@ -6,7 +6,7 @@
 
 /** Accepted extensions + MIME catch-alls for the file-input `accept` attribute. */
 export const ACCEPTED_MEDIA =
-  ".mp3,.wav,.m4a,.ogg,.webm,.flac,.aac,.mp4,.mov,.m4v,.3gp,.3gpp,.opus,audio/*,video/mp4,video/quicktime,video/webm";
+  "audio/*,video/*,.mp3,.wav,.m4a,.ogg,.oga,.webm,.flac,.aac,.opus,.amr,.aiff,.aif,.wma,.mka,.mp4,.mov,.m4v,.3gp,.3gpp,.mkv,.avi,.flv,.wmv,.ts,.mts,.m2ts,.ogv";
 
 /** 1 GB — hard file-size ceiling to prevent browser tab crashes (especially on mobile). */
 export const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024;
