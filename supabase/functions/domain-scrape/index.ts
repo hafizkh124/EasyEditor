@@ -1,10 +1,17 @@
 /**
- * domain-scrape — Tier C: Live scraping of Islamic fatwa/Q&A sites
+ * domain-scrape — Tier C: live scraping of Islamic fatwa/Q&A / classical sites
+ * via Firecrawl (direct API, `fc-` key).
  *
- * Three-layer citation extraction per source:
- *   Layer 1 — URL regex: fatwa number from URL pattern (fastest, most reliable)
- *   Layer 2 — DOM regex: scholar name from common HTML patterns in page content
- *   Layer 3 — Text regex: scan scraped text for attribution phrases when L1+L2 fail
+ * Strategy:
+ *   1. For each requested domain, call Firecrawl `/v2/search` with a
+ *      `site:<host> <query>` query and `formats:['markdown']` to get 1-2 top
+ *      results *with content* in a single round-trip (no separate scrape).
+ *   2. Extract lightweight citation metadata (fatwa number / hadith slug)
+ *      from the returned URL when the pattern is known; otherwise fall back
+ *      to url + title only.
+ *
+ * Response shape (unchanged): `{ results: IslamicResult[] }` — safe drop-in
+ * for the previous bespoke-regex scrapers.
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
@@ -16,417 +23,142 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-async function fetchWithTimeout(url: string, timeoutMs = 10_000): Promise<string> {
+const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
+
+// ── Domain registry ─────────────────────────────────────────────────────────
+// Every host here MUST also appear in `src/lib/research/scrapingWhitelist.ts`
+// (mirrored in `supabase/functions/research-query/index.ts`) so upstream
+// citation rules stay in sync.
+interface DomainConfig {
+  host: string;
+  lang: "en" | "ur" | "ar";
+  type: "fatwa" | "hadith" | "classical" | "article";
+  /** Optional URL → citation fields extractor. */
+  citation?: (url: string) => Record<string, string | number>;
+}
+
+const DOMAINS: Record<string, DomainConfig> = {
+  islamqa: {
+    host: "islamqa.info",
+    lang: "en",
+    type: "fatwa",
+    citation: (u) => {
+      const m = u.match(/\/answers\/(\d+)\//);
+      return m ? { fatwa_number: m[1] } : {};
+    },
+  },
+  islamweb: {
+    host: "www.islamweb.net",
+    lang: "en",
+    type: "fatwa",
+    citation: (u) => {
+      const m = u.match(/FatwaId=(\d+)/i);
+      return m ? { fatwa_number: m[1] } : {};
+    },
+  },
+  islamicurdubooks: {
+    host: "www.islamicurdubooks.com",
+    lang: "ur",
+    type: "hadith",
+    citation: (u) => {
+      const bookId = u.match(/bookid=(\d+)/i)?.[1];
+      const hn = u.match(/(?:hadith_number|hadithno)=(\d+)/i)?.[1];
+      const out: Record<string, string> = {};
+      if (bookId) out.book = `Book ${bookId}`;
+      if (hn) out.hadith_number = hn;
+      return out;
+    },
+  },
+  shamilaurdu: {
+    host: "shamilaurdu.com",
+    lang: "ur",
+    type: "hadith",
+    citation: (u) => {
+      const m = u.match(/shamilaurdu\.com\/(hadith|book|quran)\/([^/]+)\/(\d+)/i);
+      if (!m) return {};
+      const [, section, slug, num] = m;
+      const out: Record<string, string | number> = { book: slug };
+      if (section === "hadith") out.hadith_number = num;
+      else if (section === "book") out.page = Number(num);
+      else if (section === "quran") out.surah_number = Number(num);
+      return out;
+    },
+  },
+  alulama:            { host: "alulama.org",             lang: "ur", type: "fatwa" },
+  "magazine-mohaddis":{ host: "magazine.mohaddis.com",   lang: "ur", type: "article" },
+  mohaddis:           { host: "mohaddis.org",            lang: "ur", type: "article" },
+  urdufatwa:          { host: "urdufatwa.com",           lang: "ur", type: "fatwa" },
+  islamfort:          { host: "islamfort.com",           lang: "ur", type: "article" },
+  alminasa:           { host: "alminasa.ai",             lang: "ar", type: "article" },
+  shamela:            { host: "shamela.ws",              lang: "ar", type: "classical" },
+};
+
+export const SUPPORTED_DOMAINS = Object.keys(DOMAINS);
+
+// ── Firecrawl search+scrape for a single domain ─────────────────────────────
+async function scrapeDomain(
+  key: string,
+  cfg: DomainConfig,
+  query: string,
+  apiKey: string,
+): Promise<IslamicResult[]> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeout = setTimeout(() => controller.abort(), 25_000);
   try {
-    const res = await fetch(url, {
+    const res = await fetch(`${FIRECRAWL_V2}/search`, {
+      method: "POST",
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; IslamicResearchBot/1.0)",
-        "Accept": "text/html,application/xhtml+xml",
-        "Accept-Language": "ar,en;q=0.9",
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
       signal: controller.signal,
+      body: JSON.stringify({
+        query: `site:${cfg.host} ${query}`,
+        limit: 2,
+        scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
+      }),
     });
-    clearTimeout(timeoutId);
-    if (!res.ok) return "";
-    return await res.text();
-  } catch (e: any) {
-    clearTimeout(timeoutId);
-    return "";
-  }
-}
+    clearTimeout(timeout);
 
-function stripHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// ── Layer 1: URL regex fatwa number ──────────────────────────────────────────
-function extractFatwaNumberFromUrl(url: string, domain: string): string {
-  if (domain === "islamqa") {
-    const m = url.match(/\/answers\/(\d+)\//);
-    return m?.[1] ?? "";
-  }
-  if (domain === "islamweb") {
-    const m = url.match(/FatwaId=(\d+)/i);
-    return m?.[1] ?? "";
-  }
-  return "";
-}
-
-// ── Layer 2: DOM regex scholar extraction ─────────────────────────────────────
-// Scans raw HTML for common scholar-name patterns across islamqa/islamweb/dar-alifta
-function extractScholarFromHtml(html: string): string {
-  // islamqa.info: <span class="sheikh-name">...</span> or data-author
-  const patterns: RegExp[] = [
-    /<span[^>]*class="[^"]*sheikh[^"]*"[^>]*>(.*?)<\/span>/i,
-    /<span[^>]*class="[^"]*scholar[^"]*"[^>]*>(.*?)<\/span>/i,
-    /<span[^>]*class="[^"]*author[^"]*"[^>]*>(.*?)<\/span>/i,
-    /<div[^>]*class="[^"]*sheikh[^"]*"[^>]*>(.*?)<\/div>/i,
-    /<div[^>]*class="[^"]*mufti[^"]*"[^>]*>(.*?)<\/div>/i,
-    /<meta[^>]*name="author"[^>]*content="([^"]+)"/i,
-    /data-author="([^"]+)"/i,
-    // islamweb: answered by section
-    /<td[^>]*class="[^"]*answeredby[^"]*"[^>]*>(.*?)<\/td>/i,
-    // Arabic: الشيخ followed by name
-    /الشيخ[:\s]+([^\n<،,.(]{3,60})/,
-    /أجاب[^:]*:\s*([^\n<،,.]{3,60})/,
-  ];
-  for (const pattern of patterns) {
-    const m = html.match(pattern);
-    if (m?.[1]) {
-      const name = stripHtml(m[1]).trim();
-      if (name.length >= 3 && name.length <= 80) return name;
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      console.error(`[domain-scrape] Firecrawl ${res.status} for ${key}: ${errBody.slice(0, 300)}`);
+      return [];
     }
-  }
-  return "";
-}
+    const json = await res.json();
+    // v2 responses may put items under `data` or `data.web`; normalize.
+    const raw = Array.isArray(json?.data)
+      ? json.data
+      : Array.isArray(json?.data?.web)
+      ? json.data.web
+      : [];
 
-// ── Layer 3: Plain-text attribution scan ─────────────────────────────────────
-// Last resort: scan the stripped text content for English/Arabic attribution phrases
-function extractScholarFromText(text: string): string {
-  const patterns: RegExp[] = [
-    /(?:answered|responded|fatwa) by[:\s]+([A-Za-z\s.'-]{3,60}?)(?:\.|,|\n)/i,
-    /(?:Sheikh|Shaykh|Dr\.|Prof\.)\s+([A-Za-z\s.'-]{3,50}?)(?:\.|,|\n)/,
-    /scholar[:\s]+([A-Za-z\s.'-]{3,50}?)(?:\.|,|\n)/i,
-    /mufti[:\s]+([A-Za-z\s.'-]{3,50}?)(?:\.|,|\n)/i,
-    // Arabic attribution
-    /الشيخ\s+([^\n،,.(]{4,50})/,
-    /أجاب\s+عنه\s+([^\n،,.(]{4,50})/,
-    /المفتي\s*:\s*([^\n،,.(]{4,50})/,
-  ];
-  for (const pattern of patterns) {
-    const m = text.match(pattern);
-    if (m?.[1]) {
-      const name = m[1].trim();
-      if (name.length >= 3 && name.length <= 80) return name;
+    const out: IslamicResult[] = [];
+    for (const item of raw) {
+      const url: string | undefined = item?.url;
+      const title: string = (item?.title ?? "").toString().slice(0, 200);
+      const markdown: string = (item?.markdown ?? item?.description ?? "").toString().trim();
+      if (!url || !markdown || markdown.length < 60) continue;
+
+      const content = title
+        ? `**${title}**\n\n${markdown.slice(0, 3_500)}`
+        : markdown.slice(0, 3_500);
+
+      const citationExtras = cfg.citation?.(url) ?? {};
+
+      out.push({
+        domain: key,
+        content,
+        citation_ref: { ...citationExtras, url } as any,
+        language: cfg.lang,
+      });
     }
+    return out;
+  } catch (e) {
+    clearTimeout(timeout);
+    console.error(`[domain-scrape] ${key} failed:`, (e as Error).message);
+    return [];
   }
-  return "";
-}
-
-function extractSection(html: string, selector: string): string {
-  const patterns: Record<string, RegExp[]> = {
-    ".answer-txt": [
-      /<div[^>]*class="[^"]*answer-txt[^"]*"[^>]*>([\s\S]*?)<\/div\s*>/i,
-      /<div[^>]*id="[^"]*answer[^"]*"[^>]*>([\s\S]*?)<\/div\s*>/i,
-    ],
-    ".fatwa-content": [
-      /<div[^>]*class="[^"]*fatwa-content[^"]*"[^>]*>([\s\S]*?)<\/div\s*>/i,
-      /<div[^>]*class="[^"]*FatwaContent[^"]*"[^>]*>([\s\S]*?)<\/div\s*>/i,
-    ],
-    ".FatwaText": [
-      /<div[^>]*class="[^"]*FatwaText[^"]*"[^>]*>([\s\S]*?)<\/div\s*>/i,
-      /<div[^>]*class="[^"]*fatwa-text[^"]*"[^>]*>([\s\S]*?)<\/div\s*>/i,
-    ],
-    ".question-title": [
-      /<h[123][^>]*class="[^"]*question-title[^"]*"[^>]*>([\s\S]*?)<\/h[123]>/i,
-      /<h[123][^>]*class="[^"]*title[^"]*"[^>]*>([\s\S]*?)<\/h[123]>/i,
-    ],
-  };
-  const plist = patterns[selector] ?? [];
-  for (const pattern of plist) {
-    const match = html.match(pattern);
-    if (match?.[1]) return stripHtml(match[1]).slice(0, 3_000);
-  }
-  return "";
-}
-
-function extractLinks(html: string, baseUrl: string, pattern: RegExp): string[] {
-  const links: string[] = [];
-  let match;
-  const re = new RegExp(pattern.source, "gi");
-  while ((match = re.exec(html)) !== null) {
-    try {
-      const href = match[1];
-      const full = href.startsWith("http") ? href : new URL(href, baseUrl).href;
-      links.push(full);
-    } catch {
-      // skip invalid URLs
-    }
-  }
-  return [...new Set(links)].slice(0, 3);
-}
-
-// ── IslamQA.info ─────────────────────────────────────────────────────────────
-async function scrapeIslamQA(query: string): Promise<IslamicResult[]> {
-  const searchUrl = `https://islamqa.info/en/search?q=${encodeURIComponent(query)}&lang=en`;
-  const html = await fetchWithTimeout(searchUrl);
-  if (!html) return [];
-
-  const links = extractLinks(html, "https://islamqa.info", /href="(\/en\/answers\/\d+\/[^"]*?)"/);
-  if (links.length === 0) return [];
-
-  const results: IslamicResult[] = [];
-
-  for (const link of links.slice(0, 2)) {
-    const pageHtml = await fetchWithTimeout(link);
-    if (!pageHtml) continue;
-
-    // Layer 1: fatwa number from URL
-    const fatwaNumber = extractFatwaNumberFromUrl(link, "islamqa");
-
-    // Extract title
-    const title = stripHtml(pageHtml.match(/<h1[^>]*>(.*?)<\/h1>/i)?.[1] ?? "").slice(0, 200);
-
-    // Extract content
-    const content = extractSection(pageHtml, ".answer-txt") ||
-      extractSection(pageHtml, ".question-title") ||
-      stripHtml(pageHtml.match(/<div[^>]*id="[^"]*answer[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "").slice(0, 3_000);
-
-    if (!content) continue;
-
-    // Layer 2: scholar from DOM
-    let scholar = extractScholarFromHtml(pageHtml);
-    // Layer 3: scholar from text (fallback)
-    if (!scholar) scholar = extractScholarFromText(content);
-
-    results.push({
-      domain: "islamqa",
-      content: title ? `**${title}**\n\n${content}` : content,
-      citation_ref: {
-        fatwa_number: fatwaNumber || undefined,
-        scholar:      scholar || undefined,
-        url:          link,
-      } as any,
-      language: "en",
-    });
-  }
-
-  return results;
-}
-
-// ── IslamWeb.net ──────────────────────────────────────────────────────────────
-async function scrapeIslamWeb(query: string): Promise<IslamicResult[]> {
-  const searchUrl = `https://www.islamweb.net/en/fatwa/search/?q=${encodeURIComponent(query)}`;
-  const html = await fetchWithTimeout(searchUrl);
-  if (!html) return [];
-
-  const links = extractLinks(html, "https://www.islamweb.net", /href="([^"]*FatwaId=\d+[^"]*)"/);
-  if (links.length === 0) return [];
-
-  const results: IslamicResult[] = [];
-
-  for (const link of links.slice(0, 2)) {
-    const pageHtml = await fetchWithTimeout(link);
-    if (!pageHtml) continue;
-
-    // Layer 1
-    const fatwaNumber = extractFatwaNumberFromUrl(link, "islamweb");
-
-    const content = extractSection(pageHtml, ".fatwa-content") ||
-      stripHtml(pageHtml.match(/<div[^>]*class="[^"]*fatwa[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "").slice(0, 3_000);
-
-    if (!content) continue;
-
-    // Layer 2 + 3
-    let scholar = extractScholarFromHtml(pageHtml);
-    if (!scholar) scholar = extractScholarFromText(content);
-
-    results.push({
-      domain: "islamweb",
-      content,
-      citation_ref: {
-        fatwa_number: fatwaNumber || undefined,
-        scholar:      scholar || undefined,
-        url:          link,
-      } as any,
-      language: "en",
-    });
-  }
-
-  return results;
-}
-
-// ── Dar-Alifta.org — removed per Phase 7.5 doctrine (persistent timeouts).
-//    Reinstate scrapeDarAlifta here if the upstream becomes reliable again.
-
-// ── ShamilaUrdu.com (Phase 10.4.b) ────────────────────────────────────────────
-// The native search endpoint /?s=… rejects bot-shaped requests with
-// SECURITY_ERROR_BAD_INPUT. Workaround: discover URLs via DuckDuckGo's bot-
-// friendly HTML endpoint with `site:shamilaurdu.com`, then fetch the static
-// detail pages directly (those are NOT behind the security guard — only the
-// search endpoint is). Static URL patterns: /hadith/<slug>/<N>/ , /book/<slug>/<page>/.
-async function scrapeShamilaUrdu(query: string): Promise<IslamicResult[]> {
-  const base = "https://shamilaurdu.com";
-  // DuckDuckGo HTML endpoint — bot-friendly, no JS required.
-  const ddgUrl = `https://html.duckduckgo.com/html?q=${encodeURIComponent(
-    `site:shamilaurdu.com ${query}`,
-  )}`;
-  const ddgHtml = await fetchWithTimeout(ddgUrl, 12_000);
-  if (!ddgHtml) return [];
-
-  // DuckDuckGo wraps each result link in `<a class="result__a" href="...">`.
-  // The href is sometimes a redirect (`/l/?uddg=…`) — handle both shapes.
-  const linkSet = new Set<string>();
-  const reA = /href="(https?:\/\/(?:www\.)?shamilaurdu\.com\/[^"]+)"/gi;
-  const reB = /uddg=([^&"]+)/gi;
-  let m: RegExpExecArray | null;
-  while ((m = reA.exec(ddgHtml)) !== null) linkSet.add(m[1]);
-  while ((m = reB.exec(ddgHtml)) !== null) {
-    try {
-      const decoded = decodeURIComponent(m[1]);
-      if (decoded.startsWith("http") && decoded.includes("shamilaurdu.com")) {
-        linkSet.add(decoded);
-      }
-    } catch { /* skip malformed */ }
-  }
-
-  // Keep only the content-detail patterns; drop nav/homepage/category hits.
-  const detailPattern = /shamilaurdu\.com\/(?:hadith|book|quran)\//i;
-  const links = [...linkSet].filter((u) => detailPattern.test(u)).slice(0, 3);
-  if (links.length === 0) return [];
-
-  const results: IslamicResult[] = [];
-  for (const link of links) {
-    const pageHtml = await fetchWithTimeout(link, 10_000);
-    if (!pageHtml) continue;
-
-    // ─ Title from <h1> ────────────────────────────────────────────────
-    const h1 = pageHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "";
-    const title = stripHtml(h1).slice(0, 200);
-
-    // ─ Pull all <p>, <div>, <span> blocks containing Arabic/Urdu text ─
-    const bodyParts: string[] = [];
-    const blockRe = /<(?:p|div|span)[^>]*>([\s\S]*?)<\/(?:p|div|span)>/gi;
-    let mm: RegExpExecArray | null;
-    while ((mm = blockRe.exec(pageHtml)) !== null && bodyParts.length < 20) {
-      const txt = stripHtml(mm[1]);
-      if (txt.length >= 30 && /[؀-ۿ]/.test(txt)) {
-        bodyParts.push(txt);
-      }
-    }
-    const body = [...new Set(bodyParts)].join("\n\n").slice(0, 3_500);
-    if (!body) continue;
-
-    // ─ Try to read collection slug + hadith number out of URL path ────
-    // Patterns: /hadith/bukhari/123/  or  /book/<slug>/<page>/
-    const pathMatch = link.match(/shamilaurdu\.com\/(hadith|book|quran)\/([^/]+)\/(\d+)/i);
-    const section = pathMatch?.[1] ?? "";
-    const slug    = pathMatch?.[2] ?? "";
-    const num     = pathMatch?.[3] ?? "";
-
-    results.push({
-      domain: "shamilaurdu",
-      content: title ? `**${title}**\n\n${body}` : body,
-      citation_ref: {
-        book:          slug || section || "shamilaurdu",
-        hadith_number: section === "hadith" ? num : undefined,
-        page:          section === "book"   ? Number(num) : undefined,
-        surah_number:  section === "quran"  ? Number(num) : undefined,
-        url:           link,
-      } as any,
-      language: "ur",
-    });
-    // gentle pacing to avoid tripping any rate-limit on the upstream
-    if (results.length < links.length) await new Promise((r) => setTimeout(r, 250));
-  }
-
-  // Suppress unused parameter warning when `base` isn't referenced.
-  void base;
-
-  return results;
-}
-
-// ── IslamicUrduBooks.com (Phase 8.2) ─────────────────────────────────────────
-// Static HTML PHP site. 38 hadith collections in Arabic + Urdu. Search at
-// /hadith/search_urdu.php?q=<term> yields links to /hadith/hadith-.php?bookid=X&hadith_number=Y
-//
-// Defensive parsing: we don't know exact CSS class names, so we use multiple
-// strategies — URL-param extraction for the structured fields, and a
-// content-density heuristic for the Arabic / Urdu body. If the site reshuffles
-// markup, parsing degrades gracefully (returns whatever was extractable).
-async function scrapeIslamicUrduBooks(query: string): Promise<IslamicResult[]> {
-  const base = "https://www.islamicurdubooks.com";
-  const searchUrl = `${base}/hadith/search_urdu.php?q=${encodeURIComponent(query)}`;
-  const html = await fetchWithTimeout(searchUrl, 12_000);
-  if (!html) return [];
-
-  // Result links follow the pattern: hadith-.php?bookid=N&hadith_number=M
-  // (we accept both relative `./hadith-...` and absolute `https://...` forms).
-  const links = extractLinks(
-    html,
-    base,
-    /href="((?:\.{0,2}\/)?(?:hadith\/)?hadith-\.php\?bookid=\d+&(?:hadith_number|hadithno)=\d+[^"]*)"/i,
-  );
-  if (links.length === 0) return [];
-
-  const results: IslamicResult[] = [];
-
-  // Map bookid → book name. The full list lives on the site; we hardcode the
-  // common ones so citations get readable book names. Unknown ids fall back
-  // to "Book <N>" so the citation still works.
-  const BOOK_NAMES: Record<string, string> = {
-    "1":  "صحيح البخاري",
-    "2":  "صحيح مسلم",
-    "3":  "سنن أبي داود",
-    "4":  "جامع الترمذي",
-    "5":  "سنن النسائي",
-    "6":  "سنن ابن ماجه",
-    "7":  "موطأ الإمام مالك",
-    "8":  "مسند أحمد",
-    "9":  "سنن الدارمي",
-    "10": "صحيح ابن خزيمة",
-    "11": "صحيح ابن حبان",
-    "12": "المستدرك للحاكم",
-    "13": "السنن الكبرى للبيهقي",
-  };
-
-  for (const link of links.slice(0, 3)) {
-    const pageHtml = await fetchWithTimeout(link, 12_000);
-    if (!pageHtml) continue;
-
-    // ─ Structured ids from URL ────────────────────────────────────────
-    const bookId = link.match(/bookid=(\d+)/i)?.[1] ?? "";
-    const hadithNumber = link.match(/(?:hadith_number|hadithno)=(\d+)/i)?.[1] ?? "";
-    if (!bookId || !hadithNumber) continue;
-
-    // ─ Title from H1 ──────────────────────────────────────────────────
-    const h1 = pageHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "";
-    const title = stripHtml(h1).slice(0, 200);
-
-    // ─ Body content: take all <p>, <div class*="hadith"|"text"|"matn">,
-    //   <font>, <span class*="arabic"|"urdu"> blocks and concatenate. ──
-    const bodyParts: string[] = [];
-    const blockRe = /<(?:p|div|font|span)[^>]*>([\s\S]*?)<\/(?:p|div|font|span)>/gi;
-    let m: RegExpExecArray | null;
-    while ((m = blockRe.exec(pageHtml)) !== null && bodyParts.length < 30) {
-      const txt = stripHtml(m[1]);
-      // Heuristic: keep blocks that have ≥ 25 chars and contain at least one
-      // Arabic or Urdu character. Drops nav/footer/script blocks.
-      if (txt.length >= 25 && /[؀-ۿ]/.test(txt)) {
-        bodyParts.push(txt);
-      }
-    }
-    // Dedupe consecutive duplicates from nested tags
-    const body = [...new Set(bodyParts)].join("\n\n").slice(0, 3_500);
-    if (!body) continue;
-
-    const bookName = BOOK_NAMES[bookId] ?? `Book ${bookId}`;
-
-    results.push({
-      domain: "islamicurdubooks",
-      content: title ? `**${title}**\n\n${body}` : body,
-      citation_ref: {
-        book:          bookName,
-        hadith_number: hadithNumber,
-        url:           link.startsWith("http") ? link : `${base}/${link.replace(/^\.{0,2}\//, "")}`,
-      } as any,
-      language: "ur",
-    });
-  }
-
-  return results;
 }
 
 serve(async (req) => {
@@ -435,20 +167,31 @@ serve(async (req) => {
   }
 
   try {
+    const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: "Firecrawl not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const { query, selectedDomains } = await req.json();
-    if (!query) {
+    if (!query || typeof query !== "string") {
       return new Response(JSON.stringify({ error: "Query is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const scrapers: Promise<IslamicResult[]>[] = [];
-    if (!selectedDomains || selectedDomains.includes("islamqa"))           scrapers.push(scrapeIslamQA(query));
-    if (!selectedDomains || selectedDomains.includes("islamweb"))          scrapers.push(scrapeIslamWeb(query));
-    if (!selectedDomains || selectedDomains.includes("islamicurdubooks")) scrapers.push(scrapeIslamicUrduBooks(query));
-    if (!selectedDomains || selectedDomains.includes("shamilaurdu"))      scrapers.push(scrapeShamilaUrdu(query));
+    // Choose which domains to hit. `selectedDomains` filters to the intersection
+    // with SUPPORTED_DOMAINS; when omitted, we fan out to every registered host.
+    const targets: string[] = Array.isArray(selectedDomains) && selectedDomains.length > 0
+      ? selectedDomains.filter((d: string) => d in DOMAINS)
+      : SUPPORTED_DOMAINS;
 
-    const settled = await Promise.allSettled(scrapers);
+    const settled = await Promise.allSettled(
+      targets.map((key) => scrapeDomain(key, DOMAINS[key], query, apiKey)),
+    );
+
     const results: IslamicResult[] = [];
     for (const r of settled) {
       if (r.status === "fulfilled") results.push(...r.value);
@@ -461,7 +204,7 @@ serve(async (req) => {
     console.error("domain-scrape error:", e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
