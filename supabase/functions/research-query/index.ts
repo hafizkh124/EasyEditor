@@ -39,7 +39,10 @@ const SCRAPING_WHITELIST = [
   "shamela.ws",
   "islamicurdubooks.com",
   "islamqa.info",
+  "islamweb.net",
+  "shamilaurdu.com",
 ];
+
 
 const WHITELIST_REJECTION_MESSAGE =
   "معذرت، اسلامی اور جنرل ریسرچ کے لیے ہم صرف مستند علمی ذرائع سے معلومات لینے کے پابند ہیں۔";
@@ -516,9 +519,10 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             query,
-            selectedDomains: ["islamqa", "islamweb", "islamicurdubooks", "shamilaurdu"],
+            // Omit selectedDomains → domain-scrape fans out to every registered host.
           }),
-          signal: AbortSignal.timeout(8_000),
+          signal: AbortSignal.timeout(15_000),
+
         });
         if (scrapeRes.ok) {
           const data = await scrapeRes.json();
