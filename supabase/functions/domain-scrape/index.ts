@@ -43,7 +43,8 @@ const DOMAINS: Record<string, DomainConfig> = {
     lang: "en",
     type: "fatwa",
     citation: (u) => {
-      const m = u.match(/\/answers\/(\d+)\//);
+      // Matches /en/answers/173637, /ur/answers/145725/, etc.
+      const m = u.match(/\/answers\/(\d+)(?:\/|$|\?|#)/i);
       return m ? { fatwa_number: m[1] } : {};
     },
   },
@@ -52,7 +53,10 @@ const DOMAINS: Record<string, DomainConfig> = {
     lang: "en",
     type: "fatwa",
     citation: (u) => {
-      const m = u.match(/FatwaId=(\d+)/i);
+      // Legacy: ?FatwaId=12345 | Modern: /en/fatwa/449197/slug
+      const m =
+        u.match(/FatwaId=(\d+)/i) ??
+        u.match(/\/fatwa\/(\d+)(?:\/|$|\?|#)/i);
       return m ? { fatwa_number: m[1] } : {};
     },
   },
