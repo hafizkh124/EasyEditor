@@ -229,7 +229,9 @@ const SidebarBody = ({
     {activeSection && !collapsed && (
       <>
         <div className="border-t border-sidebar-border" />
-        <SidebarHistory section={activeSection} collapsed={collapsed} />
+        {/* Research has its own header "New chat" button — suppress the
+            duplicate here to keep a single new-chat entry point. */}
+        <SidebarHistory section={activeSection} collapsed={collapsed} showNewChat={activeSection !== "research"} />
       </>
     )}
 
