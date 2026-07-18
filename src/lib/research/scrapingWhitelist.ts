@@ -1,5 +1,7 @@
 // Trusted scholarly domains for Islamic & General research modes.
 // Custom Sources mode bypasses this whitelist (user takes responsibility).
+// Keep in sync with `supabase/functions/domain-scrape/index.ts` DOMAINS
+// and `supabase/functions/research-query/index.ts` SCRAPING_WHITELIST.
 export const SCRAPING_WHITELIST = [
   "alulama.org",
   "magazine.mohaddis.com",
@@ -10,6 +12,8 @@ export const SCRAPING_WHITELIST = [
   "shamela.ws",
   "islamicurdubooks.com",
   "islamqa.info",
+  "islamweb.net",
+  "shamilaurdu.com",
 ];
 
 export function isWhitelistedUrl(rawUrl: string): boolean {

@@ -36,7 +36,12 @@ const corsHeaders = {
 // once upstream recovers or credentials are obtained.
 const TIER_A_DOMAINS = ["dorar", "alquran", "hadith-api", "quran-com", "tanzil"];
 const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
-const TIER_C_DOMAINS = ["islamqa", "islamweb", "islamicurdubooks", "shamilaurdu"];
+const TIER_C_DOMAINS = [
+  "islamqa", "islamweb", "islamicurdubooks", "shamilaurdu",
+  "alulama", "magazine-mohaddis", "mohaddis", "urdufatwa",
+  "islamfort", "alminasa", "shamela",
+];
+
 const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS];
 
