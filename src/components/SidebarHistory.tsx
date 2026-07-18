@@ -60,9 +60,13 @@ interface SidebarHistoryProps {
   activeId?: string | null;
   onSelect?: (item: SessionHistoryItem) => void;
   collapsed?: boolean;
+  /** Show the "New" button in the history header. Off for sections that
+   *  provide their own in-page "New chat" control (e.g. Research), to avoid
+   *  a confusing duplicate. Defaults to true. */
+  showNewChat?: boolean;
 }
 
-const SidebarHistory = ({ section, activeId, onSelect, collapsed }: SidebarHistoryProps) => {
+const SidebarHistory = ({ section, activeId, onSelect, collapsed, showNewChat = true }: SidebarHistoryProps) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -179,16 +183,18 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed }: SidebarHisto
         <span className="text-[11px] font-medium uppercase tracking-wider text-sidebar-foreground/60">
           {t("sidebar.history") || "History"}
         </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={startNewChat}
-          className="h-7 gap-1 px-2 text-xs"
-          aria-label={t("sidebar.new_chat") || "New"}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {t("sidebar.new_chat") || "New"}
-        </Button>
+        {showNewChat && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={startNewChat}
+            className="h-7 gap-1 px-2 text-xs"
+            aria-label={t("sidebar.new_chat") || "New"}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t("sidebar.new_chat") || "New"}
+          </Button>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
         {loading && items.length === 0 ? (
