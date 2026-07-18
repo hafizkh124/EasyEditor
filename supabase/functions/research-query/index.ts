@@ -39,7 +39,10 @@ const SCRAPING_WHITELIST = [
   "shamela.ws",
   "islamicurdubooks.com",
   "islamqa.info",
+  "islamweb.net",
+  "shamilaurdu.com",
 ];
+
 
 const WHITELIST_REJECTION_MESSAGE =
   "معذرت، اسلامی اور جنرل ریسرچ کے لیے ہم صرف مستند علمی ذرائع سے معلومات لینے کے پابند ہیں۔";
