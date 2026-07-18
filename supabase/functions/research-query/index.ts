@@ -516,9 +516,10 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             query,
-            selectedDomains: ["islamqa", "islamweb", "islamicurdubooks", "shamilaurdu"],
+            // Omit selectedDomains → domain-scrape fans out to every registered host.
           }),
-          signal: AbortSignal.timeout(8_000),
+          signal: AbortSignal.timeout(15_000),
+
         });
         if (scrapeRes.ok) {
           const data = await scrapeRes.json();
