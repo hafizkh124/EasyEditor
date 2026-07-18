@@ -1,4 +1,14 @@
 import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useSeo } from "@/hooks/useSeo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -118,12 +128,26 @@ const Research = () => {
   });
 
 
+  // Pending mode for the confirm dialog. When switching modes with an active
+  // conversation on screen, we ask before discarding it — using the app's own
+  // AlertDialog rather than the native window.confirm.
+  const [pendingMode, setPendingMode] = useState<ResearchMode | null>(null);
+
   const handleModeChange = (next: ResearchMode) => {
     if (next === mode) return;
-    if (chat.query.trim().length > 0) {
-      if (!window.confirm(t("research.mode_switch_unsaved"))) return;
+    // Warn if there is a visible conversation OR an unsent draft that switching
+    // away would discard. (The draft box is cleared after sending, so message
+    // presence is what actually matters once an answer has rendered.)
+    if (chat.messages.length > 0 || chat.query.trim().length > 0) {
+      setPendingMode(next);
+      return;
     }
     setMode(next);
+  };
+
+  const confirmModeChange = () => {
+    if (pendingMode) setMode(pendingMode);
+    setPendingMode(null);
   };
 
   const activeLimitReached = mode === "islamic" ? islamicLimitReached : researchLimitReached;
@@ -191,7 +215,7 @@ const Research = () => {
           onRefine={chat.handleRefine}
           onCopyOutput={chat.handleCopyOutput}
           
-          onClearChat={chat.handleClearChat}
+          onClearChat={chat.handleNewChat}
           onRegenerate={chat.handleRegenerate}
           sources={sourcesApi.sources}
           researchLimitReached={activeLimitReached}
@@ -207,6 +231,19 @@ const Research = () => {
         />
         </div>
       </div>
+
+      <AlertDialog open={pendingMode !== null} onOpenChange={(open) => { if (!open) setPendingMode(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("research.mode_switch_title") || t("common.new_chat")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("research.mode_switch_unsaved")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingMode(null)}>{t("common.cancel") || "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmModeChange}>{t("common.confirm") || "Confirm"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };

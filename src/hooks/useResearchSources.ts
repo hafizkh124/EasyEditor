@@ -10,6 +10,7 @@ const errMsg = (e: unknown, fallback: string): string =>
 
 export function useResearchSources(user: User | null) {
   const { t } = useLanguage();
+  const userId = user?.id ?? null;
   const [sources, setSources] = useState<Source[]>([]);
   const [urlInput, setUrlInput] = useState("");
   const [isAddingUrl, setIsAddingUrl] = useState(false);
@@ -17,14 +18,14 @@ export function useResearchSources(user: User | null) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadSources = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
     const { data } = await supabase
       .from("research_sources")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
     if (data) setSources(data as Source[]);
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => { loadSources(); }, [loadSources]);
 
