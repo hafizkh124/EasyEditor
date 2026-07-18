@@ -41,7 +41,14 @@ export default defineConfig(({ mode }) => {
       mcpPlugin(),
       mode === "development" && componentTagger(),
       VitePWA({
-        registerType: "autoUpdate",
+        // "prompt" (not autoUpdate): the SW must NOT skipWaiting/clientsClaim
+        // on its own, because src/pwa/registerSW.ts already implements a
+        // manual "new version available" toast (onNeedRefresh) that only
+        // reloads when the user clicks it. With autoUpdate, the SW activates
+        // and force-reloads every open tab as soon as it notices a new
+        // deploy — including mid-stream on the Research page, which is what
+        // was silently wiping in-progress answers.
+        registerType: "prompt",
         includeAssets: ["favicon.png"],
         manifest: {
           name: "Easy Editor",
