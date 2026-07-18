@@ -110,15 +110,26 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [tokenWallet, setTokenWallet] = useState<TokenWallet | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchSubscription = useCallback(async () => {
+  // True once the very first load for the current user has resolved. Used to
+  // keep background refreshes "silent" — a refetch after a query must NOT flip
+  // the global `loading` flag, because ProtectedRoute unmounts the entire app
+  // (full-screen spinner) whenever `loading` is true. That unmount was wiping
+  // the in-progress Research chat every time onDone called refetch().
+  const hasLoadedRef = React.useRef(false);
+
+  const fetchSubscription = useCallback(async (opts?: { silent?: boolean }) => {
     if (!user) {
       setSubscription(null);
       setTokenWallet(null);
+      hasLoadedRef.current = false;
       setLoading(false);
       return;
     }
     if (import.meta.env.DEV) console.log("[SubscriptionContext] Fetching subscription for user:", user.id);
-    setLoading(true);
+    // Only show the blocking loading state on the first load for this user.
+    // Background refreshes (silent, or any post-initial refetch) leave the app
+    // mounted so open pages keep their state.
+    if (!opts?.silent && !hasLoadedRef.current) setLoading(true);
 
     // Fetch subscription and token wallet in parallel
     const [subResult, walletResult] = await Promise.all([
@@ -155,10 +166,18 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setTokenWallet(w);
     }
 
+    hasLoadedRef.current = true;
     setLoading(false);
   }, [user]);
 
+  // Manual refresh (e.g. after a query deducts tokens). Always silent so it
+  // never triggers the app-wide loading spinner / unmount.
+  const refetch = useCallback(() => fetchSubscription({ silent: true }), [fetchSubscription]);
+
   useEffect(() => {
+    // Reset the "first load" gate whenever the user identity changes so a real
+    // login/logout still gets the blocking spinner exactly once.
+    hasLoadedRef.current = false;
     fetchSubscription();
   }, [fetchSubscription]);
 
@@ -184,8 +203,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [subscription]);
 
   const value = useMemo(
-    () => ({ subscription, tokenWallet, loading, isExpired, isLapsed, daysUntilLapse, refetch: fetchSubscription }),
-    [subscription, tokenWallet, loading, isExpired, isLapsed, daysUntilLapse, fetchSubscription]
+    () => ({ subscription, tokenWallet, loading, isExpired, isLapsed, daysUntilLapse, refetch }),
+    [subscription, tokenWallet, loading, isExpired, isLapsed, daysUntilLapse, refetch]
   );
 
   return (
