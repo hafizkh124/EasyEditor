@@ -38,8 +38,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      // Preserve object identity when the underlying auth state is unchanged.
+      // Supabase fires TOKEN_REFRESHED (and re-emits the session) whenever a
+      // browser tab regains focus. If we always set a fresh `user`/`session`
+      // reference, every consumer keyed off those objects re-runs — which was
+      // wiping the in-flight Research chat on tab switch. Only swap the ref
+      // when the token or user id actually changed.
+      setSession((prev) =>
+        prev?.access_token === session?.access_token && prev?.user?.id === session?.user?.id
+          ? prev : session);
+      setUser((prev) =>
+        prev?.id === session?.user?.id ? prev : (session?.user ?? null));
       // Only clear loading if getSession already resolved (avoids flicker)
       if (initialSessionHandled) {
         setLoading(false);
@@ -64,8 +73,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      setSession((prev) =>
+        prev?.access_token === session?.access_token && prev?.user?.id === session?.user?.id
+          ? prev : session);
+      setUser((prev) =>
+        prev?.id === session?.user?.id ? prev : (session?.user ?? null));
       initialSessionHandled = true;
       setLoading(false);
 

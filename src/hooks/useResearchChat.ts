@@ -51,6 +51,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
     researchLimitReached, islamicLimitReached, assistModes, refetch,
   } = args;
   const { t } = useLanguage();
+  const userId = user?.id ?? null;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [query, setQuery] = useState("");
@@ -60,6 +61,10 @@ export function useResearchChat(args: UseResearchChatArgs) {
   const [sourcesReadyInfo, setSourcesReadyInfo] = useState<{ count: number; domains: string[] } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef<string | null>(null);
+  // Guards the reset-then-load effect from clobbering an in-flight stream.
+  // Even after the AuthContext identity fix, a genuine mode/id change during
+  // streaming should never wipe the answer currently being generated.
+  const isStreamingRef = useRef(false);
   // Mirror of sessionIdRef as state so the sidebar can re-render and highlight
   // the active session. The ref is the source of truth for write paths
   // (handleSendQuery / handleClearChat); the state just tracks it for reads.
@@ -74,13 +79,13 @@ export function useResearchChat(args: UseResearchChatArgs) {
     updatedMessages: ChatMessage[],
     updatedCitations: CitationItem[],
   ) => {
-    if (!user || updatedMessages.length === 0) return;
+    if (!userId || updatedMessages.length === 0) return;
     try {
       const firstUser = updatedMessages.find((m) => m.role === "user");
       const title = firstUser?.content.slice(0, 80) ?? "Research Session";
       const newId = await upsertResearchSession({
         id: sessionIdRef.current,
-        userId: user.id,
+        userId,
         title,
         mode: mode === "islamic" ? "islamic" : "general",
         messages: updatedMessages,
@@ -99,7 +104,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
     } catch {
       if (import.meta.env.DEV) console.warn("[Research] research_sessions table not available yet");
     }
-  }, [user, mode, islamicDomains]);
+  }, [userId, mode, islamicDomains]);
 
   // If the URL has `?session=<id>`, the global SidebarHistory has navigated
   // us into a specific past session — load THAT one instead of the latest.
@@ -107,10 +112,10 @@ export function useResearchChat(args: UseResearchChatArgs) {
   const requestedSessionId = searchParams.get("session");
 
   const loadRequestedOrLatest = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
     try {
       if (requestedSessionId) {
-        const data = await loadResearchSession(requestedSessionId, user.id);
+        const data = await loadResearchSession(requestedSessionId, userId);
         if (data) {
           sessionIdRef.current = data.id;
           setActiveSessionId(data.id);
@@ -124,7 +129,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         next.delete("session");
         setSearchParams(next, { replace: true });
       }
-      const data = await loadLatestResearchSession(user.id, mode === "islamic" ? "islamic" : "general");
+      const data = await loadLatestResearchSession(userId, mode === "islamic" ? "islamic" : "general");
       if (data) {
         sessionIdRef.current = data.id;
         setActiveSessionId(data.id);
@@ -134,9 +139,12 @@ export function useResearchChat(args: UseResearchChatArgs) {
     } catch {
       if (import.meta.env.DEV) console.warn("[Research] research_sessions table not available yet");
     }
-  }, [user, mode, requestedSessionId, searchParams, setSearchParams]);
+  }, [userId, mode, requestedSessionId, searchParams, setSearchParams]);
 
   useEffect(() => {
+    // Never reset while a stream is actively writing into `messages` — a
+    // mode/id change mid-answer would otherwise discard the in-flight output.
+    if (isStreamingRef.current) return;
     sessionIdRef.current = null;
     setActiveSessionId(null);
     setMessages([]);
@@ -162,9 +170,11 @@ export function useResearchChat(args: UseResearchChatArgs) {
 
   const runQuery = useCallback(async (userContent: string, prevMessages: ChatMessage[]) => {
     setIsQuerying(true);
+    isStreamingRef.current = true;
     setSourcesReadyInfo(null);
     const soFar = { value: "" };
     const onDelta = (chunk: string) => appendAssistantChunk(soFar, chunk);
+    const finish = () => { setIsQuerying(false); isStreamingRef.current = false; };
 
     if (assistModes.length > 0) {
       try {
@@ -188,7 +198,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
       } catch (err: unknown) {
         toast.error(errMsg(err, t("research.refine_error")));
       } finally {
-        setIsQuerying(false);
+        finish();
       }
       return;
     }
@@ -210,12 +220,12 @@ export function useResearchChat(args: UseResearchChatArgs) {
           setCitations(merged);
         },
         onDone: () => {
-          setIsQuerying(false);
+          finish();
           // Token deduction handled server-side — just refetch wallet balance
           if (user) refetch();
           setMessages((prev) => { saveSession(prev, finalCitations); return prev; });
         },
-        onError: (err) => { toast.error(err); setIsQuerying(false); },
+        onError: (err) => { toast.error(err); finish(); },
       });
     } else {
       await streamResearchQuery({
@@ -226,11 +236,11 @@ export function useResearchChat(args: UseResearchChatArgs) {
         mode,
         onDelta,
         onDone: () => {
-          setIsQuerying(false);
+          finish();
           // Token deduction handled server-side — just refetch wallet balance
           if (user) refetch();
         },
-        onError: (err) => { toast.error(err); setIsQuerying(false); },
+        onError: (err) => { toast.error(err); finish(); },
       });
     }
   }, [mode, citations, islamicDomains, islamicLanguages, strictMode, tier, sources, user, refetch, saveSession, appendAssistantChunk, assistModes, t]);
@@ -245,8 +255,13 @@ export function useResearchChat(args: UseResearchChatArgs) {
 
     const userMsg: ChatMessage = { role: "user", content: query };
     const prevMessages = [...messages];
-    setMessages((prev) => [...prev, userMsg]);
+    const nextMessages = [...messages, userMsg];
+    setMessages(nextMessages);
     setQuery("");
+    // Persist the session as soon as the user's question is added — before the
+    // (potentially long) stream — so a mid-stream reload can never lose it and
+    // sessionIdRef is set immediately for the "latest session" load path.
+    saveSession(nextMessages, citations);
     await runQuery(userMsg.content, prevMessages);
   };
 
@@ -370,7 +385,9 @@ export function useResearchChat(args: UseResearchChatArgs) {
 
     const continueMsg: ChatMessage = { role: "user", content: t("research.continue_prompt") || "Continue from where you left off. Do not repeat what was already said." };
     const prevMessages = [...messages];
-    setMessages((prev) => [...prev, continueMsg]);
+    const nextMessages = [...messages, continueMsg];
+    setMessages(nextMessages);
+    saveSession(nextMessages, citations);
     await runQuery(continueMsg.content, prevMessages);
   };
 
