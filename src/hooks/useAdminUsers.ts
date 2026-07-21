@@ -139,8 +139,10 @@ export function useAdminUsers(enabled: boolean) {
         topup_balance: 0,
         monthly_limit: tokenAllocation,
       }, { onConflict: "user_id" });
-    if (walletError && import.meta.env.DEV) {
-      console.warn("[Admin] token wallet upsert warning:", walletError.message);
+    if (walletError) {
+      console.error("[Admin] token wallet upsert failed:", walletError);
+      toast.error(`Token wallet not updated: ${walletError.message}`);
+      return;
     }
 
     await sendNotification(
