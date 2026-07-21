@@ -56,16 +56,18 @@ const Research = () => {
     reached: legacyResearchLimitReached,
   } = useLimitReached("research");
   const researchQueriesLimit = researchQueriesLimitRaw || 3;
+  void legacyResearchLimitReached; // legacy per-tier column no longer gates — token wallet does
   const { canAfford: canAffordResearch } = useCanAfford("research", 1);
-  const researchLimitReached = legacyResearchLimitReached || !canAffordResearch;
+  const researchLimitReached = !canAffordResearch;
 
   const {
     used: islamicQueriesUsed,
     limit: islamicQueriesLimit,
     reached: legacyIslamicLimitReached,
   } = useLimitReached("islamic");
+  void legacyIslamicLimitReached; // legacy per-tier column no longer gates — token wallet does
   const { canAfford: canAffordIslamic } = useCanAfford("islamic", 1);
-  const islamicLimitReached = legacyIslamicLimitReached || !canAffordIslamic;
+  const islamicLimitReached = !canAffordIslamic;
 
   const [mode, setMode] = usePersistedState<ResearchMode>(
     "research_mode",
