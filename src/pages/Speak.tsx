@@ -5,7 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { useLimitReached } from "@/hooks/useLimitReached";
+import { useCanAfford } from "@/hooks/useTokenBalance";
+
+// Max chars per single TTS request (per-request safety cap, not a tier limit)
+const TTS_REQUEST_CHAR_CAP = 5000;
 
 import TokenCostBadge from "@/components/TokenCostBadge";
 import { Card, CardContent } from "@/components/ui/card";
