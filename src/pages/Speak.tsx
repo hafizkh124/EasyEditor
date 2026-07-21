@@ -292,6 +292,7 @@ const Speak = () => {
   const handleDownload = async () => {
     if (!text.trim()) return;
     if (text.length > charLimit) { toast.error(t("tts.text_too_long")); return; }
+    if (!canAffordTts) { toast.error(t("tts.insufficient_tokens") || "Insufficient tokens"); return; }
     setIsDownloading(true);
     try {
       const audioBlob = await callTtsApi();
