@@ -50,9 +50,15 @@ const Speak = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState(0);
 
-  // Tracks chars used this session for optimistic UI (resets on page reload, which is fine)
-  const [sessionCharsUsed, setSessionCharsUsed] = useState(0);
-  const { used: ttsCharsUsed, limit: charLimit } = useLimitReached("tts", sessionCharsUsed);
+  // Per-request character cap (no tier-based blocking; gating is token-based below)
+  const charLimit = TTS_REQUEST_CHAR_CAP;
+
+  // Token-based gating: check whether the user can afford the current text length.
+  // Uses tts_google by default; when cloned mode is on, we also check elevenlabs cost.
+  const [voiceMode, setVoiceMode] = useState<VoiceMode>("standard");
+  const ttsAction = voiceMode === "cloned" ? "tts_elevenlabs" : "tts_google";
+  const ttsQuantity = Math.max(1, Math.ceil(text.length / 1000));
+  const { canAfford: canAffordTts, cost: ttsCost, balance: tokenBalance } = useCanAfford(ttsAction, ttsQuantity);
 
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("standard");
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
