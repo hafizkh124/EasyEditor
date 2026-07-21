@@ -38,8 +38,9 @@ const OCR = () => {
 
   const { used: ocrPagesUsed, limit: ocrPagesLimitRaw, reached: legacyOcrLimitReached } = useLimitReached("ocr");
   const { canAfford: canAffordOcr } = useCanAfford("ocr", 1);
-  const ocrLimitReached = legacyOcrLimitReached || !canAffordOcr;
+  const ocrLimitReached = !canAffordOcr;
   void ocrPagesLimitRaw; // legacy limit no longer surfaced — token meter handles it
+  void legacyOcrLimitReached; // legacy per-tier column no longer gates — token wallet does
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string>("image/jpeg");

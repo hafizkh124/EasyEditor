@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useSeo } from "@/hooks/useSeo";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,8 +17,6 @@ import AppLayout from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { logActivity } from "@/lib/activityLog";
-import { useSubscription } from "@/contexts/SubscriptionContext";
-import { useLimitReached } from "@/hooks/useLimitReached";
 import { useCanAfford } from "@/hooks/useTokenBalance";
 import TokenCostBadge from "@/components/TokenCostBadge";
 import { isRtlText } from "@/utils/textUtils";
@@ -70,14 +68,8 @@ const Transcribe = () => {
   const [activeAction, setActiveAction] = useState<RefineAction | null>(null);
   const [showCompare, setShowCompare] = useState(false);
   const [sttLanguage, setSttLanguage] = useState<SttLanguage>("auto");
-  const { subscription } = useSubscription();
-  const [secondsUsed, setSecondsUsed] = useState(0);
-  // Optimistic delta over the persisted value so local increments count.
-  const optimisticDelta = Math.max(0, secondsUsed - (subscription?.transcription_seconds_used ?? 0));
-  const { limit: limitRaw, reached: legacyLimitReached } = useLimitReached("transcription", optimisticDelta);
   const { canAfford: canAffordStt } = useCanAfford("stt", 1);
-  const limitReached = legacyLimitReached || !canAffordStt;
-  const limit = limitRaw || 300; // fallback for display when tier has no explicit limit
+  const limitReached = !canAffordStt;
   const [isUploading, setIsUploading] = useState(false);
   const [progressPhase, setProgressPhase] = useState<ProgressPhase | null>(null);
   const [progressCurrent, setProgressCurrent] = useState(0);
@@ -106,13 +98,6 @@ const Transcribe = () => {
     if (!text.trim()) return;
     saveSession({ title: text.slice(0, 80), metadata: { transcript: text, originalText: original, sttLanguage } });
   }, [saveSession, sttLanguage, originalText]);
-
-  // Seed local secondsUsed from context once it loads (keeps optimistic increments working)
-  useEffect(() => {
-    if (subscription) {
-      setSecondsUsed(subscription.transcription_seconds_used);
-    }
-  }, [subscription]);
 
   // --- Audio file upload handler (FR-3: long-form chunked transcription) ---
   const resetProgress = useCallback(() => {
@@ -148,14 +133,6 @@ const Transcribe = () => {
       toast.info(t("stt.video_info"));
     }
 
-    // FR-3.6: tier quota pre-check — best-effort using file-size heuristic before
-    // we decode. The actual decoded duration is rechecked once decoding finishes.
-    const sizeBasedDurationGuess = Math.round(file.size / 16000);
-    if (limit > 0 && secondsUsed + sizeBasedDurationGuess > limit) {
-      toast.error(t("stt.quota_insufficient"));
-      return;
-    }
-
     const controller = new AbortController();
     abortRef.current = controller;
     setIsUploading(true);
@@ -170,7 +147,7 @@ const Transcribe = () => {
       const priorTranscript = transcript;
       const compose = (partial: string) => (priorTranscript ? priorTranscript + "\n" + partial : partial);
       let lastPersisted = "";
-      const { text, durationSeconds, chunkCount } = await transcribeLongForm({
+      const { text, chunkCount } = await transcribeLongForm({
         file,
         language: sttLanguage,
         signal: controller.signal,
@@ -189,16 +166,10 @@ const Transcribe = () => {
         },
       });
 
-      if (limit > 0 && secondsUsed + durationSeconds > limit) {
-        toast.error(t("stt.quota_insufficient"));
-        return;
-      }
-
       if (text) {
         const newText = transcript ? transcript + "\n" + text : text;
         setTranscript(newText);
         setOriginalText("");
-        setSecondsUsed((prev) => prev + durationSeconds);
         logActivity("stt", text.slice(0, 60));
         persistTranscript(newText, "");
         toast.success(
@@ -227,7 +198,7 @@ const Transcribe = () => {
       setIsUploading(false);
       resetProgress();
     }
-  }, [sttLanguage, limitReached, limit, secondsUsed, t, transcript, persistTranscript, resetProgress]);
+  }, [sttLanguage, limitReached, t, transcript, persistTranscript, resetProgress]);
 
   const startRecording = useCallback(async () => {
     if (limitReached) {
@@ -268,7 +239,6 @@ const Transcribe = () => {
             const newText = transcript ? transcript + "\n" + data.text : data.text;
             setTranscript(newText);
             setOriginalText("");
-            setSecondsUsed((prev) => prev + duration);
             logActivity("stt", data.text.slice(0, 60));
             persistTranscript(newText, "");
           }
