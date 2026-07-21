@@ -224,7 +224,6 @@ const Speak = () => {
     }
 
     const audioBlob = new Blob([await response.arrayBuffer()], { type: "audio/wav" });
-    setSessionCharsUsed((prev) => prev + text.length);
     return audioBlob;
   };
 
