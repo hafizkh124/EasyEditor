@@ -334,9 +334,8 @@ const Speak = () => {
 
   /* eslint-disable no-unreachable */
   const isRtlInput = selectedPersona.voiceLang === "ur" || selectedPersona.voiceLang === "ar";
-  const showUsageMeter = charLimit > 0;
-  void showUsageMeter;
-  void ttsCharsUsed;
+  void charLimit;
+  void canAffordTts; void ttsCost; void tokenBalance;
 
   return (
     <AppLayout>
