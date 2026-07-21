@@ -60,7 +60,7 @@ const Speak = () => {
   const ttsQuantity = Math.max(1, Math.ceil(text.length / 1000));
   const { canAfford: canAffordTts, cost: ttsCost, balance: tokenBalance } = useCanAfford(ttsAction, ttsQuantity);
 
-  const [voiceMode, setVoiceMode] = useState<VoiceMode>("standard");
+  // voiceMode declared above (needed for token cost computation)
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
   const [isCloning, setIsCloning] = useState(false);
   const [cloneSampleName, setCloneSampleName] = useState<string | null>(null);
