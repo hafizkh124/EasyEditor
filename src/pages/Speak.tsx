@@ -242,6 +242,7 @@ const Speak = () => {
   const handlePlay = async () => {
     if (!text.trim()) return;
     if (text.length > charLimit) { toast.error(t("tts.text_too_long")); return; }
+    if (!canAffordTts) { toast.error(t("tts.insufficient_tokens") || "Insufficient tokens"); return; }
     handleStop();
     setIsLoading(true);
     try {
