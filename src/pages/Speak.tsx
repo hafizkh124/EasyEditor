@@ -5,7 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { useLimitReached } from "@/hooks/useLimitReached";
+import { useCanAfford } from "@/hooks/useTokenBalance";
+
+// Max chars per single TTS request (per-request safety cap, not a tier limit)
+const TTS_REQUEST_CHAR_CAP = 5000;
 
 import TokenCostBadge from "@/components/TokenCostBadge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,11 +50,17 @@ const Speak = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState(0);
 
-  // Tracks chars used this session for optimistic UI (resets on page reload, which is fine)
-  const [sessionCharsUsed, setSessionCharsUsed] = useState(0);
-  const { used: ttsCharsUsed, limit: charLimit } = useLimitReached("tts", sessionCharsUsed);
+  // Per-request character cap (no tier-based blocking; gating is token-based below)
+  const charLimit = TTS_REQUEST_CHAR_CAP;
 
+  // Token-based gating: check whether the user can afford the current text length.
+  // Uses tts_google by default; when cloned mode is on, we also check elevenlabs cost.
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("standard");
+  const ttsAction = voiceMode === "cloned" ? "tts_elevenlabs" : "tts_google";
+  const ttsQuantity = Math.max(1, Math.ceil(text.length / 1000));
+  const { canAfford: canAffordTts, cost: ttsCost, balance: tokenBalance } = useCanAfford(ttsAction, ttsQuantity);
+
+  // voiceMode declared above (needed for token cost computation)
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
   const [isCloning, setIsCloning] = useState(false);
   const [cloneSampleName, setCloneSampleName] = useState<string | null>(null);
@@ -215,7 +224,6 @@ const Speak = () => {
     }
 
     const audioBlob = new Blob([await response.arrayBuffer()], { type: "audio/wav" });
-    setSessionCharsUsed((prev) => prev + text.length);
     return audioBlob;
   };
 
@@ -234,6 +242,7 @@ const Speak = () => {
   const handlePlay = async () => {
     if (!text.trim()) return;
     if (text.length > charLimit) { toast.error(t("tts.text_too_long")); return; }
+    if (!canAffordTts) { toast.error(t("tts.insufficient_tokens") || "Insufficient tokens"); return; }
     handleStop();
     setIsLoading(true);
     try {
@@ -283,6 +292,7 @@ const Speak = () => {
   const handleDownload = async () => {
     if (!text.trim()) return;
     if (text.length > charLimit) { toast.error(t("tts.text_too_long")); return; }
+    if (!canAffordTts) { toast.error(t("tts.insufficient_tokens") || "Insufficient tokens"); return; }
     setIsDownloading(true);
     try {
       const audioBlob = await callTtsApi();
@@ -326,9 +336,8 @@ const Speak = () => {
 
   /* eslint-disable no-unreachable */
   const isRtlInput = selectedPersona.voiceLang === "ur" || selectedPersona.voiceLang === "ar";
-  const showUsageMeter = charLimit > 0;
-  void showUsageMeter;
-  void ttsCharsUsed;
+  void charLimit;
+  void canAffordTts; void ttsCost; void tokenBalance;
 
   return (
     <AppLayout>
