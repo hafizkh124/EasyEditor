@@ -32,6 +32,7 @@ const AccountRejected = lazy(() => import("./pages/AccountRejected"));
 const CompleteProfile = lazy(() => import("./pages/CompleteProfile"));
 const About = lazy(() => import("./pages/About"));
 const FaqAiHaram = lazy(() => import("./pages/FaqAiHaram"));
+const Answers = lazy(() => import("./pages/Answers"));
 const Editor = lazy(() => import("./pages/Editor"));
 const OcrReview = lazy(() => import("./pages/OcrReview"));
 const Translate = lazy(() => import("./pages/Translate"));
@@ -86,6 +87,9 @@ const App = () => (
                   <Route path="/complete-profile" element={<CompleteProfile />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/faq/is-ai-haram-in-islam" element={<FaqAiHaram />} />
+                  <Route path="/answers" element={<Answers />} />
+                  <Route path="/ur/answers" element={<Answers />} />
+                  <Route path="/ar/answers" element={<Answers />} />
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/refund-policy" element={<Refund />} />

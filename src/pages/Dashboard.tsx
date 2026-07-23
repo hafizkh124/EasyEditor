@@ -19,7 +19,7 @@ import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 import TokenMeter from "@/components/TokenMeter";
 
 const Dashboard = () => {
-  useSeo({ title: "Dashboard — Al-Ulama Easy Editor", description: "Your Al-Ulama Easy Editor home: recent activity, usage limits and shortcuts to every tool.", path: "/dashboard" });
+  useSeo({ title: "Dashboard — Al-Ulama Easy Editor", description: "Your Al-Ulama Easy Editor home: recent activity, usage limits and shortcuts to every tool.", path: "/dashboard", noindex: true });
 
   const { user } = useAuth();
   const { t } = useLanguage();

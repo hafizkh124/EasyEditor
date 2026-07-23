@@ -38,7 +38,71 @@
     <meta name="twitter:image" content="https://editor.alulama.org/og-image.png" />
     <meta name="twitter:title" content="Islamic AI Research Assistant — Quran & Hadith GPT" />
     <meta name="twitter:description" content="Muslim AI assistant grounded in Quran & Hadith. Urdu, Arabic and English research, transcription, OCR and TTS." />
-</head>
+
+    <!-- Entity SEO: Organization / WebSite / SoftwareApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://editor.alulama.org/#organization",
+          "name": "Al-Ulama",
+          "url": "https://alulama.org",
+          "logo": "https://editor.alulama.org/icon-512.png",
+          "sameAs": [
+            "https://editor.alulama.org"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://editor.alulama.org/#website",
+          "url": "https://editor.alulama.org",
+          "name": "Al-Ulama Easy Editor",
+          "description": "Islamic AI assistant grounded in Quran & Hadith. Urdu, Arabic and English research, transcription, OCR and text-to-speech for scholars and students.",
+          "publisher": { "@id": "https://editor.alulama.org/#organization" },
+          "inLanguage": ["en", "ur", "ar"],
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://editor.alulama.org/research?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://editor.alulama.org/#software",
+          "name": "Al-Ulama Easy Editor",
+          "alternateName": "Easy Editor",
+          "applicationCategory": "EducationalApplication",
+          "applicationSubCategory": "Islamic Research Assistant",
+          "operatingSystem": "Web, iOS, Android",
+          "url": "https://editor.alulama.org",
+          "description": "Islamic AI research assistant with grounded Quran & Hadith answers, Urdu/Arabic/English transcription, OCR for classical manuscripts, text-to-speech and a rich editor.",
+          "inLanguage": ["en", "ur", "ar"],
+          "provider": { "@id": "https://editor.alulama.org/#organization" },
+          "publisher": { "@id": "https://editor.alulama.org/#organization" },
+          "brand": { "@type": "Brand", "name": "Al-Ulama Easy Editor" },
+          "keywords": "Islamic AI, Quran GPT, Hadith search, Urdu transcription, Arabic OCR, madrasa research assistant, Maktaba Shamila, TTS Arabic",
+          "featureList": [
+            "Grounded Islamic research over Quran, Hadith and classical texts",
+            "Urdu, Arabic and English audio-to-text transcription",
+            "OCR for scanned Arabic and Urdu manuscripts",
+            "Text-to-speech in Arabic, Urdu and English voices",
+            "Rich Arabic/Urdu editor with harakat, spelling and citation tools",
+            "Trilingual interface with full RTL support"
+          ],
+          "offers": {
+            "@type": "AggregateOffer",
+            "priceCurrency": "PKR",
+            "lowPrice": "0",
+            "highPrice": "8400",
+            "offerCount": "4"
+          }
+        }
+      ]
+    }
+    </script>
+  </head>
 
   <body>
     <div id="root"></div>

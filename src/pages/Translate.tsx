@@ -49,7 +49,7 @@ const Translate = () => {
   const [sourceText, setSourceText] = useState("");
   const [isMobile] = useState(() => window.innerWidth < 768);
 
-  useSeo({ title: "Translate — Easy Editor", description: "Translate text, PDFs, and images with AI, voice, or manual input.", path: "/translate" });
+  useSeo({ title: "Translate — Easy Editor", description: "Translate text, PDFs, and images with AI, voice, or manual input.", path: "/translate", noindex: true });
 
   const currentPageData = trans.pages.find((p) => p.pageNum === trans.currentPage);
   const completedCount = trans.pages.filter((p) => p.completed).length;

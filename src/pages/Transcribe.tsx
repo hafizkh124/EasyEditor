@@ -55,7 +55,7 @@ const STT_LANGUAGES: { code: SttLanguage; labelKey: string }[] = [
 ];
 
 const Transcribe = () => {
-  useSeo({ title: "Transcribe — Al-Ulama Easy Editor", description: "Speech-to-text in Urdu, Arabic and English with smart AI editing for scholars and students.", path: "/transcribe" });
+  useSeo({ title: "Transcribe — Al-Ulama Easy Editor", description: "Speech-to-text in Urdu, Arabic and English with smart AI editing for scholars and students.", path: "/transcribe", noindex: true });
 
   const { session } = useAuth();
   const { t } = useLanguage();

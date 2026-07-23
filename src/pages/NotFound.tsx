@@ -1,12 +1,15 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useSeo } from "@/hooks/useSeo";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
 
 const NotFound = () => {
   const location = useLocation();
   const { direction } = useLanguage();
+
+  useSeo({ title: "Page not found — Al-Ulama Easy Editor", description: "This page could not be found.", noindex: true });
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);

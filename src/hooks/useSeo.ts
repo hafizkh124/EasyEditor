@@ -12,6 +12,11 @@ interface SeoOptions {
    * Defaults to the current window pathname (with any locale prefix stripped).
    */
   path?: string;
+  /**
+   * If true, emit `<meta name="robots" content="noindex, nofollow" />` so
+   * search engines skip this route. Use for authenticated / private pages.
+   */
+  noindex?: boolean;
 }
 
 /**
@@ -22,11 +27,26 @@ interface SeoOptions {
  * The canonical points at the current locale's URL (per Google's guidance for
  * localized variants).
  */
-export function useSeo({ title, description, path }: SeoOptions) {
+export function useSeo({ title, description, path, noindex }: SeoOptions) {
   const { language } = useLanguage();
 
   useEffect(() => {
     if (title) document.title = title;
+
+    // Managed robots meta — added when noindex, removed otherwise.
+    const existingRobots = document.head.querySelector<HTMLMetaElement>(
+      'meta[name="robots"][data-managed="seo-hook"]',
+    );
+    if (noindex) {
+      const el = existingRobots ?? document.createElement("meta");
+      el.setAttribute("name", "robots");
+      el.setAttribute("content", "noindex, nofollow");
+      el.setAttribute("data-managed", "seo-hook");
+      if (!existingRobots) document.head.appendChild(el);
+    } else if (existingRobots) {
+      existingRobots.remove();
+    }
+
 
     const stripLocale = (p: string) => p.replace(/^\/(ar|ur)(?=\/|$)/, "") || "/";
     const basePath = path ?? stripLocale(window.location.pathname);
@@ -89,5 +109,5 @@ export function useSeo({ title, description, path }: SeoOptions) {
       a.setAttribute("data-managed", "seo-hook");
       document.head.appendChild(a);
     }
-  }, [title, description, path, language]);
+  }, [title, description, path, language, noindex]);
 }
