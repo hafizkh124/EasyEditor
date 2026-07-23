@@ -19,7 +19,7 @@
  * Flow per batch:
  *   1. Validate service_role key (reject all other callers)
  *   2. Read pre-processed JSON from Supabase Storage bucket: ingest-data/{dataset}/{offset}.json
- *   3. For each 100-doc chunk: embed via text-embedding-004 (batch embedding)
+ *   3. For each 100-doc chunk: embed via gemini-embedding-001 (batch embedding)
  *   4. INSERT INTO scholarly_documents ... ON CONFLICT DO NOTHING
  *   5. Update ingest_jobs table
  *   6. Return { processed, skipped, errors }
@@ -54,25 +54,11 @@ interface IngestDoc {
 }
 
 // ── Embed up to 100 texts in one API call ─────────────────────────────────────
-// Uses Gemini direct (primary) with Lovable AI Gateway as fallback.
-import { callEmbeddings } from "../_shared/aiGateway.ts";
-
-async function embedBatch(texts: string[]): Promise<number[][]> {
-  const res = await callEmbeddings({
-    model: "google/text-embedding-004",
-    input: texts,
-  });
-
-  if (!res.ok) {
-    const errTxt = await res.text().catch(() => "");
-    throw new Error(`Embedding API error ${res.status}: ${errTxt}`);
-  }
-
-  const data = await res.json();
-  return (data.data as any[])
-    .sort((a, b) => a.index - b.index)
-    .map((d) => d.embedding as number[]);
-}
+// Delegates to the canonical embedder (embed.ts) so ingested rows land in the
+// SAME vector space queries are later embedded into. This used to call
+// "text-embedding-004" (retired) via callEmbeddings, which silently produced
+// embeddings in the wrong space — see embed.ts for the full story.
+import { embedBatch } from "../_shared/embed.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

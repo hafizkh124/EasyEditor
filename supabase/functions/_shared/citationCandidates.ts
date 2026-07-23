@@ -16,6 +16,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { expandQueryTerms } from "./bilingualMap.ts";
 import { lookupTopicAnchors } from "./topicAnchors.ts";
+import { planQuery } from "./queryPlanner.ts";
 
 export interface CitationCandidate {
   type:        "quran" | "hadith";
@@ -204,7 +205,19 @@ export async function findCitationCandidates(
   const maxQ = ctx.maxQuran  ?? 3;
   const maxH = ctx.maxHadith ?? 3;
 
-  const expanded = expandQueryTerms(claim);
+  // Term expansion combines two sources:
+  //   - expandQueryTerms: the static bilingual map. Precise where it has an
+  //     entry, but it only covers ~50 topics (no نیت / موسیٰ / قتال / ترکِ نماز).
+  //   - planQuery: LLM-derived Arabic surface forms, which generalize to any
+  //     concept. Degrades to the static map on its own if the model is down.
+  // Union, not replacement — the anchor path below still relies on the
+  // original claim text, and the map's curated terms remain valuable.
+  const plan = await planQuery(claim, ctx.supabase).catch(() => null);
+  const expanded = [...new Set([
+    ...expandQueryTerms(claim),
+    ...(plan?.arabic_surface_forms ?? []),
+    ...(plan?.related_concepts ?? []),
+  ])];
   const supabase = ctx.supabase;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";

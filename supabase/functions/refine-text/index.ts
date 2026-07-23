@@ -2,7 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
 import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
-import { callChatCompletions, callEmbeddings } from "../_shared/aiGateway.ts";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
+import { findCitations } from "../_shared/citationEngine.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,7 +91,7 @@ Your task:
 1. Keep the user's original text COMPLETELY UNCHANGED at the top.
 2. After the original text, append a section titled "حوالہ جات / Sources" containing 3–6 RELEVANT references chosen ONLY from the curated Islamic sources provided below.
 3. NEVER invent, paraphrase, or fabricate a hadith, Quran verse, fatwa, or scholarly citation. If no curated source is relevant, write a brief note that no matching authentic source was found and DO NOT add any citation.
-4. For each citation, include: short title, narrator/scholar/surah info, and the source URL if available.
+4. For each citation, include: short title and narrator/scholar/surah info. Include a URL ONLY if one is given for that source below — never construct, guess, or complete a URL yourself. Sources with no URL get no link.
 5. Maintain the original language of the user's text. Section heading may be bilingual.
 
 Format:
@@ -100,7 +101,7 @@ Format:
 ---
 
 ## حوالہ جات / Sources
-1. [Title or hadith/verse reference] — short context. ([source link](URL))
+1. [Title or hadith/verse reference] — short context.
 2. ...
 
 CURATED ISLAMIC SOURCES (use ONLY these):
@@ -111,47 +112,44 @@ async function fetchIslamicContext(
   supabase: any,
   text: string,
 ): Promise<string> {
-  // 1. Embed via Gemini direct (primary) → Lovable AI (fallback).
+  // Retrieval goes through the shared citation engine (plan → lexical +
+  // semantic → RRF), the same path the Editor's reference search uses.
+  //
+  // This used to be a lone pgvector lookup that embedded with the retired
+  // "text-embedding-004" while the corpus was embedded with
+  // gemini-embedding-001 — different vector space, so similarity was
+  // meaningless and this feature returned "no sources found" essentially
+  // always. See _shared/embed.ts.
+  //
+  // rerank is off: the caller immediately makes its own LLM call to write the
+  // citations section, and a second ranking pass isn't worth the extra
+  // latency on what is already a long text-refinement request.
   try {
-    const embedResp = await callEmbeddings({
-      model: "google/text-embedding-004",
-      input: text.slice(0, 4000),
+    const result = await findCitations({
+      query: text.slice(0, 4000),
+      supabase,
+      maxResults: 8,
+      rerank: false,
     });
 
-    if (!embedResp.ok) {
-      console.warn("[refine-text/citations] embedding failed:", embedResp.status);
-      return "[No curated sources retrieved — embedding service unavailable.]";
-    }
-
-    const embedData = await embedResp.json();
-    const embedding = embedData?.data?.[0]?.embedding;
-    if (!Array.isArray(embedding)) {
-      return "[No curated sources retrieved — invalid embedding response.]";
-    }
-
-    // 2. Match against curated Islamic scholarly documents
-    const { data: matches, error } = await (supabase.rpc as any)("match_scholarly_documents", {
-      query_embedding: embedding,
-      match_threshold: 0.5,
-      match_count: 8,
-    });
-
-    if (error || !Array.isArray(matches) || matches.length === 0) {
+    if (result.results.length === 0) {
       return "[No matching curated Islamic sources were found for this text.]";
     }
 
-    // 3. Format compact context block for the model
-    return matches
-      .map((m: any, i: number) => {
+    return result.results
+      .map((m, i) => {
         const cite = m.citation_ref ?? {};
         const ref =
           cite.collection || cite.book
             ? `${cite.collection ?? cite.book}${cite.hadith_number ? ` #${cite.hadith_number}` : ""}${cite.grade ? ` (${cite.grade})` : ""}`
             : cite.surah_name
             ? `Quran ${cite.surah_name} ${cite.surah_number ?? ""}:${cite.verse ?? ""}`
-            : cite.title || m.title || m.domain;
+            : cite.title || m.domain;
+        // Only emit a URL when the corpus actually has one — the prompt
+        // forbids the model from inventing links, so give it nothing to
+        // complete when the source is URL-less.
         const url = m.source_url || cite.url || "";
-        return `Source ${i + 1} [${m.domain}] — ${ref}${url ? ` (${url})` : ""}\n${(m.content ?? "").slice(0, 600)}`;
+        return `Source ${i + 1} [${m.domain}] — ${ref}${url ? ` (${url})` : ""}\n${(m.content_ar || m.content || "").slice(0, 600)}`;
       })
       .join("\n\n");
   } catch (e) {

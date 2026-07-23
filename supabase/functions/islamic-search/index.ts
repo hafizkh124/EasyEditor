@@ -4,6 +4,7 @@ import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
 import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 import { expandQueryTerms } from "../_shared/bilingualMap.ts";
 import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
+import { planQuery } from "../_shared/queryPlanner.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 
@@ -298,19 +299,40 @@ serve(async (req) => {
             if (wantsHadith) sourceTypes.push("hadith");
             if (sourceTypes.length === 0) return [];
 
-            // Build expanded term list — original query + bilingual synonyms.
-            // The smart-search RPC handles diacritic + letter-variant tolerance
-            // server-side, so we can pass raw Urdu / Arabic / English terms
-            // without pre-normalizing.
-            const expanded = expandQueryTerms(query);
+            // Build expanded term list — bilingual synonyms plus the query
+            // planner's Arabic surface forms. The static map covers ~50 topics;
+            // the planner generalizes to anything else (and falls back to the
+            // map by itself when the model is unavailable).
+            // Normalization (diacritics + letter variants) happens server-side
+            // in the RPC, so raw Urdu / Arabic / English terms are fine here.
+            const plan = await planQuery(query, supabase).catch(() => null);
+            const expanded = [...new Set([
+              ...expandQueryTerms(query),
+              ...(plan?.arabic_surface_forms ?? []),
+              ...(plan?.related_concepts ?? []),
+            ])];
             // Cap to a sensible upper bound so the SQL UNNEST stays small.
             const terms = expanded.slice(0, 12);
 
-            const { data, error } = await supabase.rpc("search_documents_smart", {
-              p_terms:        terms,
-              p_source_types: sourceTypes,
-              p_match_limit:  30,
-            });
+            // When the user named specific books ("صحیح بخاری میں..."), use the
+            // scoped RPC so the local corpus honours that restriction. Without
+            // a collection scope, stay on search_documents_smart — it also
+            // matches `content`, which picks up English-side hits the
+            // content_ar-only scoped search would miss.
+            const planCollections = plan?.scope.collections ?? [];
+            const { data, error } = planCollections.length > 0
+              ? await supabase.rpc("search_documents_scoped", {
+                  p_patterns:     terms,
+                  p_source_types: sourceTypes,
+                  p_collections:  planCollections,
+                  p_surah:        plan?.scope.surah ?? null,
+                  p_limit:        30,
+                })
+              : await supabase.rpc("search_documents_smart", {
+                  p_terms:        terms,
+                  p_source_types: sourceTypes,
+                  p_match_limit:  30,
+                });
 
             if (error) {
               console.error("Tier K smart-search error:", error);
