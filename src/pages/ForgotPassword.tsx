@@ -10,7 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { toast } from "sonner";
 
 const ForgotPassword = () => {
-  useSeo({ title: "Forgot password — Al-Ulama Easy Editor", description: "Reset your Al-Ulama Easy Editor password by email to regain access to your account.", path: "/forgot-password" });
+  useSeo({ title: "Forgot password — Al-Ulama Easy Editor", description: "Reset your Al-Ulama Easy Editor password by email to regain access to your account.", path: "/forgot-password", noindex: true });
 
   const { t, direction } = useLanguage();
   const [email, setEmail] = useState("");
