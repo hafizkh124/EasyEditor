@@ -103,8 +103,8 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, t }: ResourceSearc
   const insertCountSummary = () => {
     const c = response?.count;
     if (!c) return;
-    const terms = response?.plan_summary.arabic_terms.join("، ") ?? "";
-    const scope = response?.plan_summary.scope_label ?? "";
+    const terms = (response?.plan_summary?.arabic_terms ?? []).join("، ");
+    const scope = response?.plan_summary?.scope_label ?? "";
     const summary =
       `${scope}: «${terms}» ${t("editor.count_summary_occurrences")} ${c.total} ` +
       `(${c.rows_matched} ${t("editor.count_summary_places")})`;
@@ -113,7 +113,12 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, t }: ResourceSearc
     toast.success(t("editor.reference_inserted"));
   };
 
-  const isCount = response?.intent === "count" && response.count;
+  const isCount = response?.intent === "count" && !!response.count;
+  // Defensive: an older/cached `resource-search` (or any non-engine response)
+  // may omit plan_summary. Never dereference it directly — a missing field
+  // must degrade the UI, not white-screen the whole editor.
+  const arabicTerms = response?.plan_summary?.arabic_terms ?? [];
+  const scopeLabel = response?.plan_summary?.scope_label ?? "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -145,13 +150,13 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, t }: ResourceSearc
         {/* What the engine actually searched for — the Arabic surface forms it
             derived from the question. Makes an otherwise opaque expansion step
             inspectable, so a bad result is diagnosable by the user. */}
-        {response && response.plan_summary.arabic_terms.length > 0 && (
+        {arabicTerms.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
             <span className="text-muted-foreground flex items-center gap-1">
               <Sparkles className="h-3 w-3" />
               {t("editor.searched_terms")}
             </span>
-            {response.plan_summary.arabic_terms.map((term) => (
+            {arabicTerms.map((term) => (
               <span
                 key={term}
                 dir="rtl"
@@ -160,9 +165,9 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, t }: ResourceSearc
                 {term}
               </span>
             ))}
-            {response.plan_summary.scope_label && (
+            {scopeLabel && (
               <span className="text-muted-foreground" dir="rtl">
-                · {response.plan_summary.scope_label}
+                · {scopeLabel}
               </span>
             )}
           </div>
