@@ -121,7 +121,7 @@ function buildContextBlock(results: IslamicResult[]): string {
   }).join("\n\n");
 }
 
-function buildSystemPrompt(contextBlock: string, strictMode: boolean): string {
+function buildSystemPrompt(contextBlock: string, strictMode: boolean, hasCountFacts = false): string {
   const modeInstruction = strictMode
     ? `STRICT SOURCE MODE:
 - You MUST answer ONLY based on the provided Islamic sources below.
@@ -146,12 +146,25 @@ ANTI-HALLUCINATION RULES — CRITICAL:
 3. NEVER attribute a ruling or opinion to a scholar without a source reference.
 4. If sources are insufficient, clearly state what the sources DO cover, then note the gap.
 5. Distinguish between: (a) direct quotes from sources, (b) your summary of sources, (c) general knowledge.
+${hasCountFacts ? `6. An EXACT_COUNT_FACTS block IS a provided source, on the same footing as RETRIEVED SOURCES. Once you have used it to state a number anywhere in your answer, do NOT also say "the sources don't mention/discuss this" — that directly contradicts the number you just gave. If EXACT_COUNT_FACTS covers the question, the sources DID cover it.` : ""}
 
 ANSWER STRUCTURE — USE THIS EXACT FORMAT:
 
 ## 📝 جواب / Answer
 Start with a clear, concise answer to the question (2-3 sentences).
+${hasCountFacts ? `Lead with the exact figure from EXACT_COUNT_FACTS.` : ""}
+${hasCountFacts ? `
+## 📖 قرآنی دلائل / Quranic Evidence
+EXACT_COUNT_FACTS gives you a NUMBER, not verse text — it cannot supply Arabic
+quotes. So: if RETRIEVED SOURCES also contains actual Quran passages, quote
+2-3 of them as illustrative examples. If it contains none, SKIP this section
+entirely (omit the heading) rather than writing "no evidence found" — that
+would contradict the count you already gave in the Answer section.
 
+## 📜 احادیث / Hadith Evidence
+Same rule: quote Hadith passages only if RETRIEVED SOURCES actually has them.
+Otherwise skip this section entirely — do not write "no evidence" here either.
+` : `
 ## 📖 قرآنی دلائل / Quranic Evidence
 (Skip this section if no Quran sources are relevant)
 - Quote the Arabic verse with full diacritics
@@ -163,7 +176,7 @@ Start with a clear, concise answer to the question (2-3 sentences).
 - Quote the hadith text (Arabic if available, then translation)
 - Cite as [Collection Name, Hadith No. X]
 - Include narrator and grade if available
-
+`}
 ## 🧾 خلاصہ / Summary
 A brief 2-3 sentence summary tying the evidence together.
 
@@ -552,8 +565,17 @@ serve(async (req) => {
     // count instead of declining. Counting lives in count_term_occurrences
     // (migration 20260723210000) — the same function the Editor's reference
     // search uses. Non-fatal: any failure just omits the block.
+    // Guard: a "degraded" plan came from the keyword fallback (planQuery's
+    // model call failed or returned nothing usable), not the LLM planner. Its
+    // arabic_surface_forms can be raw leftover words from the user's Urdu
+    // sentence rather than actual surface forms of ONE specific term (seen in
+    // practice: "پانی اور زمین کتنی بار؟" degraded to surface_forms containing
+    // "قرآن، کریم، کتنی، بار، ہے؟" — count_term_occurrences then summed
+    // occurrences of ALL of those unrelated words into one bogus "58 times").
+    // A wrong confident number is worse than an honest "I don't have that
+    // statistic", so count facts are only trusted from a real plan.
     let countBlock = "";
-    if (queryPlan?.intent === "count" && queryPlan.arabic_surface_forms.length > 0) {
+    if (queryPlan?.intent === "count" && !queryPlan.degraded && queryPlan.arabic_surface_forms.length > 0) {
       try {
         const { data: countRows, error: countErr } = await supabase.rpc("count_term_occurrences", {
           p_patterns:                 queryPlan.arabic_surface_forms,
@@ -598,7 +620,7 @@ serve(async (req) => {
     // grounding context so the model answers the "how many times" question with
     // the authoritative figure rather than declining.
     const messages: any[] = [
-      { role: "system", content: buildSystemPrompt(contextBlock + countBlock, strictMode ?? true) },
+      { role: "system", content: buildSystemPrompt(contextBlock + countBlock, strictMode ?? true, countBlock.length > 0) },
     ];
     if (chatHistory && chatHistory.length > 0) {
       for (const msg of chatHistory) {

@@ -79,7 +79,7 @@ const PLANNER_SYSTEM_PROMPT = `You plan retrieval over a corpus of the Qur'an (T
 Decide:
 
 1. "intent":
-   - "count"     — the user asks HOW MANY TIMES a word/name appears ("کتنی بار", "how many times", "كم مرة").
+   - "count"     — the user asks HOW MANY TIMES a SINGLE specific word/name appears ("کتنی بار", "how many times", "كم مرة"). If the user asks about TWO OR MORE unrelated words/concepts in one count question (e.g. "پانی اور زمین کتنی بار آیا ہے" — water AND land), do NOT merge them into one count: pick "count" and put ONLY the single most specific term the question is really about into arabic_surface_forms, OR use "topical" instead if no single term dominates. A count across multiple unrelated words is a meaningless number — never produce one.
    - "reference" — the user names an exact location ("بخاری 7", "البقرہ 255", "Surah 2 verse 255").
    - "phrase"    — the user quotes or pastes actual scripture text and wants it identified.
    - "topical"   — anything else: the user wants passages ABOUT a subject.

@@ -415,6 +415,21 @@ export async function findCitations(input: FindCitationsInput): Promise<Citation
       countChannel(supabase, plan, scope),
       lexicalChannel(supabase, plan, scope),
     ]);
+    // A degraded (fallback-heuristic) plan can pull raw leftover words from
+    // the question itself into arabic_surface_forms — the terms are visible
+    // as chips in the UI, but the number needs its own explicit warning too,
+    // since a confident-looking figure is easy to trust without checking the
+    // chips. See the matching guard in islamic-search/index.ts for the case
+    // where this was observed producing a meaningless combined count.
+    const countWithWarning = count && plan.degraded
+      ? {
+          ...count,
+          caveats: [
+            "⚠️ یہ الفاظ خودکار تجزیے کے بجائے سادہ اصول سے چنے گئے ہیں — نیچے دی گئی چِپس جانچ لیں؛ اگر غیر متعلقہ الفاظ نظر آئیں تو صرف مطلوبہ لفظ لکھ کر دوبارہ تلاش کریں۔",
+            ...count.caveats,
+          ],
+        }
+      : count;
     return {
       intent: "count",
       plan_summary,
@@ -423,7 +438,7 @@ export async function findCitations(input: FindCitationsInput): Promise<Citation
         score: 1 / (i + 1),
         channels: ["lexical"],
       })),
-      count,
+      count: countWithWarning,
     };
   }
 
