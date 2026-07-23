@@ -46,21 +46,73 @@ const TIER_C_DOMAINS = [
 const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS];
 
+// Surah names by number — used to fill a clean reference when a retrieved row
+// (typically a Tier-A API result) has an empty surah_name. The local tanzil
+// corpus populates surah_name itself; this is the fallback for the rest.
+const SURAH_NAMES: Record<number, string> = {
+  1: "Al-Fatihah", 2: "Al-Baqarah", 3: "Aal-E-Imran", 4: "An-Nisa", 5: "Al-Maidah",
+  6: "Al-Anam", 7: "Al-Araf", 8: "Al-Anfal", 9: "At-Tawbah", 10: "Yunus",
+  11: "Hud", 12: "Yusuf", 13: "Ar-Rad", 14: "Ibrahim", 15: "Al-Hijr",
+  16: "An-Nahl", 17: "Al-Isra", 18: "Al-Kahf", 19: "Maryam", 20: "Ta-Ha",
+  21: "Al-Anbiya", 22: "Al-Hajj", 23: "Al-Muminun", 24: "An-Nur", 25: "Al-Furqan",
+  26: "Ash-Shuara", 27: "An-Naml", 28: "Al-Qasas", 29: "Al-Ankabut", 30: "Ar-Rum",
+  31: "Luqman", 32: "As-Sajdah", 33: "Al-Ahzab", 34: "Saba", 35: "Fatir",
+  36: "Ya-Sin", 37: "As-Saffat", 38: "Sad", 39: "Az-Zumar", 40: "Ghafir",
+  41: "Fussilat", 42: "Ash-Shura", 43: "Az-Zukhruf", 44: "Ad-Dukhan", 45: "Al-Jathiyah",
+  46: "Al-Ahqaf", 47: "Muhammad", 48: "Al-Fath", 49: "Al-Hujurat", 50: "Qaf",
+  51: "Adh-Dhariyat", 52: "At-Tur", 53: "An-Najm", 54: "Al-Qamar", 55: "Ar-Rahman",
+  56: "Al-Waqiah", 57: "Al-Hadid", 58: "Al-Mujadila", 59: "Al-Hashr", 60: "Al-Mumtahanah",
+  61: "As-Saf", 62: "Al-Jumuah", 63: "Al-Munafiqun", 64: "At-Taghabun", 65: "At-Talaq",
+  66: "At-Tahrim", 67: "Al-Mulk", 68: "Al-Qalam", 69: "Al-Haqqah", 70: "Al-Maarij",
+  71: "Nuh", 72: "Al-Jinn", 73: "Al-Muzzammil", 74: "Al-Muddaththir", 75: "Al-Qiyamah",
+  76: "Al-Insan", 77: "Al-Mursalat", 78: "An-Naba", 79: "An-Naziat", 80: "Abasa",
+  81: "At-Takwir", 82: "Al-Infitar", 83: "Al-Mutaffifin", 84: "Al-Inshiqaq", 85: "Al-Buruj",
+  86: "At-Tariq", 87: "Al-Ala", 88: "Al-Ghashiyah", 89: "Al-Fajr", 90: "Al-Balad",
+  91: "Ash-Shams", 92: "Al-Layl", 93: "Ad-Duha", 94: "Ash-Sharh", 95: "At-Tin",
+  96: "Al-Alaq", 97: "Al-Qadr", 98: "Al-Bayyinah", 99: "Az-Zalzalah", 100: "Al-Adiyat",
+  101: "Al-Qariah", 102: "At-Takathur", 103: "Al-Asr", 104: "Al-Humazah", 105: "Al-Fil",
+  106: "Quraysh", 107: "Al-Maun", 108: "Al-Kawthar", 109: "Al-Kafirun", 110: "An-Nasr",
+  111: "Al-Masad", 112: "Al-Ikhlas", 113: "Al-Falaq", 114: "An-Nas",
+};
+
 function buildContextBlock(results: IslamicResult[]): string {
   if (results.length === 0) return "\n\n[No Islamic sources were retrieved for this query. If you have general knowledge about this topic, clearly state that it comes from general knowledge, not from verified sources.]";
 
   return "\n\n⚡ RETRIEVED SOURCES (" + results.length + " total):\n\n" + results.map((r, i) => {
     const cite = r.citation_ref;
+    // Clean, human-readable reference line. Deliberately NOT a JSON-object
+    // shape: the old `CITATION_REF: { ... }` format tempted the model to copy
+    // the raw braces (and empty fields) verbatim into its References section.
     let citeLine = "";
 
     if (r.domain === "dorar" || r.domain === "hadith-api" || r.domain === "hadith-index" || r.domain === "hadith-json" || r.domain === "islamicurdubooks" || r.domain === "shamilaurdu") {
-      citeLine = `CITATION_REF: { type: "hadith", collection: "${cite.collection ?? cite.book ?? ""}", hadith_number: "${cite.hadith_number ?? ""}", chapter: "${cite.chapter ?? ""}", grade: "${cite.grade ?? ""}", narrator: "${cite.rawi ?? ""}", author: "${cite.author ?? ""}" }`;
+      const book = cite.collection ?? cite.book ?? "Hadith";
+      const parts = [
+        `${book}${cite.hadith_number ? `, Hadith ${cite.hadith_number}` : ""}`,
+        cite.grade ? `Grade: ${cite.grade}` : "",
+        cite.rawi ? `Narrator: ${cite.rawi}` : "",
+      ].filter(Boolean);
+      citeLine = `REFERENCE: ${parts.join(" — ")}`;
     } else if (r.domain === "alquran" || r.domain === "quran-com" || r.domain === "tanzil") {
-      citeLine = `CITATION_REF: { type: "quran", surah_number: ${cite.surah_number ?? 0}, surah_name: "${cite.surah_name ?? ""}", verse: ${cite.verse ?? 0}, juz: ${cite.juz ?? ""} }`;
+      const num = Number(cite.surah_number) || 0;
+      const name = cite.surah_name || SURAH_NAMES[num] || (num ? `Surah ${num}` : "Quran");
+      citeLine = `REFERENCE: Quran — ${name} ${num || "?"}:${cite.verse ?? "?"}`;
     } else if (r.domain === "islamqa" || r.domain === "islamweb" || r.domain === "dar-alifta") {
-      citeLine = `CITATION_REF: { type: "fatwa", site: "${cite.url ? new URL(cite.url).hostname : r.domain}", fatwa_number: "${cite.fatwa_number ?? ""}", scholar: "${cite.scholar ?? ""}", url: "${cite.url ?? ""}" }`;
+      const site = cite.url ? new URL(cite.url).hostname : r.domain;
+      const parts = [
+        `Fatwa (${site})`,
+        cite.fatwa_number ? `No. ${cite.fatwa_number}` : "",
+        cite.scholar ? `Scholar: ${cite.scholar}` : "",
+      ].filter(Boolean);
+      citeLine = `REFERENCE: ${parts.join(" — ")}`;
     } else {
-      citeLine = `CITATION_REF: { type: "classical", source: "${r.domain}", title: "${cite.title ?? cite.book ?? ""}", author: "${cite.author ?? ""}", volume: ${cite.volume ?? ""}, page: ${cite.page ?? ""} }`;
+      const parts = [
+        cite.title ?? cite.book ?? r.domain,
+        cite.author ? `by ${cite.author}` : "",
+        cite.volume ? `vol. ${cite.volume}` : "",
+        cite.page ? `p. ${cite.page}` : "",
+      ].filter(Boolean);
+      citeLine = `REFERENCE: ${parts.join(", ")}`;
     }
 
     // Include both Arabic and English content when available
@@ -116,7 +168,11 @@ Start with a clear, concise answer to the question (2-3 sentences).
 A brief 2-3 sentence summary tying the evidence together.
 
 ## 📚 حوالہ جات / References
-Numbered list of all sources cited.
+Numbered list of all sources cited, each as a clean human-readable reference
+(e.g. "Al-Baqarah 2:255" or "Sahih al-Bukhari, Hadith 1"). NEVER output raw
+object/JSON syntax, curly braces, or field names like `surah_number:` — write
+references in plain prose only. If a source's surah name is missing, use the
+surah number ("Surah 18:60"); never leave a name blank or print `""`.
 
 CITATION RULES:
 - Every factual claim MUST have at least one inline citation in square brackets.
@@ -204,6 +260,11 @@ serve(async (req) => {
       (d: string) => ALL_DOMAINS.includes(d),
     );
     void tier; // retained in scope for future telemetry / quota differentiation
+
+    // Plan the query once, up-front. Reused by Tier K (term expansion + scope)
+    // and, for "how many times…" questions, by the exact-count block below.
+    // Never throws — degrades to a keyword-only plan when the model is down.
+    const queryPlan = await planQuery(query, supabase).catch(() => null);
 
     // --- Fan-out: Tier A (always), Tier B (Pro/Ultra), Tier C (Pro/Ultra), Tier K (keyword) ---
     const tierADomains = effectiveDomains.filter((d) => TIER_A_DOMAINS.includes(d));
@@ -305,11 +366,10 @@ serve(async (req) => {
             // map by itself when the model is unavailable).
             // Normalization (diacritics + letter variants) happens server-side
             // in the RPC, so raw Urdu / Arabic / English terms are fine here.
-            const plan = await planQuery(query, supabase).catch(() => null);
             const expanded = [...new Set([
               ...expandQueryTerms(query),
-              ...(plan?.arabic_surface_forms ?? []),
-              ...(plan?.related_concepts ?? []),
+              ...(queryPlan?.arabic_surface_forms ?? []),
+              ...(queryPlan?.related_concepts ?? []),
             ])];
             // Cap to a sensible upper bound so the SQL UNNEST stays small.
             const terms = expanded.slice(0, 12);
@@ -319,13 +379,13 @@ serve(async (req) => {
             // a collection scope, stay on search_documents_smart — it also
             // matches `content`, which picks up English-side hits the
             // content_ar-only scoped search would miss.
-            const planCollections = plan?.scope.collections ?? [];
+            const planCollections = queryPlan?.scope.collections ?? [];
             const { data, error } = planCollections.length > 0
               ? await supabase.rpc("search_documents_scoped", {
                   p_patterns:     terms,
                   p_source_types: sourceTypes,
                   p_collections:  planCollections,
-                  p_surah:        plan?.scope.surah ?? null,
+                  p_surah:        queryPlan?.scope.surah ?? null,
                   p_limit:        30,
                 })
               : await supabase.rpc("search_documents_smart", {
@@ -471,16 +531,74 @@ serve(async (req) => {
       }
     }
 
+    // Fill a missing surah_name on Quran rows (common on Tier-A API results)
+    // so BOTH the model context AND the client citation panel show a name
+    // instead of a blank. Mutates in place — allResults feeds both paths.
+    for (const r of allResults) {
+      const c = r.citation_ref;
+      if (c && (c.surah_number != null) && !c.surah_name) {
+        const nm = SURAH_NAMES[Number(c.surah_number)];
+        if (nm) c.surah_name = nm;
+      }
+    }
+
     const contextBlock = buildContextBlock(allResults);
+
+    // ── Exact-count facts ────────────────────────────────────────────────
+    // When the user asks "how many times…", retrieval alone cannot answer —
+    // the model only sees a sample of passages, so it (correctly) says it has
+    // no statistic. Here we run the exact SQL aggregation and hand the model
+    // the real number + per-surah/per-book breakdown, so it can state the
+    // count instead of declining. Counting lives in count_term_occurrences
+    // (migration 20260723210000) — the same function the Editor's reference
+    // search uses. Non-fatal: any failure just omits the block.
+    let countBlock = "";
+    if (queryPlan?.intent === "count" && queryPlan.arabic_surface_forms.length > 0) {
+      try {
+        const { data: countRows, error: countErr } = await supabase.rpc("count_term_occurrences", {
+          p_patterns:                 queryPlan.arabic_surface_forms,
+          p_source_types:             queryPlan.scope.source_types.length > 0 ? queryPlan.scope.source_types : null,
+          p_collections:              queryPlan.scope.collections.length > 0 ? queryPlan.scope.collections : null,
+          p_surah:                    queryPlan.scope.surah,
+          p_exclude_definite_article: queryPlan.is_proper_noun,
+        });
+        if (!countErr && Array.isArray(countRows) && countRows.length > 0) {
+          const total = countRows.reduce((s: number, r: any) => s + (Number(r.occurrences) || 0), 0);
+          const rowsMatched = countRows.reduce((s: number, r: any) => s + (Number(r.rows_matched) || 0), 0);
+          const breakdown = countRows
+            .slice(0, 40)
+            .map((r: any) => `  - ${r.bucket_label}: ${r.occurrences}`)
+            .join("\n");
+          const hasHadith = queryPlan.scope.source_types.includes("hadith");
+          const caveats = [
+            `یہ گنتی ان الفاظ پر ہوئی: ${queryPlan.arabic_surface_forms.join("، ")}`,
+            hasHadith ? "احادیث کا متن سند (اسناد) سمیت محفوظ ہے، اس لیے سند کے الفاظ بھی شمار ہوتے ہیں۔ نیز ہمارے ذخیرے میں ١٧ کتبِ حدیث ہیں — گنتی انہی کی ہے۔" : "",
+            queryPlan.is_proper_noun ? "چونکہ یہ اسمِ علم ہے، «ال» کے ساتھ آنے والی صورتیں شمار سے خارج کی گئی ہیں۔" : "",
+          ].filter(Boolean).join(" ");
+
+          countBlock =
+            `\n\n🔢 EXACT_COUNT_FACTS (computed directly over the full corpus — AUTHORITATIVE, use these numbers verbatim):\n` +
+            `Total occurrences: ${total}\n` +
+            `Distinct passages containing it: ${rowsMatched}\n` +
+            `Breakdown by ${hasHadith ? "book" : "surah"}:\n${breakdown}\n` +
+            `Caveats to state to the user: ${caveats}\n` +
+            `INSTRUCTION: The user asked HOW MANY TIMES. Lead your answer with the exact total (${total}) as a definitive figure — do NOT say the sources lack a statistic. Present the breakdown, then the caveats. This count IS authoritative.`;
+        }
+      } catch (e) {
+        console.error("[islamic-search] count block failed:", e);
+      }
+    }
 
     // Emit SSE "sources ready" event — client shows indicator before Gemini starts
     const encoder = new TextEncoder();
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
 
-    // Build Gemini messages
+    // Build Gemini messages. The count block (when present) is appended to the
+    // grounding context so the model answers the "how many times" question with
+    // the authoritative figure rather than declining.
     const messages: any[] = [
-      { role: "system", content: buildSystemPrompt(contextBlock, strictMode ?? true) },
+      { role: "system", content: buildSystemPrompt(contextBlock + countBlock, strictMode ?? true) },
     ];
     if (chatHistory && chatHistory.length > 0) {
       for (const msg of chatHistory) {
