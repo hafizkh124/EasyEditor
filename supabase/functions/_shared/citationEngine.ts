@@ -102,8 +102,51 @@ function toCitation(row: any): (EngineCitation & { match_key: string }) | null {
   };
 }
 
+/** Fallback lexical search over the long-established search_documents_smart
+ *  RPC. It matches BOTH content and content_ar and has no scope parameters, so
+ *  we post-filter by collection/surah here. Used when search_documents_scoped
+ *  is unavailable (e.g. a stale PostgREST schema cache right after the function
+ *  was added) or returns nothing — search_documents_smart has been in the
+ *  schema for a long time and is reliably in PostgREST's cache. */
+async function smartFallback(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  patterns: string[],
+  scope: QueryPlan["scope"],
+): Promise<Array<EngineCitation & { match_key: string }>> {
+  try {
+    const { data, error } = await supabase.rpc("search_documents_smart", {
+      p_terms: patterns,
+      p_source_types: scope.source_types.length > 0 ? scope.source_types : null,
+      p_match_limit: LEXICAL_LIMIT,
+    });
+    if (error) {
+      console.error("[citationEngine] search_documents_smart fallback error:", error);
+      return [];
+    }
+    let rows = data ?? [];
+    if (scope.collections.length > 0) {
+      // deno-lint-ignore no-explicit-any
+      rows = rows.filter((r: any) => {
+        const c = r?.citation_ref?.collection ?? r?.citation_ref?.book;
+        return c && scope.collections.includes(c);
+      });
+    }
+    if (scope.surah != null) {
+      // deno-lint-ignore no-explicit-any
+      rows = rows.filter((r: any) => Number(r?.citation_ref?.surah_number) === scope.surah);
+    }
+    // deno-lint-ignore no-explicit-any
+    return rows.map(toCitation).filter(Boolean) as any[];
+  } catch (e) {
+    console.error("[citationEngine] smart fallback threw:", e);
+    return [];
+  }
+}
+
 /** Lexical channel — diacritic-tolerant term matching over content_ar, with
- *  collection/surah scoping. */
+ *  collection/surah scoping. Falls back to search_documents_smart if the
+ *  scoped RPC errors or finds nothing. */
 async function lexicalChannel(
   // deno-lint-ignore no-explicit-any
   supabase: any,
@@ -123,16 +166,21 @@ async function lexicalChannel(
       p_surah: scope.surah,
       p_limit: LEXICAL_LIMIT,
     });
-    if (error) {
-      console.error("[citationEngine] search_documents_scoped error:", error);
-      return [];
+    if (!error) {
+      // deno-lint-ignore no-explicit-any
+      const mapped = (data ?? []).map(toCitation).filter(Boolean) as any[];
+      if (mapped.length > 0) return mapped;
+      // Scoped ran but found nothing in content_ar — try the broader smart
+      // search (which also matches `content`) before giving up.
+      return await smartFallback(supabase, patterns, scope);
     }
-    // deno-lint-ignore no-explicit-any
-    return (data ?? []).map(toCitation).filter(Boolean) as any[];
+    console.error("[citationEngine] search_documents_scoped error:", error);
   } catch (e) {
     console.error("[citationEngine] lexical channel threw:", e);
-    return [];
   }
+  // Scoped errored (most likely a stale PostgREST schema cache immediately
+  // after the migration was applied) — fall back so lexical search still works.
+  return await smartFallback(supabase, patterns, scope);
 }
 
 /** Semantic channel — pgvector over the clean Arabic paraphrase.
@@ -145,9 +193,19 @@ async function semanticChannel(
   supabase: any,
   plan: QueryPlan,
   scope: QueryPlan["scope"],
+  rawQuery: string,
 ): Promise<Array<EngineCitation & { match_key: string }>> {
   try {
-    const embedding = await embedQuery(plan.semantic_query_ar);
+    // For a pasted/quoted PHRASE, embed the exact text — the planner's
+    // semantic_query_ar is a MEANING paraphrase, which lowers similarity
+    // against the verbatim scripture the user quoted. For topical questions
+    // the paraphrase is better (it strips Urdu instruction words). Only use
+    // the raw query when it's actually Arabic script.
+    const rawIsArabic = /[؀-ۿ]/.test(rawQuery) && !/[a-zA-Z]{3,}/.test(rawQuery);
+    const embedText = plan.intent === "phrase" && rawIsArabic
+      ? rawQuery
+      : plan.semantic_query_ar;
+    const embedding = await embedQuery(embedText || plan.semantic_query_ar);
     if (!embedding) return [];
 
     // Domain filter mirrors the source_type scope. The RPC filters on domain,
@@ -372,7 +430,7 @@ export async function findCitations(input: FindCitationsInput): Promise<Citation
   // ── Retrieval intents: hybrid + fusion (+ optional rerank) ────────────────
   const [lexical, semantic] = await Promise.all([
     lexicalChannel(supabase, plan, scope),
-    semanticChannel(supabase, plan, scope),
+    semanticChannel(supabase, plan, scope, query),
   ]);
 
   // Lexical goes first so its object wins on duplicate keys — it carries
