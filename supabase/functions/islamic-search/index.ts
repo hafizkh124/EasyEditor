@@ -170,9 +170,9 @@ A brief 2-3 sentence summary tying the evidence together.
 ## 📚 حوالہ جات / References
 Numbered list of all sources cited, each as a clean human-readable reference
 (e.g. "Al-Baqarah 2:255" or "Sahih al-Bukhari, Hadith 1"). NEVER output raw
-object/JSON syntax, curly braces, or field names like `surah_number:` — write
+object/JSON syntax, curly braces, or field names like "surah_number:" — write
 references in plain prose only. If a source's surah name is missing, use the
-surah number ("Surah 18:60"); never leave a name blank or print `""`.
+surah number ("Surah 18:60"); never leave a name blank or print "".
 
 CITATION RULES:
 - Every factual claim MUST have at least one inline citation in square brackets.

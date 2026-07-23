@@ -787,6 +787,22 @@ export type Database = {
         }[]
       }
       check_token_balance: { Args: { p_user_id: string }; Returns: Json }
+      count_term_occurrences: {
+        Args: {
+          p_collections?: string[]
+          p_exclude_definite_article?: boolean
+          p_patterns: string[]
+          p_source_types?: string[]
+          p_surah?: number
+        }
+        Returns: {
+          bucket_key: string
+          bucket_label: string
+          occurrences: number
+          rows_matched: number
+          source_type: string
+        }[]
+      }
       credit_tokens: {
         Args: {
           p_action_type: string
@@ -815,6 +831,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      escape_arabic_regex: { Args: { t: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -878,6 +895,26 @@ export type Database = {
           embedded: number
           source_type: string
           total: number
+        }[]
+      }
+      search_documents_scoped: {
+        Args: {
+          p_collections?: string[]
+          p_limit?: number
+          p_patterns: string[]
+          p_source_types?: string[]
+          p_surah?: number
+        }
+        Returns: {
+          citation_ref: Json
+          content: string
+          content_ar: string
+          domain: string
+          id: string
+          language: string
+          match_score: number
+          source_type: string
+          source_url: string
         }[]
       }
       search_documents_smart: {
