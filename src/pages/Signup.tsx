@@ -14,7 +14,7 @@ import { Loader2, Gift } from "lucide-react";
 import { REFERRAL_PARAM, stashPendingReferralCode, applyPendingReferral, consumePendingReferralCode } from "@/lib/referral";
 
 const Signup = () => {
-  useSeo({ title: "Sign up — Al-Ulama Easy Editor", description: "Create your Al-Ulama Easy Editor account to use AI transcription, OCR, TTS and grounded research.", path: "/signup" });
+  useSeo({ title: "Sign up — Al-Ulama Easy Editor", description: "Create your Al-Ulama Easy Editor account to use AI transcription, OCR, TTS and grounded research.", path: "/signup", noindex: true });
 
   const { user, loading } = useAuth();
   const { t, direction } = useLanguage();

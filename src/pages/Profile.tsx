@@ -21,7 +21,7 @@ import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 import TokenMeter from "@/components/TokenMeter";
 
 const Profile = () => {
-  useSeo({ title: "Profile — Al-Ulama Easy Editor", description: "Update your profile, display name and account info for Al-Ulama Easy Editor.", path: "/profile" });
+  useSeo({ title: "Profile — Al-Ulama Easy Editor", description: "Update your profile, display name and account info for Al-Ulama Easy Editor.", path: "/profile", noindex: true });
 
   const { user, signOut } = useAuth();
   const { subscription, loading: subLoading } = useSubscription();
