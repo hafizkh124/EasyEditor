@@ -12,6 +12,11 @@ interface SeoOptions {
    * Defaults to the current window pathname (with any locale prefix stripped).
    */
   path?: string;
+  /**
+   * If true, emit `<meta name="robots" content="noindex, nofollow" />` so
+   * search engines skip this route. Use for authenticated / private pages.
+   */
+  noindex?: boolean;
 }
 
 /**
