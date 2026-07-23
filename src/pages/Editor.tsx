@@ -24,7 +24,7 @@ const Editor = () => {
   const navigate = useNavigate();
   const state = (location.state as EditorLocationState) ?? {};
 
-  useSeo({ title: "Editor — Easy Editor", description: "Rich text editor for editing transcriptions, OCR results, and research output.", path: "/editor" });
+  useSeo({ title: "Editor — Easy Editor", description: "Rich text editor for editing transcriptions, OCR results, and research output.", path: "/editor", noindex: true });
 
   const [title, setTitle] = useState(() => {
     if (state.source === "research") return t("editor.from_research");

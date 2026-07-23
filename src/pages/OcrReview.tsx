@@ -28,7 +28,7 @@ const OcrReview = () => {
   const review = useOcrReview();
   const [isMobile] = useState(() => window.innerWidth < 768);
 
-  useSeo({ title: "OCR Review — Easy Editor", description: "Review and edit your digitized document page by page — correct recognized Urdu, Arabic and English text before exporting.", path: "/ocr/review" });
+  useSeo({ title: "OCR Review — Easy Editor", description: "Review and edit your digitized document page by page — correct recognized Urdu, Arabic and English text before exporting.", path: "/ocr/review", noindex: true });
 
   const currentPageData = review.pages.find((p) => p.pageNum === review.currentPage);
   const reviewedCount = review.pages.filter((p) => p.reviewed).length;

@@ -12,7 +12,7 @@ import { handleSupabaseError } from "@/lib/errors";
 // FR-6.1: Settings contains ONLY language selection.
 // All other previous settings (profile, subscription, logout) live on /profile.
 const Settings = () => {
-  useSeo({ title: "Settings — Al-Ulama Easy Editor", description: "Manage language, theme and account preferences for Al-Ulama Easy Editor.", path: "/settings" });
+  useSeo({ title: "Settings — Al-Ulama Easy Editor", description: "Manage language, theme and account preferences for Al-Ulama Easy Editor.", path: "/settings", noindex: true });
 
   const { user } = useAuth();
   const { t, language, setLanguage, direction } = useLanguage();
