@@ -16,7 +16,7 @@ import IncomeDashboard from "@/components/admin/IncomeDashboard";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 
 const Admin = () => {
-  useSeo({ title: "Admin — Al-Ulama Easy Editor", description: "Admin panel for approving registrations and managing Al-Ulama Easy Editor accounts.", path: "/admin" });
+  useSeo({ title: "Admin — Al-Ulama Easy Editor", description: "Admin panel for approving registrations and managing Al-Ulama Easy Editor accounts.", path: "/admin", noindex: true });
 
   const { user } = useAuth();
   const { isAdmin, loading: approvalLoading } = useApproval();
