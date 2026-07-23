@@ -109,5 +109,5 @@ export function useSeo({ title, description, path, noindex }: SeoOptions) {
       a.setAttribute("data-managed", "seo-hook");
       document.head.appendChild(a);
     }
-  }, [title, description, path, language]);
+  }, [title, description, path, language, noindex]);
 }
