@@ -91,6 +91,16 @@
   </url>
   <url><loc>https://editor.alulama.org/ur/refund-policy</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
   <url><loc>https://editor.alulama.org/ar/refund-policy</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url>
+    <loc>https://editor.alulama.org/answers</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://editor.alulama.org/answers" />
+    <xhtml:link rel="alternate" hreflang="ur" href="https://editor.alulama.org/ur/answers" />
+    <xhtml:link rel="alternate" hreflang="ar" href="https://editor.alulama.org/ar/answers" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://editor.alulama.org/answers" />
+    <changefreq>monthly</changefreq><priority>0.9</priority>
+  </url>
+  <url><loc>https://editor.alulama.org/ur/answers</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://editor.alulama.org/ar/answers</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://editor.alulama.org/guides/maktaba-shamila-tutorial</loc><changefreq>monthly</changefreq><priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="en" href="https://editor.alulama.org/guides/maktaba-shamila-tutorial" />
     <xhtml:link rel="alternate" hreflang="ur" href="https://editor.alulama.org/ur/guides/maktaba-shamila-tutorial" />
