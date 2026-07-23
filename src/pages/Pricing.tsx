@@ -105,7 +105,7 @@ const PhoneValue = ({ display, raw, wa, copyLabel, copiedLabel, waLabel }: Phone
 
 
 const Pricing = () => {
-  useSeo({ title: "Pricing — Al-Ulama Easy Editor", description: "Compare Basic, Pro and Ultra plans for Al-Ulama Easy Editor and pick what fits you.", path: "/pricing" });
+  useSeo({ title: "Pricing — Al-Ulama Easy Editor", description: "Compare Basic, Pro and Ultra plans for Al-Ulama Easy Editor and pick what fits you.", path: "/pricing", noindex: true });
 
   const { user } = useAuth();
   const { t, direction, language } = useLanguage();

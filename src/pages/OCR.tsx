@@ -28,7 +28,7 @@ import { ACCEPTED_OCR, getDocumentType, getMaxFileSize, MAX_PDF_PAGES } from "@/
 import { renderPdfPages, getPdfPageCount } from "@/lib/ocr/pdfRenderer";
 
 const OCR = () => {
-  useSeo({ title: "Urdu & Arabic OCR — Islamic Text Digitization", description: "Extract Urdu, Arabic and English text from images and scanned Islamic books with high accuracy. Free Quran-friendly OCR.", path: "/ocr" });
+  useSeo({ title: "Urdu & Arabic OCR — Islamic Text Digitization", description: "Extract Urdu, Arabic and English text from images and scanned Islamic books with high accuracy. Free Quran-friendly OCR.", path: "/ocr", noindex: true });
 
   const { user, session } = useAuth();
   const { t } = useLanguage();

@@ -35,7 +35,7 @@ const personas: Persona[] = [
 ];
 
 const Speak = () => {
-  useSeo({ title: "Text to Speech — Al-Ulama Easy Editor", description: "Generate natural Urdu, Arabic and English speech from text with multiple voice personas.", path: "/speak" });
+  useSeo({ title: "Text to Speech — Al-Ulama Easy Editor", description: "Generate natural Urdu, Arabic and English speech from text with multiple voice personas.", path: "/speak", noindex: true });
 
   const { user, session } = useAuth();
   const { t, language } = useLanguage();
