@@ -73,29 +73,43 @@ serve(async (req) => {
         });
       }
 
-      // Alias mapping: short names → canonical collection names in DB
+      // Alias mapping: short/user-facing names → the collection SLUG stored in
+      // citation_ref->>'collection'. The ingest pipeline (scripts/hadith_json_to_csv.py,
+      // COLLECTION_META) writes the directory slug here (e.g. "bukhari"), NOT
+      // the English book title — this lookup used to compare against titles
+      // like "Sahih al-Bukhari" and could never match, so every hadith lookup
+      // silently returned zero rows.
       const COLLECTION_ALIASES: Record<string, string> = {
-        bukhari: "Sahih al-Bukhari",
-        muslim: "Sahih Muslim",
-        tirmidhi: "Jami' al-Tirmidhi",
-        "abu dawud": "Sunan Abi Dawud",
-        "abu_dawud": "Sunan Abi Dawud",
-        nasai: "Sunan al-Nasa'i",
-        "ibn majah": "Sunan Ibn Majah",
-        "ibn_majah": "Sunan Ibn Majah",
-        malik: "Muwatta Malik",
-        muwatta: "Muwatta Malik",
-        nawawi: "The Forty Hadith of Imam Nawawi",
-        "nawawi 40": "The Forty Hadith of Imam Nawawi",
-        riyad: "Riyad as-Salihin",
-        "riyad as-salihin": "Riyad as-Salihin",
-        ahmad: "Musnad Ahmad ibn Hanbal",
-        "adab al-mufrad": "Al-Adab Al-Mufrad",
-        "bulugh al-maram": "Bulugh al-Maram",
-        "qudsi": "The Forty Hadith Qudsi",
-        "shamail": "Shama'il Muhammadiyah",
-        "mishkat": "Mishkat al-Masabih",
-        "shah waliullah": "The Forty Hadith of Shah Waliullah",
+        bukhari: "bukhari",
+        muslim: "muslim",
+        tirmidhi: "tirmidhi",
+        "abu dawud": "abudawud",
+        "abu_dawud": "abudawud",
+        abudawud: "abudawud",
+        nasai: "nasai",
+        "ibn majah": "ibnmajah",
+        "ibn_majah": "ibnmajah",
+        ibnmajah: "ibnmajah",
+        malik: "malik",
+        muwatta: "malik",
+        darimi: "darimi",
+        ahmad: "ahmed",
+        ahmed: "ahmed",
+        nawawi: "nawawi40",
+        "nawawi 40": "nawawi40",
+        nawawi40: "nawawi40",
+        qudsi: "qudsi",
+        riyad: "riyadussalihin",
+        "riyad as-salihin": "riyadussalihin",
+        riyadussalihin: "riyadussalihin",
+        "bulugh al-maram": "bulughalmaram",
+        bulughalmaram: "bulughalmaram",
+        "adab al-mufrad": "adab",
+        adab: "adab",
+        "sahih al-jami": "shahih-al-jami",
+        "shahih al-jami": "shahih-al-jami",
+        mishkat: "mishkat",
+        "hisn al-muslim": "hisn-alhisar",
       };
 
       const resolvedCollection = collection
@@ -136,11 +150,10 @@ serve(async (req) => {
 
       const lim = Math.min(maxResults ?? 20, 50);
 
-      // Build tsquery — split words and join with &
-      const words = q.trim().split(/\s+/).filter(Boolean);
-      const tsquery = words.map((w: string) => `'${w.replace(/'/g, "''")}'`).join(" & ");
-
-      // Use RPC-style raw query via postgrest text search
+      // NOTE: this branch does a raw substring FTS and does not normalize
+      // Arabic diacritics — kept as a simple fallback for now. It becomes a
+      // proper channel of the shared citation engine (see _shared/citationEngine.ts)
+      // which uses the diacritic-tolerant search_documents_smart RPC instead.
       let query = supabase
         .from("scholarly_documents")
         .select("id, title, content, content_ar, citation_ref, language, domain")

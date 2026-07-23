@@ -8,6 +8,8 @@
 // callers pass a single OpenAI-style body and receive a `Response` whose
 // `.body` they can read or stream.
 
+import { embedQuery, embedBatch } from "./embed.ts";
+
 const GEMINI_BASE   = "https://generativelanguage.googleapis.com/v1beta/openai";
 const LOVABLE_BASE  = "https://ai.gateway.lovable.dev/v1";
 
@@ -93,8 +95,15 @@ export async function callChatCompletions(
 }
 
 /**
- * Embeddings via Gemini-direct primary + Lovable fallback. Same OpenAI-style
- * `{ model, input }` shape on both ends.
+ * Embeddings — delegates to `embed.ts` (embedQuery / embedBatch) so every
+ * caller lands in the SAME vector space as scholarly_documents, regardless
+ * of what `model` string they pass in. `body.model` is intentionally
+ * ignored: this used to be a foot-gun where a caller could request the
+ * retired "text-embedding-004" and silently get zero search results (wrong
+ * vector space, not an error) instead of a visible failure. See embed.ts.
+ *
+ * Returns an OpenAI-embeddings-shaped Response so existing callers that do
+ * `(await res.json()).data[i].embedding` keep working unchanged.
  */
 export async function callEmbeddings(body: {
   model: string;
@@ -102,41 +111,31 @@ export async function callEmbeddings(body: {
   // deno-lint-ignore no-explicit-any
   [k: string]: any;
 }): Promise<Response> {
-  const geminiKey  = Deno.env.get("GEMINI_API_KEY");
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-
-  if (geminiKey) {
-    try {
-      const geminiBody = { ...body, model: toGeminiModel(body.model) };
-      const res = await fetch(`${GEMINI_BASE}/embeddings`, {
-        method: "POST",
-        headers: {
-          Authorization:  `Bearer ${geminiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(geminiBody),
-      });
-      if (res.ok) return res;
-      if (!shouldFallback(res.status)) return res;
-      await res.body?.cancel().catch(() => {});
-      console.warn(`[aiGateway] Gemini embeddings ${res.status} — falling back to Lovable`);
-    } catch (e) {
-      console.warn("[aiGateway] Gemini embeddings threw — falling back:", e);
+  try {
+    if (Array.isArray(body.input)) {
+      const vectors = await embedBatch(body.input);
+      return new Response(
+        JSON.stringify({ data: vectors.map((embedding, index) => ({ embedding, index })) }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
     }
-  }
 
-  if (!lovableKey) {
+    const vector = await embedQuery(body.input);
+    if (!vector) {
+      return new Response(
+        JSON.stringify({ error: "Embedding failed — see function logs" }),
+        { status: 502, headers: { "Content-Type": "application/json" } },
+      );
+    }
     return new Response(
-      JSON.stringify({ error: "No AI provider configured" }),
+      JSON.stringify({ data: [{ embedding: vector, index: 0 }] }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  } catch (e) {
+    console.error("[aiGateway] callEmbeddings error:", e);
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : String(e) }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
-  return await fetch(`${LOVABLE_BASE}/embeddings`, {
-    method: "POST",
-    headers: {
-      Authorization:  `Bearer ${lovableKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
 }

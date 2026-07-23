@@ -27,6 +27,44 @@ export interface ResourceResult {
   source_url?: string | null;
   domain?: string;
   language?: string;
+  /** Fields below are added by the shared citation engine
+   *  (supabase/functions/_shared/citationEngine.ts). All optional so older
+   *  callers and stored results keep type-checking. */
+  match_key?: string;
+  content_ar?: string;
+  source_type?: string;
+  score?: number;
+  /** Which retrieval channels found this row ("lexical" / "semantic"). */
+  channels?: string[];
+  /** One-line relevance note, present only when the rerank pass ran. */
+  reason?: string;
+}
+
+/** Per-surah (Quran) or per-collection (Hadith) breakdown of a count query. */
+export interface CitationCountBucket {
+  key: string;
+  label: string;
+  source_type: string;
+  occurrences: number;
+  rows_matched: number;
+}
+
+/** Full response shape of the `resource-search` edge function. */
+export interface CitationSearchResponse {
+  intent: "topical" | "count" | "reference" | "phrase";
+  plan_summary: {
+    arabic_terms: string[];
+    scope_label: string;
+    /** True when the query plan came from the keyword fallback, not the model. */
+    degraded: boolean;
+  };
+  results: ResourceResult[];
+  count?: {
+    total: number;
+    rows_matched: number;
+    buckets: CitationCountBucket[];
+    caveats: string[];
+  };
 }
 
 /** Build a short citation label, e.g. "Sahih Bukhari #123 (sahih)" or "Quran Al-Baqarah 2:255". */

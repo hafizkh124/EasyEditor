@@ -5,13 +5,14 @@
  * differentiation is enforced upstream via monthly query quota, not here.
  * Flow:
  *   1. Normalize Arabic query
- *   2. Embed via Lovable AI gateway (text-embedding-004, 768 dims, retry once on 5xx)
+ *   2. Embed via the canonical embedder (_shared/embed.ts — gemini-embedding-001, 768 dims)
  *   3. Call match_scholarly_documents RPC (cosine similarity ≥ 0.45)
  *   4. Return IslamicResult[]
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { expandQueryTerms } from "../_shared/bilingualMap.ts";
+import { embedQuery } from "../_shared/embed.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 
 const corsHeaders = {
@@ -88,13 +89,6 @@ serve(async (req) => {
       });
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      return new Response(JSON.stringify({ error: "GEMINI_API_KEY not configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabaseUrl  = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase     = createClient(supabaseUrl, supabaseKey);
@@ -112,48 +106,9 @@ serve(async (req) => {
       ? `${normalizedQuery}\n${expansions.slice(0, 6).join(" ")}`
       : normalizedQuery;
 
-    // ── 2. Embed via Google AI Studio Generative Language API ────────────────
-    // Lovable AI Gateway's embeddings endpoint is not available on every
-    // workspace (returns 404 "route_not_found"). We call Google's free-tier
-    // direct API with GEMINI_API_KEY to bypass that limitation. Retry once.
-    // Model: gemini-embedding-001 (text-embedding-004 retired). Request 768
-    // dims to match the existing pgvector(768) schema.
-    const callEmbedding = () => fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
-      {
-        method: "POST",
-        headers: {
-          "x-goog-api-key": GEMINI_API_KEY,
-          "Content-Type":   "application/json",
-        },
-        body: JSON.stringify({
-          model:                "models/gemini-embedding-001",
-          content:              { parts: [{ text: embedInput }] },
-          outputDimensionality: 768,
-        }),
-        signal: AbortSignal.timeout(15_000),
-      },
-    );
-
-    let embedRes = await callEmbedding();
-    if (!embedRes.ok && embedRes.status >= 500 && embedRes.status < 600) {
-      console.warn("Embedding 5xx, retrying once:", embedRes.status);
-      embedRes = await callEmbedding();
-    }
-
-    if (!embedRes.ok) {
-      const errTxt = await embedRes.text().catch(() => "");
-      console.error("Embedding API error:", embedRes.status, errTxt);
-      return new Response(JSON.stringify({ results: [] }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const embedData = await embedRes.json();
-    const embedding: number[] = embedData?.embedding?.values;
-
-    if (!embedding || embedding.length !== 768) {
-      console.error("Unexpected embedding shape:", embedData);
+    // ── 2. Embed via the canonical embedder (embed.ts) ────────────────────────
+    const embedding = await embedQuery(embedInput);
+    if (!embedding) {
       return new Response(JSON.stringify({ results: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
