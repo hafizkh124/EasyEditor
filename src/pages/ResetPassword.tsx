@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
 const ResetPassword = () => {
-  useSeo({ title: "Reset password — Al-Ulama Easy Editor", description: "Set a new password for your Al-Ulama Easy Editor account and continue working securely.", path: "/reset-password" });
+  useSeo({ title: "Reset password — Al-Ulama Easy Editor", description: "Set a new password for your Al-Ulama Easy Editor account and continue working securely.", path: "/reset-password", noindex: true });
 
   const { t, direction } = useLanguage();
   const navigate = useNavigate();
