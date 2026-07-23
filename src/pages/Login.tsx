@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 const Login = () => {
-  useSeo({ title: "Log in — Al-Ulama Easy Editor", description: "Sign in to Al-Ulama Easy Editor to access transcription, OCR, TTS and Islamic research tools.", path: "/login" });
+  useSeo({ title: "Log in — Al-Ulama Easy Editor", description: "Sign in to Al-Ulama Easy Editor to access transcription, OCR, TTS and Islamic research tools.", path: "/login", noindex: true });
 
   const { user, loading } = useAuth();
   const { t, direction } = useLanguage();
