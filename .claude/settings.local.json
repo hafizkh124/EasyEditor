@@ -43,7 +43,21 @@
       "WebFetch(domain:typli.ai)",
       "WebFetch(domain:editgpt.app)",
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(xargs grep -l \"islamic_quer\\\\|research_session\\\\|api_response_cache\\\\|ingest_job\")",
+      "PowerShell($ErrorActionPreference='Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[System.IO.Compression.ZipFile]::OpenRead\\('D:\\\\shamela-mcp-1.2.0.zip'\\); $z.Entries | Select-Object -ExpandProperty FullName | Where-Object { $_ -notmatch 'node_modules/' } | Sort-Object; $z.Dispose\\(\\))",
+      "PowerShell($ErrorActionPreference='Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[System.IO.Compression.ZipFile]::OpenRead\\('D:\\\\shamela-mcp-1.2.0.zip'\\); function ReadEntry\\($name\\){ $e=$z.Entries | Where-Object { $_.FullName -eq $name }; if\\(-not $e\\){ return \"NOT FOUND: $name\" }; $r=New-Object System.IO.StreamReader\\($e.Open\\(\\)\\); $t=$r.ReadToEnd\\(\\); $r.Dispose\\(\\); return $t }; Write-Output \"=========== manifest.json ===========\"; ReadEntry 'shamela-mcp-1.2.0/manifest.json'; $z.Dispose\\(\\))",
+      "Read(//d/EEData/hadith/**)",
+      "Bash(python -c ' *)",
+      "Read(//d/EEData/openiti/**)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Read(//d/islamic urdu hadeed data/**)",
+      "Bash(PYTHONIOENCODING=utf-8 cat /d/EEData/Classical_Arabic/shamela_books_text_full/metadata.json 2>/dev/null | head -30; echo \"=== audit ===\"; head -c 800 /d/EEData/Classical_Arabic/shamela_books_text_full/audit_report.json)",
+      "Read(//d/JKHSSN/Data/HadithDB/HCompoundMatn/Matn//**)",
+      "Bash(/c/Users/hafiz/bin/supabase --version)",
+      "Bash(/c/Users/hafiz/bin/supabase projects *)",
+      "Bash(sed -E 's/.*\\(public\\\\.\\)?\\([a-z_]+\\)$/\\\\2/I')",
+      "Bash(command -v docker)"
     ]
   }
 }
