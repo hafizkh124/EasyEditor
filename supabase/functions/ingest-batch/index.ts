@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     });
 
     const body = await req.json();
-    const { rows } = body;
+    const { rows, mode } = body;
 
     if (!Array.isArray(rows) || rows.length === 0) {
       return new Response(JSON.stringify({ error: "rows array required" }), {
@@ -51,6 +51,23 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+    }
+
+    // mode: "check" — read-only pre-flight for bulk-load scripts. Reports,
+    // per row, whether it already exists and why (exact content repeat, same
+    // hadith/verse citation, or the same Arabic text under a different
+    // domain) WITHOUT inserting anything. See scholarly_documents_check_batch
+    // (20260724220000_ar_fingerprint_and_check_batch.sql) and
+    // scripts/supabase_bulk_load.py --check-only.
+    if (mode === "check") {
+      const { data, error } = await supabase.rpc("scholarly_documents_check_batch", {
+        payload: rows,
+      });
+      if (error) throw error;
+      return new Response(
+        JSON.stringify({ checked: rows.length, results: data }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Duplicate-aware ingestion strategy:
