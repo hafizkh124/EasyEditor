@@ -15,7 +15,7 @@ import { exportTxt, exportHtml, exportDoc, exportPdf, stripSuggestions } from "@
 
 interface EditorLocationState {
   content?: string;
-  source?: "research" | "ocr" | "transcribe" | "manual";
+  source?: "research" | "ocr" | "transcribe" | "manual" | "extract";
 }
 
 const Editor = () => {
@@ -30,6 +30,7 @@ const Editor = () => {
     if (state.source === "research") return t("editor.from_research");
     if (state.source === "ocr") return t("editor.from_ocr");
     if (state.source === "transcribe") return t("editor.from_transcribe");
+    if (state.source === "extract") return t("editor.from_extract");
     return t("editor.untitled");
   });
 

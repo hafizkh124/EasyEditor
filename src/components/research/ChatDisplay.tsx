@@ -21,6 +21,8 @@ import CitationResponse from "./CitationResponse";
 import ModeChips from "./ModeChips";
 import VirtualMessageList from "./VirtualMessageList";
 import EmptyState from "./EmptyState";
+import { ScholarlyPromptModal } from "./ScholarlyPromptModal";
+import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
 import { useSubmitGuard } from "@/hooks/useSubmitGuard";
 import type { ResearchAssistMode } from "@/lib/prompts";
 import type { ResearchMode } from "./ResearchModeSwitcher";
@@ -249,6 +251,7 @@ const ChatDisplay = ({
 
   const showSourcesIndicator = mode === "islamic" && sourcesReadyInfo != null && sourcesReadyInfo.count > 0;
   const showNoSourcesWarning = mode === "custom" && sources.length === 0;
+  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
 
   const [islamicHintDismissed, setIslamicHintDismissed] = useState<boolean>(() => {
     try { return sessionStorage.getItem("islamicHintDismissed") === "1"; } catch { return false; }
@@ -531,9 +534,48 @@ const ChatDisplay = ({
           </div>
           <div className="px-3 pb-2 flex items-center justify-between">
             <p className="text-[11px] text-muted-foreground">{t("research.send_hint")}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPromptModalOpen(true)}
+              className="h-6 text-[11px] px-2 gap-1 rounded-lg text-primary border-primary/30 hover:bg-primary/10 transition-colors"
+            >
+              <Sparkles className="h-3 w-3" />
+              14 علمی پرامپٹس
+            </Button>
           </div>
         </div>
       </div>
+
+      <ScholarlyPromptModal
+        isOpen={isPromptModalOpen}
+        onClose={() => setIsPromptModalOpen(false)}
+        onSelectPrompt={(promptText: string, prompt: ScholarlyPromptDef) => {
+          // Route citation-heavy prompts through the grounded Islamic engine so
+          // references come from the corpus, not an ungrounded general LLM.
+          // Auto-switch only when it's safe (no conversation/draft to discard) —
+          // switching mode with content on screen triggers a confirm dialog, so
+          // in that case we advise the user to switch manually instead.
+          if (prompt.grounded && mode !== "islamic") {
+            const canAutoSwitch = messages.length === 0 && !query.trim();
+            if (canAutoSwitch && onModeChange) {
+              onModeChange("islamic");
+              onQueryChange(promptText);
+              toast.info(t("research.prompt_switched_islamic"));
+            } else {
+              onQueryChange(promptText);
+              toast.info(t("research.prompt_switch_manual"));
+            }
+          } else {
+            onQueryChange(promptText);
+          }
+          if (!prompt.corpusReady) {
+            toast.warning(t("research.prompt_corpus_pending"));
+          }
+          setTimeout(() => textareaRef.current?.focus(), 50);
+        }}
+      />
     </div>
   );
 };

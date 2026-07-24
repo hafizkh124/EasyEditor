@@ -109,5 +109,18 @@ export function buildMatchKey(row: any): string | null {
     return `hadith:${book}:${number}`;
   }
 
+  // Tier-2 classical corpus (fiqh / fatwa / tafsir / lughat / rijal / nahw).
+  // Prefer the row's own passage_key when the RPC returned it; otherwise build
+  // a stable key from the book + location, and fall back to the row id so a
+  // real passage is never dropped for lack of an identity.
+  if (typeof row?.passage_key === "string" && row.passage_key) {
+    return row.passage_key;
+  }
+  const bookId = cite.book_id ?? cite.openiti_id ?? cite.shamela_id;
+  if (bookId != null && (cite.page != null || cite.volume != null)) {
+    return `${sourceType}:${bookId}:${cite.volume ?? 0}:${cite.page ?? 0}`;
+  }
+  if (row?.id != null) return `doc:${row.id}`;
+
   return null;
 }

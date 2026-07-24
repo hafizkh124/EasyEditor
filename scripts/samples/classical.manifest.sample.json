@@ -1,0 +1,27 @@
+{
+  "books": [
+    {
+      "book_id": "hidaya",
+      "title": "الهداية في شرح بداية المبتدي",
+      "title_en": "Al-Hidaya",
+      "author": "برهان الدين المرغيناني",
+      "death_year": 593,
+      "discipline": "fiqh",
+      "madhhab": "hanafi",
+      "domain": "shamela",
+      "source_url": "https://shamela.ws/book/0000",
+      "pages_file": "hidaya.pages.sample.jsonl"
+    },
+    {
+      "book_id": "lisan-al-arab",
+      "title": "لسان العرب",
+      "title_en": "Lisan al-Arab",
+      "author": "ابن منظور",
+      "death_year": 711,
+      "discipline": "lughat",
+      "domain": "openiti",
+      "source_url": "https://shamela.ws/book/0001",
+      "pages_file": "lisan.pages.sample.jsonl"
+    }
+  ]
+}

@@ -57,7 +57,8 @@
       "Bash(/c/Users/hafiz/bin/supabase --version)",
       "Bash(/c/Users/hafiz/bin/supabase projects *)",
       "Bash(sed -E 's/.*\\(public\\\\.\\)?\\([a-z_]+\\)$/\\\\2/I')",
-      "Bash(command -v docker)"
+      "Bash(command -v docker)",
+      "Bash(ls \"E:/scribe-studio-app/supabase/functions/\" && echo \"---SCRIPTS---\" && ls \"D:/EEData/scripts/\" 2>/dev/null || echo \"D:/EEData/scripts NOT FOUND\")"
     ]
   }
 }

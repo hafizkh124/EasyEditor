@@ -1,7 +1,7 @@
 import { useLocation, Link, useMatch } from "react-router-dom";
 import {
   Mic, Volume2, Image, BookOpen, Menu, Shield,
-  Bell, User, ChevronLeft, ChevronRight, FileText, Languages,
+  Bell, User, ChevronLeft, ChevronRight, FileText, Languages, Layers,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,6 +21,7 @@ import type { SessionSection } from "@/hooks/useSessionHistory";
 // FR-2.2: Research, Transcribe, OCR, Speak, Admin (admin conditional)
 const sectionNav = [
   { path: "/research", icon: BookOpen, labelKey: "nav.research", section: "research" as SessionSection },
+  { path: "/extract", icon: Layers, labelKey: "nav.extract", section: "research" as SessionSection },
   { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe", section: "transcribe" as SessionSection },
   { path: "/ocr", icon: Image, labelKey: "nav.ocr", section: "ocr" as SessionSection },
   { path: "/speak", icon: Volume2, labelKey: "nav.speak", section: "speak" as SessionSection },
