@@ -14,89 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      translators: {
-        Row: {
-          authority_note: string | null
-          corpus_type: string
-          created_at: string
-          external_edition_id: string | null
-          full_name: string
-          is_enabled: boolean
-          language: string
-          maslak: string | null
-          slug: string
-          sort_order: number
-          source: string
-        }
-        Insert: {
-          authority_note?: string | null
-          corpus_type?: string
-          created_at?: string
-          external_edition_id?: string | null
-          full_name: string
-          is_enabled?: boolean
-          language: string
-          maslak?: string | null
-          slug: string
-          sort_order?: number
-          source: string
-        }
-        Update: {
-          authority_note?: string | null
-          corpus_type?: string
-          created_at?: string
-          external_edition_id?: string | null
-          full_name?: string
-          is_enabled?: boolean
-          language?: string
-          maslak?: string | null
-          slug?: string
-          sort_order?: number
-          source?: string
-        }
-        Relationships: []
-      }
-      passage_translations: {
-        Row: {
-          created_at: string
-          id: string
-          is_verified: boolean
-          language: string
-          passage_key: string
-          source_url: string | null
-          text: string
-          translator_slug: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_verified?: boolean
-          language: string
-          passage_key: string
-          source_url?: string | null
-          text: string
-          translator_slug: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_verified?: boolean
-          language?: string
-          passage_key?: string
-          source_url?: string | null
-          text?: string
-          translator_slug?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "passage_translations_translator_slug_fkey"
-            columns: ["translator_slug"]
-            isOneToOne: false
-            referencedRelation: "translators"
-            referencedColumns: ["slug"]
-          },
-        ]
-      }
       activity_log: {
         Row: {
           created_at: string
@@ -819,19 +736,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_passage_translations: {
-        Args: { p_passage_key: string; p_slugs?: string[] | null }
-        Returns: {
-          full_name: string
-          is_verified: boolean
-          language: string
-          maslak: string | null
-          passage_key: string
-          source_url: string | null
-          text: string
-          translator_slug: string
-        }[]
-      }
       admin_get_income_summary: {
         Args: { p_date_from?: string; p_date_to?: string }
         Returns: Json
