@@ -72,7 +72,7 @@ export const TOKEN_COSTS = {
   tts_elevenlabs: 500,   // per 1K characters
   refine:         5,     // per refinement action
   translate:      20,    // per page/segment translated
-  citation_search: 15,   // per Quran/Hadith citation search
+  citation_search: 5,    // per Quran/Hadith citation search
 } as const;
 
 export type TokenActionType = keyof typeof TOKEN_COSTS;
