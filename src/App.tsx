@@ -36,6 +36,7 @@ const Answers = lazy(() => import("./pages/Answers"));
 const Editor = lazy(() => import("./pages/Editor"));
 const OcrReview = lazy(() => import("./pages/OcrReview"));
 const Translate = lazy(() => import("./pages/Translate"));
+const Extract = lazy(() => import("./pages/Extract"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const Terms = lazy(() => import("./pages/legal/Terms"));
@@ -121,6 +122,7 @@ const App = () => (
                   <Route path="/editor" element={<ProtectedRoute><ErrorBoundary><Editor /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/ocr/review" element={<ProtectedRoute><ErrorBoundary><OcrReview /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/translate" element={<ProtectedRoute><ErrorBoundary><Translate /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/extract" element={<ProtectedRoute><ErrorBoundary><Extract /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                   <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />

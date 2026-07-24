@@ -22,6 +22,7 @@ import { callChatCompletions } from "./aiGateway.ts";
 import { embedQuery } from "./embed.ts";
 import { planQuery, describeScope, type QueryPlan } from "./queryPlanner.ts";
 import { reciprocalRankFusion, buildMatchKey } from "./rankFusion.ts";
+// Tier-2 classical corpus lexical channel is scoped by discipline; see disciplines.ts.
 
 export interface EngineCitation {
   match_key: string;
@@ -75,7 +76,11 @@ export interface FindCitationsInput {
    *  (or already inside another LLM call) should pass false. */
   rerank?: boolean;
   /** Force a scope regardless of what the planner infers. */
-  scopeOverride?: { source_types?: Array<"quran" | "hadith">; collections?: string[] };
+  scopeOverride?: {
+    source_types?: Array<"quran" | "hadith">;
+    collections?: string[];
+    disciplines?: string[];
+  };
 }
 
 const LEXICAL_LIMIT = 40;
@@ -245,6 +250,41 @@ async function semanticChannel(
   }
 }
 
+/** Tier-2 classical corpus channel — diacritic-tolerant lexical search over
+ *  content_ar, scoped by discipline (fiqh/fatwa/tafsir/lughat/rijal/nahw).
+ *  Runs ONLY when the plan requested disciplines, so pure Quran/Hadith queries
+ *  are unaffected. Lexical-only for now: the semantic (pgvector) part waits on
+ *  the classical embedding backfill AND on match_scholarly_documents returning
+ *  passage_key, so dedup stays consistent with the lexical rows. Until the
+ *  corpus is ingested this simply returns nothing. Never throws. */
+async function classicalChannel(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  plan: QueryPlan,
+  scope: QueryPlan["scope"],
+): Promise<Array<EngineCitation & { match_key: string }>> {
+  if (!scope.disciplines || scope.disciplines.length === 0) return [];
+  const patterns = [...plan.arabic_surface_forms, ...plan.related_concepts.slice(0, 3)];
+  if (patterns.length === 0) return [];
+
+  try {
+    const { data, error } = await supabase.rpc("search_classical_scoped", {
+      p_patterns: patterns,
+      p_disciplines: scope.disciplines,
+      p_limit: LEXICAL_LIMIT,
+    });
+    if (error) {
+      console.error("[citationEngine] search_classical_scoped error:", error);
+      return [];
+    }
+    // deno-lint-ignore no-explicit-any
+    return (data ?? []).map(toCitation).filter(Boolean) as any[];
+  } catch (e) {
+    console.error("[citationEngine] classical channel threw:", e);
+    return [];
+  }
+}
+
 /** Exact occurrence counting for "how many times…" questions. */
 async function countChannel(
   // deno-lint-ignore no-explicit-any
@@ -400,6 +440,7 @@ export async function findCitations(input: FindCitationsInput): Promise<Citation
     source_types: input.scopeOverride?.source_types ?? plan.scope.source_types,
     collections: input.scopeOverride?.collections ?? plan.scope.collections,
     surah: plan.scope.surah,
+    disciplines: input.scopeOverride?.disciplines ?? plan.scope.disciplines,
   };
 
   const plan_summary = {
@@ -443,16 +484,22 @@ export async function findCitations(input: FindCitationsInput): Promise<Citation
   }
 
   // ── Retrieval intents: hybrid + fusion (+ optional rerank) ────────────────
-  const [lexical, semantic] = await Promise.all([
+  // The classical channel only does work when the plan requested disciplines;
+  // otherwise it resolves to [] immediately and contributes nothing.
+  const [lexical, semantic, classical] = await Promise.all([
     lexicalChannel(supabase, plan, scope),
     semanticChannel(supabase, plan, scope, query),
+    classicalChannel(supabase, plan, scope),
   ]);
 
   // Lexical goes first so its object wins on duplicate keys — it carries
-  // content_ar, which match_scholarly_documents does not return.
+  // content_ar, which match_scholarly_documents does not return. Classical rows
+  // have their own passage_key namespace, so they never collide with quran:/
+  // hadith: keys and are simply fused in as additional evidence.
   const fused = reciprocalRankFusion([
     { name: "lexical", docs: lexical },
     { name: "semantic", docs: semantic },
+    { name: "classical", docs: classical },
   ]);
 
   const ranked: EngineCitation[] = fused.map((f) => ({

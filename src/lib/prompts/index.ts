@@ -2,6 +2,7 @@ export { NORMAL_SYSTEM_PROMPT, STRICT_INSTRUCTION_ON, STRICT_INSTRUCTION_OFF } f
 export { SPELLING_SYSTEM_PROMPT } from "./spelling";
 export { CITATIONS_SYSTEM_PROMPT } from "./citations";
 export { COMBINED_SYSTEM_PROMPT } from "./combined";
+export { SCHOLARLY_PROMPTS, type ScholarlyPromptDef } from "./promptsRegistry";
 
 export type ResearchAssistMode = "spelling" | "citations";
 
@@ -17,3 +18,4 @@ export function pickPromptKey(modes: ResearchAssistMode[]): "normal" | "spelling
   if (hasCitations) return "citations";
   return "normal";
 }
+

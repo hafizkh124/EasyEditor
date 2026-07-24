@@ -20,6 +20,11 @@
 
 import { callChatCompletions } from "./aiGateway.ts";
 import { expandQueryTerms } from "./bilingualMap.ts";
+import {
+  coerceDisciplines,
+  detectDisciplines,
+  describeDisciplines,
+} from "./disciplines.ts";
 
 /** Collection slugs as stored in citation_ref->>'collection'. Source of truth:
  *  scripts/hadith_json_to_csv.py COLLECTION_META. The planner may only pick
@@ -59,6 +64,10 @@ export interface QueryPlan {
     source_types: Array<"quran" | "hadith">;
     collections: string[];
     surah: number | null;
+    /** Tier-2 classical disciplines to also search (fiqh/fatwa/tafsir/lughat/
+     *  rijal/nahw). Empty for pure Quran/Hadith questions — additive dimension,
+     *  it never removes the Quran/Hadith channels. */
+    disciplines: string[];
   };
   /** Arabic surface forms to match lexically. Always non-empty. */
   arabic_surface_forms: string[];
@@ -90,6 +99,7 @@ Decide:
      bukhari, muslim, tirmidhi, abudawud, ibnmajah, nasai, malik, darimi, ahmed, nawawi40, qudsi, riyadussalihin, bulughalmaram, adab, shahih-al-jami, mishkat, hisn-alhisar
      ("صحیح بخاری" → ["bukhari"], "صحیح مسلم" → ["muslim"])
    - "surah": surah number if the user named one, else null.
+   - "disciplines": subset of ["fiqh","fatwa","tafsir","lughat","rijal","nahw"], [] unless the question is clearly about the classical literature of that discipline. Use "fiqh" for فقہی مسائل / اقوالِ مذاہب, "fatwa" for فتاویٰ, "tafsir" for تفسیرِ آیت / اقوالِ مفسرین, "lughat" for لغوی معنیٰ / مادہ, "rijal" for راوی کا حال / جرح و تعدیل, "nahw" for نحو و صرف / اعراب. This is ADDITIVE — it does not replace the Quran/Hadith scope.
 
 3. "arabic_surface_forms" — THE MOST IMPORTANT FIELD. The actual Arabic words as they appear in scripture. Think about the triliteral root and give the real inflected forms, WITHOUT the definite article ال and WITHOUT proclitic prefixes (و ف ب ل ك) — the search layer adds those itself.
    - "نیت"        → ["نية","نيات","نوى","ينوي","انوى"]
@@ -105,7 +115,7 @@ Decide:
 6. "is_proper_noun" — true only when the counted/searched term is a person or place NAME (موسى, ابراهيم, مكة). false for ordinary nouns (قتال, نية, صلاة).
 
 Output shape:
-{"intent":"...","scope":{"source_types":[...],"collections":[...],"surah":null},"arabic_surface_forms":[...],"related_concepts":[...],"semantic_query_ar":"...","is_proper_noun":false}`;
+{"intent":"...","scope":{"source_types":[...],"collections":[...],"surah":null,"disciplines":[]},"arabic_surface_forms":[...],"related_concepts":[...],"semantic_query_ar":"...","is_proper_noun":false}`;
 
 /** Heuristic intent detection — used when the model is unavailable. */
 function heuristicIntent(query: string): QueryIntent {
@@ -134,7 +144,7 @@ function heuristicScope(query: string): QueryPlan["scope"] {
     : wantsHadith && !wantsQuran ? ["hadith"]
     : ["quran", "hadith"];
 
-  return { source_types, collections, surah: null };
+  return { source_types, collections, surah: null, disciplines: detectDisciplines(query) };
 }
 
 /** Keep only Arabic-script tokens — the lexical channel searches content_ar,
@@ -199,6 +209,11 @@ export function coercePlan(raw: unknown, query: string): QueryPlan {
   const surahRaw = Number(o.scope?.surah);
   const surah = Number.isInteger(surahRaw) && surahRaw >= 1 && surahRaw <= 114 ? surahRaw : null;
 
+  // Disciplines: model-picked wins; otherwise keep whatever the keyword
+  // heuristic detected (same safety-net pattern as collections).
+  const modelDisciplines = coerceDisciplines(o.scope?.disciplines);
+  const disciplines = modelDisciplines.length > 0 ? modelDisciplines : fb.scope.disciplines;
+
   const forms = arabicOnly(Array.isArray(o.arabic_surface_forms) ? o.arabic_surface_forms : []);
   const related = arabicOnly(Array.isArray(o.related_concepts) ? o.related_concepts : []);
 
@@ -214,6 +229,7 @@ export function coercePlan(raw: unknown, query: string): QueryPlan {
       // heuristic found (the model sometimes omits an explicitly named book).
       collections: collections.length > 0 ? collections : fb.scope.collections,
       surah: surah ?? fb.scope.surah,
+      disciplines,
     },
     arabic_surface_forms: forms.length > 0 ? forms.slice(0, 8) : fb.arabic_surface_forms,
     related_concepts: related.slice(0, 4),
@@ -322,5 +338,6 @@ export function describeScope(plan: QueryPlan): string {
     if (plan.scope.source_types.includes("hadith")) parts.push("حدیث");
   }
   if (plan.scope.surah) parts.push(`سورہ ${plan.scope.surah}`);
+  if (plan.scope.disciplines.length > 0) parts.push(describeDisciplines(plan.scope.disciplines));
   return parts.join(" • ");
 }
