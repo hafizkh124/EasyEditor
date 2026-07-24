@@ -82,9 +82,11 @@ Deno.serve(async (req) => {
       maxResults: matchCount ?? 12,
     });
 
-    // Nothing found AND nothing counted — refund. The user spent tokens on a
-    // search that produced no usable output, which shouldn't cost them.
-    if (result.results.length === 0 && !result.count) {
+    // Refund when the search produced nothing usable: no passages AND either
+    // no count at all or a count that totalled zero occurrences. The user
+    // shouldn't pay for a query that returned no signal.
+    const zeroCount = !result.count || (result.count.total ?? 0) === 0;
+    if (result.results.length === 0 && zeroCount) {
       await refundTokens(supabase, user.id, tokenCost, "citation_search", "No results found");
     }
 
