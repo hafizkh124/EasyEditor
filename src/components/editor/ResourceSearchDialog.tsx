@@ -90,11 +90,12 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, t }: ResourceSearc
 
   const insertAll = () => {
     if (visibleResults.length === 0) return;
-    const text = visibleResults.map((r) => r.content).join("\n\n");
-    const citation = visibleResults
-      .map((r) => formatCitation(r.citation_ref, r.source_url))
-      .join(" • ");
-    onInsert(text, citation);
+    // Insert each passage as its own quote block with its own citation, so
+    // the editor renders separate paragraphs instead of collapsing everything
+    // into one blob with a single mashed-together bracket.
+    for (const r of visibleResults) {
+      onInsert(r.content, formatCitation(r.citation_ref, r.source_url));
+    }
     onOpenChange(false);
     toast.success(t("editor.reference_inserted"));
   };
