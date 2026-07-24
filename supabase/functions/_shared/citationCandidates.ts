@@ -39,7 +39,12 @@ interface RetrievalContext {
 }
 
 /** Quick-find rows in scholarly_documents whose content matches any of the
- * expanded query terms via PostgreSQL FTS. */
+ *  expanded query terms. Uses the `search_documents_smart` RPC which is backed
+ *  by trigram GIN indexes on `lower(content)` and `normalize_arabic_text(content_ar)`
+ *  and has an internal 8s statement_timeout. This replaced a direct PostgREST
+ *  `.or(content.fts(simple).X, content_ar.fts(simple).X, ...)` query which
+ *  routinely tripped the DB-wide statement_timeout (57014) because the OR of
+ *  ~10 tsquery predicates would fall back to a full heap scan. */
 async function ftsCorpus(
   supabase: ReturnType<typeof createClient>,
   terms: string[],
@@ -47,18 +52,13 @@ async function ftsCorpus(
   limit: number,
 ): Promise<any[]> {
   if (terms.length === 0) return [];
-  const ftsFilters = terms.slice(0, 5).flatMap((t) => [
-    `content.fts(simple).${t}`,
-    `content_ar.fts(simple).${t}`,
-  ]).join(",");
-  const { data, error } = await supabase
-    .from("scholarly_documents")
-    .select("domain, content, content_ar, citation_ref, language, source_type, source_url")
-    .eq("source_type", sourceType)
-    .or(ftsFilters)
-    .limit(limit);
+  const { data, error } = await supabase.rpc("search_documents_smart", {
+    p_terms: terms.slice(0, 8),
+    p_source_types: [sourceType],
+    p_match_limit: limit,
+  });
   if (error) {
-    console.error(`[citationCandidates] FTS error (${sourceType}):`, error);
+    console.error(`[citationCandidates] smart search error (${sourceType}):`, error);
     return [];
   }
   return data ?? [];
