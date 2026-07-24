@@ -888,6 +888,10 @@ export type Database = {
       }
       reset_monthly_quotas: { Args: never; Returns: number }
       reset_monthly_tokens: { Args: { p_bonus_rate?: number }; Returns: number }
+      scholarly_documents_check_batch: {
+        Args: { payload: Json }
+        Returns: Json
+      }
       scholarly_documents_stats: {
         Args: never
         Returns: {
