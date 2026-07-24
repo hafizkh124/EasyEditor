@@ -257,6 +257,47 @@ export type Database = {
         }
         Relationships: []
       }
+      passage_translations: {
+        Row: {
+          created_at: string
+          id: string
+          is_verified: boolean
+          language: string
+          passage_key: string
+          source_url: string | null
+          text: string
+          translator_slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          language: string
+          passage_key: string
+          source_url?: string | null
+          text: string
+          translator_slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          language?: string
+          passage_key?: string
+          source_url?: string | null
+          text?: string
+          translator_slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "passage_translations_translator_slug_fkey"
+            columns: ["translator_slug"]
+            isOneToOne: false
+            referencedRelation: "translators"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -423,6 +464,7 @@ export type Database = {
           id: string
           ingested_at: string
           language: string
+          passage_key: string | null
           source_type: string
           source_url: string | null
           title: string | null
@@ -436,6 +478,7 @@ export type Database = {
           id?: string
           ingested_at?: string
           language?: string
+          passage_key?: string | null
           source_type: string
           source_url?: string | null
           title?: string | null
@@ -449,6 +492,7 @@ export type Database = {
           id?: string
           ingested_at?: string
           language?: string
+          passage_key?: string | null
           source_type?: string
           source_url?: string | null
           title?: string | null
@@ -683,6 +727,48 @@ export type Database = {
         }
         Relationships: []
       }
+      translators: {
+        Row: {
+          authority_note: string | null
+          corpus_type: string
+          created_at: string
+          external_edition_id: string | null
+          full_name: string
+          is_enabled: boolean
+          language: string
+          maslak: string | null
+          slug: string
+          sort_order: number
+          source: string
+        }
+        Insert: {
+          authority_note?: string | null
+          corpus_type?: string
+          created_at?: string
+          external_edition_id?: string | null
+          full_name: string
+          is_enabled?: boolean
+          language: string
+          maslak?: string | null
+          slug: string
+          sort_order?: number
+          source: string
+        }
+        Update: {
+          authority_note?: string | null
+          corpus_type?: string
+          created_at?: string
+          external_edition_id?: string | null
+          full_name?: string
+          is_enabled?: boolean
+          language?: string
+          maslak?: string | null
+          slug?: string
+          sort_order?: number
+          source?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -786,6 +872,7 @@ export type Database = {
           whatsapp_number: string
         }[]
       }
+      backfill_passage_keys: { Args: { p_batch?: number }; Returns: number }
       check_token_balance: { Args: { p_user_id: string }; Returns: Json }
       count_term_occurrences: {
         Args: {
@@ -832,6 +919,19 @@ export type Database = {
         Returns: number
       }
       escape_arabic_regex: { Args: { t: string }; Returns: string }
+      get_passage_translations: {
+        Args: { p_passage_key: string; p_slugs?: string[] }
+        Returns: {
+          full_name: string
+          is_verified: boolean
+          language: string
+          maslak: string
+          passage_key: string
+          source_url: string
+          text: string
+          translator_slug: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -899,6 +999,25 @@ export type Database = {
           embedded: number
           source_type: string
           total: number
+        }[]
+      }
+      search_classical_scoped: {
+        Args: {
+          p_disciplines?: string[]
+          p_limit?: number
+          p_patterns: string[]
+        }
+        Returns: {
+          citation_ref: Json
+          content: string
+          content_ar: string
+          domain: string
+          id: string
+          language: string
+          match_score: number
+          passage_key: string
+          source_type: string
+          source_url: string
         }[]
       }
       search_documents_scoped: {
