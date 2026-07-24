@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SCHOLARLY_PROMPTS, type ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
-import { BookOpen, Scale, Scroll, FileText, Languages, UserCheck, BookCheck, Sparkles, PenTool, AlertTriangle, ShieldCheck } from "lucide-react";
+import { BookOpen, Scale, Scroll, Languages, UserCheck, Sparkles, PenTool, AlertTriangle, ShieldCheck } from "lucide-react";
 
 interface ScholarlyPromptModalProps {
   isOpen: boolean;
