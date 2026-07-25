@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Sparkles, Loader2, Search, CheckCircle, AlertTriangle } from "lucide-react";
 import { streamResearchQuery } from "@/lib/research/streamers";
