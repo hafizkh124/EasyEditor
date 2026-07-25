@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Download, FileText, Printer, CheckCircle } from "lucide-react";
+import { Download } from "lucide-react";
 
 interface BookExportModalProps {
   open: boolean;
