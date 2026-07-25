@@ -214,59 +214,7 @@ async function fetchAlQuran(query: string): Promise<IslamicResult[]> {
 //    Reinstate the `fetchSunnah` function and SUNNAH_API_KEY env check here
 //    if a key is later obtained via https://github.com/sunnah-com/api.
 
-// ── HadithAPI.com — Arabic + English + Urdu hadith search ───────────────────
-// Docs: https://hadithapi.com/docs/hadiths
-// Auth: query param ?apiKey=...   (HADITH_API_KEY is configured inside the Lovable platform)
-// Books: sahih-bukhari, sahih-muslim, al-tirmidhi, abu-dawood, ibn-e-majah,
-//        sunan-nasai, mishkat, musnad-ahmad, al-silsila-sahiha
-function detectQueryLanguage(query: string): "ar" | "ur" | "en" {
-  // Urdu-specific characters not present in Standard Arabic
-  if (/[ٹڈڑںھہۂۃیے۔چ]/.test(query)) {
-    return "ur";
-  }
-  // Any Arabic block character → treat as Arabic
-  if (/[؀-ۿ]/.test(query)) return "ar";
-  return "en";
-}
 
-async function fetchHadithApi(query: string, apiKey: string): Promise<IslamicResult[]> {
-  if (!apiKey) return [];
-  try {
-    const lang = detectQueryLanguage(query);
-    const param =
-      lang === "ar" ? "hadithArabic" :
-      lang === "ur" ? "hadithUrdu"   :
-                      "hadithEnglish";
-    const url = `https://hadithapi.com/api/hadiths/?apiKey=${encodeURIComponent(apiKey)}&${param}=${encodeURIComponent(query)}&paginate=10`;
-    const res = await fetchWithTimeout(url, {}, 12_000);
-    if (!res.ok) return [];
-    const data = await res.json();
-    // Response shape: { hadiths: { data: [{ id, hadithNumber, hadithArabic, hadithEnglish, hadithUrdu, book: { bookSlug, bookName }, chapter: { chapterEnglish }, englishNarrator, status }] } }
-    const items: any[] = data?.hadiths?.data ?? data?.hadiths ?? [];
-    return items.slice(0, 10).map((item: any): IslamicResult => {
-      const bookSlug = item.book?.bookSlug ?? item.bookSlug ?? "";
-      const arabic   = item.hadithArabic ?? "";
-      const urdu     = item.hadithUrdu ?? "";
-      const english  = item.hadithEnglish ?? "";
-      const parts    = [arabic, urdu, english].filter(Boolean).join("\n\n");
-      return {
-        domain: "hadith-api",
-        content: parts,
-        citation_ref: {
-          collection:    item.book?.bookName ?? bookSlug,
-          book:          bookSlug,
-          hadith_number: item.hadithNumber,
-          grade:         item.status,
-          rawi:          item.englishNarrator,
-          url:           `https://hadithapi.com/hadith/${bookSlug}/${item.hadithNumber}`,
-        },
-        language: lang,
-      };
-    });
-  } catch {
-    return [];
-  }
-}
 
 // ── Quran.com API ─────────────────────────────────────────────────────────────
 async function fetchQuranCom(query: string): Promise<IslamicResult[]> {
