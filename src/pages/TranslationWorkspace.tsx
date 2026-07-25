@@ -5,19 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   Languages, Plus, BookOpen, Sparkles, Check, Copy, ArrowLeft, Loader2,
-  BookmarkCheck, HelpCircle, Layers, FileEdit, Save, RefreshCw, FileText
+  BookmarkCheck, Save
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { lookupTranslationMemory, GENRE_TRANSLATION_PROMPTS, type TranslationMemoryMatch } from "@/lib/translationMemory";
-import { isRtlText } from "@/utils/textUtils";
 import { collectSseText } from "@/lib/sse";
 
 interface Project {
@@ -35,7 +33,7 @@ interface Chunk {
   project_id: string;
   chunk_index: number;
   source_text: string;
-  translated_text: string;
+  translated_text?: string | null;
   status: string;
   passage_key?: string | null;
   notes?: string | null;
@@ -48,7 +46,7 @@ export default function TranslationWorkspace() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [activeChunkIndex, setActiveChunkIndex] = useState<number>(0);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [newProjectModal, setNewProjectModal] = useState(false);
@@ -124,7 +122,7 @@ export default function TranslationWorkspace() {
       const { data: proj, error: pErr } = await supabase
         .from("translation_projects")
         .insert({
-          user_id: session?.user.id,
+          user_id: session!.user.id,
           title: newTitle.trim(),
           source_lang: "ar",
           target_lang: "ur",
