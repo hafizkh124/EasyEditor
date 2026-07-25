@@ -20,7 +20,7 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:3000',
 ];
 
-// Lazy-loaded backend instance
+// Lazy-loaded backend and server instance
 let backendPromise = null;
 let shamelaModule = null;
 
@@ -87,17 +87,18 @@ async function getShamelaModule() {
   throw new Error(`Could not find shamela-mcp installation. Please set SHAMELA_MCP_PATH or place shamela-mcp-1.2.0 in D:\\`);
 }
 
-async function getBackend() {
+async function getBackendAndServer() {
   if (!backendPromise) {
     backendPromise = (async () => {
       const mod = await getShamelaModule();
-      if (typeof mod.createBackend !== 'function') {
-        throw new Error('createBackend function not found in shamela-mcp module');
+      if (typeof mod.createBackend !== 'function' || typeof mod.createServer !== 'function') {
+        throw new Error('createBackend or createServer function not found in shamela-mcp module');
       }
       console.log('[Bridge] Initializing Shamela Backend...');
       const backend = await mod.createBackend();
+      const serverInstance = mod.createServer(async () => backend);
       console.log('[Bridge] Backend initialized successfully!');
-      return backend;
+      return { backend, serverInstance, mod };
     })();
   }
   return backendPromise;
@@ -140,13 +141,16 @@ const server = http.createServer(async (req, res) => {
   // 3. GET /health Endpoint
   if (req.method === 'GET' && (url.pathname === '/health' || url.pathname === '/')) {
     try {
-      const backend = await getBackend();
-      const { runHealth } = await getShamelaModule();
-      let healthData;
-      if (typeof runHealth === 'function') {
-        const response = await runHealth(backend.catalog, backend.pages, { response_format: 'json' });
+      const { backend, serverInstance } = await getBackendAndServer();
+      const tool = serverInstance._registeredTools?.['shamela_health'];
+      let healthData = null;
+
+      if (tool) {
+        const response = await tool.handler({ response_format: 'json' });
         healthData = response.structuredContent;
-      } else {
+      }
+
+      if (!healthData) {
         const downloaded = backend.catalog.downloadedBookIds();
         healthData = {
           status: 'ok',
@@ -189,18 +193,18 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const backend = await getBackend();
-        const { runSearchPages } = await getShamelaModule();
+        const { serverInstance } = await getBackendAndServer();
+        const tool = serverInstance._registeredTools?.['shamela_search_pages'];
 
-        if (typeof runSearchPages !== 'function') {
-          throw new Error('runSearchPages tool function unavailable');
+        if (!tool) {
+          throw new Error('shamela_search_pages tool handler not found');
         }
 
         const limit = typeof body.limit === 'number' ? Math.min(body.limit, 50) : 20;
         const page = typeof body.page === 'number' && body.page > 0 ? body.page : 1;
         const offset = (page - 1) * limit;
 
-        const result = await runSearchPages(backend.helper, backend.catalog, backend.pages, {
+        const response = await tool.handler({
           query: query.trim(),
           scope: body.scope || { downloaded_only: true },
           offset,
@@ -208,8 +212,8 @@ const server = http.createServer(async (req, res) => {
           response_format: 'json'
         });
 
-        const structured = result.structuredContent;
-        const items = structured?.items || structured?.results || [];
+        const structured = response.structuredContent;
+        const items = structured?.results || structured?.items || [];
 
         // Map strictly without fabrication based on SearchPageHit schema
         const mappedResults = items.map((item) => {
