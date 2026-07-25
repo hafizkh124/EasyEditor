@@ -20,6 +20,12 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:3000',
 ];
 
+// Utility to clean raw HTML tags (<mark>, <span>, etc.) from Lucene snippets
+function stripHtml(text) {
+  if (!text || typeof text !== 'string') return '';
+  return text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+}
+
 // Lazy-loaded backend and server instance
 let backendPromise = null;
 let shamelaModule = null;
@@ -215,16 +221,19 @@ const server = http.createServer(async (req, res) => {
         const structured = response.structuredContent;
         const items = structured?.results || structured?.items || [];
 
-        // Map strictly without fabrication based on SearchPageHit schema
+        // Map strictly without fabrication and strip raw HTML tags
         const mappedResults = items.map((item) => {
+          const rawSnippet = item.snippet_body || item.snippet_foot || '';
+          const cleanSnippet = stripHtml(rawSnippet);
+
           return {
             book_id: item.book_id ?? null,
-            book_name: item.book_name ?? item.book_title ?? 'بدون عنوان',
-            author_name: item.author_name ?? null,
+            book_name: stripHtml(item.book_name ?? item.book_title ?? 'بدون عنوان'),
+            author_name: item.author_name ? stripHtml(item.author_name) : null,
             volume: null,
             page: item.printed_page ?? item.page_id ?? null,
-            content: item.snippet_body || item.snippet_foot || '',
-            highlighted: item.snippet_body || item.snippet_foot || null
+            content: cleanSnippet,
+            highlighted: cleanSnippet
           };
         });
 

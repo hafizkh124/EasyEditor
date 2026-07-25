@@ -14,6 +14,11 @@ export interface LocalShamelaSearchResponse {
   }>;
 }
 
+function cleanText(text: string): string {
+  if (!text || typeof text !== "string") return "";
+  return text.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+}
+
 export async function searchLocalShamela(query: string, limit = 20): Promise<ResourceResult[]> {
   try {
     const isConnected = localStorage.getItem("shamela.connected") === "1";
@@ -39,14 +44,17 @@ export async function searchLocalShamela(query: string, limit = 20): Promise<Res
     for (let idx = 0; idx < data.results.length; idx++) {
       const item = data.results[idx];
       const parsedPage = item.page != null ? parseInt(String(item.page), 10) : undefined;
+      const cleanContent = cleanText(item.content || item.highlighted || "");
+      const cleanBookName = cleanText(item.book_name);
+      const cleanAuthorName = item.author_name ? cleanText(item.author_name) : undefined;
 
       mapped.push({
-        content: item.content || item.highlighted || "",
+        content: cleanContent,
         source_type: "hadith",
-        reason: item.book_name ? `مکتبہ شاملہ (آف لائن) — ${item.book_name}` : "مکتبہ شاملہ (آف لائن)",
+        reason: cleanBookName ? `مکتبہ شاملہ (آف لائن) — ${cleanBookName}` : "مکتبہ شاملہ (آف لائن)",
         citation_ref: {
-          book: item.book_name || undefined,
-          scholar: item.author_name || undefined,
+          book: cleanBookName || undefined,
+          scholar: cleanAuthorName || undefined,
           page: Number.isNaN(parsedPage) ? undefined : parsedPage,
         },
         match_key: `shamela-${item.book_id || "raw"}-${item.page || 0}-${idx}`,
