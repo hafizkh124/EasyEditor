@@ -2,6 +2,7 @@ import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { execSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +48,39 @@ async function getShamelaModule() {
       console.log(`[Bridge] Loading shamela-mcp from: ${srcPath}`);
       shamelaModule = await import(pathToFileURL(srcPath).href);
       return shamelaModule;
+    }
+  }
+
+  // AUTO-EXTRACT FALLBACK: If D:\shamela-mcp-1.2.0.mcpb or D:\shamela-mcp-1.2.0.zip exists, auto-extract
+  const archiveCandidates = [
+    'D:\\shamela-mcp-1.2.0.mcpb',
+    'D:\\shamela-mcp-1.2.0.zip',
+  ];
+
+  for (const archivePath of archiveCandidates) {
+    if (fs.existsSync(archivePath)) {
+      const destDir = 'D:\\shamela-mcp-1.2.0';
+      console.log(`[Bridge] Auto-extracting ${archivePath} to ${destDir}...`);
+      try {
+        fs.mkdirSync(destDir, { recursive: true });
+        execSync(`tar -xf "${archivePath}" -C "${destDir}"`);
+        console.log(`[Bridge] Auto-extracted successfully!`);
+
+        const distPath = path.join(destDir, 'dist', 'index.js');
+        const srcPath = path.join(destDir, 'src', 'server', 'index.js');
+        if (fs.existsSync(distPath)) {
+          console.log(`[Bridge] Loading shamela-mcp from: ${distPath}`);
+          shamelaModule = await import(pathToFileURL(distPath).href);
+          return shamelaModule;
+        }
+        if (fs.existsSync(srcPath)) {
+          console.log(`[Bridge] Loading shamela-mcp from: ${srcPath}`);
+          shamelaModule = await import(pathToFileURL(srcPath).href);
+          return shamelaModule;
+        }
+      } catch (extractErr) {
+        console.error(`[Bridge] Failed auto-extraction of ${archivePath}:`, extractErr);
+      }
     }
   }
 
