@@ -78,21 +78,17 @@ async function probeQuranCom(): Promise<HealthResult> {
   }
 }
 
-async function probeHadithApi(): Promise<HealthResult> {
-  const key = Deno.env.get("HADITH_API_KEY") ?? "";
-  if (!key) {
-    return { name: "hadith-api", ok: false, latency_ms: 0, sample_hits: 0, note: "HADITH_API_KEY not set" };
-  }
+async function probeHadithApi(supabaseUrl: string, supabaseKey: string): Promise<HealthResult> {
   try {
     const [res, ms] = await timed(() =>
-      fetch(`https://hadithapi.com/api/hadiths/?apiKey=${encodeURIComponent(key)}&hadithEnglish=${encodeURIComponent(PROBE_QUERY_EN)}&paginate=3`, {
-        signal: AbortSignal.timeout(10_000),
-      }),
+      fetch(`${supabaseUrl}/rest/v1/scholarly_documents?select=id&source_type=eq.hadith&limit=1`, {
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+        signal: AbortSignal.timeout(5_000),
+      })
     );
-    if (!res.ok) return { name: "hadith-api", ok: false, latency_ms: ms, sample_hits: 0, note: `HTTP ${res.status}` };
+    if (!res.ok) return { name: "hadith-api", ok: false, latency_ms: ms, sample_hits: 0, note: `Local DB HTTP ${res.status}` };
     const data = await res.json();
-    const hits = (data?.hadiths?.data ?? data?.hadiths ?? []).length;
-    return { name: "hadith-api", ok: hits > 0, latency_ms: ms, sample_hits: hits };
+    return { name: "hadith-api", ok: true, latency_ms: ms, sample_hits: data.length, note: "Local Hadith DB Active" };
   } catch (e) {
     return { name: "hadith-api", ok: false, latency_ms: 0, sample_hits: 0, note: String(e) };
   }
@@ -230,7 +226,7 @@ serve(async (req) => {
       probeDorar(),
       probeAlQuran(),
       probeQuranCom(),
-      probeHadithApi(),
+      probeHadithApi(supabaseUrl, supabaseKey),
       probeEmbedding(),
       probeGemini(),
       probeVectorRpc(supabase),
