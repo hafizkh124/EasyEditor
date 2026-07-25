@@ -31,7 +31,7 @@ interface ResourceSearchDialogProps {
 
 type SourceFilter = "all" | "quran" | "hadith";
 
-const ResourceSearchDialog = ({ open, onOpenChange, onInsert, t }: ResourceSearchDialogProps) => {
+const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }: ResourceSearchDialogProps) => {
   const { session } = useAuth();
   const [query, setQuery] = useState("");
   const [response, setResponse] = useState<CitationSearchResponse | null>(null);
