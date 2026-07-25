@@ -231,6 +231,8 @@ const TranslationOutput = ({
         open={resourceOpen}
         onOpenChange={setResourceOpen}
         onInsert={handleInsertResource}
+        onInsertMany={handleInsertResources}
+
         t={t}
       />
     </div>
