@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Database, CheckCircle, RefreshCw, AlertCircle, HardDrive } from "lucide-react";
+import { CheckCircle, RefreshCw, AlertCircle, HardDrive } from "lucide-react";
 
 export function LocalShamelaConnector() {
   const [mcpUrl, setMcpUrl] = useState("http://localhost:8000");

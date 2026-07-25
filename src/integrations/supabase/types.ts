@@ -107,6 +107,136 @@ export type Database = {
         }
         Relationships: []
       }
+      book_chapters: {
+        Row: {
+          chapter_number: number
+          created_at: string
+          id: string
+          project_id: string
+          sort_order: number
+          status: string
+          synopsis: string | null
+          title: string
+        }
+        Insert: {
+          chapter_number?: number
+          created_at?: string
+          id?: string
+          project_id: string
+          sort_order?: number
+          status?: string
+          synopsis?: string | null
+          title: string
+        }
+        Update: {
+          chapter_number?: number
+          created_at?: string
+          id?: string
+          project_id?: string
+          sort_order?: number
+          status?: string
+          synopsis?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_chapters_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "book_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      book_projects: {
+        Row: {
+          abstract: string | null
+          created_at: string
+          current_word_count: number | null
+          genre: string
+          id: string
+          status: string
+          subtitle: string | null
+          target_word_count: number | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          abstract?: string | null
+          created_at?: string
+          current_word_count?: number | null
+          genre?: string
+          id?: string
+          status?: string
+          subtitle?: string | null
+          target_word_count?: number | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          abstract?: string | null
+          created_at?: string
+          current_word_count?: number | null
+          genre?: string
+          id?: string
+          status?: string
+          subtitle?: string | null
+          target_word_count?: number | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      book_sections: {
+        Row: {
+          chapter_id: string
+          content: string | null
+          created_at: string
+          id: string
+          section_number: number
+          sort_order: number
+          status: string
+          synopsis: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          chapter_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          section_number?: number
+          sort_order?: number
+          status?: string
+          synopsis?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          chapter_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          section_number?: number
+          sort_order?: number
+          status?: string
+          synopsis?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_sections_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "book_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -261,6 +391,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_cached: boolean
           is_verified: boolean
           language: string
           passage_key: string
@@ -271,6 +402,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_cached?: boolean
           is_verified?: boolean
           language: string
           passage_key: string
@@ -281,6 +413,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_cached?: boolean
           is_verified?: boolean
           language?: string
           passage_key?: string
@@ -723,6 +856,89 @@ export type Database = {
           reviewed_by?: string | null
           status?: string
           token_amount?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      translation_chunks: {
+        Row: {
+          chunk_index: number
+          id: string
+          notes: string | null
+          passage_key: string | null
+          project_id: string
+          source_text: string
+          status: string
+          tm_match_score: number | null
+          translated_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          chunk_index?: number
+          id?: string
+          notes?: string | null
+          passage_key?: string | null
+          project_id: string
+          source_text: string
+          status?: string
+          tm_match_score?: number | null
+          translated_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          chunk_index?: number
+          id?: string
+          notes?: string | null
+          passage_key?: string | null
+          project_id?: string
+          source_text?: string
+          status?: string
+          tm_match_score?: number | null
+          translated_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "translation_chunks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "translation_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      translation_projects: {
+        Row: {
+          created_at: string
+          genre: string
+          id: string
+          source_lang: string
+          status: string
+          target_lang: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          genre?: string
+          id?: string
+          source_lang?: string
+          status?: string
+          target_lang?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          genre?: string
+          id?: string
+          source_lang?: string
+          status?: string
+          target_lang?: string
+          title?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

@@ -4,14 +4,10 @@ import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  BookOpen, Plus, Sparkles, ArrowLeft, Download, Layers, CheckCircle2,
-  Edit3, Loader2, Save, FileText
+  BookOpen, Plus, Sparkles, ArrowLeft, Download
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,21 +23,21 @@ interface BookProject {
   genre: string;
   abstract?: string | null;
   status: string; // 'idea' | 'outline' | 'draft' | 'review' | 'final'
-  target_word_count: number;
-  current_word_count: number;
+  target_word_count?: number | null;
+  current_word_count?: number | null;
   created_at: string;
 }
 
 export default function BookWorkspace() {
   const navigate = useNavigate();
   const { session } = useAuth();
-  const [projects, setProjects] = useState<BookProject[]>([]);
+  const [_projects, setProjects] = useState<BookProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<BookProject | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [activeChapter, setActiveChapter] = useState<Chapter | null>(null);
   const [activeSection, setActiveSection] = useState<Section | null>(null);
 
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [newBookModal, setNewBookModal] = useState(false);
   const [khittatModal, setKhittatModal] = useState(false);
   const [exportModal, setExportModal] = useState(false);
@@ -49,7 +45,7 @@ export default function BookWorkspace() {
   // New Book Form
   const [newTitle, setNewTitle] = useState("");
   const [newSubtitle, setNewSubtitle] = useState("");
-  const [newGenre, setNewGenre] = useState("research");
+  const [newGenre] = useState("research");
 
   useEffect(() => {
     loadBookProjects();
@@ -132,7 +128,7 @@ export default function BookWorkspace() {
       const { data: proj, error: pErr } = await supabase
         .from("book_projects")
         .insert({
-          user_id: session?.user.id,
+          user_id: session!.user.id,
           title: newTitle.trim(),
           subtitle: newSubtitle.trim() || null,
           genre: newGenre,
