@@ -43,13 +43,14 @@ def main():
             time.sleep(5)
             continue
             
-        proc = res.get("processed", 0)
-        rem = res.get("remaining_total", 0)
+        proc = res.get("processed") or 0
+        rem = res.get("remaining_total")
+        rem_val = rem if rem is not None else 0
         total_processed += proc
         
-        print(f"Batch completed: processed {proc} hadiths | Remaining to embed: {rem:,} | Total Session Embedded: {total_processed:,}")
+        print(f"Batch completed: processed {proc} hadiths | Remaining to embed: {rem_val:,} | Total Session Embedded: {total_processed:,}")
         
-        if res.get("done") or rem == 0:
+        if res.get("done") or (rem is not None and rem == 0):
             print("\n=== Vector Embedding Backfill 100% COMPLETE! All documents embedded! ===")
             break
             
