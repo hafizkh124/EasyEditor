@@ -67,6 +67,13 @@ const TranslationOutput = ({
     toast.success(t("editor.reference_inserted"));
   };
 
+  const handleInsertResources = (items: Array<{ text: string; citation: string }>) => {
+    if (items.length === 0) return;
+    const combined = items.map((it) => `${it.text}\n[${it.citation}]`).join("\n\n");
+    onUpdateText(displayText.trim() ? `${displayText}\n\n${combined}` : combined);
+  };
+
+
   const aiDisabled = aiBusy !== null || !displayText.trim();
 
   const modes = [
