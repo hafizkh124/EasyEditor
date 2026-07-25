@@ -134,6 +134,39 @@ still works — RRF simply fuses one channel instead of two — so this degrades
 recall rather than breaking anything. Re-run the counts above after the
 backfill to confirm.
 
+## After ingesting a classical discipline — flip its prompt flag
+
+`src/lib/prompts/promptsRegistry.ts` marks each of the 14 prompts with
+`corpusReady`. When false, the prompt shows a "ذخیرہ زیرِ تعمیر — غیر مصدقہ"
+badge, because a fiqh/tafsir/rijal prompt that cites from an empty corpus can
+only guess.
+
+Find out what is actually covered:
+
+```sql
+SELECT citation_ref->>'discipline' AS discipline,
+       count(*)                    AS rows,
+       count(embedding)            AS embedded
+  FROM public.scholarly_documents
+ WHERE citation_ref->>'discipline' IS NOT NULL
+ GROUP BY 1 ORDER BY 2 DESC;
+```
+
+For each discipline that comes back with a real row count, flip the matching
+prompts to `corpusReady: true`:
+
+| discipline | prompts to flip |
+|---|---|
+| `fiqh` | `study_masala`, `compare_madhahib`, `nazila_muasira` |
+| `tafsir` | `tafsir_aya_muqaran` |
+| `fatwa` | `takhrij_fatwa` |
+| `lughat` | `lughat_w_irab` |
+| `rijal` | `tarjama_rawi` |
+
+Leave the rest false. The badge is the only thing telling a scholar that a
+citation from that discipline is not yet corpus-backed — don't clear it on the
+assumption that data landed.
+
 ## Not covered by this deployment
 
 - **Tier-2 classical corpus is empty.** `search_classical_scoped` and the
