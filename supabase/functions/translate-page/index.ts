@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       return rateLimitResponse(corsHeaders);
     }
 
-    const { text, imageBase64, mimeType, targetLanguage, sourceLanguage } = await req.json();
+    const { text, imageBase64, mimeType, targetLanguage, sourceLanguage, genreInstruction } = await req.json();
 
     if (!text && !imageBase64) {
       return new Response(
@@ -79,13 +79,17 @@ Deno.serve(async (req) => {
     const targetName = languageNames[targetLanguage] ?? targetLanguage;
     const sourceName = sourceLanguage ? (languageNames[sourceLanguage] ?? sourceLanguage) : null;
 
-    const systemPrompt = `You are a professional translator. Translate the provided content into ${targetName}.${sourceName ? ` The source language is ${sourceName}.` : " Auto-detect the source language."}
+    let systemPrompt = `You are a professional translator. Translate the provided content into ${targetName}.${sourceName ? ` The source language is ${sourceName}.` : " Auto-detect the source language."}
 Rules:
 1. Produce ONLY the translated text — no explanations, notes, or metadata.
 2. Preserve the original formatting, paragraph breaks, and structure.
 3. Maintain proper text direction (RTL for Urdu/Arabic/Persian/Pashto, LTR for English).
 4. If the source contains headings, bullet points, or numbered lists, preserve them.
 5. Translate naturally and idiomatically — do not produce word-for-word literal translations.`;
+
+    if (genreInstruction && typeof genreInstruction === "string") {
+      systemPrompt += `\nSpecial Genre Style Instruction: ${genreInstruction.trim()}`;
+    }
 
     const userContent: Array<Record<string, unknown>> = [];
 

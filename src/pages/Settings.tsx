@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import AppLayout from "@/components/AppLayout";
 import { handleSupabaseError } from "@/lib/errors";
 
-// FR-6.1: Settings contains ONLY language selection.
-// All other previous settings (profile, subscription, logout) live on /profile.
+import { LocalShamelaConnector } from "@/components/mcp/LocalShamelaConnector";
+
+// FR-6.1: Settings contains language selection and local MCP companion controls.
 const Settings = () => {
   useSeo({ title: "Settings — Al-Ulama Easy Editor", description: "Manage language, theme and account preferences for Al-Ulama Easy Editor.", path: "/settings", noindex: true });
 
@@ -67,9 +68,13 @@ const Settings = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Local Shamela 4 MCP Connector */}
+        <LocalShamelaConnector />
       </div>
     </AppLayout>
   );
 };
+
 
 export default Settings;

@@ -36,6 +36,8 @@ const Answers = lazy(() => import("./pages/Answers"));
 const Editor = lazy(() => import("./pages/Editor"));
 const OcrReview = lazy(() => import("./pages/OcrReview"));
 const Translate = lazy(() => import("./pages/Translate"));
+const TranslationWorkspace = lazy(() => import("./pages/TranslationWorkspace"));
+const BookWorkspace = lazy(() => import("./pages/BookWorkspace"));
 const Extract = lazy(() => import("./pages/Extract"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
@@ -122,6 +124,8 @@ const App = () => (
                   <Route path="/editor" element={<ProtectedRoute><ErrorBoundary><Editor /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/ocr/review" element={<ProtectedRoute><ErrorBoundary><OcrReview /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/translate" element={<ProtectedRoute><ErrorBoundary><Translate /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/translate-workspace" element={<ProtectedRoute><ErrorBoundary><TranslationWorkspace /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/book-workspace" element={<ProtectedRoute><ErrorBoundary><BookWorkspace /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/extract" element={<ProtectedRoute><ErrorBoundary><Extract /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                   <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />

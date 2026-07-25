@@ -72,14 +72,15 @@ export default function ExtractPage() {
         console.error("Failed to load translators:", error);
         toast.error("مترجمین کی فہرست حاصل نہیں ہو سکی۔");
       } else if (data) {
+        const defaultSlugs = new Set(["ur.junagarhi", "ur.jalandhari", "ur.taqiusmani", "ur.kanzuliman", "ur.maududi"]);
         setTranslators(
-          data.map((t, idx) => ({
+          data.map((t) => ({
             slug: t.slug,
             fullName: t.full_name,
             language: t.language,
             maslak: t.maslak,
-            // Default: pre-select the first few so the matrix isn't overwhelming.
-            isSelected: idx < 5,
+            // Default pre-selected: Maulana Junagarhi, Taqiusmani, Jalandhari, Kanzuliman, Maududi
+            isSelected: defaultSlugs.has(t.slug),
           })),
         );
       }
