@@ -95,15 +95,22 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
 
   const insertAll = () => {
     if (visibleResults.length === 0) return;
-    // Insert each passage as its own quote block with its own citation, so
-    // the editor renders separate paragraphs instead of collapsing everything
-    // into one blob with a single mashed-together bracket.
-    for (const r of visibleResults) {
-      onInsert(r.content, formatCitation(r.citation_ref, r.source_url));
+    const items = visibleResults.map((r) => ({
+      text: r.content,
+      citation: formatCitation(r.citation_ref, r.source_url),
+    }));
+    if (onInsertMany) {
+      onInsertMany(items);
+    } else {
+      // Fallback: serial calls. Note this can suffer from stale-closure state
+      // overwrites in consumers whose onInsert reads captured state — prefer
+      // supplying onInsertMany.
+      for (const it of items) onInsert(it.text, it.citation);
     }
     onOpenChange(false);
     toast.success(t("editor.reference_inserted"));
   };
+
 
   /** Insert the count answer as a sentence the user can keep in their document. */
   const insertCountSummary = () => {
