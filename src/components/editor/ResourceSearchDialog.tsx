@@ -21,8 +21,13 @@ interface ResourceSearchDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Called with the verse/hadith text and its formatted citation when the user inserts a result. */
   onInsert: (text: string, citation: string) => void;
+  /** Optional batch insert. When provided, "Insert all" delegates here so the
+   *  consumer can apply every citation in one state update (avoids stale-closure
+   *  overwrites in React setters). Falls back to serial `onInsert` calls. */
+  onInsertMany?: (items: Array<{ text: string; citation: string }>) => void;
   t: (k: string) => string;
 }
+
 
 type SourceFilter = "all" | "quran" | "hadith";
 
