@@ -15,6 +15,7 @@ import {
   type ResourceResult,
   type CitationSearchResponse,
 } from "@/lib/editor/citationFormat";
+import { searchLocalShamela } from "@/lib/shamela/localShamelaService";
 
 interface ResourceSearchDialogProps {
   open: boolean;
@@ -29,7 +30,7 @@ interface ResourceSearchDialogProps {
 }
 
 
-type SourceFilter = "all" | "quran" | "hadith";
+type SourceFilter = "all" | "quran" | "hadith" | "shamela";
 
 const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }: ResourceSearchDialogProps) => {
   const { session } = useAuth();
@@ -40,30 +41,54 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
   const [filter, setFilter] = useState<SourceFilter>("all");
 
   const runSearch = useCallback(async () => {
-    if (!query.trim() || !session?.access_token) return;
+    if (!query.trim()) return;
     setIsSearching(true);
     setSearched(true);
     setFilter("all");
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resource-search`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${session.access_token}`,
+      const [cloudRes, localResults] = await Promise.all([
+        session?.access_token
+          ? fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resource-search`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ query }),
+              },
+            ).catch(() => null)
+          : Promise.resolve(null),
+        searchLocalShamela(query.trim()),
+      ]);
+
+      if (cloudRes && cloudRes.ok) {
+        const data = (await cloudRes.json()) as CitationSearchResponse;
+        if (localResults.length > 0) {
+          data.results = [...(data.results || []), ...localResults];
+        }
+        setResponse(data);
+      } else if (localResults.length > 0) {
+        setResponse({
+          intent: "topical",
+          plan_summary: {
+            arabic_terms: [query.trim()],
+            scope_label: "مکتبہ شاملہ (آف لائن)",
+            degraded: false,
           },
-          body: JSON.stringify({ query }),
-        },
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || t("editor.search_error"));
+          results: localResults,
+        });
+      } else {
+        if (cloudRes && !cloudRes.ok) {
+          const err = await cloudRes.json().catch(() => ({}));
+          toast.error(err.error || t("editor.search_error"));
+        } else {
+          toast.error(t("editor.search_error"));
+        }
         setResponse(null);
-        return;
       }
-      setResponse((await res.json()) as CitationSearchResponse);
     } catch {
       toast.error(t("editor.search_error"));
       setResponse(null);
@@ -74,8 +99,12 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
 
   const results = response?.results ?? [];
 
-  const sourceTypeOf = (r: ResourceResult): SourceFilter =>
-    r.source_type === "quran" || r.citation_ref?.surah_number != null ? "quran" : "hadith";
+  const sourceTypeOf = (r: ResourceResult): SourceFilter => {
+    if (r.match_key?.startsWith("shamela-") || r.reason?.includes("مکتبہ شاملہ")) {
+      return "shamela";
+    }
+    return r.source_type === "quran" || r.citation_ref?.surah_number != null ? "quran" : "hadith";
+  };
 
   const visibleResults = useMemo(
     () => (filter === "all" ? results : results.filter((r) => sourceTypeOf(r) === filter)),
@@ -85,6 +114,7 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
   const counts = useMemo(() => ({
     quran: results.filter((r) => sourceTypeOf(r) === "quran").length,
     hadith: results.filter((r) => sourceTypeOf(r) === "hadith").length,
+    shamela: results.filter((r) => sourceTypeOf(r) === "shamela").length,
   }), [results]);
 
   const insertOne = (r: ResourceResult) => {
@@ -102,9 +132,6 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
     if (onInsertMany) {
       onInsertMany(items);
     } else {
-      // Fallback: serial calls. Note this can suffer from stale-closure state
-      // overwrites in consumers whose onInsert reads captured state — prefer
-      // supplying onInsertMany.
       for (const it of items) onInsert(it.text, it.citation);
     }
     onOpenChange(false);
@@ -127,9 +154,6 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
   };
 
   const isCount = response?.intent === "count" && !!response.count;
-  // Defensive: an older/cached `resource-search` (or any non-engine response)
-  // may omit plan_summary. Never dereference it directly — a missing field
-  // must degrade the UI, not white-screen the whole editor.
   const arabicTerms = response?.plan_summary?.arabic_terms ?? [];
   const scopeLabel = response?.plan_summary?.scope_label ?? "";
 
@@ -160,9 +184,6 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
           </Button>
         </div>
 
-        {/* What the engine actually searched for — the Arabic surface forms it
-            derived from the question. Makes an otherwise opaque expansion step
-            inspectable, so a bad result is diagnosable by the user. */}
         {arabicTerms.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
             <span className="text-muted-foreground flex items-center gap-1">
@@ -238,11 +259,12 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
             {/* ── Filters + insert all ────────────────────────────────────── */}
             {results.length > 0 && (
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap">
                   {([
                     ["all", t("editor.filter_all"), results.length],
                     ["quran", t("editor.filter_quran"), counts.quran],
                     ["hadith", t("editor.filter_hadith"), counts.hadith],
+                    ["shamela", "مکتبہ شاملہ (آف لائن)", counts.shamela],
                   ] as const).map(([value, label, n]) =>
                     n > 0 || value === "all" ? (
                       <button
