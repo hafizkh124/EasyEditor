@@ -84,11 +84,13 @@ Adding it with `verify_jwt = false` would expose it unauthenticated.
 
 | Secret | Needed by | If missing |
 |---|---|---|
-| `HADITH_API_KEY` | `extract-translations` (hadith), `islamic-api-fetch` | Hadith extraction returns an honest "key not set" note; Quran side unaffected |
 | `TAVILY_API_KEY` | `web-search` (Tier-4) | Returns empty results **and refunds the tokens** — no silent charge |
+| `ELEVENLABS_API_KEY` | voice cloning | That feature stays off |
 
-Both degrade honestly rather than fabricating, so the app is usable before they
-are set — those two features just stay off.
+`HADITH_API_KEY` is **no longer needed** (2026-07-25): the hadith corpus is
+ingested locally, so `extract-translations` and `islamic-api-fetch` read
+`scholarly_documents` directly. No reference to the key remains anywhere in
+`supabase/functions/`.
 
 Already configured (no action): `GEMINI_API_KEY`, `LOVABLE_API_KEY`,
 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INGEST_SHARED_SECRET`.
@@ -101,7 +103,7 @@ Already configured (no action): `GEMINI_API_KEY`, `LOVABLE_API_KEY`,
 |---|---|---|---|
 | 1 | `/extract` | Enter `quran:2:255`, keep default translators, run | Arabic ayah + one row per selected translator, each with a source link. **No text under a translator that didn't return one** — missing ones are listed as unavailable |
 | 2 | `/extract` | Run the same reference again | Instant (served from `passage_translations`), and no token charge |
-| 3 | `/extract` | Enter `hadith:bukhari:1` | Arabic matn + Urdu/English. Without `HADITH_API_KEY`: an explicit note, never invented text |
+| 3 | `/extract` | Enter `hadith:bukhari:1` | The Arabic matn **of hadith #1 specifically** + any ingested renderings, each with the source book named in the مترجم column. If the reference isn't in the corpus: an explicit note, never invented text. Cross-check the number against the printed collection — an off-by-one here means the passage_key backfill is misaligned |
 | 4 | `/extract` | Click the row insert icon, then "ایڈیٹر میں کھولیں" | Editor opens with the passage as a blockquote + citation line |
 | 5 | `/research` | Open the 14-prompt modal | Prompts whose corpus isn't ingested show the "ذخیرہ زیرِ تعمیر — غیر مصدقہ" badge; picking a grounded prompt switches to Islamic mode |
 | 6 | `/translate-workspace` | Create a project, add a chunk, hit AI translate | Translation streams in. Re-using the same source text later suggests the earlier translation (TM), only from projects with the same target language |
@@ -113,6 +115,24 @@ Tests 1, 3, 7 and 8 are the ones that matter most: they are the exact places
 where earlier drafts of this code showed fabricated scholarly content.
 
 ---
+
+## Outstanding — hadith embedding backfill
+
+As of the 2026-07-25 corpus load, `scholarly_documents` holds ~350k rows but
+only ~153k (44%) have a vector:
+
+| domain | embedded |
+|---|---|
+| quran | 12,472 / 12,472 ✅ |
+| classical | 4,780 / 4,780 ✅ |
+| hadith | 135,933 / 332,406 (41%) |
+| Urdu-Hadith-Excel | 0 / 695 |
+
+Until `run_embedding_backfill` finishes, roughly 197k hadiths are reachable
+only through the **lexical/trigram** channel, not the semantic one. Retrieval
+still works — RRF simply fuses one channel instead of two — so this degrades
+recall rather than breaking anything. Re-run the counts above after the
+backfill to confirm.
 
 ## Not covered by this deployment
 
