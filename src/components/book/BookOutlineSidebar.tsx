@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Folder, FileText, ChevronDown, ChevronLeft, Trash2, Edit3 } from "lucide-react";
+import { Plus, Folder, FileText } from "lucide-react";
 
 export interface Chapter {
   id: string;
