@@ -38,4 +38,8 @@ data/
 *.dat
 *.csv
 
+# Build info & stats
+*.tsbuildinfo
+stats.html
+
 
