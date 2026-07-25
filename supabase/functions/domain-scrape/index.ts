@@ -89,9 +89,26 @@ const DOMAINS: Record<string, DomainConfig> = {
     },
   },
   alulama:            { host: "alulama.org",             lang: "ur", type: "fatwa" },
+  "darulifta-deoband":{
+    host: "darulifta-deoband.com",
+    lang: "ur",
+    type: "fatwa",
+    citation: (u) => {
+      const m = u.match(/\/(?:fatwa|home)\/(\d+)/i) || u.match(/question\.php\?id=(\d+)/i);
+      return m ? { fatwa_number: m[1] } : {};
+    },
+  },
   "magazine-mohaddis":{ host: "magazine.mohaddis.com",   lang: "ur", type: "article" },
   mohaddis:           { host: "mohaddis.org",            lang: "ur", type: "article" },
-  urdufatwa:          { host: "urdufatwa.com",           lang: "ur", type: "fatwa" },
+  urdufatwa:          {
+    host: "urdufatwa.com",
+    lang: "ur",
+    type: "fatwa",
+    citation: (u) => {
+      const m = u.match(/\/fatwa\/(\d+)/i) || u.match(/id=(\d+)/i);
+      return m ? { fatwa_number: m[1] } : {};
+    },
+  },
   islamfort:          { host: "islamfort.com",           lang: "ur", type: "article" },
   alminasa:           { host: "alminasa.ai",             lang: "ar", type: "article" },
   shamela:            { host: "shamela.ws",              lang: "ar", type: "classical" },

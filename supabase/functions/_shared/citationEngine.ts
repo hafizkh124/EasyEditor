@@ -22,6 +22,7 @@ import { callChatCompletions } from "./aiGateway.ts";
 import { embedQuery } from "./embed.ts";
 import { planQuery, describeScope, type QueryPlan } from "./queryPlanner.ts";
 import { reciprocalRankFusion, buildMatchKey } from "./rankFusion.ts";
+import { normalizeHamzaAndAlif } from "./arabicRoot.ts";
 // Tier-2 classical corpus lexical channel is scoped by discipline; see disciplines.ts.
 
 export interface EngineCitation {
@@ -521,3 +522,143 @@ export async function findCitations(input: FindCitationsInput): Promise<Citation
 
   return { intent: plan.intent, plan_summary, results: ranked.slice(0, maxResults) };
 }
+
+/**
+ * Chronologically sort Tafsir citations by Mufassir death date (وفاة / death_year_ah).
+ */
+export function sortTafsirChronologically(citations: EngineCitation[]): EngineCitation[] {
+  return [...citations].sort((a, b) => {
+    const wafatA = Number(a.citation_ref?.death_year_ah ?? a.citation_ref?.wafat ?? 9999);
+    const wafatB = Number(b.citation_ref?.death_year_ah ?? b.citation_ref?.wafat ?? 9999);
+    return wafatA - wafatB;
+  });
+}
+
+/**
+ * Hadith Takhrij: Group matching narrations across collections (Sahih Bukhari, Muslim, Tirmidhi, etc.)
+ */
+export interface HadithTakhrijResult {
+  primaryHadith: EngineCitation;
+  matchingNarrations: Array<{
+    collection: string;
+    hadith_number: string | number;
+    chapter?: string;
+    /** Content-word overlap ratio with the primary narration (0..1). */
+    match_ratio: number;
+    citation: EngineCitation;
+  }>;
+}
+
+/** Words too common in hadith matn/isnad to be evidence of a shared narration
+ *  (قال، رسول، الله، عن، حدثنا …). Overlap on these means nothing. */
+const TAKHRIJ_COMMON_WORDS = new Set([
+  "قال", "قالت", "قالوا", "رسول", "الله", "النبي", "عليه", "وسلم", "صلي",
+  "حدثنا", "حدثني", "اخبرنا", "اخبرني", "سمعت", "روي", "عنه", "عنها",
+  "رضي", "بن", "ابن", "ابي", "عبد", "كان", "كانت", "الذي", "التي", "علي",
+  "الي", "من", "في", "عن", "انه", "انها", "هذا", "هذه", "ذلك",
+]);
+
+/** Content-word set for matn comparison: normalized (tashkeel/hamza/ta-marbuta),
+ *  boilerplate removed, short tokens dropped. */
+function takhrijTokens(text: string): Set<string> {
+  const norm = normalizeHamzaAndAlif(text || "");
+  return new Set(
+    norm
+      .split(/[\s،.:؛()«»"'\-]+/)
+      .map((w) => w.trim())
+      .filter((w) => w.length > 3 && !TAKHRIJ_COMMON_WORDS.has(w)),
+  );
+}
+
+/**
+ * Hadith takhrij — find other narrations of the SAME hadith across collections.
+ *
+ * Matching is by matn (text) similarity ONLY. It deliberately does not treat an
+ * identical hadith_number in a different collection as a match: hadith
+ * numbering is per-collection and arbitrary, so Bukhari #1 and Muslim #1 are
+ * entirely unrelated narrations — pairing them would attribute a hadith to a
+ * book that never narrated it.
+ *
+ * Similarity is the content-word overlap ratio (isnad/matn boilerplate
+ * excluded), normalized by the smaller side so an abridged narration still
+ * matches its fuller version. A long narration full of ordinary words cannot
+ * pass on raw word count alone.
+ */
+export function takhrijHadith(
+  primary: EngineCitation,
+  candidates: EngineCitation[],
+  /** Minimum content-word overlap ratio to accept as the same narration. */
+  minOverlapRatio = 0.5,
+): HadithTakhrijResult {
+  const primaryColl = (primary.citation_ref?.collection || primary.citation_ref?.book || "").toLowerCase();
+  const primaryNum = String(primary.citation_ref?.hadith_number || "");
+  const primaryTokens = takhrijTokens(primary.content_ar || primary.content || "");
+
+  const scored: Array<{ c: EngineCitation; ratio: number }> = [];
+
+  for (const c of candidates) {
+    if (c.source_type !== "hadith") continue;
+    const coll = (c.citation_ref?.collection || c.citation_ref?.book || "").toLowerCase();
+    const num = String(c.citation_ref?.hadith_number || "");
+    // Skip the primary row itself (same collection AND same number).
+    if (coll === primaryColl && num === primaryNum) continue;
+
+    const candTokens = takhrijTokens(c.content_ar || c.content || "");
+    // Too little content on either side to judge — omit rather than guess.
+    if (primaryTokens.size < 3 || candTokens.size < 3) continue;
+
+    let shared = 0;
+    for (const w of candTokens) if (primaryTokens.has(w)) shared++;
+    const ratio = shared / Math.min(primaryTokens.size, candTokens.size);
+    if (ratio >= minOverlapRatio) scored.push({ c, ratio });
+  }
+
+  // Strongest textual agreement first.
+  scored.sort((a, b) => b.ratio - a.ratio);
+
+  return {
+    primaryHadith: primary,
+    matchingNarrations: scored.map(({ c, ratio }) => ({
+      collection: String(c.citation_ref?.collection || c.citation_ref?.book || "کتابِ حدیث"),
+      hadith_number: c.citation_ref?.hadith_number || "",
+      chapter: c.citation_ref?.chapter || c.citation_ref?.bab || undefined,
+      match_ratio: Number(ratio.toFixed(2)),
+      citation: c,
+    })),
+  };
+}
+
+/**
+ * Kifayat Gate (کفایت Gate / Confidence Gate):
+ * Evaluates whether current retrieval results are high-confidence (normalized RRF score >= threshold)
+ * so we do not escalate to Tier 3 scrapers or Tier 4 paid Web Search APIs needlessly.
+ */
+export function evaluateKifayatGate(results: EngineCitation[], threshold = 0.70): { isSufficient: boolean; maxScore: number; reason: string } {
+  if (!results || results.length === 0) {
+    return { isSufficient: false, maxScore: 0, reason: "کوئی مواد برآمد نہیں ہوا۔ Tier 3/4 پر تلاش جاری رکھیں۔" };
+  }
+
+  const rawTopScore = Math.max(...results.map((r) => r.score || 0));
+  // Normalize against the theoretical maximum RRF score: a document ranked #1
+  // in BOTH channels scores 1/(60+1) + 1/(60+1) ≈ 0.03278. So 1.0 means "top
+  // hit in every channel", 0.5 means "top hit in one channel only".
+  //
+  // This is a RETRIEVAL-confidence proxy (agreement + rank), not a semantic
+  // relevance judgement — measuring the latter would need another LLM call.
+  // Deliberately NOT short-circuited on result COUNT: the lexical channel
+  // returns up to LEXICAL_LIMIT rows for almost any Arabic term, so a
+  // count-based shortcut would report "sufficient" for every query and the
+  // gate would never actually gate anything.
+  const normalizedScore = Math.min(rawTopScore / 0.03278, 1.0);
+  const isSufficient = normalizedScore >= threshold;
+
+  return {
+    isSufficient,
+    maxScore: Number(normalizedScore.toFixed(2)),
+    reason: isSufficient
+      ? `Tier 1/2 کی تلاش میں اعلیٰ اعتمادی رزلٹ (Confidence: ${(normalizedScore * 100).toFixed(0)}%) مل گئے ہیں۔ اضافے کی ضرورت نہیں۔`
+      : `کفایت معیار سے کم مطابقت (Confidence: ${(normalizedScore * 100).toFixed(0)}%)۔ Tier 3/4 کی جانب پیش رفت۔`,
+  };
+}
+
+

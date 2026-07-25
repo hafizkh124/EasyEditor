@@ -18,10 +18,11 @@ import SidebarHistory from "@/components/SidebarHistory";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
 import type { SessionSection } from "@/hooks/useSessionHistory";
 
-// FR-2.2: Research, Transcribe, OCR, Speak, Admin (admin conditional)
 const sectionNav = [
   { path: "/research", icon: BookOpen, labelKey: "nav.research", section: "research" as SessionSection },
   { path: "/extract", icon: Layers, labelKey: "nav.extract", section: "research" as SessionSection },
+  { path: "/translate-workspace", icon: Languages, labelKey: "nav.translate_workspace", fallbackLabel: "ترجمہ پروجیکٹس", section: "translate" as SessionSection },
+  { path: "/book-workspace", icon: FileText, labelKey: "nav.book_workspace", fallbackLabel: "تصنیف ورک اسپیس", section: "editor" as SessionSection },
   { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe", section: "transcribe" as SessionSection },
   { path: "/ocr", icon: Image, labelKey: "nav.ocr", section: "ocr" as SessionSection },
   { path: "/speak", icon: Volume2, labelKey: "nav.speak", section: "speak" as SessionSection },
@@ -120,7 +121,7 @@ const SectionNavItem = ({
     title={collapsed ? t(item.labelKey) : undefined}
   >
     <item.icon className={cn("h-[18px] w-[18px] flex-shrink-0", isActive && "text-primary")} />
-    {!collapsed && <span>{t(item.labelKey)}</span>}
+    {!collapsed && <span>{t(item.labelKey) !== item.labelKey ? t(item.labelKey) : ((item as any).fallbackLabel || t(item.labelKey))}</span>}
   </Link>
 );
 

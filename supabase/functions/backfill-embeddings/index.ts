@@ -178,17 +178,25 @@ serve(async (req) => {
       throw new Error(`Embedding count mismatch: got ${vectors.length}, expected ${rows.length}`);
     }
 
-    // ── UPDATE in parallel (small, indexed point-updates) ─────────────────
+    // ── UPDATE sequentially and resiliently ──────────────────────────────
     let updated = 0;
     const errors: string[] = [];
-    await Promise.all(rows.map(async (row, i) => {
-      const { error: updErr } = await supabase
-        .from("scholarly_documents")
-        .update({ embedding: vectors[i] })
-        .eq("id", (row as any).id);
-      if (updErr) errors.push(`${(row as any).id}: ${updErr.message}`);
-      else updated += 1;
-    }));
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i] as any;
+      try {
+        const { error: updErr } = await supabase
+          .from("scholarly_documents")
+          .update({ embedding: vectors[i] })
+          .eq("id", row.id);
+        if (updErr) {
+          errors.push(`${row.id}: ${updErr.message}`);
+        } else {
+          updated += 1;
+        }
+      } catch (e) {
+        errors.push(`${row.id}: ${String(e)}`);
+      }
+    }
 
     // ── Report remaining work so the orchestrator knows when to stop ─────
     // Critical safety: if we processed > 0 rows this batch, NEVER signal
@@ -211,8 +219,9 @@ serve(async (req) => {
 
   } catch (e) {
     console.error("backfill-embeddings error:", e);
+    const msg = (e as any)?.message || (e as any)?.details || (typeof e === 'object' ? JSON.stringify(e) : String(e));
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : String(e) }),
+      JSON.stringify({ error: msg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

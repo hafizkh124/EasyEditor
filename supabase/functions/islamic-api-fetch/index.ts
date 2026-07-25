@@ -307,10 +307,6 @@ serve(async (req) => {
       });
     }
 
-    const HADITH_API_KEY  = Deno.env.get("HADITH_API_KEY") ?? "";
-    if (!HADITH_API_KEY) {
-      console.warn("[islamic-api-fetch] HADITH_API_KEY not set — HadithAPI.com (Urdu/EN/AR) lane is disabled. Add the secret inside the Lovable platform to enable it.");
-    }
     const supabaseUrl     = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase        = createClient(supabaseUrl, supabaseKey);
@@ -337,7 +333,7 @@ serve(async (req) => {
       return results;
     };
 
-    // Fan-out: only call selected domains
+    // Fan-out: only call selected domains (Hadith collections are queried locally via pgvector/scholarly_documents)
     const fetchers: Promise<IslamicResult[]>[] = [];
 
     if (!selectedDomains || selectedDomains.includes("dorar")) {
@@ -345,9 +341,6 @@ serve(async (req) => {
     }
     if (!selectedDomains || selectedDomains.includes("alquran")) {
       fetchers.push(fetchWithCache("alquran", () => fetchAlQuran(query)));
-    }
-    if ((!selectedDomains || selectedDomains.includes("hadith-api")) && HADITH_API_KEY) {
-      fetchers.push(fetchWithCache("hadith-api", () => fetchHadithApi(query, HADITH_API_KEY)));
     }
     if (!selectedDomains || selectedDomains.includes("quran-com")) {
       fetchers.push(fetchWithCache("quran-com", () => fetchQuranCom(query)));

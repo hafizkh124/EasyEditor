@@ -17,8 +17,7 @@ interface DomainInfo {
 const DOMAINS: DomainInfo[] = [
   // HADITH
   { id: "dorar",       labelKey: "islamic.domain_dorar",     tier: "all",  group: "hadith" },
-  // sunnah removed per Phase 7.5 doctrine — no API key, would silently no-op.
-  { id: "hadith-api",       labelKey: "islamic.domain_hadithapi",       tier: "all", group: "hadith" },
+  // sunnah and hadith-api removed — all Hadith books are now indexed locally in DB.
   { id: "hadith-index",     labelKey: "islamic.domain_hadith_idx",      tier: "all", group: "hadith" },
   { id: "islamicurdubooks", labelKey: "islamic.domain_islamicurdubooks", tier: "all", group: "hadith" },
   { id: "shamilaurdu",      labelKey: "islamic.domain_shamilaurdu",      tier: "all", group: "classical" },

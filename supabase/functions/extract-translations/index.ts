@@ -182,110 +182,40 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
 
-    // ══ Hadith path ══════════════════════════════════════════════════════════
+    // ══ Hadith path (Queried 100% locally from scholarly_documents DB) ════════
     const hadith = parseHadithKey(passage_key.trim());
     if (hadith) {
-      const bookSlug = HADITH_BOOK_SLUGS[hadith.collection];
-      if (!bookSlug) {
+      const { data: docRows } = await supabase
+        .from("scholarly_documents")
+        .select("title, content, content_ar, citation_ref, language, source_url")
+        .or(`passage_key.eq.${passage_key},passage_key.ilike.%:${hadith.collection}:${hadith.number}%`)
+        .limit(1);
+
+      if (docRows && docRows.length > 0) {
+        const doc = docRows[0];
         return jsonResponse({
-          passage_key, arabic: null, translations: [], unavailable: [],
-          note: "اس مجموعے کے تراجم HadithAPI پر دستیاب نہیں (بخاری، مسلم، ترمذی، ابو داؤد، ابن ماجہ، نسائی، مشکاۃ، مسند احمد سپورٹڈ ہیں)۔",
+          passage_key,
+          arabic: doc.content_ar ?? null,
+          translations: [
+            {
+              translator_slug: "local-db",
+              translator_name: doc.title || "حدیث مبارکہ",
+              language: doc.language || "ur",
+              maslak: null,
+              text: doc.content,
+              source_url: doc.source_url || null,
+            },
+          ],
+          unavailable: [],
         });
       }
 
-      const { data: hTranslators } = await supabase
-        .from("translators")
-        .select("slug, full_name, language, maslak, source, external_edition_id")
-        .eq("is_enabled", true)
-        .eq("corpus_type", "hadith")
-        .order("sort_order", { ascending: true });
-      const wanted = (hTranslators ?? []) as TranslatorRow[];
-      if (wanted.length === 0) {
-        return jsonResponse({ passage_key, arabic: null, translations: [], unavailable: [] });
-      }
-
-      // Cached first.
-      const { data: cachedRows } = await supabase
-        .from("passage_translations")
-        .select("translator_slug, language, text, source_url")
-        .eq("passage_key", passage_key)
-        .in("translator_slug", wanted.map((t) => t.slug));
-      const cached = new Map<string, { language: string; text: string; source_url: string | null }>();
-      for (const r of cachedRows ?? []) {
-        cached.set(r.translator_slug, { language: r.language, text: r.text, source_url: r.source_url });
-      }
-
-      const missing = wanted.filter((t) => !cached.has(t.slug));
-      const HADITH_API_KEY = Deno.env.get("HADITH_API_KEY") ?? "";
-
-      if (missing.length > 0) {
-        if (!HADITH_API_KEY) {
-          // Nothing cached and no key to fetch — honest, no fabrication.
-          if (cached.size === 0) {
-            return jsonResponse({
-              passage_key, arabic: null, translations: [], unavailable: [],
-              note: "حدیث کے تراجم کے لیے HadithAPI کلید سیٹ نہیں ہے۔",
-            });
-          }
-        } else {
-          const tokenCost = calculateCost("citation_search", 1);
-          const tokenResult = await checkAndDeductTokens(
-            supabase, user.id, tokenCost, "citation_search", `Hadith extract: ${passage_key}`,
-          );
-          if (!tokenResult.ok) return insufficientTokensResponse(tokenResult, corsHeaders);
-
-          const fetched = await fetchHadithApiOne(bookSlug, hadith.number, HADITH_API_KEY);
-          const toInsert: Array<{
-            passage_key: string; translator_slug: string; language: string;
-            text: string; source_url: string; is_verified: boolean;
-          }> = [];
-          if (fetched) {
-            for (const t of missing) {
-              const field = t.external_edition_id ?? "";
-              const text = fetched.fields[field];
-              if (text) {
-                toInsert.push({
-                  passage_key, translator_slug: t.slug, language: t.language,
-                  text, source_url: fetched.url, is_verified: false,
-                });
-                cached.set(t.slug, { language: t.language, text, source_url: fetched.url });
-              }
-            }
-          }
-          if (toInsert.length > 0) {
-            const { error: insErr } = await supabase
-              .from("passage_translations")
-              .upsert(toInsert, { onConflict: "passage_key,translator_slug" });
-            if (insErr) console.error("extract-translations hadith cache upsert error:", insErr.message);
-          }
-          // Refund if the fetch produced nothing usable at all.
-          if (cached.size === 0) {
-            await refundTokens(supabase, user.id, tokenCost, "citation_search", "No hadith text found");
-          }
-        }
-      }
-
-      // Assemble: hadith.ar → `arabic`; ur/en → translations. Omit anything absent.
-      const arabicHit = cached.get("hadith.ar");
-      const translations: TranslationOut[] = [];
-      const unavailable: string[] = [];
-      for (const t of wanted) {
-        if (t.slug === "hadith.ar") continue; // shown as the passage arabic
-        const hit = cached.get(t.slug);
-        if (hit) {
-          translations.push({
-            translator_slug: t.slug, full_name: t.full_name, language: hit.language,
-            maslak: t.maslak, text: hit.text, source_url: hit.source_url,
-          });
-        } else {
-          unavailable.push(t.slug);
-        }
-      }
       return jsonResponse({
         passage_key,
-        arabic: arabicHit?.text ?? null,
-        translations,
-        unavailable,
+        arabic: null,
+        translations: [],
+        unavailable: [],
+        note: "یہ حدیث ہمارے مقامی ڈیٹا بیس میں تلاش نہیں ہو سکی۔",
       });
     }
 
