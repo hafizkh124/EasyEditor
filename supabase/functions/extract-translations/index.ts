@@ -92,54 +92,6 @@ function parseHadithKey(passageKey: string): { collection: string; number: strin
   return { collection: m[1].toLowerCase(), number: m[2].trim() };
 }
 
-/** Our internal collection slug (queryPlanner COLLECTION_SLUGS) → HadithAPI.com
- *  bookSlug. Only collections HadithAPI actually serves are mapped; the rest
- *  return an honest "unavailable" rather than a wrong book. Slugs mirror the
- *  documented set in islamic-api-fetch/fetchHadithApi. */
-const HADITH_BOOK_SLUGS: Record<string, string> = {
-  bukhari:  "sahih-bukhari",
-  muslim:   "sahih-muslim",
-  tirmidhi: "al-tirmidhi",
-  abudawud: "abu-dawood",
-  ibnmajah: "ibn-e-majah",
-  nasai:    "sunan-nasai",
-  mishkat:  "mishkat",
-  ahmed:    "musnad-ahmad",
-};
-
-/** Fetch one hadith (Arabic + Urdu + English) by book + number from HadithAPI.
- *  Returns the language texts keyed by HadithAPI field name, plus a source URL.
- *  Never throws; returns null when nothing usable comes back. */
-async function fetchHadithApiOne(
-  bookSlug: string,
-  hadithNumber: string,
-  apiKey: string,
-): Promise<{ fields: Record<string, string>; url: string } | null> {
-  try {
-    const url =
-      `https://hadithapi.com/api/hadiths/?apiKey=${encodeURIComponent(apiKey)}` +
-      `&book=${encodeURIComponent(bookSlug)}` +
-      `&hadithNumber=${encodeURIComponent(hadithNumber)}&paginate=1`;
-    const res = await fetchWithTimeout(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const item = (data?.hadiths?.data ?? data?.hadiths ?? [])[0];
-    if (!item) return null;
-    const fields: Record<string, string> = {};
-    for (const key of ["hadithArabic", "hadithUrdu", "hadithEnglish"]) {
-      const v = item[key];
-      if (typeof v === "string" && v.trim()) fields[key] = v.trim();
-    }
-    if (Object.keys(fields).length === 0) return null;
-    return {
-      fields,
-      url: `https://hadithapi.com/hadith/${bookSlug}/${item.hadithNumber ?? hadithNumber}`,
-    };
-  } catch {
-    return null;
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -182,41 +134,64 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
 
-    // ══ Hadith path (Queried 100% locally from scholarly_documents DB) ════════
+    // ══ Hadith path — served entirely from the local scholarly_documents corpus
     const hadith = parseHadithKey(passage_key.trim());
     if (hadith) {
-      const { data: docRows } = await supabase
-        .from("scholarly_documents")
-        .select("title, content, content_ar, citation_ref, language, source_url")
-        .or(`passage_key.eq.${passage_key},passage_key.ilike.%:${hadith.collection}:${hadith.number}%`)
-        .limit(1);
+      // Rebuild the key from the parsed parts rather than using the raw input.
+      // The backfill stores hadith keys as `hadith:{lowercased collection}:{number}`,
+      // and rebuilding keeps untrusted text out of the PostgREST filter string.
+      const canonicalKey = `hadith:${hadith.collection}:${hadith.number}`;
 
-      if (docRows && docRows.length > 0) {
-        const doc = docRows[0];
+      // Exact match only. An `ilike '%:bukhari:1%'` style lookup also matches
+      // 12, 100, 1234 … which would return a DIFFERENT hadith than the one
+      // asked for while looking authoritative — a false attribution.
+      const { data: docRows, error: docErr } = await supabase
+        .from("scholarly_documents")
+        .select("title, content, content_ar, citation_ref, language, source_url, domain")
+        .eq("passage_key", canonicalKey)
+        .limit(20);
+
+      if (docErr) {
+        console.error("extract-translations hadith lookup error:", docErr.message);
         return jsonResponse({
-          passage_key,
-          arabic: doc.content_ar ?? null,
-          translations: [
-            {
-              translator_slug: "local-db",
-              translator_name: doc.title || "حدیث مبارکہ",
-              language: doc.language || "ur",
-              maslak: null,
-              text: doc.content,
-              source_url: doc.source_url || null,
-            },
-          ],
-          unavailable: [],
+          passage_key, arabic: null, translations: [], unavailable: [],
+          note: "حدیث تلاش کرتے وقت دشواری پیش آئی۔",
         });
       }
 
-      return jsonResponse({
-        passage_key,
-        arabic: null,
-        translations: [],
-        unavailable: [],
-        note: "یہ حدیث ہمارے مقامی ڈیٹا بیس میں تلاش نہیں ہو سکی۔",
-      });
+      const rows = docRows ?? [];
+      if (rows.length === 0) {
+        return jsonResponse({
+          passage_key, arabic: null, translations: [], unavailable: [],
+          note: "یہ حدیث ہمارے مقامی ذخیرے میں تلاش نہیں ہو سکی۔",
+        });
+      }
+
+      // The same hadith can exist in several ingested domains (Arabic matn,
+      // Urdu translation, English). Surface every one instead of an arbitrary
+      // first row — comparing renderings is the point of /extract.
+      const arabic = rows.map((r) => r.content_ar).find((t) => t && t.trim()) ?? null;
+
+      const translations: TranslationOut[] = [];
+      const seen = new Set<string>();
+      for (const r of rows) {
+        const text = (r.content ?? "").trim();
+        if (!text || seen.has(text)) continue;
+        // Skip a row whose only content is the Arabic matn already shown above.
+        if (arabic && text === arabic.trim()) continue;
+        seen.add(text);
+        translations.push({
+          translator_slug: `local:${r.domain ?? "corpus"}`,
+          // Must be `full_name` — that is the field the /extract table renders.
+          full_name: String(r.title || r.citation_ref?.book || "حدیث مبارکہ"),
+          language: r.language || "ar",
+          maslak: null,
+          text,
+          source_url: r.source_url ?? null,
+        });
+      }
+
+      return jsonResponse({ passage_key, arabic, translations, unavailable: [] });
     }
 
     // ══ Quran path ═══════════════════════════════════════════════════════════

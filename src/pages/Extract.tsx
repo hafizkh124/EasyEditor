@@ -210,7 +210,7 @@ export default function ExtractPage() {
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            قرآنی آیات کا مختلف معتبر مترجمین کے تراجم کے ساتھ بالمقابل موازنہ — تمام تراجم معتبر مصدر (alquran.cloud) سے، بلا کسی خودساختہ متن کے۔
+            آیات و احادیث کا مختلف معتبر تراجم کے ساتھ بالمقابل موازنہ — قرآن کے تراجم alquran.cloud سے، احادیث ہمارے اپنے ذخیرے سے؛ ہر متن اصل مصدر سے، بلا کسی خودساختہ عبارت کے۔
           </p>
         </div>
 
@@ -244,7 +244,7 @@ export default function ExtractPage() {
             {isHadith ? (
               <div className="flex items-start gap-2 pt-2 border-t border-border text-xs text-muted-foreground">
                 <Info className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-                <span>حدیث کے لیے عربی متن، اردو اور انگریزی ترجمہ (HadithAPI سے) خودکار لائے جائیں گے۔ سپورٹڈ مجموعے: بخاری، مسلم، ترمذی، ابو داؤد، ابن ماجہ، نسائی، مشکاۃ، مسند احمد۔</span>
+                <span>حدیث کے لیے متن اور دستیاب تراجم ہمارے اپنے ذخیرے سے خودکار لائے جائیں گے (مترجمین کا انتخاب صرف قرآن پر لاگو ہوتا ہے)۔ اگر کوئی حوالہ ذخیرے میں نہ ملے تو صاف بتا دیا جائے گا۔</span>
               </div>
             ) : (
             /* Translators Checklist (Quran) */
