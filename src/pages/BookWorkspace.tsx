@@ -269,6 +269,14 @@ export default function BookWorkspace() {
 
     if (error) throw error;
     setActiveSection((prev) => (prev ? { ...prev, content: newContent } : null));
+    // Keep the sidebar's chapter tree in sync, otherwise re-selecting this
+    // section later would re-open the pre-save content and overwrite it.
+    setChapters((prev) =>
+      prev.map((c) => ({
+        ...c,
+        sections: c.sections?.map((s) => (s.id === activeSection.id ? { ...s, content: newContent } : s)),
+      }))
+    );
 
     // Recalculate book word count
     const totalWords = chapters.reduce((sum, c) => {
