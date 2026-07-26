@@ -46,6 +46,8 @@ export default function BookWorkspace() {
   const [newTitle, setNewTitle] = useState("");
   const [newSubtitle, setNewSubtitle] = useState("");
   const [newGenre] = useState("research");
+  // Outline produced by the خطة البحث modal, consumed by handleCreateBookProject.
+  const [pendingPlan, setPendingPlan] = useState<{ abstract: string; chapters: string[] } | null>(null);
 
   useEffect(() => {
     loadBookProjects();
@@ -132,6 +134,7 @@ export default function BookWorkspace() {
           title: newTitle.trim(),
           subtitle: newSubtitle.trim() || null,
           genre: newGenre,
+          abstract: pendingPlan?.abstract?.trim() || null,
           status: "outline",
         })
         .select()
@@ -139,30 +142,59 @@ export default function BookWorkspace() {
 
       if (pErr) throw pErr;
 
-      // Seed initial chapter & section
-      const { data: chap, error: cErr } = await supabase
-        .from("book_chapters")
-        .insert({
-          project_id: proj.id,
-          title: "المقدمة والمدخل الرئيسي",
-          chapter_number: 1,
-        })
-        .select()
-        .single();
+      const planChapters = (pendingPlan?.chapters || []).filter((t) => t.trim());
 
-      if (cErr) throw cErr;
+      if (planChapters.length > 0) {
+        // Seed the AI-generated outline: one chapter per extracted line,
+        // each with an empty first section ready to write into.
+        const { data: chaps, error: cErr } = await supabase
+          .from("book_chapters")
+          .insert(
+            planChapters.map((title, i) => ({
+              project_id: proj.id,
+              title: title.slice(0, 300),
+              chapter_number: i + 1,
+            }))
+          )
+          .select();
 
-      await supabase.from("book_sections").insert({
-        chapter_id: chap.id,
-        title: "تمهيد وفهرس المباحث",
-        section_number: 1,
-        content: "بسم الله الرحمن الرحيم\n\nتأليف وتمهيد...",
-      });
+        if (cErr) throw cErr;
+
+        await supabase.from("book_sections").insert(
+          (chaps || []).map((ch) => ({
+            chapter_id: ch.id,
+            title: "تمهيد",
+            section_number: 1,
+            content: "",
+          }))
+        );
+      } else {
+        // Seed initial chapter & section
+        const { data: chap, error: cErr } = await supabase
+          .from("book_chapters")
+          .insert({
+            project_id: proj.id,
+            title: "المقدمة والمدخل الرئيسي",
+            chapter_number: 1,
+          })
+          .select()
+          .single();
+
+        if (cErr) throw cErr;
+
+        await supabase.from("book_sections").insert({
+          chapter_id: chap.id,
+          title: "تمهيد وفهرس المباحث",
+          section_number: 1,
+          content: "بسم الله الرحمن الرحيم\n\nتأليف وتمهيد...",
+        });
+      }
 
       toast.success("نیا کتابی تصنیف پروجیکٹ شروع ہو گیا۔");
       setNewBookModal(false);
       setNewTitle("");
       setNewSubtitle("");
+      setPendingPlan(null);
       await loadBookProjects();
       selectBookProject(proj);
     } catch (err) {
@@ -237,6 +269,14 @@ export default function BookWorkspace() {
 
     if (error) throw error;
     setActiveSection((prev) => (prev ? { ...prev, content: newContent } : null));
+    // Keep the sidebar's chapter tree in sync, otherwise re-selecting this
+    // section later would re-open the pre-save content and overwrite it.
+    setChapters((prev) =>
+      prev.map((c) => ({
+        ...c,
+        sections: c.sections?.map((s) => (s.id === activeSection.id ? { ...s, content: newContent } : s)),
+      }))
+    );
 
     // Recalculate book word count
     const totalWords = chapters.reduce((sum, c) => {
@@ -287,7 +327,7 @@ export default function BookWorkspace() {
               <Download className="h-4 w-4 ml-1.5" />
               ایکسپورٹ
             </Button>
-            <Button size="sm" onClick={() => setNewBookModal(true)}>
+            <Button size="sm" onClick={() => { setPendingPlan(null); setNewBookModal(true); }}>
               <Plus className="h-4 w-4 ml-1.5" />
               نئی کتاب
             </Button>
@@ -328,7 +368,7 @@ export default function BookWorkspace() {
                 <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-40 text-primary" />
                 <h3 className="text-base font-semibold mb-1">کوئی فصل منتخب نہیں ہوئی</h3>
                 <p className="text-xs max-w-sm mb-4">نئی فصل بنائیں یا سائیڈ بار سے خاکہ منتخب کریں۔</p>
-                <Button onClick={() => setNewBookModal(true)}>نئی کتاب بنائیں</Button>
+                <Button onClick={() => { setPendingPlan(null); setNewBookModal(true); }}>نئی کتاب بنائیں</Button>
               </div>
             </div>
           )}
@@ -364,7 +404,11 @@ export default function BookWorkspace() {
         onOpenChange={setKhittatModal}
         onApplyPlan={async (plan) => {
           setNewTitle(plan.title);
+          setPendingPlan({ abstract: plan.abstract || "", chapters: plan.chapters || [] });
           setNewBookModal(true);
+          if (plan.chapters?.length) {
+            toast.info(`${plan.chapters.length} ابواب خاکے سے شامل کیے جائیں گے۔`);
+          }
         }}
       />
 
