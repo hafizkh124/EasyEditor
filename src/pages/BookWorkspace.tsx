@@ -327,7 +327,7 @@ export default function BookWorkspace() {
               <Download className="h-4 w-4 ml-1.5" />
               ایکسپورٹ
             </Button>
-            <Button size="sm" onClick={() => setNewBookModal(true)}>
+            <Button size="sm" onClick={() => { setPendingPlan(null); setNewBookModal(true); }}>
               <Plus className="h-4 w-4 ml-1.5" />
               نئی کتاب
             </Button>
@@ -368,7 +368,7 @@ export default function BookWorkspace() {
                 <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-40 text-primary" />
                 <h3 className="text-base font-semibold mb-1">کوئی فصل منتخب نہیں ہوئی</h3>
                 <p className="text-xs max-w-sm mb-4">نئی فصل بنائیں یا سائیڈ بار سے خاکہ منتخب کریں۔</p>
-                <Button onClick={() => setNewBookModal(true)}>نئی کتاب بنائیں</Button>
+                <Button onClick={() => { setPendingPlan(null); setNewBookModal(true); }}>نئی کتاب بنائیں</Button>
               </div>
             </div>
           )}
