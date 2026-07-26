@@ -134,6 +134,7 @@ export default function BookWorkspace() {
           title: newTitle.trim(),
           subtitle: newSubtitle.trim() || null,
           genre: newGenre,
+          abstract: pendingPlan?.abstract?.trim() || null,
           status: "outline",
         })
         .select()
@@ -141,30 +142,59 @@ export default function BookWorkspace() {
 
       if (pErr) throw pErr;
 
-      // Seed initial chapter & section
-      const { data: chap, error: cErr } = await supabase
-        .from("book_chapters")
-        .insert({
-          project_id: proj.id,
-          title: "المقدمة والمدخل الرئيسي",
-          chapter_number: 1,
-        })
-        .select()
-        .single();
+      const planChapters = (pendingPlan?.chapters || []).filter((t) => t.trim());
 
-      if (cErr) throw cErr;
+      if (planChapters.length > 0) {
+        // Seed the AI-generated outline: one chapter per extracted line,
+        // each with an empty first section ready to write into.
+        const { data: chaps, error: cErr } = await supabase
+          .from("book_chapters")
+          .insert(
+            planChapters.map((title, i) => ({
+              project_id: proj.id,
+              title: title.slice(0, 300),
+              chapter_number: i + 1,
+            }))
+          )
+          .select();
 
-      await supabase.from("book_sections").insert({
-        chapter_id: chap.id,
-        title: "تمهيد وفهرس المباحث",
-        section_number: 1,
-        content: "بسم الله الرحمن الرحيم\n\nتأليف وتمهيد...",
-      });
+        if (cErr) throw cErr;
+
+        await supabase.from("book_sections").insert(
+          (chaps || []).map((ch) => ({
+            chapter_id: ch.id,
+            title: "تمهيد",
+            section_number: 1,
+            content: "",
+          }))
+        );
+      } else {
+        // Seed initial chapter & section
+        const { data: chap, error: cErr } = await supabase
+          .from("book_chapters")
+          .insert({
+            project_id: proj.id,
+            title: "المقدمة والمدخل الرئيسي",
+            chapter_number: 1,
+          })
+          .select()
+          .single();
+
+        if (cErr) throw cErr;
+
+        await supabase.from("book_sections").insert({
+          chapter_id: chap.id,
+          title: "تمهيد وفهرس المباحث",
+          section_number: 1,
+          content: "بسم الله الرحمن الرحيم\n\nتأليف وتمهيد...",
+        });
+      }
 
       toast.success("نیا کتابی تصنیف پروجیکٹ شروع ہو گیا۔");
       setNewBookModal(false);
       setNewTitle("");
       setNewSubtitle("");
+      setPendingPlan(null);
       await loadBookProjects();
       selectBookProject(proj);
     } catch (err) {
