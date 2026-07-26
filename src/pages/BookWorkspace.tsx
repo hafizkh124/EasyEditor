@@ -46,6 +46,8 @@ export default function BookWorkspace() {
   const [newTitle, setNewTitle] = useState("");
   const [newSubtitle, setNewSubtitle] = useState("");
   const [newGenre] = useState("research");
+  // Outline produced by the خطة البحث modal, consumed by handleCreateBookProject.
+  const [pendingPlan, setPendingPlan] = useState<{ abstract: string; chapters: string[] } | null>(null);
 
   useEffect(() => {
     loadBookProjects();
