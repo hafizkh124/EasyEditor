@@ -404,7 +404,11 @@ export default function BookWorkspace() {
         onOpenChange={setKhittatModal}
         onApplyPlan={async (plan) => {
           setNewTitle(plan.title);
+          setPendingPlan({ abstract: plan.abstract || "", chapters: plan.chapters || [] });
           setNewBookModal(true);
+          if (plan.chapters?.length) {
+            toast.info(`${plan.chapters.length} ابواب خاکے سے شامل کیے جائیں گے۔`);
+          }
         }}
       />
 
