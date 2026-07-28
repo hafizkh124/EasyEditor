@@ -1,6 +1,25 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { type WorkbenchTab, usePanelState } from "./usePanelState";
 
+/** What one whole-document task run reports back to whoever asked for it. */
+export interface DocumentTaskOutcome {
+  ok: boolean;
+  applied: number;
+  total: number;
+  tokensSpent: number;
+  /** Why it did not run (or did not finish) — shown to the user verbatim. */
+  reason?: string;
+}
+
+/**
+ * Run a registered task over the whole active document.
+ *
+ * The editor lives in the Canvas, but Recipes are driven from the Library
+ * panel, so the runner is published here the same way the Canvas↔Workbench
+ * signals are. `null` means no editor is mounted and nothing can be run.
+ */
+export type DocumentTaskRunner = (taskSlug: string) => Promise<DocumentTaskOutcome>;
+
 interface WorkspaceContextType {
   activeDocumentId: string | null;
   setActiveDocumentId: (id: string | null) => void;
@@ -33,6 +52,10 @@ interface WorkspaceContextType {
   // Spotlight command palette state
   commandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
+
+  /** The mounted editor's whole-document task runner, or null (see above). */
+  runDocumentTask: DocumentTaskRunner | null;
+  registerDocumentTaskRunner: (runner: DocumentTaskRunner | null) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
@@ -79,6 +102,15 @@ export const WorkspaceProvider: React.FC<{
     setPendingCanvasInsertion(null);
   }, []);
 
+  // Held in state, not a ref: the Recipes tab has to re-render when the editor
+  // mounts or unmounts, or its Run button would stay disabled forever.
+  const [runDocumentTask, setRunDocumentTask] = useState<DocumentTaskRunner | null>(null);
+  const registerDocumentTaskRunner = useCallback((runner: DocumentTaskRunner | null) => {
+    // Wrapped, because a bare function passed to a setter is treated as an
+    // updater by React.
+    setRunDocumentTask(() => runner);
+  }, []);
+
   return (
     <WorkspaceContext.Provider
       value={{
@@ -101,6 +133,8 @@ export const WorkspaceProvider: React.FC<{
         clearPendingCanvasInsertion,
         commandPaletteOpen,
         setCommandPaletteOpen,
+        runDocumentTask,
+        registerDocumentTaskRunner,
       }}
     >
       {children}

@@ -74,6 +74,14 @@ HARD RULES:
 4. Do NOT quote Quranic verses or hadith from memory; only reference them as they appear in the source.
 5. Output ONLY the summary text — no commentary, no markdown fences, no preamble like "Summary:".`,
 
+  summarize_sections: `You are an expert academic summarizer. Produce a clear, section-by-section summary of the following heading/section.
+
+HARD RULES:
+1. Capture the main ideas and key arguments of this specific section.
+2. Write the summary in the SAME language and script as the input (Urdu stays Urdu Nastaliq, Arabic stays Arabic, English stays English).
+3. Format as a brief section summary header followed by concise bullet points or short paragraphs.
+4. Output ONLY the section summary text — no markdown fences, no extraneous commentary.`,
+
   auto_format: `You are a professional document formatter. Convert the user's raw text into clean, well-structured semantic HTML.
 
 RULES:
@@ -142,6 +150,7 @@ interface IslamicContext {
 async function fetchIslamicContext(
   supabase: any,
   text: string,
+  userId: string,
 ): Promise<IslamicContext> {
   // Retrieval goes through the shared citation engine (plan → lexical +
   // semantic → RRF), the same path the Editor's reference search uses.
@@ -159,6 +168,7 @@ async function fetchIslamicContext(
     const result = await findCitations({
       query: buildRetrievalQuery(text),
       supabase,
+      userId,
       maxResults: 8,
       rerank: false,
     });
@@ -314,7 +324,7 @@ serve(async (req) => {
       // A custom task is a preset over the same pipeline, never its own path.
       systemPrompt = customPrompt;
     } else if (isCitations) {
-      const ctx = await fetchIslamicContext(supabase, text);
+      const ctx = await fetchIslamicContext(supabase, text, user.id);
       systemPrompt = buildIslamicCitationsPrompt(ctx.contextBlock);
       sources = ctx.sources;
       confidence = ctx.confidence;

@@ -3,9 +3,9 @@ import { BUILTIN_TASKS, TASK_REGISTRY, getTaskBySlug, getTasksForSurface } from 
 import { calculateTaskCost, checkSolvency } from "@/lib/tasks/cost";
 
 describe("Task Registry & Built-in Tasks (M3 Pillar A)", () => {
-  it("registers exactly 11 built-in tasks", () => {
-    expect(BUILTIN_TASKS.length).toBe(11);
-    expect(TASK_REGISTRY.size).toBe(11);
+  it("registers exactly 12 built-in tasks", () => {
+    expect(BUILTIN_TASKS.length).toBe(12);
+    expect(TASK_REGISTRY.size).toBe(12);
   });
 
   it("includes all 4 previously hidden server actions", () => {

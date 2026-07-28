@@ -3,6 +3,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle, FontFamily } from "@tiptap/extension-text-style";
 import { Table, TableRow, TableHeader, TableCell } from "@tiptap/extension-table";
 import { TrackChangesExtension } from "tiptap-track-changes";
+import { AnnotationMark } from "./AnnotationMark";
 
 export interface TrackChangesAuthor {
   id: string;
@@ -38,5 +39,6 @@ export function buildEditorExtensions(author: TrackChangesAuthor = DEFAULT_TRACK
     TableHeader,
     TableCell,
     TrackChangesExtension.configure({ author, mode: "edit" }),
+    AnnotationMark,
   ];
 }

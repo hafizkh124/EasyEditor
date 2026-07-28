@@ -5,15 +5,15 @@ import { Separator } from "@/components/ui/separator";
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3,
   List, ListOrdered, Quote, Undo2, Redo2, AlignLeft, AlignCenter, AlignRight,
-  Pilcrow, Type, Sparkles, SpellCheck, BookOpen, Search, Loader2, ChevronDown,
-  Table as TableIcon, Maximize2, Minimize2, Paintbrush, RefreshCw, FileText,
-  GitCompare, Check, X, Wand2,
+  ChevronDown, Maximize2, Minimize2, GitCompare, Check, X,
+  Pilcrow, Type, Paintbrush, Table as TableIcon,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { ToolbarAiGroup } from "./ToolbarAiGroup";
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -60,9 +60,6 @@ const EditorToolbar = ({
   trackMode, onSetTrackMode, aiReview, onToggleAiReview, pendingCount, onAcceptAll, onRejectAll,
 }: EditorToolbarProps) => {
   if (!editor) return null;
-
-  const busy = (key: string) => aiBusy === key;
-  const anyBusy = aiBusy !== null;
 
   const groups = [
     [
@@ -195,91 +192,20 @@ const EditorToolbar = ({
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
-      {/* AI: اعراب (diacritics) dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" disabled={anyBusy} aria-label={t("editor.harakat")}>
-            {busy("add_harakat") ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="text-sm leading-none">اِعراب</span>}
-            <ChevronDown className="h-3 w-3 opacity-60" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={onAddHarakat} disabled={anyBusy} className="cursor-pointer gap-2">
-            <Sparkles className="h-4 w-4" />
-            {t("editor.add_harakat")}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onRemoveHarakat} disabled={anyBusy} className="cursor-pointer gap-2">
-            <Type className="h-4 w-4" />
-            {t("editor.remove_harakat")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* AI: حوالہ (references) dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" disabled={anyBusy} aria-label={t("editor.citations")}>
-            {busy("citations") ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
-            <ChevronDown className="h-3 w-3 opacity-60" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={onOpenResources} disabled={anyBusy} className="cursor-pointer gap-2">
-            <Search className="h-4 w-4" />
-            {t("editor.search_resources")}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onCitations} disabled={anyBusy} className="cursor-pointer gap-2">
-            <BookOpen className="h-4 w-4" />
-            {t("editor.auto_sources")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* AI: Spell check */}
-      <Button
-        variant="ghost" size="sm" className="h-8 w-8 p-0"
-        onClick={onSpellCheck} disabled={anyBusy} aria-label={t("editor.spell_check")} title={t("editor.spell_check")}
-      >
-        {busy("spelling_check") ? <Loader2 className="h-4 w-4 animate-spin" /> : <SpellCheck className="h-4 w-4" />}
-      </Button>
-
-      {/* AI: Paraphrase */}
-      <Button
-        variant="ghost" size="sm" className="h-8 w-8 p-0"
-        onClick={onParaphrase} disabled={anyBusy} aria-label={t("editor.paraphrase")} title={t("editor.paraphrase")}
-      >
-        {busy("paraphrase") ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-      </Button>
-
-      {/* AI: Summarize */}
-      <Button
-        variant="ghost" size="sm" className="h-8 w-8 p-0"
-        onClick={onSummarize} disabled={anyBusy} aria-label={t("editor.summarize")} title={t("editor.summarize")}
-      >
-        {busy("summarize") ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-      </Button>
-
-      {/* AI: Auto-format */}
-      <Button
-        variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs"
-        onClick={onAutoFormat} disabled={anyBusy} aria-label={t("editor.auto_format")} title={t("editor.auto_format")}
-      >
-        {busy("auto_format") ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-        <span className="hidden sm:inline">{busy("auto_format") ? t("editor.formatting") : t("editor.auto_format")}</span>
-      </Button>
-
-      {/* AI review toggle: capture AI edits as accept/reject suggestions */}
-      <Toggle
-        size="sm"
-        pressed={aiReview}
-        onPressedChange={onToggleAiReview}
-        aria-label={t("editor.ai_review")}
-        title={t("editor.ai_review")}
-        className="h-8 gap-1 px-2 text-xs"
-      >
-        <Wand2 className="h-4 w-4" />
-        <span className="hidden sm:inline">{t("editor.ai_review")}</span>
-      </Toggle>
+      <ToolbarAiGroup
+        t={t}
+        aiBusy={aiBusy}
+        onAddHarakat={onAddHarakat}
+        onRemoveHarakat={onRemoveHarakat}
+        onSpellCheck={onSpellCheck}
+        onAutoFormat={onAutoFormat}
+        onParaphrase={onParaphrase}
+        onSummarize={onSummarize}
+        onCitations={onCitations}
+        onOpenResources={onOpenResources}
+        aiReview={aiReview}
+        onToggleAiReview={onToggleAiReview}
+      />
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 

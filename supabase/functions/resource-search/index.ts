@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
     const result = await findCitations({
       query,
       supabase,
+      userId: user.id,
       maxResults: matchCount ?? 12,
     });
 

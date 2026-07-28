@@ -5,6 +5,7 @@ import { callRefineTextDetailed, isRefineTextAction } from "@/lib/editor/aiActio
 import type { TextBatch } from "@/lib/editor/docChunker";
 import type { TaskRunSource } from "@/core/workspace/types";
 import type { ChunkProgress } from "./types";
+import { buildBatchPlan } from "./resumePlan";
 
 /**
  * Client-side chunked-run orchestration (SPEC-M3 FR-5.3–FR-5.7), shaped after
@@ -42,6 +43,14 @@ export interface RunChunkedTaskArgs {
   /** Real wallet balance. The run stops gracefully when it would go negative. */
   availableTokens?: number;
   skipped?: number;
+  /**
+   * Resume: skip this many leading batches because an earlier run already
+   * applied them (SPEC-M4 FR-1.2). The full `batches` array is still passed in
+   * so `applyBatch` indices keep pointing at the caller's range tracker.
+   */
+  startIndex?: number;
+  /** The interrupted run this one continues — recorded for the Trust tab. */
+  resumedFromRunId?: string;
   signal?: AbortSignal;
   onProgress?: (progress: ChunkedRunProgress) => void;
   /**
@@ -78,6 +87,8 @@ export async function runChunkedTask({
   documentId,
   availableTokens,
   skipped = 0,
+  startIndex = 0,
+  resumedFromRunId,
   signal,
   onProgress,
   applyBatch,
@@ -89,11 +100,17 @@ export async function runChunkedTask({
   }
   const action = task.actionName;
 
+  // A resumed run inherits the batches its predecessor already applied: they
+  // are in the document, so both the progress bar and `task_runs.progress`
+  // must count them (SPEC-M4 FR-1.2).
+  const start = Math.max(0, Math.min(startIndex, batches.length));
+  const pending = batches.slice(start);
+
   const progress: ChunkedRunProgress = {
     phase: "preparing",
     total: batches.length,
-    current: 0,
-    done: 0,
+    current: start,
+    done: start,
     failed: 0,
     skipped,
     tokensSpent: 0,
@@ -108,8 +125,13 @@ export async function runChunkedTask({
     input: {
       totalBatches: batches.length,
       chars: batches.reduce((sum, b) => sum + b.charCount, 0),
-      estimatedCost: batches.reduce((sum, b) => sum + calculateTaskCost(task, b.charCount), 0),
+      estimatedCost: pending.reduce((sum, b) => sum + calculateTaskCost(task, b.charCount), 0),
       skippedBlocks: skipped,
+      // Per-batch hashes are what makes resume-after-reload verifiable; see
+      // `canResumeRun`.
+      batch_plan: buildBatchPlan(batches),
+      start_index: start,
+      resumed_from_run_id: resumedFromRunId,
     },
   });
 
@@ -125,7 +147,7 @@ export async function runChunkedTask({
   progress.phase = "running";
 
   try {
-    for (const batch of batches) {
+    for (const batch of pending) {
       if (signal?.aborted) {
         cancelled = true;
         break;
@@ -208,7 +230,10 @@ export async function runChunkedTask({
     onProgress?.({ ...progress });
 
     const partial = progress.failed > 0 || invalidated > 0 || cancelled;
-    const status = cancelled ? "cancelled" : progress.done === 0 ? "failed" : "completed";
+    // Only work done by THIS run decides failure: a resume that applied nothing
+    // is a failed run even though `done` still counts its predecessor's batches.
+    const appliedNow = progress.done - start;
+    const status = cancelled ? "cancelled" : appliedNow === 0 ? "failed" : "completed";
 
     if (run?.id) {
       await taskRunService.updateTaskRun(run.id, {

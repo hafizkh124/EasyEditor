@@ -11,8 +11,8 @@ import {
   CITATIONS_CONSTRAINED_PROMPT,
   COMBINED_SYSTEM_PROMPT,
   pickPromptKey,
-  type ResearchAssistMode,
 } from "../_shared/researchPrompts.ts";
+import { fetchAndExtractStorageFile } from "../_shared/fileText.ts";
 import { segmentClaims } from "../_shared/segmentClaims.ts";
 import { findCitationCandidates, type CitationCandidate } from "../_shared/citationCandidates.ts";
 import { verifyAll } from "../_shared/citationVerifier.ts";
@@ -82,85 +82,7 @@ async function fetchUrlContent(url: string): Promise<string> {
 }
 
 async function fetchFileContent(supabase: any, storagePath: string): Promise<string> {
-  try {
-    const { data, error } = await supabase.storage.from("research-files").download(storagePath);
-    if (error || !data) return "[Could not read file]";
-
-    const ext = storagePath.split(".").pop()?.toLowerCase();
-
-    if (ext === "pdf") {
-      const bytes = new Uint8Array(await data.arrayBuffer());
-      const textParts: string[] = [];
-      const decoder = new TextDecoder("utf-8", { fatal: false });
-      const raw = decoder.decode(bytes);
-
-      // Attempt 1: extract text from BT...ET blocks (works for uncompressed PDFs)
-      const btEtRegex = /BT\s([\s\S]*?)ET/g;
-      let match;
-      while ((match = btEtRegex.exec(raw)) !== null) {
-        const block = match[1];
-        const tjRegex = /\(([^)]*)\)\s*Tj/g;
-        let tjMatch;
-        while ((tjMatch = tjRegex.exec(block)) !== null) {
-          textParts.push(tjMatch[1]);
-        }
-        // Also handle TJ arrays: [(text) n (text) n] TJ
-        const tjArrayRegex = /\[([^\]]*)\]\s*TJ/g;
-        let tjArrayMatch;
-        while ((tjArrayMatch = tjArrayRegex.exec(block)) !== null) {
-          const inner = tjArrayMatch[1];
-          const stringsInArray = inner.matchAll(/\(([^)]*)\)/g);
-          for (const s of stringsInArray) textParts.push(s[1]);
-        }
-      }
-
-      if (textParts.length > 0) return textParts.join(" ").slice(0, SOURCE_CHAR_LIMIT);
-
-      // Attempt 2: fallback — strip binary noise and return printable chars
-      const readable = raw
-        .replace(/[^\x20-\x7E\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\n]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      const result = readable.slice(0, SOURCE_CHAR_LIMIT);
-      return result || "[PDF text extraction yielded no readable content. The PDF may use compressed streams or non-standard encoding.]";
-    }
-
-    if (ext === "docx") {
-      // DOCX is a ZIP archive — read as ArrayBuffer and extract word/document.xml
-      try {
-        const arrayBuffer = await data.arrayBuffer();
-        const bytes = new Uint8Array(arrayBuffer);
-        // Search for the word/document.xml content within the ZIP binary
-        // ZIP local file headers start with PK\x03\x04; we scan for XML content tags
-        const decoder = new TextDecoder("utf-8", { fatal: false });
-        const raw = decoder.decode(bytes);
-
-        // Find the word/document.xml section by looking for its XML content
-        // DOCX XML contains <w:t> tags (Word text elements)
-        const wTextRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
-        const textParts: string[] = [];
-        let m;
-        while ((m = wTextRegex.exec(raw)) !== null) {
-          if (m[1].trim()) textParts.push(m[1]);
-        }
-
-        if (textParts.length > 0) {
-          return textParts.join(" ").replace(/\s+/g, " ").trim().slice(0, SOURCE_CHAR_LIMIT);
-        }
-
-        // Fallback: strip all XML tags from any readable section
-        const xmlStripped = raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-        const printable = xmlStripped.replace(/[^\x20-\x7E\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/g, " ").replace(/\s+/g, " ").trim();
-        return printable.slice(0, SOURCE_CHAR_LIMIT) || "[DOCX text extraction yielded no content]";
-      } catch {
-        return "[DOCX text extraction failed]";
-      }
-    }
-
-    return "[Unsupported file type]";
-  } catch {
-    return "[Error reading file]";
-  }
+  return fetchAndExtractStorageFile(supabase, "research-files", storagePath, SOURCE_CHAR_LIMIT);
 }
 
 // ─── Corpus-validated "Add citations" pipeline ───────────────────────────────
