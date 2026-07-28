@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,23 +82,20 @@ serve(async (req) => {
       });
     }
 
-    // Call Gemini 2.5 Flash to extract Knowledge Graph
-    const openAiApiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
-    const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${openAiApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `Passage to analyze:\n${text.slice(0, 8000)}` },
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 2048,
-      }),
+    // Call Gemini 2.5 Flash to extract Knowledge Graph — routed through the
+    // shared gateway like every other function (refine-text, queryPlanner),
+    // which strips the "google/" prefix the native endpoint doesn't accept
+    // and falls back to LOVABLE_API_KEY if Gemini itself is unavailable.
+    // A prior direct-fetch version sent the prefixed model string straight to
+    // Gemini's endpoint, which rejects it — extraction failed on every call.
+    const aiRes = await callChatCompletions({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: `Passage to analyze:\n${text.slice(0, 8000)}` },
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 2048,
     });
 
     if (!aiRes.ok) {
