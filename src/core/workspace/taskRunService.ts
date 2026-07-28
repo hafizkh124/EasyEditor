@@ -84,4 +84,20 @@ export const taskRunService = {
     }
     return (data as TaskRun[]) || [];
   },
+
+  async findIncompleteRun(documentId: string): Promise<TaskRun | null> {
+    const { data, error } = await (supabase.from("task_runs" as any) as any)
+      .select("*")
+      .eq("document_id", documentId)
+      .in("status", ["pending", "running"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("[taskRunService] findIncompleteRun error:", error);
+      return null;
+    }
+    return (data as TaskRun) || null;
+  },
 };

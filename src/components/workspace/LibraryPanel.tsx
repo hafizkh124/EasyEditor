@@ -19,6 +19,8 @@ import { stripHarakat } from "@/utils/arabicUtils";
 import { LibraryDocumentTree } from "./LibraryDocumentTree";
 import { LibraryNewProjectDialog } from "./LibraryNewProjectDialog";
 import { LibrarySourcesTab } from "./LibrarySourcesTab";
+import { KnowledgeGraphTab } from "./KnowledgeGraphTab";
+import { RecipesTab } from "./RecipesTab";
 import type { Document, ProjectKind } from "@/core/workspace/types";
 
 interface LibraryPanelProps {
@@ -28,6 +30,14 @@ interface LibraryPanelProps {
   onNavigate?: () => void;
 }
 
+// Spelled out because Tailwind only ships classes it can see in the source —
+// a template-built `grid-cols-${n}` is purged and the tabs collapse.
+const TAB_GRID: Record<number, string> = {
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+};
+
 export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = false, onNavigate }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -36,6 +46,11 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
 
   const { projects, docsMap, allDocs, loading: docsLoading, refresh: refreshAllDocs } = useAllDocuments();
   const [searchQuery, setSearchQuery] = useState("");
+
+  // M4 pillars ship independently; each tab exists only when its flag is on.
+  const graphEnabled = import.meta.env.VITE_KNOWLEDGE_GRAPH !== "false";
+  const recipesEnabled = import.meta.env.VITE_RECIPES !== "false";
+  const tabCount = 2 + (graphEnabled ? 1 : 0) + (recipesEnabled ? 1 : 0);
 
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newProjTitle, setNewProjTitle] = useState("");
@@ -157,9 +172,17 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
 
       <Tabs defaultValue="documents" className="flex-1 flex flex-col min-h-0">
         <div className="px-2 pt-2 border-b border-sidebar-border">
-          <TabsList className="grid grid-cols-2 h-7 bg-muted/50 p-0.5">
-            <TabsTrigger value="documents" className="text-xs h-6 py-0">Documents</TabsTrigger>
-            <TabsTrigger value="sources" className="text-xs h-6 py-0">Sources</TabsTrigger>
+          {/* Tab count follows the flags: with both M4 pillars off the Library
+              is back to M2/M3's two tabs, not two dead ones (NFR-6). */}
+          <TabsList className={`grid ${TAB_GRID[tabCount]} h-7 bg-muted/50 p-0.5`}>
+            <TabsTrigger value="documents" className="text-[11px] h-6 py-0 px-1 truncate">Docs</TabsTrigger>
+            <TabsTrigger value="sources" className="text-[11px] h-6 py-0 px-1 truncate">Sources</TabsTrigger>
+            {graphEnabled && (
+              <TabsTrigger value="graph" className="text-[11px] h-6 py-0 px-1 truncate">Graph</TabsTrigger>
+            )}
+            {recipesEnabled && (
+              <TabsTrigger value="recipes" className="text-[11px] h-6 py-0 px-1 truncate">Recipes</TabsTrigger>
+            )}
           </TabsList>
         </div>
 
@@ -184,6 +207,18 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
         <TabsContent value="sources" className="flex-1 min-h-0 m-0">
           <LibrarySourcesTab />
         </TabsContent>
+
+        {graphEnabled && (
+          <TabsContent value="graph" className="flex-1 min-h-0 m-0">
+            <KnowledgeGraphTab />
+          </TabsContent>
+        )}
+
+        {recipesEnabled && (
+          <TabsContent value="recipes" className="flex-1 min-h-0 m-0">
+            <RecipesTab />
+          </TabsContent>
+        )}
       </Tabs>
 
       <LibraryNewProjectDialog

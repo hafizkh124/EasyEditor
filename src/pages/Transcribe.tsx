@@ -28,6 +28,7 @@ import {
   type TranscribeLanguage,
 } from "@/lib/audio/transcribeLongForm";
 import { ACCEPTED_MEDIA, isVideoFile, MAX_FILE_SIZE_BYTES } from "@/lib/audio/formatSupport";
+import { SaveToLibraryButton } from "@/components/workspace/SaveToLibraryButton";
 
 type SttLanguage = TranscribeLanguage;
 type RefineAction = "formalize" | "humanize" | "shorten" | "citations" | "spelling_check" | "normalize_script";
@@ -478,6 +479,13 @@ const Transcribe = () => {
                 <Button variant="ghost" size="icon" aria-label={t("common.new_chat")} title={t("common.new_chat")} onClick={handleNewSession}>
                   <MessageSquarePlus className="h-4 w-4" />
                 </Button>
+                {/* SPEC-M4 FR-2.8: the transcript joins the searchable corpus. */}
+                <SaveToLibraryButton
+                  text={transcript}
+                  title={transcript.slice(0, 60)}
+                  kind="audio"
+                  className="h-9 px-2 text-xs"
+                />
                 {originalText && (
                   <Button
                     variant="ghost"

@@ -18,6 +18,10 @@ export const DOMAIN_LABEL: Record<string, string> = {
   "dar-alifta": "Dar-Alifta.org",
   "shamela-index": "Shamela Library",
   "openiti-index": "OpenITI",
+  // The user's own uploaded books (SPEC-M4 FR-2.7). Labelled distinctly and in
+  // Urdu on purpose: a passage from a private upload must never be mistaken
+  // for one from the curated corpus, and it carries no public URL to check.
+  personal_corpus: "میرا کتب خانہ",
 };
 
 export function domainLabel(domain: string): string {

@@ -232,4 +232,37 @@ describe("runChunkedTask (FR-5.4 / FR-5.6 / FR-5.7)", () => {
     expect(result.tokensSpent).toBe(5);
     vi.useRealTimers();
   });
+
+  // SPEC-M4 FR-1.2
+  it("resumes from startIndex without redoing batches an earlier run applied", async () => {
+    vi.useFakeTimers();
+    const sent: string[] = [];
+    vi.spyOn(aiActions, "callRefineTextDetailed").mockImplementation(async (text: string) => {
+      sent.push(text);
+      return { text: "ok", sources: [], confidence: null, model: null, tokensUsed: 5 };
+    });
+    const applied: number[] = [];
+
+    const promise = runChunkedTask({
+      taskSlug: "add_harakat",
+      batches,
+      accessToken: "t",
+      startIndex: 2,
+      applyBatch: (index) => {
+        applied.push(index);
+        return true;
+      },
+    });
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    // Only the third batch is re-sent, and it is applied at its ORIGINAL index
+    // so the caller's range tracker still lines up.
+    expect(sent).toEqual(["batch 2"]);
+    expect(applied).toEqual([2]);
+    // Progress counts the two batches the interrupted run already wrote.
+    expect(result.applied).toBe(3);
+    expect(result.tokensSpent).toBe(5);
+    vi.useRealTimers();
+  });
 });

@@ -82,6 +82,18 @@ export interface FindCitationsInput {
     collections?: string[];
     disciplines?: string[];
   };
+  /**
+   * Owner of the personal corpus to search (SPEC-M4 NFR-5).
+   *
+   * MUST come from the verified JWT, never from a request body. Every caller
+   * builds its client with the SERVICE ROLE key, which bypasses RLS entirely —
+   * so `library_chunks` owner-only policies protect nothing here and the
+   * user filter has to be explicit in the query itself.
+   *
+   * Omitted ⇒ both personal channels return nothing (fail closed). Searching
+   * every user's private books is never the safe default.
+   */
+  userId?: string;
 }
 
 const LEXICAL_LIMIT = 40;
@@ -424,6 +436,121 @@ async function rerankChannel(
 }
 
 /**
+ * Turn personal-corpus rows into citations the Trust UI can actually show.
+ *
+ * A chunk only knows its `library_item_id`, but a source card reading
+ * "personal_corpus · 3f2a…" tells the scholar nothing about which of their
+ * books the passage came from. The item titles are looked up once per channel
+ * (owner-scoped, like everything else here) and written into `citation_ref`
+ * as `title`/`page`, which is the shape `CitationBadge` already renders.
+ */
+async function toPersonalCitations(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  // deno-lint-ignore no-explicit-any
+  rows: any[],
+  userId: string,
+  channel: string,
+): Promise<Array<EngineCitation & { match_key: string }>> {
+  if (rows.length === 0) return [];
+
+  const itemIds = [...new Set(rows.map((r) => r.library_item_id).filter(Boolean))];
+  const titles = new Map<string, string>();
+
+  if (itemIds.length > 0) {
+    const { data } = await supabase
+      .from("library_items")
+      .select("id, title")
+      .eq("user_id", userId)
+      .in("id", itemIds);
+    // deno-lint-ignore no-explicit-any
+    for (const item of (data ?? []) as any[]) titles.set(item.id, item.title);
+  }
+
+  return rows.map((row) => ({
+    match_key: `personal:${row.library_item_id}:${row.chunk_index}`,
+    source_type: "personal",
+    domain: "personal_corpus",
+    content: row.content,
+    citation_ref: {
+      title: titles.get(row.library_item_id) ?? "میری کتاب",
+      // 1-based so the card reads like a location, not an array offset.
+      page: (row.chunk_index ?? 0) + 1,
+      library_item_id: row.library_item_id,
+      chunk_index: row.chunk_index,
+    },
+    // Deliberately null: a private upload has no public URL, and the Trust UI
+    // must never show a link that cannot be opened or checked.
+    source_url: null,
+    language: row.language || "ur",
+    score: 0,
+    channels: [channel],
+  }));
+}
+
+/** Personal Corpus Vector Channel — pgvector search on library_chunks (FR-2.7, FR-2.8) */
+async function personalVectorChannel(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  plan: QueryPlan,
+  rawQuery: string,
+  userId?: string,
+): Promise<Array<EngineCitation & { match_key: string }>> {
+  // No verified owner ⇒ no personal search. See FindCitationsInput.userId.
+  if (!userId) return [];
+
+  try {
+    const embedText = plan.semantic_query_ar || rawQuery;
+    const embedding = await embedQuery(embedText);
+    if (!embedding) return [];
+
+    const { data, error } = await supabase.rpc("match_library_chunks", {
+      query_embedding: embedding,
+      filter_user_id: userId,
+      match_threshold: 0.35,
+      match_count: SEMANTIC_LIMIT,
+    });
+
+    if (error || !data) return [];
+
+    return await toPersonalCitations(supabase, data, userId, "personal_vector");
+  } catch (e) {
+    console.error("[citationEngine] personal vector channel threw:", e);
+    return [];
+  }
+}
+
+/** Personal Corpus Lexical Channel — text search on library_chunks (FR-2.7, FR-2.8) */
+async function personalLexicalChannel(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  rawQuery: string,
+  userId?: string,
+): Promise<Array<EngineCitation & { match_key: string }>> {
+  // No verified owner ⇒ no personal search. See FindCitationsInput.userId.
+  if (!userId) return [];
+
+  try {
+    const terms = rawQuery.trim().split(/\s+/).filter((t) => t.length > 2).slice(0, 3);
+    if (terms.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from("library_chunks")
+      .select("id, library_item_id, chunk_index, content, language")
+      .eq("user_id", userId)
+      .ilike("content", `%${terms[0]}%`)
+      .limit(LEXICAL_LIMIT);
+
+    if (error || !data) return [];
+
+    return await toPersonalCitations(supabase, data, userId, "personal_lexical");
+  } catch (e) {
+    console.error("[citationEngine] personal lexical channel threw:", e);
+    return [];
+  }
+}
+
+/**
  * Find citations for a free-text question.
  *
  * Never throws — on total retrieval failure it returns an empty `results`
@@ -484,13 +611,13 @@ export async function findCitations(input: FindCitationsInput): Promise<Citation
     };
   }
 
-  // ── Retrieval intents: hybrid + fusion (+ optional rerank) ────────────────
-  // The classical channel only does work when the plan requested disciplines;
-  // otherwise it resolves to [] immediately and contributes nothing.
-  const [lexical, semantic, classical] = await Promise.all([
+  // ── Retrieval intents: 4-way Double-Hybrid RRF Fusion (+ optional rerank)
+  const [lexical, semantic, classical, personalVector, personalLexical] = await Promise.all([
     lexicalChannel(supabase, plan, scope),
     semanticChannel(supabase, plan, scope, query),
     classicalChannel(supabase, plan, scope),
+    personalVectorChannel(supabase, plan, query, input.userId),
+    personalLexicalChannel(supabase, query, input.userId),
   ]);
 
   // Lexical goes first so its object wins on duplicate keys — it carries
@@ -501,6 +628,8 @@ export async function findCitations(input: FindCitationsInput): Promise<Citation
     { name: "lexical", docs: lexical },
     { name: "semantic", docs: semantic },
     { name: "classical", docs: classical },
+    { name: "personal_vector", docs: personalVector },
+    { name: "personal_lexical", docs: personalLexical },
   ]);
 
   const ranked: EngineCitation[] = fused.map((f) => ({

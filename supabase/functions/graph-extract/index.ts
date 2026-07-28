@@ -1,0 +1,207 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+const SYSTEM_PROMPT = `You are a scholarly Knowledge Graph extraction assistant.
+Given a text passage in Urdu, Arabic, or English, extract structured Entities and Relations.
+
+Entity kinds MUST be one of:
+- "person" (scholars, authors, historical figures, narrators)
+- "concept" (theological terms, legal principles, philosophical ideas)
+- "book" (treatises, manuscripts, commentaries)
+- "location" (cities, regions, places)
+- "event" (battles, councils, historical events)
+
+Return ONLY valid JSON matching this schema:
+{
+  "entities": [
+    {
+      "canonical_name": "Standard Urdu/Arabic Name",
+      "kind": "person" | "concept" | "book" | "location" | "event",
+      "aliases": ["Alternative Name 1", "Alternative Name 2"],
+      "summary": "One sentence Urdu description"
+    }
+  ],
+  "relations": [
+    {
+      "source_name": "Canonical Name 1",
+      "target_name": "Canonical Name 2",
+      "relation_type": "authored_by" | "student_of" | "teacher_of" | "refutes" | "supports" | "mentions" | "defined_in",
+      "evidence_quote": "Exact short sentence quote from text"
+    }
+  ]
+}`;
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Resolve user strictly from JWT token (NFR-5)
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = user.id;
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    const body = await req.json();
+    const { text, document_id, library_item_id } = body;
+
+    if (!text || typeof text !== "string") {
+      return new Response(JSON.stringify({ error: "Missing text parameter" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Call Gemini 2.5 Flash to extract Knowledge Graph
+    const openAiApiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
+    const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${openAiApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: `Passage to analyze:\n${text.slice(0, 8000)}` },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 2048,
+      }),
+    });
+
+    if (!aiRes.ok) {
+      const errText = await aiRes.text().catch(() => "");
+      console.error("[graph-extract] AI error:", aiRes.status, errText);
+      return new Response(JSON.stringify({ error: "AI extraction failed" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const aiData = await aiRes.json();
+    const rawContent = aiData?.choices?.[0]?.message?.content || "{}";
+    const extracted = JSON.parse(rawContent);
+
+    const rawEntities: Array<{
+      canonical_name: string;
+      kind: "person" | "concept" | "book" | "location" | "event";
+      aliases?: string[];
+      summary?: string;
+    }> = Array.isArray(extracted?.entities) ? extracted.entities : [];
+
+    const rawRelations: Array<{
+      source_name: string;
+      target_name: string;
+      relation_type: string;
+      evidence_quote?: string;
+    }> = Array.isArray(extracted?.relations) ? extracted.relations : [];
+
+    if (rawEntities.length === 0) {
+      return new Response(JSON.stringify({ entities_count: 0, relations_count: 0 }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 1. Upsert Entities into DB
+    const entityRows = rawEntities.map((e) => ({
+      user_id: userId,
+      canonical_name: e.canonical_name.trim(),
+      kind: e.kind,
+      aliases: e.aliases || [],
+      summary: e.summary || null,
+    }));
+
+    const { data: insertedEntities, error: entityErr } = await serviceClient
+      .from("entities")
+      .upsert(entityRows, { onConflict: "user_id,canonical_name" })
+      .select("id, canonical_name");
+
+    if (entityErr) {
+      console.error("[graph-extract] entities upsert error:", entityErr);
+      throw entityErr;
+    }
+
+    // Map canonical_name -> entity_id
+    const entityIdMap = new Map<string, string>();
+    for (const ent of insertedEntities || []) {
+      entityIdMap.set(ent.canonical_name, ent.id);
+    }
+
+    // 2. Insert Relations into DB
+    const relationRows = rawRelations
+      .map((r) => {
+        const sourceId = entityIdMap.get(r.source_name.trim());
+        const targetId = entityIdMap.get(r.target_name.trim());
+        if (!sourceId || !targetId || sourceId === targetId) return null;
+
+        return {
+          user_id: userId,
+          source_entity_id: sourceId,
+          target_entity_id: targetId,
+          relation_type: r.relation_type,
+          evidence_quote: r.evidence_quote || null,
+          document_id: document_id || null,
+          library_item_id: library_item_id || null,
+        };
+      })
+      .filter(Boolean);
+
+    let insertedRelationsCount = 0;
+    if (relationRows.length > 0) {
+      const { data: rels, error: relErr } = await serviceClient
+        .from("entity_relations")
+        .insert(relationRows)
+        .select("id");
+
+      if (!relErr && rels) {
+        insertedRelationsCount = rels.length;
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        entities_count: entityRows.length,
+        relations_count: insertedRelationsCount,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (err: any) {
+    console.error("[graph-extract] exception:", err);
+    return new Response(JSON.stringify({ error: err.message || "Internal server error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
