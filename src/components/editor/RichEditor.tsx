@@ -15,6 +15,13 @@ import {
 } from "./useEditorAiActions";
 import EditorToolbar from "./EditorToolbar";
 import ResourceSearchDialog from "./ResourceSearchDialog";
+import { FloatingBubbleMenu } from "./FloatingBubbleMenu";
+import { SlashCommandMenu } from "./SlashCommandMenu";
+import { SolvencyDialog } from "@/components/workspace/SolvencyDialog";
+import { ChunkProgressBar } from "@/components/workspace/ChunkProgressBar";
+import { TaskRunCard } from "@/components/workspace/TaskRunCard";
+import { MobileTaskSheet } from "./MobileTaskSheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface DocChangePayload {
   json: Record<string, unknown>;
@@ -93,6 +100,11 @@ const RichEditor = ({
     left: number;
     below: boolean;
   } | null>(null);
+
+  // M3 Pillar B menus. When off, the editor falls back to the M2 selection bar.
+  const menusEnabled = import.meta.env.VITE_EDITOR_MENUS !== "false";
+  const isMobile = useIsMobile();
+  const [mobileSheetText, setMobileSheetText] = useState<string | null>(null);
 
   // Author identity for tracked changes, derived from the signed-in user.
   const authorConfig = useMemo(() => {
@@ -309,7 +321,20 @@ const RichEditor = ({
 
   // Every AI action, and the rules about where each one may write, live in the
   // hook — see useEditorAiActions.
-  const { aiBusy, actions: aiActions, handleAutoFormat } = useEditorAiActions({
+  const {
+    aiBusy,
+    actions: aiActions,
+    handleAutoFormat,
+    pendingChunkedRun,
+    confirmChunkedRun,
+    dismissChunkedRun,
+    chunkProgress,
+    cancelChunkedRun,
+    availableTokens,
+    lastRun,
+    undoLastRun,
+    dismissLastRun,
+  } = useEditorAiActions({
     editor,
     accessToken: session?.access_token,
     emitChange,
@@ -441,10 +466,53 @@ const RichEditor = ({
         onAcceptAll={handleAcceptAll}
         onRejectAll={handleRejectAll}
       />
+
       <div className={cn(isRtl && "text-right", isFullscreen && "flex-1 overflow-auto")}>
         <EditorContent editor={editor} />
       </div>
-      {selectionBar && selectionUi && (
+
+      {menusEnabled && (
+        <>
+          <FloatingBubbleMenu
+            editor={editor}
+            actions={aiActions}
+            aiBusy={aiBusy}
+            isMobile={isMobile}
+            onOpenMobileSheet={setMobileSheetText}
+          />
+          {/* The floating slash list is desktop-only; on touch the same tasks
+              are reachable from the sheet, where the keyboard cannot cover them. */}
+          {!isMobile && (
+            <SlashCommandMenu editor={editor} actions={aiActions} onAutoFormat={handleAutoFormat} />
+          )}
+          <MobileTaskSheet
+            open={mobileSheetText !== null}
+            onOpenChange={(open) => !open && setMobileSheetText(null)}
+            selectedText={mobileSheetText ?? ""}
+            aiBusy={aiBusy}
+            getHandler={(slug) => {
+              const map: Record<string, (() => void) | undefined> = {
+                add_harakat: aiActions.onAddHarakat,
+                remove_harakat: aiActions.onRemoveHarakat,
+                spelling_check: aiActions.onSpellCheck,
+                paraphrase: aiActions.onParaphrase,
+                summarize: aiActions.onSummarize,
+                citations: aiActions.onCitations,
+                normalize_script: aiActions.onNormalizeScript,
+                formalize: aiActions.onFormalize,
+                humanize: aiActions.onHumanize,
+                shorten: aiActions.onShorten,
+              };
+              return map[slug];
+            }}
+          />
+        </>
+      )}
+
+      {/* The M2 hand-rolled bar is the fallback for `VITE_EDITOR_MENUS=false`.
+          Rendering it alongside FloatingBubbleMenu would stack two toolbars over
+          the same selection, so the two are mutually exclusive (SPEC-M3 FR-3.1). */}
+      {!menusEnabled && selectionBar && selectionUi && (
         <div
           className="absolute z-40"
           style={{
@@ -462,6 +530,32 @@ const RichEditor = ({
           })}
         </div>
       )}
+      {/* A multi-batch run never starts without an explicit go-ahead that names
+          the batch count, the cost, and the balance (SPEC-M3 FR-5.11). */}
+      {pendingChunkedRun && (
+        <SolvencyDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) dismissChunkedRun();
+          }}
+          taskLabel={pendingChunkedRun.taskLabel}
+          totalChunks={pendingChunkedRun.batches.length}
+          totalCost={pendingChunkedRun.totalCost}
+          availableTokens={availableTokens}
+          onConfirm={confirmChunkedRun}
+        />
+      )}
+
+      {chunkProgress && (
+        <ChunkProgressBar progress={chunkProgress} onCancel={cancelChunkedRun} />
+      )}
+
+      {/* Provenance for the run that just finished, with one-click reversal
+          (SPEC-M3 FR-4.5 / FR-5.9). Retires itself on the next edit. */}
+      {!chunkProgress && lastRun && (
+        <TaskRunCard summary={lastRun} onUndo={undoLastRun} onDismiss={dismissLastRun} />
+      )}
+
       <ResourceSearchDialog
         open={resourceOpen}
         onOpenChange={setResourceOpen}

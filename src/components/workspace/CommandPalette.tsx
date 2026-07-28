@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Plus, Search, PanelRight, Languages } from "lucide-react";
+import { FileText, Plus, Search, PanelRight, Languages, Folder, FolderPlus } from "lucide-react";
 import {
   CommandDialog,
   CommandInput,
@@ -11,11 +11,11 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
-import { useProjects } from "@/core/workspace/useProjects";
+import { useAllDocuments } from "@/core/workspace/useAllDocuments";
 import { documentService } from "@/core/workspace/documentService";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { stripHarakat } from "@/utils/arabicUtils";
-import type { Document } from "@/core/workspace/types";
+import { toast } from "sonner";
 
 export const CommandPalette: React.FC = () => {
   const navigate = useNavigate();
@@ -28,71 +28,89 @@ export const CommandPalette: React.FC = () => {
     setWorkbenchTab,
   } = useWorkspace();
 
-  const { projects } = useProjects();
-  const [docs, setDocs] = useState<(Document & { projectName: string })[]>([]);
+  const { projects, docsMap, allDocs, refresh: refreshAllDocs } = useAllDocuments();
   const [search, setSearch] = useState("");
+
+  // Restore focus to Canvas ProseMirror editor on close
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      setCommandPaletteOpen(open);
+      if (!open) {
+        setTimeout(() => {
+          const pm = document.querySelector<HTMLElement>(".ProseMirror");
+          pm?.focus();
+        }, 50);
+      }
+    },
+    [setCommandPaletteOpen],
+  );
 
   // Listen to Cmd+K / Ctrl+K keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setCommandPaletteOpen(!commandPaletteOpen);
+        handleOpenChange(!commandPaletteOpen);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [commandPaletteOpen, setCommandPaletteOpen]);
+  }, [commandPaletteOpen, handleOpenChange]);
 
-  // Load documents when dialog opens
-  useEffect(() => {
-    if (!commandPaletteOpen || projects.length === 0) return;
-    const fetchDocs = async () => {
-      const all: (Document & { projectName: string })[] = [];
-      for (const p of projects) {
-        try {
-          const list = await documentService.listDocuments(p.id);
-          list.forEach((d) => all.push({ ...d, projectName: p.title }));
-        } catch {
-          /* ignore */
-        }
-      }
-      setDocs(all);
-    };
-    fetchDocs();
-  }, [commandPaletteOpen, projects]);
-
-  const handleSelectDoc = (docId: string) => {
+  const handleSelectDoc = (docId: string, projectKind?: string) => {
     setActiveDocumentId(docId);
-    navigate(`/workspace/${docId}`, { replace: true });
-    setCommandPaletteOpen(false);
+    if (projectKind === "translation") {
+      navigate(`/workspace/${docId}?view=translation`, { replace: true });
+    } else {
+      navigate(`/workspace/${docId}`, { replace: true });
+    }
+    handleOpenChange(false);
   };
 
   const handleCreateNewDoc = async () => {
     if (!projects[0]) return;
     try {
       const created = await documentService.createDocument(projects[0].id, t("editor.untitled") || "Untitled Document");
+      refreshAllDocs();
       setActiveDocumentId(created.id);
       navigate(`/workspace/${created.id}`, { replace: true });
-      setCommandPaletteOpen(false);
+      handleOpenChange(false);
     } catch {
-      /* ignore */
+      toast.error("دستاویز بنانے میں ناکامی");
+    }
+  };
+
+  const handleCreateNewProject = async () => {
+    try {
+      const title = window.prompt("نئے پروجیکٹ کا عنوان:");
+      if (!title?.trim()) return;
+      await documentService.createProject(title.trim(), "general");
+      refreshAllDocs();
+      toast.success("پروجیکٹ بن گیا");
+      handleOpenChange(false);
+    } catch {
+      toast.error("پروجیکٹ بنانے میں ناکامی");
     }
   };
 
   const cleanSearch = stripHarakat(search.trim().toLowerCase());
 
-  const filteredDocs = docs.filter((d) => {
+  const filteredDocs = allDocs.filter((d) => {
     if (!cleanSearch) return true;
     const titleMatch = stripHarakat(d.title.toLowerCase()).includes(cleanSearch);
     const textMatch = d.plain_text ? stripHarakat(d.plain_text.toLowerCase()).includes(cleanSearch) : false;
     return titleMatch || textMatch;
   });
 
+  const filteredProjects = projects.filter((p) => {
+    if (!cleanSearch) return true;
+    return stripHarakat(p.title.toLowerCase()).includes(cleanSearch);
+  });
+
   return (
-    <CommandDialog open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
+    <CommandDialog open={commandPaletteOpen} onOpenChange={handleOpenChange}>
       <CommandInput
-        placeholder="ایکشن یا دستاویز تلاش کریں..."
+        placeholder="ایکشن، پروجیکٹ یا دستاویز تلاش کریں..."
         value={search}
         onValueChange={setSearch}
       />
@@ -104,7 +122,7 @@ export const CommandPalette: React.FC = () => {
           {filteredDocs.slice(0, 8).map((d) => (
             <CommandItem
               key={d.id}
-              onSelect={() => handleSelectDoc(d.id)}
+              onSelect={() => handleSelectDoc(d.id, d.projectKind)}
               className="flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-2 min-w-0">
@@ -118,6 +136,31 @@ export const CommandPalette: React.FC = () => {
 
         <CommandSeparator />
 
+        {/* Projects */}
+        <CommandGroup heading="پروجیکٹس (Projects)">
+          {filteredProjects.slice(0, 5).map((p) => (
+            <CommandItem
+              key={p.id}
+              onSelect={() => {
+                const firstDoc = docsMap[p.id]?.[0];
+                if (firstDoc) {
+                  handleSelectDoc(firstDoc.id, p.kind);
+                } else {
+                  toast.info("اس پروجیکٹ میں ابھی کوئی دستاویز نہیں ہے۔");
+                  handleOpenChange(false);
+                }
+              }}
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <Folder className="h-4 w-4 text-amber-500 shrink-0" />
+              <span className="truncate font-medium">{p.title}</span>
+              <span className="text-xs text-muted-foreground capitalize">({p.kind})</span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+
+        <CommandSeparator />
+
         {/* Quick Actions */}
         <CommandGroup heading="ایکشنز (Actions)">
           <CommandItem onSelect={handleCreateNewDoc} className="cursor-pointer gap-2">
@@ -125,10 +168,15 @@ export const CommandPalette: React.FC = () => {
             <span>نئی دستاویز بنائیں (New Document)</span>
           </CommandItem>
 
+          <CommandItem onSelect={handleCreateNewProject} className="cursor-pointer gap-2">
+            <FolderPlus className="h-4 w-4 text-amber-500" />
+            <span>نیا پروجیکٹ بنائیں (New Project)</span>
+          </CommandItem>
+
           <CommandItem
             onSelect={() => {
               toggleWorkbench();
-              setCommandPaletteOpen(false);
+              handleOpenChange(false);
             }}
             className="cursor-pointer gap-2"
           >
@@ -139,7 +187,7 @@ export const CommandPalette: React.FC = () => {
           <CommandItem
             onSelect={() => {
               setWorkbenchTab("research");
-              setCommandPaletteOpen(false);
+              handleOpenChange(false);
             }}
             className="cursor-pointer gap-2"
           >
@@ -150,7 +198,7 @@ export const CommandPalette: React.FC = () => {
           <CommandItem
             onSelect={() => {
               setLanguage(language === "ur" ? "en" : "ur");
-              setCommandPaletteOpen(false);
+              handleOpenChange(false);
             }}
             className="cursor-pointer gap-2"
           >

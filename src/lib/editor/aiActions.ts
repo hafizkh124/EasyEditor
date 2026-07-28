@@ -38,18 +38,54 @@ export function isRefineTextAction(action: string): action is RefineTextAction {
 }
 
 /**
- * Calls refine-text and returns the refined output (text or HTML, depending on
- * the action). Throws on HTTP / network errors with a human-readable message.
+ * Largest payload `refine-text` accepts (FR-9.3). The edge function enforces the
+ * same number; it lives here as a constant so the chunker (M3.4) sizes its
+ * batches against one definition rather than a second copied literal.
  */
-export async function callRefineText(
+export const MAX_REFINE_CHARS = 12000;
+
+/** A retrieved source, exactly as `refine-text` returns it (SPEC-M3 FR-4.1). */
+export interface RefineTextSource {
+  domain: string;
+  reference: string;
+  source_url: string | null;
+  snippet: string;
+  score: number;
+  channels: string[];
+}
+
+export interface RefineTextResult {
+  text: string;
+  /** Present for citation runs; empty for every other action. */
+  sources: RefineTextSource[];
+  /** 0–1 for citation runs, `null` when the action produces no confidence. */
+  confidence: number | null;
+  model: string | null;
+  tokensUsed: number | null;
+}
+
+/**
+ * Calls refine-text and returns the refined output plus its provenance.
+ *
+ * Use this when the caller records a task_run — `callRefineText` throws away
+ * `sources`/`confidence`/`model`, which is what the Trust UI needs.
+ */
+export async function callRefineTextDetailed(
   text: string,
   action: RefineTextAction,
   accessToken: string,
-): Promise<string> {
+  /**
+   * `ai_tasks.id` for a user-authored task. Only the id travels — the server
+   * looks the prompt up under the caller's own user_id (FR-2.5).
+   */
+  taskId?: string,
+): Promise<RefineTextResult> {
   const sourceText = text.trim();
-  if (!sourceText) return "";
+  if (!sourceText) {
+    return { text: "", sources: [], confidence: null, model: null, tokensUsed: null };
+  }
 
-  if (sourceText.length > 12000) {
+  if (sourceText.length > MAX_REFINE_CHARS) {
     throw new Error("دستاویز بڑی ہے — متن منتخب کریں، یا حصہ بہ حصہ چلائیں۔");
   }
 
@@ -62,7 +98,7 @@ export async function callRefineText(
         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ text: sourceText, action }),
+      body: JSON.stringify({ text: sourceText, action, task_id: taskId }),
     },
   );
 
@@ -72,5 +108,26 @@ export async function callRefineText(
   }
 
   const data = await response.json();
-  return data.text ?? "";
+  return {
+    text: data.text ?? "",
+    sources: Array.isArray(data.sources) ? data.sources : [],
+    // An older deployment of the function returns neither field; `null` keeps
+    // "not reported" distinct from "reported as zero".
+    confidence: typeof data.confidence === "number" ? data.confidence : null,
+    model: typeof data.model === "string" ? data.model : null,
+    tokensUsed: typeof data.tokens_used === "number" ? data.tokens_used : null,
+  };
+}
+
+/**
+ * Text-only convenience wrapper, kept because the Translator and the
+ * flag-off editor path only ever need the refined string.
+ */
+export async function callRefineText(
+  text: string,
+  action: RefineTextAction,
+  accessToken: string,
+): Promise<string> {
+  const result = await callRefineTextDetailed(text, action, accessToken);
+  return result.text;
 }

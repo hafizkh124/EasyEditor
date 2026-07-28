@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BookMarked, ChevronDown, ChevronUp } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CitationBadge from "./CitationBadge";
+import { DOMAIN_LABEL, groupByDomain } from "@/lib/citations/domains";
 
 export interface CitationItem {
   domain: string;
@@ -39,30 +40,6 @@ interface CitationPanelProps {
   citations: CitationItem[];
   t: (k: string) => string;
 }
-
-// Group citations by domain for cleaner display
-function groupByDomain(citations: CitationItem[]): Record<string, CitationItem[]> {
-  const groups: Record<string, CitationItem[]> = {};
-  for (const c of citations) {
-    if (!groups[c.domain]) groups[c.domain] = [];
-    groups[c.domain].push(c);
-  }
-  return groups;
-}
-
-const DOMAIN_LABEL: Record<string, string> = {
-  dorar:           "Dorar.net",
-  sunnah:          "Sunnah.com",
-  "hadith-index":  "Hadith Index",
-  alquran:         "AlQuran.cloud",
-  "quran-com":     "Quran.com",
-  tanzil:          "Tanzil",
-  islamqa:         "IslamQA.info",
-  islamweb:        "IslamWeb.net",
-  "dar-alifta":    "Dar-Alifta.org",
-  "shamela-index": "Shamela Library",
-  "openiti-index": "OpenITI",
-};
 
 const CitationPanel = ({ citations, t }: CitationPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
