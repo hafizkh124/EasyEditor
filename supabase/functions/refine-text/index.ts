@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
 import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
-import { findCitations } from "../_shared/citationEngine.ts";
+import { findCitations, evaluateKifayatGate, type EngineCitation } from "../_shared/citationEngine.ts";
+import { buildRetrievalQuery, perSourceBudget } from "../_shared/retrievalQuery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -73,6 +74,14 @@ HARD RULES:
 4. Do NOT quote Quranic verses or hadith from memory; only reference them as they appear in the source.
 5. Output ONLY the summary text — no commentary, no markdown fences, no preamble like "Summary:".`,
 
+  summarize_sections: `You are an expert academic summarizer. Produce a clear, section-by-section summary of the following heading/section.
+
+HARD RULES:
+1. Capture the main ideas and key arguments of this specific section.
+2. Write the summary in the SAME language and script as the input (Urdu stays Urdu Nastaliq, Arabic stays Arabic, English stays English).
+3. Format as a brief section summary header followed by concise bullet points or short paragraphs.
+4. Output ONLY the section summary text — no markdown fences, no extraneous commentary.`,
+
   auto_format: `You are a professional document formatter. Convert the user's raw text into clean, well-structured semantic HTML.
 
 RULES:
@@ -108,10 +117,41 @@ CURATED ISLAMIC SOURCES (use ONLY these):
 ${contextBlock}`;
 }
 
+/** A source as the client's Trust UI consumes it. */
+interface TrustSource {
+  domain: string;
+  reference: string;
+  /** Structured ref, so the client can reuse its existing CitationBadge. */
+  // deno-lint-ignore no-explicit-any
+  citation_ref: Record<string, any>;
+  source_url: string | null;
+  snippet: string;
+  score: number;
+  channels: string[];
+}
+
+function formatReference(m: EngineCitation): string {
+  const cite = m.citation_ref ?? {};
+  if (cite.collection || cite.book) {
+    return `${cite.collection ?? cite.book}${cite.hadith_number ? ` #${cite.hadith_number}` : ""}${cite.grade ? ` (${cite.grade})` : ""}`;
+  }
+  if (cite.surah_name) {
+    return `Quran ${cite.surah_name} ${cite.surah_number ?? ""}:${cite.verse ?? ""}`;
+  }
+  return cite.title || m.domain;
+}
+
+interface IslamicContext {
+  contextBlock: string;
+  sources: TrustSource[];
+  confidence: number | null;
+}
+
 async function fetchIslamicContext(
   supabase: any,
   text: string,
-): Promise<string> {
+  userId: string,
+): Promise<IslamicContext> {
   // Retrieval goes through the shared citation engine (plan → lexical +
   // semantic → RRF), the same path the Editor's reference search uses.
   //
@@ -126,35 +166,58 @@ async function fetchIslamicContext(
   // latency on what is already a long text-refinement request.
   try {
     const result = await findCitations({
-      query: text.slice(0, 4000),
+      query: buildRetrievalQuery(text),
       supabase,
+      userId,
       maxResults: 8,
       rerank: false,
     });
 
     if (result.results.length === 0) {
-      return "[No matching curated Islamic sources were found for this text.]";
+      return {
+        contextBlock: "[No matching curated Islamic sources were found for this text.]",
+        sources: [],
+        confidence: 0,
+      };
     }
 
-    return result.results
+    const budget = perSourceBudget(result.results.length);
+
+    const contextBlock = result.results
       .map((m, i) => {
-        const cite = m.citation_ref ?? {};
-        const ref =
-          cite.collection || cite.book
-            ? `${cite.collection ?? cite.book}${cite.hadith_number ? ` #${cite.hadith_number}` : ""}${cite.grade ? ` (${cite.grade})` : ""}`
-            : cite.surah_name
-            ? `Quran ${cite.surah_name} ${cite.surah_number ?? ""}:${cite.verse ?? ""}`
-            : cite.title || m.domain;
+        const ref = formatReference(m);
         // Only emit a URL when the corpus actually has one — the prompt
         // forbids the model from inventing links, so give it nothing to
         // complete when the source is URL-less.
-        const url = m.source_url || cite.url || "";
-        return `Source ${i + 1} [${m.domain}] — ${ref}${url ? ` (${url})` : ""}\n${(m.content_ar || m.content || "").slice(0, 600)}`;
+        const url = m.source_url || m.citation_ref?.url || "";
+        return `Source ${i + 1} [${m.domain}] — ${ref}${url ? ` (${url})` : ""}\n${(m.content_ar || m.content || "").slice(0, budget)}`;
       })
       .join("\n\n");
+
+    // Reuse the engine's own retrieval-confidence proxy rather than inventing a
+    // second number the rest of the system would have to reconcile.
+    const gate = evaluateKifayatGate(result.results);
+
+    const sources: TrustSource[] = result.results.map((m) => ({
+      domain: m.domain,
+      reference: formatReference(m),
+      citation_ref: m.citation_ref ?? {},
+      // Never synthesise a link: the Trust UI renders these as citations, and a
+      // fabricated URL is exactly the failure this surface exists to prevent.
+      source_url: m.source_url || m.citation_ref?.url || null,
+      snippet: (m.content_ar || m.content || "").slice(0, 300),
+      score: m.score,
+      channels: m.channels ?? [],
+    }));
+
+    return { contextBlock, sources, confidence: gate.maxScore };
   } catch (e) {
     console.warn("[refine-text/citations] retrieval error:", e);
-    return "[No curated sources retrieved — retrieval error.]";
+    return {
+      contextBlock: "[No curated sources retrieved — retrieval error.]",
+      sources: [],
+      confidence: null,
+    };
   }
 }
 
@@ -190,21 +253,53 @@ serve(async (req) => {
       return rateLimitResponse(corsHeaders);
     }
 
-    const { text, action } = await req.json();
+    const { text, action, task_id: taskId } = await req.json();
+
+    // A custom task supplies its prompt by ID only. The prompt text itself is
+    // NEVER read from the request body: this function runs on the service-role
+    // key, so honouring a caller-supplied system prompt would turn it into an
+    // open LLM proxy billed to whoever's token it was called with
+    // (SPEC-M3 FR-2.5 / R10).
+    let customPrompt: string | null = null;
+    if (taskId) {
+      const { data: customTask, error: customErr } = await supabase
+        .from("ai_tasks")
+        .select("system_prompt, base_task_slug, archived_at")
+        .eq("id", taskId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (customErr || !customTask || customTask.archived_at) {
+        return new Response(JSON.stringify({ error: "یہ ٹاسک دستیاب نہیں ہے۔" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      customPrompt = customTask.system_prompt;
+    }
 
     const isCitations = action === "citations";
-    if (!text || !action || (!isCitations && !actionPrompts[action])) {
+    if (!text || (!customPrompt && (!action || (!isCitations && !actionPrompts[action])))) {
       return new Response(JSON.stringify({ error: "Invalid request. Provide text and a valid action." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Token-based quota check: 5 tokens per refinement action
-    const tokenCost = calculateCost("refine", 1);
+    // FR-9.3 Payload size limit guard (12,000 chars)
+    if (typeof text === "string" && text.length > 12000) {
+      return new Response(
+        JSON.stringify({ error: "دستاویز بڑی ہے — متن منتخب کریں، یا حصہ بہ حصہ چلائیں۔" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // FR-9.5 Token-based quota check: 5 tokens per ~2,000 characters
+    const multiplier = Math.max(1, Math.ceil(text.length / 2000));
+    const tokenCost = calculateCost("refine", multiplier);
     const tokenResult = await checkAndDeductTokens(
       supabase, user.id, tokenCost, "refine",
-      `${action} refinement`,
+      `${action} refinement (${multiplier}x)`,
     );
     if (!tokenResult.ok) {
       return insufficientTokensResponse(tokenResult, corsHeaders);
@@ -220,9 +315,19 @@ serve(async (req) => {
 
     // Build system prompt — for citations, retrieve Islamic context first
     let systemPrompt: string;
-    if (isCitations) {
-      const contextBlock = await fetchIslamicContext(supabase, text);
-      systemPrompt = buildIslamicCitationsPrompt(contextBlock);
+    let sources: TrustSource[] = [];
+    // `null` means "this action does not produce a confidence" — a spell-check
+    // must report nothing rather than a made-up certainty (SPEC-M3 FR-4.4).
+    let confidence: number | null = null;
+
+    if (customPrompt) {
+      // A custom task is a preset over the same pipeline, never its own path.
+      systemPrompt = customPrompt;
+    } else if (isCitations) {
+      const ctx = await fetchIslamicContext(supabase, text, user.id);
+      systemPrompt = buildIslamicCitationsPrompt(ctx.contextBlock);
+      sources = ctx.sources;
+      confidence = ctx.confidence;
     } else {
       systemPrompt = actionPrompts[action];
     }
@@ -261,9 +366,19 @@ serve(async (req) => {
     const aiData = await aiResponse.json();
     const refined = aiData.choices?.[0]?.message?.content || "";
 
-    return new Response(JSON.stringify({ text: refined, tokens_used: tokenCost }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Additive response (SPEC-M3 FR-4.1 / NFR-7): `text` and `tokens_used` keep
+    // their old meaning, so clients built before M3 are unaffected. Edge
+    // functions cannot sit behind a feature flag, hence the strict additivity.
+    return new Response(
+      JSON.stringify({
+        text: refined,
+        tokens_used: tokenCost,
+        sources,
+        confidence,
+        model,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e) {
     console.error("refine-text error:", e);
     return new Response(

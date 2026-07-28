@@ -9,6 +9,8 @@ reconstruct rationale without rereading commits.
 | [0001](./0001-client-side-audio-chunking.md) | Client-side audio chunking for long-form transcription | Accepted |
 | [0002](./0002-three-mode-research.md) | Three-tab research mode (Islamic / Custom Sources / General) | Accepted |
 | [0003](./0003-threshold-gated-virtualization.md) | Threshold-gated virtualization for the research chat | Accepted |
+| [0004](./0004-client-side-text-chunking.md) | Client-side text chunking for long-document AI runs | Accepted |
+| [0005](./0005-m4-personal-corpus-and-graph.md) | M4 personal corpus, knowledge graph, and recipes | Accepted |
 
 ## When to write a new ADR
 

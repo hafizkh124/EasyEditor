@@ -27,6 +27,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Profile = lazy(() => import("./pages/Profile"));
+const Library = lazy(() => import("./pages/Library"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const AccountRejected = lazy(() => import("./pages/AccountRejected"));
 const CompleteProfile = lazy(() => import("./pages/CompleteProfile"));
@@ -34,6 +35,7 @@ const About = lazy(() => import("./pages/About"));
 const FaqAiHaram = lazy(() => import("./pages/FaqAiHaram"));
 const Answers = lazy(() => import("./pages/Answers"));
 const Editor = lazy(() => import("./pages/Editor"));
+const Workspace = lazy(() => import("./pages/Workspace"));
 const OcrReview = lazy(() => import("./pages/OcrReview"));
 const Translate = lazy(() => import("./pages/Translate"));
 const TranslationWorkspace = lazy(() => import("./pages/TranslationWorkspace"));
@@ -120,8 +122,12 @@ const App = () => (
                   <Route path="/transcribe" element={<ProtectedRoute><ErrorBoundary><Transcribe /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/speak" element={<ProtectedRoute><ErrorBoundary><Speak /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/ocr" element={<ProtectedRoute><ErrorBoundary><OCR /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/workspace" element={<ProtectedRoute><ErrorBoundary><Workspace /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/workspace/:documentId" element={<ProtectedRoute><ErrorBoundary><Workspace /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/research" element={<ProtectedRoute><ErrorBoundary><Research /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/library" element={<ProtectedRoute><ErrorBoundary><Library /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/editor" element={<ProtectedRoute><ErrorBoundary><Editor /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/editor/:documentId" element={<ProtectedRoute><ErrorBoundary><Editor /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/ocr/review" element={<ProtectedRoute><ErrorBoundary><OcrReview /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/translate" element={<ProtectedRoute><ErrorBoundary><Translate /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/translate-workspace" element={<ProtectedRoute><ErrorBoundary><TranslationWorkspace /></ErrorBoundary></ProtectedRoute>} />

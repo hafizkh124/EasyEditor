@@ -26,6 +26,7 @@ import { isRtlText } from "@/utils/textUtils";
 import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 import { ACCEPTED_OCR, getDocumentType, getMaxFileSize, MAX_PDF_PAGES } from "@/lib/ocr/documentFormats";
 import { renderPdfPages, getPdfPageCount } from "@/lib/ocr/pdfRenderer";
+import { SaveToLibraryButton } from "@/components/workspace/SaveToLibraryButton";
 
 const OCR = () => {
   useSeo({ title: "Urdu & Arabic OCR — Islamic Text Digitization", description: "Extract Urdu, Arabic and English text from images and scanned Islamic books with high accuracy. Free Quran-friendly OCR.", path: "/ocr", noindex: true });
@@ -628,6 +629,13 @@ const OCR = () => {
                 <Volume2 className="h-4 w-4" />
                 {t("ocr.listen_now")}
               </Button>
+              {/* SPEC-M4 FR-2.8: the scanned page joins the searchable corpus. */}
+              <SaveToLibraryButton
+                text={extractedText}
+                title={extractedText.slice(0, 60)}
+                kind="ocr"
+                className="flex-1 sm:flex-none"
+              />
             </div>
           </div>
         )}

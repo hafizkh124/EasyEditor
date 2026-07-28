@@ -1,7 +1,7 @@
 import { useLocation, Link, useMatch } from "react-router-dom";
 import {
-  Mic, Volume2, Image, BookOpen, Menu, Shield,
-  Bell, User, ChevronLeft, ChevronRight, FileText, Languages, Layers,
+  BookOpen, Menu, Shield, Bell, User, ChevronLeft, ChevronRight, ChevronDown, Layers,
+  Wrench, Mic, ScanText, Volume2, Languages,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,22 +16,36 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import SidebarHistory from "@/components/SidebarHistory";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
+import AppVersionBadge from "@/components/AppVersionBadge";
 import type { SessionSection } from "@/hooks/useSessionHistory";
 
-const sectionNav = [
-  { path: "/research", icon: BookOpen, labelKey: "nav.research", section: "research" as SessionSection },
-  { path: "/extract", icon: Layers, labelKey: "nav.extract", section: "research" as SessionSection },
-  { path: "/translate-workspace", icon: Languages, labelKey: "nav.translate_workspace", fallbackLabel: "ترجمہ پروجیکٹس", section: "translate" as SessionSection },
-  { path: "/book-workspace", icon: FileText, labelKey: "nav.book_workspace", fallbackLabel: "تصنیف ورک اسپیس", section: "editor" as SessionSection },
-  { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe", section: "transcribe" as SessionSection },
-  { path: "/ocr", icon: Image, labelKey: "nav.ocr", section: "ocr" as SessionSection },
-  { path: "/speak", icon: Volume2, labelKey: "nav.speak", section: "speak" as SessionSection },
-  { path: "/editor", icon: FileText, labelKey: "nav.editor", section: "editor" as SessionSection },
-  { path: "/translate", icon: Languages, labelKey: "nav.translate", section: "translate" as SessionSection },
+/**
+ * FR-7 — ten nav items collapsed into three groups. The individual tools keep
+ * their own routes and are reached through the Tools group, so nothing that
+ * used to be one click away became unreachable.
+ */
+const toolsChildren = [
+  { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe", fallbackLabel: "ٹرانسکرائب" },
+  { path: "/ocr", icon: ScanText, labelKey: "nav.ocr", fallbackLabel: "OCR" },
+  { path: "/speak", icon: Volume2, labelKey: "nav.speak", fallbackLabel: "بولیں" },
+  { path: "/extract", icon: Layers, labelKey: "nav.extract", fallbackLabel: "استخراج" },
+  { path: "/translate", icon: Languages, labelKey: "nav.translate", fallbackLabel: "ترجمہ" },
 ];
-const adminNavItem = { path: "/admin", icon: Shield, labelKey: "nav.admin", section: null };
 
-type NavItem = { path: string; icon: typeof BookOpen; labelKey: string; section: SessionSection | null };
+const sectionNav = [
+  { path: "/workspace", icon: BookOpen, labelKey: "nav.workspace", fallbackLabel: "ورک اسپیس", section: "editor" as SessionSection },
+  { path: "/transcribe", icon: Wrench, labelKey: "nav.tools", fallbackLabel: "ٹولز (Tools)", section: "transcribe" as SessionSection, children: toolsChildren },
+];
+const adminNavItem = { path: "/admin", icon: Shield, labelKey: "nav.admin", fallbackLabel: "ایڈمن", section: null };
+
+type NavChild = { path: string; icon: typeof BookOpen; labelKey: string; fallbackLabel?: string };
+type NavItem = {
+  path: string;
+  icon: typeof BookOpen;
+  labelKey: string;
+  section: SessionSection | null;
+  children?: NavChild[];
+};
 
 function useActiveSection(): SessionSection | null {
   const location = useLocation();
@@ -125,6 +139,59 @@ const SectionNavItem = ({
   </Link>
 );
 
+/* ─── Section Nav Group (FR-7) — a heading that expands to its own routes ─── */
+const SectionNavGroup = ({
+  item, activePath, collapsed, onItemClick, t,
+}: {
+  item: NavItem;
+  activePath: string;
+  collapsed: boolean;
+  onItemClick?: () => void;
+  t: (key: string) => string;
+}) => {
+  const children = item.children ?? [];
+  const isChildActive = (path: string) => activePath === path || activePath.startsWith(path + "/");
+  const groupActive = children.some((c) => isChildActive(c.path));
+  const [open, setOpen] = useState(groupActive);
+
+  const childItems = children.map((c) => (
+    <SectionNavItem
+      key={c.path}
+      item={{ ...c, section: null }}
+      isActive={isChildActive(c.path)}
+      collapsed={collapsed}
+      onClick={onItemClick}
+      t={t}
+    />
+  ));
+
+  // Collapsed rail: no room for a heading, so the tools stand on their own.
+  if (collapsed) return <div className="space-y-0.5">{childItems}</div>;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+          groupActive
+            ? "text-sidebar-accent-foreground"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+        )}
+      >
+        <item.icon className={cn("h-[18px] w-[18px] flex-shrink-0", groupActive && "text-primary")} />
+        <span className="flex-1 text-start">
+          {t(item.labelKey) !== item.labelKey ? t(item.labelKey) : ((item as any).fallbackLabel || item.labelKey)}
+        </span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && <div className="ms-4 ps-2 border-s border-sidebar-border space-y-0.5">{childItems}</div>}
+    </div>
+  );
+};
+
 /* ─── Profile Footer (FR-2.7) — logout lives on /profile per FR-5.2 ─── */
 const ProfileFooter = ({
   user, collapsed, onNavigate, t,
@@ -216,16 +283,27 @@ const SidebarBody = ({
     )}
 
     <nav className="flex-shrink-0 space-y-0.5 p-2">
-      {navItems.map((item) => (
-        <SectionNavItem
-          key={item.path}
-          item={item}
-          isActive={activePath === item.path || activePath.startsWith(item.path + "/")}
-          collapsed={collapsed}
-          onClick={onItemClick}
-          t={t}
-        />
-      ))}
+      {navItems.map((item) =>
+        item.children?.length ? (
+          <SectionNavGroup
+            key={item.path}
+            item={item}
+            activePath={activePath}
+            collapsed={collapsed}
+            onItemClick={onItemClick}
+            t={t}
+          />
+        ) : (
+          <SectionNavItem
+            key={item.path}
+            item={item}
+            isActive={activePath === item.path || activePath.startsWith(item.path + "/")}
+            collapsed={collapsed}
+            onClick={onItemClick}
+            t={t}
+          />
+        ),
+      )}
     </nav>
 
     {activeSection && !collapsed && (
@@ -316,7 +394,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </header>
 
         {/* Desktop Top Bar */}
-        <div className="hidden md:flex h-14 items-center justify-end border-b border-border px-6 bg-background/95 backdrop-blur-sm sticky top-0 z-30">
+        <div className="hidden md:flex h-14 items-center justify-between border-b border-border px-6 bg-background/95 backdrop-blur-sm sticky top-0 z-30">
+          <AppVersionBadge compact />
           <NotificationBell />
         </div>
 
