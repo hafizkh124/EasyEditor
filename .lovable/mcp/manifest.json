@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "sdk_version": "0.20.0",
-  "path": "/functions/v1/mcp",
+  "sdk_version": "0.20.1",
+  "path": "/mcp",
   "auth": {
     "type": "oauth",
     "issuer": "https://vdfdqtzndsrrlutbprtk.supabase.co/auth/v1",
