@@ -4,7 +4,6 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
-import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -38,7 +37,12 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
-      mcpPlugin(),
+      // mcpPlugin() intentionally omitted: its only job is to regenerate
+      // supabase/functions/mcp/index.ts at build time, and on Windows it writes
+      // `import mcp from "npm:E:\\EasyEditor\\src\\lib\\mcp\\index.ts"` — an
+      // absolute local path that cannot deploy to Deno. It overwrote the working
+      // bundle on every build. The checked-in function is the source of truth;
+      // regenerate it from a Lovable cloud build if the MCP tools change.
       mode === "development" && componentTagger(),
       VitePWA({
         // "prompt" (not autoUpdate): the SW must NOT skipWaiting/clientsClaim

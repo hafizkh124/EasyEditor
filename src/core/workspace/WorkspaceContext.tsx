@@ -1,0 +1,155 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { type WorkbenchTab, usePanelState } from "./usePanelState";
+
+/** What one whole-document task run reports back to whoever asked for it. */
+export interface DocumentTaskOutcome {
+  ok: boolean;
+  applied: number;
+  total: number;
+  tokensSpent: number;
+  /** Why it did not run (or did not finish) — shown to the user verbatim. */
+  reason?: string;
+}
+
+/**
+ * Run a registered task over the whole active document.
+ *
+ * The editor lives in the Canvas, but Recipes are driven from the Library
+ * panel, so the runner is published here the same way the Canvas↔Workbench
+ * signals are. `null` means no editor is mounted and nothing can be run.
+ */
+export type DocumentTaskRunner = (taskSlug: string) => Promise<DocumentTaskOutcome>;
+
+interface WorkspaceContextType {
+  activeDocumentId: string | null;
+  setActiveDocumentId: (id: string | null) => void;
+  
+  // Panel states & controls
+  libraryCollapsed: boolean;
+  toggleLibrary: () => void;
+  workbenchCollapsed: boolean;
+  toggleWorkbench: () => void;
+  setWorkbenchOpen: (open: boolean) => void;
+  workbenchTab: WorkbenchTab;
+  setWorkbenchTab: (tab: WorkbenchTab) => void;
+  /**
+   * Mobile only. The Library is a drawer there, so it must start closed even
+   * though the desktop column is expanded by default — hence its own flag,
+   * deliberately not persisted alongside the panel widths.
+   */
+  mobileLibraryOpen: boolean;
+  setMobileLibraryOpen: (open: boolean) => void;
+
+  // Inter-panel communication signals (Canvas <-> Workbench bridge)
+  pendingWorkbenchQuery: string | null;
+  sendSelectionToWorkbench: (text: string) => void;
+  clearPendingWorkbenchQuery: () => void;
+
+  pendingCanvasInsertion: string | null;
+  insertIntoCanvas: (html: string) => void;
+  clearPendingCanvasInsertion: () => void;
+
+  // Spotlight command palette state
+  commandPaletteOpen: boolean;
+  setCommandPaletteOpen: (open: boolean) => void;
+
+  /** The mounted editor's whole-document task runner, or null (see above). */
+  runDocumentTask: DocumentTaskRunner | null;
+  registerDocumentTaskRunner: (runner: DocumentTaskRunner | null) => void;
+}
+
+const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
+
+export const WorkspaceProvider: React.FC<{
+  children: React.ReactNode;
+  /** The document in the URL. Not just an initial value — see the effect below. */
+  documentId?: string;
+  initialWorkbenchOpenFromUrl?: boolean;
+}> = ({ children, documentId, initialWorkbenchOpenFromUrl = false }) => {
+  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(documentId ?? null);
+  const panelState = usePanelState(initialWorkbenchOpenFromUrl);
+
+  // `/workspace` resolves a blank document and redirects to `/workspace/:id`,
+  // but React keeps this provider mounted across that redirect — both routes
+  // render the same page at the same position. Reading the param only at mount
+  // would leave the workspace on no document at all, so follow the route.
+  useEffect(() => {
+    if (documentId) setActiveDocumentId(documentId);
+  }, [documentId]);
+
+  const [pendingWorkbenchQuery, setPendingWorkbenchQuery] = useState<string | null>(null);
+  const [pendingCanvasInsertion, setPendingCanvasInsertion] = useState<string | null>(null);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
+
+  const sendSelectionToWorkbench = useCallback(
+    (text: string) => {
+      setPendingWorkbenchQuery(text);
+      panelState.setWorkbenchTab("research");
+    },
+    [panelState],
+  );
+
+  const clearPendingWorkbenchQuery = useCallback(() => {
+    setPendingWorkbenchQuery(null);
+  }, []);
+
+  const insertIntoCanvas = useCallback((html: string) => {
+    setPendingCanvasInsertion(html);
+  }, []);
+
+  const clearPendingCanvasInsertion = useCallback(() => {
+    setPendingCanvasInsertion(null);
+  }, []);
+
+  // Held in state, not a ref: the Recipes tab has to re-render when the editor
+  // mounts or unmounts, or its Run button would stay disabled forever.
+  const [runDocumentTask, setRunDocumentTask] = useState<DocumentTaskRunner | null>(null);
+  const registerDocumentTaskRunner = useCallback((runner: DocumentTaskRunner | null) => {
+    // Wrapped, because a bare function passed to a setter is treated as an
+    // updater by React.
+    setRunDocumentTask(() => runner);
+  }, []);
+
+  return (
+    <WorkspaceContext.Provider
+      value={{
+        activeDocumentId,
+        setActiveDocumentId,
+        libraryCollapsed: panelState.libraryCollapsed,
+        toggleLibrary: panelState.toggleLibrary,
+        workbenchCollapsed: panelState.workbenchCollapsed,
+        toggleWorkbench: panelState.toggleWorkbench,
+        setWorkbenchOpen: panelState.setWorkbenchOpen,
+        workbenchTab: panelState.workbenchTab,
+        setWorkbenchTab: panelState.setWorkbenchTab,
+        mobileLibraryOpen,
+        setMobileLibraryOpen,
+        pendingWorkbenchQuery,
+        sendSelectionToWorkbench,
+        clearPendingWorkbenchQuery,
+        pendingCanvasInsertion,
+        insertIntoCanvas,
+        clearPendingCanvasInsertion,
+        commandPaletteOpen,
+        setCommandPaletteOpen,
+        runDocumentTask,
+        registerDocumentTaskRunner,
+      }}
+    >
+      {children}
+    </WorkspaceContext.Provider>
+  );
+};
+
+export function useWorkspace(): WorkspaceContextType {
+  const ctx = useContext(WorkspaceContext);
+  if (!ctx) {
+    throw new Error("useWorkspace must be used within a WorkspaceProvider");
+  }
+  return ctx;
+}
+
+export function useOptionalWorkspace(): WorkspaceContextType | null {
+  return useContext(WorkspaceContext);
+}

@@ -1,5 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
-import { Search, Loader2, BookOpen, Plus, Info, Hash, Sparkles } from "lucide-react";
+import { Search, Loader2, BookOpen, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -7,15 +6,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { isRtlText } from "@/utils/textUtils";
-import {
-  formatCitation,
-  type ResourceResult,
-  type CitationSearchResponse,
-} from "@/lib/editor/citationFormat";
-import { searchLocalShamela } from "@/lib/shamela/localShamelaService";
+import { formatCitation, type ResourceResult } from "@/lib/editor/citationFormat";
+import { useResourceSearch, type SourceFilter } from "./useResourceSearch";
+import { ResourceCountCard } from "./ResourceCountCard";
+import { ResourceResultCard } from "./ResourceResultCard";
 
 interface ResourceSearchDialogProps {
   open: boolean;
@@ -29,93 +25,11 @@ interface ResourceSearchDialogProps {
   t: (k: string) => string;
 }
 
-
-type SourceFilter = "all" | "quran" | "hadith" | "shamela";
-
 const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }: ResourceSearchDialogProps) => {
-  const { session } = useAuth();
-  const [query, setQuery] = useState("");
-  const [response, setResponse] = useState<CitationSearchResponse | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const [filter, setFilter] = useState<SourceFilter>("all");
-
-  const runSearch = useCallback(async () => {
-    if (!query.trim()) return;
-    setIsSearching(true);
-    setSearched(true);
-    setFilter("all");
-    try {
-      const [cloudRes, localResults] = await Promise.all([
-        session?.access_token
-          ? fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resource-search`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({ query }),
-              },
-            ).catch(() => null)
-          : Promise.resolve(null),
-        searchLocalShamela(query.trim()),
-      ]);
-
-      if (cloudRes && cloudRes.ok) {
-        const data = (await cloudRes.json()) as CitationSearchResponse;
-        if (localResults.length > 0) {
-          data.results = [...(data.results || []), ...localResults];
-        }
-        setResponse(data);
-      } else if (localResults.length > 0) {
-        setResponse({
-          intent: "topical",
-          plan_summary: {
-            arabic_terms: [query.trim()],
-            scope_label: "مکتبہ شاملہ (آف لائن)",
-            degraded: false,
-          },
-          results: localResults,
-        });
-      } else {
-        if (cloudRes && !cloudRes.ok) {
-          const err = await cloudRes.json().catch(() => ({}));
-          toast.error(err.error || t("editor.search_error"));
-        } else {
-          toast.error(t("editor.search_error"));
-        }
-        setResponse(null);
-      }
-    } catch {
-      toast.error(t("editor.search_error"));
-      setResponse(null);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [query, session, t]);
-
-  const results = response?.results ?? [];
-
-  const sourceTypeOf = (r: ResourceResult): SourceFilter => {
-    if (r.match_key?.startsWith("shamela-") || r.reason?.includes("مکتبہ شاملہ")) {
-      return "shamela";
-    }
-    return r.source_type === "quran" || r.citation_ref?.surah_number != null ? "quran" : "hadith";
-  };
-
-  const visibleResults = useMemo(
-    () => (filter === "all" ? results : results.filter((r) => sourceTypeOf(r) === filter)),
-    [results, filter],
-  );
-
-  const counts = useMemo(() => ({
-    quran: results.filter((r) => sourceTypeOf(r) === "quran").length,
-    hadith: results.filter((r) => sourceTypeOf(r) === "hadith").length,
-    shamela: results.filter((r) => sourceTypeOf(r) === "shamela").length,
-  }), [results]);
+  const {
+    query, setQuery, runSearch, isSearching, searched,
+    response, results, visibleResults, counts, filter, setFilter,
+  } = useResourceSearch(t);
 
   const insertOne = (r: ResourceResult) => {
     onInsert(r.content, formatCitation(r.citation_ref, r.source_url));
@@ -137,7 +51,6 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
     onOpenChange(false);
     toast.success(t("editor.reference_inserted"));
   };
-
 
   /** Insert the count answer as a sentence the user can keep in their document. */
   const insertCountSummary = () => {
@@ -200,60 +113,15 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
               </span>
             ))}
             {scopeLabel && (
-              <span className="text-muted-foreground" dir="rtl">
-                · {scopeLabel}
-              </span>
+              <span className="text-muted-foreground" dir="rtl">· {scopeLabel}</span>
             )}
           </div>
         )}
 
         <ScrollArea className="max-h-[55vh] -mx-2 px-2">
           <div className="space-y-3">
-            {/* ── Count answer ────────────────────────────────────────────── */}
             {isCount && response?.count && (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
-                <div className="flex items-baseline gap-2">
-                  <Hash className="h-4 w-4 text-primary self-center" />
-                  <span className="text-3xl font-bold tabular-nums">{response.count.total}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {t("editor.count_occurrences")}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {response.count.rows_matched} {t("editor.count_in_places")}
-                </p>
-
-                {response.count.buckets.length > 0 && (
-                  <div className="mt-3 max-h-44 overflow-y-auto rounded-md border border-border/60 bg-background/60">
-                    <table className="w-full text-xs">
-                      <tbody>
-                        {response.count.buckets.map((b) => (
-                          <tr key={`${b.source_type}-${b.key}`} className="border-b border-border/40 last:border-0">
-                            <td className="px-2.5 py-1.5" dir="rtl">{b.label}</td>
-                            <td className="px-2.5 py-1.5 text-right tabular-nums font-medium">
-                              {b.occurrences}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {response.count.caveats.length > 0 && (
-                  <div className="mt-3 flex gap-1.5 text-[11px] text-muted-foreground">
-                    <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                    <ul className="space-y-0.5" dir="rtl">
-                      {response.count.caveats.map((c, i) => <li key={i}>{c}</li>)}
-                    </ul>
-                  </div>
-                )}
-
-                <Button size="sm" variant="outline" className="mt-3 h-7 gap-1 text-xs" onClick={insertCountSummary}>
-                  <Plus className="h-3.5 w-3.5" />
-                  {t("editor.insert_count_summary")}
-                </Button>
-              </div>
+              <ResourceCountCard count={response.count} onInsertSummary={insertCountSummary} t={t} />
             )}
 
             {/* ── Filters + insert all ────────────────────────────────────── */}
@@ -291,32 +159,9 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
               </div>
             )}
 
-            {/* ── Result cards ───────────────────────────────────────────── */}
-            {visibleResults.map((r, i) => {
-              const rtl = isRtlText(r.content);
-              return (
-                <div key={r.match_key ?? i} className="rounded-lg border border-border bg-muted/20 p-3 group">
-                  <p
-                    dir={rtl ? "rtl" : "ltr"}
-                    className={cn("text-sm leading-relaxed line-clamp-4", rtl && "text-right")}
-                  >
-                    {r.content}
-                  </p>
-                  {r.reason && (
-                    <p className="mt-1.5 text-[11px] text-primary/80" dir="rtl">{r.reason}</p>
-                  )}
-                  <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border/60">
-                    <span className="text-[11px] text-muted-foreground truncate">
-                      {formatCitation(r.citation_ref, r.source_url)}
-                    </span>
-                    <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs shrink-0" onClick={() => insertOne(r)}>
-                      <Plus className="h-3.5 w-3.5" />
-                      {t("editor.insert")}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+            {visibleResults.map((r, i) => (
+              <ResourceResultCard key={r.match_key ?? i} result={r} onInsert={insertOne} t={t} />
+            ))}
 
             {searched && !isSearching && results.length === 0 && !isCount && (
               <p className="text-sm text-muted-foreground text-center py-8">{t("editor.no_results")}</p>

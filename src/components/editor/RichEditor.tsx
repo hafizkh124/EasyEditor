@@ -1,58 +1,93 @@
 import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import TextAlign from "@tiptap/extension-text-align";
-import { TextStyle, FontFamily } from "@tiptap/extension-text-style";
-import { Table, TableRow, TableHeader, TableCell } from "@tiptap/extension-table";
-import { TrackChangesExtension, trackChangesPluginKey, getPendingChangeCount } from "tiptap-track-changes";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { toast } from "sonner";
+import { getPendingChangeCount } from "tiptap-track-changes";
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
+import { buildEditorExtensions } from "./editorExtensions";
 import { cn } from "@/lib/utils";
 import { isRtlText } from "@/utils/textUtils";
-import { stripHarakat } from "@/utils/arabicUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { callRefineText, type RefineTextAction } from "@/lib/editor/aiActions";
+import { useEditorAiActions, type SelectionBarActions } from "./useEditorAiActions";
+import { useTrackChanges, type TrackMode } from "./useTrackChanges";
+import { useFormatBrush } from "./useFormatBrush";
+import { useSelectionOverlay } from "./useSelectionOverlay";
+import { useIncompleteRun } from "./useIncompleteRun";
+import { useEditorContentSync, useFullscreen } from "./useEditorContentSync";
+import { useEditorInserts } from "./useEditorInserts";
+import { useAnnotations } from "./useAnnotations";
 import EditorToolbar from "./EditorToolbar";
-import ResourceSearchDialog from "./ResourceSearchDialog";
+import { EditorMenusAndOverlays } from "./EditorMenusAndOverlays";
+import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+export interface DocChangePayload {
+  json: Record<string, unknown>;
+  text: string;
+  html: string;
+}
+
+export type { SelectionBarActions, TrackMode };
+
+export interface SelectionBarRenderArgs {
+  selectedText: string;
+  isBusy: boolean;
+  actions: SelectionBarActions;
+}
 
 interface RichEditorProps {
-  initialContent?: string;
+  initialContent?: string | Record<string, unknown>;
+  contentJson?: Record<string, unknown>;
+  /**
+   * Bump to force `contentJson` in even when the user has already typed — the
+   * one case where overwriting their text is the intent (restoring a version).
+   * Left alone, content is only ever adopted into an empty editor.
+   */
+  contentRevision?: number;
   placeholder?: string;
   onChange?: (html: string, text: string) => void;
+  onDocChange?: (payload: DocChangePayload) => void;
   className?: string;
   editable?: boolean;
+  /**
+   * Render a floating bar over the current selection. The editor owns *when*
+   * and *where* it appears; the caller owns what it looks like.
+   */
+  selectionBar?: (args: SelectionBarRenderArgs) => ReactNode;
+  /**
+   * HTML to drop in at the cursor. Set a new value to insert; the editor calls
+   * `onInsertHandled` once it has, so the caller can clear its signal.
+   */
+  pendingInsertHtml?: string | null;
+  onInsertHandled?: () => void;
 }
 
 const EDITOR_CLASS =
   "prose prose-sm dark:prose-invert max-w-none min-h-[400px] focus:outline-none px-6 py-5 leading-relaxed";
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-/** Convert plain text (with line breaks) into paragraph HTML for setContent. */
-function textToHtml(text: string): string {
-  return text
-    .split(/\n{2,}/)
-    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
-    .join("");
-}
-
-type TrackMode = "edit" | "suggest" | "view";
-
-const RichEditor = ({ initialContent, placeholder, onChange, className, editable = true }: RichEditorProps) => {
+const RichEditor = ({
+  initialContent,
+  contentJson,
+  contentRevision,
+  placeholder,
+  onChange,
+  onDocChange,
+  className,
+  editable = true,
+  selectionBar,
+  pendingInsertHtml,
+  onInsertHandled,
+}: RichEditorProps) => {
   const { session } = useAuth();
   const { t } = useLanguage();
-  const [isRtl, setIsRtl] = useState(() => isRtlText(initialContent ?? ""));
-  const [aiBusy, setAiBusy] = useState<string | null>(null);
   const [resourceOpen, setResourceOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [brushActive, setBrushActive] = useState(false);
-  const [brushMarks, setBrushMarks] = useState<Record<string, unknown> | null>(null);
-  const [trackMode, setTrackMode] = useState<TrackMode>("edit");
-  const [aiReview, setAiReview] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const workspace = useOptionalWorkspace();
+  const documentId = workspace?.activeDocumentId;
+
+  // M3 Pillar B menus. When off, the editor falls back to the M2 selection bar.
+  const menusEnabled = import.meta.env.VITE_EDITOR_MENUS !== "false";
+  const isMobile = useIsMobile();
+  const [mobileSheetText, setMobileSheetText] = useState<string | null>(null);
 
   // Author identity for tracked changes, derived from the signed-in user.
   const authorConfig = useMemo(() => {
@@ -62,26 +97,32 @@ const RichEditor = ({ initialContent, placeholder, onChange, className, editable
     return { id: user?.id ?? "anon", name, color: "#2d5fce" };
   }, [session]);
 
+  const effectiveContent = contentJson && Object.keys(contentJson).length > 0
+    ? contentJson
+    : (initialContent ?? "");
+
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      ...buildEditorExtensions(authorConfig),
       Placeholder.configure({ placeholder: placeholder ?? "Start writing..." }),
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      TextStyle,
-      FontFamily,
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      TrackChangesExtension.configure({ author: authorConfig, mode: "edit" }),
     ],
-    content: initialContent ?? "",
+    content: effectiveContent,
     editable,
+    // Direction is corrected by `useEditorContentSync` once the editor exists
+    // and can be asked what it actually holds.
     editorProps: {
-      attributes: { class: EDITOR_CLASS, dir: isRtl ? "rtl" : "ltr" },
+      attributes: {
+        class: EDITOR_CLASS,
+        dir: isRtlText(typeof initialContent === "string" ? initialContent : "") ? "rtl" : "ltr",
+      },
     },
     onUpdate: ({ editor: e }) => {
-      onChange?.(e.getHTML(), e.getText());
+      const html = e.getHTML();
+      const text = e.getText();
+      const json = e.getJSON() as Record<string, unknown>;
+
+      onChange?.(html, text);
+      onDocChange?.({ json, text, html });
       setPendingCount(getPendingChangeCount(e));
     },
   });
@@ -91,268 +132,95 @@ const RichEditor = ({ initialContent, placeholder, onChange, className, editable
     if (editor) editor.commands.setTrackChangesAuthor(authorConfig);
   }, [editor, authorConfig]);
 
-  useEffect(() => {
-    if (editor && initialContent && !editor.getText().trim()) {
-      editor.commands.setContent(initialContent);
-      setIsRtl(isRtlText(initialContent));
-    }
-  }, [initialContent, editor]);
+  const { isRtl, toggleDirection } = useEditorContentSync({
+    editor,
+    initialContent,
+    contentJson,
+    contentRevision,
+    editorClass: EDITOR_CLASS,
+    onChange,
+    onDocChange,
+  });
 
-  useEffect(() => {
-    if (editor) {
-      editor.setOptions({
-        editorProps: { attributes: { class: EDITOR_CLASS, dir: isRtl ? "rtl" : "ltr" } },
-      });
-    }
-  }, [isRtl, editor]);
+  const { isFullscreen, toggleFullscreen } = useFullscreen();
 
-  const toggleDirection = useCallback(() => setIsRtl((prev) => !prev), []);
-
-  const toggleFullscreen = useCallback(() => setIsFullscreen((prev) => !prev), []);
-
-  // Exit fullscreen on Escape.
-  useEffect(() => {
-    if (!isFullscreen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsFullscreen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isFullscreen]);
-
-  // ── Format-brush: capture marks from selection, apply to next selection ──
-  const toggleBrush = useCallback(() => {
-    if (!editor) return;
-    if (brushActive) {
-      setBrushActive(false);
-      setBrushMarks(null);
-      return;
-    }
-    const marks: Record<string, unknown> = {
-      bold: editor.isActive("bold"),
-      italic: editor.isActive("italic"),
-      underline: editor.isActive("underline"),
-      strike: editor.isActive("strike"),
-      fontFamily: editor.getAttributes("textStyle").fontFamily ?? null,
-    };
-    setBrushMarks(marks);
-    setBrushActive(true);
-  }, [editor, brushActive]);
-
-  // Apply captured marks when the user makes a new selection while the brush is active.
-  useEffect(() => {
-    if (!editor || !brushActive || !brushMarks) return;
-    const apply = () => {
-      const { empty } = editor.state.selection;
-      if (empty) return;
-      const chain = editor.chain().focus();
-      brushMarks.bold ? chain.setMark("bold") : chain.unsetMark("bold");
-      brushMarks.italic ? chain.setMark("italic") : chain.unsetMark("italic");
-      brushMarks.underline ? chain.setMark("underline") : chain.unsetMark("underline");
-      brushMarks.strike ? chain.setMark("strike") : chain.unsetMark("strike");
-      if (brushMarks.fontFamily) chain.setFontFamily(brushMarks.fontFamily as string);
-      else chain.unsetFontFamily();
-      chain.run();
-      emitChange();
-      setBrushActive(false);
-      setBrushMarks(null);
-    };
-    editor.on("selectionUpdate", apply);
-    return () => { editor.off("selectionUpdate", apply); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, brushActive, brushMarks]);
-
-  const emitChange = useCallback(() => {
-    if (editor) {
-      onChange?.(editor.getHTML(), editor.getText());
-      setPendingCount(getPendingChangeCount(editor));
-    }
+  const notifyChange = useCallback(() => {
+    if (editor) onChange?.(editor.getHTML(), editor.getText());
   }, [editor, onChange]);
 
-  // ── Track-changes mode + accept/reject ──
-  const handleSetTrackMode = useCallback(
-    (mode: TrackMode) => {
-      if (!editor) return;
-      editor.commands.setTrackChangesMode(mode);
-      setTrackMode(mode);
-    },
-    [editor],
-  );
+  const {
+    trackMode, aiReview, pendingCount, setPendingCount, refreshPendingCount,
+    handleSetTrackMode, handleAcceptAll, handleRejectAll, handleToggleAiReview,
+    applyAsSuggestion,
+  } = useTrackChanges(editor, authorConfig, notifyChange);
 
-  const handleAcceptAll = useCallback(() => {
-    if (!editor) return;
-    editor.commands.acceptAll();
-    emitChange();
-  }, [editor, emitChange]);
+  const emitChange = useCallback(() => {
+    notifyChange();
+    refreshPendingCount();
+  }, [notifyChange, refreshPendingCount]);
 
-  const handleRejectAll = useCallback(() => {
-    if (!editor) return;
-    editor.commands.rejectAll();
-    emitChange();
-  }, [editor, emitChange]);
+  const { brushActive, toggleBrush } = useFormatBrush(editor, emitChange);
 
-  const handleToggleAiReview = useCallback(() => setAiReview((p) => !p), []);
+  // Every AI action, and the rules about where each one may write, live in the
+  // hook — see useEditorAiActions.
+  const {
+    aiBusy,
+    actions: aiActions,
+    handleAutoFormat,
+    pendingChunkedRun,
+    confirmChunkedRun,
+    dismissChunkedRun,
+    chunkProgress,
+    cancelChunkedRun,
+    resumeChunkedRun,
+    availableTokens,
+    lastRun,
+    undoLastRun,
+    dismissLastRun,
+  } = useEditorAiActions({
+    editor,
+    accessToken: session?.access_token,
+    emitChange,
+    t,
+    aiReview,
+    trackMode,
+    applyAsSuggestion,
+    onSetTrackMode: handleSetTrackMode,
+  });
 
-  /**
-   * Record an AI replacement of [from,to] as a tracked change: mark the old
-   * inline text as a deletion and insert the new text as an insertion sharing
-   * one changeId. Returns false if the range/text can't be tracked inline
-   * (e.g. multi-line / block content) so the caller can fall back.
-   */
-  const applyAsSuggestion = useCallback(
-    (from: number, to: number, newText: string): boolean => {
-      if (!editor) return false;
-      const { schema } = editor.state;
-      const insertionType = schema.marks.insertion;
-      const deletionType = schema.marks.deletion;
-      if (!insertionType || !deletionType) return false;
-      // schema text nodes can't hold newlines — bail to direct replace for block text.
-      if (/\n/.test(newText)) return false;
+  // Margin notes on this document (FR-1.3).
+  const notes = useAnnotations(editor, documentId);
 
-      const author = (editor.storage as { trackChanges?: { author?: typeof authorConfig } })
-        .trackChanges?.author ?? authorConfig;
-      const attrs = {
-        changeId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        authorId: author.id,
-        authorName: author.name,
-        authorColor: author.color,
-        timestamp: new Date().toISOString(),
-      };
+  const {
+    incompleteRun,
+    canResume: canResumeIncompleteRun,
+    discard: handleDiscardIncompleteRun,
+    resume: handleResumeIncompleteRun,
+  } = useIncompleteRun(editor, documentId, resumeChunkedRun);
 
-      const tr = editor.state.tr;
-      tr.addMark(from, to, deletionType.create(attrs));
-      if (newText.length) {
-        tr.insert(to, schema.text(newText, [insertionType.create(attrs)]));
+  const { handleSetFont, handleInsertResource } = useEditorInserts({
+    editor,
+    emitChange,
+    pendingInsertHtml,
+    onInsertHandled,
+  });
+
+  const selectionUi = useSelectionOverlay(editor, containerRef, Boolean(selectionBar));
+
+  const annotationProps = notes.enabled
+    ? {
+        items: notes.annotations,
+        hasSelection: selectionUi !== null,
+        onCreate: notes.createFromSelection,
+        onDelete: notes.remove,
       }
-      tr.setMeta(trackChangesPluginKey, { handled: true });
-      editor.view.dispatch(tr);
-      return true;
-    },
-    [editor, authorConfig],
-  );
-
-  /** Returns the current selection text + range, or the whole document if nothing is selected. */
-  const getSelectionOrAll = useCallback(() => {
-    if (!editor) return { text: "", from: 0, to: 0, hasSelection: false };
-    const { from, to, empty } = editor.state.selection;
-    const hasSelection = !empty && to > from;
-    const text = hasSelection ? editor.state.doc.textBetween(from, to, "\n") : editor.getText();
-    return { text, from, to, hasSelection };
-  }, [editor]);
-
-  /** Replace selected range (or whole doc) with new plain text. */
-  const applyTextResult = useCallback(
-    (result: string, from: number, to: number, hasSelection: boolean) => {
-      if (!editor) return;
-      if (hasSelection) {
-        editor.chain().focus().insertContentAt({ from, to }, result).run();
-      } else {
-        editor.commands.setContent(textToHtml(result));
-      }
-      emitChange();
-    },
-    [editor, emitChange],
-  );
-
-  // ── AI: actions that return plain text (harakat, spelling, citations) ──
-  const runTextAction = useCallback(
-    async (action: RefineTextAction, busyKey: string) => {
-      if (!editor || !session?.access_token) return;
-      const { text, from, to, hasSelection } = getSelectionOrAll();
-      if (!text.trim()) return;
-      setAiBusy(busyKey);
-      try {
-        const result = await callRefineText(text, action, session.access_token);
-        if (result) {
-          // Citations appends a sources section → always replace whole content.
-          if (action === "citations") {
-            editor.commands.setContent(textToHtml(result));
-            emitChange();
-          } else if (aiReview && hasSelection) {
-            // Review flow: record the AI edit as an accept/reject suggestion.
-            const tracked = applyAsSuggestion(from, to, result);
-            if (tracked) {
-              if (trackMode === "edit") handleSetTrackMode("suggest");
-              emitChange();
-            } else {
-              applyTextResult(result, from, to, hasSelection);
-            }
-          } else {
-            applyTextResult(result, from, to, hasSelection);
-          }
-          toast.success(t("editor.ai_done"));
-        }
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : t("editor.ai_error"));
-      } finally {
-        setAiBusy(null);
-      }
-    },
-    [editor, session, getSelectionOrAll, applyTextResult, emitChange, t, aiReview, applyAsSuggestion, trackMode, handleSetTrackMode],
-  );
-
-  const handleAddHarakat = useCallback(() => runTextAction("add_harakat", "add_harakat"), [runTextAction]);
-  const handleSpellCheck = useCallback(() => runTextAction("spelling_check", "spelling_check"), [runTextAction]);
-  const handleCitations = useCallback(() => runTextAction("citations", "citations"), [runTextAction]);
-  const handleParaphrase = useCallback(() => runTextAction("paraphrase", "paraphrase"), [runTextAction]);
-  const handleSummarize = useCallback(() => runTextAction("summarize", "summarize"), [runTextAction]);
-
-  // ── Remove harakat (client-side, instant) ──
-  const handleRemoveHarakat = useCallback(() => {
-    if (!editor) return;
-    const { text, from, to, hasSelection } = getSelectionOrAll();
-    if (!text.trim()) return;
-    applyTextResult(stripHarakat(text), from, to, hasSelection);
-    toast.success(t("editor.ai_done"));
-  }, [editor, getSelectionOrAll, applyTextResult, t]);
-
-  // ── AI: auto-format → returns HTML, always replaces whole document ──
-  const handleAutoFormat = useCallback(async () => {
-    if (!editor || !session?.access_token) return;
-    const text = editor.getText();
-    if (!text.trim()) return;
-    setAiBusy("auto_format");
-    try {
-      const html = await callRefineText(text, "auto_format", session.access_token);
-      if (html) {
-        editor.commands.setContent(html);
-        emitChange();
-        toast.success(t("editor.ai_done"));
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("editor.ai_error"));
-    } finally {
-      setAiBusy(null);
-    }
-  }, [editor, session, emitChange, t]);
-
-  const handleSetFont = useCallback(
-    (fontFamily: string) => {
-      if (!editor) return;
-      const { empty } = editor.state.selection;
-      const chain = editor.chain().focus();
-      if (empty) chain.selectAll();
-      if (fontFamily) chain.setFontFamily(fontFamily).run();
-      else chain.unsetFontFamily().run();
-      emitChange();
-    },
-    [editor, emitChange],
-  );
-
-  const handleInsertResource = useCallback(
-    (text: string, citation: string) => {
-      if (!editor) return;
-      const rtl = isRtlText(text);
-      const html =
-        `<blockquote dir="${rtl ? "rtl" : "ltr"}"><p>${escapeHtml(text)}</p>` +
-        `<p><em>[${escapeHtml(citation)}]</em></p></blockquote><p></p>`;
-      editor.chain().focus().insertContent(html).run();
-      emitChange();
-    },
-    [editor, emitChange],
-  );
+    : undefined;
 
   return (
     <div
+      ref={containerRef}
       className={cn(
+        "relative",
         isFullscreen
           ? "fixed inset-0 z-50 bg-card overflow-auto rounded-none flex flex-col"
           : "rounded-xl border border-border bg-card overflow-hidden shadow-sm",
@@ -365,13 +233,13 @@ const RichEditor = ({ initialContent, placeholder, onChange, className, editable
         onToggleDirection={toggleDirection}
         t={t}
         aiBusy={aiBusy}
-        onAddHarakat={handleAddHarakat}
-        onRemoveHarakat={handleRemoveHarakat}
-        onSpellCheck={handleSpellCheck}
+        onAddHarakat={aiActions.onAddHarakat}
+        onRemoveHarakat={aiActions.onRemoveHarakat}
+        onSpellCheck={aiActions.onSpellCheck}
         onAutoFormat={handleAutoFormat}
-        onParaphrase={handleParaphrase}
-        onSummarize={handleSummarize}
-        onCitations={handleCitations}
+        onParaphrase={aiActions.onParaphrase}
+        onSummarize={aiActions.onSummarize}
+        onCitations={aiActions.onCitations}
         onOpenResources={() => setResourceOpen(true)}
         onSetFont={handleSetFont}
         isFullscreen={isFullscreen}
@@ -386,13 +254,39 @@ const RichEditor = ({ initialContent, placeholder, onChange, className, editable
         onAcceptAll={handleAcceptAll}
         onRejectAll={handleRejectAll}
       />
+
       <div className={cn(isRtl && "text-right", isFullscreen && "flex-1 overflow-auto")}>
         <EditorContent editor={editor} />
       </div>
-      <ResourceSearchDialog
-        open={resourceOpen}
-        onOpenChange={setResourceOpen}
-        onInsert={handleInsertResource}
+
+      <EditorMenusAndOverlays
+        editor={editor}
+        menusEnabled={menusEnabled}
+        isMobile={isMobile}
+        aiActions={aiActions}
+        aiBusy={aiBusy}
+        mobileSheetText={mobileSheetText}
+        setMobileSheetText={setMobileSheetText}
+        handleAutoFormat={handleAutoFormat}
+        pendingChunkedRun={pendingChunkedRun}
+        dismissChunkedRun={dismissChunkedRun}
+        confirmChunkedRun={confirmChunkedRun}
+        availableTokens={availableTokens}
+        chunkProgress={chunkProgress}
+        cancelChunkedRun={cancelChunkedRun}
+        lastRun={lastRun}
+        undoLastRun={undoLastRun}
+        dismissLastRun={dismissLastRun}
+        incompleteRun={incompleteRun}
+        canResumeIncompleteRun={canResumeIncompleteRun}
+        resumeIncompleteRun={handleResumeIncompleteRun}
+        discardIncompleteRun={handleDiscardIncompleteRun}
+        resourceOpen={resourceOpen}
+        setResourceOpen={setResourceOpen}
+        handleInsertResource={handleInsertResource}
+        selectionBar={selectionBar}
+        selectionUi={selectionUi}
+        annotations={annotationProps}
         t={t}
       />
     </div>

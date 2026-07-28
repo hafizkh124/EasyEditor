@@ -97,8 +97,8 @@ export function useSeo({ title, description, path, noindex }: SeoOptions) {
 
     const alternates: Array<{ hreflang: string; path: string }> = [
       { hreflang: "en", path: basePath },
-      { hreflang: "ur", path: `/ur${basePath === "/" ? "" : basePath}` || "/ur" },
-      { hreflang: "ar", path: `/ar${basePath === "/" ? "" : basePath}` || "/ar" },
+      { hreflang: "ur", path: `/ur${basePath === "/" ? "" : basePath}` },
+      { hreflang: "ar", path: `/ar${basePath === "/" ? "" : basePath}` },
       { hreflang: "x-default", path: basePath },
     ];
     for (const alt of alternates) {
