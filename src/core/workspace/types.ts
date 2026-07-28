@@ -5,7 +5,7 @@
 export type ProjectKind = "research" | "book" | "translation" | "general";
 export type DocumentStatus = "draft" | "in_review" | "final" | "archived";
 export type LibraryItemKind = "book" | "pdf" | "audio" | "ocr" | "reference" | "note";
-export type TaskRunStatus = "pending" | "running" | "completed" | "failed";
+export type TaskRunStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
 
 export interface Project {
   id: string;
@@ -65,6 +65,17 @@ export interface Annotation {
   created_at: string;
 }
 
+/** One retrieved source, as `refine-text` stores it in `task_runs.sources`. */
+export interface TaskRunSource {
+  domain: string;
+  reference: string;
+  citation_ref?: Record<string, unknown>;
+  source_url?: string | null;
+  snippet?: string;
+  score?: number;
+  channels?: string[];
+}
+
 export interface TaskRun {
   id: string;
   user_id: string;
@@ -74,9 +85,14 @@ export interface TaskRun {
   status: TaskRunStatus;
   input?: Record<string, unknown> | null;
   output?: Record<string, unknown> | null;
-  sources?: Record<string, unknown> | null;
+  /** JSONB column, `DEFAULT '[]'` — an array of retrieved sources, not an object. */
+  sources?: TaskRunSource[] | null;
   confidence?: number | null;
   model?: string | null;
   tokens_spent?: number | null;
+  /** Chunked-run progress; `{}` until a chunked run writes to it (M3.4). */
+  progress?: Record<string, number> | null;
+  error?: string | null;
   created_at: string;
+  updated_at?: string | null;
 }

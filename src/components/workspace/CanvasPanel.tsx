@@ -1,7 +1,9 @@
 import React from "react";
+import { useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import RichEditor, { type DocChangePayload } from "@/components/editor/RichEditor";
 import { SelectionActionBar } from "./SelectionActionBar";
+import { CanvasTranslationView } from "./CanvasTranslationView";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { Document } from "@/core/workspace/types";
@@ -26,7 +28,10 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
   onDocChange,
 }) => {
   const { t } = useLanguage();
+  const [searchParams] = useSearchParams();
   const { pendingCanvasInsertion, clearPendingCanvasInsertion } = useWorkspace();
+
+  const isTranslationView = searchParams.get("view") === "translation";
 
   if (docLoading) {
     return (
@@ -35,6 +40,10 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
         <p className="text-xs">Loading document...</p>
       </div>
     );
+  }
+
+  if (isTranslationView) {
+    return <CanvasTranslationView />;
   }
 
   return (

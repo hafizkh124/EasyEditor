@@ -15,6 +15,8 @@ import { CommandPalette } from "./CommandPalette";
 import { useDocument } from "@/core/workspace/useDocument";
 import type { DocChangePayload } from "@/components/editor/RichEditor";
 
+import { useAllDocuments } from "@/core/workspace/useAllDocuments";
+
 export const WorkspaceLayout: React.FC = () => {
   const { direction } = useLanguage();
   const {
@@ -26,6 +28,7 @@ export const WorkspaceLayout: React.FC = () => {
     setMobileLibraryOpen,
   } = useWorkspace();
 
+  const { allDocs } = useAllDocuments();
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
   useEffect(() => {
@@ -34,16 +37,6 @@ export const WorkspaceLayout: React.FC = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  /**
-   * On mobile the side pillars become drawers floating over the Canvas. They
-   * stay in the same panel group — lifting them into a separate mobile tree
-   * would remount them whenever the viewport crossed the breakpoint, taking any
-   * in-flight research answer with it. So only the styling changes: the panel is
-   * pulled out of the flex flow and slid off its own edge.
-   *
-   * `visibility` keeps a closed drawer out of the tab order without unmounting
-   * it (NFR-5), which a bare transform would not do.
-   */
   const drawerStyle = (open: boolean, edge: "start" | "end"): React.CSSProperties => {
     const base: React.CSSProperties = { position: "absolute", top: 0, bottom: 0, zIndex: 40 };
     const startIsLeft = direction !== "rtl";
@@ -66,6 +59,9 @@ export const WorkspaceLayout: React.FC = () => {
     updateContent: syncDocContent,
     createSnapshot,
   } = useDocument(activeDocumentId ?? undefined);
+
+  const activeDocWithProject = allDocs.find((d) => d.id === doc?.id);
+  const projectName = activeDocWithProject?.projectName;
 
   const [currentText, setCurrentText] = useState("");
   const [currentHtml, setCurrentHtml] = useState("");
@@ -102,6 +98,7 @@ export const WorkspaceLayout: React.FC = () => {
       {/* TopBar */}
       <WorkspaceTopBar
         doc={doc}
+        projectName={projectName}
         saveStatus={saveStatus}
         versions={versions}
         currentText={currentText}

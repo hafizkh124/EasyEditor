@@ -39,7 +39,11 @@ interface Chunk {
   notes?: string | null;
 }
 
-export default function TranslationWorkspace() {
+export interface TranslationWorkspaceProps {
+  embedded?: boolean;
+}
+
+export default function TranslationWorkspace({ embedded = false }: TranslationWorkspaceProps) {
   const navigate = useNavigate();
   const { session } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -265,16 +269,17 @@ export default function TranslationWorkspace() {
 
   const activeChunk = chunks[activeChunkIndex];
 
-  return (
-    <AppLayout>
-      <div className="flex flex-col h-[calc(100vh-3.5rem-4rem)] md:h-[calc(100vh-3.5rem)] overflow-hidden bg-background">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
-          <div className="flex items-center gap-3">
+  const body = (
+    <div className={embedded ? "flex flex-col h-full w-full overflow-hidden bg-background" : "flex flex-col h-[calc(100vh-3.5rem-4rem)] md:h-[calc(100vh-3.5rem)] overflow-hidden bg-background"}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+        <div className="flex items-center gap-3">
+          {!embedded && (
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <Languages className="h-5 w-5 text-primary" />
+          )}
+          <Languages className="h-5 w-5 text-primary" />
             <div>
               <h1 className="text-base font-semibold">ترجمہ پروجیکٹس (Translation Workspace)</h1>
               <p className="text-xs text-muted-foreground">طویل کتب و مقالہ جات کا Translation Memory کے ساتھ ترجمہ</p>
@@ -434,7 +439,6 @@ export default function TranslationWorkspace() {
             </div>
           )}
         </div>
-      </div>
 
       {/* New Project Dialog */}
       <Dialog open={newProjectModal} onOpenChange={setNewProjectModal}>
@@ -489,6 +493,9 @@ export default function TranslationWorkspace() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AppLayout>
+    </div>
   );
+
+  if (embedded) return body;
+  return <AppLayout>{body}</AppLayout>;
 }

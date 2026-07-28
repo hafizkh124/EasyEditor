@@ -10,7 +10,7 @@ const kindIcons: Record<ProjectKind, typeof BookOpen> = {
   general: Layers,
 };
 
-export type SearchHit = Document & { projectName: string; projectKind: ProjectKind };
+export type SearchHit = Document & { projectName: string; projectKind?: ProjectKind };
 
 interface LibraryDocumentTreeProps {
   projects: Project[];

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-export type WorkbenchTab = "research" | "translate" | "extract";
+export type WorkbenchTab = "research" | "translate" | "extract" | "tasks" | "trust";
 
 interface PanelState {
   libraryWidth: number;
@@ -30,7 +30,7 @@ function loadStoredState(): PanelState {
       workbenchWidth: typeof parsed.workbenchWidth === "number" ? parsed.workbenchWidth : DEFAULT_STATE.workbenchWidth,
       libraryCollapsed: Boolean(parsed.libraryCollapsed),
       workbenchCollapsed: Boolean(parsed.workbenchCollapsed),
-      workbenchTab: ["research", "translate", "extract"].includes(parsed.workbenchTab)
+      workbenchTab: ["research", "translate", "extract", "tasks", "trust"].includes(parsed.workbenchTab)
         ? parsed.workbenchTab
         : DEFAULT_STATE.workbenchTab,
     };
@@ -72,14 +72,6 @@ export function usePanelState(initialWorkbenchOpenFromUrl = false) {
     setState((prev) => ({ ...prev, workbenchTab: tab, workbenchCollapsed: false }));
   }, []);
 
-  const setLibraryWidth = useCallback((width: number) => {
-    setState((prev) => ({ ...prev, libraryWidth: width }));
-  }, []);
-
-  const setWorkbenchWidth = useCallback((width: number) => {
-    setState((prev) => ({ ...prev, workbenchWidth: width }));
-  }, []);
-
   return {
     libraryWidth: state.libraryWidth,
     workbenchWidth: state.workbenchWidth,
@@ -90,7 +82,5 @@ export function usePanelState(initialWorkbenchOpenFromUrl = false) {
     toggleWorkbench,
     setWorkbenchOpen,
     setWorkbenchTab,
-    setLibraryWidth,
-    setWorkbenchWidth,
   };
 }
