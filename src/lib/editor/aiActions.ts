@@ -49,6 +49,10 @@ export async function callRefineText(
   const sourceText = text.trim();
   if (!sourceText) return "";
 
+  if (sourceText.length > 12000) {
+    throw new Error("دستاویز بڑی ہے — متن منتخب کریں، یا حصہ بہ حصہ چلائیں۔");
+  }
+
   const response = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-text`,
     {

@@ -1,16 +1,21 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "easy-editor",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/generate-version.mjs",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "release:patch": "npm version patch && npm run build",
+    "release:minor": "npm version minor && npm run build",
+    "release:major": "npm version major && npm run build",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

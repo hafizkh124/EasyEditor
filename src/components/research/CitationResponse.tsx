@@ -32,7 +32,7 @@ interface CitationResponseProps {
  */
 function stripArabicAndTranslation(text: string): string {
   // Handle common delimiters: «…» ‹…› "…"  and — / – / --
-  const blockRe = /[«‹"][^»›"]+[»›"]\s*[—–\-]{1,2}\s*["'][^"']+["']\s*(\[[^\]]+\])/g;
+  const blockRe = /[«‹"][^»›"]+[»›"]\s*[-—–]{1,2}\s*["'][^"']+["']\s*(\[[^\]]+\])/g;
   return text.replace(blockRe, (_, ref: string) => ref);
 }
 

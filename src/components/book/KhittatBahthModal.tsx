@@ -66,10 +66,10 @@ export function KhittatBahthModal({ open, onOpenChange, onApplyPlan }: KhittatBa
     for (const line of lines) {
       const trimmed = line.trim();
       if (
-        /^(?:الباب|الفصل|مبحث|باب|فصل|\d+\.|\#+)\s+/i.test(trimmed) ||
+        /^(?:الباب|الفصل|مبحث|باب|فصل|\d+\.|#+)\s+/i.test(trimmed) ||
         (trimmed.length > 5 && trimmed.length < 80 && (trimmed.includes("الباب") || trimmed.includes("الفصل")))
       ) {
-        extracted.push(trimmed.replace(/^[\#\*\-\d\.\s]+/, ""));
+        extracted.push(trimmed.replace(/^[#*\-\d.\s]+/, ""));
       }
     }
     // No placeholder outline: if nothing could be extracted, return nothing.

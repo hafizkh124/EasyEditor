@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AppLayout from "@/components/AppLayout";
 import { handleSupabaseError } from "@/lib/errors";
+import AppVersionBadge from "@/components/AppVersionBadge";
 
 import { LocalShamelaConnector } from "@/components/mcp/LocalShamelaConnector";
 
@@ -71,6 +72,12 @@ const Settings = () => {
 
         {/* Local Shamela 4 MCP Connector */}
         <LocalShamelaConnector />
+
+        {/* Version Badge */}
+        <div className="flex items-center justify-between pt-4 border-t border-border/40">
+          <span className="text-xs text-muted-foreground font-medium">App Version & Build:</span>
+          <AppVersionBadge />
+        </div>
       </div>
     </AppLayout>
   );

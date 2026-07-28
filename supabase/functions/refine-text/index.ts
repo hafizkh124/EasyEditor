@@ -200,11 +200,20 @@ serve(async (req) => {
       });
     }
 
-    // Token-based quota check: 5 tokens per refinement action
-    const tokenCost = calculateCost("refine", 1);
+    // FR-9.3 Payload size limit guard (12,000 chars)
+    if (typeof text === "string" && text.length > 12000) {
+      return new Response(
+        JSON.stringify({ error: "دستاویز بڑی ہے — متن منتخب کریں، یا حصہ بہ حصہ چلائیں۔" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // FR-9.5 Token-based quota check: 5 tokens per ~2,000 characters
+    const multiplier = Math.max(1, Math.ceil(text.length / 2000));
+    const tokenCost = calculateCost("refine", multiplier);
     const tokenResult = await checkAndDeductTokens(
       supabase, user.id, tokenCost, "refine",
-      `${action} refinement`,
+      `${action} refinement (${multiplier}x)`,
     );
     if (!tokenResult.ok) {
       return insufficientTokensResponse(tokenResult, corsHeaders);
