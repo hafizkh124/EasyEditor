@@ -199,7 +199,7 @@ const OcrReview = () => {
       <div className="flex flex-col h-[calc(100vh-3.5rem-5rem)] md:h-[calc(100vh-3.5rem)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-background/80 backdrop-blur-sm">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/ocr")}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/ocr")} aria-label="Back to OCR">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-base font-semibold text-foreground flex-1">{t("ocr_review.title")}</h1>
@@ -210,6 +210,7 @@ const OcrReview = () => {
               variant="ghost" size="icon" className="h-8 w-8"
               disabled={review.currentPage <= 1}
               onClick={() => review.setCurrentPage(review.currentPage - 1)}
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -220,6 +221,7 @@ const OcrReview = () => {
               variant="ghost" size="icon" className="h-8 w-8"
               disabled={review.currentPage >= review.totalPages}
               onClick={() => review.setCurrentPage(review.currentPage + 1)}
+              aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -227,13 +229,13 @@ const OcrReview = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleCopyAll}>
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleCopyAll} aria-label="Copy all text">
               <Copy className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleOpenInEditor}>
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleOpenInEditor} aria-label="Open in editor">
               <FileText className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleExport}>
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={handleExport} aria-label="Export">
               <Download className="h-3.5 w-3.5" />
             </Button>
           </div>

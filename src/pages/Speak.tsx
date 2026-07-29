@@ -6,6 +6,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useCanAfford } from "@/hooks/useTokenBalance";
+import { isDesktop } from "@/utils/environment";
+import { getPreferredEngine } from "@/core/voice/registry";
+import { LocalTtsEngine } from "@/core/voice/localEngines";
 
 // Max chars per single TTS request (per-request safety cap, not a tier limit)
 const TTS_REQUEST_CHAR_CAP = 5000;
@@ -15,7 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Play, Square, Download, Loader2, Coins, Construction, MessageSquarePlus } from "lucide-react";
+import { Play, Square, Download, Loader2, Coins, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import AudioWaveform from "@/components/AudioWaveform";
@@ -64,6 +67,15 @@ const Speak = () => {
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
   const [isCloning, setIsCloning] = useState(false);
   const [cloneSampleName, setCloneSampleName] = useState<string | null>(null);
+  const isDesktopEnv = isDesktop();
+  const [useLocalEngine, setUseLocalEngine] = useState(false);
+
+  useEffect(() => {
+    if (!isDesktopEnv) { setUseLocalEngine(false); return; }
+    const lang = selectedPersona.voiceLang;
+    const pref = getPreferredEngine(lang);
+    setUseLocalEngine(pref !== 'cloud');
+  }, [isDesktopEnv, selectedPersona.voiceLang]);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -197,6 +209,23 @@ const Speak = () => {
   };
 
   const callTtsApi = async (): Promise<Blob | null> => {
+    // Desktop: use local engine when preferred engine is not cloud
+    if (isDesktopEnv && useLocalEngine) {
+      try {
+        const lang = selectedPersona.voiceLang;
+        const engine = new LocalTtsEngine();
+        const arrayBuffer = await engine.synthesize(text, lang);
+        if (arrayBuffer.byteLength === 0) {
+          throw new Error('Local engine returned empty audio');
+        }
+        return new Blob([arrayBuffer], { type: 'audio/wav' });
+      } catch (err) {
+        if (import.meta.env.DEV) console.error("Local TTS failed, falling back to cloud:", err);
+        // Fall through to cloud
+      }
+    }
+
+    // Cloud TTS path
     if (!session?.access_token) {
       toast.error("Please sign in to use TTS");
       return null;
@@ -242,7 +271,7 @@ const Speak = () => {
   const handlePlay = async () => {
     if (!text.trim()) return;
     if (text.length > charLimit) { toast.error(t("tts.text_too_long")); return; }
-    if (!canAffordTts) { toast.error(t("tts.insufficient_tokens") || "Insufficient tokens"); return; }
+    if (!useLocalEngine && !canAffordTts) { toast.error(t("tts.insufficient_tokens") || "Insufficient tokens"); return; }
     handleStop();
     setIsLoading(true);
     try {
@@ -311,33 +340,8 @@ const Speak = () => {
     }
   };
 
-  // ── Work-in-Progress guard — blocks ALL users, prevents any API calls ──
-  return (
-    <AppLayout>
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center space-y-6">
-        {/* Animated construction icon */}
-        <div className="rounded-full bg-amber-100 dark:bg-amber-950/40 p-6">
-          <Construction className="h-12 w-12 text-amber-500" />
-        </div>
-
-        <div className="space-y-3 max-w-md">
-          {/* WIP badge */}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs font-semibold px-3 py-1 border border-amber-300/60 dark:border-amber-700/40">
-            {t("tts.wip_badge")}
-          </span>
-
-          <h2 className="text-2xl font-bold text-foreground">{t("tts.wip_title")}</h2>
-          <p className="text-muted-foreground leading-relaxed">{t("tts.wip_desc")}</p>
-        </div>
-      </div>
-    </AppLayout>
-  );
-  // ── end WIP guard — nothing below executes ────────────────────────────
-
-  /* eslint-disable no-unreachable */
+  // ── Voice Studio enabled — TTS via cloud (Google TTS) with persona selection ──
   const isRtlInput = selectedPersona.voiceLang === "ur" || selectedPersona.voiceLang === "ar";
-  void charLimit;
-  void canAffordTts; void ttsCost; void tokenBalance;
 
   return (
     <AppLayout>
@@ -355,13 +359,15 @@ const Speak = () => {
           )}
         </div>
 
-        {/* Token cost display */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <TokenCostBadge action="tts_google" quantity={Math.max(1, Math.ceil(text.length / 1000))} />
-          {voiceMode === "cloned" && (
-            <TokenCostBadge action="tts_elevenlabs" quantity={Math.max(1, Math.ceil(text.length / 1000))} className="border-amber-300" />
-          )}
-        </div>
+        {/* Token cost display (hidden for local engine) */}
+        {!useLocalEngine && (
+          <div className="flex items-center gap-3 flex-wrap">
+            <TokenCostBadge action="tts_google" quantity={Math.max(1, Math.ceil(text.length / 1000))} />
+            {voiceMode === "cloned" && (
+              <TokenCostBadge action="tts_elevenlabs" quantity={Math.max(1, Math.ceil(text.length / 1000))} className="border-amber-300" />
+            )}
+          </div>
+        )}
 
         <VoiceSelector
           personas={personas}
@@ -429,7 +435,7 @@ const Speak = () => {
           </Button>
 
           <Badge variant="outline" className="ms-auto text-xs">
-            {voiceMode === "cloned" ? t("tts.using_cloned") : selectedPersona.name}
+            {useLocalEngine ? t("tts.local_mode") || "Local" : voiceMode === "cloned" ? t("tts.using_cloned") : selectedPersona.name}
           </Badge>
 
           {text.trim() && subscription && (

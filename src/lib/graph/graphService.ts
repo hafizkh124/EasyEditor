@@ -1,5 +1,8 @@
-import { supabase } from "@/integrations/supabase/client";
+// AI call, not a data call: `extractGraphFromText` invokes the `graph-extract`
+// edge function. The AI adapter (M5.2) routes it through the right runtime.
+import { callEdgeFunction } from "@/core/ai/aiAdapter";
 import { taskRunService } from "@/core/workspace/taskRunService";
+import { backendFacade } from "@/core/backend";
 
 /**
  * Not a registry task: it runs on its own edge function and writes nothing
@@ -50,6 +53,8 @@ export interface EntityDetails {
   backlinks: EntityBacklink[];
 }
 
+const graphData = backendFacade("graph");
+
 export const graphService = {
   /**
    * Extract Knowledge Graph entities & relations from a text passage (SPEC-M4 FR-3.1).
@@ -57,6 +62,10 @@ export const graphService = {
    * Logged to `task_runs` like every other paid AI action: an extraction that
    * leaves no trace is a charge the user cannot audit in the Trust tab
    * (SPEC-M3 FR-2.7, and Principle 5).
+   *
+   * NOTE: this is an AI call, not a data operation, which is why it stays here
+   * rather than moving into WorkspaceBackend. It moves behind the AI adapter in
+   * M5.2 alongside the other `functions.invoke` call sites.
    */
   async extractGraphFromText(
     text: string,
@@ -70,8 +79,8 @@ export const graphService = {
     });
 
     try {
-      const res = await supabase.functions.invoke("graph-extract", {
-        body: { text, document_id: documentId, library_item_id: libraryItemId },
+      const res = await callEdgeFunction("graph-extract", {
+        text, document_id: documentId, library_item_id: libraryItemId,
       });
 
       if (res.error) throw new Error(res.error.message || "گراف ایکسٹریکشن ناکام ہو گئی");
@@ -95,116 +104,11 @@ export const graphService = {
     }
   },
 
-  /**
-   * Merge one entity into another (SPEC-M4 FR-3.3).
-   *
-   * Only ever called from an explicit user action on a suggestion. The absorbed
-   * name is kept as an alias so the merge stays reversible, and its relations
-   * are repointed rather than deleted.
-   */
-  async mergeEntities(keepId: string, absorbId: string, mergedAliases: string[]): Promise<boolean> {
-    if (keepId === absorbId) return false;
+  // ── Data operations — delegated to the backend adapter (M5.0) ─────────────
+  // Implementation: src/core/backend/cloud/graph.ts
 
-    const { error: aliasErr } = await (supabase.from("entities" as any) as any)
-      .update({ aliases: mergedAliases })
-      .eq("id", keepId);
-    if (aliasErr) {
-      console.error("[graphService] merge alias update failed:", aliasErr);
-      return false;
-    }
-
-    // Repoint both directions before deleting, or the FK cascade would take
-    // the evidence with it.
-    for (const column of ["source_entity_id", "target_entity_id"]) {
-      const { error } = await (supabase.from("entity_relations" as any) as any)
-        .update({ [column]: keepId })
-        .eq(column, absorbId);
-      if (error) {
-        console.error(`[graphService] merge repoint ${column} failed:`, error);
-        return false;
-      }
-    }
-
-    const { error: delErr } = await (supabase.from("entities" as any) as any)
-      .delete()
-      .eq("id", absorbId);
-    if (delErr) {
-      console.error("[graphService] merge delete failed:", delErr);
-      return false;
-    }
-    return true;
-  },
-
-  /**
-   * Search / list entities in personal Knowledge Graph.
-   */
-  async listEntities(searchQuery?: string): Promise<Entity[]> {
-    let q = (supabase.from("entities" as any) as any)
-      .select("*")
-      .order("canonical_name", { ascending: true });
-
-    if (searchQuery && searchQuery.trim()) {
-      q = q.ilike("canonical_name", `%${searchQuery.trim()}%`);
-    }
-
-    const { data, error } = await q;
-    if (error) {
-      console.warn("[graphService] listEntities error:", error);
-      return [];
-    }
-    return (data as Entity[]) || [];
-  },
-
-  /**
-   * Get entity card details including incoming/outgoing relations & backlinks (SPEC-M4 FR-3.3, FR-3.4).
-   */
-  async getEntityDetails(entityId: string): Promise<EntityDetails | null> {
-    const { data: entity, error: entErr } = await (supabase.from("entities" as any) as any)
-      .select("*")
-      .eq("id", entityId)
-      .single();
-
-    if (entErr || !entity) return null;
-
-    const { data: outgoing } = await (supabase.from("entity_relations" as any) as any)
-      .select("*, target_entity:entities!target_entity_id(*)")
-      .eq("source_entity_id", entityId);
-
-    const { data: incoming } = await (supabase.from("entity_relations" as any) as any)
-      .select("*, source_entity:entities!source_entity_id(*)")
-      .eq("target_entity_id", entityId);
-
-    const allRelations = [...(outgoing || []), ...(incoming || [])];
-    const docIds = Array.from(new Set(allRelations.map((r) => r.document_id).filter(Boolean)));
-    const libIds = Array.from(new Set(allRelations.map((r) => r.library_item_id).filter(Boolean)));
-
-    const backlinks: EntityBacklink[] = [];
-
-    if (docIds.length > 0) {
-      const { data: docs } = await (supabase.from("documents" as any) as any)
-        .select("id, title")
-        .in("id", docIds);
-
-      for (const d of docs || []) {
-        backlinks.push({ id: d.id, type: "document", title: d.title || "Untitled Document" });
-      }
-    }
-
-    if (libIds.length > 0) {
-      const { data: libs } = await (supabase.from("library_items" as any) as any)
-        .select("id, title")
-        .in("id", libIds);
-
-      for (const l of libs || []) {
-        backlinks.push({ id: l.id, type: "library_item", title: l.title || "Untitled File" });
-      }
-    }
-
-    return {
-      entity: entity as Entity,
-      outgoingRelations: (outgoing as EntityRelation[]) || [],
-      incomingRelations: (incoming as EntityRelation[]) || [],
-      backlinks,
-    };
-  },
+  listEntities: (searchQuery?: string) => graphData.listEntities(searchQuery),
+  getEntityDetails: (entityId: string) => graphData.getEntityDetails(entityId),
+  mergeEntities: (keepId: string, absorbId: string, mergedAliases: string[]) =>
+    graphData.mergeEntities(keepId, absorbId, mergedAliases),
 };

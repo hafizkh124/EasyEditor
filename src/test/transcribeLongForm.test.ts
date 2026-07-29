@@ -8,12 +8,10 @@ vi.mock("@/lib/audio/chunker", () => ({
   blobToDataUrl: vi.fn(async () => "data:audio/wav;base64,AAA="),
 }));
 
-// Mock the Supabase client's edge-function invoke.
+// Mock the AI adapter's edge-function invoke.
 const invokeMock = vi.fn();
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    functions: { invoke: (...args: unknown[]) => invokeMock(...args) },
-  },
+vi.mock("@/core/ai/aiAdapter", () => ({
+  callEdgeFunction: (...args: unknown[]) => invokeMock(...args),
 }));
 
 import { transcribeLongForm, TranscribeCancelledError, type ProgressEvent } from "@/lib/audio/transcribeLongForm";

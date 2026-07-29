@@ -2,12 +2,16 @@
   "name": "easy-editor",
   "private": true,
   "version": "2.0.0",
+  "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:electron": "vite --mode desktop",
     "prebuild": "node scripts/generate-version.mjs",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:electron": "vite build --mode desktop && electron-builder",
+    "pack:electron": "vite build --mode desktop && electron-builder --dir",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
@@ -16,6 +20,44 @@
     "release:minor": "npm version minor && npm run build",
     "release:major": "npm version major && npm run build",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
+  },
+  "build": {
+    "appId": "com.easyeditor.app",
+    "productName": "EasyEditor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "public/icon-512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "icon": "public/icon-512.png",
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "public/icon-512.png",
+      "category": "Office"
+    }
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -61,6 +103,7 @@
     "@tiptap/extension-underline": "^3.23.6",
     "@tiptap/react": "^3.23.6",
     "@tiptap/starter-kit": "^3.23.6",
+    "better-sqlite3": "^13.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -84,6 +127,7 @@
     "react-window": "^1.8.11",
     "recharts": "^3.9.0",
     "sonner": "^1.7.4",
+    "sqlite-vec": "^0.1.9",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tiptap-track-changes": "^0.2.1",
@@ -97,12 +141,15 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "@types/react-window": "^1.8.8",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -116,6 +163,8 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",
+    "vite-plugin-electron": "^1.1.0",
+    "vite-plugin-electron-renderer": "^1.0.0",
     "vitest": "^3.2.4",
     "workbox-core": "^7.4.0",
     "workbox-routing": "^7.4.0",

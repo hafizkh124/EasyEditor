@@ -275,9 +275,9 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-3">
           {!embedded && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/dashboard")} aria-label="Back to dashboard">
+  <ArrowLeft className="h-4 w-4" />
+</Button>
           )}
           <Languages className="h-5 w-5 text-primary" />
             <div>

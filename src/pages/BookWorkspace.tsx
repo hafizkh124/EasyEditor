@@ -308,9 +308,9 @@ export default function BookWorkspace() {
         {/* Header Bar */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/dashboard")} aria-label="Back to dashboard">
+  <ArrowLeft className="h-4 w-4" />
+</Button>
             <BookOpen className="h-5 w-5 text-primary" />
             <div>
               <h1 className="text-base font-semibold">تصنیف ورک اسپیس (Book Authoring Studio)</h1>

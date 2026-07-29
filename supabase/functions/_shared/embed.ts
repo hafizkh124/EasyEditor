@@ -14,8 +14,12 @@
 // backfill-embeddings, islamic-health) called "gemini-embedding-001"
 // directly. Route every query-time embedding call through here so that
 // mismatch can't recur.
-export const EMBED_MODEL = "gemini-embedding-001";
-export const EMBED_DIMS = 768;
+//
+// The constants themselves now live in shared/ (M5), so the Electron main
+// process embeds into the very same vector space as this Deno function.
+// Re-exported here so existing importers keep working unchanged.
+export { EMBED_MODEL, EMBED_DIMS } from "../../../shared/ai/embedConstants.ts";
+import { EMBED_MODEL, EMBED_DIMS } from "../../../shared/ai/embedConstants.ts";
 
 /**
  * Embed a single query string via Google's native embedContent endpoint.
