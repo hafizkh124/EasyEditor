@@ -36,12 +36,28 @@ export function registerAiHandlers(): void {
     ALLOWED_IPC_CHANNELS.AI_INVOKE,
     async (
       event,
-      req: GeminiGenerateRequest & { streamChannelId?: string; mode?: 'generate' | 'embed' },
+      req: GeminiGenerateRequest & {
+        streamChannelId?: string;
+        mode?: 'generate' | 'embed' | 'edge-function';
+        functionName?: string;
+        body?: Record<string, unknown>;
+      },
     ) => {
       const window = BrowserWindow.fromWebContents(event.sender);
 
       if (req.mode === 'embed') {
         return embedTextContent(req.prompt);
+      }
+
+      if (req.mode === 'edge-function') {
+        // Gate 1: refuse clearly instead of falling through to generateContentStream
+        // with an undefined prompt. Gate 3/5 add real local routes for
+        // library-ingest (electron/db/ingest.ts) and transcribe (whisper) and
+        // remove them from this list one at a time.
+        const name = req.functionName ?? '(نامعلوم)';
+        throw new Error(
+          `ڈیسک ٹاپ موڈ میں "${name}" ابھی دستیاب نہیں۔ یہ خصوصیت ویب ورژن میں کام کرتی ہے۔`,
+        );
       }
 
       try {
