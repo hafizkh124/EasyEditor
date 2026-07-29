@@ -30,6 +30,13 @@ jobs:
           node-version: 22
           cache: npm
 
+      # SPEC-M5 FR-1.5/NFR-8: shared/ must load under Deno as well as Node —
+      # src/test/sharedRuntime.test.ts's Deno block only runs when `deno` is
+      # on PATH, which is only true here (most local dev machines skip it).
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install dependencies
         run: npm ci
 

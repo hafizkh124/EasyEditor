@@ -203,24 +203,24 @@ export const localBackend: WorkspaceBackend = {
       return entities.filter((e) => e.canonical_name.toLowerCase().includes(q));
     },
 
-    async getEntityDetails(_entityId: string): Promise<EntityDetails | null> {
-      return null;
+    async getEntityDetails(entityId: string): Promise<EntityDetails | null> {
+      return invokeWorkspace<EntityDetails | null>('getEntityDetails', entityId);
     },
 
-    async mergeEntities(_keepId: string, _absorbId: string, _mergedAliases: string[]): Promise<boolean> {
-      return true;
+    async mergeEntities(keepId: string, absorbId: string, mergedAliases: string[]): Promise<boolean> {
+      return invokeWorkspace<boolean>('mergeEntities', keepId, absorbId, mergedAliases);
     },
   },
 
   recipes: {
     async listRecipes(): Promise<Recipe[]> {
-      return [];
+      return invokeWorkspace<Recipe[]>('listRecipes');
     },
   },
 
   customTasks: {
     async list(): Promise<CustomTaskRow[]> {
-      return [];
+      return invokeWorkspace<CustomTaskRow[]>('listCustomTasks');
     },
 
     async createFromBuiltin(
@@ -228,32 +228,15 @@ export const localBackend: WorkspaceBackend = {
       label: string,
       systemPrompt: string,
     ): Promise<CustomTaskRow | null> {
-      const id = 'ctask-' + Math.random().toString(36).substring(2, 10);
-      const now = new Date().toISOString();
-      return {
-        id,
-        user_id: 'local-user-default',
-        slug: 'custom-' + Math.random().toString(36).substring(2, 8),
-        label,
-        system_prompt: systemPrompt,
-        base_task_slug: baseSlug,
-        scope: 'document',
-        apply_mode: 'block',
-        output_format: 'text',
-        chunkable: true,
-        produces_sources: false,
-        archived_at: null,
-        created_at: now,
-        updated_at: now,
-      };
+      return invokeWorkspace<CustomTaskRow>('createCustomTaskFromBuiltin', baseSlug, label, systemPrompt);
     },
 
-    async update(_id: string, _patch: { label?: string; system_prompt?: string }): Promise<boolean> {
-      return true;
+    async update(id: string, patch: { label?: string; system_prompt?: string }): Promise<boolean> {
+      return invokeWorkspace<boolean>('updateCustomTask', id, patch);
     },
 
-    async archive(_id: string): Promise<boolean> {
-      return true;
+    async archive(id: string): Promise<boolean> {
+      return invokeWorkspace<boolean>('archiveCustomTask', id);
     },
   },
 };

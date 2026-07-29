@@ -1,13 +1,28 @@
+// Sentence/claim segmentation, shared by the "Add citations" pipeline (Deno,
+// via supabase/functions/_shared/segmentClaims.ts's re-export) and any local
+// equivalent in Electron main (SPEC-M5 FR-1.5/FR-3.4).
+//
+// Splits free-form text into individual claim-bearing sentences so each one
+// can have its own corpus lookup. Sentence boundaries are detected across
+// Urdu (۔), Arabic (.!؟), and English (.!?).
+//
+// Output: [{ index, text, start, end }] — each segment includes the
+// character offsets in the original text so the caller can re-insert
+// citations at the exact end of each segment.
+
 export interface TextSegment {
   index: number;
   text: string;
-  start: number;
-  end: number;
+  start: number; // inclusive char offset in original
+  end: number;   // exclusive char offset in original
 }
 
+// Sentence-ending punctuation across the three scripts we support.
+// Urdu uses ۔ as period; Arabic question mark is ؟; bullets/newlines also end claims.
 const TERMINATORS = /([۔.!?؟])(\s+|$)/g;
-const MIN_SEGMENT_LEN = 12;
-const MAX_SEGMENTS = 30;
+
+const MIN_SEGMENT_LEN = 12; // anything shorter is fragment-like; merged backwards
+const MAX_SEGMENTS = 30;    // safety cap so a 50-page paste doesn't melt the LLM
 
 export function segmentText(input: string): TextSegment[] {
   if (!input || !input.trim()) return [];

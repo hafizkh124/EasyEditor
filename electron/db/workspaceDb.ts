@@ -4,12 +4,16 @@ import * as library from './workspaceStore/library.js';
 import * as annotations from './workspaceStore/annotations.js';
 import * as taskRuns from './workspaceStore/taskRuns.js';
 import * as graph from './workspaceStore/graph.js';
+import * as recipes from './workspaceStore/recipes.js';
+import * as customTasks from './workspaceStore/customTasks.js';
 import { getCurrentUserId } from './workspaceStore/identity.js';
 import type {
   Project, ProjectKind, Document, DocumentVersion, LibraryItem, TaskRun, TaskRunStatus,
 } from '../../src/core/workspace/types.js';
 import type { AnnotationItem } from '../../src/core/workspace/annotationService.js';
-import type { Entity } from '../../src/lib/graph/graphService.js';
+import type { Entity, EntityDetails } from '../../src/lib/graph/graphService.js';
+import type { Recipe } from '../../src/lib/recipes/builtinRecipes.js';
+import type { CustomTaskRow } from '../../src/lib/tasks/customTasks.js';
 
 /**
  * Public surface for the `workspace:invoke` IPC channel (electron/ipc/workspaceHandlers.ts).
@@ -77,5 +81,26 @@ export class WorkspaceDbService {
   public async listEntities(): Promise<Entity[]> { return graph.listEntities(this.db); }
   public async createEntity(entity: Omit<Entity, 'id' | 'created_at'>): Promise<Entity> {
     return graph.createEntity(this.db, entity);
+  }
+  public async getEntityDetails(entityId: string): Promise<EntityDetails | null> {
+    return graph.getEntityDetails(this.db, entityId);
+  }
+  public async mergeEntities(keepId: string, absorbId: string, mergedAliases: string[]): Promise<boolean> {
+    return graph.mergeEntities(this.db, keepId, absorbId, mergedAliases);
+  }
+
+  // ── Recipes ───────────────────────────────────────────────────────────────
+  public async listRecipes(): Promise<Recipe[]> { return recipes.listRecipes(this.db); }
+
+  // ── Custom tasks ──────────────────────────────────────────────────────────
+  public async listCustomTasks(): Promise<CustomTaskRow[]> { return customTasks.list(this.db); }
+  public async createCustomTaskFromBuiltin(baseSlug: string, label: string, systemPrompt: string): Promise<CustomTaskRow> {
+    return customTasks.createFromBuiltin(this.db, baseSlug, label, systemPrompt);
+  }
+  public async updateCustomTask(id: string, patch: { label?: string; system_prompt?: string }): Promise<boolean> {
+    return customTasks.update(this.db, id, patch);
+  }
+  public async archiveCustomTask(id: string): Promise<boolean> {
+    return customTasks.archive(this.db, id);
   }
 }
