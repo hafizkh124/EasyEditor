@@ -12,6 +12,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { EMBED_MODEL, EMBED_DIMS } from "../../../shared/ai/embedConstants.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,11 +63,10 @@ async function countRemaining(
 // workspace tier (returns 404 "route_not_found"), so we call Google directly
 // using GEMINI_API_KEY. This endpoint is free tier-friendly.
 //
-// Model: gemini-embedding-001 (the current canonical embedding model — the
-// older "text-embedding-004" was retired). We request outputDimensionality
-// of 768 so the vectors fit our existing pgvector(768) schema.
-const EMBED_MODEL = "gemini-embedding-001";
-const EMBED_DIMS  = 768;
+// Model + dimensionality come from shared/ai/embedConstants.ts (imported at
+// the top) — the single source of truth for every runtime. They used to be
+// redeclared here, which is precisely how the corpus and the query path can
+// drift into different vector spaces.
 
 async function callEmbedBatch(texts: string[], geminiKey: string): Promise<number[][]> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:batchEmbedContents`;

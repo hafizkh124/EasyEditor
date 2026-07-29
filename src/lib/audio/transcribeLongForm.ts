@@ -4,7 +4,7 @@
 // the existing stateless `transcribe` edge function, and reassembles the text in
 // order. Emits phased progress events and supports cancellation via AbortSignal.
 
-import { supabase } from "@/integrations/supabase/client";
+import { callEdgeFunction } from "@/core/ai/aiAdapter";
 import { decodeAudioFile, chunkAudioBuffer, encodeChunkToWav, blobToDataUrl, type AudioChunk } from "./chunker";
 import { isVideoFile } from "./formatSupport";
 
@@ -61,12 +61,12 @@ async function transcribeChunk(
   checkSignal(signal);
 
   const duration = Math.max(1, Math.round(chunk.endSeconds - chunk.startSeconds));
-  const { data, error } = await supabase.functions.invoke("transcribe", {
-    body: { audio: dataUrl, language, duration },
+  const { data, error } = await callEdgeFunction("transcribe", {
+    audio: dataUrl, language, duration,
   });
   if (error) throw new Error(error.message ?? "Chunk transcription failed");
-  if (!data?.text) return "";
-  return String(data.text).trim();
+  if (!(data as Record<string, unknown>)?.text) return "";
+  return String((data as Record<string, unknown>).text).trim();
 }
 
 export async function transcribeLongForm({
