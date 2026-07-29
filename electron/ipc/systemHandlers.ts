@@ -1,5 +1,6 @@
 import { ipcMain, shell, app, BrowserWindow } from 'electron';
 import { ALLOWED_IPC_CHANNELS } from './registry.js';
+import { isAllowedExternalUrl } from '../lib/urlAllowlist.js';
 
 export function registerSystemHandlers(): void {
   ipcMain.handle(ALLOWED_IPC_CHANNELS.SYSTEM_GET_VERSION, () => {
@@ -11,12 +12,12 @@ export function registerSystemHandlers(): void {
   });
 
   ipcMain.handle(ALLOWED_IPC_CHANNELS.SYSTEM_OPEN_EXTERNAL, async (_event, url: string) => {
-    // Only open HTTP/HTTPS URLs externally for security
-    if (typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) {
-      await shell.openExternal(url);
-      return true;
-    }
-    return false;
+    // SPEC-M5 FR-2.2: allowlisted https hosts only — same rule electron/main.ts
+    // enforces for window-open and navigation interception.
+    const parsed = typeof url === 'string' ? isAllowedExternalUrl(url) : null;
+    if (!parsed) return false;
+    await shell.openExternal(parsed.toString());
+    return true;
   });
 
   ipcMain.handle(ALLOWED_IPC_CHANNELS.SYSTEM_SET_TITLE, async (_event, title: string) => {

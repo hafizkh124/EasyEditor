@@ -73,7 +73,21 @@ export function registerVoiceHandlers(): void {
       if (!fs.existsSync(clonesDir)) {
         fs.mkdirSync(clonesDir, { recursive: true });
       }
-      const targetPath = path.join(clonesDir, filename);
+
+      // SPEC-M5 FR-2.2: filename comes from the renderer and must never be
+      // trusted as a path fragment — path.basename() strips any directory
+      // components (so "../../evil.txt" collapses to "evil.txt"), and the
+      // resolved-path check below is a second, independent guard against
+      // any escape this platform's path.basename() might miss.
+      const safeName = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+      if (!safeName || safeName.startsWith('.')) {
+        throw new Error('Invalid filename for voice clone sample.');
+      }
+      const targetPath = path.join(clonesDir, safeName);
+      if (!targetPath.startsWith(clonesDir + path.sep)) {
+        throw new Error('Path escape blocked for voice clone sample.');
+      }
+
       fs.writeFileSync(targetPath, Buffer.from(buffer));
       return targetPath;
     },

@@ -6,6 +6,13 @@ import { registerAiHandlers } from './ipc/aiHandlers.js';
 import { registerWorkspaceHandlers } from './ipc/workspaceHandlers.js';
 import { registerShamelaHandlers } from './ipc/shamelaHandlers.js';
 import { registerVoiceHandlers } from './ipc/voiceHandlers.js';
+import { isAllowedExternalUrl } from './lib/urlAllowlist.js';
+
+function openExternalSafely(rawUrl: string): void {
+  const parsed = isAllowedExternalUrl(rawUrl);
+  if (!parsed) return;
+  void shell.openExternal(parsed.toString());
+}
 
 function setupApplicationMenu(): void {
   const menuTemplate: Electron.MenuItemConstructorOptions[] = [
@@ -28,7 +35,12 @@ function setupApplicationMenu(): void {
       label: 'ویو (View)',
       submenu: [
         { label: 'دوبارہ لوڈ کریں (Reload)', role: 'reload' },
-        { label: 'مکمل اسکرین (Toggle Full Screen)', role: 'toggleDevTools' },
+        { label: 'مکمل اسکرین (Toggle Full Screen)', role: 'togglefullscreen' },
+        // DevTools stays out of the production menu entirely — a released
+        // build should not offer an inspector as a first-class menu item.
+        ...(process.env.VITE_DEV_SERVER_URL
+          ? [{ label: 'ڈویلپر ٹولز (DevTools)', role: 'toggleDevTools' as const }]
+          : []),
       ],
     },
   ];
@@ -72,32 +84,41 @@ function createWindow() {
     },
   });
 
-  // Security: CSP Header injection
+  // Security: CSP Header injection (SPEC-M5 FR-2.2/NFR-11).
+  // connect-src is scoped to Google's Gemini endpoint only: local mode's
+  // entire privacy premise is "no network request but Google" — a broad
+  // `https:` here would silently let that promise slip. No 'unsafe-eval' or
+  // remote script/style/font sources either ("no remote content" per FR-2.2).
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:;",
+          "default-src 'self'; " +
+          "script-src 'self'; " +
+          "style-src 'self' 'unsafe-inline'; " +
+          "font-src 'self' data:; " +
+          "img-src 'self' data: blob:; " +
+          "connect-src 'self' https://generativelanguage.googleapis.com; " +
+          "object-src 'none'; base-uri 'self'; frame-ancestors 'none';",
         ],
       },
     });
   });
 
-  // Intercept new window requests and open externally in default browser
+  // Intercept new window requests and open externally, allowlist-gated.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      shell.openExternal(url);
-    }
+    openExternalSafely(url);
     return { action: 'deny' };
   });
 
-  // Block unexpected navigation
+  // Block unexpected navigation; anything leaving the app shell goes through
+  // the same allowlist as an explicit external-open request.
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl);
     if (parsedUrl.origin !== (process.env.VITE_DEV_SERVER_URL ? new URL(process.env.VITE_DEV_SERVER_URL).origin : 'file://')) {
       event.preventDefault();
-      shell.openExternal(navigationUrl);
+      openExternalSafely(navigationUrl);
     }
   });
 
