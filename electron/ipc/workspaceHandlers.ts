@@ -22,7 +22,9 @@ const ALLOWED_WORKSPACE_METHODS = new Set<string>([
   'listItems', 'createItem', 'deleteItem',
   'listAnnotations', 'createAnnotation', 'updateAnnotation', 'deleteAnnotation',
   'listTaskRuns', 'createTaskRun', 'updateTaskRunStatus',
-  'listEntities', 'createEntity',
+  'listEntities', 'createEntity', 'getEntityDetails', 'mergeEntities',
+  'listRecipes',
+  'listCustomTasks', 'createCustomTaskFromBuiltin', 'updateCustomTask', 'archiveCustomTask',
 ]);
 
 export async function getWorkspaceDbService(): Promise<WorkspaceDbService> {

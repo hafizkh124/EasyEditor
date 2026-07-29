@@ -13,6 +13,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join, relative } from "node:path";
 
 const SHARED_ROOT = join(__dirname, "..", "..", "shared");
@@ -67,6 +68,37 @@ describe("shared/ is runtime-independent", () => {
     "%s imports cleanly",
     async (_name, full) => {
       await expect(import(/* @vite-ignore */ full)).resolves.toBeTruthy();
+    },
+  );
+});
+
+/**
+ * NFR-8 requires "loads under Deno AND Node" — the block above only proves
+ * Node/vitest. It would not have caught shared/ai/prompts/index.ts importing
+ * "./refineText" with no extension: Vite's bundler resolver fills that in
+ * silently, but Deno requires the extension and fails to resolve the module
+ * at all. This block is the other half of that guarantee.
+ *
+ * Skipped when `deno` isn't on PATH (most local dev machines) — the
+ * `denoland/setup-deno` step in .github/workflows/release.yml is what makes
+ * this run for real, on every CI build.
+ */
+describe("shared/ loads under Deno", () => {
+  const files = listTsFiles(SHARED_ROOT);
+
+  const denoAvailable = (() => {
+    try {
+      execFileSync("deno", ["--version"], { stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  it.skipIf(!denoAvailable).each(files.map((f) => [relative(SHARED_ROOT, f), f]))(
+    "%s type-checks under deno",
+    (_name, full) => {
+      execFileSync("deno", ["check", "--no-lock", full], { stdio: "pipe" });
     },
   );
 });

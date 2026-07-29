@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { isDesktop } from '@/utils/environment';
 
 export interface AiRefineOptions {
   prompt: string;
@@ -7,9 +8,10 @@ export interface AiRefineOptions {
   onChunk?: (chunk: string) => void;
 }
 
-export function isDesktopEnv(): boolean {
-  return typeof window !== 'undefined' && Boolean(window.electronAPI?.isDesktop);
-}
+// Single source of truth — see src/utils/environment.ts. Kept under this
+// name (rather than renaming every call site) so isDesktopEnv() stays a
+// stable public export of this module.
+export const isDesktopEnv = isDesktop;
 
 /**
  * Universal AI execution adapter that transparently routes AI requests to:

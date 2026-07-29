@@ -12,21 +12,16 @@
 import type { WorkspaceBackend } from "./types";
 import { cloudBackend } from "./cloudBackend";
 import { localBackend } from "./localBackend";
+import { isDesktop } from "@/utils/environment";
 
 export type * from "./types";
 export { cloudBackend, localBackend };
-
-/**
- * True when running inside the Electron shell rather than a browser tab.
- *
- * Reads the build-time flag that `vite.config.ts` injects for `--mode desktop`.
- * It deliberately does NOT sniff `window.electronAPI`: that would make the
- * answer depend on whether preload happened to have run yet, and `getBackend()`
- * can be called during module init, before it has.
- */
-export function isDesktop(): boolean {
-  return import.meta.env.VITE_DESKTOP === "true" || (typeof window !== "undefined" && Boolean((window as any).electronAPI?.isDesktop));
-}
+// Single source of truth for the "which runtime is this" question — see
+// src/utils/environment.ts. Re-exported here because useLocalShamela.ts (and
+// possibly future callers) import it from @/core/backend; having two
+// separately-maintained implementations was exactly the kind of drift
+// SPEC-M5 already fixed once for isRtlText (arabicUtils.ts / textUtils.ts).
+export { isDesktop };
 
 export function getBackend(): WorkspaceBackend {
   if (isDesktop()) {
