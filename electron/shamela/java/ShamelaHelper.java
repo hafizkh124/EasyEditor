@@ -162,85 +162,103 @@ public class ShamelaHelper {
             Object searcher = indexSearcherClass.getConstructor(
                 Class.forName("org.apache.lucene.index.IndexReader")).newInstance(reader);
 
-            // Build query: use QueryParser if available, otherwise TermQuery
+            // ADR-0007/R25: refuse outright on an unexpected Lucene major version rather
+            // than returning results read with the wrong codec.
+            assertLuceneVersion();
+
+            // Build query: throws if QueryParser cannot be constructed — never silently
+            // substitutes a query that would match every document (see buildQuery below).
             Object query = buildQuery(queryText);
 
-            if (query != null) {
-                // searcher.search(query, limit)
-                Object topDocs = indexSearcherClass.getMethod("search",
-                    Class.forName("org.apache.lucene.search.Query"), int.class)
-                    .invoke(searcher, query, limit);
+            // searcher.search(query, limit)
+            Object topDocs = indexSearcherClass.getMethod("search",
+                Class.forName("org.apache.lucene.search.Query"), int.class)
+                .invoke(searcher, query, limit);
 
-                // Extract results
-                Object[] scoreDocs = (Object[]) topDocs.getClass().getField("scoreDocs").get(topDocs);
+            // Extract results
+            Object[] scoreDocs = (Object[]) topDocs.getClass().getField("scoreDocs").get(topDocs);
 
-                StringBuilder sb = new StringBuilder();
-                sb.append("{\"status\":\"success\",\"query\":\"").append(escapeJson(queryText))
-                  .append("\",\"total\":").append(scoreDocs.length)
-                  .append(",\"results\":[");
+            StringBuilder sb = new StringBuilder();
+            sb.append("{\"status\":\"success\",\"query\":\"").append(escapeJson(queryText))
+              .append("\",\"total\":").append(scoreDocs.length)
+              .append(",\"results\":[");
 
-                for (int i = 0; i < scoreDocs.length; i++) {
-                    if (i > 0) sb.append(",");
-                    int docId = (int) scoreDocs[i].getClass().getField("doc").get(scoreDocs[i]);
-                    float score = (float) scoreDocs[i].getClass().getField("score").get(scoreDocs[i]);
+            for (int i = 0; i < scoreDocs.length; i++) {
+                if (i > 0) sb.append(",");
+                int docId = (int) scoreDocs[i].getClass().getField("doc").get(scoreDocs[i]);
+                float score = (float) scoreDocs[i].getClass().getField("score").get(scoreDocs[i]);
 
-                    // searcher.storedFields().document(docId)
-                    Object storedFields = indexSearcherClass.getMethod("storedFields").invoke(searcher);
-                    Object doc = storedFields.getClass().getMethod("document", int.class).invoke(storedFields, docId);
+                // searcher.storedFields().document(docId)
+                Object storedFields = indexSearcherClass.getMethod("storedFields").invoke(searcher);
+                Object doc = storedFields.getClass().getMethod("document", int.class).invoke(storedFields, docId);
 
-                    String nass = getField(doc, "nass");  // page text field in Shamela
-                    String bookIdStr = getField(doc, "book_id");
-                    String pageStr = getField(doc, "page");
+                String nass = getField(doc, "nass");  // page text field in Shamela
+                String bookIdStr = getField(doc, "book_id");
+                String pageStr = getField(doc, "page");
 
-                    String snippet = nass != null ? nass.substring(0, Math.min(nass.length(), 300)) : "";
+                String snippet = nass != null ? nass.substring(0, Math.min(nass.length(), 300)) : "";
 
-                    sb.append("{\"bookId\":\"").append(escapeJson(bookIdStr != null ? bookIdStr : ""))
-                      .append("\",\"bookTitle\":\"\",\"pageNumber\":")
-                      .append(pageStr != null ? pageStr : "0")
-                      .append(",\"snippet\":\"").append(escapeJson(snippet))
-                      .append("\",\"score\":").append(score).append("}");
-                }
-
-                sb.append("]}");
-                OUT.println(sb.toString());
-            } else {
-                OUT.printf("{\"status\":\"success\",\"query\":\"%s\",\"total\":0,\"results\":[]}%n",
-                    escapeJson(queryText));
+                sb.append("{\"bookId\":\"").append(escapeJson(bookIdStr != null ? bookIdStr : ""))
+                  .append("\",\"bookTitle\":\"\",\"pageNumber\":")
+                  .append(pageStr != null ? pageStr : "0")
+                  .append(",\"snippet\":\"").append(escapeJson(snippet))
+                  .append("\",\"score\":").append(score).append("}");
             }
+
+            sb.append("]}");
+            OUT.println(sb.toString());
 
             // Close reader
             reader.getClass().getMethod("close").invoke(reader);
 
         } catch (ClassNotFoundException e) {
-            // Lucene not on classpath — return helpful message
-            OUT.printf("{\"status\":\"success\",\"query\":\"%s\",\"total\":0,\"results\":[],\"note\":\"Lucene jars not on classpath. Ensure Shamela lucene directory is included.\"}%n",
-                escapeJson(queryText));
+            // Lucene classes not on the classpath — this is a hard failure, not an
+            // empty-results case (SPEC-M5 risk R25): a reference tool must never
+            // present "not searched" as "nothing found".
+            printJsonError("Lucene classes not found on classpath (" + e.getMessage()
+                + "). Shamela's app/lucene/2/*.jar must be on the classpath.");
+            System.exit(1);
         } catch (Exception e) {
             printJsonError("Search failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            System.exit(1);
+        }
+    }
+
+    /** ADR-0007/R25: the Lucene major version this helper was built and tested against. */
+    private static final int EXPECTED_LUCENE_MAJOR = 10;
+
+    /**
+     * Refuses to proceed if the Lucene jars on the classpath are a different major
+     * version than expected. A codec mismatch does not raise a clean error on its
+     * own — it can silently produce mangled Arabic text, which is the worst possible
+     * failure mode for a citation tool (SPEC-M5 risk R25).
+     */
+    private static void assertLuceneVersion() throws Exception {
+        Class<?> versionClass = Class.forName("org.apache.lucene.util.Version");
+        Object latest = versionClass.getField("LATEST").get(null);
+        String v = latest.toString();
+        int major = Integer.parseInt(v.split("\\.")[0]);
+        if (major != EXPECTED_LUCENE_MAJOR) {
+            throw new IllegalStateException(
+                "Unsupported Lucene major version: found " + v + ", expected " + EXPECTED_LUCENE_MAJOR + ".x");
         }
     }
 
     /**
-     * Build a Lucene query from the text. Uses QueryParser if available, otherwise MatchAllDocsQuery.
+     * Build a Lucene query from the text via QueryParser + StandardAnalyzer.
+     *
+     * ⛔ No MatchAllDocsQuery fallback. Returning "every document in the index" when
+     * the parser cannot be constructed would present a wall of unrelated pages as if
+     * they were search results — worse than an empty result, and worse than an error,
+     * for a citation tool (ADR-0007).
      */
-    private static Object buildQuery(String queryText) {
-        try {
-            // Try QueryParser with StandardAnalyzer
-            Class<?> analyzerClass = Class.forName("org.apache.lucene.analysis.standard.StandardAnalyzer");
-            Class<?> queryParserClass = Class.forName("org.apache.lucene.queryparser.classic.QueryParser");
-            Object analyzer = analyzerClass.getConstructor().newInstance();
-            Object parser = queryParserClass.getConstructor(String.class,
-                Class.forName("org.apache.lucene.analysis.Analyzer")).newInstance("nass", analyzer);
-            return queryParserClass.getMethod("parse", String.class).invoke(parser, queryText);
-        } catch (Exception e) {
-            // Fall back to MatchAllDocsQuery
-            try {
-                Class<?> matchAllClass = Class.forName("org.apache.lucene.search.MatchAllDocsQuery");
-                return matchAllClass.getConstructor().newInstance();
-            } catch (Exception ex) {
-                return null;
-            }
-        }
+    private static Object buildQuery(String queryText) throws Exception {
+        Class<?> analyzerClass = Class.forName("org.apache.lucene.analysis.standard.StandardAnalyzer");
+        Class<?> queryParserClass = Class.forName("org.apache.lucene.queryparser.classic.QueryParser");
+        Object analyzer = analyzerClass.getConstructor().newInstance();
+        Object parser = queryParserClass.getConstructor(String.class,
+            Class.forName("org.apache.lucene.analysis.Analyzer")).newInstance("nass", analyzer);
+        return queryParserClass.getMethod("parse", String.class).invoke(parser, queryText);
     }
 
     /**
@@ -268,6 +286,10 @@ public class ShamelaHelper {
             Class<?> fsDirectoryClass = Class.forName("org.apache.lucene.store.FSDirectory");
             Class<?> directoryReaderClass = Class.forName("org.apache.lucene.index.DirectoryReader");
             Class<?> indexSearcherClass = Class.forName("org.apache.lucene.search.IndexSearcher");
+
+            // ADR-0007/R25: refuse on an unexpected Lucene major version rather than
+            // risk reading page text back through the wrong codec (mangled Arabic).
+            assertLuceneVersion();
 
             Object directory = fsDirectoryClass.getMethod("open", Path.class).invoke(null, indexDir);
             Object reader = directoryReaderClass.getMethod("open",
@@ -322,10 +344,15 @@ public class ShamelaHelper {
             reader.getClass().getMethod("close").invoke(reader);
 
         } catch (ClassNotFoundException e) {
-            OUT.printf("{\"status\":\"success\",\"bookId\":\"%s\",\"pageNumber\":%d,\"text\":\"\",\"note\":\"Lucene jars not on classpath.\"}%n",
-                escapeJson(bookId), pageNumber);
+            // Same as handleSearch: a missing Lucene classpath is a hard failure, not
+            // an empty page (SPEC-M5 risk R25) — an empty "success" here would read as
+            // "this page is blank" instead of "the page was never actually read".
+            printJsonError("Lucene classes not found on classpath (" + e.getMessage()
+                + "). Shamela's app/lucene/2/*.jar must be on the classpath.");
+            System.exit(1);
         } catch (Exception e) {
             printJsonError("Read failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            System.exit(1);
         }
     }
 

@@ -1,4 +1,5 @@
 import { getDecryptedGeminiKey } from './keyStore.js';
+import { EMBED_MODEL, EMBED_DIMS } from '../../shared/ai/embedConstants.js';
 
 export interface GeminiGenerateRequest {
   model?: string;
@@ -41,15 +42,23 @@ export class ByokApiError extends Error {
 function parseGeminiError(status: number, responseText: string): ByokApiError {
   const lower = responseText.toLowerCase();
 
-  if (status === 400 || status === 401 || status === 403 || lower.includes('api_key_invalid') || lower.includes('invalid api key')) {
-    return new ByokApiError('آپ کی key قبول نہیں ہوئی — برائے کرم کلید کی تصدیق کریں', status, 'invalid_key');
+  // 401/403 — یا 400 صرف اُس صورت جب Google صراحتاً key کو رد کرے
+  if (status === 401 || status === 403 ||
+      lower.includes('api_key_invalid') || lower.includes('api key not valid')) {
+    return new ByokApiError('آپ کی Gemini key قبول نہیں ہوئی — Settings میں کلید دوبارہ درج کریں۔', status, 'invalid_key');
+  }
+
+  // 402 اور quota والا 429 — دونوں بل/کوٹے کا مسئلہ ہیں
+  if (status === 402 || (status === 429 && (lower.includes('quota') || lower.includes('exceeded')))) {
+    return new ByokApiError('آپ کے Gemini اکاؤنٹ کا کوٹا ختم ہو چکا ہے — Google پر بلنگ یا حد چیک کریں۔', status, 'quota_exceeded');
   }
 
   if (status === 429) {
-    if (lower.includes('quota') || lower.includes('exceeded')) {
-      return new ByokApiError('آپ کی Gemini quota ختم ہو چکی — کوٹا یا بلنگ چیک کریں', status, 'quota_exceeded');
-    }
-    return new ByokApiError('بہت تیز درخواستیں — چند لمحے رکیں', status, 'rate_limit');
+    return new ByokApiError('درخواستیں بہت تیز جا رہی ہیں — چند لمحے رک کر دوبارہ کوشش کریں۔', status, 'rate_limit');
+  }
+
+  if (status === 400) {
+    return new ByokApiError(`درخواست قبول نہیں ہوئی (400): ${responseText.slice(0, 150)}`, status, 'unknown');
   }
 
   return new ByokApiError(`Gemini API Error (${status}): ${responseText.slice(0, 150)}`, status, 'unknown');
@@ -64,12 +73,12 @@ export async function testGeminiKey(testKey?: string): Promise<{ success: boolea
     return { success: false, message: 'کوئی Gemini key دستیاب نہیں ہے' };
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
 
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
         contents: [{ parts: [{ text: 'Hello' }] }],
       }),
@@ -101,7 +110,7 @@ export async function generateContentStream(
   }
 
   const model = req.model || 'gemini-2.5-flash';
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
 
   const bodyPayload: Record<string, unknown> = {
     contents: [{ parts: [{ text: req.prompt }] }],
@@ -122,7 +131,7 @@ export async function generateContentStream(
 
   const response = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify(bodyPayload),
   });
 
@@ -179,14 +188,15 @@ export async function embedTextContent(text: string): Promise<number[]> {
     throw new ByokApiError('کوئی Gemini key پاس نہیں کی گئی — Settings میں اپنی کلید درج کریں', 401, 'invalid_key');
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${encodeURIComponent(key)}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:embedContent`;
 
   const response = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({
-      model: 'models/gemini-embedding-001',
+      model: `models/${EMBED_MODEL}`,
       content: { parts: [{ text }] },
+      outputDimensionality: EMBED_DIMS,
     }),
   });
 
@@ -197,8 +207,8 @@ export async function embedTextContent(text: string): Promise<number[]> {
 
   const result = (await response.json()) as { embedding?: { values?: number[] } };
   const values = result?.embedding?.values;
-  if (!Array.isArray(values) || values.length !== 768) {
-    throw new Error(`Unexpected embedding output shape: expected 768 float array, got ${values?.length}`);
+  if (!Array.isArray(values) || values.length !== EMBED_DIMS) {
+    throw new Error(`Unexpected embedding output shape: expected ${EMBED_DIMS}-float array, got ${values?.length}`);
   }
 
   return values;
