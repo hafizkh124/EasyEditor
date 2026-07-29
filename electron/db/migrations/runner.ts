@@ -20,28 +20,32 @@ const MIGRATIONS: Migration[] = [
 ];
 
 /**
- * Creates an automatic timestamped backup of the database file before running migrations.
+ * Creates an automatic timestamped backup of the database file before running
+ * migrations, using better-sqlite3's own `backup()` rather than a raw file
+ * copy. The DB runs in WAL mode (electron/db/open.ts), so a plain
+ * `fs.copyFileSync` of the main file alone can miss committed data still
+ * sitting in the `-wal` file — a "backup" that is silently incomplete is
+ * worse than no backup (SPEC-M5 risk R14).
+ *
+ * Throws on failure rather than swallowing the error: proceeding with a
+ * migration when the safety net could not be created defeats the point of
+ * having one.
  */
-function createPreMigrationBackup(dbPath: string, currentVersion: number): string | null {
+async function createPreMigrationBackup(db: SqliteDatabase, dbPath: string, currentVersion: number): Promise<string | null> {
   if (!fs.existsSync(dbPath)) {
     return null;
   }
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backupPath = `${dbPath}.bak.v${currentVersion}.${timestamp}`;
-  try {
-    fs.copyFileSync(dbPath, backupPath);
-    console.log(`[DB Migration] Backup created at: ${backupPath}`);
-    return backupPath;
-  } catch (err) {
-    console.error('[DB Migration] Failed to create pre-migration backup:', err);
-    return null;
-  }
+  await db.backup(backupPath);
+  console.log(`[DB Migration] Backup created at: ${backupPath}`);
+  return backupPath;
 }
 
 /**
  * Runs versioned database migrations safely with automatic backups.
  */
-export function runDatabaseMigrations(db: SqliteDatabase, dbPath: string): void {
+export async function runDatabaseMigrations(db: SqliteDatabase, dbPath: string): Promise<void> {
   // Ensure corpus_meta exists to read schema_version
   db.exec(`CREATE TABLE IF NOT EXISTS corpus_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);`);
 
@@ -61,8 +65,9 @@ export function runDatabaseMigrations(db: SqliteDatabase, dbPath: string): void 
     return;
   }
 
-  // Create automatic pre-migration backup before running pending migrations
-  createPreMigrationBackup(dbPath, currentVersion);
+  // Create automatic pre-migration backup before running pending migrations.
+  // A failure here throws and aborts the migration (see the comment above).
+  await createPreMigrationBackup(db, dbPath, currentVersion);
 
   for (const migration of pendingMigrations) {
     console.log(`[DB Migration] Applying migration v${migration.version}: ${migration.name}`);
