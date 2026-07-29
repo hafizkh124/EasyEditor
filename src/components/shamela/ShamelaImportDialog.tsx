@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   Search, BookOpen, User, Layers, FileText, Download,
-  ChevronLeft, ChevronRight, Loader2, X
+  Loader2
 } from "lucide-react";
 
 export interface ShamelaBook {

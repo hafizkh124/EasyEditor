@@ -47,23 +47,14 @@ export const VoiceEnginePanel: React.FC = () => {
     }
   }, []);
 
+  const handleUrChange = (val: string) => {
+    setUrEngine(val);
+    setPreferredEngine('ur-PK', val);
+  };
+
   const handleArChange = (val: string) => {
     setArEngine(val);
     setPreferredEngine('ar', val);
-  };
-
-  const handleDownload = async (modelId: string) => {
-    if (!isDesktop() || !window.electronAPI?.voice) return;
-    setDownloadingId(modelId);
-    try {
-      await window.electronAPI.voice.downloadModel(modelId);
-      const updated = await window.electronAPI.voice.getModels();
-      setModels(updated);
-    } catch (err) {
-      console.error('Download failed', err);
-    } finally {
-      setDownloadingId(null);
-    }
   };
 
   const handleDelete = async (modelId: string) => {

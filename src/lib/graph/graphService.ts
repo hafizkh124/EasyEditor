@@ -85,14 +85,16 @@ export const graphService = {
 
       if (res.error) throw new Error(res.error.message || "گراف ایکسٹریکشن ناکام ہو گئی");
 
+      const data = res.data as { entities_count: number; relations_count: number };
+
       if (run?.id) {
         await taskRunService.updateTaskRun(run.id, {
           status: "completed",
-          output: res.data,
+          output: data as unknown as Record<string, unknown>,
           tokensSpent: estimateGraphExtractCost(text.length),
         });
       }
-      return res.data;
+      return data;
     } catch (e) {
       if (run?.id) {
         await taskRunService.updateTaskRun(run.id, {

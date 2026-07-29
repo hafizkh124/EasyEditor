@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   CheckCircle, XCircle, RefreshCw, HardDrive, HelpCircle,
-  Search, BookOpen, Database, Cpu, ShieldCheck, FileText
+  Search, BookOpen, Database, FileText
 } from "lucide-react";
 import { ShamelaGuideModal } from "@/components/mcp/ShamelaGuideModal";
 

@@ -76,7 +76,12 @@ export async function runLibraryIngest({
       throw new Error(`Ingest failed: ${res.error.message}`);
     }
 
-    const data = res.data;
+    const data = res.data as {
+      next_offset: number;
+      done: boolean;
+      total_chunks?: number;
+      progress?: number;
+    };
     offset = data.next_offset;
     done = data.done;
 
