@@ -4,20 +4,8 @@ import path from 'node:path';
 import os from 'node:os';
 import type { TranscriptSegment } from '@/core/voice/types';
 
-function findWhisperBinary(): string {
-  const candidates = ['whisper-cli', 'whisper-cpp', 'whisper', 'main'];
-  for (const name of candidates) {
-    try {
-      const result = spawn.sync(name, ['--help'], { windowsHide: true, stdio: 'pipe' });
-      if (result.status === 0) return name;
-    } catch {
-      continue;
-    }
-  }
-  return 'whisper-cli';
-}
-
-const WHISPER_BIN = findWhisperBinary();
+// TODO(Gate 4): replaced by @kutalia/whisper-node-addon — SPEC-M5 FR-6.2
+const WHISPER_BIN = 'whisper-cli';
 
 export class WhisperStt {
   async transcribe(audioPath: string, lang: string, modelPath: string = ''): Promise<TranscriptSegment[]> {

@@ -61,7 +61,7 @@ const Speak = () => {
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("standard");
   const ttsAction = voiceMode === "cloned" ? "tts_elevenlabs" : "tts_google";
   const ttsQuantity = Math.max(1, Math.ceil(text.length / 1000));
-  const { canAfford: canAffordTts, cost: ttsCost, balance: tokenBalance } = useCanAfford(ttsAction, ttsQuantity);
+  const { canAfford: canAffordTts } = useCanAfford(ttsAction, ttsQuantity);
 
   // voiceMode declared above (needed for token cost computation)
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
