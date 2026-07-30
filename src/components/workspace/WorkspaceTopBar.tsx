@@ -112,7 +112,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
       {/* Center: Save status badges */}
       <div className="hidden md:flex items-center gap-2">
         {saveStatus === "saving" && (
-          <Badge variant="outline" className="gap-1 text-xs border-amber-500/40 text-amber-600 bg-amber-500/5">
+          <Badge variant="outline" className="gap-1 text-xs border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/5">
             <Loader2 className="h-3 w-3 animate-spin" />
             <span>Saving...</span>
           </Badge>

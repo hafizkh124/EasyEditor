@@ -77,7 +77,7 @@ export const TrustTab: React.FC = () => {
                     confidencePercent >= 70
                       ? "text-emerald-600"
                       : confidencePercent >= 40
-                        ? "text-amber-600"
+                        ? "text-amber-700 dark:text-amber-400"
                         : "text-red-600"
                   }`}
                 >

@@ -30,7 +30,7 @@ export function ShamelaGuideModal({ open, onOpenChange }: ShamelaGuideModalProps
         <div className="space-y-6 text-sm">
           {/* Important Browser Notice Banner */}
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3.5 flex gap-3 items-start text-xs">
-            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <AlertTriangle className="h-5 w-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <span className="font-bold text-amber-900 dark:text-amber-300 block">
                 براؤزر مطابقت کی اہم اطلاع (Browser Compatibility Notice)
