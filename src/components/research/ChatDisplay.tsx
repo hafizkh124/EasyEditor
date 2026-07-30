@@ -26,6 +26,7 @@ import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
 import { useSubmitGuard } from "@/hooks/useSubmitGuard";
 import type { ResearchAssistMode } from "@/lib/prompts";
 import type { ResearchMode } from "./ResearchModeSwitcher";
+import { editorRoute } from "@/lib/routes";
 
 const VIRTUALIZE_THRESHOLD = 50;
 
@@ -353,7 +354,7 @@ const ChatDisplay = ({
                 onRefine={onRefine}
                 onCopy={onCopyOutput}
                 onRegenerate={onRegenerate}
-                onOpenInEditor={() => navigate("/editor", { state: { content: msg.content, source: "research" } })}
+                onOpenInEditor={() => navigate(editorRoute(), { state: { content: msg.content, source: "research" } })}
                 t={t}
               />
               {responseLooksTruncated && !isQuerying && onContinue && (

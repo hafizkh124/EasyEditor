@@ -15,6 +15,7 @@ import { useSeo } from "@/hooks/useSeo";
 import { useProjects } from "@/core/workspace/useProjects";
 import { documentService } from "@/core/workspace/documentService";
 import type { Document, ProjectKind } from "@/core/workspace/types";
+import { editorRoute } from "@/lib/routes";
 
 const kindIcons: Record<ProjectKind, typeof BookOpen> = {
   research: BookOpen,
@@ -64,7 +65,7 @@ const Library = () => {
 
       // Automatically create initial document in new project
       const doc = await documentService.createDocument(proj.id, "Untitled Document");
-      navigate(`/editor/${doc.id}`);
+      navigate(editorRoute(doc.id));
     } catch (err: any) {
       toast.error(err.message || "Failed to create project");
     } finally {
@@ -75,7 +76,7 @@ const Library = () => {
   const handleCreateDocument = async (projectId: string) => {
     try {
       const doc = await documentService.createDocument(projectId, "Untitled Document");
-      navigate(`/editor/${doc.id}`);
+      navigate(editorRoute(doc.id));
     } catch (err: any) {
       toast.error(err.message || "Failed to create document");
     }
@@ -165,7 +166,7 @@ const Library = () => {
                       docs.map((doc) => (
                         <div
                           key={doc.id}
-                          onClick={() => navigate(`/editor/${doc.id}`)}
+                          onClick={() => navigate(editorRoute(doc.id))}
                           className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors"
                         >
                           <div className="flex items-center gap-3 min-w-0">

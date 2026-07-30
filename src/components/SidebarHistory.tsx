@@ -11,13 +11,14 @@ import {
 import { useSessionHistory, type SessionSection, type SessionHistoryItem } from "@/hooks/useSessionHistory";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
+import { editorRoute } from "@/lib/routes";
 
 const SECTION_ROUTES: Record<SessionSection, string> = {
   transcribe: "/transcribe",
   speak: "/speak",
   ocr: "/ocr",
   research: "/research",
-  editor: "/editor",
+  editor: editorRoute(),
   translate: "/translate",
 };
 
