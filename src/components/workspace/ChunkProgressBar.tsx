@@ -35,7 +35,7 @@ export const ChunkProgressBar: React.FC<ChunkProgressBarProps> = ({ progress, on
             {progress.current} از {progress.total} حصے
           </span>
           {progress.throttled && (
-            <span className="flex items-center gap-1 text-[11px] text-amber-600">
+            <span className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
               <Timer className="h-3 w-3" />
               سرور کی حد کے سبب وقفہ
             </span>

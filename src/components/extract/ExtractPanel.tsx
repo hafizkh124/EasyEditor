@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isRtlText } from "@/utils/textUtils";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { TranslationMatrixTable, type TranslationRow } from "./TranslationMatrixTable";
+import { editorRoute } from "@/lib/routes";
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -161,7 +162,7 @@ export const ExtractPanel = () => {
       workspaceCtx.insertIntoCanvas(html);
       toast.success("Canvas میں داخل کر دیا گیا");
     } else {
-      navigate("/editor", { state: { content: html, source: "extract" } });
+      navigate(editorRoute(), { state: { content: html, source: "extract" } });
     }
   };
 
@@ -174,7 +175,7 @@ export const ExtractPanel = () => {
       workspaceCtx.insertIntoCanvas(html);
       toast.success("Canvas میں داخل کر دیا گیا");
     } else {
-      navigate("/editor", { state: { content: html, source: "extract" } });
+      navigate(editorRoute(), { state: { content: html, source: "extract" } });
     }
   };
 

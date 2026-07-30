@@ -27,6 +27,7 @@ import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 import { ACCEPTED_OCR, getDocumentType, getMaxFileSize, MAX_PDF_PAGES } from "@/lib/ocr/documentFormats";
 import { renderPdfPages, getPdfPageCount } from "@/lib/ocr/pdfRenderer";
 import { SaveToLibraryButton } from "@/components/workspace/SaveToLibraryButton";
+import { editorRoute } from "@/lib/routes";
 
 const OCR = () => {
   useSeo({ title: "Urdu & Arabic OCR — Islamic Text Digitization", description: "Extract Urdu, Arabic and English text from images and scanned Islamic books with high accuracy. Free Quran-friendly OCR.", path: "/ocr", noindex: true });
@@ -621,7 +622,7 @@ const OCR = () => {
                 <Copy className="h-4 w-4" />
                 {t("ocr.copy")}
               </Button>
-              <Button onClick={() => navigate("/editor", { state: { content: extractedText, source: "ocr" } })} variant="outline" className="flex-1 sm:flex-none">
+              <Button onClick={() => navigate(editorRoute(), { state: { content: extractedText, source: "ocr" } })} variant="outline" className="flex-1 sm:flex-none">
                 <FileText className="h-4 w-4" />
                 {t("editor.open_in_editor")}
               </Button>

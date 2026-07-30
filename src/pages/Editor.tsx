@@ -245,7 +245,7 @@ const Editor = () => {
           {documentId && (
             <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground ml-2">
               {saveStatus === "saving" && (
-                <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-600 bg-amber-500/5">
+                <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/5">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Saving...
                 </Badge>

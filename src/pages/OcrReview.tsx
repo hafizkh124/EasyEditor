@@ -20,6 +20,7 @@ import { useOcrReview } from "@/hooks/useOcrReview";
 import { useSeo } from "@/hooks/useSeo";
 import { isRtlText } from "@/utils/textUtils";
 import { cn } from "@/lib/utils";
+import { editorRoute } from "@/lib/routes";
 
 const OcrReview = () => {
   const { t } = useLanguage();
@@ -61,7 +62,7 @@ const OcrReview = () => {
   };
 
   const handleOpenInEditor = () => {
-    navigate("/editor", { state: { content: review.getFullText(), source: "ocr" } });
+    navigate(editorRoute(), { state: { content: review.getFullText(), source: "ocr" } });
   };
 
   const handleExport = () => {

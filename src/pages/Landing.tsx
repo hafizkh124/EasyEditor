@@ -370,7 +370,7 @@ const Landing = () => {
                           )}
                           <span className="text-foreground/90 flex-1">{f.label}</span>
                           {f.comingSoon && (
-                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-amber-400/60 text-amber-600 dark:text-amber-400">
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-amber-400/60 text-amber-700 dark:text-amber-400">
                               {t("pricing.coming_soon")}
                             </Badge>
                           )}

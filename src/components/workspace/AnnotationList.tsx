@@ -30,7 +30,7 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
   return (
     <div className="flex flex-col h-full bg-background p-3" dir="rtl">
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
-        <div className="flex items-center gap-1.5 font-semibold text-xs text-amber-600">
+        <div className="flex items-center gap-1.5 font-semibold text-xs text-amber-700 dark:text-amber-400">
           <StickyNote className="h-4 w-4" />
           <span>حاشیہ نوٹس ({annotations.length})</span>
         </div>
