@@ -1721,8 +1721,8 @@ export type Database = {
         Args: {
           filter_domains?: string[]
           filter_language?: string
-          match_count?: number
-          match_threshold?: number
+          match_count: number
+          match_threshold: number
           query_embedding: string
         }
         Returns: {
