@@ -1,5 +1,5 @@
 // AUTO-MIRRORED from shared/search/rankFusion.ts — edge deploy bundles only supabase/functions/.
-// Edit shared/search/rankFusion.ts and re-run: npm run mirror:shared (scripts/mirror-shared.mjs).
+// Edit shared/search/rankFusion.ts and re-run: node scripts/mirror-shared.mjs
 // Reciprocal Rank Fusion (RRF) for combining the citation engine's retrieval
 // channels (lexical over content_ar, semantic over pgvector).
 //

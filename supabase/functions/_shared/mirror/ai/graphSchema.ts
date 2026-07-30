@@ -1,5 +1,5 @@
 // AUTO-MIRRORED from shared/ai/graphSchema.ts — edge deploy bundles only supabase/functions/.
-// Edit shared/ai/graphSchema.ts and re-run: npm run mirror:shared (scripts/mirror-shared.mjs).
+// Edit shared/ai/graphSchema.ts and re-run: node scripts/mirror-shared.mjs
 export const GRAPH_EXTRACT_SYSTEM_PROMPT = `You are a scholarly Knowledge Graph extraction assistant.
 Given a text passage in Urdu, Arabic, or English, extract structured Entities and Relations.
 

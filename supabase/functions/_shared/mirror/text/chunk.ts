@@ -1,5 +1,5 @@
 // AUTO-MIRRORED from shared/text/chunk.ts — edge deploy bundles only supabase/functions/.
-// Edit shared/text/chunk.ts and re-run: npm run mirror:shared (scripts/mirror-shared.mjs).
+// Edit shared/text/chunk.ts and re-run: node scripts/mirror-shared.mjs
 // Sentence/claim segmentation, shared by the "Add citations" pipeline (Deno,
 // via supabase/functions/_shared/segmentClaims.ts's re-export) and any local
 // equivalent in Electron main (SPEC-M5 FR-1.5/FR-3.4).
