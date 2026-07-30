@@ -4,7 +4,7 @@ import { callChatCompletions } from "../_shared/aiGateway.ts";
 // SPEC-M5 FR-1.5/FR-3.4: the extraction prompt + JSON schema live in shared/
 // so the Electron main process's local knowledge-graph extraction uses the
 // exact same schema this Deno function does.
-import { GRAPH_EXTRACT_SYSTEM_PROMPT as SYSTEM_PROMPT } from "../../../shared/ai/graphSchema.ts";
+import { GRAPH_EXTRACT_SYSTEM_PROMPT as SYSTEM_PROMPT } from "../_shared/mirror/ai/graphSchema.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

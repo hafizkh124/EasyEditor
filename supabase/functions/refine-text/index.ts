@@ -8,7 +8,7 @@ import { buildRetrievalQuery, perSourceBudget } from "../_shared/retrievalQuery.
 // SPEC-M5 FR-1.5/FR-3.4: the action prompts live in shared/ so the Electron
 // main process's local refine-text equivalent uses the exact same wording
 // this Deno function does, rather than a hand-maintained second copy.
-import { REFINE_TEXT_ACTIONS as actionPrompts } from "../../../shared/ai/prompts/refineText.ts";
+import { REFINE_TEXT_ACTIONS as actionPrompts } from "../_shared/mirror/ai/prompts/refineText.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
