@@ -47,20 +47,27 @@
       "createStartMenuShortcut": true
     },
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "public/icon-512.png",
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
       "gatekeeperAssess": false
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "public/icon-512.png",
       "category": "Office"
     }
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
+    "@kutalia/whisper-node-addon": "^1.1.0",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
     "@lovable.dev/mcp-js": "^0.20.0",
     "@radix-ui/react-accordion": "^1.2.11",
@@ -112,6 +119,7 @@
     "framer-motion": "^12.35.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",
+    "msedge-tts": "^2.0.7",
     "next-themes": "^0.3.0",
     "pdfjs-dist": "^5.7.284",
     "react": "^18.3.1",

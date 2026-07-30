@@ -1,83 +1,72 @@
-import { spawn } from 'node:child_process';
 import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
-import type { TranscriptSegment } from '@/core/voice/types';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+import type { TranscriptSegment } from '../../src/core/voice/types.js';
 
-// TODO(Gate 4): replaced by @kutalia/whisper-node-addon — SPEC-M5 FR-6.2
-const WHISPER_BIN = 'whisper-cli';
+// @kutalia/whisper-node-addon (MIT, prebuilt for Electron — SPEC-M5 FR-6.2).
+// require() rather than import: the package's own CLI entry point
+// (dist/js/index.js) checks `require.main === module` at load time, which a
+// static ESM import can trip in some bundling configurations. require()
+// keeps loading conditional on this module actually being used.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const whisperAddon = require('@kutalia/whisper-node-addon') as {
+  transcribe(options: {
+    fname_inp: string;
+    model: string;
+    language?: string;
+    use_gpu?: boolean;
+    translate?: boolean;
+    no_timestamps?: boolean;
+    comma_in_time?: boolean;
+  }): Promise<{ transcription: string[][] }>;
+};
+
+/**
+ * Parses whisper.cpp's "HH:MM:SS.mmm" (or ",mmm") timestamp string into seconds.
+ */
+function parseTimestamp(ts: string): number {
+  const match = ts.match(/(\d+):(\d+):(\d+)[.,](\d+)/);
+  if (!match) return 0;
+  const [, h, m, s, ms] = match;
+  return Number(h) * 3600 + Number(m) * 60 + Number(s) + Number(ms) / 1000;
+}
 
 export class WhisperStt {
   async transcribe(audioPath: string, lang: string, modelPath: string = ''): Promise<TranscriptSegment[]> {
     if (!modelPath) {
-      throw new Error('WhisperStt: modelPath is required');
-    }
-    if (!fs.existsSync(audioPath)) {
-      throw new Error(`WhisperStt: audio file not found at ${audioPath}`);
+      throw new Error('کوئی Whisper ماڈل منتخب نہیں ہے — Settings کے ماڈل مینیجر سے ڈاؤن لوڈ کریں۔');
     }
     if (!fs.existsSync(modelPath)) {
-      throw new Error(`WhisperStt: model file not found at ${modelPath}`);
+      throw new Error(`Whisper ماڈل نہیں ملا: ${modelPath} — ماڈل مینیجر سے دوبارہ ڈاؤن لوڈ کریں۔`);
+    }
+    if (!fs.existsSync(audioPath)) {
+      throw new Error(`آڈیو فائل نہیں ملی: ${audioPath}`);
     }
 
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'whisper-'));
-    const outPrefix = path.join(tmpDir, 'out');
-
-    try {
-      await this.runWhisper(audioPath, lang, modelPath, outPrefix);
-      return this.parseOutput(outPrefix);
-    } finally {
-      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
-    }
-  }
-
-  private runWhisper(audioPath: string, lang: string, modelPath: string, outPrefix: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const args = [
-        '-m', modelPath,
-        '-f', audioPath,
-        '-l', lang,
-        '-oj',
-        '-of', outPrefix,
-      ];
-      const proc = spawn(WHISPER_BIN, args, { windowsHide: true, stdio: 'pipe' });
-
-      let stderr = '';
-      proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
-
-      proc.on('close', (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`whisper exited with code ${code}: ${stderr}`));
-      });
-      proc.on('error', reject);
+    // SPEC-M5 FR-6.10: 'auto' is whisper.cpp's own language-detection value —
+    // passed straight through rather than mapped to anything else.
+    const result = await whisperAddon.transcribe({
+      fname_inp: audioPath,
+      model: modelPath,
+      language: lang,
+      use_gpu: false, // conservative default: not every desktop has a Vulkan/Metal-capable GPU
+      // The addon's own default is `translate: true` (translate-to-English),
+      // which would silently discard the Urdu/Arabic transcript FR-6.10 asks
+      // for. Must be explicit here.
+      translate: false,
+      no_timestamps: false,
+      comma_in_time: false,
     });
-  }
 
-  private parseOutput(outPrefix: string): TranscriptSegment[] {
-    const jsonPath = outPrefix + '.json';
-    if (!fs.existsSync(jsonPath)) {
-      throw new Error(`WhisperStt: expected output at ${jsonPath}`);
-    }
-    const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
     const segments: TranscriptSegment[] = [];
-
-    if (Array.isArray(raw.segments)) {
-      for (const seg of raw.segments) {
-        segments.push({
-          start: typeof seg.start === 'number' ? seg.start : seg.start_time ?? 0,
-          end: typeof seg.end === 'number' ? seg.end : seg.end_time ?? 0,
-          text: seg.text.trim(),
-        });
-      }
-    } else if (Array.isArray(raw.transcription?.segments)) {
-      for (const seg of raw.transcription.segments) {
-        segments.push({
-          start: seg.start ?? 0,
-          end: seg.end ?? 0,
-          text: seg.text.trim(),
-        });
-      }
+    for (const row of result.transcription || []) {
+      const [startStr, endStr, text] = row;
+      if (typeof text !== 'string' || !text.trim()) continue;
+      segments.push({
+        start: parseTimestamp(startStr),
+        end: parseTimestamp(endStr),
+        text: text.trim(),
+      });
     }
-
     return segments;
   }
 }
