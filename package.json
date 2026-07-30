@@ -15,6 +15,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "smoke:functions": "node scripts/smoke-edge-functions.mjs",
+    "smoke:functions:json": "node scripts/smoke-edge-functions.mjs --json",
     "test:watch": "vitest",
     "release:patch": "npm version patch && npm run build",
     "release:minor": "npm version minor && npm run build",

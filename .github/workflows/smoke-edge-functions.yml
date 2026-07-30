@@ -1,0 +1,44 @@
+name: Edge Function Smoke Tests
+
+# Runs right after edge functions change (deploy happens automatically on the
+# Lovable side) and on demand, so a function that fails to boot or loses its
+# CORS headers is caught immediately instead of at the next user report.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+      - "scripts/smoke-edge-functions.mjs"
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Give the platform a moment to finish rolling out the new deploy
+      # before probing it, otherwise the first run races the rollout.
+      - name: Wait for deploy rollout
+        if: github.event_name == 'push'
+        run: sleep 60
+
+      - name: Run smoke tests
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          SMOKE_ACCESS_TOKEN: ${{ secrets.SMOKE_ACCESS_TOKEN }}
+        run: node scripts/smoke-edge-functions.mjs | tee smoke-report.txt
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-function-smoke-report
+          path: smoke-report.txt
