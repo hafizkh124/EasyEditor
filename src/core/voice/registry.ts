@@ -27,6 +27,35 @@ export function getPreferredEngine(lang: string): string {
   return getDefaultEngineId(lang);
 }
 
+/**
+ * The STT preference is stored separately from TTS, and is global rather than
+ * per-language. Two reasons:
+ *
+ * - The keys must not be shared: `getPreferredEngine('ur-PK')` answers 'piper',
+ *   which is meaningless for transcription, so reading it to choose an STT
+ *   engine would silently resolve to the wrong thing.
+ * - It is not per-language because one Whisper model covers all 99 languages,
+ *   unlike Piper which needs a separate voice per language. A per-language key
+ *   would also leave the Transcribe page's "auto" option with no stored answer.
+ *
+ * Cloud stays the default so nothing changes for existing users; local Whisper
+ * needs a multi-hundred-MB model, and Settings is where the user opts in and can
+ * see whether that model is present (FR-6.1).
+ */
+export const DEFAULT_STT_ENGINE = 'cloud';
+
+const STT_ENGINE_KEY = 'voice_preferred_stt_engine';
+
+export function setPreferredSttEngine(engineId: string): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(STT_ENGINE_KEY, engineId);
+}
+
+export function getPreferredSttEngine(): string {
+  if (typeof localStorage === 'undefined') return DEFAULT_STT_ENGINE;
+  return localStorage.getItem(STT_ENGINE_KEY) ?? DEFAULT_STT_ENGINE;
+}
+
 const ONLINE_CONSENT_KEY = 'voice_online_engine_consent';
 
 /**

@@ -145,9 +145,27 @@ export function registerVoiceHandlers(): void {
   ipcMain.handle(
     ALLOWED_IPC_CHANNELS.VOICE_TRANSCRIBE,
     async (_event, req: VoiceTranscribeRequest) => {
-      const { audioPath, lang, engineId } = req;
+      const { audioPath, audio, lang, engineId } = req;
       const modelId = engineId ?? 'whisper-small';
       const modelPath = getModelPath(modelId) ?? '';
+
+      if (audio) {
+        // The renderer holds decoded audio chunks in memory, not on disk, and
+        // whisper.cpp reads from a path — so the bytes land in a temp file that
+        // is removed again whether or not transcription succeeds.
+        const tmpDir = fs.mkdtempSync(path.join(app.getPath('temp'), 'easyeditor-stt-'));
+        const tmpPath = path.join(tmpDir, 'chunk.wav');
+        try {
+          fs.writeFileSync(tmpPath, Buffer.from(audio));
+          return await transcribeWithWhisper(tmpPath, lang, modelPath);
+        } finally {
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+      }
+
+      if (!audioPath) {
+        throw new Error('ٹرانسکرپشن کے لیے نہ آڈیو ڈیٹا دیا گیا، نہ فائل کا راستہ۔');
+      }
       return transcribeWithWhisper(audioPath, lang, modelPath);
     },
   );

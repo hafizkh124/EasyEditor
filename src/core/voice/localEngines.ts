@@ -57,15 +57,33 @@ export class LocalSttEngine implements SttEngine {
     this.name = name;
   }
 
-  async transcribe(audioPath: string, lang: string): Promise<TranscriptSegment[]> {
+  private assertAvailable(): void {
     if (!isDesktop()) {
       throw new Error('Local STT engine is only available in the desktop app.');
     }
     if (!window.electronAPI?.voice?.transcribe) {
       throw new Error('Voice IPC interface is not available.');
     }
-    return window.electronAPI.voice.transcribe({
+  }
+
+  async transcribe(audioPath: string, lang: string): Promise<TranscriptSegment[]> {
+    this.assertAvailable();
+    return window.electronAPI!.voice!.transcribe({
       audioPath,
+      lang,
+      engineId: this.id,
+    });
+  }
+
+  /**
+   * Transcribes audio the renderer holds in memory — the long-form orchestrator
+   * decodes and slices in the renderer, so its chunks never touch disk here.
+   * Segment times are relative to the start of this audio.
+   */
+  async transcribeBuffer(audio: ArrayBuffer, lang: string): Promise<TranscriptSegment[]> {
+    this.assertAvailable();
+    return window.electronAPI!.voice!.transcribe({
+      audio,
       lang,
       engineId: this.id,
     });

@@ -164,3 +164,30 @@ unnoticed:
 - The CLI-spawn pattern adds a dependency on the piper binary being bundled with the Electron
   app (see `electron-builder` `extraResources`). Whisper no longer needs this: its binaries
   arrive with the npm package.
+
+### 11. Local Transcription Is Routed Once, Not Per Chunk
+
+FR-6.2 names one seam — `transcribeLongForm.ts`'s `functions.invoke("transcribe")` — and the
+chunking, progress, and cancellation logic above it is left untouched.
+
+- **The route is decided before chunking**, by `resolveSttRoute()`: desktop, plus a `whisper`
+  preference, plus a Whisper model actually downloaded. A run therefore cannot change engines
+  half way through, and the local route is never chosen only to fail on chunk one.
+- **The STT preference is separate from TTS and global.** Sharing keys would be a bug —
+  `getPreferredEngine('ur-PK')` answers `'piper'`, meaningless for transcription. It is not
+  per-language because one Whisper model covers all 99 languages (unlike Piper's per-language
+  voices), and a per-language key would leave the page's "auto" option with no stored answer.
+  The default stays `cloud`, so nothing changes until the user opts in.
+- **Chunks are passed as bytes, not paths.** The renderer decodes and slices in memory while
+  whisper.cpp reads from a path, so `VOICE_TRANSCRIBE` accepts an `ArrayBuffer` and the main
+  process owns the temp file, removing it in a `finally`.
+- **Segment times are made absolute** by offsetting each chunk's timestamps by its
+  `startSeconds`. Without this every chunk's subtitles would restart from zero.
+- **FR-6.8**: the token gate is bypassed on the local route, since local transcription costs
+  nothing. An empty balance must not block it.
+
+For FR-6.3, the subtitle buttons are always rendered but disabled when no timestamps exist,
+with a title saying how to get them. Disabled rather than hidden keeps the capability
+discoverable, and means an empty subtitle file can never be written. Note that an empty
+segment array from a chunk means silence, not a missing-timestamp engine — subtitles stay
+available in that case and simply skip the silence.

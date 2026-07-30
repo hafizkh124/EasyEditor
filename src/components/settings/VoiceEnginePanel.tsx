@@ -5,6 +5,8 @@ import {
   setPreferredEngine,
   hasOnlineConsent,
   setOnlineConsent,
+  getPreferredSttEngine,
+  setPreferredSttEngine,
 } from '../../core/voice/registry';
 import { OnlineEngineConsentDialog } from '../voice/OnlineEngineConsentDialog';
 import { isDesktop } from '../../utils/environment';
@@ -17,6 +19,7 @@ import { VoiceModelInfo, ModelDownloadProgress } from '../../core/voice/types';
 export const VoiceEnginePanel: React.FC = () => {
   const [urEngine, setUrEngine] = useState<string>('piper');
   const [arEngine, setArEngine] = useState<string>('piper');
+  const [sttEngine, setSttEngine] = useState<string>('cloud');
   const [models, setModels] = useState<VoiceModelInfo[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
@@ -24,6 +27,7 @@ export const VoiceEnginePanel: React.FC = () => {
   useEffect(() => {
     setUrEngine(getPreferredEngine('ur-PK'));
     setArEngine(getPreferredEngine('ar'));
+    setSttEngine(getPreferredSttEngine());
 
     if (isDesktop() && window.electronAPI?.voice) {
       window.electronAPI.voice.getModels().then(setModels).catch(console.error);
@@ -141,6 +145,37 @@ export const VoiceEnginePanel: React.FC = () => {
             </Select>
           </div>
         </div>
+
+        {/* FR-6.2: transcription engine. Desktop-only — the web build has no
+            local Whisper, so offering the choice there would be a dead end. */}
+        {isDesktop() && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">ٹرانسکرپشن انجن (Transcription Engine)</label>
+            <Select
+              value={sttEngine}
+              onValueChange={(val) => {
+                setSttEngine(val);
+                setPreferredSttEngine(val);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="انجن منتخب کریں" />
+              </SelectTrigger>
+              <SelectContent>
+                {available.stt.map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {id === 'whisper' ? 'Whisper (آف لائن / مفت)' : id === 'cloud' ? 'کلاؤڈ (ٹوکن خرچ ہوں گے)' : id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {sttEngine === 'whisper' && !models.some((m) => m.engine === 'whisper' && m.downloaded) && (
+              <p className="text-xs text-destructive">
+                کوئی Whisper ماڈل ڈاؤن لوڈ نہیں — نیچے ماڈل مینیجر سے ڈاؤن لوڈ کریں، ورنہ ٹرانسکرپشن کلاؤڈ سے ہوگی۔
+              </p>
+            )}
+          </div>
+        )}
 
         {isDesktop() && (
           <div className="space-y-4 pt-4 border-t">
