@@ -12,5 +12,5 @@ export {
   CITATIONS_CONSTRAINED_PROMPT,
   COMBINED_SYSTEM_PROMPT,
   pickPromptKey,
-} from "../../../shared/ai/prompts/research.ts";
-export type { ResearchAssistMode } from "../../../shared/ai/prompts/research.ts";
+} from "./mirror/ai/prompts/research.ts";
+export type { ResearchAssistMode } from "./mirror/ai/prompts/research.ts";

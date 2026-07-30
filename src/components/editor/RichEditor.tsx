@@ -145,8 +145,11 @@ const RichEditor = ({
   const { isFullscreen, toggleFullscreen } = useFullscreen();
 
   const notifyChange = useCallback(() => {
-    if (editor) onChange?.(editor.getHTML(), editor.getText());
+    // Async callers (track-changes, AI actions) can land after unmount, when the
+    // editor's state is already torn down — reading it then throws.
+    if (editor && !editor.isDestroyed) onChange?.(editor.getHTML(), editor.getText());
   }, [editor, onChange]);
+
 
   const {
     trackMode, aiReview, pendingCount, setPendingCount, refreshPendingCount,
