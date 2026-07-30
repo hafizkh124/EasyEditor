@@ -85,8 +85,9 @@ export async function installSidecarEnv(): Promise<{ success: boolean; message: 
     }
 
     // Step 2: install dependencies
+    // No edge-tts here: FR-6.6's online engine runs on the `msedge-tts` Node
+    // package, so it stays available whether or not this sidecar is installed.
     const requirements = [
-      'edge-tts>=6.1.0',
       'torch>=2.0.0',
       'transformers>=4.30.0',
       'accelerate>=0.20.0',

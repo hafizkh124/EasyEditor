@@ -25,6 +25,27 @@ export default defineConfig(({ mode }) => {
     resolved[k] = env[k] || FALLBACKS[k];
   }
 
+  // vite-plugin-electron runs its own Vite build for the main/preload entries and
+  // does not inherit the renderer config below, so the path aliases have to be
+  // repeated here — without them `@/...` imports reached from electron/ fail to
+  // resolve and the desktop build dies.
+  const electronViteConfig = {
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+        "~shared": path.resolve(__dirname, "./shared"),
+      },
+    },
+    build: {
+      rollupOptions: {
+        // Native and native-adjacent packages must stay out of the bundle:
+        // better-sqlite3 and the whisper addon load .node binaries by path at
+        // runtime, and msedge-tts pulls in ws's optional native extras.
+        external: ["better-sqlite3", "@kutalia/whisper-node-addon", "msedge-tts"],
+      },
+    },
+  };
+
   return {
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(resolved.VITE_SUPABASE_URL),
@@ -44,9 +65,11 @@ export default defineConfig(({ mode }) => {
       isDesktop && electron([
         {
           entry: "electron/main.ts",
+          vite: electronViteConfig,
         },
         {
           entry: "electron/preload.ts",
+          vite: electronViteConfig,
           onstart(options) {
             options.reload();
           },

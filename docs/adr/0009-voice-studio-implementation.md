@@ -1,6 +1,6 @@
 # ADR 0009 — Voice Studio Implementation Patterns
 
-**Status:** Accepted · **Date:** 2026-07-29 · **Milestone:** M5.5 & M5.6 & M5.7
+**Status:** Accepted · **Date:** 2026-07-29 (revised 2026-07-30) · **Milestone:** M5.5 & M5.6 & M5.7
 
 ## Context
 
@@ -29,10 +29,24 @@ binary via `child_process.execFile` and capture stdout as a raw PCM stream.
 - Trade-off: slightly higher per-call latency (~50 ms for process spawn) which is negligible
   for multi-second synthesis.
 
-### 2. whisper.cpp CLI Spawn
+### 2. whisper.cpp via a Prebuilt Node Addon
 
-`whisper-cli` is spawned with `--output-json` flag. The JSON output is parsed and mapped to
-`TranscriptSegment[]`. This avoids the native binding approach proposed in ADR-0008.
+**Superseded the original `whisper-cli` spawn.** Spawning the CLI required the binary to be
+sourced and bundled per platform, which the core installer cannot do (NFR-14). We instead call
+`@kutalia/whisper-node-addon` (MIT), which ships prebuilt whisper.cpp binaries per
+platform/arch and returns `[start, end, text]` rows that map directly to `TranscriptSegment[]`.
+
+Two constraints this package imposes on the calling code:
+
+- Its default is `translate: true` (translate-to-English), which would silently discard the
+  Urdu/Arabic transcript FR-6.10 asks for. `translate: false` must be passed explicitly.
+- It `dlopen()`s its native binary during module evaluation, so a top-level import throws
+  before any of our own validation runs — on a machine whose prebuilt binary won't load, that
+  takes the whole voice IPC module down with it. `whisper.ts` therefore imports it lazily on
+  first use and reports a load failure as a transcription error.
+
+Because the addon resolves its `.node` file relative to its own `__dirname`, it must stay
+external to the Vite main-process bundle (see `vite.config.ts`).
 
 ### 3. MediaRecorder API for Voice Cloning
 
@@ -63,16 +77,33 @@ local engine.
 ### 6. Python Sidecar Isolation
 
 `pythonSidecar.ts` creates a Python virtualenv inside `userData/python-sidecar/` via
-`python -m venv`. Dependencies (edge-tts, torch, transformers, accelerate) are installed
-with `pip install`. The sidecar is fully optional — if absent, the voice registry silently
+`python -m venv`. Dependencies (torch, transformers, accelerate) are installed with
+`pip install`. The sidecar is fully optional — if absent, the voice registry silently
 falls back to Piper/Whisper.
+
+It deliberately does **not** install Python's `edge-tts`: the online engine now runs on the
+`msedge-tts` Node package (see decision 8), so FR-6.6 works with or without the sidecar.
 
 ### 7. Local Engine Routing in Speak.tsx
 
 `Speak.tsx` checks `engine` and `platform`:
 - Cloud → delegates to `CloudTtsEngine` or `CloudSttEngine`.
-- Local + Desktop → spawns Piper or Whisper CLI.
+- Local + Desktop → spawns the Piper CLI, or calls the Whisper addon.
 - Local + Web → not available; user is prompted to switch to cloud or desktop app.
+
+### 8. Online Engine via the msedge-tts Node Package
+
+**Superseded the original `edge-tts` Python CLI spawn**, which made FR-6.6's online engine
+depend on the optional Python sidecar — contradicting NFR-13 ("voice complete without Python").
+`electron/voice/edgeTts.ts` now uses `msedge-tts` (MIT), a pure-Node client for the same
+Microsoft Read Aloud endpoint, and keeps the WebSocket work behind the same consent gate.
+
+- Output stays `AUDIO_24KHZ_48KBITRATE_MONO_MP3`, matching what `edge-tts --write-media -`
+  produced, so renderer playback and audiobook export are unaffected.
+- A truncated or failed stream surfaces as a rejected promise, and a zero-byte result is
+  turned into an explicit error — FR-6.6 forbids silently empty audio.
+- The package is external to the main-process bundle so that `ws`'s optional native extras
+  are not pulled into it.
 
 ## Consequences
 
@@ -81,6 +112,8 @@ falls back to Piper/Whisper.
   (models are auto-downloaded on first use).
 - Voice cloning requires microphone permission; users on Linux may need PulseAudio/WirePlumber.
 - No streaming TTS for cloud engine; long Arabic/Urdu passages should use the local Piper engine.
-- Python sidecar is an advanced add-on; the UI gracefully handles its absence.
-- The CLI-spawn pattern adds a dependency on the piper and whisper-cli binaries being
-  bundled with the Electron app (see `electron-builder` `extraResources`).
+- Python sidecar is an advanced add-on; the UI gracefully handles its absence — and no voice
+  feature, online or offline, depends on it any more.
+- The CLI-spawn pattern adds a dependency on the piper binary being bundled with the Electron
+  app (see `electron-builder` `extraResources`). Whisper no longer needs this: its binaries
+  arrive with the npm package.

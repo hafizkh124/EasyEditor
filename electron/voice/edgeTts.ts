@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 
 export class EdgeTts {
   private consentGiven: boolean;
@@ -12,31 +12,38 @@ export class EdgeTts {
       throw new Error('User consent is required before using cloud Edge TTS services.');
     }
 
-    const voice = this.resolveVoice(lang);
-    return new Promise((resolve, reject) => {
-      const proc = spawn('edge-tts', [
-        '--text', text,
-        '--voice', voice,
-        '--write-media', '-',
-      ], { windowsHide: true });
+    if (!text.trim()) {
+      throw new Error('Edge TTS کو خالی متن نہیں دیا جا سکتا۔');
+    }
 
+    const tts = new MsEdgeTTS();
+    try {
+      await tts.setMetadata(
+        this.resolveVoice(lang),
+        // MP3 rather than the Opus/WebM option: the previous `edge-tts
+        // --write-media -` path also emitted MP3, so renderer playback and
+        // audiobook export keep working unchanged.
+        OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3,
+      );
+
+      const { audioStream } = tts.toStream(text);
       const chunks: Buffer[] = [];
-      const errorChunks: Buffer[] = [];
-
-      proc.stdout.on('data', (d: Buffer) => chunks.push(d));
-      proc.stderr.on('data', (d: Buffer) => errorChunks.push(d));
-
-      proc.on('close', (code) => {
-        if (code === 0) {
-          resolve(Buffer.concat(chunks));
-        } else {
-          const stderr = Buffer.concat(errorChunks).toString();
-          reject(new Error(`Edge TTS exited with code ${code}: ${stderr}`));
-        }
+      await new Promise<void>((resolve, reject) => {
+        audioStream.on('data', (chunk: Buffer) => chunks.push(chunk));
+        audioStream.on('end', resolve);
+        audioStream.on('error', reject);
       });
 
-      proc.on('error', reject);
-    });
+      const audio = Buffer.concat(chunks);
+      // SPEC-M5 FR-6.6: a failed online synthesis must surface as an error the
+      // caller can fall back to Piper on — never as silently empty audio.
+      if (audio.length === 0) {
+        throw new Error('Edge TTS سے کوئی آڈیو نہیں ملا — مقامی Piper انجن آزمائیں۔');
+      }
+      return audio;
+    } finally {
+      tts.close();
+    }
   }
 
   private resolveVoice(lang: string): string {

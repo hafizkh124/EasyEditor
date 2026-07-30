@@ -711,7 +711,7 @@ npm run typecheck && npm run test && npm run lint && npm run build && npm run bu
 | **Whisper large-v3** ([addon](https://github.com/Kutalia/whisper-node-addon)) | MIT | ✅ | ✅ | timestamps بلٹ اِن — سب ٹائٹل کی بنیاد |
 | **Piper `ur_PK-male-medium`** | [MIT](https://huggingface.co/IhorShevchuk/piper-voice-ur-fasih) | ✅ | — | ONNX/CPU، medium، کمیونٹی ماڈل |
 | **Piper `ar_JO-kareem`** | MIT | — | ✅ | [سرکاری piper-voices](https://huggingface.co/rhasspy/piper-voices) |
-| **`edge-tts`** ([msedge-tts](https://www.npmjs.com/package/msedge-tts)) | GPL-3.0 | ✅ | ✅ | **آن لائن** — FR-6.6 کے رضامندی گیٹ کے پیچھے |
+| **`edge-tts`** ([msedge-tts](https://www.npmjs.com/package/msedge-tts)) | MIT | ✅ | ✅ | **آن لائن** — FR-6.6 کے رضامندی گیٹ کے پیچھے |
 
 ### M5.6 میں — اختیاری Python add-on
 

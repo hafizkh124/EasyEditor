@@ -1,14 +1,8 @@
 import fs from 'node:fs';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 import type { TranscriptSegment } from '../../src/core/voice/types.js';
 
 // @kutalia/whisper-node-addon (MIT, prebuilt for Electron — SPEC-M5 FR-6.2).
-// require() rather than import: the package's own CLI entry point
-// (dist/js/index.js) checks `require.main === module` at load time, which a
-// static ESM import can trip in some bundling configurations. require()
-// keeps loading conditional on this module actually being used.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const whisperAddon = require('@kutalia/whisper-node-addon') as {
+type WhisperAddon = {
   transcribe(options: {
     fname_inp: string;
     model: string;
@@ -19,6 +13,23 @@ const whisperAddon = require('@kutalia/whisper-node-addon') as {
     comma_in_time?: boolean;
   }): Promise<{ transcription: string[][] }>;
 };
+
+// The addon resolves and dlopen()s its native binary at module-evaluation time,
+// so a top-level import would throw before any of our own validation runs —
+// taking the whole voice IPC module down with it on a machine whose prebuilt
+// binary won't load. Import on first use instead, and report the failure as a
+// transcription error the UI can show.
+async function loadWhisperAddon(): Promise<WhisperAddon> {
+  try {
+    const mod = await import('@kutalia/whisper-node-addon');
+    return ((mod as unknown as { default?: WhisperAddon }).default ?? mod) as WhisperAddon;
+  } catch (err) {
+    throw new Error(
+      `Whisper انجن اس مشین پر لوڈ نہیں ہو سکا (${err instanceof Error ? err.message : String(err)}) — ` +
+        'آن لائن ٹرانسکرپشن استعمال کریں۔',
+    );
+  }
+}
 
 /**
  * Parses whisper.cpp's "HH:MM:SS.mmm" (or ",mmm") timestamp string into seconds.
@@ -41,6 +52,8 @@ export class WhisperStt {
     if (!fs.existsSync(audioPath)) {
       throw new Error(`آڈیو فائل نہیں ملی: ${audioPath}`);
     }
+
+    const whisperAddon = await loadWhisperAddon();
 
     // SPEC-M5 FR-6.10: 'auto' is whisper.cpp's own language-detection value —
     // passed straight through rather than mapped to anything else.

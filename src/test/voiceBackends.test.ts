@@ -1,4 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { MODEL_CATALOG } from '../../electron/voice/modelManager';
 
 vi.mock('electron', () => ({
@@ -113,12 +116,28 @@ describe('WhisperStt', () => {
   it('throws when modelPath is empty', async () => {
     const { WhisperStt } = await import('../../electron/voice/whisper');
     const instance = new WhisperStt();
-    await expect(instance.transcribe('/audio.wav', 'ur', '')).rejects.toThrow('modelPath is required');
+    await expect(instance.transcribe('/audio.wav', 'ur', '')).rejects.toThrow('کوئی Whisper ماڈل منتخب نہیں ہے');
+  });
+
+  it('throws when the model file is missing', async () => {
+    const { WhisperStt } = await import('../../electron/voice/whisper');
+    const instance = new WhisperStt();
+    await expect(
+      instance.transcribe('/nonexistent/audio.wav', 'ur', '/nonexistent/model.bin'),
+    ).rejects.toThrow('Whisper ماڈل نہیں ملا');
   });
 
   it('throws when audio file does not exist', async () => {
     const { WhisperStt } = await import('../../electron/voice/whisper');
-    const instance = new WhisperStt();
-    await expect(instance.transcribe('/nonexistent/audio.wav', 'ur', '/nonexistent/model.bin')).rejects.toThrow('audio file not found');
+    const modelPath = path.join(os.tmpdir(), 'easyeditor-test-whisper-model.bin');
+    fs.writeFileSync(modelPath, '');
+    try {
+      const instance = new WhisperStt();
+      await expect(
+        instance.transcribe('/nonexistent/audio.wav', 'ur', modelPath),
+      ).rejects.toThrow('آڈیو فائل نہیں ملی');
+    } finally {
+      fs.rmSync(modelPath, { force: true });
+    }
   });
 });
