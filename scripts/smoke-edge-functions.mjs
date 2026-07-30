@@ -59,8 +59,14 @@ if (!SUPABASE_URL || !ANON_KEY) {
 // 400/422 = deployed, booted, and correctly validating input.
 const DEFAULT_OK = [200, 400, 401, 403, 422];
 
+// Functions deployed with `verify_jwt = true` are rejected by the platform
+// gateway *before* the function runs — even OPTIONS. For those, a 401 at the
+// gateway is the correct, healthy answer, so CORS is not asserted.
+const GATEWAY_JWT = new Set(["process-email-queue", "verify-receipt", "verify-renewal-receipt"]);
+
 const PROBES = {
-  "islamic-health":   { method: "GET",  ok: [200] },
+  // Requires a real user JWT; with only the anon key a 401 is the healthy answer.
+  "islamic-health":   { method: "GET",  ok: [200, 401] },
   "mcp":              { method: "POST", body: { jsonrpc: "2.0", id: 1, method: "initialize", params: {} }, ok: [200, 400, 401] },
   // Cron/admin functions: never invoke their work path, just prove they boot.
   "reset-monthly-quotas":     { method: "POST", body: {}, ok: [200, 401, 403] },
@@ -100,6 +106,9 @@ async function smokeOne(name) {
 
   // 1. CORS preflight — the browser can't call the function without this.
   let cors = { pass: false, detail: "" };
+  if (GATEWAY_JWT.has(name)) {
+    cors = { pass: true, detail: "n/a (gateway jwt)" };
+  } else
   try {
     const res = await request(url, {
       method: "OPTIONS",
