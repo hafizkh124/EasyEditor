@@ -60,7 +60,14 @@ export interface VoiceSynthesizeResult {
 }
 
 export interface VoiceTranscribeRequest {
-  audioPath: string;
+  /**
+   * Path to an audio file already on disk. Optional because the renderer
+   * usually holds a decoded chunk in memory rather than a file — pass `audio`
+   * in that case and the main process handles the temp file itself.
+   */
+  audioPath?: string;
+  /** WAV bytes to transcribe. Takes precedence over `audioPath`. */
+  audio?: ArrayBuffer;
   lang: string;
   engineId?: string;
 }
