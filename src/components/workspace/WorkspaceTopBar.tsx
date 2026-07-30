@@ -17,6 +17,7 @@ import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { VersionHistorySheet } from "./VersionHistorySheet";
 import { exportTxt, exportHtml, exportDoc, exportPdf, stripSuggestions } from "@/lib/editor/exporters";
 import AppVersionBadge from "@/components/AppVersionBadge";
+import { WorkspaceAppMenu } from "./WorkspaceAppMenu";
 import type { Document, DocumentVersion } from "@/core/workspace/types";
 
 interface WorkspaceTopBarProps {
@@ -79,6 +80,9 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
     <header className="flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-3 md:px-4 z-20 shrink-0">
       {/* Left: Breadcrumbs & Title */}
       <div className="flex items-center gap-2 min-w-0 flex-1 max-w-xl">
+        {/* The workspace has no sidebar (FR-1.4), so this is the only route
+            back to the dashboard, the tools and the profile. */}
+        <WorkspaceAppMenu />
         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 md:hidden" onClick={() => navigate(-1)} aria-label="Go back">
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -112,7 +116,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
       {/* Center: Save status badges */}
       <div className="hidden md:flex items-center gap-2">
         {saveStatus === "saving" && (
-          <Badge variant="outline" className="gap-1 text-xs border-amber-500/40 text-amber-600 bg-amber-500/5">
+          <Badge variant="outline" className="gap-1 text-xs border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/5">
             <Loader2 className="h-3 w-3 animate-spin" />
             <span>Saving...</span>
           </Badge>

@@ -250,7 +250,7 @@ const UserTable = ({
                               </>
                             )}
                             {lifecycle.status === "expiring_soon" && (
-                              <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-400">
+                              <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-400 border-amber-400">
                                 {(t("admin.expiring_in") || "Expires in {n}d").replace("{n}", String(lifecycle.daysRemaining ?? 0))}
                               </Badge>
                             )}

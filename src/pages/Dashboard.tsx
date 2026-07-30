@@ -98,7 +98,7 @@ const Dashboard = () => {
                 {lifecycle.status === "expired" || lifecycle.status === "expiring_soon" ? (
                   <AlertTriangle
                     className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
-                      lifecycle.status === "expired" ? "text-destructive" : "text-amber-600"
+                      lifecycle.status === "expired" ? "text-destructive" : "text-amber-700 dark:text-amber-400"
                     }`}
                   />
                 ) : (
