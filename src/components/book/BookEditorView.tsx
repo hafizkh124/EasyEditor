@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Save, Sparkles, Quote, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAiText } from "@/core/ai/aiAdapter";
 
 interface BookEditorViewProps {
   sectionId?: string;
@@ -56,20 +56,19 @@ export function BookEditorView({
     if (!content.trim()) return;
     setAiLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("refine-text", {
-        body: { text: content, action },
+      const refinedText = await invokeAiText({
+        prompt: `Action: ${action}\n\n${content}`,
       });
-      if (error) throw error;
-      // Function returns { text: string }
-      if (data?.text) {
-        setContent(data.text);
+      if (refinedText) {
+        setContent(refinedText);
         toast.success(`AI اصلاح (${action}) مکمل ہو گئی۔`);
       } else {
         toast.info("اصلاح شدہ متن برآمد نہیں ہوا۔");
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error("AI اصلاح میں خرابی پیش آئی۔");
+      const msg = err instanceof Error ? err.message : "AI اصلاح میں خرابی پیش آئی۔";
+      toast.error(msg);
     } finally {
       setAiLoading(false);
     }

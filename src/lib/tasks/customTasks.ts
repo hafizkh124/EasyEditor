@@ -1,5 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
-import { getTaskBySlug } from "./registry";
+import { backendFacade } from "@/core/backend";
+import type { CustomTaskBackend } from "@/core/backend";
 import type { TaskDefinition } from "./types";
 
 /**
@@ -58,98 +58,7 @@ export function rowToDefinition(row: CustomTaskRow): CustomTaskDefinition {
 }
 
 /**
- * `ai_tasks` was added after `src/integrations/supabase/types.ts` was generated,
- * so the typed client does not know it. The cast is confined to this one helper
- * rather than sprinkled through every call; `CustomTaskRow` above is the
- * hand-written contract, and it must match the migration.
+ * Facade over the backend adapter (M5.0).
+ * Implementation: src/core/backend/cloud/misc.ts
  */
-const aiTasks = () => (supabase.from as unknown as (t: string) => ReturnType<typeof supabase.from>)("ai_tasks");
-
-/** Slugify a user-supplied label into a stable, unique-per-user key. */
-function toSlug(label: string, fallback: string): string {
-  const base = label
-    .trim()
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-+|-+$/g, "");
-  return (base || fallback).slice(0, 48);
-}
-
-export const customTaskService = {
-  async list(): Promise<CustomTaskRow[]> {
-    const { data, error } = await aiTasks()
-      .select("*")
-      .is("archived_at", null)
-      .order("created_at", { ascending: true });
-
-    if (error) {
-      console.warn("[customTaskService] list error:", error);
-      return [];
-    }
-    return (data as CustomTaskRow[]) ?? [];
-  },
-
-  /**
-   * Create a custom task by copying a built-in's behaviour flags and letting the
-   * user supply the label and prompt. Copying the flags (rather than asking) is
-   * what keeps a custom "citations" variant chunkable and source-producing.
-   */
-  async createFromBuiltin(
-    baseSlug: string,
-    label: string,
-    systemPrompt: string,
-  ): Promise<CustomTaskRow | null> {
-    const base = getTaskBySlug(baseSlug);
-    if (!base) throw new Error(`بنیادی ٹاسک '${baseSlug}' موجود نہیں۔`);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("لاگ اِن ضروری ہے۔");
-
-    const { data, error } = await aiTasks()
-      .insert({
-        user_id: user.id,
-        slug: toSlug(label, `${baseSlug}-copy-${Date.now().toString(36)}`),
-        label: label.trim(),
-        system_prompt: systemPrompt.trim(),
-        base_task_slug: baseSlug,
-        scope: base.scope,
-        apply_mode: base.applyMode,
-        output_format: base.outputFormat ?? "text",
-        chunkable: base.chunkable,
-        produces_sources: base.producesSources,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("[customTaskService] create error:", error);
-      throw new Error(
-        error.code === "23505"
-          ? "اس نام کا ٹاسک پہلے سے موجود ہے — کوئی اور نام رکھیں۔"
-          : "ٹاسک محفوظ نہ ہو سکا۔",
-      );
-    }
-    return data as CustomTaskRow;
-  },
-
-  async update(id: string, patch: { label?: string; system_prompt?: string }): Promise<boolean> {
-    const { error } = await aiTasks().update(patch).eq("id", id);
-    if (error) {
-      console.error("[customTaskService] update error:", error);
-      return false;
-    }
-    return true;
-  },
-
-  /** Archive rather than delete, so old `task_runs` keep a resolvable name. */
-  async archive(id: string): Promise<boolean> {
-    const { error } = await aiTasks()
-      .update({ archived_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) {
-      console.error("[customTaskService] archive error:", error);
-      return false;
-    }
-    return true;
-  },
-};
+export const customTaskService: CustomTaskBackend = backendFacade("customTasks");
