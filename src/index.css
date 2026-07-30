@@ -23,7 +23,14 @@ All colors MUST be HSL.
     --card: 0 0% 98%;
     --card-foreground: 0 0% 9%;
 
-    --popover: 0 0% 89%;
+    /* Was 89% — darker than --background (96%), which inverted the elevation
+       ladder this palette follows everywhere else. Dark mode raises each
+       layer (background 9% -> card 14% -> popover 25%); light mode dropped the
+       popover below the page instead. That also made it the one surface where
+       `text-primary` could not reach WCAG AA (4.12:1 at best). Continuing the
+       ladder to 100% fixes both: 5.29:1 for text-primary, and popovers now
+       read as raised rather than sunken. --border still separates them. */
+    --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
 
     /* L was 30%, which put white-ish text on the brand green at 3.61:1 and
