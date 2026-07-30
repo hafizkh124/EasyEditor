@@ -113,10 +113,47 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 250, // NFR-9: Main bundle < 250 KB gzip (though vite uses uncompressed size for warning, we'll set it low to enforce budget)
       rollupOptions: {
         output: {
+          // Only genuinely shared dependencies get a named chunk. Everything
+          // else returns undefined so Rollup can leave it in whichever route
+          // chunk imports it — that is what keeps a one-page dependency off
+          // the other pages. A blanket `return "vendor"` for node_modules
+          // defeats this: it collapses every library into a single chunk the
+          // entry must load up front, so /ocr's pdfjs (136 kB gzip on its
+          // own) was being shipped to every visitor of the landing page.
           manualChunks(id) {
-            if (id.includes('node_modules')) {
-              return 'vendor';
+            if (!id.includes("node_modules")) return;
+
+            const after = id.split("node_modules/").pop() ?? "";
+            const segments = after.split("/");
+            const pkg = after.startsWith("@")
+              ? `${segments[0]}/${segments[1]}`
+              : segments[0];
+
+            // Needed to render any route at all, so one long-lived cached
+            // chunk beats duplicating them into every route chunk.
+            if (/^(react|react-dom|scheduler)$/.test(pkg)) return "react-core";
+            if (pkg === "react-router" || pkg === "react-router-dom" || pkg === "@remix-run/router") {
+              return "react-core";
             }
+
+            // Auth runs before the first paint on every route.
+            if (pkg.startsWith("@supabase/")) return "supabase";
+
+            // ~90 kB gzip of editor engine that only the workspace/editor
+            // routes touch. Shared between them, absent everywhere else.
+            if (
+              pkg.startsWith("@tiptap/") ||
+              pkg.startsWith("prosemirror-") ||
+              pkg === "tiptap-track-changes" ||
+              pkg === "linkifyjs" ||
+              pkg === "orderedmap" ||
+              pkg === "rope-sequence" ||
+              pkg === "w3c-keyname"
+            ) {
+              return "editor";
+            }
+
+            return undefined;
           }
         }
       }
