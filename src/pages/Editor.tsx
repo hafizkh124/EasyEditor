@@ -36,11 +36,15 @@ const Editor = () => {
   const { documentId } = useParams<{ documentId?: string }>();
   const state = (location.state as EditorLocationState) ?? {};
 
+  // When the workspace shell is on, this page is only a redirect stub — the
+  // handoff state travels with it and is consumed by /workspace.
+  const redirectsToWorkspace = import.meta.env.VITE_WORKSPACE_SHELL !== "false";
+
   useEffect(() => {
-    if (import.meta.env.VITE_WORKSPACE_SHELL !== "false") {
+    if (redirectsToWorkspace) {
       navigate(documentId ? `/workspace/${documentId}` : "/workspace", { replace: true, state });
     }
-  }, [documentId, navigate, state]);
+  }, [documentId, navigate, state, redirectsToWorkspace]);
 
   useSeo({ title: "Editor — Easy Editor", description: "Rich text editor for editing transcriptions, OCR results, and research output.", path: "/editor", noindex: true });
 
@@ -101,7 +105,8 @@ const Editor = () => {
   // in router state, where a refresh would drop it.
   const autoResolveStarted = useRef(false);
   useEffect(() => {
-    if (documentId || autoResolveStarted.current) return;
+    // Don't race the workspace redirect: /workspace does its own resolve.
+    if (redirectsToWorkspace || documentId || autoResolveStarted.current) return;
     autoResolveStarted.current = true;
 
     const resolveDocument = async () => {
@@ -131,7 +136,7 @@ const Editor = () => {
     };
 
     resolveDocument();
-  }, [documentId, state.content, navigate, title, t]);
+  }, [documentId, state.content, navigate, title, t, redirectsToWorkspace]);
 
   const handleRestoreVersion = (contentJson: Record<string, unknown>) => {
     // Both halves matter: `syncDocContent` queues the save, and bumping the
