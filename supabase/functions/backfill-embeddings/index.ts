@@ -12,7 +12,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { EMBED_MODEL, EMBED_DIMS } from "../../../shared/ai/embedConstants.ts";
+import { EMBED_MODEL, EMBED_DIMS } from "../_shared/mirror/ai/embedConstants.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

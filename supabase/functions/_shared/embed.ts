@@ -18,8 +18,8 @@
 // The constants themselves now live in shared/ (M5), so the Electron main
 // process embeds into the very same vector space as this Deno function.
 // Re-exported here so existing importers keep working unchanged.
-export { EMBED_MODEL, EMBED_DIMS } from "../../../shared/ai/embedConstants.ts";
-import { EMBED_MODEL, EMBED_DIMS } from "../../../shared/ai/embedConstants.ts";
+export { EMBED_MODEL, EMBED_DIMS } from "./mirror/ai/embedConstants.ts";
+import { EMBED_MODEL, EMBED_DIMS } from "./mirror/ai/embedConstants.ts";
 
 /**
  * Embed a single query string via Google's native embedContent endpoint.

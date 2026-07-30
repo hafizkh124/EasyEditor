@@ -3,5 +3,5 @@
 // same code this Deno function uses — see shared/search/rankFusion.ts for
 // the algorithm and its rationale. Re-exported here so existing importers
 // (citationEngine.ts, __tests__/rankFusion.test.ts) keep working unchanged.
-export { RRF_K, reciprocalRankFusion, buildMatchKey } from "../../../shared/search/rankFusion.ts";
-export type { FusableDoc, FusedDoc } from "../../../shared/search/rankFusion.ts";
+export { RRF_K, reciprocalRankFusion, buildMatchKey } from "./mirror/search/rankFusion.ts";
+export type { FusableDoc, FusedDoc } from "./mirror/search/rankFusion.ts";
