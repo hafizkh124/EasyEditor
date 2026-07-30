@@ -169,7 +169,22 @@ export default defineConfig(({ mode }) => {
           // entry must load up front, so /ocr's pdfjs (136 kB gzip on its
           // own) was being shipped to every visitor of the landing page.
           manualChunks(id) {
+            // Rollup's CommonJS interop helpers are virtual modules that live
+            // outside node_modules. Left unassigned they get parked in
+            // whichever chunk happens to need them first (the editor chunk),
+            // and react-core — which also needs them — then imports from it.
+            // That cycle makes React's namespace undefined while the editor
+            // chunk is still initialising ("Cannot read properties of
+            // undefined (reading 'useState')"). Pin them next to React.
+            if (id.includes("commonjsHelpers") || id.includes("commonjs-dynamic-modules") || id.startsWith("\0")) {
+              return "react-core";
+            }
             if (!id.includes("node_modules")) return;
+
+            // CJS packages React itself pulls in must share React's chunk,
+            // otherwise the same cycle reappears through their interop.
+            if (/node_modules\/use-sync-external-store/.test(id)) return "react-core";
+
 
             const after = id.split("node_modules/").pop() ?? "";
             const segments = after.split("/");
