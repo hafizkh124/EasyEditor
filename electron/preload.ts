@@ -6,6 +6,9 @@ import type {
   VoiceTranscribeRequest,
   VoiceModelInfo,
   TranscriptSegment,
+  AudiobookExportRequest,
+  AudiobookExportProgress,
+  AudiobookExportResult,
 } from '../src/core/voice/types.js';
 
 /**
@@ -94,6 +97,17 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.VOICE_SIDECAR_INSTALL),
     saveCloneSample: (buffer: ArrayBuffer, filename: string): Promise<string> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.VOICE_SAVE_CLONE_SAMPLE, buffer, filename),
+    exportAudiobook: (request: AudiobookExportRequest): Promise<AudiobookExportResult> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.VOICE_EXPORT_AUDIOBOOK, request),
+    cancelAudiobook: (): Promise<void> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.VOICE_CANCEL_AUDIOBOOK),
+    onAudiobookProgress: (callback: (progress: AudiobookExportProgress) => void): (() => void) => {
+      const listener = (_event: unknown, progress: AudiobookExportProgress) => callback(progress);
+      ipcRenderer.on(ALLOWED_IPC_CHANNELS.VOICE_EXPORT_AUDIOBOOK_PROGRESS, listener);
+      return () => {
+        ipcRenderer.removeListener(ALLOWED_IPC_CHANNELS.VOICE_EXPORT_AUDIOBOOK_PROGRESS, listener);
+      };
+    },
   },
 
   shamela: {

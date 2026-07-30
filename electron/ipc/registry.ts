@@ -38,6 +38,9 @@ export const ALLOWED_IPC_CHANNELS = {
   VOICE_SIDECAR_STATUS: 'voice:sidecar-status',
   VOICE_SIDECAR_INSTALL: 'voice:sidecar-install',
   VOICE_SAVE_CLONE_SAMPLE: 'voice:save-clone-sample',
+  VOICE_EXPORT_AUDIOBOOK: 'voice:export-audiobook',
+  VOICE_EXPORT_AUDIOBOOK_PROGRESS: 'voice:export-audiobook-progress',
+  VOICE_CANCEL_AUDIOBOOK: 'voice:cancel-audiobook',
 
   // RTL / Window
   SYSTEM_SET_TITLE: 'system:set-title',

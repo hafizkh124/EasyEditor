@@ -66,6 +66,7 @@
     }
   },
   "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
     "@hookform/resolvers": "^3.10.0",
     "@kutalia/whisper-node-addon": "^1.1.0",
     "@lovable.dev/cloud-auth-js": "^1.1.2",

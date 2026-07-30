@@ -128,7 +128,8 @@ leaves the machine, an automatic fallback to Piper on failure, and never silence
 
 ### 10. Segmented Synthesis Runs Inside the Piper Path
 
-FR-6.5 is wired into `synthesizeWithPiperChecked` rather than exposed as its own engine, so
+FR-6.5 is wired into `synthesizeLocalTts` (`electron/voice/localTts.ts`) rather than exposed as
+its own engine, so
 every route that reaches Piper — direct selection and the FR-6.6 fallback alike — gets the
 per-script split without the caller asking for it.
 
@@ -191,3 +192,37 @@ with a title saying how to get them. Disabled rather than hidden keeps the capab
 discoverable, and means an empty subtitle file can never be written. Note that an empty
 segment array from a chunk means silence, not a missing-timestamp engine — subtitles stay
 available in that case and simply skip the silence.
+
+### 12. Audiobook Export Encodes in Main, with Real ID3 Chapter Marks
+
+FR-6.9 asks for the whole document as `.mp3` with chapter marks, spoken through the FR-6.5
+split. Three decisions carry that.
+
+**MP3 comes from a JavaScript encoder.** Piper emits WAV, and NFR-14 keeps binaries out of the
+installer — so bundling ffmpeg or LAME per platform is not available. `@breezystack/lamejs`
+(LGPL-3.0, compatible with the project's AGPL-3.0) is a pure-JS LAME port, so nothing
+per-platform is shipped or built. It is slower than native LAME, which is acceptable for an
+offline export that already spends most of its wall time in synthesis. WAV was rejected as the
+output format: a six-hour book is roughly 950 MB as 22 kHz mono PCM against about 85 MB at
+64 kbps.
+
+**Everything runs in the main process.** Synthesis is already there, and a book-length WAV is
+far too large to send over IPC just to encode it in the renderer. The finished file is written
+from main behind a save dialog, so the renderer never holds the audiobook in memory — only
+progress events and the resulting path cross the boundary.
+
+**Chapter marks are ID3v2 CHAP/CTOC frames**, not a sidecar text file, because "chapter marks"
+means marks a player can jump between. Details that matter:
+
+- v2.3 rather than v2.4 — more widely supported — with text frames written as UTF-16 plus BOM,
+  since v2.3's only other encoding is ISO-8859-1, which cannot carry an Urdu or Arabic chapter
+  title at all.
+- Frame sizes are plain big-endian uint32. Only the *tag* header is synchsafe in v2.3; writing
+  synchsafe frame sizes is a well-known way to produce a tag players quietly ignore.
+- Chapter boundaries are measured from the synthesized audio (`wavDurationMs` over the actual
+  PCM length), never estimated from text length, so the marks land where the words are.
+
+The export reports per-chapter progress and can be cancelled — a book runs for minutes, and the
+cancel flag is keyed per `WebContents` so two windows cannot cancel each other's export. The
+WAV reader walks the RIFF chunks rather than assuming the canonical 44-byte header, because a
+LIST or fact chunk would otherwise be fed to the encoder as audio.
