@@ -79,7 +79,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
     <header className="flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-3 md:px-4 z-20 shrink-0">
       {/* Left: Breadcrumbs & Title */}
       <div className="flex items-center gap-2 min-w-0 flex-1 max-w-xl">
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 md:hidden" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 md:hidden" onClick={() => navigate(-1)} aria-label="Go back">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         {/* Library drawer toggle — mobile only (FR-8.2) */}
@@ -89,7 +89,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           className="h-8 w-8 shrink-0 md:hidden"
           onClick={() => setMobileLibraryOpen(!mobileLibraryOpen)}
           aria-expanded={mobileLibraryOpen}
-          title={t("nav.library") || "Library"}
+          aria-label={t("nav.library") || "Library"}
         >
           <PanelLeft className="h-4 w-4" />
         </Button>
@@ -157,7 +157,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         )}
 
         {/* Copy */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex" title="Copy text" onClick={handleCopy}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex" aria-label="Copy text" onClick={handleCopy}>
           <Copy className="h-3.5 w-3.5" />
         </Button>
 
@@ -190,7 +190,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         </DropdownMenu>
 
         {/* Language / RTL toggle */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-xs" title="Switch Language / RTL" onClick={toggleDirection}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-xs" aria-label="Switch Language / RTL" onClick={toggleDirection}>
           <Languages className="h-4 w-4" />
         </Button>
 
@@ -215,7 +215,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         <div className="sm:hidden">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More options">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

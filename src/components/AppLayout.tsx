@@ -23,18 +23,51 @@ import type { SessionSection } from "@/hooks/useSessionHistory";
  * FR-7 — ten nav items collapsed into three groups. The individual tools keep
  * their own routes and are reached through the Tools group, so nothing that
  * used to be one click away became unreachable.
+ *
+ * `desktop` marks whether a tool survives in the Electron build. This is one of
+ * only three places allowed to branch on the runtime target (SPEC-M5 §4.3); the
+ * others are `getBackend()` and the mode badge.
+ *
+ * SPEC-M5 FR-2.5: absent, never disabled. A greyed-out button that can only
+ * ever fail teaches the user the app is broken. OCR, Extract and Translate all
+ * depend on cloud edge functions with no local counterpart, so in desktop mode
+ * they simply do not exist.
+ *
+ * Transcribe and Speak DO survive — they gain local Whisper and Piper engines
+ * in M5.5 — but they stay hidden until `VITE_LOCAL_VOICE` is on, because until
+ * then they would reach for a cloud function that desktop has no session for.
  */
-const toolsChildren = [
-  { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe", fallbackLabel: "ٹرانسکرائب" },
+type ToolItem = {
+  path: string;
+  icon: typeof BookOpen;
+  labelKey: string;
+  fallbackLabel?: string;
+  desktop?: "always" | "with-local-voice";
+};
+
+const ALL_TOOLS: ToolItem[] = [
+  { path: "/transcribe", icon: Mic, labelKey: "nav.transcribe", fallbackLabel: "ٹرانسکرائب", desktop: "with-local-voice" },
   { path: "/ocr", icon: ScanText, labelKey: "nav.ocr", fallbackLabel: "OCR" },
-  { path: "/speak", icon: Volume2, labelKey: "nav.speak", fallbackLabel: "بولیں" },
+  { path: "/speak", icon: Volume2, labelKey: "nav.speak", fallbackLabel: "بولیں", desktop: "with-local-voice" },
   { path: "/extract", icon: Layers, labelKey: "nav.extract", fallbackLabel: "استخراج" },
   { path: "/translate", icon: Languages, labelKey: "nav.translate", fallbackLabel: "ترجمہ" },
 ];
 
+const isDesktop = () => typeof window !== "undefined" && Boolean(window.electronAPI?.isDesktop);
+const LOCAL_VOICE_ENABLED = import.meta.env.VITE_LOCAL_VOICE === "true";
+
+const toolsChildren = !isDesktop()
+  ? ALL_TOOLS
+  : ALL_TOOLS.filter(
+      (t) => t.desktop === "always" || (t.desktop === "with-local-voice" && LOCAL_VOICE_ENABLED),
+    );
+
 const sectionNav = [
   { path: "/workspace", icon: BookOpen, labelKey: "nav.workspace", fallbackLabel: "ورک اسپیس", section: "editor" as SessionSection },
-  { path: "/transcribe", icon: Wrench, labelKey: "nav.tools", fallbackLabel: "ٹولز (Tools)", section: "transcribe" as SessionSection, children: toolsChildren },
+  // The Tools group disappears entirely when it would otherwise be empty.
+  ...(toolsChildren.length > 0
+    ? [{ path: toolsChildren[0].path, icon: Wrench, labelKey: "nav.tools", fallbackLabel: "ٹولز (Tools)", section: "transcribe" as SessionSection, children: toolsChildren }]
+    : []),
 ];
 const adminNavItem = { path: "/admin", icon: Shield, labelKey: "nav.admin", fallbackLabel: "ایڈمن", section: null };
 

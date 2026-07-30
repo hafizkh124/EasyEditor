@@ -63,10 +63,10 @@ export const TranslationMatrixTable: React.FC<TranslationMatrixTableProps> = ({
                 </TableCell>
                 <TableCell className="text-center p-1">
                   <div className="flex items-center justify-center gap-0.5">
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCopyRow(r.text, idx)}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCopyRow(r.text, idx)} aria-label="Copy row text">
                       {copiedIndex === idx ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onInsertRow(r)}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onInsertRow(r)} aria-label="Insert row into editor">
                       <FileEdit className="h-3 w-3" />
                     </Button>
                   </div>

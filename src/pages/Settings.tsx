@@ -11,6 +11,9 @@ import { handleSupabaseError } from "@/lib/errors";
 import AppVersionBadge from "@/components/AppVersionBadge";
 
 import { LocalShamelaConnector } from "@/components/mcp/LocalShamelaConnector";
+import { ByokKeyPanel } from "@/components/settings/ByokKeyPanel";
+import { VoiceEnginePanel } from "@/components/settings/VoiceEnginePanel";
+import { AdvancedVoicesPanel } from "@/components/settings/AdvancedVoicesPanel";
 
 // FR-6.1: Settings contains language selection and local MCP companion controls.
 const Settings = () => {
@@ -69,6 +72,13 @@ const Settings = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* BYOK Key Management in Desktop Mode */}
+        <ByokKeyPanel />
+
+        {/* Local Voice Studio (Desktop only) */}
+        <VoiceEnginePanel />
+        <AdvancedVoicesPanel />
 
         {/* Local Shamela 4 MCP Connector */}
         <LocalShamelaConnector />

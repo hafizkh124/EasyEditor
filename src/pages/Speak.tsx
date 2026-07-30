@@ -6,6 +6,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useCanAfford } from "@/hooks/useTokenBalance";
+import { isDesktop } from "@/utils/environment";
+import { getPreferredEngine } from "@/core/voice/registry";
+import { LocalTtsEngine } from "@/core/voice/localEngines";
 
 // Max chars per single TTS request (per-request safety cap, not a tier limit)
 const TTS_REQUEST_CHAR_CAP = 5000;
@@ -15,7 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Play, Square, Download, Loader2, Coins, Construction, MessageSquarePlus } from "lucide-react";
+import { Play, Square, Download, Loader2, Coins, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import AudioWaveform from "@/components/AudioWaveform";
@@ -58,12 +61,23 @@ const Speak = () => {
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("standard");
   const ttsAction = voiceMode === "cloned" ? "tts_elevenlabs" : "tts_google";
   const ttsQuantity = Math.max(1, Math.ceil(text.length / 1000));
-  const { canAfford: canAffordTts, cost: ttsCost, balance: tokenBalance } = useCanAfford(ttsAction, ttsQuantity);
+  const { canAfford: canAffordTts } = useCanAfford(ttsAction, ttsQuantity);
 
   // voiceMode declared above (needed for token cost computation)
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
   const [isCloning, setIsCloning] = useState(false);
   const [cloneSampleName, setCloneSampleName] = useState<string | null>(null);
+  const isDesktopEnv = isDesktop();
+  const [useLocalEngine, setUseLocalEngine] = useState(false);
+  const [localEngineId, setLocalEngineId] = useState('piper');
+
+  useEffect(() => {
+    if (!isDesktopEnv) { setUseLocalEngine(false); return; }
+    const lang = selectedPersona.voiceLang;
+    const pref = getPreferredEngine(lang);
+    setUseLocalEngine(pref !== 'cloud');
+    setLocalEngineId(pref);
+  }, [isDesktopEnv, selectedPersona.voiceLang]);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -197,6 +211,34 @@ const Speak = () => {
   };
 
   const callTtsApi = async (): Promise<Blob | null> => {
+    // Desktop: use local engine when preferred engine is not cloud
+    if (isDesktopEnv && useLocalEngine) {
+      try {
+        const lang = selectedPersona.voiceLang;
+        // Honour the engine chosen in Settings ('piper' or 'edge-tts') rather than
+        // always asking for Piper.
+        const engine = new LocalTtsEngine(localEngineId);
+        const result = await engine.synthesizeDetailed(text, lang);
+        if (result.audio.byteLength === 0) {
+          throw new Error('Local engine returned empty audio');
+        }
+        // SPEC-M5 FR-6.6: the online engine can fail and be served by Piper
+        // instead — say so, rather than passing off local audio as online.
+        if (result.fallbackFrom) {
+          toast.warning(
+            t("tts.online_fallback") ||
+              'آن لائن انجن دستیاب نہیں — آڈیو مقامی Piper سے بنایا گیا۔',
+          );
+          if (import.meta.env.DEV) console.warn('Edge TTS fell back to Piper:', result.fallbackReason);
+        }
+        return new Blob([result.audio], { type: result.mimeType });
+      } catch (err) {
+        if (import.meta.env.DEV) console.error("Local TTS failed, falling back to cloud:", err);
+        // Fall through to cloud
+      }
+    }
+
+    // Cloud TTS path
     if (!session?.access_token) {
       toast.error("Please sign in to use TTS");
       return null;
@@ -242,7 +284,7 @@ const Speak = () => {
   const handlePlay = async () => {
     if (!text.trim()) return;
     if (text.length > charLimit) { toast.error(t("tts.text_too_long")); return; }
-    if (!canAffordTts) { toast.error(t("tts.insufficient_tokens") || "Insufficient tokens"); return; }
+    if (!useLocalEngine && !canAffordTts) { toast.error(t("tts.insufficient_tokens") || "Insufficient tokens"); return; }
     handleStop();
     setIsLoading(true);
     try {
@@ -300,7 +342,10 @@ const Speak = () => {
       const url = URL.createObjectURL(audioBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `tts-${voiceMode === "cloned" ? "my-voice" : selectedPersona.name}-${Date.now()}.wav`;
+      // Extension must follow the actual format: the online engine returns MP3,
+      // Piper and the cloud path return WAV.
+      const ext = audioBlob.type === "audio/mpeg" ? "mp3" : "wav";
+      a.download = `tts-${voiceMode === "cloned" ? "my-voice" : selectedPersona.name}-${Date.now()}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(t("tts.downloaded"));
@@ -311,33 +356,8 @@ const Speak = () => {
     }
   };
 
-  // ── Work-in-Progress guard — blocks ALL users, prevents any API calls ──
-  return (
-    <AppLayout>
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center space-y-6">
-        {/* Animated construction icon */}
-        <div className="rounded-full bg-amber-100 dark:bg-amber-950/40 p-6">
-          <Construction className="h-12 w-12 text-amber-500" />
-        </div>
-
-        <div className="space-y-3 max-w-md">
-          {/* WIP badge */}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs font-semibold px-3 py-1 border border-amber-300/60 dark:border-amber-700/40">
-            {t("tts.wip_badge")}
-          </span>
-
-          <h2 className="text-2xl font-bold text-foreground">{t("tts.wip_title")}</h2>
-          <p className="text-muted-foreground leading-relaxed">{t("tts.wip_desc")}</p>
-        </div>
-      </div>
-    </AppLayout>
-  );
-  // ── end WIP guard — nothing below executes ────────────────────────────
-
-  /* eslint-disable no-unreachable */
+  // ── Voice Studio enabled — TTS via cloud (Google TTS) with persona selection ──
   const isRtlInput = selectedPersona.voiceLang === "ur" || selectedPersona.voiceLang === "ar";
-  void charLimit;
-  void canAffordTts; void ttsCost; void tokenBalance;
 
   return (
     <AppLayout>
@@ -355,13 +375,15 @@ const Speak = () => {
           )}
         </div>
 
-        {/* Token cost display */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <TokenCostBadge action="tts_google" quantity={Math.max(1, Math.ceil(text.length / 1000))} />
-          {voiceMode === "cloned" && (
-            <TokenCostBadge action="tts_elevenlabs" quantity={Math.max(1, Math.ceil(text.length / 1000))} className="border-amber-300" />
-          )}
-        </div>
+        {/* Token cost display (hidden for local engine) */}
+        {!useLocalEngine && (
+          <div className="flex items-center gap-3 flex-wrap">
+            <TokenCostBadge action="tts_google" quantity={Math.max(1, Math.ceil(text.length / 1000))} />
+            {voiceMode === "cloned" && (
+              <TokenCostBadge action="tts_elevenlabs" quantity={Math.max(1, Math.ceil(text.length / 1000))} className="border-amber-300" />
+            )}
+          </div>
+        )}
 
         <VoiceSelector
           personas={personas}
@@ -428,8 +450,14 @@ const Speak = () => {
             {t("tts.download")}
           </Button>
 
+          {/* SPEC-M5 R22: the online engine gets a standing badge of its own, so the
+              user always knows when their text is leaving the machine. */}
           <Badge variant="outline" className="ms-auto text-xs">
-            {voiceMode === "cloned" ? t("tts.using_cloned") : selectedPersona.name}
+            {useLocalEngine
+              ? localEngineId === 'edge-tts'
+                ? t("tts.online_mode") || "Online (Microsoft)"
+                : t("tts.local_mode") || "Local"
+              : voiceMode === "cloned" ? t("tts.using_cloned") : selectedPersona.name}
           </Badge>
 
           {text.trim() && subscription && (

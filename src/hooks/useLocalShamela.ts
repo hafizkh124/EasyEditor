@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { isDesktop } from "@/core/backend";
 
 const STORAGE_URL_KEY = "shamela.mcp_url";
 const STORAGE_CONNECTED_KEY = "shamela.connected";
@@ -23,6 +24,7 @@ export function useLocalShamela() {
   });
 
   const [connected, setConnectedState] = useState<boolean>(() => {
+    if (isDesktop()) return true;
     try {
       return localStorage.getItem(STORAGE_CONNECTED_KEY) === "1";
     } catch {
@@ -34,6 +36,8 @@ export function useLocalShamela() {
   const [catalogBooks, setCatalogBooks] = useState<number | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
   const [testing, setTesting] = useState<boolean>(false);
+  const [nativePath, setNativePath] = useState<string | null>(null);
+  const [masterDbPath, setMasterDbPath] = useState<string | null>(null);
 
   // Sync to localStorage
   useEffect(() => {
@@ -49,14 +53,49 @@ export function useLocalShamela() {
   }, [connected]);
 
   const testConnection = useCallback(async (customUrl?: string): Promise<ShamelaHealthResult | null> => {
-    const targetUrl = (customUrl || mcpUrl).replace(/\/+$/, "");
     setTesting(true);
     try {
+      if (typeof window !== "undefined" && window.electronAPI?.shamela) {
+        const status = await window.electronAPI.shamela.detect();
+        if (status.installed) {
+          setConnectedState(true);
+          setNativePath(status.path);
+          setMasterDbPath(status.masterDbPath ?? null);
+
+          // Fetch real book count from catalogue
+          let realBookCount = 7000;
+          if (status.masterDbPath) {
+            try {
+              const stats = await window.electronAPI.shamela.catalogueStats(status.masterDbPath);
+              realBookCount = stats.totalBooks;
+            } catch {
+              // fall back to default
+            }
+          }
+
+          setDownloadedBooks(realBookCount);
+          setCatalogBooks(realBookCount);
+          setNotes(["مقامی مکتبہ شاملہ 4 کا نیٹیو انضمام فعال ہے۔"]);
+          return {
+            status: "ok",
+            server_version: "4.0 Native",
+            downloaded_books: realBookCount,
+            catalog_books: realBookCount,
+            notes: ["مقامی مکتبہ شاملہ 4 کا نیٹیو انضمام فعال ہے۔"],
+          };
+        } else {
+          setConnectedState(false);
+          setNativePath(status.path);
+          setNotes([status.reason || "مکتبہ شاملہ 4 کی انسٹالیشن نہیں ملی۔"]);
+          return null;
+        }
+      }
+
+      // Legacy Web HTTP Fallback
+      const targetUrl = (customUrl || mcpUrl).replace(/\/+$/, "");
       const res = await fetch(`${targetUrl}/health`, {
         method: "GET",
-        headers: {
-          "Accept": "application/json",
-        },
+        headers: { "Accept": "application/json" },
       }).catch(() => null);
 
       if (res && res.ok) {
@@ -85,12 +124,9 @@ export function useLocalShamela() {
     }
   }, [mcpUrl]);
 
-  // Check health on initial mount if marked connected
   useEffect(() => {
-    if (connected) {
-      testConnection();
-    }
-  }, []); // Run once on mount
+    testConnection();
+  }, []);
 
   const setMcpUrl = (url: string) => setMcpUrlState(url);
 
@@ -102,6 +138,8 @@ export function useLocalShamela() {
     catalogBooks,
     notes,
     testing,
+    nativePath,
+    masterDbPath,
     testConnection,
   };
 }

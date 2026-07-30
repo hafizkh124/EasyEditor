@@ -1,3 +1,9 @@
+// AI call, not a data call: this orchestrator drives the `library-ingest` edge
+// function, which embeds text. The AI adapter (M5.2) routes it through the
+// right runtime.
+import { callEdgeFunction, isDesktopEnv } from "@/core/ai/aiAdapter";
+// Auth is cloud-only; desktop mode has no session model.
+// eslint-disable-next-line no-restricted-imports
 import { supabase } from "@/integrations/supabase/client";
 
 export interface IngestProgress {
@@ -31,8 +37,10 @@ export async function runLibraryIngest({
   onProgress,
   signal,
 }: RunIngestArgs): Promise<IngestProgress> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("سیشن مفقود ہے — برائے مہربانی دوبارہ سائن ان کریں۔");
+  if (!isDesktopEnv()) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("سیشن مفقود ہے — برائے مہربانی دوبارہ سائن ان کریں۔");
+  }
 
   let offset = startOffset;
   let done = false;
@@ -56,8 +64,8 @@ export async function runLibraryIngest({
       break;
     }
 
-    const res = await supabase.functions.invoke("library-ingest", {
-      body: { item_id: itemId, offset, batch_size: 100 },
+    const res = await callEdgeFunction("library-ingest", {
+      item_id: itemId, offset, batch_size: 100,
     });
 
     if (res.error) {
@@ -68,7 +76,12 @@ export async function runLibraryIngest({
       throw new Error(`Ingest failed: ${res.error.message}`);
     }
 
-    const data = res.data;
+    const data = res.data as {
+      next_offset: number;
+      done: boolean;
+      total_chunks?: number;
+      progress?: number;
+    };
     offset = data.next_offset;
     done = data.done;
 

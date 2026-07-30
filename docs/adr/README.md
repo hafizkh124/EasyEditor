@@ -11,6 +11,10 @@ reconstruct rationale without rereading commits.
 | [0003](./0003-threshold-gated-virtualization.md) | Threshold-gated virtualization for the research chat | Accepted |
 | [0004](./0004-client-side-text-chunking.md) | Client-side text chunking for long-document AI runs | Accepted |
 | [0005](./0005-m4-personal-corpus-and-graph.md) | M4 personal corpus, knowledge graph, and recipes | Accepted |
+| [0006](./0006-workspace-backend-adapter.md) | WorkspaceBackend Adapter facade pattern (Web vs Desktop) | Accepted |
+| [0007](./0007-shamela-native-read.md) | Reading a local Shamela 4 library (SQLite + Lucene via Shamela's own JRE) | Accepted |
+| [0008](./0008-local-voice-engines.md) | Python-free Local Voice Core (Piper ONNX, Whisper, Segmented Synthesis) | Accepted |
+| [0009](./0009-voice-studio-implementation.md) | Voice Studio Implementation Patterns (CLI spawn, IPC progress, MediaRecorder cloning) | Accepted |
 
 ## When to write a new ADR
 

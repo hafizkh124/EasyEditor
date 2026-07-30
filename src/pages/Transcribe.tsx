@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useSeo } from "@/hooks/useSeo";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,14 +19,20 @@ import { motion, AnimatePresence } from "framer-motion";
 import { logActivity } from "@/lib/activityLog";
 import { useCanAfford } from "@/hooks/useTokenBalance";
 import TokenCostBadge from "@/components/TokenCostBadge";
+import { Badge } from "@/components/ui/badge";
 import { isRtlText } from "@/utils/textUtils";
 import {
   transcribeLongForm,
+  resolveSttRoute,
   TranscribeCancelledError,
   MAX_DURATION_SECONDS,
   type ProgressPhase,
   type TranscribeLanguage,
+  type SttRoute,
 } from "@/lib/audio/transcribeLongForm";
+import { toSrt } from "@/lib/subtitles/toSrt";
+import { toVtt } from "@/lib/subtitles/toVtt";
+import type { TranscriptSegment } from "@/core/voice/types";
 import { ACCEPTED_MEDIA, isVideoFile, MAX_FILE_SIZE_BYTES } from "@/lib/audio/formatSupport";
 import { SaveToLibraryButton } from "@/components/workspace/SaveToLibraryButton";
 
@@ -70,12 +76,26 @@ const Transcribe = () => {
   const [showCompare, setShowCompare] = useState(false);
   const [sttLanguage, setSttLanguage] = useState<SttLanguage>("auto");
   const { canAfford: canAffordStt } = useCanAfford("stt", 1);
-  const limitReached = !canAffordStt;
+  // SPEC-M5 FR-6.2/FR-6.8: local transcription costs us nothing, so it must not
+  // be gated on the token balance. The route is resolved up front (it depends on
+  // whether a Whisper model is downloaded) and drives both the gate and the run.
+  const [sttRoute, setSttRoute] = useState<SttRoute>("cloud");
+  const limitReached = !canAffordStt && sttRoute === "cloud";
+  const [segments, setSegments] = useState<TranscriptSegment[] | null>(null);
+  const hasTimestamps = !!segments && segments.length > 0;
   const [isUploading, setIsUploading] = useState(false);
   const [progressPhase, setProgressPhase] = useState<ProgressPhase | null>(null);
   const [progressCurrent, setProgressCurrent] = useState(0);
   const [progressTotal, setProgressTotal] = useState(0);
   const [longFormStartedAt, setLongFormStartedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveSttRoute()
+      .then((r) => { if (!cancelled) setSttRoute(r); })
+      .catch(() => { if (!cancelled) setSttRoute("cloud"); });
+    return () => { cancelled = true; };
+  }, []);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startTimeRef = useRef<number>(0);
@@ -148,9 +168,10 @@ const Transcribe = () => {
       const priorTranscript = transcript;
       const compose = (partial: string) => (priorTranscript ? priorTranscript + "\n" + partial : partial);
       let lastPersisted = "";
-      const { text, chunkCount } = await transcribeLongForm({
+      const { text, chunkCount, segments: newSegments } = await transcribeLongForm({
         file,
         language: sttLanguage,
+        route: sttRoute,
         signal: controller.signal,
         onProgress: (ev) => {
           setProgressPhase(ev.phase);
@@ -171,6 +192,7 @@ const Transcribe = () => {
         const newText = transcript ? transcript + "\n" + text : text;
         setTranscript(newText);
         setOriginalText("");
+        setSegments(newSegments ?? null);
         logActivity("stt", text.slice(0, 60));
         persistTranscript(newText, "");
         toast.success(
@@ -313,6 +335,24 @@ const Transcribe = () => {
     setTranscript("");
     setOriginalText("");
     setShowCompare(false);
+    setSegments(null);
+  };
+
+  /**
+   * SPEC-M5 FR-6.3: subtitles come from the engine's own timestamps. The buttons
+   * are hidden unless timestamps exist, so an empty file can never be written.
+   */
+  const handleSubtitleDownload = (format: "srt" | "vtt") => {
+    if (!segments || segments.length === 0) return;
+    const content = format === "srt" ? toSrt(segments) : toVtt(segments);
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `transcript-${Date.now()}.${format}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(t("stt.subtitles_downloaded") || `${format.toUpperCase()} ڈاؤن لوڈ ہو گیا`);
   };
 
   const handleRevert = () => {
@@ -331,10 +371,25 @@ const Transcribe = () => {
           <h1 className="text-2xl font-bold text-foreground">{t("stt.title")}</h1>
         </div>
 
-        {/* Usage Badge */}
+        {/* Usage Badge — FR-6.8: the local route is free, so no cost is shown for it. */}
         <div className="flex items-center gap-2 flex-wrap">
-          <TokenCostBadge action="stt" quantity={1} />
-          {limitReached && <span className="text-sm text-destructive">{t("stt.limit_reached") || "Insufficient tokens"}</span>}
+          {sttRoute === "local" ? (
+            <>
+              <Badge variant="outline" className="text-xs">
+                {t("stt.local_mode") || "مقامی Whisper — مفت"}
+              </Badge>
+              {/* FR-6.10: state the known quality limits before the user relies on it. */}
+              <span className="text-xs text-muted-foreground">
+                {t("stt.local_quality_note") ||
+                  "نتیجہ ایک مسودہ ہے — اردو میں تقریباً 10–15% الفاظ کی غلطی متوقع ہے، اور اردو‑انگریزی ملے جلے کلام میں اس سے زیادہ۔"}
+              </span>
+            </>
+          ) : (
+            <>
+              <TokenCostBadge action="stt" quantity={1} />
+              {limitReached && <span className="text-sm text-destructive">{t("stt.limit_reached") || "Insufficient tokens"}</span>}
+            </>
+          )}
         </div>
 
         {/* Long-form Progress (FR-3.3, FR-3.4) */}
@@ -473,6 +528,27 @@ const Transcribe = () => {
                 <Button variant="ghost" size="icon" aria-label={t("stt.copy")} onClick={handleCopy}>
                   <Copy className="h-4 w-4" />
                 </Button>
+                {/* FR-6.3: shown always, but disabled without timestamps — and it
+                    says why, so the capability is discoverable rather than absent.
+                    Disabled means no empty file can ever be written. */}
+                {(["srt", "vtt"] as const).map((format) => (
+                  <Button
+                    key={format}
+                    variant="ghost"
+                    size="sm"
+                    disabled={!hasTimestamps}
+                    aria-label={t(`stt.download_${format}`) || `${format.toUpperCase()} ڈاؤن لوڈ کریں`}
+                    title={
+                      hasTimestamps
+                        ? t(`stt.download_${format}`) || `${format.toUpperCase()} ڈاؤن لوڈ کریں`
+                        : t("stt.no_timestamps") ||
+                          "اس انجن سے وقت کے نشانات نہیں ملے — سب ٹائٹل کے لیے Settings سے مقامی Whisper منتخب کریں۔"
+                    }
+                    onClick={() => handleSubtitleDownload(format)}
+                  >
+                    {format.toUpperCase()}
+                  </Button>
+                ))}
                 <Button variant="ghost" size="icon" aria-label={t("editor.open_in_editor")} title={t("editor.open_in_editor")} onClick={() => navigate("/editor", { state: { content: transcript, source: "transcribe" } })}>
                   <FileText className="h-4 w-4" />
                 </Button>

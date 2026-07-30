@@ -4,10 +4,13 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
+import electron from "vite-plugin-electron";
+import renderer from "vite-plugin-electron-renderer";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const isDesktop = mode === "desktop" || process.env.VITE_DESKTOP === "true";
 
   // Hardcoded fallbacks so production builds never fail when .env is missing
   // (per project memory: inject Supabase fallback keys via Vite `define`).
@@ -22,11 +25,33 @@ export default defineConfig(({ mode }) => {
     resolved[k] = env[k] || FALLBACKS[k];
   }
 
+  // vite-plugin-electron runs its own Vite build for the main/preload entries and
+  // does not inherit the renderer config below, so the path aliases have to be
+  // repeated here — without them `@/...` imports reached from electron/ fail to
+  // resolve and the desktop build dies.
+  const electronViteConfig = {
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+        "~shared": path.resolve(__dirname, "./shared"),
+      },
+    },
+    build: {
+      rollupOptions: {
+        // Native and native-adjacent packages must stay out of the bundle:
+        // better-sqlite3 and the whisper addon load .node binaries by path at
+        // runtime, and msedge-tts pulls in ws's optional native extras.
+        external: ["better-sqlite3", "@kutalia/whisper-node-addon", "msedge-tts"],
+      },
+    },
+  };
+
   return {
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(resolved.VITE_SUPABASE_URL),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(resolved.VITE_SUPABASE_PUBLISHABLE_KEY),
       "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(resolved.VITE_SUPABASE_PROJECT_ID),
+      "import.meta.env.VITE_DESKTOP": JSON.stringify(isDesktop ? "true" : "false"),
     },
     server: {
       host: "::",
@@ -37,6 +62,20 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      isDesktop && electron([
+        {
+          entry: "electron/main.ts",
+          vite: electronViteConfig,
+        },
+        {
+          entry: "electron/preload.ts",
+          vite: electronViteConfig,
+          onstart(options) {
+            options.reload();
+          },
+        },
+      ]),
+      isDesktop && renderer(),
       // mcpPlugin() intentionally omitted: its only job is to regenerate
       // supabase/functions/mcp/index.ts at build time, and on Windows it writes
       // `import mcp from "npm:E:\\EasyEditor\\src\\lib\\mcp\\index.ts"` — an
@@ -124,6 +163,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
+        "~shared": path.resolve(__dirname, "./shared"),
       },
     },
   };

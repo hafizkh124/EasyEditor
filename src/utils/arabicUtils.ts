@@ -32,12 +32,10 @@ export function stripHarakat(text: string): string {
 /**
  * Returns true if a string is primarily RTL (Arabic/Urdu) text.
  * Simple heuristic: if >30% of word characters are Arabic/Urdu script.
+ *
+ * The implementation now lives in shared/ so Deno and Node see the same one.
+ * Note this is the *dominance* test \u2014 src/utils/textUtils.ts exports a
+ * same-named function that tests mere *presence*. The two are not
+ * interchangeable; see the note in scriptRuns.ts.
  */
-export function isRtlText(text: string): boolean {
-  if (!text) return false;
-  const arabicUrduRange = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/g;
-  const alphanumeric = text.replace(/\s/g, "");
-  if (alphanumeric.length === 0) return false;
-  const arabicCount = (text.match(arabicUrduRange) ?? []).length;
-  return arabicCount / alphanumeric.length > 0.3;
-}
+export { isRtlDominant as isRtlText } from "~shared/text/scriptRuns";
