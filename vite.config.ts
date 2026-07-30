@@ -88,6 +88,15 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
+          // Precaching is an up-front download for every install and every
+          // update, so it must only hold what the app actually renders.
+          // og-image.png exists solely for the <meta og:image> tag, which
+          // social crawlers fetch from the absolute URL — the app's own hero
+          // uses og-image.webp (54 kB). safepay_order_receipt.png is not
+          // referenced anywhere in src/ or index.html. Together they were
+          // 2.26 MB of the 5.38 MB precache: 42%, downloaded by every mobile
+          // user, for two images the app never shows.
+          globIgnores: ["og-image.png", "safepay_order_receipt.png"],
           navigateFallback: "/index.html",
           navigateFallbackDenylist: [/^\/~oauth(?:\/|$)/, /^\/\.lovable(?:\/|$)/],
           runtimeCaching: [
