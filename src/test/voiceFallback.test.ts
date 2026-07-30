@@ -143,3 +143,83 @@ describe('TTS engine fallback (SPEC-M5 FR-6.6)', () => {
     ).rejects.toThrow('کوئی Piper ماڈل ڈاؤن لوڈ نہیں');
   });
 });
+
+const UR_VOICE = '/models/piper-ur_PK-male-medium.onnx';
+const AR_VOICE = '/models/piper-ar_JO-kareem.onnx';
+
+describe('Segmented synthesis (SPEC-M5 FR-6.5)', () => {
+  beforeEach(async () => {
+    handlers.clear();
+    vi.clearAllMocks();
+    getModelPath.mockImplementation((modelId) => `/models/${modelId}.onnx`);
+    synthesizeWithPiper.mockResolvedValue(Buffer.from('AUDIO'));
+    const { registerVoiceHandlers } = await import('../../electron/ipc/voiceHandlers');
+    registerVoiceHandlers();
+  });
+
+  // The decisive test named in the SPEC-M5 acceptance checklist.
+  it('speaks an Arabic quotation inside Urdu prose with the Arabic voice', async () => {
+    await invokeSynthesize({
+      text: 'یہ حدیث ہے «إنما الأعمال بالنيات» اور اس کا مطلب واضح ہے۔',
+      lang: 'ur-PK',
+      engineId: 'piper',
+    });
+
+    const byVoice = (voice: string) =>
+      synthesizeWithPiper.mock.calls.filter((c) => c[1] === voice).map((c) => c[0]);
+
+    const arabicSpoken = byVoice(AR_VOICE).join(' ');
+    const urduSpoken = byVoice(UR_VOICE).join(' ');
+
+    expect(arabicSpoken).toContain('إنما الأعمال بالنيات');
+    expect(urduSpoken).toContain('یہ حدیث ہے');
+    expect(urduSpoken).toContain('اور اس کا مطلب واضح ہے');
+    // The quotation must not also be read by the Urdu voice.
+    expect(urduSpoken).not.toContain('إنما');
+  });
+
+  it('loses no text across the split', async () => {
+    const text = 'یہ حدیث ہے «إنما الأعمال بالنيات» اور اس کا مطلب واضح ہے۔';
+    await invokeSynthesize({ text, lang: 'ur-PK', engineId: 'piper' });
+
+    const spoken = synthesizeWithPiper.mock.calls.map((c) => c[0]).join('');
+    // Every non-space character of the source must have been handed to some voice.
+    expect(spoken.replace(/\s/g, '')).toBe(text.replace(/\s/g, ''));
+  });
+
+  it('does not split when only one voice is downloaded', async () => {
+    getModelPath.mockImplementation((modelId) =>
+      modelId === 'piper-ur_PK-male-medium' ? UR_VOICE : null,
+    );
+    const text = 'یہ حدیث ہے «إنما الأعمال بالنيات» اور باقی اردو۔';
+    await invokeSynthesize({ text, lang: 'ur-PK', engineId: 'piper' });
+
+    // One call with the whole text — a missing Arabic voice costs pronunciation,
+    // not the audio itself.
+    expect(synthesizeWithPiper).toHaveBeenCalledTimes(1);
+    expect(synthesizeWithPiper).toHaveBeenCalledWith(text, UR_VOICE);
+  });
+
+  it('decides marker-less Arabic-script runs by the requested language', async () => {
+    // 'مرحبا' carries neither Urdu-only nor Arabic-only letters.
+    await invokeSynthesize({ text: 'مرحبا', lang: 'ar', engineId: 'piper' });
+    expect(synthesizeWithPiper).toHaveBeenCalledWith('مرحبا', AR_VOICE);
+
+    vi.clearAllMocks();
+    synthesizeWithPiper.mockResolvedValue(Buffer.from('AUDIO'));
+    await invokeSynthesize({ text: 'مرحبا', lang: 'ur-PK', engineId: 'piper' });
+    expect(synthesizeWithPiper).toHaveBeenCalledWith('مرحبا', UR_VOICE);
+  });
+
+  it('applies the split to the edge-tts fallback too', async () => {
+    synthesizeWithEdgeTts.mockRejectedValue(new Error('offline'));
+    await invokeSynthesize({
+      text: 'یہ اردو ہے «إنما الأعمال بالنيات» بس۔',
+      lang: 'ur-PK',
+      engineId: 'edge-tts',
+      onlineConsent: true,
+    });
+    const voicesUsed = new Set(synthesizeWithPiper.mock.calls.map((c) => c[1]));
+    expect(voicesUsed).toEqual(new Set([UR_VOICE, AR_VOICE]));
+  });
+});
