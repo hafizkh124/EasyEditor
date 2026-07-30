@@ -14,6 +14,7 @@ import { useTranslation, type TranslationInputType } from "@/hooks/useTranslatio
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { isRtlText } from "@/utils/textUtils";
+import { editorRoute } from "@/lib/routes";
 
 const LANGUAGES = [
   { value: "auto", label: "Auto-detect" },
@@ -90,7 +91,7 @@ export const TranslatePanel = () => {
       workspaceCtx.insertIntoCanvas(`<p>${full}</p>`);
       toast.success("Canvas میں داخل کر دیا گیا");
     } else {
-      navigate("/editor", { state: { content: full, source: "manual" } });
+      navigate(editorRoute(), { state: { content: full, source: "manual" } });
     }
   };
 

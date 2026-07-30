@@ -29,6 +29,7 @@ import {
 } from "@/lib/audio/transcribeLongForm";
 import { ACCEPTED_MEDIA, isVideoFile, MAX_FILE_SIZE_BYTES } from "@/lib/audio/formatSupport";
 import { SaveToLibraryButton } from "@/components/workspace/SaveToLibraryButton";
+import { editorRoute } from "@/lib/routes";
 
 type SttLanguage = TranscribeLanguage;
 type RefineAction = "formalize" | "humanize" | "shorten" | "citations" | "spelling_check" | "normalize_script";
@@ -473,7 +474,7 @@ const Transcribe = () => {
                 <Button variant="ghost" size="icon" aria-label={t("stt.copy")} onClick={handleCopy}>
                   <Copy className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" aria-label={t("editor.open_in_editor")} title={t("editor.open_in_editor")} onClick={() => navigate("/editor", { state: { content: transcript, source: "transcribe" } })}>
+                <Button variant="ghost" size="icon" aria-label={t("editor.open_in_editor")} title={t("editor.open_in_editor")} onClick={() => navigate(editorRoute(), { state: { content: transcript, source: "transcribe" } })}>
                   <FileText className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="icon" aria-label={t("common.new_chat")} title={t("common.new_chat")} onClick={handleNewSession}>
