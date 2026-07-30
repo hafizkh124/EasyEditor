@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   FileText, Download, Copy, ArrowLeft, ChevronDown, FileType, FileCode, File,
-  History, CheckCircle2, Loader2, AlertCircle, BookmarkPlus, RotateCcw
+  History, CheckCircle2, Loader2, AlertCircle, BookmarkPlus, RotateCcw, AudioLines, X
 } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
@@ -20,6 +20,9 @@ import { useDocument } from "@/core/workspace/useDocument";
 import { documentService } from "@/core/workspace/documentService";
 import { htmlToTiptapJSON } from "@/core/workspace/bookSectionMigration";
 import { exportTxt, exportHtml, exportDoc, exportPdf, stripSuggestions } from "@/lib/editor/exporters";
+import { splitChaptersFromHtml } from "@/lib/audiobook/splitChapters";
+import { isDesktop } from "@/utils/environment";
+import type { AudiobookExportProgress } from "@/core/voice/types";
 
 interface EditorLocationState {
   content?: string;
@@ -153,6 +156,46 @@ const Editor = () => {
     if (snap) {
       toast.success("Snapshot version created");
       setSnapshotLabel("");
+    }
+  };
+
+  // SPEC-M5 FR-6.9: whole document → .mp3 with chapter marks. Desktop only —
+  // it runs on the local Piper voices in the main process.
+  const [audiobookProgress, setAudiobookProgress] = useState<AudiobookExportProgress | null>(null);
+
+  useEffect(() => {
+    if (!isDesktop() || !window.electronAPI?.voice?.onAudiobookProgress) return;
+    return window.electronAPI.voice.onAudiobookProgress(setAudiobookProgress);
+  }, []);
+
+  const handleAudiobookExport = async () => {
+    const chapters = splitChaptersFromHtml(stripSuggestions(currentHtml));
+    if (chapters.length === 0) {
+      toast.error(t("editor.audiobook_empty") || "آڈیو بک کے لیے کوئی متن نہیں۔");
+      return;
+    }
+
+    setAudiobookProgress({ phase: "synthesizing", currentChapter: 0, totalChapters: chapters.length });
+    try {
+      const result = await window.electronAPI!.voice!.exportAudiobook({
+        chapters,
+        lang: "ur-PK",
+        title: title || t("editor.untitled"),
+      });
+      if (result.cancelled) {
+        toast.info(t("editor.audiobook_cancelled") || "آڈیو بک ایکسپورٹ منسوخ ہو گئی۔");
+        return;
+      }
+      const minutes = Math.round(result.durationMs / 60000);
+      toast.success(
+        (t("editor.audiobook_done") || "آڈیو بک تیار: {n} باب، تقریباً {m} منٹ")
+          .replace("{n}", String(result.chapterCount))
+          .replace("{m}", String(minutes)),
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAudiobookProgress(null);
     }
   };
 
@@ -311,10 +354,44 @@ const Editor = () => {
                   <FileText className="h-4 w-4" />
                   {t("editor.download_txt")}
                 </DropdownMenuItem>
+                {isDesktop() && (
+                  <DropdownMenuItem
+                    onClick={handleAudiobookExport}
+                    disabled={audiobookProgress !== null}
+                    className="cursor-pointer gap-2"
+                  >
+                    <AudioLines className="h-4 w-4" />
+                    {t("editor.download_audiobook") || "آڈیو بک (.mp3)"}
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
+
+        {/* FR-6.9: a book-length export runs for minutes, so it says where it is
+            and offers a way out. */}
+        {audiobookProgress && (
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-muted/40 text-xs">
+            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+            <span className="flex-1 truncate">
+              {audiobookProgress.phase === "synthesizing"
+                ? `${t("editor.audiobook_synthesizing") || "آواز بنائی جا رہی ہے"} — ${audiobookProgress.currentChapter ?? 0}/${audiobookProgress.totalChapters ?? 0}${audiobookProgress.chapterTitle ? `: ${audiobookProgress.chapterTitle}` : ""}`
+                : audiobookProgress.phase === "encoding"
+                ? `${t("editor.audiobook_encoding") || "MP3 میں تبدیل ہو رہا ہے"} — ${Math.round((audiobookProgress.encodeFraction ?? 0) * 100)}%`
+                : t("editor.audiobook_writing") || "فائل محفوظ ہو رہی ہے"}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 text-xs"
+              onClick={() => window.electronAPI?.voice?.cancelAudiobook?.()}
+            >
+              <X className="h-3 w-3" />
+              {t("common.cancel")}
+            </Button>
+          </div>
+        )}
 
         {/* Editor Content */}
         <div className="flex-1 overflow-y-auto p-4">

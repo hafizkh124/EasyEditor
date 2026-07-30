@@ -1,4 +1,4 @@
-import { ipcMain, app } from 'electron';
+import { ipcMain, app, dialog } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ALLOWED_IPC_CHANNELS } from './registry.js';
@@ -6,95 +6,15 @@ import type {
   VoiceSynthesizeRequest,
   VoiceSynthesizeResult,
   VoiceTranscribeRequest,
+  AudiobookExportRequest,
 } from '../../src/core/voice/types.js';
-import { synthesizeWithPiper } from '../voice/piper.js';
 import { synthesizeWithEdgeTts } from '../voice/edgeTts.js';
-import { segmentedSynthesize, type TtsSynthesizeFn } from '../voice/segmentedSynthesis.js';
-import type { ScriptKind } from '../../shared/text/scriptRuns.js';
+import { synthesizeLocalTts } from '../voice/localTts.js';
 import { transcribeWithWhisper } from '../voice/whisper.js';
-import {
-  listModels,
-  downloadModel,
-  deleteModel,
-  getModelPath,
-  MODEL_CATALOG,
-} from '../voice/modelManager.js';
+import { listModels, downloadModel, deleteModel, getModelPath } from '../voice/modelManager.js';
 
 function toArrayBuffer(buffer: Buffer): ArrayBuffer {
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
-}
-
-/**
- * Picks a downloaded Piper voice for `lang`. An explicit `voiceId` wins; otherwise
- * the catalogue's first downloaded Piper voice for that language is used, so the
- * FR-6.6 fallback works without the caller having to name a model.
- */
-function resolvePiperModelPath(lang: string, voiceId?: string): string {
-  if (voiceId) {
-    const explicit = getModelPath(voiceId);
-    if (explicit) return explicit;
-  }
-  const base = lang.split('-')[0];
-  const candidates = MODEL_CATALOG.filter(
-    (m) => m.engine === 'piper' && (m.langs.includes(lang) || m.langs.includes(base)),
-  );
-  for (const candidate of candidates) {
-    const candidatePath = getModelPath(candidate.id);
-    if (candidatePath) return candidatePath;
-  }
-  return '';
-}
-
-/**
- * SPEC-M5 FR-6.5: Urdu scholarly prose is full of Arabic quotations, and Piper's
- * Urdu voice mispronounces them ("Quality may vary on mixed-language input").
- * So the text is split by script and each run spoken by the voice for its own
- * language, then the audio is joined.
- *
- * Voices that are not downloaded fall back to the primary one — a missing Arabic
- * voice costs pronunciation quality on those runs, which is the behaviour before
- * FR-6.5, and is still far better than refusing to speak at all.
- */
-async function synthesizeWithPiperChecked(
-  text: string,
-  lang: string,
-  voiceId?: string,
-): Promise<Buffer> {
-  const primaryPath = resolvePiperModelPath(lang, voiceId);
-  if (!primaryPath) {
-    throw new Error(
-      `اس زبان (${lang}) کا کوئی Piper ماڈل ڈاؤن لوڈ نہیں — Settings کے ماڈل مینیجر سے ڈاؤن لوڈ کریں۔`,
-    );
-  }
-
-  const urduPath = resolvePiperModelPath('ur') || primaryPath;
-  const arabicPath = resolvePiperModelPath('ar') || primaryPath;
-
-  const speakWith = (modelPath: string): TtsSynthesizeFn => (runText: string) =>
-    synthesizeWithPiper(runText, modelPath);
-
-  let buffer: Buffer;
-  if (urduPath === arabicPath && urduPath === primaryPath) {
-    // Only one voice is available, so splitting would just add joins for nothing.
-    buffer = await synthesizeWithPiper(text, primaryPath);
-  } else {
-    const engines = new Map<ScriptKind, TtsSynthesizeFn>([
-      ['urdu', speakWith(urduPath)],
-      ['arabic', speakWith(arabicPath)],
-      ['latin', speakWith(primaryPath)],
-      ['neutral', speakWith(primaryPath)],
-    ]);
-    // Ambiguous Arabic-script runs (no Urdu- or Arabic-only markers) are decided
-    // by the requested language rather than always defaulting to Urdu.
-    const fallbackScript = lang.split('-')[0] === 'ar' ? 'arabic' : 'urdu';
-    buffer = await segmentedSynthesize(text, engines, fallbackScript);
-  }
-
-  // FR-6.6: never hand back empty audio as if synthesis had succeeded.
-  if (buffer.length === 0) {
-    throw new Error('Piper سے کوئی آڈیو نہیں ملا۔');
-  }
-  return buffer;
 }
 
 export function registerVoiceHandlers(): void {
@@ -119,7 +39,7 @@ export function registerVoiceHandlers(): void {
           // for online-quality audio.
           const reason = err instanceof Error ? err.message : String(err);
           try {
-            const buffer = await synthesizeWithPiperChecked(text, lang, voiceId);
+            const buffer = await synthesizeLocalTts(text, lang, voiceId);
             return {
               audio: toArrayBuffer(buffer),
               engineUsed: 'piper',
@@ -137,7 +57,7 @@ export function registerVoiceHandlers(): void {
         }
       }
 
-      const buffer = await synthesizeWithPiperChecked(text, lang, voiceId);
+      const buffer = await synthesizeLocalTts(text, lang, voiceId);
       return { audio: toArrayBuffer(buffer), engineUsed: 'piper', mimeType: 'audio/wav' };
     },
   );
@@ -228,4 +148,74 @@ export function registerVoiceHandlers(): void {
       return targetPath;
     },
   );
+
+  // SPEC-M5 FR-6.9. A book-length export runs for minutes, so it reports progress
+  // and can be cancelled; the flag is per-window so two windows cannot cancel
+  // each other's export.
+  const cancelledExports = new Set<number>();
+
+  ipcMain.handle(
+    ALLOWED_IPC_CHANNELS.VOICE_CANCEL_AUDIOBOOK,
+    async (event) => {
+      cancelledExports.add(event.sender.id);
+    },
+  );
+
+  ipcMain.handle(
+    ALLOWED_IPC_CHANNELS.VOICE_EXPORT_AUDIOBOOK,
+    async (event, req: AudiobookExportRequest) => {
+      const senderId = event.sender.id;
+      cancelledExports.delete(senderId);
+
+      const { exportAudiobook, AudiobookCancelledError } = await import('../voice/audiobook.js');
+
+      try {
+        const result = await exportAudiobook({
+          chapters: req.chapters,
+          lang: req.lang,
+          voiceId: req.voiceId,
+          title: req.title,
+          bitrateKbps: req.bitrateKbps,
+          isCancelled: () => cancelledExports.has(senderId),
+          onProgress: (progress) => {
+            event.sender.send(ALLOWED_IPC_CHANNELS.VOICE_EXPORT_AUDIOBOOK_PROGRESS, progress);
+          },
+        });
+
+        // The file is written from main via a save dialog: handing a
+        // hundred-megabyte buffer back to the renderer only for it to write the
+        // same bytes out again would double the peak memory for nothing.
+        const suggested = `${(req.title || 'audiobook').replace(/[^\p{L}\p{N} ._-]/gu, '_')}.mp3`;
+        const { canceled, filePath } = await dialog.showSaveDialog({
+          defaultPath: suggested,
+          filters: [{ name: 'MP3', extensions: ['mp3'] }],
+        });
+        if (canceled || !filePath) {
+          return { cancelled: true as const };
+        }
+
+        onProgressWriting(event);
+        fs.writeFileSync(filePath, result.mp3);
+
+        return {
+          cancelled: false as const,
+          filePath,
+          durationMs: result.durationMs,
+          chapterCount: result.chapters.length,
+          bytes: result.mp3.length,
+        };
+      } catch (err) {
+        if (err instanceof AudiobookCancelledError) {
+          return { cancelled: true as const };
+        }
+        throw err;
+      } finally {
+        cancelledExports.delete(senderId);
+      }
+    },
+  );
+}
+
+function onProgressWriting(event: { sender: Electron.WebContents }): void {
+  event.sender.send(ALLOWED_IPC_CHANNELS.VOICE_EXPORT_AUDIOBOOK_PROGRESS, { phase: 'writing' });
 }

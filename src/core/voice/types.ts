@@ -72,6 +72,42 @@ export interface VoiceTranscribeRequest {
   engineId?: string;
 }
 
+/** SPEC-M5 FR-6.9 — one chapter of the document to be spoken. */
+export interface AudiobookChapterInput {
+  title: string;
+  text: string;
+}
+
+export interface AudiobookExportRequest {
+  chapters: AudiobookChapterInput[];
+  lang: string;
+  voiceId?: string;
+  title?: string;
+  bitrateKbps?: number;
+}
+
+export interface AudiobookExportProgress {
+  phase: 'synthesizing' | 'encoding' | 'writing';
+  currentChapter?: number;
+  totalChapters?: number;
+  chapterTitle?: string;
+  encodeFraction?: number;
+}
+
+/**
+ * The file is written in the main process, so only a path comes back — the
+ * renderer never holds the finished audiobook in memory.
+ */
+export type AudiobookExportResult =
+  | { cancelled: true }
+  | {
+      cancelled: false;
+      filePath: string;
+      durationMs: number;
+      chapterCount: number;
+      bytes: number;
+    };
+
 export interface ModelDownloadProgress {
   modelId: string;
   downloadedBytes: number;
