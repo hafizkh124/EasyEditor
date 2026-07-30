@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { isAllowedIpcChannel, ALLOWED_IPC_CHANNELS } from './ipc/registry.js';
 import type {
   VoiceSynthesizeRequest,
+  VoiceSynthesizeResult,
   VoiceTranscribeRequest,
   VoiceModelInfo,
   TranscriptSegment,
@@ -70,7 +71,7 @@ const electronAPI = {
   },
 
   voice: {
-    synthesize: (request: VoiceSynthesizeRequest): Promise<ArrayBuffer> =>
+    synthesize: (request: VoiceSynthesizeRequest): Promise<VoiceSynthesizeResult> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.VOICE_SYNTHESIZE, request),
     transcribe: (request: VoiceTranscribeRequest): Promise<TranscriptSegment[]> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.VOICE_TRANSCRIBE, request),

@@ -69,12 +69,14 @@ const Speak = () => {
   const [cloneSampleName, setCloneSampleName] = useState<string | null>(null);
   const isDesktopEnv = isDesktop();
   const [useLocalEngine, setUseLocalEngine] = useState(false);
+  const [localEngineId, setLocalEngineId] = useState('piper');
 
   useEffect(() => {
     if (!isDesktopEnv) { setUseLocalEngine(false); return; }
     const lang = selectedPersona.voiceLang;
     const pref = getPreferredEngine(lang);
     setUseLocalEngine(pref !== 'cloud');
+    setLocalEngineId(pref);
   }, [isDesktopEnv, selectedPersona.voiceLang]);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -213,12 +215,23 @@ const Speak = () => {
     if (isDesktopEnv && useLocalEngine) {
       try {
         const lang = selectedPersona.voiceLang;
-        const engine = new LocalTtsEngine();
-        const arrayBuffer = await engine.synthesize(text, lang);
-        if (arrayBuffer.byteLength === 0) {
+        // Honour the engine chosen in Settings ('piper' or 'edge-tts') rather than
+        // always asking for Piper.
+        const engine = new LocalTtsEngine(localEngineId);
+        const result = await engine.synthesizeDetailed(text, lang);
+        if (result.audio.byteLength === 0) {
           throw new Error('Local engine returned empty audio');
         }
-        return new Blob([arrayBuffer], { type: 'audio/wav' });
+        // SPEC-M5 FR-6.6: the online engine can fail and be served by Piper
+        // instead — say so, rather than passing off local audio as online.
+        if (result.fallbackFrom) {
+          toast.warning(
+            t("tts.online_fallback") ||
+              'آن لائن انجن دستیاب نہیں — آڈیو مقامی Piper سے بنایا گیا۔',
+          );
+          if (import.meta.env.DEV) console.warn('Edge TTS fell back to Piper:', result.fallbackReason);
+        }
+        return new Blob([result.audio], { type: result.mimeType });
       } catch (err) {
         if (import.meta.env.DEV) console.error("Local TTS failed, falling back to cloud:", err);
         // Fall through to cloud
@@ -329,7 +342,10 @@ const Speak = () => {
       const url = URL.createObjectURL(audioBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `tts-${voiceMode === "cloned" ? "my-voice" : selectedPersona.name}-${Date.now()}.wav`;
+      // Extension must follow the actual format: the online engine returns MP3,
+      // Piper and the cloud path return WAV.
+      const ext = audioBlob.type === "audio/mpeg" ? "mp3" : "wav";
+      a.download = `tts-${voiceMode === "cloned" ? "my-voice" : selectedPersona.name}-${Date.now()}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(t("tts.downloaded"));
@@ -434,8 +450,14 @@ const Speak = () => {
             {t("tts.download")}
           </Button>
 
+          {/* SPEC-M5 R22: the online engine gets a standing badge of its own, so the
+              user always knows when their text is leaving the machine. */}
           <Badge variant="outline" className="ms-auto text-xs">
-            {useLocalEngine ? t("tts.local_mode") || "Local" : voiceMode === "cloned" ? t("tts.using_cloned") : selectedPersona.name}
+            {useLocalEngine
+              ? localEngineId === 'edge-tts'
+                ? t("tts.online_mode") || "Online (Microsoft)"
+                : t("tts.local_mode") || "Local"
+              : voiceMode === "cloned" ? t("tts.using_cloned") : selectedPersona.name}
           </Badge>
 
           {text.trim() && subscription && (

@@ -2,25 +2,108 @@ import { ipcMain, app } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ALLOWED_IPC_CHANNELS } from './registry.js';
-import type { VoiceSynthesizeRequest, VoiceTranscribeRequest } from '../../src/core/voice/types.js';
+import type {
+  VoiceSynthesizeRequest,
+  VoiceSynthesizeResult,
+  VoiceTranscribeRequest,
+} from '../../src/core/voice/types.js';
 import { synthesizeWithPiper } from '../voice/piper.js';
 import { synthesizeWithEdgeTts } from '../voice/edgeTts.js';
 import { transcribeWithWhisper } from '../voice/whisper.js';
-import { listModels, downloadModel, deleteModel, getModelPath } from '../voice/modelManager.js';
+import {
+  listModels,
+  downloadModel,
+  deleteModel,
+  getModelPath,
+  MODEL_CATALOG,
+} from '../voice/modelManager.js';
+
+function toArrayBuffer(buffer: Buffer): ArrayBuffer {
+  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
+}
+
+/**
+ * Picks a downloaded Piper voice for `lang`. An explicit `voiceId` wins; otherwise
+ * the catalogue's first downloaded Piper voice for that language is used, so the
+ * FR-6.6 fallback works without the caller having to name a model.
+ */
+function resolvePiperModelPath(lang: string, voiceId?: string): string {
+  if (voiceId) {
+    const explicit = getModelPath(voiceId);
+    if (explicit) return explicit;
+  }
+  const base = lang.split('-')[0];
+  const candidates = MODEL_CATALOG.filter(
+    (m) => m.engine === 'piper' && (m.langs.includes(lang) || m.langs.includes(base)),
+  );
+  for (const candidate of candidates) {
+    const candidatePath = getModelPath(candidate.id);
+    if (candidatePath) return candidatePath;
+  }
+  return '';
+}
+
+async function synthesizeWithPiperChecked(
+  text: string,
+  lang: string,
+  voiceId?: string,
+): Promise<Buffer> {
+  const modelPath = resolvePiperModelPath(lang, voiceId);
+  if (!modelPath) {
+    throw new Error(
+      `اس زبان (${lang}) کا کوئی Piper ماڈل ڈاؤن لوڈ نہیں — Settings کے ماڈل مینیجر سے ڈاؤن لوڈ کریں۔`,
+    );
+  }
+  const buffer = await synthesizeWithPiper(text, modelPath);
+  // FR-6.6: never hand back empty audio as if synthesis had succeeded.
+  if (buffer.length === 0) {
+    throw new Error('Piper سے کوئی آڈیو نہیں ملا۔');
+  }
+  return buffer;
+}
 
 export function registerVoiceHandlers(): void {
   ipcMain.handle(
     ALLOWED_IPC_CHANNELS.VOICE_SYNTHESIZE,
-    async (_event, req: VoiceSynthesizeRequest) => {
-      const { text, lang, engineId, voiceId } = req;
+    async (_event, req: VoiceSynthesizeRequest): Promise<VoiceSynthesizeResult> => {
+      const { text, lang, engineId, voiceId, onlineConsent } = req;
+
       if (engineId === 'edge-tts') {
-        const buffer = await synthesizeWithEdgeTts(text, lang);
-        return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+        // FR-6.6: no consent, no request — the text must not leave the machine.
+        if (onlineConsent !== true) {
+          throw new Error(
+            'آن لائن Edge TTS کے لیے صریح رضامندی درکار ہے — Settings سے اجازت دیں یا Piper (مقامی) استعمال کریں۔',
+          );
+        }
+        try {
+          const buffer = await synthesizeWithEdgeTts(text, lang, true);
+          return { audio: toArrayBuffer(buffer), engineUsed: 'edge-tts', mimeType: 'audio/mpeg' };
+        } catch (err) {
+          // FR-6.6: fall back to local Piper on any online failure, and report
+          // why — so the user never gets silence, and never mistakes the result
+          // for online-quality audio.
+          const reason = err instanceof Error ? err.message : String(err);
+          try {
+            const buffer = await synthesizeWithPiperChecked(text, lang, voiceId);
+            return {
+              audio: toArrayBuffer(buffer),
+              engineUsed: 'piper',
+              mimeType: 'audio/wav',
+              fallbackFrom: 'edge-tts',
+              fallbackReason: reason,
+            };
+          } catch (fallbackErr) {
+            const fallbackReason =
+              fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+            throw new Error(
+              `آن لائن Edge TTS ناکام (${reason})، اور مقامی Piper بھی نہیں چل سکا (${fallbackReason})۔`,
+            );
+          }
+        }
       }
-      // Default to Piper local TTS
-      const modelPath = voiceId ? getModelPath(voiceId) ?? '' : '';
-      const buffer = await synthesizeWithPiper(text, modelPath);
-      return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+
+      const buffer = await synthesizeWithPiperChecked(text, lang, voiceId);
+      return { audio: toArrayBuffer(buffer), engineUsed: 'piper', mimeType: 'audio/wav' };
     },
   );
 

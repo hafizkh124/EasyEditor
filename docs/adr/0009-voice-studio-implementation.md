@@ -105,6 +105,27 @@ Microsoft Read Aloud endpoint, and keeps the WebSocket work behind the same cons
 - The package is external to the main-process bundle so that `ws`'s optional native extras
   are not pulled into it.
 
+### 9. Consent Gate and Piper Fallback Live in the Main Process
+
+FR-6.6 asks for three things the earlier wiring did not provide: consent before any text
+leaves the machine, an automatic fallback to Piper on failure, and never silence.
+
+- **Consent** is stored in the renderer (`voice_online_engine_consent`) and passed on each
+  request as `onlineConsent`. The main process refuses `edge-tts` unless it is exactly `true`
+  — absent is a refusal, not a default. `VoiceEnginePanel` shows the Microsoft-naming dialog
+  when the engine is selected, and does not persist the selection if the user declines.
+- **Fallback** is decided in the main process, not the renderer: on any `edge-tts` failure it
+  synthesizes with a downloaded Piper voice for that language, chosen from `MODEL_CATALOG`
+  when the caller named no `voiceId`. If Piper cannot run either, the error names both
+  failures rather than the online one alone.
+- **The result is self-describing.** `VOICE_SYNTHESIZE` returns
+  `{ audio, engineUsed, mimeType, fallbackFrom?, fallbackReason? }` instead of a bare
+  `ArrayBuffer`. Two reasons: the formats differ (MP3 online, WAV local), so the renderer
+  cannot label the blob without being told; and R22's "online" badge would otherwise lie
+  whenever a fallback silently happened.
+- **Empty audio is an error** on both engines, so a zero-byte buffer can never reach playback
+  as apparent success.
+
 ## Consequences
 
 - Core installer avoids native compilation (no node-gyp, no onnxruntime-node, no CMake).
