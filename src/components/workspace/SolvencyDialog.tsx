@@ -59,7 +59,7 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">مطلوبہ ٹوکن لاگت:</span>
-              <span className="font-bold text-amber-600 dark:text-amber-400">{totalCost} ٹوکنز</span>
+              <span className="font-bold text-amber-700 dark:text-amber-400">{totalCost} ٹوکنز</span>
             </div>
             <div className="flex justify-between items-center border-t border-border/50 pt-1.5">
               <span className="text-muted-foreground">دستیاب ٹوکن بیلنس:</span>

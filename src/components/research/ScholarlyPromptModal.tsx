@@ -117,7 +117,7 @@ export function ScholarlyPromptModal({ isOpen, onClose, onSelectPrompt }: Schola
                     {p.descriptionUr}
                   </p>
                   {!p.corpusReady && (
-                    <span className="text-[9px] text-amber-600 dark:text-amber-500 flex items-center gap-0.5">
+                    <span className="text-[9px] text-amber-700 dark:text-amber-500 flex items-center gap-0.5">
                       <AlertTriangle className="h-2.5 w-2.5" /> ذخیرہ زیرِ تعمیر — نتائج غیر مصدقہ
                     </span>
                   )}
@@ -142,7 +142,7 @@ export function ScholarlyPromptModal({ isOpen, onClose, onSelectPrompt }: Schola
                     </p>
                   )}
                   {!selectedPrompt.corpusReady && (
-                    <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-1 flex items-center gap-1">
+                    <p className="text-[10px] text-amber-700 dark:text-amber-500 mt-1 flex items-center gap-1">
                       <AlertTriangle className="h-3 w-3" /> اس فن کا حوالہ ذخیرہ ابھی مکمل نہیں؛ حوالہ جات کی خود تصدیق ضروری ہے۔
                     </p>
                   )}

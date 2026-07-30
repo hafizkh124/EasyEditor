@@ -27,7 +27,7 @@ export const UnfinishedRunCard: React.FC<UnfinishedRunCardProps> = ({
     >
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 min-w-0">
-          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+          <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-400 shrink-0" />
           <span className="font-medium text-foreground truncate">
             نامکمل رن: {run.task_slug} ({done} از {total} مکمل)
           </span>

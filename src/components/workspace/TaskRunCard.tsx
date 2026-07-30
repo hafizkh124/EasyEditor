@@ -43,7 +43,7 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
       : percent >= 70
         ? { label: "اعلیٰ اعتماد", cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" }
         : percent >= 40
-          ? { label: "متوسط اعتماد", cls: "bg-amber-500/10 text-amber-600 border-amber-500/20" }
+          ? { label: "متوسط اعتماد", cls: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20" }
           : { label: "کم اعتماد — جانچ لیں", cls: "bg-red-500/10 text-red-600 border-red-500/20" };
 
   const notes: string[] = [];
