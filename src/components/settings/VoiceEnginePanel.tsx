@@ -1,5 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { getAvailableEngines, getPreferredEngine, setPreferredEngine } from '../../core/voice/registry';
+import {
+  getAvailableEngines,
+  getPreferredEngine,
+  setPreferredEngine,
+  hasOnlineConsent,
+  setOnlineConsent,
+} from '../../core/voice/registry';
+import { OnlineEngineConsentDialog } from '../voice/OnlineEngineConsentDialog';
 import { isDesktop } from '../../utils/environment';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -47,14 +54,36 @@ export const VoiceEnginePanel: React.FC = () => {
     }
   }, []);
 
-  const handleUrChange = (val: string) => {
-    setUrEngine(val);
-    setPreferredEngine('ur-PK', val);
+  // SPEC-M5 FR-6.6: picking the online engine must first name Microsoft and take an
+  // explicit yes. Until then the selection is held here and never persisted, so a
+  // declined dialog leaves the previous (offline) engine in place.
+  const [pendingOnlineLang, setPendingOnlineLang] = useState<'ur-PK' | 'ar' | null>(null);
+
+  const applyEngine = (lang: 'ur-PK' | 'ar', val: string) => {
+    if (lang === 'ur-PK') setUrEngine(val);
+    else setArEngine(val);
+    setPreferredEngine(lang, val);
   };
 
-  const handleArChange = (val: string) => {
-    setArEngine(val);
-    setPreferredEngine('ar', val);
+  const handleEngineChange = (lang: 'ur-PK' | 'ar', val: string) => {
+    if (val === 'edge-tts' && !hasOnlineConsent()) {
+      setPendingOnlineLang(lang);
+      return;
+    }
+    applyEngine(lang, val);
+  };
+
+  const handleConsentAccept = () => {
+    const lang = pendingOnlineLang;
+    setPendingOnlineLang(null);
+    if (!lang) return;
+    setOnlineConsent(true);
+    applyEngine(lang, 'edge-tts');
+  };
+
+  const handleConsentDecline = () => {
+    setPendingOnlineLang(null);
+    setOnlineConsent(false);
   };
 
   const handleDelete = async (modelId: string) => {
@@ -82,7 +111,7 @@ export const VoiceEnginePanel: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">اردو صوتی انجن (Urdu Voice Engine)</label>
-            <Select value={urEngine} onValueChange={handleUrChange}>
+            <Select value={urEngine} onValueChange={(v) => handleEngineChange('ur-PK', v)}>
               <SelectTrigger>
                 <SelectValue placeholder="انجن منتخب کریں" />
               </SelectTrigger>
@@ -98,7 +127,7 @@ export const VoiceEnginePanel: React.FC = () => {
 
           <div className="space-y-2">
             <label className="text-sm font-medium">عربی صوتی انجن (Arabic Voice Engine)</label>
-            <Select value={arEngine} onValueChange={handleArChange}>
+            <Select value={arEngine} onValueChange={(v) => handleEngineChange('ar', v)}>
               <SelectTrigger>
                 <SelectValue placeholder="انجن منتخب کریں" />
               </SelectTrigger>
@@ -155,6 +184,12 @@ export const VoiceEnginePanel: React.FC = () => {
           </div>
         )}
       </CardContent>
+
+      <OnlineEngineConsentDialog
+        open={pendingOnlineLang !== null}
+        onAccept={handleConsentAccept}
+        onDecline={handleConsentDecline}
+      />
     </Card>
   );
 };

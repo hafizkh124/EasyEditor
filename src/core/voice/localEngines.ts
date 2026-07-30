@@ -1,18 +1,29 @@
-import type { TtsEngine, SttEngine, TranscriptSegment } from './types';
+import type { TtsEngine, SttEngine, TranscriptSegment, VoiceSynthesizeResult } from './types';
 import { isDesktop } from '@/utils/environment';
+import { hasOnlineConsent } from './registry';
 
 export class LocalTtsEngine implements TtsEngine {
   id: string;
   name: string;
-  isOnline = false;
+  isOnline: boolean;
   langs = ['ur-PK', 'ur', 'ar', 'en'];
 
   constructor(id: string = 'piper', name: string = 'Piper Local TTS') {
     this.id = id;
     this.name = name;
+    this.isOnline = id === 'edge-tts';
   }
 
-  async synthesize(text: string, lang: string, voiceId?: string): Promise<ArrayBuffer> {
+  /**
+   * Full result including which engine actually ran — `edge-tts` can fall back to
+   * Piper in the main process (SPEC-M5 FR-6.6), and callers need to know, both to
+   * label the audio honestly and to pick the right MIME type.
+   */
+  async synthesizeDetailed(
+    text: string,
+    lang: string,
+    voiceId?: string,
+  ): Promise<VoiceSynthesizeResult> {
     if (!isDesktop()) {
       throw new Error('Local TTS engine is only available in the desktop app.');
     }
@@ -24,7 +35,13 @@ export class LocalTtsEngine implements TtsEngine {
       lang,
       engineId: this.id,
       voiceId,
+      onlineConsent: this.isOnline ? hasOnlineConsent() : undefined,
     });
+  }
+
+  async synthesize(text: string, lang: string, voiceId?: string): Promise<ArrayBuffer> {
+    const result = await this.synthesizeDetailed(text, lang, voiceId);
+    return result.audio;
   }
 }
 

@@ -6,6 +6,8 @@ import {
   getPreferredEngine,
   setPreferredEngine,
   getAvailableEngines,
+  hasOnlineConsent,
+  setOnlineConsent,
 } from '../core/voice/registry';
 import { LocalTtsEngine, LocalSttEngine } from '../core/voice/localEngines';
 import { CloudTtsEngine, CloudSttEngine } from '../core/voice/cloudEngines';
@@ -62,6 +64,19 @@ describe('Voice Registry', () => {
     expect(getPreferredEngine('ur-PK')).toBe('piper');
     setPreferredEngine('ur-PK', 'edge-tts');
     expect(getPreferredEngine('ur-PK')).toBe('edge-tts');
+  });
+
+  it('withholds online consent until it is explicitly granted', () => {
+    expect(hasOnlineConsent()).toBe(false);
+    setOnlineConsent(true);
+    expect(hasOnlineConsent()).toBe(true);
+    setOnlineConsent(false);
+    expect(hasOnlineConsent()).toBe(false);
+  });
+
+  it('does not read a malformed consent value as permission', () => {
+    localStorage.setItem('voice_online_engine_consent', 'yes');
+    expect(hasOnlineConsent()).toBe(false);
   });
 
   it('returns available engines list', () => {
