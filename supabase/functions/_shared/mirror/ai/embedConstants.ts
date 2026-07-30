@@ -1,5 +1,5 @@
 // AUTO-MIRRORED from shared/ai/embedConstants.ts — edge deploy bundles only supabase/functions/.
-// Edit shared/ai/embedConstants.ts and re-run: npm run mirror:shared (scripts/mirror-shared.mjs).
+// Edit shared/ai/embedConstants.ts and re-run: node scripts/mirror-shared.mjs
 // Canonical embedding model + dimensionality — THE single source of truth.
 //
 // Every embedding call, in every runtime, must use these values:

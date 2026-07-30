@@ -1,5 +1,5 @@
 // AUTO-MIRRORED from shared/ai/prompts/research.ts — edge deploy bundles only supabase/functions/.
-// Edit shared/ai/prompts/research.ts and re-run: npm run mirror:shared (scripts/mirror-shared.mjs).
+// Edit shared/ai/prompts/research.ts and re-run: node scripts/mirror-shared.mjs
 export const NORMAL_SYSTEM_PROMPT = `You are an expert research assistant. Your job is to help users understand and analyze their research sources.
 
 {{STRICT_INSTRUCTION}}
