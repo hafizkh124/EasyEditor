@@ -126,6 +126,32 @@ leaves the machine, an automatic fallback to Piper on failure, and never silence
 - **Empty audio is an error** on both engines, so a zero-byte buffer can never reach playback
   as apparent success.
 
+### 10. Segmented Synthesis Runs Inside the Piper Path
+
+FR-6.5 is wired into `synthesizeWithPiperChecked` rather than exposed as its own engine, so
+every route that reaches Piper — direct selection and the FR-6.6 fallback alike — gets the
+per-script split without the caller asking for it.
+
+- Voices are resolved per script kind from `MODEL_CATALOG` (Urdu, Arabic, and the requested
+  language's primary voice for Latin/neutral runs).
+- When only one voice is downloaded, the text is spoken in a single call. Splitting would add
+  joins with nothing to gain, and a missing Arabic voice must cost pronunciation quality on
+  those runs, not the audio itself.
+- Marker-less Arabic-script runs are resolved by the requested language, not always to Urdu.
+- Segmentation deliberately does **not** apply to `edge-tts`: it handles mixed input well, and
+  its MP3 output cannot be concatenated the way PCM can.
+
+Two failure modes are made loud rather than silent, both previously able to corrupt output
+unnoticed:
+
+- A run whose script kind has no engine and no `neutral` catch-all now throws. It used to be
+  skipped, dropping that sentence from the audio with no error.
+- `wavConcat` carries one header — the first buffer's — so joining WAVs that disagree on
+  sample rate, channels, or bit depth would leave part of the audio playing at the wrong
+  speed. It now refuses instead. This matters because `piper.ts` writes a 22050 Hz header for
+  every model; the catalogue's voices are all medium quality (22050 Hz), but a low-quality
+  16 kHz voice would violate that assumption.
+
 ## Consequences
 
 - Core installer avoids native compilation (no node-gyp, no onnxruntime-node, no CMake).

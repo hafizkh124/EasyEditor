@@ -22,6 +22,20 @@ export function wavConcat(buffers: Buffer[]): Buffer {
     return Buffer.concat(nonZero);
   }
 
+  // The joined file carries ONE header — the first buffer's. If the inputs
+  // disagree on sample rate, channel count, or bit depth, that header would
+  // describe only part of the audio and the rest would play at the wrong speed
+  // or pitch. Silent corruption is worse than a refusal, so say so instead.
+  const format = (b: Buffer) => `${b.readUInt32LE(24)}/${b.readUInt16LE(22)}/${b.readUInt16LE(34)}`;
+  const firstFormat = format(nonZero[0]);
+  const mismatch = nonZero.find((b) => format(b) !== firstFormat);
+  if (mismatch) {
+    throw new Error(
+      `آڈیو جوڑا نہیں جا سکتا — ماڈلوں کے فارمیٹ مختلف ہیں ` +
+        `(${firstFormat} اور ${format(mismatch)}؛ sampleRate/channels/bits)۔`,
+    );
+  }
+
   const pcmBuffers = nonZero.map((b) => b.subarray(HEADER_SIZE));
   const totalPcmLength = pcmBuffers.reduce((sum, b) => sum + b.length, 0);
 
@@ -50,11 +64,15 @@ export async function segmentedSynthesize(
     if (!run.text.trim()) continue;
 
     const synthFn = engines.get(run.kind) ?? engines.get('neutral');
-    if (synthFn) {
-      const lang = run.kind === 'arabic' ? 'ar' : run.kind === 'urdu' ? 'ur-PK' : 'en';
-      const buffer = await synthFn(run.text, lang);
-      audioBuffers.push(buffer);
+    // Skipping a run here would drop that sentence from the audio without any
+    // error — the caller must supply an engine for every kind it can produce,
+    // or a 'neutral' catch-all.
+    if (!synthFn) {
+      throw new Error(`تقسیم شدہ ترکیب: «${run.kind}» کے لیے کوئی انجن نہیں دیا گیا۔`);
     }
+    const lang = run.kind === 'arabic' ? 'ar' : run.kind === 'urdu' ? 'ur-PK' : 'en';
+    const buffer = await synthFn(run.text, lang);
+    audioBuffers.push(buffer);
   }
 
   return wavConcat(audioBuffers);
