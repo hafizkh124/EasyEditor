@@ -20,7 +20,9 @@ export function useAnnotations(editor: Editor | null, documentId?: string | null
 
   const markDetached = useCallback(
     (items: AnnotationItem[]): AnnotationItem[] => {
-      if (!editor) return items;
+      // The async refresh can resolve after unmount, when the editor is gone.
+      if (!editor || editor.isDestroyed) return items;
+
       const text = editor.getText();
       return items.map((item) => {
         const quote = item.anchor?.quote ?? "";
