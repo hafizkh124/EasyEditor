@@ -77,10 +77,10 @@ the web app for users who want zero cloud dependency:
   `safeStorage` (the OS keychain/DPAPI) and never leaves the main process, so
   the renderer never holds the key.
 - **Maktaba Shamela 4 native integration** — detects a local Shamela 4
-  install, diagnoses it, and reads its catalogue directly from `master.db`.
-  *In progress:* full-text search runs natively in the main process but the
-  editor still queries the `tools/shamela-bridge` HTTP sidecar, and per-book
-  import is not wired up yet — see [`docs/QA-M5.md`](docs/QA-M5.md) §A.
+  install, diagnoses it, reads its catalogue from `master.db`, and searches
+  its Lucene index through Shamela's own JRE in the main process. No sidecar,
+  no `.bat`, no tokens spent. *In progress:* per-book import into the local
+  corpus — see [`docs/QA-M5.md`](docs/QA-M5.md) §A.
 - **Local voice studio (Python-free)** — offline speech-to-text (Whisper) and
   text-to-speech (Piper, Urdu & Arabic) with segmented synthesis.
 

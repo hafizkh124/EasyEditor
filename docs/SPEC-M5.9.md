@@ -120,7 +120,9 @@ ingestLibraryItem(db, { itemId, offset, batchSize }) =>
 
 **FR-3.3** ⚠️ **راستہ A بغیر ٹوکن:** یہ لفظی (Lucene) تلاش ہے — اس میں کوئی embedding یا AI کال نہ ہو۔
 
-**FR-3.4** `tools/shamela-bridge/` حذف ہو، اور `.bat`/`.sh` کے حوالے دستاویزات سے نکلیں۔ **یہی SPEC-M5 کا «صفر انحصار» exit criterion ہے۔**
+**FR-3.4** ڈیسک ٹاپ کا کوئی راستہ `tools/shamela-bridge/` کو **چھوئے تک نہیں** — یہی NFR-12 اور «صفر انحصار» exit criterion ہے (فولڈر حذف کر کے ڈیسک ٹاپ آزمایا جائے تو سب چلے)۔
+
+> ⚠️ **فولڈر مستقل حذف نہ کیا جائے۔** SPEC-M5 §258 صراحتاً کہتا ہے کہ ویب موڈ میں یہ بدستور چلتا رہے (کوئی regression نہیں)، اور اسے سبکدوش کرنا **M5 کے بعد** کا کام ہے۔ ابھی حذف کرنا ویب صارفین کی شاملہ تلاش توڑ دے گا۔ تقاضا «حذف» نہیں، **«عدم انحصار»** ہے — اور اسے ٹیسٹ سے ثابت کیا جائے کہ ڈیسک ٹاپ پر کوئی HTTP درخواست جاتی ہی نہیں۔
 
 **FR-3.5** ناکامی پر `shamelaNative` کے صریح پیغامات (JRE نہیں ملا، store index نہیں ملا) صارف تک **جوں کے توں** پہنچیں — خالی نتیجہ نہیں (R15/R25)۔
 
@@ -164,7 +166,7 @@ ingestLibraryItem(db, { itemId, offset, batchSize }) =>
 | `src/components/shamela/ShamelaConnectPanel.tsx` | دونوں مردہ بٹنوں پر `onClick` + کاپی بٹن |
 | `src/lib/shamela/localShamelaService.ts` | ڈیسک ٹاپ پر native IPC |
 | `src/components/AppLayout.tsx` | موڈ بیج |
-| **حذف:** `tools/shamela-bridge/` | FR-3.4 |
+| `tools/shamela-bridge/` | **برقرار** — ویب کے لیے (SPEC-M5 §258)؛ ڈیسک ٹاپ اب اس سے آزاد |
 
 ### 4.3 اہم اصول
 
@@ -180,7 +182,7 @@ ingestLibraryItem(db, { itemId, offset, batchSize }) =>
 | مرحلہ | کام | دن |
 |---|---|---|
 | **M5.9.1** | **G4 — مقامی ingest** (FR-1): chunker کی `shared/` منتقلی، `ingest.ts`، fileStore، aiHandlers کی وائرنگ، ٹیسٹ | 4 |
-| **M5.9.2** | **G6 — native تلاش** (FR-3): وائرنگ، mapping، `tools/shamela-bridge/` کی حذف، ٹیسٹ | 2 |
+| **M5.9.2** | **G6 — native تلاش** (FR-3): وائرنگ، mapping، ڈیسک ٹاپ پر HTTP کی عدم موجودگی کا ٹیسٹ | 2 |
 | **M5.9.3** | **G5 — شاملہ درآمد** (FR-2): تخمینہ + ڈائلاگ + درآمد + پیش رفت + حوالہ | 5 |
 | **M5.9.4** | **G7 — بیج و متفرق** (FR-4) | 1 |
 | **M5.9.5** | QA-M5 کی مکمل تصدیق صاف Windows VM پر | 2 |
@@ -219,7 +221,7 @@ ingestLibraryItem(db, { itemId, offset, batchSize }) =>
 - [ ] `shared/text/documentChunks.ts` کی **ایک ہی** نقل — Deno اور Node دونوں وہیں سے لیں (CI گارڈ سبز)۔
 
 ### G6 — native تلاش
-- [ ] ⚠️ **`tools/shamela-bridge/` حذف کر کے** شاملہ کی تلاش مکمل کام کرے۔
+- [ ] ⚠️ **`tools/shamela-bridge/` حذف کر کے** ڈیسک ٹاپ پر شاملہ کی تلاش مکمل کام کرے (فولڈر repo میں رہے گا، صرف عدم انحصار جانچنا ہے)۔
 - [ ] پوری لائبریری میں لفظی تلاش چلے، **کوئی ٹوکن نہ کٹے**۔
 - [ ] ویب ورژن کی شاملہ تلاش بعینہٖ پہلے جیسی۔
 

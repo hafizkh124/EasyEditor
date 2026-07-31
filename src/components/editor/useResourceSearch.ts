@@ -6,6 +6,21 @@ import { searchLocalShamela } from "@/lib/shamela/localShamelaService";
 
 export type SourceFilter = "all" | "quran" | "hadith" | "shamela";
 
+/**
+ * Runs the Shamela lookup without letting a failure abort the cloud lookup
+ * beside it in Promise.all — but keeps the reason, so the caller can show it
+ * rather than a bare "search failed".
+ */
+async function searchShamelaSafely(
+  query: string,
+): Promise<{ results: ResourceResult[]; error?: string }> {
+  try {
+    return { results: await searchLocalShamela(query) };
+  } catch (err) {
+    return { results: [], error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 /** Which bucket a result belongs to, for the filter chips. */
 function sourceTypeOf(r: ResourceResult): SourceFilter {
   if (r.match_key?.startsWith("shamela-") || r.reason?.includes("مکتبہ شاملہ")) {
@@ -36,7 +51,7 @@ export function useResourceSearch(t: (k: string) => string) {
     setSearched(true);
     setFilter("all");
     try {
-      const [cloudRes, localResults] = await Promise.all([
+      const [cloudRes, local] = await Promise.all([
         session?.access_token
           ? fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resource-search`, {
               method: "POST",
@@ -48,8 +63,16 @@ export function useResourceSearch(t: (k: string) => string) {
               body: JSON.stringify({ query }),
             }).catch(() => null)
           : Promise.resolve(null),
-        searchLocalShamela(query.trim()),
+        searchShamelaSafely(query.trim()),
       ]);
+
+      const localResults = local.results;
+
+      // SPEC-M5.9 FR-3.5 / risk R15: the native route explains exactly why it
+      // could not search — Shamela's JRE missing, the store index absent, the
+      // library locked by a running Shamela. Showing zero results instead
+      // would hide a fixable problem behind "nothing found".
+      if (local.error) toast.error(local.error);
 
       if (cloudRes && cloudRes.ok) {
         const data = (await cloudRes.json()) as CitationSearchResponse;
