@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   CheckCircle, XCircle, RefreshCw, HardDrive, HelpCircle,
-  Search, BookOpen, Database, FileText
+  Search, BookOpen, Database, FileText, Copy
 } from "lucide-react";
 import { ShamelaGuideModal } from "@/components/mcp/ShamelaGuideModal";
 
@@ -30,7 +30,12 @@ export interface ShamelaStatus {
 
 type ConnectState = "idle" | "connecting" | "connected" | "error";
 
-export function ShamelaConnectPanel() {
+interface ShamelaConnectPanelProps {
+  /** Opens the book browser on the given tab. Omitted on surfaces that have no importer. */
+  onBrowseBooks?: (masterDbPath: string, tab: "browse" | "search") => void;
+}
+
+export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps = {}) {
   const [state, setState] = useState<ConnectState>("idle");
   const [diagnostics, setDiagnostics] = useState<ShamelaDiagnostics | null>(null);
   const [status, setStatus] = useState<ShamelaStatus | null>(null);
@@ -83,6 +88,40 @@ export function ShamelaConnectPanel() {
       console.error("[ShamelaConnectPanel]", err);
       toast.error("کنکشن کے دوران خرابی: " + (err instanceof Error ? err.message : "unknown"));
       setState("error");
+    }
+  };
+
+  /** Builds a plain-text diagnostic report for pasting into a support request. */
+  const buildDiagnosticsReport = (): string => {
+    const yn = (ok: boolean) => (ok ? "ملا ✓" : "نہیں ملا ✗");
+    const lines = [
+      "مکتبہ شاملہ ۴ — تشخیصی رپورٹ",
+      `تاریخ: ${new Date().toISOString()}`,
+      `حالت: ${state}`,
+      `مقام: ${status?.path ?? "—"}`,
+      `ورژن: ${status?.version ?? "—"}`,
+      `دستیاب کتب: ${stats?.totalBooks ?? "—"}`,
+      "",
+      `Java Runtime: ${yn(!!diagnostics?.jreFound)}${diagnostics?.jreVersion ? ` (${diagnostics.jreVersion})` : ""}`,
+      `Lucene JARs: ${yn(!!diagnostics?.luceneJarsFound)}${diagnostics?.luceneVersion ? ` (${diagnostics.luceneVersion})` : ""}`,
+      `master.db: ${yn(!!diagnostics?.masterDbFound)}`,
+      `Store Index: ${yn(!!diagnostics?.storeIndexFound)}`,
+    ];
+
+    if (diagnostics?.errors.length) {
+      lines.push("", `مسائل (${diagnostics.errors.length}):`);
+      diagnostics.errors.forEach((e, i) => lines.push(`  ${i + 1}. ${e}`));
+    }
+
+    return lines.join("\n");
+  };
+
+  const handleCopyDiagnostics = async () => {
+    try {
+      await navigator.clipboard.writeText(buildDiagnosticsReport());
+      toast.success("تشخیصی رپورٹ کاپی ہو گئی۔");
+    } catch {
+      toast.error("کاپی نہیں ہو سکی — متن خود منتخب کر کے کاپی کریں۔");
     }
   };
 
@@ -167,10 +206,24 @@ export function ShamelaConnectPanel() {
           {/* Diagnostic checklist */}
           {diagnostics && (
             <div className="space-y-2">
-              <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5 text-primary" />
-                تشخیصی چیک لسٹ
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-primary" />
+                  تشخیصی چیک لسٹ
+                </span>
+                {/* FR-5.9: a report the user can paste into a support message.
+                    Reading four icons off a screenshot loses the versions,
+                    which are the part that actually identifies the problem. */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-[11px]"
+                  onClick={handleCopyDiagnostics}
+                >
+                  <Copy className="h-3 w-3" />
+                  رپورٹ کاپی کریں
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-[11px]">
                   {statusIcon(diagnostics.jreFound)}
@@ -216,13 +269,23 @@ export function ShamelaConnectPanel() {
           )}
 
           {/* Quick actions when connected */}
-          {state === "connected" && (
+          {state === "connected" && status?.masterDbPath && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 gap-1.5 text-xs"
+                onClick={() => onBrowseBooks?.(status.masterDbPath!, "search")}
+              >
                 <Search className="h-3.5 w-3.5" />
                 کتب تلاش کریں
               </Button>
-              <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 gap-1.5 text-xs"
+                onClick={() => onBrowseBooks?.(status.masterDbPath!, "browse")}
+              >
                 <BookOpen className="h-3.5 w-3.5" />
                 بک براؤزر
               </Button>

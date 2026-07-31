@@ -22,6 +22,7 @@ import java.nio.file.Paths;
  *   detect <libraryPath>              — verify installation
  *   search <indexPath> <query> [limit] — full-text search
  *   read   <indexPath> <bookId> <page> — fetch page text
+ *   readBook <indexPath> <bookId> [max] — fetch every page of one book
  *   version                            — print helper version
  */
 public class ShamelaHelper {
@@ -63,6 +64,15 @@ public class ShamelaHelper {
                         System.exit(1);
                     }
                     handleRead(args[1], args[2], Integer.parseInt(args[3]));
+                    break;
+
+                case "readBook":
+                    if (args.length < 3) {
+                        printJsonError("Usage: readBook <indexPath> <bookId> [maxPages]");
+                        System.exit(1);
+                    }
+                    int maxPages = args.length > 3 ? Integer.parseInt(args[3]) : 100000;
+                    handleReadBook(args[1], args[2], maxPages);
                     break;
 
                 default:
@@ -352,6 +362,82 @@ public class ShamelaHelper {
             System.exit(1);
         } catch (Exception e) {
             printJsonError("Read failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            System.exit(1);
+        }
+    }
+
+    /**
+     * Reads every page of one book in a single JVM.
+     *
+     * SPEC-M5.9 risk N4: the per-page `read` command spawns a JVM per call, so
+     * importing a 500-page book would start 500 of them — the JVM startup cost
+     * alone would dominate the import. One spawn opens the index once and
+     * walks the book's pages in order.
+     *
+     * Pages are emitted as one JSON object per line rather than a single
+     * document, so the caller can process and free them as they arrive instead
+     * of holding an entire book in memory twice.
+     */
+    private static void handleReadBook(String indexPath, String bookId, int maxPages) {
+        Path indexDir = Paths.get(indexPath);
+        if (!Files.exists(indexDir) || !Files.isDirectory(indexDir)) {
+            printJsonError("Index directory does not exist: " + indexPath);
+            return;
+        }
+
+        try {
+            Class<?> fsDirectoryClass = Class.forName("org.apache.lucene.store.FSDirectory");
+            Class<?> directoryReaderClass = Class.forName("org.apache.lucene.index.DirectoryReader");
+            Class<?> indexSearcherClass = Class.forName("org.apache.lucene.search.IndexSearcher");
+
+            // ADR-0007/R25: refuse on an unexpected Lucene major rather than
+            // read page text back through the wrong codec (mangled Arabic).
+            assertLuceneVersion();
+
+            Object directory = fsDirectoryClass.getMethod("open", Path.class).invoke(null, indexDir);
+            Object reader = directoryReaderClass.getMethod("open",
+                Class.forName("org.apache.lucene.store.Directory")).invoke(null, directory);
+            Object searcher = indexSearcherClass.getConstructor(
+                Class.forName("org.apache.lucene.index.IndexReader")).newInstance(reader);
+
+            Class<?> termQueryClass = Class.forName("org.apache.lucene.search.TermQuery");
+            Class<?> termClass = Class.forName("org.apache.lucene.index.Term");
+
+            Object bookTerm = termClass.getConstructor(String.class, String.class).newInstance("book_id", bookId);
+            Object bookQuery = termQueryClass.getConstructor(termClass).newInstance(bookTerm);
+
+            Object topDocs = indexSearcherClass.getMethod("search",
+                Class.forName("org.apache.lucene.search.Query"), int.class)
+                .invoke(searcher, bookQuery, maxPages);
+
+            Object[] scoreDocs = (Object[]) topDocs.getClass().getField("scoreDocs").get(topDocs);
+            Object storedFields = indexSearcherClass.getMethod("storedFields").invoke(searcher);
+
+            OUT.printf("{\"status\":\"success\",\"bookId\":\"%s\",\"pageCount\":%d}%n",
+                escapeJson(bookId), scoreDocs.length);
+
+            for (Object scoreDoc : scoreDocs) {
+                int docId = (int) scoreDoc.getClass().getField("doc").get(scoreDoc);
+                Object doc = storedFields.getClass().getMethod("document", int.class).invoke(storedFields, docId);
+
+                String nass = getField(doc, "nass");
+                String volume = getField(doc, "part");
+                String page = getField(doc, "page");
+
+                OUT.printf("{\"page\":\"%s\",\"volume\":\"%s\",\"text\":\"%s\"}%n",
+                    escapeJson(page != null ? page : ""),
+                    escapeJson(volume != null ? volume : ""),
+                    escapeJson(nass != null ? nass : ""));
+            }
+
+            reader.getClass().getMethod("close").invoke(reader);
+
+        } catch (ClassNotFoundException e) {
+            printJsonError("Lucene classes not found on classpath (" + e.getMessage()
+                + "). Shamela's app/lucene/2/*.jar must be on the classpath.");
+            System.exit(1);
+        } catch (Exception e) {
+            printJsonError("readBook failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             System.exit(1);
         }
     }

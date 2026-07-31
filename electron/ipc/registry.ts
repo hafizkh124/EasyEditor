@@ -27,6 +27,8 @@ export const ALLOWED_IPC_CHANNELS = {
   SHAMELA_DIAGNOSE: 'shamela:diagnose',
   SHAMELA_READ: 'shamela:read',
   SHAMELA_IMPORT: 'shamela:import',
+  SHAMELA_IMPORT_PROGRESS: 'shamela:import-progress',
+  SHAMELA_CANCEL_IMPORT: 'shamela:cancel-import',
 
   // Voice (M5.5 / M5.6 placeholder channels)
   VOICE_SYNTHESIZE: 'voice:synthesize',

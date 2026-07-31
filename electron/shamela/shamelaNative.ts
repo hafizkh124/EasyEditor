@@ -1,5 +1,5 @@
 import { app } from 'electron';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -218,15 +218,28 @@ export async function diagnoseShamelaInstallation(): Promise<ShamelaDiagnostics>
 // ─── Java helper spawn (ADR-0007 §Decision — textHelper) ───────────────────
 
 function getHelperJarPath(): string {
-  // In production: resources/bin/shamela-helper.jar (packaged with app)
-  const prodPath = path.join(process.resourcesPath || '', 'bin', 'shamela-helper.jar');
-  if (fs.existsSync(prodPath)) return prodPath;
+  const appPath = app.getAppPath();
 
-  // In dev: electron/shamela/java/shamela-helper.jar (build output)
-  const devPath = path.join(__dirname, 'java', 'shamela-helper.jar');
-  if (fs.existsSync(devPath)) return devPath;
+  const candidates = [
+    // Packaged: electron-builder's extraResources puts it here.
+    path.join(process.resourcesPath || '', 'bin', 'shamela-helper.jar'),
+    // Dev: the build script writes both of these. Note that __dirname is
+    // dist-electron/ once main.ts is bundled, not electron/shamela/, so the
+    // paths have to be anchored to the app root instead.
+    path.join(appPath, 'resources', 'bin', 'shamela-helper.jar'),
+    path.join(appPath, 'electron', 'shamela', 'java', 'shamela-helper.jar'),
+  ];
 
-  throw new Error('shamela-helper.jar نہیں ملا۔ پہلے scripts/build-shamela-helper چلائیں۔');
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) return candidate;
+  }
+
+  // R15: say where it looked, so a packaging mistake is diagnosable from the
+  // message alone rather than needing a debugger.
+  throw new Error(
+    'shamela-helper.jar نہیں ملا۔ `node scripts/build-shamela-helper.mjs` چلائیں۔ ' +
+      `تلاش کیے گئے راستے: ${candidates.filter(Boolean).join(' | ')}`,
+  );
 }
 
 function buildClasspath(luceneDir: string, helperJar: string): string {
@@ -347,6 +360,123 @@ export async function searchShamelaNative(queryText: string, limit = 20): Promis
     console.error('[shamelaNative] search error:', err);
     throw err;
   }
+}
+
+export interface ShamelaBookPage {
+  page: string;
+  volume: string;
+  text: string;
+}
+
+/**
+ * Reads every page of one book in a single JVM spawn.
+ *
+ * SPEC-M5.9 risk N4: `readShamelaPage` starts a JVM per call, so importing a
+ * 500-page book through it would start 500 of them. This uses the helper's
+ * `readBook` command, which emits a header line then one JSON object per page.
+ *
+ * `onPage` is called as each line arrives, so a book is never held twice in
+ * memory, and returning `false` from it stops the read (used to honour a
+ * cancelled import without waiting for the remaining pages).
+ */
+export async function readShamelaBook(
+  bookId: string,
+  onPage: (page: ShamelaBookPage) => boolean | void,
+): Promise<{ pageCount: number }> {
+  const status = await detectShamelaInstallation();
+  if (!status.installed || !status.path) {
+    throw new Error('مکتبہ شاملہ ۴ انسٹال نہیں ہے۔');
+  }
+  if (!status.jrePath) {
+    throw new Error('شاملہ کی Java Runtime (JRE) نہیں ملی۔ شاملہ کی مرمت کریں۔');
+  }
+
+  const storeIndex = path.join(status.path, 'database', 'store', 'page');
+  if (!fs.existsSync(storeIndex)) {
+    throw new Error('database/store/page/ انڈیکس نہیں ملا — کتاب پڑھی نہیں جا سکتی۔');
+  }
+
+  const helperJar = getHelperJarPath();
+  const classpath = status.lucenePath ? buildClasspath(status.lucenePath, helperJar) : helperJar;
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn(
+      status.jrePath!,
+      ['-cp', classpath, 'com.alulama.easyeditor.shamela.ShamelaHelper', 'readBook', storeIndex, bookId],
+      { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], timeout: 10 * 60_000 },
+    );
+
+    let buffer = '';
+    let stderr = '';
+    let pageCount = 0;
+    let headerSeen = false;
+    let stopped = false;
+
+    const handleLine = (line: string) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(trimmed);
+      } catch {
+        return; // ignore anything that is not one of our JSON lines
+      }
+
+      if (parsed.status === 'error') {
+        stopped = true;
+        proc.kill();
+        reject(new Error(String(parsed.message || 'Java helper returned error')));
+        return;
+      }
+
+      if (!headerSeen && parsed.status === 'success') {
+        headerSeen = true;
+        pageCount = typeof parsed.pageCount === 'number' ? parsed.pageCount : 0;
+        return;
+      }
+
+      const keepGoing = onPage({
+        page: String(parsed.page ?? ''),
+        volume: String(parsed.volume ?? ''),
+        text: String(parsed.text ?? ''),
+      });
+
+      if (keepGoing === false) {
+        stopped = true;
+        proc.kill();
+        resolve({ pageCount });
+      }
+    };
+
+    proc.stdout.on('data', (chunk: Buffer) => {
+      buffer += chunk.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (stopped) return;
+        handleLine(line);
+      }
+    });
+
+    proc.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+
+    proc.on('close', (code) => {
+      if (stopped) return;
+      if (buffer.trim()) handleLine(buffer);
+      if (stopped) return;
+
+      if (code !== 0 && !headerSeen) {
+        reject(new Error(`Java helper exited with code ${code}: ${stderr || 'no output'}`));
+        return;
+      }
+      resolve({ pageCount });
+    });
+
+    proc.on('error', (err) => {
+      if (!stopped) reject(new Error(`Failed to spawn Java helper: ${err.message}`));
+    });
+  });
 }
 
 export async function readShamelaPage(bookId: string, pageNumber: number): Promise<ShamelaPageContent> {

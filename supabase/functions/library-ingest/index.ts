@@ -2,58 +2,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { embedBatch } from "../_shared/embed.ts";
 import { fetchAndExtractStorageFile } from "../_shared/fileText.ts";
+// SPEC-M5 FR-1.3: one chunker, shared with the Electron main process.
+import { chunkDocumentText } from "../_shared/mirror/text/documentChunks.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-/**
- * Sentence-aware chunker for library documents (~1200 chars, ~150 overlap).
- * Uses Urdu/Arabic end punctuation (. ! ؟ ۔ \n) to break cleanly.
- */
-function chunkDocumentText(text: string, chunkSize = 1200, overlap = 150): Array<{
-  index: number;
-  content: string;
-  charStart: number;
-  charEnd: number;
-}> {
-  const chunks: Array<{ index: number; content: string; charStart: number; charEnd: number }> = [];
-  const cleanText = text.trim();
-  if (!cleanText) return [];
-
-  let start = 0;
-  let chunkIndex = 0;
-
-  while (start < cleanText.length) {
-    let end = Math.min(start + chunkSize, cleanText.length);
-
-    if (end < cleanText.length) {
-      // Find clean sentence boundary backward within the overlap window
-      const searchWindow = cleanText.slice(Math.max(start, end - overlap), end);
-      const match = /[.!؟۔\n]+/g.exec(searchWindow);
-      if (match) {
-        end = Math.max(start, end - overlap) + match.index + match[0].length;
-      }
-    }
-
-    const chunkContent = cleanText.slice(start, end).trim();
-    if (chunkContent.length > 0) {
-      chunks.push({
-        index: chunkIndex++,
-        content: chunkContent,
-        charStart: start,
-        charEnd: end,
-      });
-    }
-
-    if (end >= cleanText.length) break;
-    start = Math.max(start + 1, end - overlap);
-  }
-
-  return chunks;
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

@@ -26,5 +26,8 @@
       "~shared/*": ["./shared/*"]
     }
   },
-  "include": ["vite.config.ts", "electron/**/*"]
+  // electron/ imports types out of src/, which in turn reach for
+  // window.electronAPI — so the ambient declarations have to be visible here
+  // too, or the main-process typecheck fails on the renderer's own globals.
+  "include": ["vite.config.ts", "electron/**/*", "shared/**/*", "src/types/**/*.d.ts"]
 }

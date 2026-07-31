@@ -44,4 +44,13 @@ data/
 *.tsbuildinfo
 stats.html
 
+# Generated at build time by scripts/generate-version.mjs (npm prebuild), so a
+# tracked copy only ever produces phantom diffs carrying the last builder's
+# commit hash.
+public/app-version.json
 
+# Built by scripts/build-shamela-helper.mjs. The jar itself IS committed
+# (SPEC-M5 R26 — an ordinary build must not need a JDK); only the staging copy
+# that electron-builder packages is regenerated.
+resources/bin/
+electron/shamela/java/build/
