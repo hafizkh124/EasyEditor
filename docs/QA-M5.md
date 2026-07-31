@@ -15,11 +15,15 @@
 
 | # | تقاضا | اصل حالت | ثبوت |
 |---|---|---|---|
-| **A1** | FR-5.4 / راستہ B — فی کتاب انتخاب → **مجموعی تخمینہ** → مقامی corpus میں درآمد | درآمد **سرے سے نافذ نہیں**۔ `handleImport` صرف toast دکھا کر ڈائلاگ بند کرتا ہے — کوئی IPC کال نہیں، کوئی تخمینے کا ڈائلاگ نہیں۔ main process میں کوئی `import` action موجود ہی نہیں۔ | `src/components/shamela/ShamelaImportDialog.tsx:117-134`، `electron/ipc/shamelaHandlers.ts:22-84` |
+| **A1** | FR-5.4 / راستہ B — فی کتاب انتخاب → **مجموعی تخمینہ** → مقامی corpus میں درآمد | درآمد **سرے سے نافذ نہیں**۔ `handleImport` صرف toast دکھا کر ڈائلاگ بند کرتا ہے — کوئی IPC کال نہیں، کوئی تخمینے کا ڈائلاگ نہیں۔ main process میں کوئی `import` action موجود ہی نہیں۔ **اصل رکاوٹ §A4 ہے** — درآمد شدہ متن رکھنے کی جگہ ہی موجود نہیں۔ | `src/components/shamela/ShamelaImportDialog.tsx:117-134`، `electron/ipc/shamelaHandlers.ts:22-84` |
 | **A2** | راستہ A — پوری لائبریری میں مقامی Lucene سے لفظی تلاش، **بغیر ٹوکن** | native تلاش main process میں موجود اور IPC پر بے نقاب ہے، مگر renderer اسے **کبھی نہیں بلاتا**۔ ایڈیٹر کی شاملہ تلاش اب بھی پرانے HTTP سائیڈ کار (`127.0.0.1:8000`) سے ہوتی ہے — یعنی وہی `tools/shamela-bridge/` جسے SPEC-M5 حذف کرنے کا کہتا ہے۔ | `src/lib/shamela/localShamelaService.ts:22-38`، `src/components/editor/useResourceSearch.ts:51`، بمقابلہ `electron/shamela/shamelaNative.ts` کا `searchShamelaNative` |
 | **A3** | FR-2.4 — مستقل «موڈ بیج» (صارف کو ہر وقت معلوم ہو کہ کام مقامی ہے یا cloud) | UI میں کوئی بیج موجود نہیں۔ `AppLayout` صرف nav چھپانے کے لیے `isDesktop()` استعمال کرتا ہے۔ | `src/components/AppLayout.tsx:56-63` |
 
-**نتیجہ:** §6 (شاملہ) کے exit criteria ابھی پورے نہیں ہو سکتے۔ باقی تمام مراحل قابلِ جانچ ہیں۔
+| **A4** | FR-4.x — مقامی ingest (ڈیسک ٹاپ پر کتاب کو corpus میں ڈالنا) | `electron/db/ingest.ts` **کبھی لکھی ہی نہیں گئی**، حالانکہ دو فائلیں اس کا حوالہ دیتی ہیں۔ ڈیسک ٹاپ پر `library-ingest` صریح انکار سے ٹکراتا ہے: *«ڈیسک ٹاپ موڈ میں "library-ingest" ابھی دستیاب نہیں»*۔ یہی A1 کی اصل رکاوٹ ہے۔ | `electron/ipc/aiHandlers.ts:52-61`، `shared/ai/embedConstants.ts:6` |
+
+**نتیجہ:** §4 (مقامی ذخیرہ) اور §5 (شاملہ) کے exit criteria ابھی پورے نہیں ہو سکتے۔ باقی تمام مراحل قابلِ جانچ ہیں۔
+
+**ان چاروں کو مکمل کرنے کا پلان:** [SPEC-M5.9.md](./SPEC-M5.9.md)
 
 اضافی چھوٹی خرابیاں (ٹیسٹ کے دوران تصدیق کر لیں):
 - [ ] `ByokKeyPanel` کے کامیابی والے Alert کا عنوان **«کامران»** لکھا ہے — «کامیاب» ہونا چاہیے۔ *(`src/components/settings/ByokKeyPanel.tsx:119`)*
@@ -84,6 +88,8 @@
 ---
 
 ## 4. M5.3 — مقامی ذخیرہ (SQLite + vector)
+
+> ⛔ **§A4 کی وجہ سے اس سیکشن کے پہلے چار آئٹمز ابھی ناکام رہیں گے** — ڈیسک ٹاپ پر مقامی ingest کا راستہ موجود ہی نہیں۔ باقی آئٹمز (network خاموشی، برآمد/درآمد، migration) پھر بھی جانچے جا سکتے ہیں۔
 
 - [ ] 300 صفحات کا PDF مقامی طور پر ingest کریں → پیش رفت نظر آئے → **ایڈیٹر پورے دورانیے میں جواب دہ رہے** (جمے نہیں)۔
 - [ ] Ingest کے بیچ میں **Cancel** دبائیں → اب تک کے chunks محفوظ رہیں → دوبارہ چلانے پر **وہیں سے** شروع ہو (صفر سے نہیں)۔
@@ -199,7 +205,8 @@
 | M5.0 بنیاد (ویب ریگریشن) | ⬜ Pass / ⬜ Fail | |
 | M5.1 Electron شیل | ⬜ Pass / ⬜ Fail | |
 | M5.2 BYOK | ⬜ Pass / ⬜ Fail | |
-| M5.3 مقامی ذخیرہ | ⬜ Pass / ⬜ Fail | |
+| M5.3 مقامی ذخیرہ (ingest) | ⛔ **نامکمل** | §A4 |
+| M5.3 مقامی ذخیرہ (باقی) | ⬜ Pass / ⬜ Fail | |
 | M5.4 شاملہ (تشخیص) | ⬜ Pass / ⬜ Fail | |
 | M5.4 شاملہ (تلاش + درآمد) | ⛔ **نامکمل** | §A1، §A2 |
 | M5.5 وائس (بغیر Python) | ⬜ Pass / ⬜ Fail | |
