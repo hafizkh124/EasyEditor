@@ -218,15 +218,28 @@ export async function diagnoseShamelaInstallation(): Promise<ShamelaDiagnostics>
 // ─── Java helper spawn (ADR-0007 §Decision — textHelper) ───────────────────
 
 function getHelperJarPath(): string {
-  // In production: resources/bin/shamela-helper.jar (packaged with app)
-  const prodPath = path.join(process.resourcesPath || '', 'bin', 'shamela-helper.jar');
-  if (fs.existsSync(prodPath)) return prodPath;
+  const appPath = app.getAppPath();
 
-  // In dev: electron/shamela/java/shamela-helper.jar (build output)
-  const devPath = path.join(__dirname, 'java', 'shamela-helper.jar');
-  if (fs.existsSync(devPath)) return devPath;
+  const candidates = [
+    // Packaged: electron-builder's extraResources puts it here.
+    path.join(process.resourcesPath || '', 'bin', 'shamela-helper.jar'),
+    // Dev: the build script writes both of these. Note that __dirname is
+    // dist-electron/ once main.ts is bundled, not electron/shamela/, so the
+    // paths have to be anchored to the app root instead.
+    path.join(appPath, 'resources', 'bin', 'shamela-helper.jar'),
+    path.join(appPath, 'electron', 'shamela', 'java', 'shamela-helper.jar'),
+  ];
 
-  throw new Error('shamela-helper.jar نہیں ملا۔ پہلے scripts/build-shamela-helper چلائیں۔');
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) return candidate;
+  }
+
+  // R15: say where it looked, so a packaging mistake is diagnosable from the
+  // message alone rather than needing a debugger.
+  throw new Error(
+    'shamela-helper.jar نہیں ملا۔ `node scripts/build-shamela-helper.mjs` چلائیں۔ ' +
+      `تلاش کیے گئے راستے: ${candidates.filter(Boolean).join(' | ')}`,
+  );
 }
 
 function buildClasspath(luceneDir: string, helperJar: string): string {
