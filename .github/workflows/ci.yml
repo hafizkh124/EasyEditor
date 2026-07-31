@@ -30,14 +30,10 @@ jobs:
       # SPEC-M5 FR-1.5 / NFR-8 / risk R2: shared/ is imported by both Deno edge
       # functions and Node/Electron, so a runtime-specific reference in it
       # breaks one of the two at import time. The spec verifies this by grep;
-      # this makes the grep binding.
+      # this makes it binding. (The mirror copy under supabase/functions/ is
+      # checked for staleness by src/test/documentChunks.test.ts.)
       - name: Guard shared/ against runtime-specific references
-        run: |
-          if grep -rnE "Deno\.|from ['\"]node:|from ['\"]npm:|import\.meta\.env|\bwindow\.|\bprocess\." shared/; then
-            echo "::error::shared/ must stay runtime-agnostic — see SPEC-M5 FR-1.5 and docs/adr/0006-workspace-backend-adapter.md"
-            exit 1
-          fi
-          echo "shared/ is clean."
+        run: npm run check:shared
 
       - name: Typecheck
         run: npm run typecheck

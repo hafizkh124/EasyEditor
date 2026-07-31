@@ -1,5 +1,6 @@
 import type { SqliteDatabase } from '../open.js';
 import { getCurrentUserId, genId } from './identity.js';
+import { deleteLibraryFile } from '../fileStore.js';
 import type { LibraryItem, LibraryItemKind } from '../../../src/core/workspace/types.js';
 
 function mapLibraryItemRow(r: any): LibraryItem {
@@ -45,11 +46,19 @@ export function createItem(db: SqliteDatabase, item: Partial<LibraryItem> & { ti
 }
 
 /**
- * Mirrors cloudLibrary.deleteLibraryItem: removes chunks (FK cascade) and
- * the item row. Deleting the stored file under files/ is Gate 5 (FR-4.6).
+ * Mirrors cloudLibrary.deleteLibraryItem: removes vectors, chunks (FK cascade)
+ * and the item row — and now the stored file too (FR-4.6). Leaving the
+ * original PDF on disk after the user deleted the book would be exactly the
+ * quiet retention local mode exists to avoid.
  */
 export function deleteItem(db: SqliteDatabase, id: string): void {
+  const row = db.prepare('SELECT storage_path FROM library_items WHERE id = ?').get(id) as
+    | { storage_path: string | null }
+    | undefined;
+
   db.prepare('DELETE FROM library_chunk_vec WHERE chunk_id IN (SELECT id FROM library_chunks WHERE library_item_id = ?)').run(id);
   db.prepare('DELETE FROM library_chunk_embeddings WHERE chunk_id IN (SELECT id FROM library_chunks WHERE library_item_id = ?)').run(id);
   db.prepare('DELETE FROM library_items WHERE id = ?').run(id);
+
+  if (row?.storage_path) deleteLibraryFile(row.storage_path);
 }

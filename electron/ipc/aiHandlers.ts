@@ -13,6 +13,7 @@ import {
   ByokApiError,
   redactKeyFromLog,
 } from '../ai/geminiClient.js';
+import { getWorkspaceDbService } from './workspaceHandlers.js';
 
 export function registerAiHandlers(): void {
   ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_SAVE_KEY, async (_event, key: string) => {
@@ -50,10 +51,22 @@ export function registerAiHandlers(): void {
       }
 
       if (req.mode === 'edge-function') {
-        // Gate 1: refuse clearly instead of falling through to generateContentStream
-        // with an undefined prompt. Gate 3/5 add real local routes for
-        // library-ingest (electron/db/ingest.ts) and transcribe (whisper) and
-        // remove them from this list one at a time.
+        // Local routes replace the cloud function one name at a time.
+        // transcribe never arrives here (it branches earlier, in
+        // transcribeLongForm); library-ingest now runs against the local
+        // SQLite corpus. graph-extract still has no local counterpart, so it
+        // refuses clearly rather than falling through to
+        // generateContentStream with an undefined prompt.
+        if (req.functionName === 'library-ingest') {
+          const body = req.body ?? {};
+          const service = await getWorkspaceDbService();
+          return service.ingestLibraryItem({
+            itemId: String(body.item_id ?? ''),
+            offset: typeof body.offset === 'number' ? body.offset : 0,
+            batchSize: typeof body.batch_size === 'number' ? body.batch_size : 100,
+          });
+        }
+
         const name = req.functionName ?? '(نامعلوم)';
         throw new Error(
           `ڈیسک ٹاپ موڈ میں "${name}" ابھی دستیاب نہیں۔ یہ خصوصیت ویب ورژن میں کام کرتی ہے۔`,

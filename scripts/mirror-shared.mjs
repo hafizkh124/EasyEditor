@@ -14,6 +14,8 @@ const FILES = [
   "ai/prompts/refineText.ts",
   "ai/prompts/research.ts",
   "text/chunk.ts",
+  "text/documentChunks.ts",
+  "text/fileText.ts",
   "search/rankFusion.ts",
 ];
 
