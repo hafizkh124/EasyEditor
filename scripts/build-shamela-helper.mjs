@@ -14,7 +14,8 @@
  */
 
 import { execFileSync, execSync } from 'node:child_process';
-import { mkdirSync, existsSync, rmSync, copyFileSync } from 'node:fs';
+import { mkdirSync, existsSync, rmSync, copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,6 +27,7 @@ const JAVA_SRC = join(ROOT, 'electron', 'shamela', 'java', 'ShamelaHelper.java')
 const BUILD_DIR = join(ROOT, 'electron', 'shamela', 'java', 'build');
 const OUTPUT_JAR = join(ROOT, 'electron', 'shamela', 'java', 'shamela-helper.jar');
 const RESOURCES_BIN = join(ROOT, 'resources', 'bin');
+const SOURCE_HASH_FILE = join(ROOT, 'electron', 'shamela', 'java', 'shamela-helper.jar.sha256');
 
 // Find javac — prefer argument, then JAVA_HOME, then PATH
 function findJavac() {
@@ -130,6 +132,13 @@ function main() {
     process.exit(1);
   }
 
+  // Record which source this jar was built from. The jar is committed so an
+  // ordinary build needs no JDK (SPEC-M5 R26) — which means an edited
+  // ShamelaHelper.java with a stale jar beside it would silently ship the old
+  // helper. scripts/check-shamela-helper.mjs compares this back.
+  const sourceHash = createHash('sha256').update(readFileSync(JAVA_SRC)).digest('hex');
+  writeFileSync(SOURCE_HASH_FILE, `${sourceHash}\n`);
+
   // Copy to resources/bin for electron-builder packaging
   mkdirSync(RESOURCES_BIN, { recursive: true });
   copyFileSync(OUTPUT_JAR, join(RESOURCES_BIN, 'shamela-helper.jar'));
@@ -140,6 +149,7 @@ function main() {
   console.log('[build-shamela-helper] ✅ shamela-helper.jar built successfully.');
   console.log(`  Output: ${OUTPUT_JAR}`);
   console.log(`  Copied to: ${join(RESOURCES_BIN, 'shamela-helper.jar')}`);
+  console.log(`  Source hash: ${sourceHash.slice(0, 12)}…`);
 }
 
 main();

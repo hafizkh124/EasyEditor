@@ -35,6 +35,14 @@ jobs:
       - name: Guard shared/ against runtime-specific references
         run: npm run check:shared
 
+      # The committed jar must match ShamelaHelper.java: an edited source with a
+      # stale jar beside it silently ships the old helper, and Shamela search
+      # and import both run through it (SPEC-M5 R26).
+      - name: Check the Shamela helper jar is current
+        run: npm run check:shamela-helper
+
+      # Covers tsconfig.app.json AND tsconfig.node.json — until now the whole
+      # electron/ main process had no typecheck at all.
       - name: Typecheck
         run: npm run typecheck
 
