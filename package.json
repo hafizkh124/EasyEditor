@@ -21,7 +21,9 @@
     "release:patch": "npm version patch && npm run build",
     "release:minor": "npm version minor && npm run build",
     "release:major": "npm version major && npm run build",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "check:shared": "node scripts/check-shared-purity.mjs",
+    "mirror:shared": "node scripts/mirror-shared.mjs"
   },
   "build": {
     "appId": "com.easyeditor.app",

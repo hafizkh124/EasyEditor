@@ -7,6 +7,7 @@ import * as graph from './workspaceStore/graph.js';
 import * as recipes from './workspaceStore/recipes.js';
 import * as customTasks from './workspaceStore/customTasks.js';
 import { getCurrentUserId } from './workspaceStore/identity.js';
+import { ingestLibraryItem, type IngestBatchArgs, type IngestBatchResult } from './ingest.js';
 import type {
   Project, ProjectKind, Document, DocumentVersion, LibraryItem, TaskRun, TaskRunStatus,
 } from '../../src/core/workspace/types.js';
@@ -57,6 +58,15 @@ export class WorkspaceDbService {
     return library.createItem(this.db, item);
   }
   public async deleteItem(id: string): Promise<void> { return library.deleteItem(this.db, id); }
+
+  /**
+   * Deliberately NOT in workspaceHandlers' method allowlist: ingest is reached
+   * through the AI channel as `library-ingest`, the same name the web build
+   * calls, so one orchestrator drives both runtimes (SPEC-M5.9 FR-1.1).
+   */
+  public async ingestLibraryItem(args: IngestBatchArgs): Promise<IngestBatchResult> {
+    return ingestLibraryItem(this.db, args);
+  }
 
   // ── Annotations ───────────────────────────────────────────────────────────
   public async listAnnotations(documentId: string): Promise<AnnotationItem[]> { return annotations.listAnnotations(this.db, documentId); }
