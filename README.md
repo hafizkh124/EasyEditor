@@ -71,16 +71,25 @@ The Electron shell (`npm run dev:electron`) is a privacy-first alternative to
 the web app for users who want zero cloud dependency:
 
 - **Local-first storage & search** — SQLite with `sqlite-vec` for offline
-  vector search; no data leaves the machine unless the user chooses to sync.
-- **BYOK Gemini AI** — bring your own API key; it is held in the OS's secure
-  keychain (`keytar`), never in app storage.
-- **Maktaba Shamela 4 native integration** — connects directly to a local
-  Shamela library via native Lucene index search, no browser involved.
+  vector search. There is no sync: the local and cloud workspaces are separate
+  homes, bridged only by an explicit export/import.
+- **BYOK Gemini AI** — bring your own API key; it is encrypted with Electron's
+  `safeStorage` (the OS keychain/DPAPI) and never leaves the main process, so
+  the renderer never holds the key.
+- **Maktaba Shamela 4 native integration** — detects a local Shamela 4
+  install, diagnoses it, reads its catalogue from `master.db`, and searches
+  its Lucene index through Shamela's own JRE in the main process. No sidecar,
+  no `.bat`, no tokens spent. Selected books can be imported into the local
+  corpus per book — never wholesale — behind a mandatory cost estimate, and
+  each chunk keeps its page and volume so citations can name them.
 - **Local voice studio (Python-free)** — offline speech-to-text (Whisper) and
   text-to-speech (Piper, Urdu & Arabic) with segmented synthesis.
 
-The web app and desktop app share the same `src/`; `shared/` holds logic
-(IPC, local schema) specific to the desktop shell.
+The web app and desktop app share the same `src/`. `shared/` is the
+runtime-agnostic layer — prompts, chunking, script runs, rank fusion — that
+both Deno edge functions and Node/Electron import, so it must never reach for
+`Deno.*`, `node:*`, `window`, or `process`. Desktop-only code (IPC handlers,
+SQLite schema, voice engines) lives in `electron/`.
 
 ## Documentation
 
@@ -90,7 +99,11 @@ The web app and desktop app share the same `src/`; `shared/` holds logic
 | [`docs/SPEC-M2.md`](docs/SPEC-M2.md) | Three-pillar workspace shell |
 | [`docs/SPEC-M3.md`](docs/SPEC-M3.md) | Task library, editor menus, Trust UI, chunking |
 | [`docs/SPEC-M4.md`](docs/SPEC-M4.md) | Personal corpus, knowledge graph, recipes |
+| [`docs/SPEC-M5.md`](docs/SPEC-M5.md) | Electron shell, BYOK, local storage, Shamela, voice studio |
+| [`docs/SPEC-M5.9.md`](docs/SPEC-M5.9.md) | Plan for the four unfinished M5 gates (local ingest, Shamela import, native search, mode badge) |
 | [`docs/QA-M4.md`](docs/QA-M4.md) | Manual QA checklist for the M4 features |
+| [`docs/QA-M5.md`](docs/QA-M5.md) | Manual QA checklist for the M5 desktop build |
+| [`docs/SMOKE-TESTS.md`](docs/SMOKE-TESTS.md) | Edge-function liveness suite (`npm run smoke:functions`) |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
 
 ## Tech Stack

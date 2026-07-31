@@ -116,7 +116,7 @@ export const ByokKeyPanel: React.FC = () => {
 
         {feedback && (
           <Alert variant={feedback.type === 'error' ? 'destructive' : 'default'} className="my-2">
-            <AlertTitle>{feedback.type === 'error' ? 'غلطی' : 'کامران'}</AlertTitle>
+            <AlertTitle>{feedback.type === 'error' ? 'غلطی' : 'کامیاب'}</AlertTitle>
             <AlertDescription>{feedback.message}</AlertDescription>
           </Alert>
         )}
