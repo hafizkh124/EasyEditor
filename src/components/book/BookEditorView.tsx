@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Save, Sparkles, Quote, Loader2 } from "lucide-react";
-import { invokeAiText } from "@/core/ai/aiAdapter";
+import { callEdgeFunction } from "@/core/ai/aiAdapter";
 
 interface BookEditorViewProps {
   sectionId?: string;
@@ -56,9 +56,9 @@ export function BookEditorView({
     if (!content.trim()) return;
     setAiLoading(true);
     try {
-      const refinedText = await invokeAiText({
-        prompt: `Action: ${action}\n\n${content}`,
-      });
+      const { data, error } = await callEdgeFunction("refine-text", { text: content, action });
+      if (error) throw new Error(error.message);
+      const refinedText = (data as { text?: string } | null)?.text ?? "";
       if (refinedText) {
         setContent(refinedText);
         toast.success(`AI اصلاح (${action}) مکمل ہو گئی۔`);
