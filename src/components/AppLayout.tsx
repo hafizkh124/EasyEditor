@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import SidebarHistory from "@/components/SidebarHistory";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
 import AppVersionBadge from "@/components/AppVersionBadge";
+import ModeBadge from "@/components/ModeBadge";
 import type { SessionSection } from "@/hooks/useSessionHistory";
 
 /**
@@ -423,12 +424,16 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <img src="/favicon.webp" alt="Easy Editor" width={24} height={24} className="rounded" />
             <span className="text-base font-bold text-foreground truncate">Easy Editor</span>
           </Link>
+          <ModeBadge />
           <NotificationBell />
         </header>
 
         {/* Desktop Top Bar */}
         <div className="hidden md:flex h-14 items-center justify-between border-b border-border px-6 bg-background/95 backdrop-blur-sm sticky top-0 z-30">
-          <AppVersionBadge compact />
+          <div className="flex items-center gap-2">
+            <AppVersionBadge compact />
+            <ModeBadge />
+          </div>
           <NotificationBell />
         </div>
 

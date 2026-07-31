@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   CheckCircle, XCircle, RefreshCw, HardDrive, HelpCircle,
-  Search, BookOpen, Database, FileText
+  Search, BookOpen, Database, FileText, Copy
 } from "lucide-react";
 import { ShamelaGuideModal } from "@/components/mcp/ShamelaGuideModal";
 
@@ -91,6 +91,40 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
     }
   };
 
+  /** Builds a plain-text diagnostic report for pasting into a support request. */
+  const buildDiagnosticsReport = (): string => {
+    const yn = (ok: boolean) => (ok ? "ملا ✓" : "نہیں ملا ✗");
+    const lines = [
+      "مکتبہ شاملہ ۴ — تشخیصی رپورٹ",
+      `تاریخ: ${new Date().toISOString()}`,
+      `حالت: ${state}`,
+      `مقام: ${status?.path ?? "—"}`,
+      `ورژن: ${status?.version ?? "—"}`,
+      `دستیاب کتب: ${stats?.totalBooks ?? "—"}`,
+      "",
+      `Java Runtime: ${yn(!!diagnostics?.jreFound)}${diagnostics?.jreVersion ? ` (${diagnostics.jreVersion})` : ""}`,
+      `Lucene JARs: ${yn(!!diagnostics?.luceneJarsFound)}${diagnostics?.luceneVersion ? ` (${diagnostics.luceneVersion})` : ""}`,
+      `master.db: ${yn(!!diagnostics?.masterDbFound)}`,
+      `Store Index: ${yn(!!diagnostics?.storeIndexFound)}`,
+    ];
+
+    if (diagnostics?.errors.length) {
+      lines.push("", `مسائل (${diagnostics.errors.length}):`);
+      diagnostics.errors.forEach((e, i) => lines.push(`  ${i + 1}. ${e}`));
+    }
+
+    return lines.join("\n");
+  };
+
+  const handleCopyDiagnostics = async () => {
+    try {
+      await navigator.clipboard.writeText(buildDiagnosticsReport());
+      toast.success("تشخیصی رپورٹ کاپی ہو گئی۔");
+    } catch {
+      toast.error("کاپی نہیں ہو سکی — متن خود منتخب کر کے کاپی کریں۔");
+    }
+  };
+
   const statusIcon = (ok: boolean) =>
     ok ? <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" /> :
          <XCircle className="h-4 w-4 text-red-500 shrink-0" />;
@@ -172,10 +206,24 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
           {/* Diagnostic checklist */}
           {diagnostics && (
             <div className="space-y-2">
-              <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5 text-primary" />
-                تشخیصی چیک لسٹ
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-primary" />
+                  تشخیصی چیک لسٹ
+                </span>
+                {/* FR-5.9: a report the user can paste into a support message.
+                    Reading four icons off a screenshot loses the versions,
+                    which are the part that actually identifies the problem. */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-[11px]"
+                  onClick={handleCopyDiagnostics}
+                >
+                  <Copy className="h-3 w-3" />
+                  رپورٹ کاپی کریں
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-[11px]">
                   {statusIcon(diagnostics.jreFound)}

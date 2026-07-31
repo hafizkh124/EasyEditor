@@ -67,6 +67,14 @@ export function registerAiHandlers(): void {
           });
         }
 
+        if (req.functionName === 'graph-extract') {
+          throw new Error(
+            'علمی گراف (entity extraction) ابھی صرف ویب ورژن میں دستیاب ہے — ' +
+              'یہ مشترکہ cloud corpus پر چلتا ہے، اس لیے مقامی موڈ میں Graph ٹیب موجود نہیں۔ ' +
+              'باقی سب کچھ — کتب خانہ، تلاش، حوالہ جات — مقامی طور پر کام کرتا ہے۔',
+          );
+        }
+
         const name = req.functionName ?? '(نامعلوم)';
         throw new Error(
           `ڈیسک ٹاپ موڈ میں "${name}" ابھی دستیاب نہیں۔ یہ خصوصیت ویب ورژن میں کام کرتی ہے۔`,
