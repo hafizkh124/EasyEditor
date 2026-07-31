@@ -12,6 +12,19 @@ import {
   Search, BookOpen, User, Layers, FileText, Download,
   Loader2
 } from "lucide-react";
+import { ImportEstimateDialog, type ImportEstimate } from "./ImportEstimateDialog";
+
+/** Mirrors electron/shamela/import.ts's ImportProgress. */
+interface ImportProgress {
+  bookId: number;
+  title: string;
+  bookIndex: number;
+  totalBooks: number;
+  pagesRead: number;
+  chunksStored: number;
+  status: string;
+  error?: string;
+}
 
 export interface ShamelaBook {
   id: number;
@@ -34,10 +47,13 @@ interface ShamelaImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   masterDbPath: string;
+  initialTab?: "browse" | "search";
 }
 
-export function ShamelaImportDialog({ open, onOpenChange, masterDbPath }: ShamelaImportDialogProps) {
-  const [activeTab, setActiveTab] = useState("browse");
+export function ShamelaImportDialog({
+  open, onOpenChange, masterDbPath, initialTab = "browse",
+}: ShamelaImportDialogProps) {
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [books, setBooks] = useState<ShamelaBook[]>([]);
   const [categories, setCategories] = useState<ShamelaCategory[]>([]);
@@ -45,6 +61,12 @@ export function ShamelaImportDialog({ open, onOpenChange, masterDbPath }: Shamel
   const [loading, setLoading] = useState(false);
   const [selectedBooks, setSelectedBooks] = useState<Set<number>>(new Set());
   const [importing, setImporting] = useState(false);
+  const [estimateOpen, setEstimateOpen] = useState(false);
+  const [estimating, setEstimating] = useState(false);
+  const [estimate, setEstimate] = useState<ImportEstimate | null>(null);
+  const [progress, setProgress] = useState<ImportProgress | null>(null);
+  /** Books already in the local corpus — importing them again would re-spend (FR-2.6). */
+  const [imported, setImported] = useState<Set<number>>(new Set());
 
   const loadCategories = useCallback(async () => {
     if (!window.electronAPI?.shamela) return;
@@ -92,6 +114,23 @@ export function ShamelaImportDialog({ open, onOpenChange, masterDbPath }: Shamel
     }
   }, [open, loadCategories]);
 
+  // Live per-book progress from the main process during an import.
+  useEffect(() => {
+    if (!window.electronAPI?.shamela?.onImportProgress) return;
+    return window.electronAPI.shamela.onImportProgress(setProgress);
+  }, []);
+
+  // Mark books already imported so the user does not pay for them twice.
+  useEffect(() => {
+    if (books.length === 0 || !window.electronAPI?.shamela) return;
+    let cancelled = false;
+    window.electronAPI.shamela
+      .alreadyImported(books.map((b) => b.id))
+      .then((ids) => { if (!cancelled) setImported(new Set(ids)); })
+      .catch(() => { /* the badge is an optimisation, not a gate */ });
+    return () => { cancelled = true; };
+  }, [books]);
+
   const handleSearch = () => {
     if (searchQuery.trim()) {
       setSelectedCategory(null);
@@ -114,23 +153,69 @@ export function ShamelaImportDialog({ open, onOpenChange, masterDbPath }: Shamel
     });
   };
 
-  const handleImport = async () => {
+  /**
+   * Step 1 of the import: the mandatory estimate (SPEC-M5 FR-5.4). No text is
+   * read and no request leaves the machine until the user confirms the dialog
+   * this opens — that gate is the only thing standing between a stray click
+   * and a large bill on the user's own Google account (risk R7).
+   */
+  const handleReviewSelection = async () => {
     if (selectedBooks.size === 0) {
       toast.error("براہ کرم کم از کم ایک کتاب منتخب کریں۔");
       return;
     }
+    if (!window.electronAPI?.shamela) {
+      toast.error("درآمد صرف ڈیسک ٹاپ ورژن میں دستیاب ہے۔");
+      return;
+    }
 
-    setImporting(true);
+    setEstimating(true);
+    setEstimateOpen(true);
     try {
-      const selected = books.filter((b) => selectedBooks.has(b.id));
-      toast.success(`${selected.length} کتب امپورٹ کے لیے قطار میں شامل کر دی گئی ہیں۔`);
-      onOpenChange(false);
+      const ids = [...selectedBooks];
+      setEstimate(await window.electronAPI.shamela.estimateImport(masterDbPath, ids));
+    } catch (err) {
+      console.error("[ShamelaImportDialog] estimate error:", err);
+      toast.error(err instanceof Error ? err.message : "تخمینہ لگانے میں خرابی۔");
+      setEstimateOpen(false);
+    } finally {
+      setEstimating(false);
+    }
+  };
+
+  /** Step 2: the user confirmed the cost — now the import may spend. */
+  const handleConfirmImport = async () => {
+    setEstimateOpen(false);
+    setImporting(true);
+    setProgress(null);
+
+    try {
+      const selected = books
+        .filter((b) => selectedBooks.has(b.id))
+        .map((b) => ({ id: b.id, title: b.title, author: b.author }));
+
+      const result = await window.electronAPI!.shamela.importBooks(selected);
+
+      if (result.cancelled) {
+        toast.info(`درآمد منسوخ — ${result.imported} کتابیں محفوظ ہو چکی ہیں۔`);
+      } else {
+        toast.success(`${result.imported} کتابیں کتب خانے میں شامل ہو گئیں۔`);
+      }
+
+      setImported((prev) => new Set([...prev, ...result.items.map((it) => it.bookId)]));
+      setSelectedBooks(new Set());
+      if (!result.cancelled) onOpenChange(false);
     } catch (err) {
       console.error("[ShamelaImportDialog] import error:", err);
-      toast.error("امپورٹ کے دوران خرابی۔");
+      toast.error(err instanceof Error ? err.message : "امپورٹ کے دوران خرابی۔");
     } finally {
       setImporting(false);
+      setProgress(null);
     }
+  };
+
+  const handleCancelImport = () => {
+    window.electronAPI?.shamela.cancelImport();
   };
 
   const totalSelected = selectedBooks.size;
@@ -199,6 +284,7 @@ export function ShamelaImportDialog({ open, onOpenChange, masterDbPath }: Shamel
                 loading={loading}
                 selectedBooks={selectedBooks}
                 onToggle={toggleBook}
+                imported={imported}
               />
             </div>
           </TabsContent>
@@ -224,6 +310,7 @@ export function ShamelaImportDialog({ open, onOpenChange, masterDbPath }: Shamel
                 loading={loading}
                 selectedBooks={selectedBooks}
                 onToggle={toggleBook}
+                imported={imported}
               />
             </div>
           </TabsContent>
@@ -231,14 +318,26 @@ export function ShamelaImportDialog({ open, onOpenChange, masterDbPath }: Shamel
 
         <DialogFooter className="border-t border-border pt-4 mt-4 flex items-center gap-2">
           <div className="flex-1 text-xs text-muted-foreground">
-            {totalSelected > 0 ? `${totalSelected} کتاب(یں) منتخب` : "کوئی کتاب منتخب نہیں"}
+            {importing && progress
+              ? `کتاب ${progress.bookIndex} از ${progress.totalBooks} — «${progress.title}» — ${progress.pagesRead} صفحات، ${progress.chunksStored} ٹکڑے`
+              : totalSelected > 0
+              ? `${totalSelected} کتاب(یں) منتخب`
+              : "کوئی کتاب منتخب نہیں"}
           </div>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            منسوخ کریں
-          </Button>
+
+          {importing ? (
+            <Button variant="outline" size="sm" onClick={handleCancelImport}>
+              درآمد روکیں
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+              بند کریں
+            </Button>
+          )}
+
           <Button
             size="sm"
-            onClick={handleImport}
+            onClick={handleReviewSelection}
             disabled={totalSelected === 0 || importing}
             className="gap-1.5"
           >
@@ -247,10 +346,18 @@ export function ShamelaImportDialog({ open, onOpenChange, masterDbPath }: Shamel
             ) : (
               <Download className="h-4 w-4" />
             )}
-            {importing ? "امپورٹ ہو رہا ہے..." : "منتخب کردہ امپورٹ کریں"}
+            {importing ? "درآمد جاری ہے..." : "منتخب کردہ درآمد کریں"}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <ImportEstimateDialog
+        open={estimateOpen}
+        onOpenChange={setEstimateOpen}
+        estimate={estimate}
+        loading={estimating}
+        onConfirm={handleConfirmImport}
+      />
     </Dialog>
   );
 }
@@ -260,11 +367,13 @@ function BookList({
   loading,
   selectedBooks,
   onToggle,
+  imported,
 }: {
   books: ShamelaBook[];
   loading: boolean;
   selectedBooks: Set<number>;
   onToggle: (id: number) => void;
+  imported: Set<number>;
 }) {
   if (loading) {
     return (
@@ -297,7 +406,10 @@ function BookList({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium truncate">{book.title}</span>
-              {selectedBooks.has(book.id) && (
+              {imported.has(book.id) && (
+                <Badge variant="secondary" className="text-[10px] shrink-0">پہلے سے درآمد شدہ</Badge>
+              )}
+              {selectedBooks.has(book.id) && !imported.has(book.id) && (
                 <Badge variant="default" className="text-[10px] shrink-0">منتخب</Badge>
               )}
             </div>
