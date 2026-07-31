@@ -99,6 +99,7 @@ SQLite schema, voice engines) lives in `electron/`.
 | [`docs/SPEC-M3.md`](docs/SPEC-M3.md) | Task library, editor menus, Trust UI, chunking |
 | [`docs/SPEC-M4.md`](docs/SPEC-M4.md) | Personal corpus, knowledge graph, recipes |
 | [`docs/SPEC-M5.md`](docs/SPEC-M5.md) | Electron shell, BYOK, local storage, Shamela, voice studio |
+| [`docs/SPEC-M5.9.md`](docs/SPEC-M5.9.md) | Plan for the four unfinished M5 gates (local ingest, Shamela import, native search, mode badge) |
 | [`docs/QA-M4.md`](docs/QA-M4.md) | Manual QA checklist for the M4 features |
 | [`docs/QA-M5.md`](docs/QA-M5.md) | Manual QA checklist for the M5 desktop build |
 | [`docs/SMOKE-TESTS.md`](docs/SMOKE-TESTS.md) | Edge-function liveness suite (`npm run smoke:functions`) |
