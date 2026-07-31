@@ -1,0 +1,52 @@
+name: CI
+
+# The four gates SPEC-M5 §7 ("عمومی و کوڈ کوالٹی") requires, run on every
+# change instead of only when someone remembers to run them locally.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push to the same branch makes the previous run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # SPEC-M5 FR-1.5 / NFR-8 / risk R2: shared/ is imported by both Deno edge
+      # functions and Node/Electron, so a runtime-specific reference in it
+      # breaks one of the two at import time. The spec verifies this by grep;
+      # this makes the grep binding.
+      - name: Guard shared/ against runtime-specific references
+        run: |
+          if grep -rnE "Deno\.|from ['\"]node:|from ['\"]npm:|import\.meta\.env|\bwindow\.|\bprocess\." shared/; then
+            echo "::error::shared/ must stay runtime-agnostic — see SPEC-M5 FR-1.5 and docs/adr/0006-workspace-backend-adapter.md"
+            exit 1
+          fi
+          echo "shared/ is clean."
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
