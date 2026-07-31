@@ -79,8 +79,9 @@ the web app for users who want zero cloud dependency:
 - **Maktaba Shamela 4 native integration** — detects a local Shamela 4
   install, diagnoses it, reads its catalogue from `master.db`, and searches
   its Lucene index through Shamela's own JRE in the main process. No sidecar,
-  no `.bat`, no tokens spent. *In progress:* per-book import into the local
-  corpus — see [`docs/QA-M5.md`](docs/QA-M5.md) §A.
+  no `.bat`, no tokens spent. Selected books can be imported into the local
+  corpus per book — never wholesale — behind a mandatory cost estimate, and
+  each chunk keeps its page and volume so citations can name them.
 - **Local voice studio (Python-free)** — offline speech-to-text (Whisper) and
   text-to-speech (Piper, Urdu & Arabic) with segmented synthesis.
 

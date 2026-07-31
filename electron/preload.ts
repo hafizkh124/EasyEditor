@@ -131,6 +131,23 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:listCategories', masterDbPath }),
     booksByCategory: (masterDbPath: string, categoryId: number, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; pageCount: number | null; volumeCount: number | null; info: string | null }>> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:booksByCategory', masterDbPath, categoryId, limit, offset }),
+
+    // ── Import (SPEC-M5.9 FR-2) ───────────────────────────────────
+    estimateImport: (masterDbPath: string, bookIds: number[]): Promise<{ books: Array<{ bookId: number; title: string; author: string | null; pageCount: number; estimatedChunks: number }>; totalBooks: number; totalPages: number; totalChunks: number; approximate: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'import:estimate', masterDbPath, bookIds }),
+    alreadyImported: (bookIds: number[]): Promise<number[]> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'import:alreadyImported', bookIds }),
+    importBooks: (books: Array<{ id: number; title: string; author?: string | null }>): Promise<{ imported: number; cancelled: boolean; items: Array<{ bookId: number; libraryItemId: string; chunks: number }> }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'import:books', books }),
+    cancelImport: (): Promise<{ cancelled: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_CANCEL_IMPORT),
+    onImportProgress: (callback: (p: { bookId: number; title: string; bookIndex: number; totalBooks: number; pagesRead: number; chunksStored: number; status: string; error?: string }) => void): (() => void) => {
+      const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);
+      ipcRenderer.on(ALLOWED_IPC_CHANNELS.SHAMELA_IMPORT_PROGRESS, listener);
+      return () => {
+        ipcRenderer.removeListener(ALLOWED_IPC_CHANNELS.SHAMELA_IMPORT_PROGRESS, listener);
+      };
+    },
   },
 
 };

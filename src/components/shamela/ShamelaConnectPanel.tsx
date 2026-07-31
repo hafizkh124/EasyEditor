@@ -30,7 +30,12 @@ export interface ShamelaStatus {
 
 type ConnectState = "idle" | "connecting" | "connected" | "error";
 
-export function ShamelaConnectPanel() {
+interface ShamelaConnectPanelProps {
+  /** Opens the book browser on the given tab. Omitted on surfaces that have no importer. */
+  onBrowseBooks?: (masterDbPath: string, tab: "browse" | "search") => void;
+}
+
+export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps = {}) {
   const [state, setState] = useState<ConnectState>("idle");
   const [diagnostics, setDiagnostics] = useState<ShamelaDiagnostics | null>(null);
   const [status, setStatus] = useState<ShamelaStatus | null>(null);
@@ -216,13 +221,23 @@ export function ShamelaConnectPanel() {
           )}
 
           {/* Quick actions when connected */}
-          {state === "connected" && (
+          {state === "connected" && status?.masterDbPath && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 gap-1.5 text-xs"
+                onClick={() => onBrowseBooks?.(status.masterDbPath!, "search")}
+              >
                 <Search className="h-3.5 w-3.5" />
                 کتب تلاش کریں
               </Button>
-              <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 gap-1.5 text-xs"
+                onClick={() => onBrowseBooks?.(status.masterDbPath!, "browse")}
+              >
                 <BookOpen className="h-3.5 w-3.5" />
                 بک براؤزر
               </Button>
