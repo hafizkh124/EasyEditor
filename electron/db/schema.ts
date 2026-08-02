@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { EMBED_MODEL, EMBED_DIMS } from '../../shared/ai/embedConstants.js';
+import { normalizeArabicForSearch } from '../../shared/text/arabicSearch.js';
 import type { SqliteDatabase } from './open.js';
 
 /**
@@ -225,6 +226,24 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
     console.warn('sqlite-vec table creation warning (falling back if virtual table unavailable):', err);
   }
 
+  // SPEC-M6 Phase 5: FTS5 keyword search over imported chunks. The index is
+  // built over a NORMALIZED copy of each chunk (harakat stripped, alef/ta
+  // marbuta/alef maqsura folded) so Arabic keyword search is insensitive to
+  // diacritics and script variants. `trigram` tokenizer gives substring
+  // matching, which Arabic needs (الحسين must match والحسين). Rows are
+  // maintained by the app layer (ingest.storeChunk / library.deleteItem),
+  // not triggers, because normalization requires JS.
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS library_chunks_fts USING fts5(
+      search_text,
+      library_item_id UNINDEXED,
+      chunk_index UNINDEXED,
+      page_number UNINDEXED,
+      part_number UNINDEXED,
+      tokenize = 'trigram'
+    );
+  `);
+
   // Ensure corpus_meta values exist
   const getMeta = db.prepare('SELECT value FROM corpus_meta WHERE key = ?');
   const setMeta = db.prepare('INSERT OR REPLACE INTO corpus_meta (key, value) VALUES (?, ?)');
@@ -243,5 +262,40 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
   }
   if (!getMeta.get('schema_version')) {
     setMeta.run('schema_version', '1');
+  }
+
+  // SPEC-M6 Phase 5: one-time backfill of the FTS index for chunks imported
+  // before the virtual table existed. Guarded by a corpus_meta flag so it
+  // runs once, not on every open.
+  if (!getMeta.get('fts_backfilled')) {
+    const chunkCount = db.prepare('SELECT COUNT(*) AS c FROM library_chunks').get() as { c: number };
+    if (chunkCount.c > 0) {
+      try {
+        const rows = db.prepare(
+          'SELECT content, library_item_id, chunk_index, page_number, part_number FROM library_chunks',
+        ).all() as Array<{
+          content: string;
+          library_item_id: string;
+          chunk_index: number;
+          page_number: number | null;
+          part_number: number | null;
+        }>;
+        const insert = db.prepare(
+          'INSERT INTO library_chunks_fts (search_text, library_item_id, chunk_index, page_number, part_number) VALUES (?, ?, ?, ?, ?)',
+        );
+        db.transaction(() => {
+          for (const r of rows) {
+            insert.run(
+              normalizeArabicForSearch(r.content), r.library_item_id, r.chunk_index,
+              r.page_number, r.part_number,
+            );
+          }
+        })();
+      } catch (err) {
+        // FTS5 unavailable (rare): log and continue without keyword search.
+        console.warn('[schema] FTS5 backfill failed (keyword search disabled):', err);
+      }
+    }
+    setMeta.run('fts_backfilled', '1');
   }
 }

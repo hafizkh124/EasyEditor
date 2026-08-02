@@ -13,6 +13,8 @@ interface ShamelaReaderProps {
   title: string;
   subtitle?: string;
   onClose: () => void;
+  /** Deep-link target: open the reader on this page instead of page 1. */
+  initialPage?: number | null;
 }
 
 /**
@@ -26,9 +28,10 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
   title,
   subtitle,
   onClose,
+  initialPage,
 }) => {
   const [tocOpen, setTocOpen] = useState(true);
-  const reader = useReaderState(bookId);
+  const reader = useReaderState(bookId, initialPage);
   const readerSettings = useReaderSettings();
 
   const handleSelectToc = (entry: TocEntry) => {

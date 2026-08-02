@@ -22,6 +22,7 @@ import { readLibraryFile } from './fileStore.js';
 import { embedTextContent } from '../ai/geminiClient.js';
 import { chunkDocumentText, type DocumentChunk } from '../../shared/text/documentChunks.js';
 import { extractTextFromBuffer } from '../../shared/text/fileText.js';
+import { normalizeArabicForSearch } from '../../shared/text/arabicSearch.js';
 
 export interface IngestBatchArgs {
   itemId: string;
@@ -211,6 +212,15 @@ export function storeChunk({
     chunk.charStart, chunk.charEnd, pageNumber, partNumber,
     new Date().toISOString(),
   );
+
+  // SPEC-M6 Phase 5: keep the FTS5 keyword-search index in sync. Stored text
+  // is normalized so Arabic diacritics/variants don't break a match. Keyed by
+  // (library_item_id, chunk_index) so re-storing a chunk replaces its row.
+  db.prepare('DELETE FROM library_chunks_fts WHERE library_item_id = ? AND chunk_index = ?')
+    .run(itemId, chunk.index);
+  db.prepare(
+    'INSERT INTO library_chunks_fts (search_text, library_item_id, chunk_index, page_number, part_number) VALUES (?, ?, ?, ?, ?)',
+  ).run(normalizeArabicForSearch(chunk.content), itemId, chunk.index, pageNumber, partNumber);
 
   // verifyEmbeddingModelLock runs inside upsertChunkVector: a corpus built on
   // one embedding model must refuse a vector from another rather than store

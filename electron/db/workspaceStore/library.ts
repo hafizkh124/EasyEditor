@@ -65,6 +65,7 @@ export function deleteItem(db: SqliteDatabase, id: string): void {
 
   db.prepare('DELETE FROM library_chunk_vec WHERE chunk_id IN (SELECT id FROM library_chunks WHERE library_item_id = ?)').run(id);
   db.prepare('DELETE FROM library_chunk_embeddings WHERE chunk_id IN (SELECT id FROM library_chunks WHERE library_item_id = ?)').run(id);
+  db.prepare('DELETE FROM library_chunks_fts WHERE library_item_id = ?').run(id);
   db.prepare('DELETE FROM library_items WHERE id = ?').run(id);
 
   if (row?.storage_path) deleteLibraryFile(row.storage_path);

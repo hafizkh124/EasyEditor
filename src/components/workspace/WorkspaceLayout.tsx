@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -23,6 +23,9 @@ import { ShamelaReader } from "@/components/shamela/ShamelaReader";
 export const WorkspaceLayout: React.FC = () => {
   const { direction } = useLanguage();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const pageParam = Number(searchParams.get("page"));
+  const initialReaderPage = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : null;
   const {
     activeDocumentId,
     setActiveDocumentId,
@@ -169,6 +172,7 @@ export const WorkspaceLayout: React.FC = () => {
                 title={shamelaBook.title || shamelaBook.bookId}
                 subtitle={shamelaBook.author}
                 onClose={handleCloseReader}
+                initialPage={initialReaderPage}
               />
             ) : (
               <CanvasPanel

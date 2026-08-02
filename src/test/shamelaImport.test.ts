@@ -63,6 +63,10 @@ function makeDb() {
       UNIQUE (library_item_id, chunk_index)
     );
     CREATE TABLE library_chunk_embeddings (chunk_id TEXT PRIMARY KEY, embedding BLOB NOT NULL);
+    CREATE VIRTUAL TABLE library_chunks_fts USING fts5(
+      search_text, library_item_id UNINDEXED, chunk_index UNINDEXED,
+      page_number UNINDEXED, part_number UNINDEXED, tokenize = 'trigram'
+    );
   `);
   db.prepare('INSERT INTO corpus_meta (key, value) VALUES (?, ?)').run('local_user_id', USER);
   return db;
