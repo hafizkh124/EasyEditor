@@ -28,7 +28,7 @@ export interface ShamelaPageContent {
   bookId: string;
   pageNumber: number;
   text: string;
-  volume?: string;
+  footnotes?: string;
 }
 
 export interface ShamelaDiagnostics {
@@ -364,7 +364,7 @@ export async function searchShamelaNative(queryText: string, limit = 20): Promis
 
 export interface ShamelaBookPage {
   page: string;
-  volume: string;
+  footnotes?: string;
   text: string;
 }
 
@@ -438,7 +438,7 @@ export async function readShamelaBook(
 
       const keepGoing = onPage({
         page: String(parsed.page ?? ''),
-        volume: String(parsed.volume ?? ''),
+        footnotes: String(parsed.footnotes ?? ''),
         text: String(parsed.text ?? ''),
       });
 
@@ -502,5 +502,207 @@ export async function readShamelaPage(bookId: string, pageNumber: number): Promi
   } catch (err) {
     console.error('[shamelaNative] read error:', err);
     throw err;
+  }
+}
+
+export interface ShamelaTocTitle {
+  titleId: string;
+  text: string;
+}
+
+export interface ShamelaTocEntry {
+  titleId: string;
+  text: string;
+  page: number;
+  parent: string;
+  /** depth in the title tree; 0 = top level */
+  depth: number;
+}
+
+/**
+ * Full table of contents for one book: Lucene heading text joined with the
+ * book's SQLite `title(id, page, parent)` table, which carries the page number
+ * and the parent link that defines the heading tree.
+ *
+ * Returns entries ordered by page (reading order). `parent` is the parent's
+ * titleId (empty string for top-level headings).
+ */
+export async function readShamelaTocJoined(bookId: string): Promise<ShamelaTocEntry[]> {
+  const status = await detectShamelaInstallation();
+  if (!status.installed || !status.path) {
+    throw new Error('مکتبہ شاملہ ۴ انسٹال نہیں ہے۔');
+  }
+
+  const titles = await readShamelaToc(bookId);
+
+  const bookDbPath = getShamelaBookDbPath(status.path, bookId);
+  if (!fs.existsSync(bookDbPath)) {
+    throw new Error(`کتاب کی ڈیٹابیس نہیں ملی: ${bookDbPath}`);
+  }
+
+  // Better-sqlite3 is imported lazily so this module can be loaded in any
+  // context; the desktop main process always has it available.
+  const Database = (await import('better-sqlite3')).default;
+  const db = new Database(bookDbPath, { readonly: true });
+
+  try {
+    const rows = db
+      .prepare('SELECT id, page, parent FROM title ORDER BY page')
+      .all() as Array<{ id: number; page: number; parent: number }>;
+
+    const titleById = new Map<string, string>();
+    for (const t of titles) titleById.set(t.titleId, t.text);
+
+    const entries: ShamelaTocEntry[] = [];
+    for (const row of rows) {
+      const id = String(row.id);
+      const text = titleById.get(id);
+      if (text === undefined) continue;
+
+      // Depth = how far up we must climb before the parent is a root (0).
+      let depth = 0;
+      let pid = row.parent;
+      while (pid > 0) {
+        depth++;
+        const parentRow = rows.find(r => r.id === pid);
+        if (!parentRow || parentRow.id === row.id) break;
+        pid = parentRow.parent;
+      }
+
+      entries.push({
+        titleId: id,
+        text,
+        page: row.page,
+        parent: row.parent > 0 ? String(row.parent) : '',
+        depth,
+      });
+    }
+
+    return entries;
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Reads one book's table of contents from the global `store/title` Lucene index.
+ *
+ * Returns only the Lucene side ({titleId, text}). Page numbers and the heading
+ * tree live in the book's own SQLite `title(id, page, parent)` table; the caller
+ * joins them (see joinShamelaToc) to build the navigable TOC.
+ */
+export async function readShamelaToc(bookId: string): Promise<ShamelaTocTitle[]> {
+  const status = await detectShamelaInstallation();
+  if (!status.installed || !status.path) {
+    throw new Error('مکتبہ شاملہ ۴ انسٹال نہیں ہے۔');
+  }
+  if (!status.jrePath) {
+    throw new Error('شاملہ کی Java Runtime (JRE) نہیں ملی۔');
+  }
+
+  const titleIndex = path.join(status.path, 'database', 'store', 'title');
+  if (!fs.existsSync(titleIndex)) {
+    throw new Error('database/store/title/ انڈیکس نہیں ملا — فہرستِ ابواب پڑھی نہیں جا سکتی۔');
+  }
+
+  return new Promise((resolve, reject) => {
+    const helperJar = getHelperJarPath();
+    const classpath = status.lucenePath ? buildClasspath(status.lucenePath, helperJar) : helperJar;
+
+    const proc = spawn(
+      status.jrePath!,
+      ['-cp', classpath, 'com.alulama.easyeditor.shamela.ShamelaHelper', 'readToc', titleIndex, bookId],
+      { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], timeout: 60_000 },
+    );
+
+    let buffer = '';
+    let stderr = '';
+    const titles: ShamelaTocTitle[] = [];
+    let headerSeen = false;
+
+    const handleLine = (line: string) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(trimmed);
+      } catch {
+        return;
+      }
+
+      if (parsed.status === 'error') {
+        proc.kill();
+        reject(new Error(String(parsed.message || 'Java helper returned error')));
+        return;
+      }
+
+      if (!headerSeen && parsed.status === 'success') {
+        headerSeen = true;
+        return;
+      }
+
+      titles.push({
+        titleId: String(parsed.titleId ?? ''),
+        text: String(parsed.text ?? ''),
+      });
+    };
+
+    proc.stdout.on('data', (chunk: Buffer) => {
+      buffer += chunk.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) handleLine(line);
+    });
+
+    proc.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+
+    proc.on('close', (code) => {
+      if (buffer.trim()) handleLine(buffer);
+      if (code !== 0 && !headerSeen) {
+        reject(new Error(`Java helper exited with code ${code}: ${stderr || 'no output'}`));
+        return;
+      }
+      resolve(titles);
+    });
+
+    proc.on('error', (err) => {
+      reject(new Error(`Failed to spawn Java helper: ${err.message}`));
+    });
+  });
+}
+
+/**
+ * The book DB path in Shamela 4 is database/book/<bookId % 1000>/<bookId>.db
+ * (three-digit zero-padded group folder, e.g. book 1001 -> 001/1001.db).
+ */
+export function getShamelaBookDbPath(libraryPath: string, bookId: string): string {
+  const numeric = Number.parseInt(bookId, 10);
+  const group = Number.isNaN(numeric) ? '000' : String(numeric % 1000).padStart(3, '0');
+  return path.join(libraryPath, 'database', 'book', group, `${bookId}.db`);
+}
+
+/**
+ * The number of pages in one book, read from the book's own `page` table.
+ * Used for next/previous navigation bounds (page 1 .. pageCount).
+ */
+export async function getShamelaPageCount(bookId: string): Promise<number> {
+  const status = await detectShamelaInstallation();
+  if (!status.installed || !status.path) {
+    throw new Error('مکتبہ شاملہ ۴ انسٹال نہیں ہے۔');
+  }
+
+  const bookDbPath = getShamelaBookDbPath(status.path, bookId);
+  if (!fs.existsSync(bookDbPath)) {
+    throw new Error(`کتاب کی ڈیٹابیس نہیں ملی: ${bookDbPath}`);
+  }
+
+  const Database = (await import('better-sqlite3')).default;
+  const db = new Database(bookDbPath, { readonly: true });
+  try {
+    const row = db.prepare('SELECT COUNT(*) as c FROM page').get() as { c: number } | undefined;
+    return row?.c ?? 0;
+  } finally {
+    db.close();
   }
 }

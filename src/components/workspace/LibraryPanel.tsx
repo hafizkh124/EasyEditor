@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FolderPlus, BookOpen, Search, Plus, Upload, ChevronLeft, Volume2,
+  FolderPlus, BookOpen, Search, Plus, Upload, ChevronLeft, Volume2, Home, FolderTree,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import { LibraryNewProjectDialog } from "./LibraryNewProjectDialog";
 import { LibrarySourcesTab } from "./LibrarySourcesTab";
 import { KnowledgeGraphTab } from "./KnowledgeGraphTab";
 import { RecipesTab } from "./RecipesTab";
+import { HomeTab } from "./HomeTab";
+import { BrowseTab } from "./BrowseTab";
 import type { Document, ProjectKind } from "@/core/workspace/types";
 
 interface LibraryPanelProps {
@@ -33,9 +35,10 @@ interface LibraryPanelProps {
 // Spelled out because Tailwind only ships classes it can see in the source —
 // a template-built `grid-cols-${n}` is purged and the tabs collapse.
 const TAB_GRID: Record<number, string> = {
-  2: "grid-cols-2",
   3: "grid-cols-3",
   4: "grid-cols-4",
+  5: "grid-cols-5",
+  6: "grid-cols-6",
 };
 
 export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = false, onNavigate }) => {
@@ -48,9 +51,10 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
   const [searchQuery, setSearchQuery] = useState("");
 
   // M4 pillars ship independently; each tab exists only when its flag is on.
+  // M6 adds Home tab as the first tab.
   const graphEnabled = import.meta.env.VITE_KNOWLEDGE_GRAPH !== "false";
   const recipesEnabled = import.meta.env.VITE_RECIPES !== "false";
-  const tabCount = 2 + (graphEnabled ? 1 : 0) + (recipesEnabled ? 1 : 0);
+  const tabCount = 4 + (graphEnabled ? 1 : 0) + (recipesEnabled ? 1 : 0);
 
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newProjTitle, setNewProjTitle] = useState("");
@@ -170,12 +174,20 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
         </div>
       </div>
 
-      <Tabs defaultValue="documents" className="flex-1 flex flex-col min-h-0">
+      <Tabs defaultValue="home" className="flex-1 flex flex-col min-h-0">
         <div className="px-2 pt-2 border-b border-sidebar-border">
           {/* Tab count follows the flags: with both M4 pillars off the Library
               is back to M2/M3's two tabs, not two dead ones (NFR-6). */}
           <TabsList className={`grid ${TAB_GRID[tabCount]} h-7 bg-muted/50 p-0.5`}>
+            <TabsTrigger value="home" className="text-[11px] h-6 py-0 px-1 truncate">
+              <Home className="h-3 w-3 mr-1" />
+              Home
+            </TabsTrigger>
             <TabsTrigger value="documents" className="text-[11px] h-6 py-0 px-1 truncate">Docs</TabsTrigger>
+            <TabsTrigger value="browse" className="text-[11px] h-6 py-0 px-1 truncate">
+              <FolderTree className="h-3 w-3 mr-1" />
+              Browse
+            </TabsTrigger>
             <TabsTrigger value="sources" className="text-[11px] h-6 py-0 px-1 truncate">Sources</TabsTrigger>
             {graphEnabled && (
               <TabsTrigger value="graph" className="text-[11px] h-6 py-0 px-1 truncate">Graph</TabsTrigger>
@@ -185,6 +197,28 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
             )}
           </TabsList>
         </div>
+
+        <TabsContent value="home" className="flex-1 min-h-0 m-0">
+          <HomeTab
+            onSearch={() => {
+              // Switch to a search tab or open search
+              navigate("/workspace?panel=research");
+            }}
+            onImport={() => {
+              // Open the Shamela import dialog — will be triggered via a ref or event
+              window.dispatchEvent(new CustomEvent("shamela:open-import"));
+            }}
+            onOpenFile={() => {
+              // Trigger file open — will be handled by the workspace
+              window.dispatchEvent(new CustomEvent("workspace:open-file"));
+            }}
+            onSelectBook={(itemId) => {
+              onNavigate?.();
+              setActiveDocumentId(itemId);
+              navigate(`/workspace/${itemId}`, { replace: true });
+            }}
+          />
+        </TabsContent>
 
         <TabsContent value="documents" className="flex-1 min-h-0 m-0">
           <ScrollArea className="h-full">
@@ -202,6 +236,16 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
               />
             </div>
           </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="browse" className="flex-1 min-h-0 m-0">
+          <BrowseTab
+            onNavigate={onNavigate}
+            onSelectBook={(bookId) => {
+              setActiveDocumentId(bookId);
+              navigate(`/workspace/${bookId}`, { replace: true });
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="sources" className="flex-1 min-h-0 m-0">

@@ -53,6 +53,7 @@ export interface LibraryItem {
   storage_path?: string | null;
   meta?: Record<string, unknown> | null;
   created_at: string;
+  updated_at?: string | null;
 }
 
 export interface Annotation {

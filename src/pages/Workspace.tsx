@@ -33,22 +33,20 @@ const WorkspacePage: React.FC = () => {
     noindex: true,
   });
 
-  // Auto-resolve blank document if landing on /workspace without a document ID
+  // SPEC-M6: Only auto-resolve a document if there's handoff content.
+  // Otherwise, let the user browse the Home tab and choose a book/document.
   const autoResolveStarted = useRef(false);
   useEffect(() => {
-    if (documentId || autoResolveStarted.current) return;
-    autoResolveStarted.current = true;
+    // If there's handoff content, we need a document to land it in
+    if (handoffContent && !autoResolveStarted.current) {
+      autoResolveStarted.current = true;
 
-    const resolveDocument = async () => {
-      try {
-        const projects = await documentService.listProjects();
-        const proj = projects[0] ?? (await documentService.createProject("General Workspace", "general"));
-        const panelQuery = openWorkbenchFromUrl ? "?panel=research" : "";
+      const resolveDocument = async () => {
+        try {
+          const projects = await documentService.listProjects();
+          const proj = projects[0] ?? (await documentService.createProject("General Workspace", "general"));
+          const panelQuery = openWorkbenchFromUrl ? "?panel=research" : "";
 
-        // Content handed over from OCR / Transcribe / Research / Translate /
-        // Extract must land in a real document, otherwise the user's text is
-        // lost and they see an empty canvas.
-        if (handoffContent) {
           const titleKey =
             handoffSource === "research" ? "editor.from_research" :
             handoffSource === "ocr" ? "editor.from_ocr" :
@@ -62,20 +60,15 @@ const WorkspacePage: React.FC = () => {
           );
           navigate(`/workspace/${created.id}${panelQuery}`, { replace: true });
           return;
+        } catch (err) {
+          console.error("[Workspace] Could not resolve a document:", err);
+          autoResolveStarted.current = false;
+          toast.error("دستاویز کھولتے ہوئے مسئلہ پیش آیا۔");
         }
+      };
 
-        const blank = await documentService.findBlankDocument(proj.id);
-        const target = blank ?? (await documentService.createDocument(proj.id, t("editor.untitled") || "Untitled Document"));
-
-        navigate(`/workspace/${target.id}${panelQuery}`, { replace: true });
-      } catch (err) {
-        console.error("[Workspace] Could not resolve a document:", err);
-        autoResolveStarted.current = false;
-        toast.error("دستاویز کھولتے ہوئے مسئلہ پیش آیا۔");
-      }
-    };
-
-    resolveDocument();
+      resolveDocument();
+    }
   }, [documentId, navigate, openWorkbenchFromUrl, t, handoffContent, handoffSource]);
 
   return (

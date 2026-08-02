@@ -1,5 +1,5 @@
-// AUTO-MIRRORED from shared/text/documentChunks.ts — edge deploy bundles only supabase/functions/.
-// Edit shared/text/documentChunks.ts and re-run: node scripts/mirror-shared.mjs
+// AUTO-MIRRORED from shared\text\documentChunks.ts — edge deploy bundles only supabase/functions/.
+// Edit shared\text\documentChunks.ts and re-run: node scripts/mirror-shared.mjs
 // Sentence-aware chunker for library documents (SPEC-M4 FR-2.2, SPEC-M5 FR-1.3).
 //
 // WHY THIS FILE EXISTS: the same book must chunk identically no matter which

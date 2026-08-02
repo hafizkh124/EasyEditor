@@ -119,18 +119,32 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'savePath', path }),
     search: (query: string, limit?: number): Promise<Array<{ bookId: string; bookTitle: string; pageNumber: number; snippet: string; score: number }>> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'search', query, limit }),
-    readPage: (bookId: string, pageNumber: number): Promise<{ bookId: string; pageNumber: number; text: string; volume?: string }> =>
+    readPage: (bookId: string, pageNumber: number): Promise<{ bookId: string; pageNumber: number; text: string; footnotes?: string }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'readPage', bookId, pageNumber }),
+    readToc: (bookId: string): Promise<Array<{ titleId: string; text: string; page: number; parent: string; depth: number }>> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'readToc', bookId }),
+    pageCount: (bookId: string): Promise<number> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'pageCount', bookId }),
 
     // ── Catalogue (master.db metadata) ────────────────────────────
     catalogueStats: (masterDbPath: string): Promise<{ totalBooks: number; totalAuthors: number; totalCategories: number }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:stats', masterDbPath }),
-    searchBooks: (masterDbPath: string, query: string, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; pageCount: number | null; volumeCount: number | null; info: string | null }>> =>
+    searchBooks: (masterDbPath: string, query: string, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; deathYear: number | null; bookType: number | null; info: string | null }>> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:searchBooks', masterDbPath, query, limit, offset }),
     listCategories: (masterDbPath: string): Promise<Array<{ id: number; name: string; parentId: number | null; bookCount: number }>> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:listCategories', masterDbPath }),
-    booksByCategory: (masterDbPath: string, categoryId: number, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; pageCount: number | null; volumeCount: number | null; info: string | null }>> =>
+    booksByCategory: (masterDbPath: string, categoryId: number, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; deathYear: number | null; bookType: number | null; info: string | null }>> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:booksByCategory', masterDbPath, categoryId, limit, offset }),
+    authors: (masterDbPath: string, limit?: number, offset?: number): Promise<Array<{ id: number; name: string; deathNumber: number | null; deathText: string | null; bookCount: number }>> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:authors', masterDbPath, limit, offset }),
+    searchAuthors: (masterDbPath: string, query: string, limit?: number, offset?: number): Promise<Array<{ id: number; name: string; deathNumber: number | null; deathText: string | null; bookCount: number }>> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:searchAuthors', masterDbPath, query, limit, offset }),
+    booksByAuthor: (masterDbPath: string, authorId: number, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; deathYear: number | null; bookType: number | null; info: string | null }>> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:booksByAuthor', masterDbPath, authorId, limit, offset }),
+    periods: (masterDbPath: string): Promise<Array<{ century: number; label: string; bookCount: number }>> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:periods', masterDbPath }),
+    booksByPeriod: (masterDbPath: string, century: number, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; deathYear: number | null; bookType: number | null; info: string | null }>> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:booksByPeriod', masterDbPath, century, limit, offset }),
 
     // ── Import (SPEC-M5.9 FR-2) ───────────────────────────────────
     estimateImport: (masterDbPath: string, bookIds: number[]): Promise<{ books: Array<{ bookId: number; title: string; author: string | null; pageCount: number; estimatedChunks: number }>; totalBooks: number; totalPages: number; totalChunks: number; approximate: boolean }> =>

@@ -1,6 +1,6 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, BookOpen } from "lucide-react";
 import RichEditor, { type DocChangePayload } from "@/components/editor/RichEditor";
 import { SelectionActionBar } from "./SelectionActionBar";
 import { CanvasTranslationView } from "./CanvasTranslationView";
@@ -44,6 +44,21 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
 
   if (isTranslationView) {
     return <CanvasTranslationView />;
+  }
+
+  // SPEC-M6: Show a welcoming empty state when no document is selected
+  if (!doc) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-background text-muted-foreground">
+        <BookOpen className="h-16 w-16 text-muted-foreground/30 mb-4" />
+        <h2 className="text-lg font-semibold text-muted-foreground/70 mb-1">
+          Easy Editor
+        </h2>
+        <p className="text-sm text-muted-foreground/50">
+          Select a book from the Library to start reading
+        </p>
+      </div>
+    );
   }
 
   return (

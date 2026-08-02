@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  Search, BookOpen, User, Layers, FileText, Download,
+  Search, BookOpen, User, Layers, Calendar, Download,
   Loader2
 } from "lucide-react";
 import { ImportEstimateDialog, type ImportEstimate } from "./ImportEstimateDialog";
@@ -31,8 +31,8 @@ export interface ShamelaBook {
   title: string;
   author: string | null;
   category: string | null;
-  pageCount: number | null;
-  volumeCount: number | null;
+  deathYear: number | null;
+  bookType: number | null;
   info: string | null;
 }
 
@@ -426,10 +426,10 @@ function BookList({
                   {book.category}
                 </span>
               )}
-              {book.pageCount != null && (
+              {book.deathYear != null && book.deathYear < 99999 && (
                 <span className="flex items-center gap-1">
-                  <FileText className="h-3 w-3" />
-                  {book.pageCount} صفحات
+                  <Calendar className="h-3 w-3" />
+                  {book.deathYear} هـ
                 </span>
               )}
             </div>

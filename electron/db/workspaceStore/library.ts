@@ -13,8 +13,15 @@ function mapLibraryItemRow(r: any): LibraryItem {
     source_ref: JSON.parse(r.source_ref || '{}'),
     storage_path: r.storage_path || undefined,
     created_at: r.created_at,
+    updated_at: r.updated_at || r.created_at,
     meta: JSON.parse(r.meta || '{}'),
   };
+}
+
+export function getItem(db: SqliteDatabase, id: string): LibraryItem | null {
+  const userId = getCurrentUserId(db);
+  const row = db.prepare('SELECT * FROM library_items WHERE user_id = ? AND id = ?').get(userId, id) as any;
+  return row ? mapLibraryItemRow(row) : null;
 }
 
 export function listItems(db: SqliteDatabase, projectId?: string): LibraryItem[] {
@@ -35,9 +42,9 @@ export function createItem(db: SqliteDatabase, item: Partial<LibraryItem> & { ti
   const meta = item.meta || {};
 
   db.prepare(`
-    INSERT INTO library_items (id, user_id, project_id, kind, title, source_ref, storage_path, meta, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, userId, item.project_id || null, kind, item.title, JSON.stringify(sourceRef), item.storage_path || null, JSON.stringify(meta), now);
+    INSERT INTO library_items (id, user_id, project_id, kind, title, source_ref, storage_path, meta, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, userId, item.project_id || null, kind, item.title, JSON.stringify(sourceRef), item.storage_path || null, JSON.stringify(meta), now, now);
 
   return {
     id, user_id: userId, project_id: item.project_id, kind, title: item.title,

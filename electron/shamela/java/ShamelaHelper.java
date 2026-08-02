@@ -23,6 +23,7 @@ import java.nio.file.Paths;
  *   search <indexPath> <query> [limit] — full-text search
  *   read   <indexPath> <bookId> <page> — fetch page text
  *   readBook <indexPath> <bookId> [max] — fetch every page of one book
+ *   readToc <titleIndexPath> <bookId> — fetch one book's table of contents
  *   version                            — print helper version
  */
 public class ShamelaHelper {
@@ -65,7 +66,6 @@ public class ShamelaHelper {
                     }
                     handleRead(args[1], args[2], Integer.parseInt(args[3]));
                     break;
-
                 case "readBook":
                     if (args.length < 3) {
                         printJsonError("Usage: readBook <indexPath> <bookId> [maxPages]");
@@ -73,6 +73,14 @@ public class ShamelaHelper {
                     }
                     int maxPages = args.length > 3 ? Integer.parseInt(args[3]) : 100000;
                     handleReadBook(args[1], args[2], maxPages);
+                    break;
+
+                case "readToc":
+                    if (args.length < 3) {
+                        printJsonError("Usage: readToc <titleIndexPath> <bookId>");
+                        System.exit(1);
+                    }
+                    handleReadToc(args[1], args[2]);
                     break;
 
                 default:
@@ -202,11 +210,21 @@ public class ShamelaHelper {
                 Object storedFields = indexSearcherClass.getMethod("storedFields").invoke(searcher);
                 Object doc = storedFields.getClass().getMethod("document", int.class).invoke(storedFields, docId);
 
-                String nass = getField(doc, "nass");  // page text field in Shamela
-                String bookIdStr = getField(doc, "book_id");
-                String pageStr = getField(doc, "page");
+                // The page index stores id = "<bookId>-<pageId>" and text in `body`.
+                String id = getField(doc, "id");
+                String body = getField(doc, "body");
 
-                String snippet = nass != null ? nass.substring(0, Math.min(nass.length(), 300)) : "";
+                String bookIdStr = "";
+                String pageStr = "0";
+                if (id != null) {
+                    int dash = id.indexOf('-');
+                    if (dash >= 0) {
+                        bookIdStr = id.substring(0, dash);
+                        pageStr = id.substring(dash + 1);
+                    }
+                }
+
+                String snippet = body != null ? body.substring(0, Math.min(body.length(), 300)) : "";
 
                 sb.append("{\"bookId\":\"").append(escapeJson(bookIdStr != null ? bookIdStr : ""))
                   .append("\",\"bookTitle\":\"\",\"pageNumber\":")
@@ -267,7 +285,7 @@ public class ShamelaHelper {
         Class<?> queryParserClass = Class.forName("org.apache.lucene.queryparser.classic.QueryParser");
         Object analyzer = analyzerClass.getConstructor().newInstance();
         Object parser = queryParserClass.getConstructor(String.class,
-            Class.forName("org.apache.lucene.analysis.Analyzer")).newInstance("nass", analyzer);
+            Class.forName("org.apache.lucene.analysis.Analyzer")).newInstance("body", analyzer);
         return queryParserClass.getMethod("parse", String.class).invoke(parser, queryText);
     }
 
@@ -284,6 +302,11 @@ public class ShamelaHelper {
 
     /**
      * Read a specific page from the Lucene index.
+     *
+     * The page index (unlike an assumed `book_id`/`page` schema) stores each
+     * page as a document with `id` = "<bookId>-<pageId>" and `body` holding the
+     * page's HTML. `<pageId>` is the same sequential id used by the book's own
+     * SQLite `page`/`title` tables, so the caller passes the id it already has.
      */
     private static void handleRead(String indexPath, String bookId, int pageNumber) {
         Path indexDir = Paths.get(indexPath);
@@ -296,6 +319,8 @@ public class ShamelaHelper {
             Class<?> fsDirectoryClass = Class.forName("org.apache.lucene.store.FSDirectory");
             Class<?> directoryReaderClass = Class.forName("org.apache.lucene.index.DirectoryReader");
             Class<?> indexSearcherClass = Class.forName("org.apache.lucene.search.IndexSearcher");
+            Class<?> termQueryClass = Class.forName("org.apache.lucene.search.TermQuery");
+            Class<?> termClass = Class.forName("org.apache.lucene.index.Term");
 
             // ADR-0007/R25: refuse on an unexpected Lucene major version rather than
             // risk reading page text back through the wrong codec (mangled Arabic).
@@ -307,31 +332,14 @@ public class ShamelaHelper {
             Object searcher = indexSearcherClass.getConstructor(
                 Class.forName("org.apache.lucene.index.IndexReader")).newInstance(reader);
 
-            // Build BooleanQuery: book_id = bookId AND page = pageNumber
-            Class<?> booleanQueryBuilderClass = Class.forName("org.apache.lucene.search.BooleanQuery$Builder");
-            Class<?> termQueryClass = Class.forName("org.apache.lucene.search.TermQuery");
-            Class<?> termClass = Class.forName("org.apache.lucene.index.Term");
-            Class<?> occurClass = Class.forName("org.apache.lucene.search.BooleanClause$Occur");
+            // id = "<bookId>-<pageId>" — a single TermQuery, no boolean join needed.
+            String idValue = bookId + "-" + pageNumber;
+            Object term = termClass.getConstructor(String.class, String.class).newInstance("id", idValue);
+            Object query = termQueryClass.getConstructor(termClass).newInstance(term);
 
-            Object builder = booleanQueryBuilderClass.getConstructor().newInstance();
-            Object bookTerm = termClass.getConstructor(String.class, String.class).newInstance("book_id", bookId);
-            Object bookQuery = termQueryClass.getConstructor(termClass).newInstance(bookTerm);
-            Object pageTerm = termClass.getConstructor(String.class, String.class).newInstance("page", String.valueOf(pageNumber));
-            Object pageQuery = termQueryClass.getConstructor(termClass).newInstance(pageTerm);
-
-            Object must = occurClass.getField("MUST").get(null);
-
-            builder.getClass().getMethod("add", Class.forName("org.apache.lucene.search.Query"), occurClass)
-                .invoke(builder, bookQuery, must);
-            builder.getClass().getMethod("add", Class.forName("org.apache.lucene.search.Query"), occurClass)
-                .invoke(builder, pageQuery, must);
-
-            Object booleanQuery = builder.getClass().getMethod("build").invoke(builder);
-
-            // Execute search
             Object topDocs = indexSearcherClass.getMethod("search",
                 Class.forName("org.apache.lucene.search.Query"), int.class)
-                .invoke(searcher, booleanQuery, 1);
+                .invoke(searcher, query, 1);
 
             Object[] scoreDocs = (Object[]) topDocs.getClass().getField("scoreDocs").get(topDocs);
 
@@ -339,15 +347,15 @@ public class ShamelaHelper {
                 int docId = (int) scoreDocs[0].getClass().getField("doc").get(scoreDocs[0]);
                 Object storedFields = indexSearcherClass.getMethod("storedFields").invoke(searcher);
                 Object doc = storedFields.getClass().getMethod("document", int.class).invoke(storedFields, docId);
-                String nass = getField(doc, "nass");
-                String volume = getField(doc, "part");
+                String body = getField(doc, "body");
+                String foot = getField(doc, "foot");
 
-                OUT.printf("{\"status\":\"success\",\"bookId\":\"%s\",\"pageNumber\":%d,\"text\":\"%s\",\"volume\":\"%s\"}%n",
+                OUT.printf("{\"status\":\"success\",\"bookId\":\"%s\",\"pageNumber\":%d,\"text\":\"%s\",\"footnotes\":\"%s\"}%n",
                     escapeJson(bookId), pageNumber,
-                    escapeJson(nass != null ? nass : ""),
-                    escapeJson(volume != null ? volume : ""));
+                    escapeJson(body != null ? body : ""),
+                    escapeJson(foot != null ? foot : ""));
             } else {
-                OUT.printf("{\"status\":\"success\",\"bookId\":\"%s\",\"pageNumber\":%d,\"text\":\"\",\"volume\":\"\"}%n",
+                OUT.printf("{\"status\":\"success\",\"bookId\":\"%s\",\"pageNumber\":%d,\"text\":\"\",\"footnotes\":\"\"}%n",
                     escapeJson(bookId), pageNumber);
             }
 
@@ -400,15 +408,16 @@ public class ShamelaHelper {
             Object searcher = indexSearcherClass.getConstructor(
                 Class.forName("org.apache.lucene.index.IndexReader")).newInstance(reader);
 
-            Class<?> termQueryClass = Class.forName("org.apache.lucene.search.TermQuery");
-            Class<?> termClass = Class.forName("org.apache.lucene.index.Term");
+            Class<?> termRangeQueryClass = Class.forName("org.apache.lucene.search.TermRangeQuery");
 
-            Object bookTerm = termClass.getConstructor(String.class, String.class).newInstance("book_id", bookId);
-            Object bookQuery = termQueryClass.getConstructor(termClass).newInstance(bookTerm);
+            // id in [<bookId>-, <bookId>-\uffff] covers every page of the book.
+            Object query = termRangeQueryClass.getMethod("newStringRange",
+                String.class, String.class, String.class, boolean.class, boolean.class)
+                .invoke(null, "id", bookId + "-", bookId + "-\uffff", true, true);
 
             Object topDocs = indexSearcherClass.getMethod("search",
                 Class.forName("org.apache.lucene.search.Query"), int.class)
-                .invoke(searcher, bookQuery, maxPages);
+                .invoke(searcher, query, maxPages);
 
             Object[] scoreDocs = (Object[]) topDocs.getClass().getField("scoreDocs").get(topDocs);
             Object storedFields = indexSearcherClass.getMethod("storedFields").invoke(searcher);
@@ -420,14 +429,21 @@ public class ShamelaHelper {
                 int docId = (int) scoreDoc.getClass().getField("doc").get(scoreDoc);
                 Object doc = storedFields.getClass().getMethod("document", int.class).invoke(storedFields, docId);
 
-                String nass = getField(doc, "nass");
-                String volume = getField(doc, "part");
-                String page = getField(doc, "page");
+                String id = getField(doc, "id");
+                String body = getField(doc, "body");
+                String foot = getField(doc, "foot");
 
-                OUT.printf("{\"page\":\"%s\",\"volume\":\"%s\",\"text\":\"%s\"}%n",
-                    escapeJson(page != null ? page : ""),
-                    escapeJson(volume != null ? volume : ""),
-                    escapeJson(nass != null ? nass : ""));
+                // id = "<bookId>-<pageId>"
+                String pageId = "";
+                if (id != null) {
+                    int dash = id.indexOf('-');
+                    if (dash >= 0) pageId = id.substring(dash + 1);
+                }
+
+                OUT.printf("{\"page\":\"%s\",\"text\":\"%s\",\"footnotes\":\"%s\"}%n",
+                    escapeJson(pageId),
+                    escapeJson(body != null ? body : ""),
+                    escapeJson(foot != null ? foot : ""));
             }
 
             reader.getClass().getMethod("close").invoke(reader);
@@ -438,6 +454,92 @@ public class ShamelaHelper {
             System.exit(1);
         } catch (Exception e) {
             printJsonError("readBook failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            System.exit(1);
+        }
+    }
+
+    /**
+     * Reads one book's table of contents from the global `store/title` index.
+     *
+     * The title index stores every book's headings as documents with
+     *   id   = "<bookId>-<titleId>"   (stored)
+     *   body = heading text           (stored)
+     * Page numbers and the heading tree (parent links) live in each book's
+     * own SQLite `title(id, page, parent)` table, so this command returns only
+     * the Lucene side ({titleId, text}) and lets the caller join it with the
+     * SQLite side for page numbers and hierarchy.
+     *
+     * Titles are emitted as one JSON object per line (like readBook) so a book
+     * with a very long TOC streams instead of being held as one giant string.
+     */
+    private static void handleReadToc(String titleIndexPath, String bookId) {
+        Path indexDir = Paths.get(titleIndexPath);
+        if (!Files.exists(indexDir) || !Files.isDirectory(indexDir)) {
+            printJsonError("Title index directory does not exist: " + titleIndexPath);
+            return;
+        }
+
+        try {
+            Class<?> fsDirectoryClass = Class.forName("org.apache.lucene.store.FSDirectory");
+            Class<?> directoryReaderClass = Class.forName("org.apache.lucene.index.DirectoryReader");
+            Class<?> indexSearcherClass = Class.forName("org.apache.lucene.search.IndexSearcher");
+            Class<?> termRangeQueryClass = Class.forName("org.apache.lucene.search.TermRangeQuery");
+            Class<?> termClass = Class.forName("org.apache.lucene.index.Term");
+
+            // ADR-0007/R25: refuse on an unexpected Lucene major rather than
+            // read titles back through the wrong codec (mangled Arabic).
+            assertLuceneVersion();
+
+            Object directory = fsDirectoryClass.getMethod("open", Path.class).invoke(null, indexDir);
+            Object reader = directoryReaderClass.getMethod("open",
+                Class.forName("org.apache.lucene.store.Directory")).invoke(null, directory);
+            Object searcher = indexSearcherClass.getConstructor(
+                Class.forName("org.apache.lucene.index.IndexReader")).newInstance(reader);
+
+            // id in [<bookId>-, <bookId>-\uffff] covers every titleId for the book.
+            String lo = bookId + "-";
+            String hi = bookId + "-\uffff";
+            Object query = termRangeQueryClass.getMethod("newStringRange",
+                String.class, String.class, String.class, boolean.class, boolean.class)
+                .invoke(null, "id", lo, hi, true, true);
+
+            Object topDocs = indexSearcherClass.getMethod("search",
+                Class.forName("org.apache.lucene.search.Query"), int.class)
+                .invoke(searcher, query, 100000);
+
+            Object[] scoreDocs = (Object[]) topDocs.getClass().getField("scoreDocs").get(topDocs);
+            Object storedFields = indexSearcherClass.getMethod("storedFields").invoke(searcher);
+
+            OUT.printf("{\"status\":\"success\",\"bookId\":\"%s\",\"titleCount\":%d}%n",
+                escapeJson(bookId), scoreDocs.length);
+
+            for (Object scoreDoc : scoreDocs) {
+                int docId = (int) scoreDoc.getClass().getField("doc").get(scoreDoc);
+                Object doc = storedFields.getClass().getMethod("document", int.class).invoke(storedFields, docId);
+
+                String id = getField(doc, "id");
+                String body = getField(doc, "body");
+
+                // id = "<bookId>-<titleId>"; emit titleId separately for easy joining.
+                String titleId = "";
+                if (id != null) {
+                    int dash = id.indexOf('-');
+                    if (dash >= 0) titleId = id.substring(dash + 1);
+                }
+
+                OUT.printf("{\"titleId\":\"%s\",\"text\":\"%s\"}%n",
+                    escapeJson(titleId),
+                    escapeJson(body != null ? body : ""));
+            }
+
+            reader.getClass().getMethod("close").invoke(reader);
+
+        } catch (ClassNotFoundException e) {
+            printJsonError("Lucene classes not found on classpath (" + e.getMessage()
+                + "). Shamela's app/lucene/2/*.jar must be on the classpath.");
+            System.exit(1);
+        } catch (Exception e) {
+            printJsonError("readToc failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             System.exit(1);
         }
     }

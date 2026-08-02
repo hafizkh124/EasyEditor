@@ -1,4 +1,4 @@
-import type { WorkspaceBackend } from './types';
+import type { WorkspaceBackend, RecentItem } from './types';
 import type {
   Project,
   ProjectKind,
@@ -93,6 +93,10 @@ export const localBackend: WorkspaceBackend = {
       return invokeWorkspace<LibraryItem[]>('listItems', projectId);
     },
 
+    async getItem(itemId: string): Promise<LibraryItem | null> {
+      return invokeWorkspace<LibraryItem | null>('getItem', itemId);
+    },
+
     async listLibraryItems(): Promise<LibraryItem[]> {
       return invokeWorkspace<LibraryItem[]>('listItems');
     },
@@ -115,6 +119,18 @@ export const localBackend: WorkspaceBackend = {
     async deleteLibraryItem(itemId: string): Promise<boolean> {
       await invokeWorkspace<void>('deleteItem', itemId);
       return true;
+    },
+
+    async accessItem(itemId: string): Promise<void> {
+      await invokeWorkspace<void>('accessItem', itemId);
+    },
+
+    async getRecentItems(limit = 10): Promise<RecentItem[]> {
+      return invokeWorkspace<RecentItem[]>('getRecentItems', limit);
+    },
+
+    async getLibraryItemCount(): Promise<number> {
+      return invokeWorkspace<number>('getLibraryItemCount');
     },
   },
 
