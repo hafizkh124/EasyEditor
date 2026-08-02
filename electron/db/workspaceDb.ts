@@ -8,6 +8,7 @@ import * as recipes from './workspaceStore/recipes.js';
 import * as customTasks from './workspaceStore/customTasks.js';
 import { getCurrentUserId } from './workspaceStore/identity.js';
 import * as accessLog from './workspaceStore/accessLog.js';
+import { searchChunks, type ChunkSearchHit } from './workspaceStore/search.js';
 import { ingestLibraryItem, type IngestBatchArgs, type IngestBatchResult } from './ingest.js';
 import {
   importShamelaBooks, filterAlreadyImported,
@@ -74,6 +75,10 @@ export class WorkspaceDbService {
   }
   public async getLibraryItemCount(): Promise<number> {
     return accessLog.getLibraryItemCount(this.db);
+  }
+  /** SPEC-M6 Phase 5: FTS5 keyword search over imported chunks. */
+  public async searchChunks(query: string, limit = 50): Promise<ChunkSearchHit[]> {
+    return searchChunks(this.db, query, limit);
   }
 
   /**

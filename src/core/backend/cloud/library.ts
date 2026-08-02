@@ -6,7 +6,7 @@
  * concern split across two files; the interface reunites them.
  */
 import { supabase } from "@/integrations/supabase/client";
-import type { LibraryBackend, RecentItem } from "../types";
+import type { LibraryBackend, RecentItem, ChunkSearchHit } from "../types";
 import type { LibraryItem } from "@/core/workspace/types";
 
 export const cloudLibrary: LibraryBackend = {
@@ -160,5 +160,10 @@ export const cloudLibrary: LibraryBackend = {
     const { count } = await (supabase.from("library_items" as any) as any)
       .select("*", { count: "exact", head: true });
     return count ?? 0;
+  },
+
+  async searchChunks(_query: string, _limit = 50): Promise<ChunkSearchHit[]> {
+    // Cloud mode: keyword search over the hosted corpus is not wired yet.
+    return [];
   },
 };

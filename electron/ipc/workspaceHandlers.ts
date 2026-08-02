@@ -21,6 +21,7 @@ const ALLOWED_WORKSPACE_METHODS = new Set<string>([
   'snapshotVersion', 'listDocumentVersions',
   'listItems', 'getItem', 'createItem', 'deleteItem',
   'accessItem', 'getRecentItems', 'getLibraryItemCount',
+  'searchChunks',
   'listAnnotations', 'createAnnotation', 'updateAnnotation', 'deleteAnnotation',
   'listTaskRuns', 'createTaskRun', 'updateTaskRunStatus',
   'listEntities', 'createEntity', 'getEntityDetails', 'mergeEntities',

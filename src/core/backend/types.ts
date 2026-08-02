@@ -111,6 +111,17 @@ export interface LibraryBackend {
   getRecentItems(limit?: number): Promise<RecentItem[]>;
   /** SPEC-M6: Get total count of library items. */
   getLibraryItemCount(): Promise<number>;
+  /** SPEC-M6 Phase 5: FTS5 keyword search across imported chunks. */
+  searchChunks(query: string, limit?: number): Promise<ChunkSearchHit[]>;
+}
+
+export interface ChunkSearchHit {
+  itemId: string;
+  title: string;
+  sourceRef: Record<string, unknown>;
+  pageNumber: number | null;
+  content: string;
+  rank: number;
 }
 
 export interface RecentItem {

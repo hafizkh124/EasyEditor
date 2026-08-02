@@ -48,7 +48,7 @@ interface ReaderState {
 
 const electronAPI = () => window.electronAPI?.shamela;
 
-export function useReaderState(bookId: string | null): ReaderState {
+export function useReaderState(bookId: string | null, initialPage?: number | null): ReaderState {
   const [toc, setToc] = useState<TocEntry[]>([]);
   const [tocLoading, setTocLoading] = useState(false);
   const [tocError, setTocError] = useState<string | null>(null);
@@ -147,7 +147,8 @@ export function useReaderState(bookId: string | null): ReaderState {
     if (!bookId || pageCount <= 0) return;
     if (loadedBookRef.current === bookId) return;
     loadedBookRef.current = bookId;
-    loadPage(1, true);
+    loadPage(initialPage && initialPage > 1 ? initialPage : 1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookId, pageCount, loadPage]);
 
   // Derive the active title whenever the page or TOC changes.

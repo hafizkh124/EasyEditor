@@ -54,6 +54,10 @@ function makeDb() {
       UNIQUE (library_item_id, chunk_index)
     );
     CREATE TABLE library_chunk_embeddings (chunk_id TEXT PRIMARY KEY, embedding BLOB NOT NULL);
+    CREATE VIRTUAL TABLE library_chunks_fts USING fts5(
+      search_text, library_item_id UNINDEXED, chunk_index UNINDEXED,
+      page_number UNINDEXED, part_number UNINDEXED, tokenize = 'trigram'
+    );
   `);
   db.prepare('INSERT INTO corpus_meta (key, value) VALUES (?, ?)').run('local_user_id', USER);
   return db;
@@ -142,9 +146,10 @@ describe('ingestLibraryItem (SPEC-M5.9 FR-1)', () => {
     const signal = { aborted: false };
     let seen = 0;
     const originalPrepare = db.prepare.bind(db);
-    // Trip the abort after two chunk inserts have landed.
+    // Trip the abort after two chunk inserts have landed. The FTS5 keyword
+    // index insert (library_chunks_fts) is not a chunk insert — exclude it.
     (db as any).prepare = (sql: string) => {
-      if (sql.includes('INSERT INTO library_chunks') && ++seen === 2) signal.aborted = true;
+      if (sql.includes('INSERT INTO library_chunks') && !sql.includes('library_chunks_fts') && ++seen === 2) signal.aborted = true;
       return originalPrepare(sql);
     };
 

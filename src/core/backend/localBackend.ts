@@ -1,4 +1,4 @@
-import type { WorkspaceBackend, RecentItem } from './types';
+import type { WorkspaceBackend, RecentItem, ChunkSearchHit } from './types';
 import type {
   Project,
   ProjectKind,
@@ -131,6 +131,10 @@ export const localBackend: WorkspaceBackend = {
 
     async getLibraryItemCount(): Promise<number> {
       return invokeWorkspace<number>('getLibraryItemCount');
+    },
+
+    async searchChunks(query: string, limit = 50): Promise<ChunkSearchHit[]> {
+      return invokeWorkspace<ChunkSearchHit[]>('searchChunks', query, limit);
     },
   },
 

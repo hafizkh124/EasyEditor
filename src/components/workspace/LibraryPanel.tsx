@@ -2,8 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FolderPlus, BookOpen, Search, Plus, Upload, ChevronLeft, Volume2, Home, FolderTree,
-} from "lucide-react";
-import { toast } from "sonner";
+} from "lucide-react";import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,6 +22,7 @@ import { KnowledgeGraphTab } from "./KnowledgeGraphTab";
 import { RecipesTab } from "./RecipesTab";
 import { HomeTab } from "./HomeTab";
 import { BrowseTab } from "./BrowseTab";
+import { SearchTab } from "./SearchTab";
 import type { Document, ProjectKind } from "@/core/workspace/types";
 
 interface LibraryPanelProps {
@@ -39,6 +39,7 @@ const TAB_GRID: Record<number, string> = {
   4: "grid-cols-4",
   5: "grid-cols-5",
   6: "grid-cols-6",
+  7: "grid-cols-7",
 };
 
 export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = false, onNavigate }) => {
@@ -54,7 +55,7 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
   // M6 adds Home tab as the first tab.
   const graphEnabled = import.meta.env.VITE_KNOWLEDGE_GRAPH !== "false";
   const recipesEnabled = import.meta.env.VITE_RECIPES !== "false";
-  const tabCount = 4 + (graphEnabled ? 1 : 0) + (recipesEnabled ? 1 : 0);
+  const tabCount = 5 + (graphEnabled ? 1 : 0) + (recipesEnabled ? 1 : 0);
 
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newProjTitle, setNewProjTitle] = useState("");
@@ -188,6 +189,10 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
               <FolderTree className="h-3 w-3 mr-1" />
               Browse
             </TabsTrigger>
+            <TabsTrigger value="search" className="text-[11px] h-6 py-0 px-1 truncate">
+              <Search className="h-3 w-3 mr-1" />
+              Search
+            </TabsTrigger>
             <TabsTrigger value="sources" className="text-[11px] h-6 py-0 px-1 truncate">Sources</TabsTrigger>
             {graphEnabled && (
               <TabsTrigger value="graph" className="text-[11px] h-6 py-0 px-1 truncate">Graph</TabsTrigger>
@@ -244,6 +249,17 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
             onSelectBook={(bookId) => {
               setActiveDocumentId(bookId);
               navigate(`/workspace/${bookId}`, { replace: true });
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="search" className="flex-1 min-h-0 m-0">
+          <SearchTab
+            onNavigate={onNavigate}
+            onSelectResult={(hit) => {
+              setActiveDocumentId(hit.itemId);
+              const page = hit.pageNumber != null && hit.pageNumber > 1 ? `?page=${hit.pageNumber}` : "";
+              navigate(`/workspace/${hit.itemId}${page}`, { replace: true });
             }}
           />
         </TabsContent>
