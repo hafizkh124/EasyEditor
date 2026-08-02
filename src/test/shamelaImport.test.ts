@@ -4,9 +4,9 @@ import { EMBED_DIMS } from '../../shared/ai/embedConstants';
 import { estimateChunksForChars } from '../../electron/shamela/estimate';
 
 // Only the two Electron-bound edges are stubbed: reading Shamela's Lucene
-// index and calling Gemini. Chunking, page/volume mapping and the SQLite
+// index and calling Gemini. Chunking, page mapping and the SQLite
 // writes are the real thing.
-let pagesByBook: Record<string, Array<{ page: string; volume: string; text: string }>> = {};
+let pagesByBook: Record<string, Array<{ page: string; text: string }>> = {};
 let embedCalls = 0;
 let readBookSpawns = 0;
 /** Set to make the next readShamelaBook fail, as a broken install would. */
@@ -15,7 +15,7 @@ let readBookError: string | null = null;
 vi.mock('../../electron/shamela/shamelaNative.js', () => ({
   readShamelaBook: async (
     bookId: string,
-    onPage: (p: { page: string; volume: string; text: string }) => boolean | void,
+    onPage: (p: { page: string; text: string }) => boolean | void,
   ) => {
     readBookSpawns++;
     if (readBookError) throw new Error(readBookError);
@@ -53,7 +53,7 @@ function makeDb() {
     CREATE TABLE library_items (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, project_id TEXT, kind TEXT,
       title TEXT NOT NULL, source_ref TEXT DEFAULT '{}', storage_path TEXT,
-      meta TEXT NOT NULL DEFAULT '{}', created_at TEXT
+      meta TEXT NOT NULL DEFAULT '{}', created_at TEXT, updated_at TEXT
     );
     CREATE TABLE library_chunks (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, library_item_id TEXT NOT NULL,
@@ -82,7 +82,7 @@ describe('importShamelaBooks (SPEC-M5.9 FR-2)', () => {
   });
 
   it('creates a shamela library item carrying the book’s identity', async () => {
-    pagesByBook['42'] = [{ page: '1', volume: '1', text: 'إنما الأعمال بالنيات' }];
+    pagesByBook['42'] = [{ page: '1', text: 'إنما الأعمال بالنيات' }];
     const db = makeDb();
 
     const res = await importShamelaBooks({ db: db as any, books: [BOOK] });
@@ -96,10 +96,10 @@ describe('importShamelaBooks (SPEC-M5.9 FR-2)', () => {
     expect(JSON.parse(item.source_ref)).toMatchObject({ shamelaBookId: 42, author: 'البخاري' });
   });
 
-  it('records page and volume on every chunk — the citation depends on it', async () => {
+  it('records page on every chunk — the citation depends on it', async () => {
     pagesByBook['42'] = [
-      { page: '15', volume: '2', text: 'نص الصفحة الأولى' },
-      { page: '16', volume: '2', text: 'نص الصفحة الثانية' },
+      { page: '15', text: 'نص الصفحة الأولى' },
+      { page: '16', text: 'نص الصفحة الثانية' },
     ];
     const db = makeDb();
 
@@ -108,14 +108,13 @@ describe('importShamelaBooks (SPEC-M5.9 FR-2)', () => {
 
     expect(chunks).toHaveLength(2);
     expect(chunks[0].page_number).toBe(15);
-    expect(chunks[0].part_number).toBe(2);
     expect(chunks[1].page_number).toBe(16);
   });
 
   it('numbers chunks continuously across page boundaries', async () => {
     pagesByBook['42'] = [
-      { page: '1', volume: '1', text: 'أ'.repeat(3000) },
-      { page: '2', volume: '1', text: 'ب'.repeat(3000) },
+      { page: '1', text: 'أ'.repeat(3000) },
+      { page: '2', text: 'ب'.repeat(3000) },
     ];
     const db = makeDb();
 
@@ -128,7 +127,7 @@ describe('importShamelaBooks (SPEC-M5.9 FR-2)', () => {
 
   it('strips Shamela’s page markup down to prose', async () => {
     pagesByBook['42'] = [{
-      page: '1', volume: '1',
+      page: '1',
       text: '<p>إنما <b>الأعمال</b></p><br/>&nbsp;بالنيات',
     }];
     const db = makeDb();
@@ -143,7 +142,7 @@ describe('importShamelaBooks (SPEC-M5.9 FR-2)', () => {
 
   it('reads a whole book in a single JVM spawn (risk N4)', async () => {
     pagesByBook['42'] = Array.from({ length: 40 }, (_, i) => ({
-      page: String(i + 1), volume: '1', text: `صفحة ${i + 1}`,
+      page: String(i + 1), text: `صفحة ${i + 1}`,
     }));
     const db = makeDb();
 
@@ -154,7 +153,7 @@ describe('importShamelaBooks (SPEC-M5.9 FR-2)', () => {
   });
 
   it('skips a book already imported instead of spending again', async () => {
-    pagesByBook['42'] = [{ page: '1', volume: '1', text: 'نص' }];
+    pagesByBook['42'] = [{ page: '1', text: 'نص' }];
     const db = makeDb();
 
     await importShamelaBooks({ db: db as any, books: [BOOK] });
@@ -168,7 +167,7 @@ describe('importShamelaBooks (SPEC-M5.9 FR-2)', () => {
   });
 
   it('reports which of a set are already imported', async () => {
-    pagesByBook['42'] = [{ page: '1', volume: '1', text: 'نص' }];
+    pagesByBook['42'] = [{ page: '1', text: 'نص' }];
     const db = makeDb();
     await importShamelaBooks({ db: db as any, books: [BOOK] });
 
@@ -177,8 +176,8 @@ describe('importShamelaBooks (SPEC-M5.9 FR-2)', () => {
   });
 
   it('keeps finished books when cancelled part-way through the selection', async () => {
-    pagesByBook['1'] = [{ page: '1', volume: '1', text: 'كتاب أول' }];
-    pagesByBook['2'] = [{ page: '1', volume: '1', text: 'كتاب ثان' }];
+    pagesByBook['1'] = [{ page: '1', text: 'كتاب أول' }];
+    pagesByBook['2'] = [{ page: '1', text: 'كتاب ثان' }];
     const db = makeDb();
 
     const signal = { aborted: false };
@@ -198,8 +197,8 @@ describe('importShamelaBooks (SPEC-M5.9 FR-2)', () => {
   });
 
   it('reports progress per book with its position in the selection', async () => {
-    pagesByBook['1'] = [{ page: '1', volume: '1', text: 'نص' }];
-    pagesByBook['2'] = [{ page: '1', volume: '1', text: 'نص' }];
+    pagesByBook['1'] = [{ page: '1', text: 'نص' }];
+    pagesByBook['2'] = [{ page: '1', text: 'نص' }];
     const db = makeDb();
 
     const seen: string[] = [];
@@ -228,9 +227,9 @@ describe('importShamelaBooks (SPEC-M5.9 FR-2)', () => {
 
   it('skips blank pages without spending an embedding on them', async () => {
     pagesByBook['42'] = [
-      { page: '1', volume: '1', text: '   ' },
-      { page: '2', volume: '1', text: '<p></p>' },
-      { page: '3', volume: '1', text: 'نص حقيقي' },
+      { page: '1', text: '   ' },
+      { page: '2', text: '<p></p>' },
+      { page: '3', text: 'نص حقيقي' },
     ];
     const db = makeDb();
 

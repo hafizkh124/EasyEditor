@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -16,11 +17,15 @@ import { useDocument } from "@/core/workspace/useDocument";
 import type { DocChangePayload } from "@/components/editor/RichEditor";
 
 import { useAllDocuments } from "@/core/workspace/useAllDocuments";
+import { useShamelaBook } from "@/hooks/useShamelaBook";
+import { ShamelaReader } from "@/components/shamela/ShamelaReader";
 
 export const WorkspaceLayout: React.FC = () => {
   const { direction } = useLanguage();
+  const navigate = useNavigate();
   const {
     activeDocumentId,
+    setActiveDocumentId,
     libraryCollapsed,
     workbenchCollapsed,
     setWorkbenchOpen,
@@ -30,6 +35,8 @@ export const WorkspaceLayout: React.FC = () => {
 
   const { allDocs } = useAllDocuments();
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+
+  const shamelaBook = useShamelaBook(activeDocumentId);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -77,6 +84,11 @@ export const WorkspaceLayout: React.FC = () => {
   const handleEditorChange = (html: string, text: string) => {
     setCurrentHtml(html);
     setCurrentText(text);
+  };
+
+  const handleCloseReader = () => {
+    setActiveDocumentId(null);
+    navigate("/workspace", { replace: true });
   };
 
   const handleDocChange = ({ json, text, html }: DocChangePayload) => {
@@ -151,14 +163,23 @@ export const WorkspaceLayout: React.FC = () => {
           {/* Pillar 2: Canvas — the only pillar left in the flex flow on mobile,
               so it fills the viewport there (FR-8.1) */}
           <ResizablePanel defaultSize={55} minSize={35}>
-            <CanvasPanel
-              doc={doc}
-              docLoading={docLoading}
-              contentRevision={contentRevision}
-              restoredContent={restoredContent}
-              onEditorChange={handleEditorChange}
-              onDocChange={handleDocChange}
-            />
+            {shamelaBook.bookId ? (
+              <ShamelaReader
+                bookId={shamelaBook.bookId}
+                title={shamelaBook.title || shamelaBook.bookId}
+                subtitle={shamelaBook.author}
+                onClose={handleCloseReader}
+              />
+            ) : (
+              <CanvasPanel
+                doc={doc}
+                docLoading={docLoading}
+                contentRevision={contentRevision}
+                restoredContent={restoredContent}
+                onEditorChange={handleEditorChange}
+                onDocChange={handleDocChange}
+              />
+            )}
           </ResizablePanel>
 
           {/* Pillar 3: Workbench — hidden by CSS, never unmounted, so a running

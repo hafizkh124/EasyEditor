@@ -1,5 +1,5 @@
-// AUTO-MIRRORED from shared/ai/prompts/refineText.ts — edge deploy bundles only supabase/functions/.
-// Edit shared/ai/prompts/refineText.ts and re-run: node scripts/mirror-shared.mjs
+// AUTO-MIRRORED from shared\ai\prompts\refineText.ts — edge deploy bundles only supabase/functions/.
+// Edit shared\ai\prompts\refineText.ts and re-run: node scripts/mirror-shared.mjs
 export const REFINE_TEXT_ACTIONS: Record<string, string> = {
   formalize: `You are a professional editor. Rewrite the following text in a formal, academic, and professional tone. 
 Maintain the original language (if Urdu, respond in Urdu script; if English, respond in English). 

@@ -93,6 +93,7 @@ export interface DocumentBackend {
 
 export interface LibraryBackend {
   listItems(projectId?: string): Promise<LibraryItem[]>;
+  getItem(itemId: string): Promise<LibraryItem | null>;
   createItem(item: Partial<LibraryItem> & { title: string }): Promise<LibraryItem | null>;
 
   /** Stores the file (cloud: storage bucket · local: `files/` beside the DB). */
@@ -103,6 +104,23 @@ export interface LibraryBackend {
   /** Must remove chunks AND the stored file — no orphans either side. */
   deleteLibraryItem(itemId: string): Promise<boolean>;
   listLibraryItems(): Promise<LibraryItem[]>;
+
+  /** SPEC-M6: Record that a library item was accessed (for recent books). */
+  accessItem(itemId: string): Promise<void>;
+  /** SPEC-M6: Get recently accessed library items, most recent first. */
+  getRecentItems(limit?: number): Promise<RecentItem[]>;
+  /** SPEC-M6: Get total count of library items. */
+  getLibraryItemCount(): Promise<number>;
+}
+
+export interface RecentItem {
+  itemId: string;
+  accessedAt: string;
+  title: string;
+  kind: string;
+  sourceRef: Record<string, unknown>;
+  meta: Record<string, unknown>;
+  totalPages?: number;
 }
 
 // ── Annotations ─────────────────────────────────────────────────────────────

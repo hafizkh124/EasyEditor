@@ -80,11 +80,14 @@ describe("editor handoff", () => {
     expect(findBlankDocument).not.toHaveBeenCalled();
   });
 
-  it("still reuses a blank document when nothing was handed over", async () => {
+  it("leaves the workspace on Home when nothing was handed over", async () => {
     findBlankDocument.mockResolvedValue({ id: "doc-blank" });
     renderAt(undefined);
 
-    await waitFor(() => expect(findBlankDocument).toHaveBeenCalled());
+    // SPEC-M6: a bare /workspace opens the Home screen for browsing instead of
+    // silently auto-resolving (and leaving) a blank document. The blank-doc
+    // reuse shortcut is gone by design — the user chooses what to open.
+    await waitFor(() => expect(findBlankDocument).not.toHaveBeenCalled());
     expect(createDocument).not.toHaveBeenCalled();
   });
 

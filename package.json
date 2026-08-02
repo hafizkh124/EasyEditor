@@ -32,6 +32,7 @@
   "build": {
     "appId": "com.easyeditor.app",
     "productName": "EasyEditor",
+    "npmRebuild": false,
     "directories": {
       "output": "release"
     },

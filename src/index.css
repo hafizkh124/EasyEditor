@@ -255,3 +255,87 @@ All colors MUST be HSL.
     }
   }
 }
+
+/* ── Library Mode reader (SPEC-M6 Phase 2–3) ───────────────────────────── */
+
+/*
+ * Typography is driven by CSS custom properties set inline from
+ * useReaderSettings (font family, size, line height, theme colours). Themes
+ * override the page background/foreground so light/sepia/dark all work without
+ * fighting the app's own colour tokens.
+ */
+.reader-page {
+  --reader-font-family: "Noto Naskh Arabic", "Amiri", "Lora", Georgia, serif;
+  --reader-font-size: 1.125rem;
+  --reader-line-height: 2.1;
+  --reader-theme-bg: #ffffff;
+  --reader-theme-fg: #1a1a1a;
+  --reader-theme-muted: #6b7280;
+  --reader-theme-heading: #0f766e;
+  --reader-theme-border: rgba(0, 0, 0, 0.1);
+  --reader-width: 44rem;
+  color: var(--reader-theme-fg);
+  max-width: var(--reader-width);
+}
+
+/* The scroll viewport (set inline by ShamelaReader) carries the theme
+   background so dark/sepia fill the whole canvas, not just the text column. */
+.reader-viewport {
+  background-color: var(--reader-theme-bg);
+  color: var(--reader-theme-fg);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.reader-page .shamela-page-text {
+  font-family: var(--reader-font-family);
+  font-size: var(--reader-font-size);
+  line-height: var(--reader-line-height);
+  color: var(--reader-theme-fg);
+  text-align: justify;
+  word-spacing: 0.05em;
+  /* `plaintext` lets each paragraph take the direction of its own first strong
+     character, so a Latin citation inside an Arabic book still reads LTR. */
+  unicode-bidi: plaintext;
+}
+
+.reader-page .shamela-page-text p {
+  margin-bottom: 0.75rem;
+}
+
+/* Shamela 4 marks headings with <span data-type="title" id="toc-N">. */
+.reader-page .shamela-page-text [data-type="title"] {
+  display: block;
+  font-weight: 700;
+  font-size: calc(var(--reader-font-size) * 1.2);
+  line-height: 1.8;
+  text-align: center;
+  color: var(--reader-theme-heading);
+  margin: 1.25rem 0 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--reader-theme-border);
+}
+
+/* Footnote markers and footnote bodies emitted by Shamela's `foot` field. */
+.reader-page .shamela-page-text .reader-footnotes {
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--reader-theme-border);
+  font-size: calc(var(--reader-font-size) * 0.78);
+  line-height: 1.9;
+  color: var(--reader-theme-muted);
+}
+
+.reader-page .shamela-page-text .reader-footnotes [data-type="footnote"] {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+/* Page width presets */
+.reader-page[data-width="narrow"] { --reader-width: 36rem; }
+.reader-page[data-width="wide"]  { --reader-width: 54rem; }
+
+@media (max-width: 767px) {
+  .reader-page {
+    font-size: 1.0625rem;
+  }
+}

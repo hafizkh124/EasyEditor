@@ -6,7 +6,7 @@
  * concern split across two files; the interface reunites them.
  */
 import { supabase } from "@/integrations/supabase/client";
-import type { LibraryBackend } from "../types";
+import type { LibraryBackend, RecentItem } from "../types";
 import type { LibraryItem } from "@/core/workspace/types";
 
 export const cloudLibrary: LibraryBackend = {
@@ -25,6 +25,18 @@ export const cloudLibrary: LibraryBackend = {
       return [];
     }
     return (data as LibraryItem[]) || [];
+  },
+
+  async getItem(itemId: string): Promise<LibraryItem | null> {
+    const { data, error } = await (supabase.from("library_items" as any) as any)
+      .select("*")
+      .eq("id", itemId)
+      .single();
+    if (error) {
+      console.warn("[cloudLibrary] getItem error:", error);
+      return null;
+    }
+    return (data as LibraryItem) || null;
   },
 
   async createItem(item: Partial<LibraryItem> & { title: string }): Promise<LibraryItem | null> {
@@ -132,5 +144,21 @@ export const cloudLibrary: LibraryBackend = {
       return [];
     }
     return (data as LibraryItem[]) || [];
+  },
+
+  // SPEC-M6: Access log methods — cloud mode uses Supabase activity log
+  async accessItem(_itemId: string): Promise<void> {
+    // Cloud mode: no local access log. Could log to Supabase activity if needed.
+  },
+
+  async getRecentItems(_limit = 10): Promise<RecentItem[]> {
+    // Cloud mode: return empty — no local access log
+    return [];
+  },
+
+  async getLibraryItemCount(): Promise<number> {
+    const { count } = await (supabase.from("library_items" as any) as any)
+      .select("*", { count: "exact", head: true });
+    return count ?? 0;
   },
 };

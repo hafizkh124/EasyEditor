@@ -1,5 +1,5 @@
-// AUTO-MIRRORED from shared/text/fileText.ts — edge deploy bundles only supabase/functions/.
-// Edit shared/text/fileText.ts and re-run: node scripts/mirror-shared.mjs
+// AUTO-MIRRORED from shared\text\fileText.ts — edge deploy bundles only supabase/functions/.
+// Edit shared\text\fileText.ts and re-run: node scripts/mirror-shared.mjs
 // PDF / DOCX / TXT / MD text extraction from raw bytes (SPEC-M4 FR-2.2).
 //
 // Pure and runtime-agnostic — TextDecoder, Uint8Array and regex only — so the

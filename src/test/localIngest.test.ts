@@ -44,7 +44,7 @@ function makeDb() {
     CREATE TABLE library_items (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, project_id TEXT, kind TEXT,
       title TEXT NOT NULL, source_ref TEXT DEFAULT '{}', storage_path TEXT,
-      meta TEXT NOT NULL DEFAULT '{}', created_at TEXT
+      meta TEXT NOT NULL DEFAULT '{}', created_at TEXT, updated_at TEXT
     );
     CREATE TABLE library_chunks (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, library_item_id TEXT NOT NULL,

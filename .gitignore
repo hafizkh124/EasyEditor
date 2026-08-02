@@ -54,3 +54,8 @@ public/app-version.json
 # that electron-builder packages is regenerated.
 resources/bin/
 electron/shamela/java/build/
+
+# Temp probe scripts & extracted app dumps (agent scratch)
+scratch/
+probeMaster.*
+

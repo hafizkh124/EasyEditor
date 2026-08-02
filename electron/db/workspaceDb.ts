@@ -7,6 +7,7 @@ import * as graph from './workspaceStore/graph.js';
 import * as recipes from './workspaceStore/recipes.js';
 import * as customTasks from './workspaceStore/customTasks.js';
 import { getCurrentUserId } from './workspaceStore/identity.js';
+import * as accessLog from './workspaceStore/accessLog.js';
 import { ingestLibraryItem, type IngestBatchArgs, type IngestBatchResult } from './ingest.js';
 import {
   importShamelaBooks, filterAlreadyImported,
@@ -58,10 +59,22 @@ export class WorkspaceDbService {
 
   // ── Library ───────────────────────────────────────────────────────────────
   public async listItems(projectId?: string): Promise<LibraryItem[]> { return library.listItems(this.db, projectId); }
+  public async getItem(id: string): Promise<LibraryItem | null> { return library.getItem(this.db, id); }
   public async createItem(item: Partial<LibraryItem> & { title: string }): Promise<LibraryItem> {
     return library.createItem(this.db, item);
   }
   public async deleteItem(id: string): Promise<void> { return library.deleteItem(this.db, id); }
+
+  // ── Access Log (SPEC-M6 Home Screen) ──────────────────────────────────────
+  public async accessItem(itemId: string): Promise<void> {
+    accessLog.accessItem(this.db, itemId);
+  }
+  public async getRecentItems(limit = 10): Promise<accessLog.RecentItem[]> {
+    return accessLog.getRecentItems(this.db, limit);
+  }
+  public async getLibraryItemCount(): Promise<number> {
+    return accessLog.getLibraryItemCount(this.db);
+  }
 
   /**
    * Deliberately NOT in workspaceHandlers' method allowlist: ingest is reached

@@ -41,7 +41,7 @@ export default defineConfig(({ mode }) => {
         // Native and native-adjacent packages must stay out of the bundle:
         // better-sqlite3 and the whisper addon load .node binaries by path at
         // runtime, and msedge-tts pulls in ws's optional native extras.
-        external: ["better-sqlite3", "@kutalia/whisper-node-addon", "msedge-tts"],
+        external: ["better-sqlite3", "sqlite-vec", "@kutalia/whisper-node-addon", "msedge-tts"],
       },
     },
   };

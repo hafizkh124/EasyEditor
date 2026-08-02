@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
@@ -67,6 +67,9 @@ const PageLoader = () => (
   </div>
 );
 
+const isDesktop = import.meta.env.VITE_DESKTOP === "true" || (typeof window !== "undefined" && Boolean((window as any).electronAPI?.isDesktop));
+const AppRouter = isDesktop ? HashRouter : BrowserRouter;
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -76,7 +79,7 @@ const App = () => (
           <NotificationProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <AppRouter>
             <ErrorBoundary>
               <LocalePrefixSync />
               <Suspense fallback={<PageLoader />}>
@@ -142,7 +145,7 @@ const App = () => (
                 </Routes>
               </Suspense>
             </ErrorBoundary>
-          </BrowserRouter>
+          </AppRouter>
           </NotificationProvider>
           </SubscriptionProvider>
         </AuthProvider>

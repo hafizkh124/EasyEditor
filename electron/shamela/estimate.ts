@@ -11,6 +11,8 @@
 
 import { getCatalogueDb } from './catalogue.js';
 import { CHUNK_SIZE, CHUNK_OVERLAP } from '../../shared/text/documentChunks.js';
+import Database from 'better-sqlite3';
+import fs from 'node:fs';
 
 /**
  * Rough characters per Shamela page. Pages are short — a printed page of
@@ -51,9 +53,9 @@ export function estimateImport(masterDbPath: string, bookIds: number[]): ImportE
   let approximate = false;
 
   for (const bookId of bookIds) {
-    const row = readBookMeta(db, bookId);
+    const row = readBookMeta(masterDbPath, db, bookId);
     const pageCount = row?.pageCount ?? 0;
-    if (!row?.pageCount) approximate = true;
+    if (pageCount <= 0) approximate = true;
 
     books.push({
       bookId,
@@ -74,25 +76,47 @@ export function estimateImport(masterDbPath: string, bookIds: number[]): ImportE
 }
 
 /**
- * Shamela's master.db schema varies between installs (risk R16), so the
- * modern column names are tried first and the older flat ones second.
+ * Reads one book's metadata from master.db (real schema:
+ * book(book_id, book_name, main_author, book_date),
+ * author(author_id, author_name)). `pageCount` comes from the book's own
+ * `page` SQLite table (database/book/<group>/<bookId>.db), falling back to 0
+ * when the book isn't on disk in this install.
  */
 function readBookMeta(
+  masterDbPath: string,
   db: ReturnType<typeof getCatalogueDb>,
   bookId: number,
-): { title: string; author: string | null; pageCount: number | null } | null {
+): { title: string; author: string | null; pageCount: number } | null {
+  let title = '';
+  let author: string | null = null;
   try {
-    return db.prepare(`
-      SELECT b.title, a.name as author, b.page_count as pageCount
-      FROM book b LEFT JOIN author a ON b.author_id = a.id
-      WHERE b.id = ?
-    `).get(bookId) as { title: string; author: string | null; pageCount: number | null } | null;
+    const row = db.prepare(`
+      SELECT b.book_name as title, a.author_name as author
+      FROM book b LEFT JOIN author a ON b.main_author = a.author_id
+      WHERE b.book_id = ?
+    `).get(bookId) as { title?: string; author?: string | null } | undefined;
+    title = row?.title ?? '';
+    author = row?.author ?? null;
   } catch {
-    try {
-      return db.prepare('SELECT title, author, pages as pageCount FROM book WHERE id = ?')
-        .get(bookId) as { title: string; author: string | null; pageCount: number | null } | null;
-    } catch {
-      return null;
-    }
+    // metadata unknown — still estimate with zero pages
   }
+
+  let pageCount = 0;
+  try {
+    const group = String(bookId % 1000).padStart(3, '0');
+    const bookDbPath = `${masterDbPath.replace(/[\\/]master\.db$/i, '')}/book/${group}/${bookId}.db`;
+    if (fs.existsSync(bookDbPath)) {
+      const bookDb = new Database(bookDbPath, { readonly: true });
+      try {
+        const r = bookDb.prepare('SELECT COUNT(*) as c FROM page').get() as { c: number } | undefined;
+        pageCount = r?.c ?? 0;
+      } finally {
+        bookDb.close();
+      }
+    }
+  } catch {
+    pageCount = 0;
+  }
+
+  return { title, author, pageCount };
 }

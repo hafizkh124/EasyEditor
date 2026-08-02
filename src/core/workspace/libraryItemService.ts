@@ -12,4 +12,5 @@ const library = backendFacade("library");
 export const libraryItemService = {
   listItems: (projectId?: string) => library.listItems(projectId),
   createItem: (item: Partial<LibraryItem> & { title: string }) => library.createItem(item),
+  getItem: (itemId: string) => library.getItem(itemId),
 };

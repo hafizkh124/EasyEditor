@@ -122,7 +122,7 @@ export async function importShamelaBooks({
       // because embedding is async and readShamelaBook's callback is not —
       // a book's raw text is on the order of a megabyte, so holding it while
       // the far slower embedding pass runs is not the cost worth avoiding.
-      const pages: Array<{ page: string; volume: string; text: string }> = [];
+      const pages: Array<{ page: string; text: string }> = [];
       await readShamelaBook(String(book.id), (page) => {
         if (signal?.aborted) return false;
         pages.push(page);
@@ -137,7 +137,7 @@ export async function importShamelaBooks({
         if (!text) continue;
 
         const pageNumber = Number.parseInt(page.page, 10);
-        const partNumber = Number.parseInt(page.volume, 10);
+        const partNumber = Number.NaN;
 
         for (const chunk of chunkDocumentText(text)) {
           if (signal?.aborted) { cancelled = true; break; }

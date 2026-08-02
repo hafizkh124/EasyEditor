@@ -187,7 +187,31 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
       updated_at TEXT NOT NULL,
       UNIQUE (user_id, slug)
     );
+
+    -- SPEC-M6: Track when library items were last accessed (for Home screen recent books)
+    CREATE TABLE IF NOT EXISTS document_access_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      item_id TEXT NOT NULL,
+      accessed_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (item_id) REFERENCES library_items(id) ON DELETE CASCADE
+    );
   `);
+
+  // Create indexes separately (IF NOT INDEX is not standard SQLite)
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_access_log_item ON document_access_log(item_id);`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_access_log_time ON document_access_log(accessed_at DESC);`);
+  } catch {
+    // Indexes may already exist
+  }
+
+  // SPEC-M6: Add updated_at column to library_items if missing (ALTER TABLE is idempotent with try-catch)
+  try {
+    db.exec(`ALTER TABLE library_items ADD COLUMN updated_at TEXT DEFAULT NULL;`);
+  } catch {
+    // Column already exists
+  }
 
   // Initialize vec0 virtual table for sqlite-vec
   try {

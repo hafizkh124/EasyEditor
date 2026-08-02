@@ -9,12 +9,19 @@ import {
   saveShamelaPath,
   searchShamelaNative,
   readShamelaPage,
+  readShamelaTocJoined,
+  getShamelaPageCount,
 } from '../shamela/shamelaNative.js';
 import {
   getCatalogueStats,
   searchBooks,
   listCategories,
   listBooksByCategory,
+  listAuthors,
+  searchAuthors,
+  listBooksByAuthor,
+  listPeriods,
+  listBooksByPeriod,
   closeCatalogueDb,
 } from '../shamela/catalogue.js';
 
@@ -59,6 +66,12 @@ export function registerShamelaHandlers(): void {
             typeof payload.pageNumber === 'number' ? payload.pageNumber : 1,
           );
 
+        case 'readToc':
+          return readShamelaTocJoined(String(payload.bookId || ''));
+
+        case 'pageCount':
+          return getShamelaPageCount(String(payload.bookId || ''));
+
         // ── Catalogue (master.db) ─────────────────────────────────
         case 'catalogue:stats': {
           const masterDbPath = String(payload.masterDbPath || '');
@@ -88,6 +101,47 @@ export function registerShamelaHandlers(): void {
           const offset = typeof payload.offset === 'number' ? payload.offset : 0;
           if (!masterDbPath) throw new Error('masterDbPath is required');
           return listBooksByCategory(masterDbPath, categoryId, limit, offset);
+        }
+
+        case 'catalogue:authors': {
+          const masterDbPath = String(payload.masterDbPath || '');
+          const limit = typeof payload.limit === 'number' ? payload.limit : 50;
+          const offset = typeof payload.offset === 'number' ? payload.offset : 0;
+          if (!masterDbPath) throw new Error('masterDbPath is required');
+          return listAuthors(masterDbPath, limit, offset);
+        }
+
+        case 'catalogue:searchAuthors': {
+          const masterDbPath = String(payload.masterDbPath || '');
+          const query = String(payload.query || '');
+          const limit = typeof payload.limit === 'number' ? payload.limit : 50;
+          const offset = typeof payload.offset === 'number' ? payload.offset : 0;
+          if (!masterDbPath) throw new Error('masterDbPath is required');
+          return searchAuthors(masterDbPath, query, limit, offset);
+        }
+
+        case 'catalogue:booksByAuthor': {
+          const masterDbPath = String(payload.masterDbPath || '');
+          const authorId = typeof payload.authorId === 'number' ? payload.authorId : 0;
+          const limit = typeof payload.limit === 'number' ? payload.limit : 50;
+          const offset = typeof payload.offset === 'number' ? payload.offset : 0;
+          if (!masterDbPath) throw new Error('masterDbPath is required');
+          return listBooksByAuthor(masterDbPath, authorId, limit, offset);
+        }
+
+        case 'catalogue:periods': {
+          const masterDbPath = String(payload.masterDbPath || '');
+          if (!masterDbPath) throw new Error('masterDbPath is required');
+          return listPeriods(masterDbPath);
+        }
+
+        case 'catalogue:booksByPeriod': {
+          const masterDbPath = String(payload.masterDbPath || '');
+          const century = typeof payload.century === 'number' ? payload.century : 0;
+          const limit = typeof payload.limit === 'number' ? payload.limit : 50;
+          const offset = typeof payload.offset === 'number' ? payload.offset : 0;
+          if (!masterDbPath) throw new Error('masterDbPath is required');
+          return listBooksByPeriod(masterDbPath, century, limit, offset);
         }
 
         case 'catalogue:close':
