@@ -197,6 +197,37 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
       accessed_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (item_id) REFERENCES library_items(id) ON DELETE CASCADE
     );
+
+    -- SPEC-M6 Phase 8 (Favorites & Progress): local-only tables, keyed by the
+    -- Shamela book id (a plain number) rather than a library_items row, because
+    -- the reader can open a book straight from the catalogue before it has ever
+    -- been imported. Postgres has no equivalent — the reader is a desktop-only
+    -- feature (see SPEC-M6 §3.2, "a few local-only additions" note).
+    CREATE TABLE IF NOT EXISTS reading_progress (
+      book_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      page_number INTEGER NOT NULL DEFAULT 1,
+      page_count INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS reader_bookmarks (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      book_id TEXT NOT NULL,
+      page_number INTEGER NOT NULL,
+      note TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE (user_id, book_id, page_number)
+    );
+
+    CREATE TABLE IF NOT EXISTS reader_favorites (
+      book_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      author TEXT,
+      created_at TEXT NOT NULL
+    );
   `);
 
   // Create indexes separately (IF NOT INDEX is not standard SQLite)

@@ -6,6 +6,8 @@ import {
   ChevronRight,
   ChevronLeft,
   ListTree,
+  Star,
+  Bookmark,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +28,11 @@ interface ReaderToolbarProps {
   onNext: () => void;
   onClose: () => void;
   settingsSlot?: React.ReactNode;
+  /** SPEC-M6 Phase 8: bookmark/favorite toggles for the current page/book. */
+  bookmarked?: boolean;
+  onToggleBookmark?: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
@@ -43,6 +50,10 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
   onNext,
   onClose,
   settingsSlot,
+  bookmarked = false,
+  onToggleBookmark,
+  isFavorite = false,
+  onToggleFavorite,
 }) => {
   const rtl = document.documentElement.dir === "rtl";
   const PrevIcon = rtl ? ChevronRight : ChevronLeft;
@@ -90,6 +101,31 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
       </div>
 
       {settingsSlot}
+
+      <div className="flex items-center gap-0.5">
+        {onToggleBookmark && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onToggleBookmark}
+            title={bookmarked ? "Remove bookmark from this page" : "Bookmark this page"}
+          >
+            <Bookmark className={cn("h-4 w-4", bookmarked && "text-primary fill-current")} />
+          </Button>
+        )}
+        {onToggleFavorite && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onToggleFavorite}
+            title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          >
+            <Star className={cn("h-4 w-4", isFavorite && "text-amber-500 fill-current")} />
+          </Button>
+        )}
+      </div>
 
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} title="Close reader">
         <X className="h-4 w-4" />

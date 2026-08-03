@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FolderPlus, BookOpen, Search, Plus, Upload, ChevronLeft, Volume2, Home, FolderTree,
+  FolderPlus, BookOpen, Search, Plus, Upload, ChevronLeft, Volume2, Home, FolderTree, Star,
 } from "lucide-react";import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import { RecipesTab } from "./RecipesTab";
 import { HomeTab } from "./HomeTab";
 import { BrowseTab } from "./BrowseTab";
 import { SearchTab } from "./SearchTab";
+import { FavoritesTab } from "./FavoritesTab";
 import type { Document, ProjectKind } from "@/core/workspace/types";
 
 interface LibraryPanelProps {
@@ -40,6 +41,7 @@ const TAB_GRID: Record<number, string> = {
   5: "grid-cols-5",
   6: "grid-cols-6",
   7: "grid-cols-7",
+  8: "grid-cols-8",
 };
 
 export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = false, onNavigate }) => {
@@ -55,7 +57,7 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
   // M6 adds Home tab as the first tab.
   const graphEnabled = import.meta.env.VITE_KNOWLEDGE_GRAPH !== "false";
   const recipesEnabled = import.meta.env.VITE_RECIPES !== "false";
-  const tabCount = 5 + (graphEnabled ? 1 : 0) + (recipesEnabled ? 1 : 0);
+  const tabCount = 6 + (graphEnabled ? 1 : 0) + (recipesEnabled ? 1 : 0);
 
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newProjTitle, setNewProjTitle] = useState("");
@@ -193,6 +195,10 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
               <Search className="h-3 w-3 mr-1" />
               Search
             </TabsTrigger>
+            <TabsTrigger value="favorites" className="text-[11px] h-6 py-0 px-1 truncate">
+              <Star className="h-3 w-3 mr-1" />
+              Favorites
+            </TabsTrigger>
             <TabsTrigger value="sources" className="text-[11px] h-6 py-0 px-1 truncate">Sources</TabsTrigger>
             {graphEnabled && (
               <TabsTrigger value="graph" className="text-[11px] h-6 py-0 px-1 truncate">Graph</TabsTrigger>
@@ -266,6 +272,16 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
 
         <TabsContent value="sources" className="flex-1 min-h-0 m-0">
           <LibrarySourcesTab />
+        </TabsContent>
+
+        <TabsContent value="favorites" className="flex-1 min-h-0 m-0">
+          <FavoritesTab
+            onSelectBook={(bookId) => {
+              onNavigate?.();
+              setActiveDocumentId(bookId);
+              navigate(`/workspace/${bookId}`, { replace: true });
+            }}
+          />
         </TabsContent>
 
         {graphEnabled && (
