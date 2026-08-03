@@ -49,6 +49,18 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
   const readerSettings = useReaderSettings();
   const workspace = useOptionalWorkspace();
 
+  // SPEC-M6 Phase 8: consume a jump request from the Notes panel (Workbench →
+  // Reader). Ignore requests for a different book and clear them either way so
+  // the same page can be requested again later.
+  const { goToPage } = reader;
+  useEffect(() => {
+    if (!workspace?.readerJump) return;
+    if (workspace.readerJump.bookId === bookId) {
+      goToPage(workspace.readerJump.pageNumber);
+    }
+    workspace.setReaderJump(null);
+  }, [workspace, bookId, goToPage]);
+
   // SPEC-M6 Phase 8: persist reading progress whenever the page changes. The
   // hook debounces internally, so rapid page-flips only commit the final page.
   const { savePage } = readerProgress;

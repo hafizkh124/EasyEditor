@@ -9,6 +9,12 @@ export interface ReaderPageSignal {
   text: string;
 }
 
+/** Ask the Shamela reader to open a specific page (Workbench → Reader). */
+export interface ReaderJumpSignal {
+  bookId: string;
+  pageNumber: number;
+}
+
 /** What one whole-document task run reports back to whoever asked for it. */
 export interface DocumentTaskOutcome {
   ok: boolean;
@@ -62,6 +68,12 @@ interface WorkspaceContextType {
   readerPage: ReaderPageSignal | null;
   setReaderPage: (page: ReaderPageSignal | null) => void;
 
+  // Reader <-> Workbench bridge (SPEC-M6 Phase 8). The Notes panel asks the
+  // reader to jump to a bookmarked page by publishing a jump request; the
+  // reader consumes it and clears it.
+  readerJump: ReaderJumpSignal | null;
+  setReaderJump: (jump: ReaderJumpSignal | null) => void;
+
   // Spotlight command palette state
   commandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
@@ -93,6 +105,7 @@ export const WorkspaceProvider: React.FC<{
   const [pendingWorkbenchQuery, setPendingWorkbenchQuery] = useState<string | null>(null);
   const [pendingCanvasInsertion, setPendingCanvasInsertion] = useState<string | null>(null);
   const [readerPage, setReaderPage] = useState<ReaderPageSignal | null>(null);
+  const [readerJump, setReaderJump] = useState<ReaderJumpSignal | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
 
@@ -147,6 +160,8 @@ export const WorkspaceProvider: React.FC<{
         clearPendingCanvasInsertion,
         readerPage,
         setReaderPage,
+        readerJump,
+        setReaderJump,
         commandPaletteOpen,
         setCommandPaletteOpen,
         runDocumentTask,

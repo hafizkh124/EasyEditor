@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-export type WorkbenchTab = "aiReader" | "research" | "translate" | "extract" | "tasks" | "trust";
+export type WorkbenchTab = "aiReader" | "research" | "translate" | "extract" | "notes" | "tasks" | "trust";
 
 interface PanelState {
   libraryWidth: number;
@@ -30,7 +30,7 @@ function loadStoredState(): PanelState {
       workbenchWidth: typeof parsed.workbenchWidth === "number" ? parsed.workbenchWidth : DEFAULT_STATE.workbenchWidth,
       libraryCollapsed: Boolean(parsed.libraryCollapsed),
       workbenchCollapsed: Boolean(parsed.workbenchCollapsed),
-      workbenchTab: ["aiReader", "research", "translate", "extract", "tasks", "trust"].includes(parsed.workbenchTab)
+      workbenchTab: ["aiReader", "research", "translate", "extract", "notes", "tasks", "trust"].includes(parsed.workbenchTab)
         ? parsed.workbenchTab
         : DEFAULT_STATE.workbenchTab,
     };
