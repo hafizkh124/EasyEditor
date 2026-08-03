@@ -1,4 +1,4 @@
-import type { WorkspaceBackend, RecentItem, ChunkSearchHit } from './types';
+import type { WorkspaceBackend, RecentItem, ChunkSearchHit, ReadingProgress, ReaderBookmark, ReaderFavorite } from './types';
 import type {
   Project,
   ProjectKind,
@@ -261,6 +261,52 @@ export const localBackend: WorkspaceBackend = {
 
     async archive(id: string): Promise<boolean> {
       return invokeWorkspace<boolean>('archiveCustomTask', id);
+    },
+  },
+
+  reading: {
+    async saveReadingProgress(bookId: string, pageNumber: number, pageCount: number): Promise<void> {
+      await invokeWorkspace<void>('saveReadingProgress', bookId, pageNumber, pageCount);
+    },
+
+    async getReadingProgress(bookId: string): Promise<ReadingProgress | null> {
+      return invokeWorkspace<ReadingProgress | null>('getReadingProgress', bookId);
+    },
+
+    async listReadingProgress(limit = 20): Promise<ReadingProgress[]> {
+      return invokeWorkspace<ReadingProgress[]>('listReadingProgress', limit);
+    },
+
+    async addBookmark(bookId: string, pageNumber: number, note?: string): Promise<ReaderBookmark | null> {
+      return invokeWorkspace<ReaderBookmark>('addBookmark', bookId, pageNumber, note);
+    },
+
+    async removeBookmark(bookId: string, pageNumber: number): Promise<boolean> {
+      return invokeWorkspace<boolean>('removeBookmark', bookId, pageNumber);
+    },
+
+    async isBookmarked(bookId: string, pageNumber: number): Promise<boolean> {
+      return invokeWorkspace<boolean>('isBookmarked', bookId, pageNumber);
+    },
+
+    async listBookmarks(bookId: string): Promise<ReaderBookmark[]> {
+      return invokeWorkspace<ReaderBookmark[]>('listBookmarks', bookId);
+    },
+
+    async addFavorite(bookId: string, title: string, author?: string): Promise<ReaderFavorite | null> {
+      return invokeWorkspace<ReaderFavorite>('addFavorite', bookId, title, author);
+    },
+
+    async removeFavorite(bookId: string): Promise<boolean> {
+      return invokeWorkspace<boolean>('removeFavorite', bookId);
+    },
+
+    async isFavorite(bookId: string): Promise<boolean> {
+      return invokeWorkspace<boolean>('isFavorite', bookId);
+    },
+
+    async listFavorites(): Promise<ReaderFavorite[]> {
+      return invokeWorkspace<ReaderFavorite[]>('listFavorites');
     },
   },
 };

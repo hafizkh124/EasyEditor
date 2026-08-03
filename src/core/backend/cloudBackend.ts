@@ -9,6 +9,7 @@ import { cloudAnnotations } from "./cloud/annotations";
 import { cloudTaskRuns } from "./cloud/taskRuns";
 import { cloudGraph } from "./cloud/graph";
 import { cloudIdentity, cloudRecipes, cloudCustomTasks } from "./cloud/misc";
+import { cloudReading } from "./cloud/reading";
 
 export const cloudBackend: WorkspaceBackend = {
   kind: "cloud",
@@ -20,4 +21,5 @@ export const cloudBackend: WorkspaceBackend = {
   graph: cloudGraph,
   recipes: cloudRecipes,
   customTasks: cloudCustomTasks,
+  reading: cloudReading,
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useReaderState, type TocEntry } from "@/hooks/useReaderState";
 import { useReaderSettings } from "@/hooks/useReaderSettings";
+import { useReaderProgress } from "@/hooks/useReaderProgress";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { htmlToPlainText } from "@/lib/reader/htmlToPlainText";
 import { ReaderToolbar } from "./ReaderToolbar";
@@ -22,8 +23,8 @@ interface ShamelaReaderProps {
 /**
  * Library Mode reader (SPEC-M6 Phase 2/3). Renders a Shamela book's pages from
  * the local installation, with a TOC tree on the left, page navigation in the
- * toolbar and bottom bar, back/forward history, and Phase-3 typography settings
- * (font, size, line height, theme, page width, text direction).
+ * toolbar and bottom bar, back/forward history, Phase-3 typography settings,
+ * and Phase-8 progress/bookmarks/favorites.
  */
 export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
   bookId,
@@ -33,9 +34,28 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
   initialPage,
 }) => {
   const [tocOpen, setTocOpen] = useState(true);
-  const reader = useReaderState(bookId, initialPage);
+
+  // SPEC-M6 Phase 8: resume on the last-read page when there is no deep-link
+  // page target. useReaderState's guard is keyed on bookId+startPage, so this
+  // resolves asynchronously and still opens on the saved page, not page 1.
+  const readerProgress = useReaderProgress(bookId, title, subtitle);
+  const startPage = initialPage && initialPage > 1
+    ? initialPage
+    : (readerProgress.progress && readerProgress.progress.pageNumber > 1
+        ? readerProgress.progress.pageNumber
+        : undefined);
+
+  const reader = useReaderState(bookId, startPage);
   const readerSettings = useReaderSettings();
   const workspace = useOptionalWorkspace();
+
+  // SPEC-M6 Phase 8: persist reading progress whenever the page changes. The
+  // hook debounces internally, so rapid page-flips only commit the final page.
+  const { savePage } = readerProgress;
+  useEffect(() => {
+    if (!bookId || reader.pageCount <= 0) return;
+    savePage(bookId, reader.currentPageNumber, reader.pageCount);
+  }, [bookId, reader.currentPageNumber, reader.pageCount, savePage]);
 
   // SPEC-M6 Phase 7: publish the current page (plain text) so the AI Reader
   // panel in the Workbench can use it as context. Cleared on unmount.
@@ -73,6 +93,10 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
         onNext={reader.nextPage}
         onClose={onClose}
         settingsSlot={<ReaderSettings reader={readerSettings} />}
+        bookmarked={readerProgress.bookmarked}
+        onToggleBookmark={() => readerProgress.toggleBookmark(reader.currentPageNumber)}
+        isFavorite={readerProgress.isFavorite}
+        onToggleFavorite={readerProgress.toggleFavorite}
       />
 
       <div className="flex-1 min-h-0 flex">

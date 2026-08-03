@@ -208,6 +208,44 @@ export interface CustomTaskBackend {
   archive(id: string): Promise<boolean>;
 }
 
+// ── Reader state (SPEC-M6 Phase 8) ──────────────────────────────────────────
+
+export interface ReadingProgress {
+  bookId: string;
+  pageNumber: number;
+  pageCount: number;
+  updatedAt: string;
+}
+
+export interface ReaderBookmark {
+  id: string;
+  bookId: string;
+  pageNumber: number;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface ReaderFavorite {
+  bookId: string;
+  title: string;
+  author: string | null;
+  createdAt: string;
+}
+
+export interface ReaderBackend {
+  saveReadingProgress(bookId: string, pageNumber: number, pageCount: number): Promise<void>;
+  getReadingProgress(bookId: string): Promise<ReadingProgress | null>;
+  listReadingProgress(limit?: number): Promise<ReadingProgress[]>;
+  addBookmark(bookId: string, pageNumber: number, note?: string): Promise<ReaderBookmark | null>;
+  removeBookmark(bookId: string, pageNumber: number): Promise<boolean>;
+  isBookmarked(bookId: string, pageNumber: number): Promise<boolean>;
+  listBookmarks(bookId: string): Promise<ReaderBookmark[]>;
+  addFavorite(bookId: string, title: string, author?: string): Promise<ReaderFavorite | null>;
+  removeFavorite(bookId: string): Promise<boolean>;
+  isFavorite(bookId: string): Promise<boolean>;
+  listFavorites(): Promise<ReaderFavorite[]>;
+}
+
 // ── The whole surface ───────────────────────────────────────────────────────
 
 export interface WorkspaceBackend {
@@ -220,4 +258,5 @@ export interface WorkspaceBackend {
   graph: GraphBackend;
   recipes: RecipeBackend;
   customTasks: CustomTaskBackend;
+  reading: ReaderBackend;
 }

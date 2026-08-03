@@ -9,6 +9,7 @@ import * as customTasks from './workspaceStore/customTasks.js';
 import { getCurrentUserId } from './workspaceStore/identity.js';
 import * as accessLog from './workspaceStore/accessLog.js';
 import { searchChunks, searchChunksByRoot, type ChunkSearchHit } from './workspaceStore/search.js';
+import * as readerState from './workspaceStore/readerState.js';
 import { ingestLibraryItem, type IngestBatchArgs, type IngestBatchResult } from './ingest.js';
 import {
   importShamelaBooks, filterAlreadyImported,
@@ -88,6 +89,41 @@ export class WorkspaceDbService {
     limit = 50,
   ): Promise<ChunkSearchHit[]> {
     return searchChunksByRoot(this.db, s2DbPath, query, limit);
+  }
+
+  // ── Reader state (SPEC-M6 Phase 8) ────────────────────────────────────────
+  public async saveReadingProgress(bookId: string, pageNumber: number, pageCount: number): Promise<void> {
+    return readerState.saveReadingProgress(this.db, bookId, pageNumber, pageCount);
+  }
+  public async getReadingProgress(bookId: string): Promise<readerState.ReadingProgress | null> {
+    return readerState.getReadingProgress(this.db, bookId);
+  }
+  public async listReadingProgress(limit = 20): Promise<readerState.ReadingProgress[]> {
+    return readerState.listReadingProgress(this.db, limit);
+  }
+  public async addBookmark(bookId: string, pageNumber: number, note?: string): Promise<readerState.ReaderBookmark> {
+    return readerState.addBookmark(this.db, bookId, pageNumber, note);
+  }
+  public async removeBookmark(bookId: string, pageNumber: number): Promise<boolean> {
+    return readerState.removeBookmark(this.db, bookId, pageNumber);
+  }
+  public async isBookmarked(bookId: string, pageNumber: number): Promise<boolean> {
+    return readerState.isBookmarked(this.db, bookId, pageNumber);
+  }
+  public async listBookmarks(bookId: string): Promise<readerState.ReaderBookmark[]> {
+    return readerState.listBookmarks(this.db, bookId);
+  }
+  public async addFavorite(bookId: string, title: string, author?: string): Promise<readerState.ReaderFavorite> {
+    return readerState.addFavorite(this.db, bookId, title, author);
+  }
+  public async removeFavorite(bookId: string): Promise<boolean> {
+    return readerState.removeFavorite(this.db, bookId);
+  }
+  public async isFavorite(bookId: string): Promise<boolean> {
+    return readerState.isFavorite(this.db, bookId);
+  }
+  public async listFavorites(): Promise<readerState.ReaderFavorite[]> {
+    return readerState.listFavorites(this.db);
   }
 
   /**

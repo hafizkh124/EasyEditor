@@ -48,8 +48,7 @@ interface ReaderState {
 
 const electronAPI = () => window.electronAPI?.shamela;
 
-export function useReaderState(bookId: string | null, initialPage?: number | null): ReaderState {
-  const [toc, setToc] = useState<TocEntry[]>([]);
+export function useReaderState(bookId: string | null, initialPage?: number | null): ReaderState {  const [toc, setToc] = useState<TocEntry[]>([]);
   const [tocLoading, setTocLoading] = useState(false);
   const [tocError, setTocError] = useState<string | null>(null);
 
@@ -141,15 +140,19 @@ export function useReaderState(bookId: string | null, initialPage?: number | nul
     [bookId, pageCount],
   );
 
-  // Initial load of page 1 once the book is set (and after any book switch).
+  // Initial load once the book is set (and after any book switch). The guard is
+  // keyed on bookId+startPage rather than bookId alone, so a resume page that
+  // resolves asynchronously (SPEC-M6 Phase 8, useReaderProgress) re-triggers
+  // this effect to open on the saved page instead of page 1.
   const loadedBookRef = useRef<string | null>(null);
+  const startPage = initialPage && initialPage > 1 ? initialPage : 1;
   useEffect(() => {
     if (!bookId || pageCount <= 0) return;
-    if (loadedBookRef.current === bookId) return;
-    loadedBookRef.current = bookId;
-    loadPage(initialPage && initialPage > 1 ? initialPage : 1, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookId, pageCount, loadPage]);
+    const key = `${bookId}:${startPage}`;
+    if (loadedBookRef.current === key) return;
+    loadedBookRef.current = key;
+    loadPage(startPage, true);
+  }, [bookId, pageCount, loadPage, startPage]);
 
   // Derive the active title whenever the page or TOC changes.
   useEffect(() => {
