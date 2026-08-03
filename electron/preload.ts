@@ -111,7 +111,7 @@ const electronAPI = {
   },
 
   shamela: {
-    detect: (): Promise<{ installed: boolean; path: string | null; version?: string; reason?: string; masterDbPath?: string | null }> =>
+    detect: (): Promise<{ installed: boolean; path: string | null; version?: string; reason?: string; masterDbPath?: string | null; s2DbPath?: string | null }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'detect' }),
     diagnose: (): Promise<{ jreFound: boolean; jreVersion: string | null; luceneJarsFound: boolean; luceneVersion: string | null; masterDbFound: boolean; storeIndexFound: boolean; bookCount: number; errors: string[] }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'diagnose' }),

@@ -113,6 +113,8 @@ export interface LibraryBackend {
   getLibraryItemCount(): Promise<number>;
   /** SPEC-M6 Phase 5: FTS5 keyword search across imported chunks. */
   searchChunks(query: string, limit?: number): Promise<ChunkSearchHit[]>;
+  /** SPEC-M6 Phase 6: keyword search expanded to all morphological forms sharing the query's Arabic root. */
+  searchChunksByRoot(s2DbPath: string | null, query: string, limit?: number): Promise<ChunkSearchHit[]>;
 }
 
 export interface ChunkSearchHit {

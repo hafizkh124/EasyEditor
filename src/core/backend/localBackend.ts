@@ -136,6 +136,10 @@ export const localBackend: WorkspaceBackend = {
     async searchChunks(query: string, limit = 50): Promise<ChunkSearchHit[]> {
       return invokeWorkspace<ChunkSearchHit[]>('searchChunks', query, limit);
     },
+
+    async searchChunksByRoot(s2DbPath: string | null, query: string, limit = 50): Promise<ChunkSearchHit[]> {
+      return invokeWorkspace<ChunkSearchHit[]>('searchChunksByRoot', s2DbPath, query, limit);
+    },
   },
 
   annotations: {

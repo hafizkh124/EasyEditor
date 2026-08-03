@@ -12,6 +12,8 @@ export interface ShamelaStatus {
   jrePath?: string | null;
   lucenePath?: string | null;
   masterDbPath?: string | null;
+  /** Path to Shamela's morphological roots DB (database/service/S2.db). */
+  s2DbPath?: string | null;
   bookCount?: number;
   reason?: string;
 }
@@ -107,6 +109,12 @@ function findMasterDb(base: string): string | null {
   return null;
 }
 
+function findS2Db(base: string): string | null {
+  const s2 = path.join(base, 'database', 'service', 'S2.db');
+  if (fs.existsSync(s2)) return s2;
+  return null;
+}
+
 function findStoreIndex(base: string): boolean {
   const storePage = path.join(base, 'database', 'store', 'page');
   return fs.existsSync(storePage);
@@ -132,6 +140,7 @@ export async function detectShamelaInstallation(): Promise<ShamelaStatus> {
         jrePath,
         lucenePath,
         masterDbPath: masterDb,
+        s2DbPath: findS2Db(base),
         bookCount: 0, // filled from catalogue:stats
       };
     }

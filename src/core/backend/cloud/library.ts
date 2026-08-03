@@ -166,4 +166,9 @@ export const cloudLibrary: LibraryBackend = {
     // Cloud mode: keyword search over the hosted corpus is not wired yet.
     return [];
   },
+
+  async searchChunksByRoot(_s2DbPath: string | null, _query: string, _limit = 50): Promise<ChunkSearchHit[]> {
+    // Cloud mode: S2.db is local to the desktop app.
+    return [];
+  },
 };
