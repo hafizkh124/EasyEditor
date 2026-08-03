@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, Languages, Layers, ListChecks, ShieldCheck, X } from "lucide-react";
+import { Sparkles, Search, Languages, Layers, ListChecks, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResearchPanel } from "@/components/research/ResearchPanel";
@@ -7,6 +7,7 @@ import { TranslatePanel } from "@/components/translate/TranslatePanel";
 import { ExtractPanel } from "@/components/extract/ExtractPanel";
 import { TasksTab } from "./TasksTab";
 import { TrustTab } from "./TrustTab";
+import { AiReaderPanel } from "@/components/reader/AiReaderPanel";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { type WorkbenchTab } from "@/core/workspace/usePanelState";
 
@@ -40,9 +41,13 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
           onValueChange={(val) => setWorkbenchTab(val as WorkbenchTab)}
           className="w-full max-w-sm"
         >
-          {/* Five text labels do not fit the Workbench at its 320px minimum, so
-              the five-tab layout is icon-only with accessible names (R6/NFR-4). */}
-          <TabsList className={`grid ${showTaskTabs ? "grid-cols-5" : "grid-cols-3"} h-7 bg-muted/60 p-0.5`}>
+          {/* The six labels do not fit the Workbench at its 320px minimum, so
+              the tab layout is icon-only with accessible names (R6/NFR-4). */}
+          <TabsList className={`grid ${showTaskTabs ? "grid-cols-6" : "grid-cols-4"} h-7 bg-muted/60 p-0.5`}>
+            <TabsTrigger value="aiReader" className="text-[11px] h-6 py-0 gap-1 px-1" title="AI Reader" aria-label="AI Reader">
+              <Sparkles className="h-3 w-3 shrink-0 text-primary" />
+              {!showTaskTabs && <span className="truncate">AI</span>}
+            </TabsTrigger>
             <TabsTrigger value="research" className="text-[11px] h-6 py-0 gap-1 px-1" title="Research" aria-label="Research">
               <Search className="h-3 w-3 shrink-0" />
               {!showTaskTabs && <span className="truncate">Research</span>}
@@ -83,6 +88,9 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
 
       {/* Tab Panels — render active tab while keeping mounted */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
+        <div className={`h-full ${workbenchTab === "aiReader" ? "block" : "hidden"}`}>
+          <AiReaderPanel />
+        </div>
         <div className={`h-full ${workbenchTab === "research" ? "block" : "hidden"}`}>
           <ResearchPanel />
         </div>

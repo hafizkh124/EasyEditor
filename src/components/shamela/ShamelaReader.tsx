@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useReaderState, type TocEntry } from "@/hooks/useReaderState";
 import { useReaderSettings } from "@/hooks/useReaderSettings";
+import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
+import { htmlToPlainText } from "@/lib/reader/htmlToPlainText";
 import { ReaderToolbar } from "./ReaderToolbar";
 import { ReaderSettings } from "./ReaderSettings";
 import { TocTree } from "./TocTree";
@@ -33,6 +35,22 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
   const [tocOpen, setTocOpen] = useState(true);
   const reader = useReaderState(bookId, initialPage);
   const readerSettings = useReaderSettings();
+  const workspace = useOptionalWorkspace();
+
+  // SPEC-M6 Phase 7: publish the current page (plain text) so the AI Reader
+  // panel in the Workbench can use it as context. Cleared on unmount.
+  useEffect(() => {
+    if (!workspace) return;
+    if (reader.page?.text) {
+      workspace.setReaderPage({
+        bookId,
+        title,
+        pageNumber: reader.page.pageNumber,
+        text: htmlToPlainText(reader.page.text),
+      });
+    }
+    return () => workspace.setReaderPage(null);
+  }, [workspace, bookId, title, reader.page]);
 
   const handleSelectToc = (entry: TocEntry) => {
     reader.goToTocEntry(entry);

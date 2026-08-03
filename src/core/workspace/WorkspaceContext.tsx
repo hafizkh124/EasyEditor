@@ -1,6 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { type WorkbenchTab, usePanelState } from "./usePanelState";
 
+/** The page the Shamela reader is currently showing (plain text, for AI). */
+export interface ReaderPageSignal {
+  bookId: string;
+  title: string;
+  pageNumber: number;
+  text: string;
+}
+
 /** What one whole-document task run reports back to whoever asked for it. */
 export interface DocumentTaskOutcome {
   ok: boolean;
@@ -49,6 +57,11 @@ interface WorkspaceContextType {
   insertIntoCanvas: (html: string) => void;
   clearPendingCanvasInsertion: () => void;
 
+  // Reader <-> AI panel bridge (SPEC-M6 Phase 7). The reader pushes the page
+  // it is showing (plain text); the AI Reader panel consumes it as context.
+  readerPage: ReaderPageSignal | null;
+  setReaderPage: (page: ReaderPageSignal | null) => void;
+
   // Spotlight command palette state
   commandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
@@ -79,6 +92,7 @@ export const WorkspaceProvider: React.FC<{
 
   const [pendingWorkbenchQuery, setPendingWorkbenchQuery] = useState<string | null>(null);
   const [pendingCanvasInsertion, setPendingCanvasInsertion] = useState<string | null>(null);
+  const [readerPage, setReaderPage] = useState<ReaderPageSignal | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
 
@@ -131,6 +145,8 @@ export const WorkspaceProvider: React.FC<{
         pendingCanvasInsertion,
         insertIntoCanvas,
         clearPendingCanvasInsertion,
+        readerPage,
+        setReaderPage,
         commandPaletteOpen,
         setCommandPaletteOpen,
         runDocumentTask,
