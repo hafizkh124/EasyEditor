@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Search, FileText, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Search, FileText, Loader2, Languages } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { libraryItemService } from "@/core/workspace/libraryItemService";
@@ -12,11 +12,15 @@ interface SearchTabProps {
 }
 
 /**
- * SPEC-M6 Phase 5 — Keyword Search over imported books.
+ * SPEC-M6 Phase 5/6 — Keyword + Root Search over imported books.
  *
  * FTS5-backed full-text search across every imported book's chunks. Results
  * show the book title and a snippet around the match; clicking a result opens
  * the reader directly on the page where the keyword was found.
+ *
+ * When the "root search" toggle is on and Shamela's S2.db is available, the
+ * query is expanded to every morphological form sharing its Arabic root
+ * (Phase 6), so كتب also matches مكتوب، الكاتب، بكتابة ….
  */
 export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate }) => {
   const [query, setQuery] = useState("");
@@ -24,6 +28,23 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rootMode, setRootMode] = useState(false);
+  const [s2DbPath, setS2DbPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const state = await window.electronAPI?.shamela?.detect();
+        if (!cancelled) setS2DbPath(state?.s2DbPath ?? null);
+      } catch {
+        // Root search simply stays off without S2.db.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const runSearch = async (q: string) => {
     const trimmed = q.trim();
@@ -35,7 +56,9 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
     setSearching(true);
     setError(null);
     try {
-      const hits = await libraryItemService.searchChunks(trimmed, 100);
+      const hits = rootMode
+        ? await libraryItemService.searchChunksByRoot(s2DbPath, trimmed, 100)
+        : await libraryItemService.searchChunks(trimmed, 100);
       setResults(hits);
       setSearched(true);
     } catch (err: unknown) {
@@ -80,6 +103,24 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
         >
           {searching ? "Searching…" : "Search"}
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            const next = !rootMode;
+            setRootMode(next);
+            if (next && query.trim()) runSearch(query);
+          }}
+          title={s2DbPath ? "Root search: match all morphological forms of the query's root" : "Shamela S2.db not found — root search unavailable"}
+          className={`mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-1 text-[11px] font-medium transition-colors ${
+            rootMode
+              ? "border-primary/40 bg-primary/15 text-primary"
+              : "border-border hover:bg-accent text-muted-foreground"
+          } ${!s2DbPath ? "opacity-50" : ""}`}
+        >
+          <Languages className="h-3 w-3" />
+          Root search
+          {!s2DbPath && <span className="text-[9px] opacity-70">(off)</span>}
+        </button>
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
@@ -92,7 +133,11 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
           <p className="p-4 text-xs text-destructive">{error}</p>
         ) : results.length === 0 ? (
           <p className="p-4 text-xs text-muted-foreground">
-            {searched ? "No results. Try a different keyword." : "Type a keyword to search every imported book."}
+            {searched
+              ? rootMode
+                ? "No results for any form of this root. Try a different word."
+                : "No results. Try a different keyword."
+              : "Type a keyword to search every imported book."}
           </p>
         ) : (
           <ul className="py-1">

@@ -14,4 +14,6 @@ export const libraryItemService = {
   createItem: (item: Partial<LibraryItem> & { title: string }) => library.createItem(item),
   getItem: (itemId: string) => library.getItem(itemId),
   searchChunks: (query: string, limit?: number) => library.searchChunks(query, limit),
+  searchChunksByRoot: (s2DbPath: string | null, query: string, limit?: number) =>
+    library.searchChunksByRoot(s2DbPath, query, limit),
 };
