@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Search, Languages, Layers, ListChecks, ShieldCheck, X } from "lucide-react";
+import { Sparkles, Search, Languages, Layers, ListChecks, ShieldCheck, StickyNote, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResearchPanel } from "@/components/research/ResearchPanel";
@@ -8,6 +8,7 @@ import { ExtractPanel } from "@/components/extract/ExtractPanel";
 import { TasksTab } from "./TasksTab";
 import { TrustTab } from "./TrustTab";
 import { AiReaderPanel } from "@/components/reader/AiReaderPanel";
+import { NotesPanel } from "@/components/reader/NotesPanel";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { type WorkbenchTab } from "@/core/workspace/usePanelState";
 
@@ -41,9 +42,9 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
           onValueChange={(val) => setWorkbenchTab(val as WorkbenchTab)}
           className="w-full max-w-sm"
         >
-          {/* The six labels do not fit the Workbench at its 320px minimum, so
+          {/* The seven labels do not fit the Workbench at its 320px minimum, so
               the tab layout is icon-only with accessible names (R6/NFR-4). */}
-          <TabsList className={`grid ${showTaskTabs ? "grid-cols-6" : "grid-cols-4"} h-7 bg-muted/60 p-0.5`}>
+          <TabsList className={`grid ${showTaskTabs ? "grid-cols-7" : "grid-cols-5"} h-7 bg-muted/60 p-0.5`}>
             <TabsTrigger value="aiReader" className="text-[11px] h-6 py-0 gap-1 px-1" title="AI Reader" aria-label="AI Reader">
               <Sparkles className="h-3 w-3 shrink-0 text-primary" />
               {!showTaskTabs && <span className="truncate">AI</span>}
@@ -59,6 +60,10 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
             <TabsTrigger value="extract" className="text-[11px] h-6 py-0 gap-1 px-1" title="Extract" aria-label="Extract">
               <Layers className="h-3 w-3 shrink-0" />
               {!showTaskTabs && <span className="truncate">Extract</span>}
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="text-[11px] h-6 py-0 gap-1 px-1" title="Notes" aria-label="Notes">
+              <StickyNote className="h-3 w-3 shrink-0" />
+              {!showTaskTabs && <span className="truncate">Notes</span>}
             </TabsTrigger>
 
             {showTaskTabs && (
@@ -99,6 +104,9 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
         </div>
         <div className={`h-full ${workbenchTab === "extract" ? "block" : "hidden"}`}>
           <ExtractPanel />
+        </div>
+        <div className={`h-full ${workbenchTab === "notes" ? "block" : "hidden"}`}>
+          <NotesPanel active={workbenchTab === "notes"} />
         </div>
         {showTaskTabs && (
           <>
