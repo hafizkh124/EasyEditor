@@ -18,6 +18,8 @@ interface ShamelaReaderProps {
   onClose: () => void;
   /** Deep-link target: open the reader on this page instead of page 1. */
   initialPage?: number | null;
+  /** SPEC-M6 Phase 9: request side-by-side comparison of this book. */
+  onRequestSplit?: () => void;
 }
 
 /**
@@ -32,6 +34,7 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
   subtitle,
   onClose,
   initialPage,
+  onRequestSplit,
 }) => {
   const [tocOpen, setTocOpen] = useState(true);
 
@@ -109,6 +112,7 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
         onToggleBookmark={() => readerProgress.toggleBookmark(reader.currentPageNumber)}
         isFavorite={readerProgress.isFavorite}
         onToggleFavorite={readerProgress.toggleFavorite}
+        onRequestSplit={onRequestSplit}
       />
 
       <div className="flex-1 min-h-0 flex">

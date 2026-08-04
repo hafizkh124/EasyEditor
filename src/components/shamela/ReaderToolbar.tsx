@@ -8,6 +8,7 @@ import {
   ListTree,
   Star,
   Bookmark,
+  Columns2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ interface ReaderToolbarProps {
   onToggleBookmark?: () => void;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  /** SPEC-M6 Phase 9: open side-by-side comparison. */
+  onRequestSplit?: () => void;
 }
 
 export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
@@ -54,6 +57,7 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
   onToggleBookmark,
   isFavorite = false,
   onToggleFavorite,
+  onRequestSplit,
 }) => {
   const rtl = document.documentElement.dir === "rtl";
   const PrevIcon = rtl ? ChevronRight : ChevronLeft;
@@ -123,6 +127,17 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
             title={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
             <Star className={cn("h-4 w-4", isFavorite && "text-amber-500 fill-current")} />
+          </Button>
+        )}
+        {onRequestSplit && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onRequestSplit}
+            title="Compare side by side (split view)"
+          >
+            <Columns2 className="h-4 w-4" />
           </Button>
         )}
       </div>

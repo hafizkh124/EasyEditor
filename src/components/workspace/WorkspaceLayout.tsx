@@ -19,6 +19,8 @@ import type { DocChangePayload } from "@/components/editor/RichEditor";
 import { useAllDocuments } from "@/core/workspace/useAllDocuments";
 import { useShamelaBook } from "@/hooks/useShamelaBook";
 import { ShamelaReader } from "@/components/shamela/ShamelaReader";
+import { SplitReader, type SplitBook } from "@/components/shamela/SplitReader";
+import { SplitBookPickerDialog } from "@/components/shamela/SplitBookPickerDialog";
 
 export const WorkspaceLayout: React.FC = () => {
   const { direction } = useLanguage();
@@ -40,6 +42,27 @@ export const WorkspaceLayout: React.FC = () => {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
   const shamelaBook = useShamelaBook(activeDocumentId);
+
+  // SPEC-M6 Phase 9 — Split View. When a second book is picked, the Canvas
+  // pillar renders SplitReader instead of the single-book ShamelaReader.
+  const [splitSecondary, setSplitSecondary] = useState<SplitBook | null>(null);
+  const [splitPickerOpen, setSplitPickerOpen] = useState(false);
+
+  // A split pairs two specific books; switching the active document invalidates it.
+  useEffect(() => {
+    setSplitSecondary(null);
+    setSplitPickerOpen(false);
+  }, [shamelaBook.bookId]);
+
+  const handleCloseSplit = () => {
+    setSplitSecondary(null);
+    setSplitPickerOpen(false);
+  };
+
+  const handleSelectSecondary = (book: SplitBook) => {
+    setSplitSecondary(book);
+    setSplitPickerOpen(false);
+  };
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -167,13 +190,27 @@ export const WorkspaceLayout: React.FC = () => {
               so it fills the viewport there (FR-8.1) */}
           <ResizablePanel defaultSize={55} minSize={35}>
             {shamelaBook.bookId ? (
-              <ShamelaReader
-                bookId={shamelaBook.bookId}
-                title={shamelaBook.title || shamelaBook.bookId}
-                subtitle={shamelaBook.author}
-                onClose={handleCloseReader}
-                initialPage={initialReaderPage}
-              />
+              splitSecondary ? (
+                <SplitReader
+                  primary={{
+                    bookId: shamelaBook.bookId,
+                    title: shamelaBook.title || shamelaBook.bookId,
+                    author: shamelaBook.author,
+                  }}
+                  secondary={splitSecondary}
+                  onClose={handleCloseReader}
+                  onCloseSecondary={handleCloseSplit}
+                />
+              ) : (
+                <ShamelaReader
+                  bookId={shamelaBook.bookId}
+                  title={shamelaBook.title || shamelaBook.bookId}
+                  subtitle={shamelaBook.author}
+                  onClose={handleCloseReader}
+                  initialPage={initialReaderPage}
+                  onRequestSplit={() => setSplitPickerOpen(true)}
+                />
+              )
             ) : (
               <CanvasPanel
                 doc={doc}
@@ -208,6 +245,15 @@ export const WorkspaceLayout: React.FC = () => {
 
       {/* Spotlight Command Palette */}
       <CommandPalette />
+
+      {/* SPEC-M6 Phase 9 — Split View book picker (search the Shamela catalogue
+          for a second book to compare against the one already open). */}
+      <SplitBookPickerDialog
+        open={splitPickerOpen}
+        onOpenChange={setSplitPickerOpen}
+        onSelect={handleSelectSecondary}
+        excludeBookId={shamelaBook.bookId}
+      />
     </div>
   );
 };
