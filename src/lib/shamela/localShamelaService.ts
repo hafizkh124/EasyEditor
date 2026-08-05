@@ -118,12 +118,28 @@ async function searchViaBridge(query: string, limit: number): Promise<ResourceRe
   );
 }
 
+/**
+ * "Shamela isn't installed" is a normal state for most desktop users, not a
+ * search failure — it must not raise a toast on every lookup. Real
+ * diagnostics (missing JRE, missing store index, file lock) still propagate.
+ */
+function isShamelaNotInstalled(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes('انسٹال نہیں');
+}
+
 export async function searchLocalShamela(query: string, limit = 20): Promise<ResourceResult[]> {
   if (isDesktop() && window.electronAPI?.shamela) {
-    // Deliberately not caught here: useResourceSearch pairs this with the
-    // cloud lookup, and a real diagnostic ("Shamela's JRE was not found")
-    // must reach the user rather than be flattened into zero results.
-    return searchViaNative(query, limit);
+    // Errors other than "not installed" are deliberately re-thrown:
+    // useResourceSearch pairs this with the cloud lookup, and a real
+    // diagnostic ("Shamela's JRE was not found") must reach the user rather
+    // than be flattened into zero results.
+    try {
+      return await searchViaNative(query, limit);
+    } catch (err) {
+      if (isShamelaNotInstalled(err)) return [];
+      throw err;
+    }
   }
 
   try {

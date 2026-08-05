@@ -14,6 +14,7 @@ import {
   redactKeyFromLog,
 } from '../ai/geminiClient.js';
 import { getWorkspaceDbService } from './workspaceHandlers.js';
+import { REFINE_TEXT_ACTIONS } from '../../shared/ai/prompts/refineText.js';
 
 export function registerAiHandlers(): void {
   ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_SAVE_KEY, async (_event, key: string) => {
@@ -65,6 +66,27 @@ export function registerAiHandlers(): void {
             offset: typeof body.offset === 'number' ? body.offset : 0,
             batchSize: typeof body.batch_size === 'number' ? body.batch_size : 100,
           });
+        }
+
+        if (req.functionName === 'refine-text') {
+          // Desktop equivalent of the refine-text edge function: same action
+          // prompts, run through the local BYOK Gemini path.
+          const body = req.body ?? {};
+          const text = String(body.text ?? '');
+          const action = String(body.action ?? '');
+          const customPrompt =
+            typeof body.custom_prompt === 'string' ? body.custom_prompt : undefined;
+          const systemPrompt = customPrompt ?? REFINE_TEXT_ACTIONS[action];
+
+          if (!text || !systemPrompt) {
+            throw new Error('اصلاح کے لیے متن اور درست ایکشن درکار ہے۔');
+          }
+
+          const refined = await generateContentStream({
+            prompt: text,
+            systemInstruction: systemPrompt,
+          });
+          return { data: { text: refined } };
         }
 
         if (req.functionName === 'graph-extract') {
