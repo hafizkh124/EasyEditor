@@ -11,6 +11,7 @@ import { handleSupabaseError } from "@/lib/errors";
 import AppVersionBadge from "@/components/AppVersionBadge";
 
 import { LocalShamelaConnector } from "@/components/mcp/LocalShamelaConnector";
+import { TafsirConnector } from "@/components/mcp/TafsirConnector";
 import { ByokKeyPanel } from "@/components/settings/ByokKeyPanel";
 import { VoiceEnginePanel } from "@/components/settings/VoiceEnginePanel";
 import { AdvancedVoicesPanel } from "@/components/settings/AdvancedVoicesPanel";
@@ -82,6 +83,9 @@ const Settings = () => {
 
         {/* Local Shamela 4 MCP Connector */}
         <LocalShamelaConnector />
+
+        {/* Tafsir MCP Connector (remote + local) */}
+        <TafsirConnector />
 
         {/* Version Badge */}
         <div className="flex items-center justify-between pt-4 border-t border-border/40">

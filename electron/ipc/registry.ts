@@ -30,6 +30,10 @@ export const ALLOWED_IPC_CHANNELS = {
   SHAMELA_IMPORT_PROGRESS: 'shamela:import-progress',
   SHAMELA_CANCEL_IMPORT: 'shamela:cancel-import',
 
+  // Tafsir MCP (SPEC-TAFSIR)
+  TAFSIR_INVOKE: 'tafsir:invoke',
+  TAFSIR_INSTALL_PROGRESS: 'tafsir:install-progress',
+
   // Voice (M5.5 / M5.6 placeholder channels)
   VOICE_SYNTHESIZE: 'voice:synthesize',
   VOICE_TRANSCRIBE: 'voice:transcribe',
