@@ -12,6 +12,36 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// The model sometimes wraps JSON in ```json fences, or gets cut off by the
+// token cap mid-array. Strip fences, then progressively trim back to the last
+// complete object and close the brackets so a truncated response still yields
+// the entities/relations that DID arrive instead of a hard 500.
+// deno-lint-ignore no-explicit-any
+function parseGraphJson(raw: string): any {
+  const cleaned = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // ignore — attempt salvage below
+  }
+
+  for (let i = cleaned.length - 1; i > 0; i--) {
+    const ch = cleaned[i];
+    if (ch !== "}" ) continue;
+    const head = cleaned.slice(0, i + 1);
+    for (const tail of ["]}", "}]}", "]}}", ""]) {
+      try {
+        return JSON.parse(head + tail);
+      } catch {
+        // keep trying
+      }
+    }
+  }
+
+  console.warn("[graph-extract] unparseable AI output, returning empty graph");
+  return { entities: [], relations: [] };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -66,10 +96,13 @@ serve(async (req) => {
       model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `Passage to analyze:\n${text.slice(0, 8000)}` },
+        { role: "user", content: `Passage to analyze:\n${text.slice(0, 6000)}` },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 2048,
+      // 2048 was too small: long Urdu/Arabic passages produced output that hit
+      // the cap mid-string, so JSON.parse threw "Unterminated string" and every
+      // extraction 500'd. Give the model room, and salvage anyway if truncated.
+      max_tokens: 8192,
     });
 
     if (!aiRes.ok) {
@@ -82,8 +115,9 @@ serve(async (req) => {
     }
 
     const aiData = await aiRes.json();
-    const rawContent = aiData?.choices?.[0]?.message?.content || "{}";
-    const extracted = JSON.parse(rawContent);
+    const rawContent: string = aiData?.choices?.[0]?.message?.content || "{}";
+    const extracted = parseGraphJson(rawContent);
+
 
     const rawEntities: Array<{
       canonical_name: string;
