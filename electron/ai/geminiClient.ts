@@ -102,7 +102,7 @@ export async function testGeminiKey(testKey?: string): Promise<{ success: boolea
  */
 export async function generateContentStream(
   req: GeminiGenerateRequest,
-  onChunk: (chunk: string) => void,
+  onChunk?: (chunk: string) => void,
 ): Promise<string> {
   const key = await getDecryptedGeminiKey();
   if (!key) {
@@ -168,7 +168,7 @@ export async function generateContentStream(
         const textChunk = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (textChunk) {
           fullText += textChunk;
-          onChunk(textChunk);
+          onChunk?.(textChunk);
         }
       } catch {
         // Continue parsing subsequent lines
