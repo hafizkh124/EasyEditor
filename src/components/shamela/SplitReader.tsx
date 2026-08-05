@@ -27,6 +27,145 @@ interface SplitReaderProps {
   onSwap?: () => void;
 }
 
+type ReaderSettingsValue = ReturnType<typeof useReaderSettings>;
+
+interface SplitPaneProps {
+  book: SplitBook;
+  primary?: boolean;
+  onClosePane?: () => void;
+  readerSettings: ReaderSettingsValue;
+}
+
+/**
+ * A pane is a self-contained reader with its own page history and progress.
+ *
+ * It MUST stay declared at module scope. When it lived inside `SplitReader`'s
+ * body, every parent render (typography change, swap, or — via
+ * `setReaderPage` → WorkspaceContext → WorkspaceLayout — every page turn)
+ * produced a fresh component identity, so React unmounted and remounted both
+ * panes: page reset to 1, scroll and back/forward history lost, pages refetched.
+ */
+const SplitPane: React.FC<SplitPaneProps> = React.memo(function SplitPane({
+  book,
+  primary: isPrimary,
+  onClosePane,
+  readerSettings,
+}) {
+  const workspace = useOptionalWorkspace();
+  const progress = useReaderProgress(book.bookId, book.title, book.author);
+  const startPage =
+    progress.progress && progress.progress.pageNumber > 1 ? progress.progress.pageNumber : undefined;
+  const reader = useReaderState(book.bookId, startPage);
+
+  // Consume a jump request (Notes panel) on the primary pane only.
+  const { goToPage } = reader;
+  useEffect(() => {
+    if (!workspace?.readerJump) return;
+    if (isPrimary && workspace.readerJump.bookId === book.bookId) {
+      goToPage(workspace.readerJump.pageNumber);
+    }
+    workspace?.setReaderJump?.(null);
+  }, [workspace, isPrimary, book.bookId, goToPage]);
+
+  // Persist reading progress whenever the page changes.
+  const { savePage } = progress;
+  useEffect(() => {
+    if (!book.bookId || reader.pageCount <= 0) return;
+    savePage(book.bookId, reader.currentPageNumber, reader.pageCount);
+  }, [book.bookId, reader.currentPageNumber, reader.pageCount, savePage]);
+
+  // Publish the primary pane's current page so the AI Reader panel works.
+  useEffect(() => {
+    if (!workspace) return;
+    if (isPrimary && reader.page?.text) {
+      workspace.setReaderPage({
+        bookId: book.bookId,
+        title: book.title,
+        pageNumber: reader.page.pageNumber,
+        text: htmlToPlainText(reader.page.text),
+      });
+    }
+    return () => {
+      if (isPrimary) workspace.setReaderPage(null);
+    };
+  }, [workspace, isPrimary, book.bookId, book.title, reader.page]);
+
+  const rtl = document.documentElement.dir === "rtl";
+  const PrevIcon = rtl ? ChevronRight : ChevronLeft;
+  const NextIcon = rtl ? ChevronLeft : ChevronRight;
+  const pageBookmarked = progress.isPageBookmarked(reader.currentPageNumber);
+
+  return (
+    <div className="flex flex-col min-w-0 flex-1 bg-background">
+      {/* Pane header: title + compact nav + bookmark/favorite. */}
+      <div className="flex items-center gap-1 h-9 px-2 border-b border-border shrink-0">
+        <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium truncate leading-tight">{book.title}</p>
+          {book.author && (
+            <p className="text-[10px] text-muted-foreground truncate leading-tight">{book.author}</p>
+          )}
+        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reader.prevPage} disabled={reader.currentPageNumber <= 1} title="Previous page">
+          <PrevIcon className="h-3.5 w-3.5" />
+        </Button>
+        <span className="text-[11px] text-muted-foreground px-1 tabular-nums whitespace-nowrap">
+          {reader.currentPageNumber} / {reader.pageCount || "…"}
+        </span>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reader.nextPage} disabled={reader.currentPageNumber >= reader.pageCount} title="Next page">
+          <NextIcon className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() => progress.toggleBookmark(reader.currentPageNumber)}
+          title={pageBookmarked ? "Remove bookmark from this page" : "Bookmark this page"}
+        >
+          <Bookmark className={cn("h-3.5 w-3.5", pageBookmarked && "text-primary fill-current")} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={progress.toggleFavorite}
+          title={progress.isFavorite ? "Remove from favorites" : "Add to favorites"}
+        >
+          <Star className={cn("h-3.5 w-3.5", progress.isFavorite && "text-amber-500 fill-current")} />
+        </Button>
+        {onClosePane && (
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClosePane} title="Remove this pane">
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+
+      <div
+        className="reader-viewport flex-1 min-h-0 overflow-y-auto"
+        style={readerSettings.styleProps}
+        data-theme={readerSettings.theme}
+      >
+        <ReaderContent
+          page={reader.page}
+          loading={reader.pageLoading}
+          error={reader.pageError}
+          pageNumber={reader.currentPageNumber}
+          pageCount={reader.pageCount}
+          reader={readerSettings}
+        />
+      </div>
+
+      <ReaderBottomBar
+        currentPage={reader.currentPageNumber}
+        pageCount={reader.pageCount}
+        onGoToPage={reader.goToPage}
+        onPrev={reader.prevPage}
+        onNext={reader.nextPage}
+      />
+    </div>
+  );
+});
+
 /**
  * SPEC-M6 Phase 9 — Split View.
  *
@@ -86,135 +225,15 @@ export const SplitReader: React.FC<SplitReaderProps> = ({
       </header>
 
       <div className="flex-1 min-h-0 flex">
-        <SplitPane book={left} primary />
+        <SplitPane key={left.bookId} book={left} primary readerSettings={readerSettings} />
         <div className="w-px bg-border shrink-0" />
-        <SplitPane book={right} onClosePane={onCloseSecondary} />
+        <SplitPane
+          key={right.bookId}
+          book={right}
+          onClosePane={onCloseSecondary}
+          readerSettings={readerSettings}
+        />
       </div>
     </div>
   );
-
-  /** A pane is a self-contained reader. Defined as an inner component so each
-      instance gets its own hooks (independent history/progress). */
-  function SplitPane({
-    book,
-    primary: isPrimary,
-    onClosePane,
-  }: {
-    book: SplitBook;
-    primary?: boolean;
-    onClosePane?: () => void;
-  }) {
-    const workspace = useOptionalWorkspace();
-    const progress = useReaderProgress(book.bookId, book.title, book.author);
-    const startPage =
-      progress.progress && progress.progress.pageNumber > 1 ? progress.progress.pageNumber : undefined;
-    const reader = useReaderState(book.bookId, startPage);
-
-    // Consume a jump request (Notes panel) on the primary pane only.
-    const { goToPage } = reader;
-    useEffect(() => {
-      if (!workspace?.readerJump) return;
-      if (isPrimary && workspace.readerJump.bookId === book.bookId) {
-        goToPage(workspace.readerJump.pageNumber);
-      }
-      workspace?.setReaderJump?.(null);
-    }, [workspace, isPrimary, book.bookId, goToPage]);
-
-    // Persist reading progress whenever the page changes.
-    const { savePage } = progress;
-    useEffect(() => {
-      if (!book.bookId || reader.pageCount <= 0) return;
-      savePage(book.bookId, reader.currentPageNumber, reader.pageCount);
-    }, [book.bookId, reader.currentPageNumber, reader.pageCount, savePage]);
-
-    // Publish the primary pane's current page so the AI Reader panel works.
-    useEffect(() => {
-      if (!workspace) return;
-      if (isPrimary && reader.page?.text) {
-        workspace.setReaderPage({
-          bookId: book.bookId,
-          title: book.title,
-          pageNumber: reader.page.pageNumber,
-          text: htmlToPlainText(reader.page.text),
-        });
-      }
-      return () => {
-        if (isPrimary) workspace.setReaderPage(null);
-      };
-    }, [workspace, isPrimary, book.bookId, book.title, reader.page]);
-
-    const rtl = document.documentElement.dir === "rtl";
-    const PrevIcon = rtl ? ChevronRight : ChevronLeft;
-    const NextIcon = rtl ? ChevronLeft : ChevronRight;
-
-    return (
-      <div className="flex flex-col min-w-0 flex-1 bg-background">
-        {/* Pane header: title + compact nav + bookmark/favorite. */}
-        <div className="flex items-center gap-1 h-9 px-2 border-b border-border shrink-0">
-          <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium truncate leading-tight">{book.title}</p>
-            {book.author && (
-              <p className="text-[10px] text-muted-foreground truncate leading-tight">{book.author}</p>
-            )}
-          </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reader.prevPage} disabled={reader.currentPageNumber <= 1} title="Previous page">
-            <PrevIcon className="h-3.5 w-3.5" />
-          </Button>
-          <span className="text-[11px] text-muted-foreground px-1 tabular-nums whitespace-nowrap">
-            {reader.currentPageNumber} / {reader.pageCount || "…"}
-          </span>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reader.nextPage} disabled={reader.currentPageNumber >= reader.pageCount} title="Next page">
-            <NextIcon className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => progress.toggleBookmark(reader.currentPageNumber)}
-            title={progress.bookmarked ? "Remove bookmark from this page" : "Bookmark this page"}
-          >
-            <Bookmark className={cn("h-3.5 w-3.5", progress.bookmarked && "text-primary fill-current")} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={progress.toggleFavorite}
-            title={progress.isFavorite ? "Remove from favorites" : "Add to favorites"}
-          >
-            <Star className={cn("h-3.5 w-3.5", progress.isFavorite && "text-amber-500 fill-current")} />
-          </Button>
-          {onClosePane && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClosePane} title="Remove this pane">
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          )}
-        </div>
-
-        <div
-          className="reader-viewport flex-1 min-h-0 overflow-y-auto"
-          style={readerSettings.styleProps}
-          data-theme={readerSettings.theme}
-        >
-          <ReaderContent
-            page={reader.page}
-            loading={reader.pageLoading}
-            error={reader.pageError}
-            pageNumber={reader.currentPageNumber}
-            pageCount={reader.pageCount}
-            reader={readerSettings}
-          />
-        </div>
-
-        <ReaderBottomBar
-          currentPage={reader.currentPageNumber}
-          pageCount={reader.pageCount}
-          onGoToPage={reader.goToPage}
-          onPrev={reader.prevPage}
-          onNext={reader.nextPage}
-        />
-      </div>
-    );
-  }
 };
