@@ -67,6 +67,27 @@ export function registerAiHandlers(): void {
           });
         }
 
+        if (req.functionName === 'refine-text') {
+          // Desktop equivalent of the refine-text edge function: same action
+          // prompts, run through the local BYOK Gemini path.
+          const body = req.body ?? {};
+          const text = String(body.text ?? '');
+          const action = String(body.action ?? '');
+          const customPrompt =
+            typeof body.custom_prompt === 'string' ? body.custom_prompt : undefined;
+          const systemPrompt = customPrompt ?? REFINE_TEXT_ACTIONS[action];
+
+          if (!text || !systemPrompt) {
+            throw new Error('اصلاح کے لیے متن اور درست ایکشن درکار ہے۔');
+          }
+
+          const refined = await generateContentStream({
+            prompt: text,
+            systemInstruction: systemPrompt,
+          });
+          return { data: { text: refined } };
+        }
+
         if (req.functionName === 'graph-extract') {
           throw new Error(
             'علمی گراف (entity extraction) ابھی صرف ویب ورژن میں دستیاب ہے — ' +
