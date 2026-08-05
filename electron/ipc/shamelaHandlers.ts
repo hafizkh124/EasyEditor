@@ -22,6 +22,8 @@ import {
   listBooksByAuthor,
   listPeriods,
   listBooksByPeriod,
+  getBookPdfInfo,
+  readBookPdfFile,
   closeCatalogueDb,
 } from '../shamela/catalogue.js';
 
@@ -142,6 +144,25 @@ export function registerShamelaHandlers(): void {
           const offset = typeof payload.offset === 'number' ? payload.offset : 0;
           if (!masterDbPath) throw new Error('masterDbPath is required');
           return listBooksByPeriod(masterDbPath, century, limit, offset);
+        }
+
+        // ── PDF / covers (SPEC-M6 Phase 10) ───────────────────────
+        case 'pdf:info': {
+          const masterDbPath = String(payload.masterDbPath || '');
+          const bookId = typeof payload.bookId === 'number' ? payload.bookId : Number(payload.bookId);
+          if (!masterDbPath) throw new Error('masterDbPath is required');
+          if (!Number.isFinite(bookId)) throw new Error('bookId is required');
+          return getBookPdfInfo(masterDbPath, bookId);
+        }
+
+        case 'pdf:read': {
+          const masterDbPath = String(payload.masterDbPath || '');
+          const filePath = String(payload.filePath || '');
+          if (!masterDbPath || !filePath) throw new Error('masterDbPath and filePath are required');
+          const buffer = readBookPdfFile(masterDbPath, filePath);
+          if (!buffer) throw new Error('PDF file not found or not allowed');
+          // Buffer → Uint8Array so it survives structured-clone over IPC.
+          return new Uint8Array(buffer);
         }
 
         case 'catalogue:close':

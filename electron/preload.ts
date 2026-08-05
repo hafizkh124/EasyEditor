@@ -135,9 +135,9 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:listCategories', masterDbPath }),
     booksByCategory: (masterDbPath: string, categoryId: number, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; deathYear: number | null; bookType: number | null; info: string | null }>> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:booksByCategory', masterDbPath, categoryId, limit, offset }),
-    authors: (masterDbPath: string, limit?: number, offset?: number): Promise<Array<{ id: number; name: string; deathNumber: number | null; deathText: string | null; bookCount: number }>> =>
+    authors: (masterDbPath: string, limit?: number, offset?: number): Promise<Array<{ id: number; name: string; deathNumber: number | null; deathText: string | null; bookCount: number; alpha: number | null }>> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:authors', masterDbPath, limit, offset }),
-    searchAuthors: (masterDbPath: string, query: string, limit?: number, offset?: number): Promise<Array<{ id: number; name: string; deathNumber: number | null; deathText: string | null; bookCount: number }>> =>
+    searchAuthors: (masterDbPath: string, query: string, limit?: number, offset?: number): Promise<Array<{ id: number; name: string; deathNumber: number | null; deathText: string | null; bookCount: number; alpha: number | null }>> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:searchAuthors', masterDbPath, query, limit, offset }),
     booksByAuthor: (masterDbPath: string, authorId: number, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; deathYear: number | null; bookType: number | null; info: string | null }>> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:booksByAuthor', masterDbPath, authorId, limit, offset }),
@@ -145,6 +145,12 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:periods', masterDbPath }),
     booksByPeriod: (masterDbPath: string, century: number, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; deathYear: number | null; bookType: number | null; info: string | null }>> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:booksByPeriod', masterDbPath, century, limit, offset }),
+
+    // ── PDF / covers (SPEC-M6 Phase 10) ─────────────────────────
+    bookPdfInfo: (masterDbPath: string, bookId: number): Promise<{ available: boolean; files: Array<{ fileIndex: number; name: string; path: string; size: number }>; coverPage: number | null }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'pdf:info', masterDbPath, bookId }),
+    readBookPdf: (masterDbPath: string, filePath: string): Promise<Uint8Array> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'pdf:read', masterDbPath, filePath }),
 
     // ── Import (SPEC-M5.9 FR-2) ───────────────────────────────────
     estimateImport: (masterDbPath: string, bookIds: number[]): Promise<{ books: Array<{ bookId: number; title: string; author: string | null; pageCount: number; estimatedChunks: number }>; totalBooks: number; totalPages: number; totalChunks: number; approximate: boolean }> =>

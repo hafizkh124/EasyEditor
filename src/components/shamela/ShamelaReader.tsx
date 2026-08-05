@@ -10,6 +10,7 @@ import { ReaderSettings } from "./ReaderSettings";
 import { TocTree } from "./TocTree";
 import { ReaderContent } from "./ReaderContent";
 import { ReaderBottomBar } from "./ReaderBottomBar";
+import { PdfViewerDialog } from "./PdfViewerDialog";
 
 interface ShamelaReaderProps {
   bookId: string;
@@ -37,6 +38,7 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
   onRequestSplit,
 }) => {
   const [tocOpen, setTocOpen] = useState(true);
+  const [pdfOpen, setPdfOpen] = useState(false);
 
   // SPEC-M6 Phase 8: resume on the last-read page when there is no deep-link
   // page target. useReaderState's guard is keyed on bookId+startPage, so this
@@ -113,6 +115,7 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
         isFavorite={readerProgress.isFavorite}
         onToggleFavorite={readerProgress.toggleFavorite}
         onRequestSplit={onRequestSplit}
+        onRequestPdf={() => setPdfOpen(true)}
       />
 
       <div className="flex-1 min-h-0 flex">
@@ -156,6 +159,15 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
         onGoToPage={reader.goToPage}
         onPrev={reader.prevPage}
         onNext={reader.nextPage}
+      />
+
+      {/* SPEC-M6 Phase 10: in-app PDF viewer (page nav, zoom). */}
+      <PdfViewerDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        bookId={bookId}
+        title={title}
+        author={subtitle}
       />
     </div>
   );

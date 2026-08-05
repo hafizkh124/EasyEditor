@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { BookOpen, Star, Trash2 } from "lucide-react";
+import { Star, BookOpen, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { readerService } from "@/core/workspace/readerService";
+import { BookCover } from "@/components/shamela/BookCover";
 import type { ReaderFavorite, ReadingProgress } from "@/core/backend/types";
 
 interface FavoritesTabProps {
@@ -109,9 +110,12 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
 
-                <div className="w-full aspect-[3/4] rounded-md bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-2 group-hover:from-primary/20 group-hover:to-primary/10 transition-colors">
-                  <Star className="h-8 w-8 text-amber-500/50 group-hover:text-amber-500/70 transition-colors" />
-                </div>
+                <BookCover
+                  bookId={fav.bookId}
+                  title={fav.title}
+                  author={fav.author}
+                  className="mb-2"
+                />
 
                 <p className="text-xs font-medium leading-tight line-clamp-2 w-full">
                   {fav.title}

@@ -9,6 +9,7 @@ import {
   Star,
   Bookmark,
   Columns2,
+  FileText,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,8 @@ interface ReaderToolbarProps {
   onToggleFavorite?: () => void;
   /** SPEC-M6 Phase 9: open side-by-side comparison. */
   onRequestSplit?: () => void;
+  /** SPEC-M6 Phase 10: open the in-app PDF viewer for this book. */
+  onRequestPdf?: () => void;
 }
 
 export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
@@ -58,6 +61,7 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
   isFavorite = false,
   onToggleFavorite,
   onRequestSplit,
+  onRequestPdf,
 }) => {
   const rtl = document.documentElement.dir === "rtl";
   const PrevIcon = rtl ? ChevronRight : ChevronLeft;
@@ -138,6 +142,17 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
             title="Compare side by side (split view)"
           >
             <Columns2 className="h-4 w-4" />
+          </Button>
+        )}
+        {onRequestPdf && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onRequestPdf}
+            title="Open PDF"
+          >
+            <FileText className="h-4 w-4" />
           </Button>
         )}
       </div>
