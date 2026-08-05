@@ -5,6 +5,8 @@ import { registerSystemHandlers } from './ipc/systemHandlers.js';
 import { registerAiHandlers } from './ipc/aiHandlers.js';
 import { registerWorkspaceHandlers } from './ipc/workspaceHandlers.js';
 import { registerShamelaHandlers } from './ipc/shamelaHandlers.js';
+import { registerTafsirHandlers } from './ipc/tafsirHandlers.js';
+import { terminateLocalSync } from './tafsir/mcpClient.js';
 import { registerVoiceHandlers } from './ipc/voiceHandlers.js';
 import { isAllowedExternalUrl } from './lib/urlAllowlist.js';
 
@@ -143,6 +145,7 @@ app.whenReady().then(() => {
   registerAiHandlers();
   registerWorkspaceHandlers();
   registerShamelaHandlers();
+  registerTafsirHandlers();
   registerVoiceHandlers();
   createWindow();
 
@@ -151,6 +154,12 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+// No zombie `uvx tafsir-mcp` / python subprocess left behind (SPEC-TAFSIR §FR-3.3).
+// `before-quit` does not await promises, so this is a synchronous child kill.
+app.on('before-quit', () => {
+  terminateLocalSync();
 });
 
 app.on('window-all-closed', () => {

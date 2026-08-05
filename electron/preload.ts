@@ -170,6 +170,37 @@ const electronAPI = {
     },
   },
 
+  tafsir: {
+    // SPEC-TAFSIR §FR-4 — all actions travel a single allowlisted channel.
+    ping: (mode?: 'remote' | 'local'): Promise<{ ok: boolean; mode: 'remote' | 'local'; latencyMs: number | null; error?: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.TAFSIR_INVOKE, { action: 'ping', mode: mode ?? 'remote' }),
+    detect: (): Promise<{ pythonFound: boolean; pythonVersion: string | null; uvFound: boolean; uvVersion: string | null; dbFound: boolean; dbPath: string | null; errors: string[] }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.TAFSIR_INVOKE, { action: 'detect' }),
+    diagnose: (): Promise<{ pythonFound: boolean; pythonVersion: string | null; uvFound: boolean; uvVersion: string | null; dbFound: boolean; dbPath: string | null; errors: string[]; remoteReachable: boolean; remoteLatencyMs: number | null }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.TAFSIR_INVOKE, { action: 'diagnose' }),
+    connect: (mode: 'remote' | 'local'): Promise<{ mode: 'remote' | 'local'; connected: boolean; server?: string; version?: string; tools: Array<{ name: string; title?: string; description?: string; inputSchema?: Record<string, unknown> }>; error?: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.TAFSIR_INVOKE, { action: 'connect', mode }),
+    disconnect: (): Promise<{ disconnected: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.TAFSIR_INVOKE, { action: 'disconnect' }),
+    tools: (): Promise<Array<{ name: string; title?: string; description?: string; inputSchema?: Record<string, unknown> }>> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.TAFSIR_INVOKE, { action: 'tools' }),
+    call: (tool: string, args?: Record<string, unknown>): Promise<{ tool: string; text: string; length: number; truncated: boolean; structured?: unknown }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.TAFSIR_INVOKE, { action: 'call', tool, arguments: args }),
+    onInstallProgress: (callback: (p: { downloadedBytes: number; totalBytes: number; percent: number; state: 'downloading' | 'verifying' }) => void): (() => void) => {
+      const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);
+      ipcRenderer.on(ALLOWED_IPC_CHANNELS.TAFSIR_INSTALL_PROGRESS, listener);
+      return () => {
+        ipcRenderer.removeListener(ALLOWED_IPC_CHANNELS.TAFSIR_INSTALL_PROGRESS, listener);
+      };
+    },
+    installStatus: (): Promise<{ state: 'idle' | 'downloading' | 'verifying' | 'done' | 'error'; downloadedBytes: number; totalBytes: number; percent: number; error?: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.TAFSIR_INVOKE, { action: 'install:status' }),
+    installStart: (): Promise<{ state: 'idle' | 'downloading' | 'verifying' | 'done' | 'error'; downloadedBytes: number; totalBytes: number; percent: number; error?: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.TAFSIR_INVOKE, { action: 'install:start' }),
+    installCancel: (): Promise<{ cancelled: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.TAFSIR_INVOKE, { action: 'install:cancel' }),
+  },
+
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);
