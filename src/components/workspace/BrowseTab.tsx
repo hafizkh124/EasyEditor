@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  FolderTree, User, Clock, ChevronRight, ChevronLeft, Search,
+  FolderTree, User, Clock, ChevronRight, ChevronLeft, Search, CalendarDays, BookMarked,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { BookCover } from "@/components/shamela/BookCover";
 
 /**
  * Phase 4 (SPEC-M6) — Library Browser.
@@ -15,6 +16,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
  * categories) by category tree, author, or historical period, then open any
  * book in the reader. Reads straight from master.db via the native bridge —
  * books are opened directly by their Shamela book id, no import required.
+ *
+ * Phase 10 (SPEC-M6) — Authors get a rich detail view (death text, alpha
+ * letter badge, work count, covers) and the list is grouped by Arabic letter.
  */
 
 type BrowseMode = "categories" | "authors" | "periods";
@@ -40,6 +44,7 @@ interface CatalogueAuthor {
   deathNumber: number | null;
   deathText: string | null;
   bookCount: number;
+  alpha: number | null;
 }
 
 interface CataloguePeriod {
@@ -54,6 +59,15 @@ interface BrowseTabProps {
 }
 
 const BROWSE_LIMIT = 100;
+
+// Shamela groups authors by the Arabic alphabet; master.db's `alpha` column is
+// the 1-based letter index. Used to show letter badges and group the list.
+const ALPHA_LETTERS = "ابتثجحخدذرزسشصضطظعغفقكلمنهوي";
+
+const alphaLetter = (alpha: number | null): string | null =>
+  alpha != null && alpha >= 1 && alpha <= ALPHA_LETTERS.length
+    ? ALPHA_LETTERS[alpha - 1]
+    : null;
 
 export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }) => {
   const { direction } = useLanguage();
@@ -146,6 +160,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
         deathNumber: a.deathNumber,
         deathText: a.deathText,
         bookCount: a.bookCount,
+        alpha: a.alpha,
       })));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load authors.");
@@ -249,36 +264,55 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
             <span className="text-[10px] text-muted-foreground">{books.length} books</span>
           )}
         </div>
+
+        {/* Phase 10: rich author header — death text, alpha letter, work count. */}
+        {selectedAuthor && (
+          <div className="px-3 py-2.5 border-b border-border bg-muted/30 flex items-center gap-3">
+            <span className="h-10 w-10 rounded-md bg-primary/15 text-primary flex items-center justify-center text-lg font-semibold shrink-0">
+              {alphaLetter(selectedAuthor.alpha) ?? "؟"}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate leading-tight">{selectedAuthor.name}</p>
+              <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <CalendarDays className="h-3 w-3" />
+                  {selectedAuthor.deathNumber != null && selectedAuthor.deathNumber < 99999
+                    ? `ت ${selectedAuthor.deathNumber} هـ`
+                    : "وفات نامعلوم"}
+                </span>
+                <span className="flex items-center gap-1">
+                  <BookMarked className="h-3 w-3" />
+                  {selectedAuthor.bookCount} book{selectedAuthor.bookCount === 1 ? "" : "s"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <ScrollArea className="flex-1 min-h-0">
           {booksLoading ? (
             <p className="p-3 text-xs text-muted-foreground">Loading books…</p>
           ) : books.length === 0 ? (
             <p className="p-3 text-xs text-muted-foreground">No books found.</p>
           ) : (
-            <ul className="py-1">
+            <div className="p-2 grid grid-cols-3 gap-2">
               {books.map((book) => (
-                <li key={book.id}>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectBook(book)}
-                    className="w-full text-right flex flex-col gap-0.5 px-3 py-2 border-b border-border/40 hover:bg-accent hover:text-accent-foreground transition-colors"
-                  >
-                    <span className="text-xs font-medium leading-snug line-clamp-2">{book.title}</span>
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      {book.author && (
-                        <>
-                          <User className="h-3 w-3" />
-                          {book.author}
-                        </>
-                      )}
-                      {book.deathYear != null && book.deathYear < 99999 && (
-                        <span className="tabular-nums">· {book.deathYear} هـ</span>
-                      )}
-                    </span>
-                  </button>
-                </li>
+                <button
+                  key={book.id}
+                  type="button"
+                  onClick={() => handleSelectBook(book)}
+                  className="group text-start flex flex-col gap-1.5 rounded-md border border-border/40 p-1.5 hover:bg-accent hover:text-accent-foreground hover:border-accent-foreground/20 transition-colors"
+                >
+                  <BookCover bookId={book.id} title={book.title} author={book.author} />
+                  <div className="min-w-0 px-0.5">
+                    <p className="text-[10px] font-medium leading-snug line-clamp-2">{book.title}</p>
+                    {book.deathYear != null && book.deathYear < 99999 && (
+                      <p className="text-[9px] text-muted-foreground tabular-nums">{book.deathYear} هـ</p>
+                    )}
+                  </div>
+                </button>
               ))}
-            </ul>
+            </div>
           )}
         </ScrollArea>
       </div>
@@ -376,28 +410,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
               ) : authors.length === 0 ? (
                 <p className="p-3 text-xs text-muted-foreground">No authors found.</p>
               ) : (
-                authors.map((author) => (
-                  <button
-                    key={author.id}
-                    type="button"
-                    onClick={() => openAuthor(author)}
-                    className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent hover:text-accent-foreground transition-colors"
-                  >
-                    <span className="rounded-md bg-primary/10 p-1.5 shrink-0">
-                      <User className="h-3.5 w-3.5 text-primary" />
-                    </span>
-                    <span className="flex-1 min-w-0 text-right">
-                      <span className="block text-xs font-medium truncate">{author.name}</span>
-                      <span className="block text-[10px] text-muted-foreground">
-                        {author.deathNumber != null && author.deathNumber < 99999
-                          ? `ت  ${author.deathNumber} هـ · `
-                          : ""}
-                        {author.bookCount} book{author.bookCount === 1 ? "" : "s"}
-                      </span>
-                    </span>
-                    <BackIcon className="h-3.5 w-3.5 text-muted-foreground rotate-180 rtl:rotate-0" />
-                  </button>
-                ))
+                <AuthorList authors={authors} flat={authorQuery.trim().length > 0} onOpen={openAuthor} />
               )}
             </div>
           )}
@@ -431,6 +444,71 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
           )}
         </ScrollArea>
       )}
+    </div>
+  );
+};
+
+/**
+ * Phase 10 — author list grouped by Arabic letter badge. When searching, the
+ * alpha grouping is meaningless (results are filtered arbitrarily), so the
+ * flat list is used then.
+ */
+const AuthorList: React.FC<{
+  authors: CatalogueAuthor[];
+  flat?: boolean;
+  onOpen: (author: CatalogueAuthor) => void;
+}> = ({ authors, flat = false, onOpen }) => {
+  const { direction } = useLanguage();
+  const rtl = direction === "rtl";
+  const ChevronIcon = rtl ? ChevronLeft : ChevronRight;
+
+  const groups = useMemo(() => {
+    const map = new Map<string, CatalogueAuthor[]>();
+    for (const a of authors) {
+      const letter = flat ? "·" : (alphaLetter(a.alpha) ?? "·");
+      const list = map.get(letter) ?? [];
+      list.push(a);
+      map.set(letter, list);
+    }
+    return Array.from(map.entries());
+  }, [authors, flat]);
+
+  return (
+    <div className="space-y-3">
+      {groups.map(([letter, list]) => (
+        <div key={letter}>
+          <p className="px-2 pb-1 text-[10px] font-semibold uppercase text-muted-foreground/70 flex items-center gap-1.5">
+            <span className="h-4 w-4 rounded bg-primary/15 text-primary text-[10px] flex items-center justify-center">
+              {letter}
+            </span>
+            {list.length} author{list.length === 1 ? "" : "s"}
+          </p>
+          <div className="space-y-0.5">
+            {list.map((author) => (
+              <button
+                key={author.id}
+                type="button"
+                onClick={() => onOpen(author)}
+                className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                <span className="rounded-md bg-primary/10 p-1.5 shrink-0">
+                  <User className="h-3.5 w-3.5 text-primary" />
+                </span>
+                <span className="flex-1 min-w-0 text-right">
+                  <span className="block text-xs font-medium truncate">{author.name}</span>
+                  <span className="block text-[10px] text-muted-foreground">
+                    {author.deathNumber != null && author.deathNumber < 99999
+                      ? `ت ${author.deathNumber} هـ · `
+                      : ""}
+                    {author.bookCount} book{author.bookCount === 1 ? "" : "s"}
+                  </span>
+                </span>
+                <ChevronIcon className="h-3.5 w-3.5 text-muted-foreground rotate-180 rtl:rotate-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

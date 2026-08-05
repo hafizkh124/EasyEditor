@@ -1,6 +1,7 @@
 import React from "react";
 import { BookOpen, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BookCover } from "@/components/shamela/BookCover";
 import type { RecentItem } from "@/core/backend/types";
 
 interface RecentBooksGridProps {
@@ -67,17 +68,26 @@ export const RecentBooksGrid: React.FC<RecentBooksGridProps> = ({
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {items.map((item) => {
-          const { author } = getSourceInfo(item);
+          const { author, shamelaBookId } = getSourceInfo(item);
           return (
             <button
               key={item.itemId}
               onClick={() => onSelectBook?.(item.itemId)}
               className="group flex flex-col items-start text-left rounded-lg border border-border/50 bg-card p-3 hover:border-primary/50 hover:bg-accent/50 transition-colors cursor-pointer"
             >
-              {/* Book Cover Placeholder */}
-              <div className="w-full aspect-[3/4] rounded-md bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-2 group-hover:from-primary/20 group-hover:to-primary/10 transition-colors">
-                <BookOpen className="h-8 w-8 text-primary/30 group-hover:text-primary/50 transition-colors" />
-              </div>
+              {/* Book Cover */}
+              {shamelaBookId ? (
+                <BookCover
+                  bookId={shamelaBookId}
+                  title={item.title}
+                  author={author}
+                  className="mb-2"
+                />
+              ) : (
+                <div className="w-full aspect-[3/4] rounded-md bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-2 group-hover:from-primary/20 group-hover:to-primary/10 transition-colors">
+                  <BookOpen className="h-8 w-8 text-primary/30 group-hover:text-primary/50 transition-colors" />
+                </div>
+              )}
 
               {/* Title */}
               <p className="text-xs font-medium leading-tight line-clamp-2 w-full">

@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * Catalogue access to Shamela 4's `database/master.db`.
@@ -40,6 +41,8 @@ export interface ShamelaAuthor {
   deathNumber: number | null;
   deathText: string | null;
   bookCount: number;
+  /** 1-based Arabic alphabet index (master.db `author.alpha`), for letter badges. */
+  alpha: number | null;
 }
 
 export interface ShamelaPeriod {
@@ -188,7 +191,7 @@ export function listAuthors(
   const db = getCatalogueDb(masterDbPath);
   const rows = db.prepare(`
     SELECT a.author_id as id, a.author_name as name,
-           a.death_number as deathNumber, a.death_text as deathText,
+           a.death_number as deathNumber, a.death_text as deathText, a.alpha as alpha,
            (SELECT COUNT(*) FROM book b WHERE b.main_author = a.author_id AND b.hidden = 0) as bookCount
     FROM author a
     ORDER BY a.author_name
@@ -200,6 +203,7 @@ export function listAuthors(
     deathNumber: r.deathNumber ?? null,
     deathText: r.deathText ?? null,
     bookCount: r.bookCount ?? 0,
+    alpha: r.alpha ?? null,
   }));
 }
 
@@ -213,7 +217,7 @@ export function searchAuthors(
   const pattern = `%${query}%`;
   const rows = db.prepare(`
     SELECT a.author_id as id, a.author_name as name,
-           a.death_number as deathNumber, a.death_text as deathText,
+           a.death_number as deathNumber, a.death_text as deathText, a.alpha as alpha,
            (SELECT COUNT(*) FROM book b WHERE b.main_author = a.author_id AND b.hidden = 0) as bookCount
     FROM author a
     WHERE a.author_name LIKE ?
@@ -226,6 +230,7 @@ export function searchAuthors(
     deathNumber: r.deathNumber ?? null,
     deathText: r.deathText ?? null,
     bookCount: r.bookCount ?? 0,
+    alpha: r.alpha ?? null,
   }));
 }
 
@@ -328,4 +333,117 @@ export function listBooksByPeriod(
     LIMIT ? OFFSET ?
   `).all(limit, offset) as any[];
   return rows.map(mapBook);
+}
+
+// ─── PDF / covers (SPEC-M6 Phase 10) ────────────────────────────────────────
+
+export interface ShamelaPdfFile {
+  /** 0-based index used with readBookPdfFile. */
+  fileIndex: number;
+  name: string;
+  path: string;
+  size: number;
+}
+
+export interface BookPdfInfo {
+  /** Whether this book has at least one on-disk PDF. */
+  available: boolean;
+  files: ShamelaPdfFile[];
+  /** 1-based page of the cover inside the first file, when pdf_links says so. */
+  coverPage: number | null;
+}
+
+const PDF_ROOT = (masterDbPath: string) => path.join(path.dirname(path.dirname(masterDbPath)), 'pdf');
+
+/**
+ * Basename → first matching absolute path under `pdf/`. Built once per pdf root
+ * and cached, because a fresh recursive walk for every book the user opens
+ * would make the reader sluggish. pdf_links filenames (e.g. `41557.pdf`,
+ * `00_165141.pdf`) are unique across the collection, so the basename is a
+ * reliable key (verified: 3646/4288 basenames resolve to exactly one file).
+ */
+let pdfIndexCache: { root: string; map: Map<string, string> } | null = null;
+
+function getPdfIndex(masterDbPath: string): Map<string, string> {
+  const root = PDF_ROOT(masterDbPath);
+  if (pdfIndexCache && pdfIndexCache.root === root) return pdfIndexCache.map;
+
+  const map = new Map<string, string>();
+  const walk = (dir: string) => {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.pdf') && !map.has(entry.name)) {
+        map.set(entry.name, full);
+      }
+    }
+  };
+  if (fs.existsSync(root)) walk(root);
+
+  pdfIndexCache = { root, map };
+  return map;
+}
+
+export function getBookPdfInfo(masterDbPath: string, bookId: number): BookPdfInfo {
+  const db = getCatalogueDb(masterDbPath);
+  const row = db.prepare(
+    'SELECT pdf_links FROM book WHERE book_id = ?',
+  ).get(bookId) as { pdf_links?: string | null } | undefined;
+
+  const files: ShamelaPdfFile[] = [];
+  let coverPage: number | null = null;
+
+  if (row?.pdf_links) {
+    try {
+      const links = JSON.parse(row.pdf_links) as {
+        files?: unknown[];
+        cover?: number;
+      };
+      const index = getPdfIndex(masterDbPath);
+      const rawFiles = Array.isArray(links.files) ? links.files : [];
+      let fileIndex = 0;
+      for (const raw of rawFiles) {
+        const name = String(raw).split('/').pop()?.split('|')[0] ?? '';
+        if (!name.toLowerCase().endsWith('.pdf')) continue;
+        const diskPath = index.get(name);
+        if (!diskPath) continue;
+        let size = 0;
+        try {
+          size = fs.statSync(diskPath).size;
+        } catch {
+          /* ignore */
+        }
+        files.push({ fileIndex, name, path: diskPath, size });
+        fileIndex += 1;
+      }
+      if (typeof links.cover === 'number' && links.cover > 0) coverPage = links.cover;
+    } catch {
+      /* malformed pdf_links — treat as no PDF */
+    }
+  }
+
+  return { available: files.length > 0, files, coverPage };
+}
+
+/**
+ * Read one on-disk PDF identified by getBookPdfInfo. The path is re-validated
+ * against the same pdf root before the bytes are returned, so a compromised
+ * renderer cannot ask the main process to read an arbitrary file.
+ */
+export function readBookPdfFile(masterDbPath: string, filePath: string): Buffer | null {
+  const root = path.resolve(PDF_ROOT(masterDbPath));
+  const resolved = path.resolve(filePath);
+  if (resolved !== root && !resolved.startsWith(root + path.sep)) return null;
+  try {
+    return fs.readFileSync(resolved);
+  } catch {
+    return null;
+  }
 }
