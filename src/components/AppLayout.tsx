@@ -1,7 +1,7 @@
 import { useLocation, Link, useMatch } from "react-router-dom";
 import {
   BookOpen, Menu, Shield, Bell, User, ChevronLeft, ChevronRight, ChevronDown, Layers,
-  Wrench, Mic, ScanText, Volume2, Languages,
+  Wrench, Mic, ScanText, Volume2, Languages, Settings as SettingsIcon,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -69,6 +69,7 @@ const sectionNav = [
   ...(toolsChildren.length > 0
     ? [{ path: toolsChildren[0].path, icon: Wrench, labelKey: "nav.tools", fallbackLabel: "ٹولز (Tools)", section: "transcribe" as SessionSection, children: toolsChildren }]
     : []),
+  { path: "/settings", icon: SettingsIcon, labelKey: "nav.settings", fallbackLabel: "ترتیبات (Settings)", section: null },
 ];
 const adminNavItem = { path: "/admin", icon: Shield, labelKey: "nav.admin", fallbackLabel: "ایڈمن", section: null };
 
