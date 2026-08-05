@@ -110,7 +110,7 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
         onNext={reader.nextPage}
         onClose={onClose}
         settingsSlot={<ReaderSettings reader={readerSettings} />}
-        bookmarked={readerProgress.bookmarked}
+        bookmarked={readerProgress.isPageBookmarked(reader.currentPageNumber)}
         onToggleBookmark={() => readerProgress.toggleBookmark(reader.currentPageNumber)}
         isFavorite={readerProgress.isFavorite}
         onToggleFavorite={readerProgress.toggleFavorite}
