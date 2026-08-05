@@ -12,6 +12,36 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// The model sometimes wraps JSON in ```json fences, or gets cut off by the
+// token cap mid-array. Strip fences, then progressively trim back to the last
+// complete object and close the brackets so a truncated response still yields
+// the entities/relations that DID arrive instead of a hard 500.
+// deno-lint-ignore no-explicit-any
+function parseGraphJson(raw: string): any {
+  const cleaned = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // ignore — attempt salvage below
+  }
+
+  for (let i = cleaned.length - 1; i > 0; i--) {
+    const ch = cleaned[i];
+    if (ch !== "}" ) continue;
+    const head = cleaned.slice(0, i + 1);
+    for (const tail of ["]}", "}]}", "]}}", ""]) {
+      try {
+        return JSON.parse(head + tail);
+      } catch {
+        // keep trying
+      }
+    }
+  }
+
+  console.warn("[graph-extract] unparseable AI output, returning empty graph");
+  return { entities: [], relations: [] };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
