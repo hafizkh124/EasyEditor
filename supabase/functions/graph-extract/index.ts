@@ -66,10 +66,13 @@ serve(async (req) => {
       model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `Passage to analyze:\n${text.slice(0, 8000)}` },
+        { role: "user", content: `Passage to analyze:\n${text.slice(0, 6000)}` },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 2048,
+      // 2048 was too small: long Urdu/Arabic passages produced output that hit
+      // the cap mid-string, so JSON.parse threw "Unterminated string" and every
+      // extraction 500'd. Give the model room, and salvage anyway if truncated.
+      max_tokens: 8192,
     });
 
     if (!aiRes.ok) {
@@ -82,8 +85,9 @@ serve(async (req) => {
     }
 
     const aiData = await aiRes.json();
-    const rawContent = aiData?.choices?.[0]?.message?.content || "{}";
-    const extracted = JSON.parse(rawContent);
+    const rawContent: string = aiData?.choices?.[0]?.message?.content || "{}";
+    const extracted = parseGraphJson(rawContent);
+
 
     const rawEntities: Array<{
       canonical_name: string;
