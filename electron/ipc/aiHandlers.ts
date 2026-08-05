@@ -14,6 +14,7 @@ import {
   redactKeyFromLog,
 } from '../ai/geminiClient.js';
 import { getWorkspaceDbService } from './workspaceHandlers.js';
+import { REFINE_TEXT_ACTIONS } from '../../shared/ai/prompts/refineText.js';
 
 export function registerAiHandlers(): void {
   ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_SAVE_KEY, async (_event, key: string) => {
