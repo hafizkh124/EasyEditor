@@ -5,7 +5,11 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "supabase/functions/**", "tools/**", "scripts/**"] },
+  // `dist-electron` and `release` hold build output, not source. Linting the
+  // bundled main-process file made `npm run lint` fail outright on an inline
+  // eslint-disable for a rule this config does not load — a red gate caused
+  // entirely by an artifact of the previous desktop build.
+  { ignores: ["dist", "dist-electron", "release", "supabase/functions/**", "tools/**", "scripts/**"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -62,6 +66,10 @@ export default tseslint.config(
       "src/pages/ForgotPassword.tsx",
       "src/pages/ResetPassword.tsx",
       "src/pages/OAuthConsent.tsx",
+      // Desktop in-app optional sign-in — same cloud-only auth surface as Login,
+      // reached from inside the offline app rather than a public landing page.
+      "src/components/auth/DesktopAccountMenu.tsx",
+      "src/lib/desktopOauth.ts",
       // ── admin ───────────────────────────────────────────────────────────
       "src/pages/Admin.tsx",
       "src/lib/admin/corpus-rpc.ts",

@@ -18,6 +18,8 @@ import SidebarHistory from "@/components/SidebarHistory";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
 import AppVersionBadge from "@/components/AppVersionBadge";
 import ModeBadge from "@/components/ModeBadge";
+import { DesktopAccountMenu } from "@/components/auth/DesktopAccountMenu";
+import { isDesktop } from "@/utils/environment";
 import type { SessionSection } from "@/hooks/useSessionHistory";
 
 /**
@@ -54,7 +56,6 @@ const ALL_TOOLS: ToolItem[] = [
   { path: "/translate", icon: Languages, labelKey: "nav.translate", fallbackLabel: "ترجمہ" },
 ];
 
-const isDesktop = () => typeof window !== "undefined" && Boolean(window.electronAPI?.isDesktop);
 const LOCAL_VOICE_ENABLED = import.meta.env.VITE_LOCAL_VOICE === "true";
 
 const toolsChildren = !isDesktop()
@@ -425,6 +426,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <img src="/favicon.webp" alt="Easy Editor" width={24} height={24} className="rounded" />
             <span className="text-base font-bold text-foreground truncate">Easy Editor</span>
           </Link>
+          <DesktopAccountMenu />
           <ModeBadge />
           <NotificationBell />
         </header>
@@ -435,7 +437,10 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <AppVersionBadge compact />
             <ModeBadge />
           </div>
-          <NotificationBell />
+          <div className="flex items-center gap-2">
+            <DesktopAccountMenu />
+            <NotificationBell />
+          </div>
         </div>
 
         <main id="main-content" className="flex-1 overflow-auto pb-20 md:pb-6">

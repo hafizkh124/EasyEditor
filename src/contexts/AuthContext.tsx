@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { applyPendingReferral, consumePendingReferralCode } from "@/lib/referral";
+import { toast } from "sonner";
 
 interface AuthContextType {
   user: User | null;
@@ -91,6 +92,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Desktop only: the OAuth callback arrives over IPC rather than as a page
+  // navigation (see src/lib/desktopOauth.ts). It has to be handled here, not in
+  // the sign-in dialog, because the app can be cold-started BY the callback —
+  // at which point no dialog is open to receive it. `onAuthStateChange` above
+  // then picks up the new session as it would for any other sign-in.
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.auth?.onDeepLink((url) => {
+      void import("@/lib/desktopOauth").then(({ completeDesktopOauth }) =>
+        completeDesktopOauth(url).then(({ error }) => {
+          if (error) toast.error(error.message);
+        }),
+      );
+    });
+    return unsubscribe;
   }, []);
 
   const signOut = async () => {

@@ -73,6 +73,22 @@ const electronAPI = {
     },
   },
 
+  auth: {
+    /**
+     * Fires when the OS hands the app an `easyeditor://` OAuth callback. The
+     * renderer owns the Supabase client, so it — not main — completes the
+     * session from the URL. Returns an unsubscribe function, same shape as
+     * `voice.onDownloadProgress`.
+     */
+    onDeepLink: (callback: (url: string) => void): (() => void) => {
+      const listener = (_event: unknown, url: string) => callback(url);
+      ipcRenderer.on(ALLOWED_IPC_CHANNELS.AUTH_DEEP_LINK, listener);
+      return () => {
+        ipcRenderer.removeListener(ALLOWED_IPC_CHANNELS.AUTH_DEEP_LINK, listener);
+      };
+    },
+  },
+
   voice: {
     synthesize: (request: VoiceSynthesizeRequest): Promise<VoiceSynthesizeResult> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.VOICE_SYNTHESIZE, request),

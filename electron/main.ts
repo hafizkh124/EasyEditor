@@ -9,11 +9,58 @@ import { registerTafsirHandlers } from './ipc/tafsirHandlers.js';
 import { terminateLocalSync } from './tafsir/mcpClient.js';
 import { registerVoiceHandlers } from './ipc/voiceHandlers.js';
 import { isAllowedExternalUrl } from './lib/urlAllowlist.js';
+import { ALLOWED_IPC_CHANNELS } from './ipc/registry.js';
 
 function openExternalSafely(rawUrl: string): void {
   const parsed = isAllowedExternalUrl(rawUrl);
   if (!parsed) return;
   void shell.openExternal(parsed.toString());
+}
+
+/**
+ * The project's Supabase origin, substituted at build time by the `define` map
+ * in vite.config.ts (the electron entries get their own copy — this build does
+ * not inherit the renderer's). Kept as an origin, not a full URL, because that
+ * is the form both the CSP and the external-URL allowlist want.
+ */
+const SUPABASE_ORIGIN = (() => {
+  try {
+    return new URL(import.meta.env.VITE_SUPABASE_URL).origin;
+  } catch {
+    // Never let a missing/garbled URL take the whole app down at startup — the
+    // app is offline-first, so the worst case is that optional sign-in is
+    // blocked by CSP, exactly as it was before this origin was added.
+    return '';
+  }
+})();
+
+/**
+ * Custom scheme for the OAuth round trip (SPEC-M5 revision, 2026-08-08).
+ *
+ * The desktop app is loaded from `file://`, so it has no origin an OAuth
+ * provider can redirect back to, and Google refuses to authenticate inside an
+ * embedded window anyway. The standard answer is the one used here: open the
+ * consent page in the user's real browser, and have the provider redirect to a
+ * private scheme the OS hands back to this app.
+ */
+const APP_PROTOCOL = 'easyeditor';
+
+/**
+ * Deliver an `easyeditor://` callback to the renderer, which owns the Supabase
+ * client and completes the session. Main deliberately does not parse the
+ * tokens: it forwards the URL and nothing else.
+ */
+function forwardDeepLink(rawUrl: string): void {
+  if (!rawUrl.startsWith(`${APP_PROTOCOL}://`)) return;
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.focus();
+  mainWindow.webContents.send(ALLOWED_IPC_CHANNELS.AUTH_DEEP_LINK, rawUrl);
+}
+
+/** Pick the deep link out of a process argv (Windows/Linux delivery route). */
+function deepLinkFromArgv(argv: string[]): string | undefined {
+  return argv.find((arg) => arg.startsWith(`${APP_PROTOCOL}://`));
 }
 
 function setupApplicationMenu(): void {
@@ -87,10 +134,16 @@ function createWindow() {
   });
 
   // Security: CSP Header injection (SPEC-M5 FR-2.2/NFR-11).
-  // connect-src is scoped to Google's Gemini endpoint only: local mode's
-  // entire privacy premise is "no network request but Google" — a broad
-  // `https:` here would silently let that promise slip. No 'unsafe-eval' or
-  // remote script/style/font sources either ("no remote content" per FR-2.2).
+  // connect-src is a named list, never a bare `https:` — local mode's privacy
+  // premise is "no network request the user did not ask for", and a wildcard
+  // here would let that promise slip silently. Two hosts are named:
+  //   • Google's Gemini endpoint — the BYOK AI path.
+  //   • The project's own Supabase origin — needed only for the OPTIONAL
+  //     in-app sign-in and the cloud features behind it. Without it the browser
+  //     blocks every auth call before it leaves the renderer, so the sign-in
+  //     dialog can only ever fail. Nothing contacts this host until the user
+  //     opts in; the workspace itself stays entirely local.
+  // Still no 'unsafe-eval' and no remote script/style/font sources (FR-2.2).
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
@@ -101,7 +154,7 @@ function createWindow() {
           "style-src 'self' 'unsafe-inline'; " +
           "font-src 'self' data:; " +
           "img-src 'self' data: blob:; " +
-          "connect-src 'self' https://generativelanguage.googleapis.com; " +
+          `connect-src 'self' https://generativelanguage.googleapis.com ${SUPABASE_ORIGIN}; ` +
           "object-src 'none'; base-uri 'self'; frame-ancestors 'none';",
         ],
       },
@@ -139,22 +192,71 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  setupApplicationMenu();
-  registerSystemHandlers();
-  registerAiHandlers();
-  registerWorkspaceHandlers();
-  registerShamelaHandlers();
-  registerTafsirHandlers();
-  registerVoiceHandlers();
-  createWindow();
+// ── OAuth deep-link plumbing ────────────────────────────────────────────────
+//
+// Windows and Linux deliver `easyeditor://…` by launching a SECOND copy of the
+// app with the URL in argv. Without a single-instance lock that copy would open
+// its own window (and its own SQLite handle) and the first one would never hear
+// about the callback. So: take the lock, and let the second copy hand its argv
+// to the running instance and exit. macOS instead fires `open-url` on the
+// existing process, so both routes are wired.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (_event, argv) => {
+    const link = deepLinkFromArgv(argv);
+    if (link) {
+      forwardDeepLink(link);
+      return;
+    }
+    // Plain re-launch (user double-clicked the icon again): surface the window
+    // that already exists rather than leaving them staring at nothing.
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
     }
   });
-});
+
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    forwardDeepLink(url);
+  });
+
+  app.whenReady().then(() => {
+    // In dev the executable is Electron itself, so the OS needs the path to the
+    // app entry as well or it registers the wrong command for the scheme.
+    if (process.defaultApp && process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient(APP_PROTOCOL, process.execPath, [path.resolve(process.argv[1])]);
+    } else {
+      app.setAsDefaultProtocolClient(APP_PROTOCOL);
+    }
+
+    setupApplicationMenu();
+    registerSystemHandlers();
+    registerAiHandlers();
+    registerWorkspaceHandlers();
+    registerShamelaHandlers();
+    registerTafsirHandlers();
+    registerVoiceHandlers();
+    createWindow();
+
+    // Cold start FROM a deep link (the app was not running when the browser
+    // handed the callback over). The renderer is not listening yet, so wait for
+    // it to finish loading before sending.
+    const initialLink = deepLinkFromArgv(process.argv);
+    if (initialLink) {
+      mainWindow?.webContents.once('did-finish-load', () => forwardDeepLink(initialLink));
+    }
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
+  });
+}
 
 // No zombie `uvx tafsir-mcp` / python subprocess left behind (SPEC-TAFSIR §FR-3.3).
 // `before-quit` does not await promises, so this is a synchronous child kill.

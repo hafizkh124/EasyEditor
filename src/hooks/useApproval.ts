@@ -34,6 +34,26 @@ export const useApproval = () => {
       supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
     ]);
 
+    // A failed request is NOT a "not approved" answer. Collapsing the two sent
+    // users whose profile fetch merely failed (offline, transient 5xx) to
+    // /pending-approval and locked the app behind ApprovalGate. When we could
+    // not read the profile, leave every flag at "unknown" (null) — the callers
+    // gate on the explicit `=== false`, so unknown means "don't act on it".
+    //
+    // PGRST116 ("no matching record") is excluded on purpose: that IS a real
+    // answer — a user with no profile row genuinely is not approved yet, and
+    // must still be sent to /pending-approval.
+    if (profileRes.error && profileRes.error.code !== "PGRST116") {
+      setIsApproved(null);
+      setRejectionStatus(null);
+      setRejectionReason(null);
+      setProfileComplete(null);
+      setDisplayName(null);
+      setIsAdmin(roleRes.data === true);
+      setLoading(false);
+      return;
+    }
+
     const profileData = profileRes.data as {
       is_approved?: boolean | null;
       rejection_status?: string | null;
