@@ -18,6 +18,7 @@ import { VersionHistorySheet } from "./VersionHistorySheet";
 import { exportTxt, exportHtml, exportDoc, exportPdf, stripSuggestions } from "@/lib/editor/exporters";
 import AppVersionBadge from "@/components/AppVersionBadge";
 import { WorkspaceAppMenu } from "./WorkspaceAppMenu";
+import { DesktopAccountMenu } from "@/components/auth/DesktopAccountMenu";
 import type { Document, DocumentVersion } from "@/core/workspace/types";
 
 interface WorkspaceTopBarProps {
@@ -192,6 +193,9 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Optional online account sign-in (desktop only) */}
+        <DesktopAccountMenu />
 
         {/* Language / RTL toggle */}
         <Button variant="ghost" size="icon" className="h-8 w-8 text-xs" aria-label="Switch Language / RTL" onClick={toggleDirection}>
