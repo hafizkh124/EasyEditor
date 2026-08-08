@@ -125,14 +125,26 @@ export function useReaderProgress(
     }
   }, [bookId, title, author, isFavorite]);
 
+  // Whether a specific page is bookmarked, derived from the loaded bookmark
+  // list. Callers create this hook before their reader state exists, so they
+  // cannot pass `currentPage` in — this lets the toolbar icon follow page
+  // turns instead of showing a stale value (and deleting the bookmark the
+  // user meant to add).
+  const isPageBookmarked = useCallback(
+    (page: number) => bookmarks.some((b) => b.pageNumber === page),
+    [bookmarks],
+  );
+
   return {
     progress,
     bookmarked,
     isFavorite,
     bookmarks,
+    isPageBookmarked,
     loaded,
     savePage,
     toggleBookmark,
     toggleFavorite,
   };
 }
+
