@@ -11,6 +11,11 @@ export const ALLOWED_IPC_CHANNELS = {
   SYSTEM_IS_DESKTOP: 'system:is-desktop',
   SYSTEM_OPEN_EXTERNAL: 'system:open-external',
 
+  // Optional cloud sign-in: main → renderer only. Carries the raw
+  // `easyeditor://auth/callback…` URL the OS handed us after the user approved
+  // the OAuth consent screen in their real browser.
+  AUTH_DEEP_LINK: 'auth:deep-link',
+
   // BYOK AI (M5.2 placeholder channels)
   AI_SAVE_KEY: 'ai:save-key',
   AI_GET_KEY_STATUS: 'ai:get-key-status',

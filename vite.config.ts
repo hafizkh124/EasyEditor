@@ -29,7 +29,18 @@ export default defineConfig(({ mode }) => {
   // does not inherit the renderer config below, so the path aliases have to be
   // repeated here — without them `@/...` imports reached from electron/ fail to
   // resolve and the desktop build dies.
+  //
+  // The `define` map has to be repeated for the same reason: electron/main.ts
+  // needs the Supabase origin to put in the CSP's connect-src, and without this
+  // it would either read an undefined env var or carry a second hardcoded copy
+  // of the URL that could drift from the renderer's.
+  const electronDefine = {
+    "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(resolved.VITE_SUPABASE_URL),
+    "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(resolved.VITE_SUPABASE_PROJECT_ID),
+  };
+
   const electronViteConfig = {
+    define: electronDefine,
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
