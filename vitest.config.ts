@@ -8,6 +8,13 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    // Vitest's 5s default is too tight for this suite. Several tests `await
+    // import()` an Electron module inside the test body, so the first one pays
+    // for transpiling it, and the page-level suites each mount a full React
+    // tree. Both pass comfortably alone and were timing out only when the
+    // whole suite ran in parallel — a scheduling artefact reported as a test
+    // failure. A genuinely hung test still fails here, just 25s later.
+    testTimeout: 30_000,
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     // vite.config.ts supplies these via `define`, but this config is separate and
     // does not inherit it. Without them `createClient()` throws at import time, so
