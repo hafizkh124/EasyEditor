@@ -29,7 +29,7 @@ export default function Privacy() {
       </ul>
 
       <h2>2. Why We Use Your Data &amp; Legal Basis</h2>
-      <table>
+      <table className="block overflow-x-auto sm:table">
         <thead>
           <tr><th>Purpose</th><th>Legal basis</th></tr>
         </thead>

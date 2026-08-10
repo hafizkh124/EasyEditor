@@ -121,17 +121,17 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
                   {fav.title}
                 </p>
                 {fav.author && (
-                  <p className="text-[10px] text-muted-foreground truncate w-full mt-0.5">
+                  <p className="text-xs text-muted-foreground truncate w-full mt-0.5">
                     {fav.author}
                   </p>
                 )}
                 {progress && progress.pageCount > 0 && (
                   <div className="w-full mt-2">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[9px] text-muted-foreground/70">
+                      <span className="text-xs text-muted-foreground/70">
                         Page {progress.pageNumber} / {progress.pageCount}
                       </span>
-                      <span className="text-[9px] text-muted-foreground/70">{pct}%</span>
+                      <span className="text-xs text-muted-foreground/70">{pct}%</span>
                     </div>
                     <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
                       <div
@@ -146,7 +146,7 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
           })}
         </div>
 
-        <div className="flex items-center gap-1.5 px-1 pt-1 text-[11px] text-muted-foreground/70">
+        <div className="flex items-center gap-1.5 px-1 pt-1 text-xs text-muted-foreground/70">
           <BookOpen className="h-3 w-3" />
           Click a book to continue reading from where you left off.
         </div>

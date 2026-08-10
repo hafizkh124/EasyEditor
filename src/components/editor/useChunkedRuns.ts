@@ -11,6 +11,7 @@ import {
 } from "@/lib/tasks/chunkOrchestrator";
 import { announceRunResult, describeRunResult, toLastRunSummary } from "./chunkedRunReport";
 import type { LastRunSummary } from "@/components/workspace/TaskRunCard";
+import { translateStored } from "@/lib/i18n";
 
 /** A chunked run that is waiting for the user's explicit go-ahead (FR-5.11). */
 export interface PendingChunkedRun {
@@ -37,7 +38,7 @@ interface UseChunkedRunsArgs {
   availableTokens?: number;
   emitChange: () => void;
   setAiBusy: (key: string | null) => void;
-  t: (key: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 /**
@@ -87,7 +88,7 @@ export function useChunkedRuns({
     if (!editor || !preRunDocRef.current) return;
     editor.commands.setContent(preRunDocRef.current);
     emitChange();
-    toast.success("رن کی تمام تبدیلیاں واپس لے لی گئیں۔");
+    toast.success(translateStored("toast.run.reverted"));
     dismissLastRun();
   }, [editor, emitChange, dismissLastRun]);
 

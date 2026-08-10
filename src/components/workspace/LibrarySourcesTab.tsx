@@ -8,6 +8,7 @@ import { runLibraryIngest } from "@/lib/corpus/ingestOrchestrator";
 import { SourceUploadDialog } from "./SourceUploadDialog";
 import type { LibraryItem } from "@/core/workspace/types";
 import { toast } from "sonner";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 const KIND_ICONS: Record<string, React.ElementType> = {
   book: BookOpen,
@@ -54,10 +55,10 @@ export function LibrarySourcesTab() {
         itemId: item.id,
         startOffset: typeof ingest.next_offset === "number" ? ingest.next_offset : 0,
       });
-      if (final.done) toast.success(`'${item.title}' مکمل ہو گئی۔`);
-      else toast.info(`'${item.title}' ابھی نامکمل ہے۔`);
+      if (final.done) toast.success(translateStoredFormat("toast.library.item_complete", { title: item.title }));
+      else toast.info(translateStoredFormat("toast.library.item_incomplete", { title: item.title }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "پروسیس دوبارہ نہ چل سکا۔");
+      toast.error(err instanceof Error ? err.message : translateStored("toast.library.retry_failed"));
     } finally {
       setResuming(null);
       refresh();
@@ -67,10 +68,10 @@ export function LibrarySourcesTab() {
   const handleDelete = async (itemId: string, title: string) => {
     const ok = await libraryChunkService.deleteLibraryItem(itemId);
     if (ok) {
-      toast.success(`'${title}' اور اس کے تمام ایمبیڈنگز حذف کر دیے گئے۔`);
+      toast.success(translateStoredFormat("toast.library.item_deleted", { title }));
       refresh();
     } else {
-      toast.error("حذف کرنے میں ناکامی۔");
+      toast.error(translateStored("toast.common.delete_failed"));
     }
   };
 
@@ -85,7 +86,7 @@ export function LibrarySourcesTab() {
           <Button
             size="sm"
             variant="outline"
-            className="h-6 px-2 text-[11px] gap-1 border-primary/30 text-primary hover:bg-primary/10"
+            className="h-6 px-2 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
             onClick={() => setUploadOpen(true)}
           >
             <Plus className="h-3 w-3" />
@@ -104,7 +105,7 @@ export function LibrarySourcesTab() {
           <div className="p-3 text-xs text-muted-foreground text-center py-8 space-y-2">
             <Database className="h-8 w-8 mx-auto opacity-40 text-primary" />
             <p className="font-semibold text-foreground text-xs">آپ کا ذاتی کتب خانہ خالی ہے</p>
-            <p className="text-[11px]">PDF، DOCX یا TXT اپلوڈ کریں تاکہ AI آپ کی کتابوں سے حوالہ جات نکال سکے۔</p>
+            <p className="text-xs">PDF، DOCX یا TXT اپلوڈ کریں تاکہ AI آپ کی کتابوں سے حوالہ جات نکال سکے۔</p>
             {corpusEnabled && (
               <Button
                 size="sm"
@@ -133,19 +134,19 @@ export function LibrarySourcesTab() {
                     <Icon className="h-4 w-4 text-primary shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="font-medium truncate text-foreground text-xs">{item.title}</p>
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <span className="capitalize">{item.kind}</span>
                         {ingestStatus === "ready" ? (
-                          <Badge variant="outline" className="text-[9px] gap-0.5 px-1 py-0 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                          <Badge variant="outline" className="text-xs gap-0.5 px-1 py-0 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
                             <CheckCircle2 className="h-2.5 w-2.5" />
                             محفوظ
                           </Badge>
                         ) : ingestStatus === "failed" ? (
-                          <Badge variant="destructive" className="text-[9px] px-1 py-0">
+                          <Badge variant="destructive" className="text-xs px-1 py-0">
                             نامکمل
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="text-[9px] px-1 py-0 gap-0.5">
+                          <Badge variant="secondary" className="text-xs px-1 py-0 gap-0.5">
                             <Loader2 className="h-2.5 w-2.5 animate-spin" />
                             {progress}%
                           </Badge>

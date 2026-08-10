@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { customTaskService } from "@/lib/tasks/customTasks";
 import type { TaskDefinition } from "@/lib/tasks/types";
+import { translateStored } from "@/lib/i18n";
 
 interface TaskEditorDialogProps {
   open: boolean;
@@ -62,15 +63,15 @@ export const TaskEditorDialog: React.FC<TaskEditorDialogProps> = ({
           label: label.trim(),
           system_prompt: prompt.trim(),
         });
-        if (!ok) throw new Error("ٹاسک محفوظ نہ ہو سکا۔");
+        if (!ok) throw new Error(translateStored("toast.task.save_failed"));
       } else if (baseTask) {
         await customTaskService.createFromBuiltin(baseTask.slug, label, prompt);
       }
-      toast.success("ٹاسک محفوظ ہو گیا۔");
+      toast.success(translateStored("toast.task.saved"));
       onOpenChange(false);
       onSaved();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "ٹاسک محفوظ نہ ہو سکا۔");
+      toast.error(e instanceof Error ? e.message : translateStored("toast.task.save_failed"));
     } finally {
       setSaving(false);
     }
@@ -113,7 +114,7 @@ export const TaskEditorDialog: React.FC<TaskEditorDialogProps> = ({
               placeholder="ماڈل کو بتائیں کہ متن کے ساتھ کیا کرنا ہے۔ زبان برقرار رکھنے کی ہدایت لکھنا مفید ہے۔"
               className="text-xs leading-relaxed"
             />
-            <p className="text-[11px] text-muted-foreground flex items-start gap-1">
+            <p className="text-xs text-muted-foreground flex items-start gap-1">
               <Info className="h-3 w-3 shrink-0 mt-0.5 text-blue-500" />
               ہدایت سرور پر محفوظ رہتی ہے اور صرف آپ کے اکاؤنٹ سے پڑھی جاتی ہے۔ کم از کم 20 حروف۔
             </p>

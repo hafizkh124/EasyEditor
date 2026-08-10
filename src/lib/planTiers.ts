@@ -94,11 +94,11 @@ export function priceForCurrency(tier: PlanTier, currency: "PKR" | "USD"): strin
 /** Build translated feature labels from templates. */
 export function buildFeatures(
   templates: PlanFeatureTemplate[],
-  t: (k: string) => string,
+  t: import("@/lib/i18n").Translator,
 ): { label: string; included: boolean; comingSoon?: boolean }[] {
   return templates.map((f) => {
-    const parts = [f.qty, t(f.nameKey)].filter(Boolean);
-    if (f.suffixKey) parts.push(t(f.suffixKey));
+    const parts = [f.qty, t(f.nameKey as import("@/lib/i18n").TranslationKey)].filter(Boolean);
+    if (f.suffixKey) parts.push(t(f.suffixKey as import("@/lib/i18n").TranslationKey));
     return { label: parts.join(" "), included: f.included, comingSoon: f.comingSoon };
   });
 }

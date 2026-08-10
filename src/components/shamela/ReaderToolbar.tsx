@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ReaderToolbarProps {
   title: string;
@@ -63,6 +64,7 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
   onRequestSplit,
   onRequestPdf,
 }) => {
+  const { t } = useLanguage();
   const rtl = document.documentElement.dir === "rtl";
   const PrevIcon = rtl ? ChevronRight : ChevronLeft;
   const NextIcon = rtl ? ChevronLeft : ChevronRight;
@@ -74,7 +76,8 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
         size="icon"
         className={cn("h-8 w-8", tocOpen && "bg-accent text-accent-foreground")}
         onClick={onToggleToc}
-        title="Contents"
+        title={t("reader.contents")}
+        aria-label={t("reader.contents")}
       >
         <ListTree className="h-4 w-4" />
       </Button>
@@ -84,26 +87,26 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
         <div className="min-w-0">
           <p className="text-sm font-medium truncate leading-tight">{title}</p>
           {subtitle && (
-            <p className="text-[11px] text-muted-foreground truncate leading-tight">{subtitle}</p>
+            <p className="text-xs text-muted-foreground truncate leading-tight">{subtitle}</p>
           )}
         </div>
       </div>
 
       <div className="flex items-center gap-0.5">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack} disabled={!canGoBack} title="Back">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack} disabled={!canGoBack} title={t("reader.back")} aria-label={t("reader.back")}>
           <ArrowRight className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onForward} disabled={!canGoForward} title="Forward">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onForward} disabled={!canGoForward} title={t("reader.forward")} aria-label={t("reader.forward")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="w-px h-4 bg-border mx-1" />
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onPrev} disabled={currentPage <= 1} title="Previous page">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onPrev} disabled={currentPage <= 1} title={t("reader.previous_page")} aria-label={t("reader.previous_page")}>
           <PrevIcon className="h-4 w-4" />
         </Button>
-        <span className="text-[11px] text-muted-foreground px-1 tabular-nums whitespace-nowrap">
+        <span className="text-xs text-muted-foreground px-1 tabular-nums whitespace-nowrap">
           {currentPage} / {pageCount || "…"}
         </span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onNext} disabled={currentPage >= pageCount} title="Next page">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onNext} disabled={currentPage >= pageCount} title={t("reader.next_page")} aria-label={t("reader.next_page")}>
           <NextIcon className="h-4 w-4" />
         </Button>
       </div>
@@ -117,7 +120,8 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
             size="icon"
             className="h-8 w-8"
             onClick={onToggleBookmark}
-            title={bookmarked ? "Remove bookmark from this page" : "Bookmark this page"}
+            title={bookmarked ? t("reader.remove_bookmark") : t("reader.bookmark_page")}
+            aria-label={bookmarked ? t("reader.remove_bookmark") : t("reader.bookmark_page")}
           >
             <Bookmark className={cn("h-4 w-4", bookmarked && "text-primary fill-current")} />
           </Button>
@@ -128,7 +132,8 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
             size="icon"
             className="h-8 w-8"
             onClick={onToggleFavorite}
-            title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+            title={isFavorite ? t("reader.remove_favorite") : t("reader.add_favorite")}
+            aria-label={isFavorite ? t("reader.remove_favorite") : t("reader.add_favorite")}
           >
             <Star className={cn("h-4 w-4", isFavorite && "text-amber-500 fill-current")} />
           </Button>
@@ -139,7 +144,8 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
             size="icon"
             className="h-8 w-8"
             onClick={onRequestSplit}
-            title="Compare side by side (split view)"
+            title={t("reader.compare_split")}
+            aria-label={t("reader.compare_split")}
           >
             <Columns2 className="h-4 w-4" />
           </Button>
@@ -150,14 +156,15 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
             size="icon"
             className="h-8 w-8"
             onClick={onRequestPdf}
-            title="Open PDF"
+            title={t("reader.open_pdf")}
+            aria-label={t("reader.open_pdf")}
           >
             <FileText className="h-4 w-4" />
           </Button>
         )}
       </div>
 
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} title="Close reader">
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} title={t("reader.close")} aria-label={t("reader.close")}>
         <X className="h-4 w-4" />
       </Button>
     </header>

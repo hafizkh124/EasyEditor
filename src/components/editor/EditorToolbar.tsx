@@ -13,13 +13,14 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { loadEditorFont, type LazyEditorFontId } from "@/lib/fonts";
 import { ToolbarAiGroup } from "./ToolbarAiGroup";
 
 interface EditorToolbarProps {
   editor: Editor | null;
   isRtl: boolean;
   onToggleDirection: () => void;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
   aiBusy: string | null;
   onAddHarakat: () => void;
   onRemoveHarakat: () => void;
@@ -44,13 +45,13 @@ interface EditorToolbarProps {
 }
 
 /** Named editor fonts → CSS font-family values. Labels render in their own font for preview. */
-const FONT_OPTIONS: { labelKey: string; value: string; className: string }[] = [
+const FONT_OPTIONS: { labelKey: string; value: string; className: string; loadId?: LazyEditorFontId }[] = [
   { labelKey: "editor.font_default", value: "", className: "" },
-  { labelKey: "editor.font_nastaliq", value: "Noto Nastaliq Urdu", className: "font-nastaliq" },
+  { labelKey: "editor.font_nastaliq", value: "Noto Nastaliq Urdu", className: "font-nastaliq", loadId: "nastaliq" },
   { labelKey: "editor.font_naskh", value: "Noto Naskh Arabic", className: "font-naskh" },
-  { labelKey: "editor.font_amiri", value: "Amiri", className: "font-amiri" },
-  { labelKey: "editor.font_quran", value: "Amiri Quran", className: "font-quran" },
-  { labelKey: "editor.font_vazir", value: "Vazirmatn", className: "font-vazir" },
+  { labelKey: "editor.font_amiri", value: "Amiri", className: "font-amiri", loadId: "amiri" },
+  { labelKey: "editor.font_quran", value: "Amiri Quran", className: "font-quran", loadId: "quran" },
+  { labelKey: "editor.font_vazir", value: "Vazirmatn", className: "font-vazir", loadId: "vazir" },
 ];
 
 const EditorToolbar = ({
@@ -85,7 +86,7 @@ const EditorToolbar = ({
   ];
 
   return (
-    <div className="flex items-center gap-1 p-2 border-b border-border bg-muted/30 flex-wrap">
+    <div className="flex items-center gap-1 p-2 border-b border-border bg-muted/60 flex-wrap">
       {groups.map((group, gi) => (
         <div key={gi} className="flex items-center gap-0.5">
           {gi > 0 && <Separator orientation="vertical" className="h-6 mx-1" />}
@@ -134,10 +135,13 @@ const EditorToolbar = ({
           {FONT_OPTIONS.map((f) => (
             <DropdownMenuItem
               key={f.value || "default"}
-              onClick={() => onSetFont(f.value)}
+              onClick={() => {
+                if (f.loadId) void loadEditorFont(f.loadId);
+                onSetFont(f.value);
+              }}
               className={cn("cursor-pointer", f.className)}
             >
-              {t(f.labelKey)}
+              {t(f.labelKey as import("@/lib/i18n").TranslationKey)}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -214,8 +218,8 @@ const EditorToolbar = ({
         <DropdownMenuTrigger asChild>
           <Button variant={trackMode === "edit" ? "ghost" : "secondary"} size="sm" className="h-8 gap-1 px-2 text-xs" aria-label={t("editor.track_changes")} title={t("editor.track_changes")}>
             <GitCompare className="h-4 w-4" />
-            <span className="hidden sm:inline">{t(`editor.mode_${trackMode}`)}</span>
-            {pendingCount > 0 && <span className="ml-0.5 rounded-full bg-primary px-1.5 text-[10px] leading-4 text-primary-foreground">{pendingCount}</span>}
+            <span className="hidden sm:inline">{t(`editor.mode_${trackMode}` as import("@/lib/i18n").TranslationKey)}</span>
+            {pendingCount > 0 && <span className="ml-0.5 rounded-full bg-primary px-1.5 text-xs leading-4 text-primary-foreground">{pendingCount}</span>}
             <ChevronDown className="h-3 w-3 opacity-60" />
           </Button>
         </DropdownMenuTrigger>

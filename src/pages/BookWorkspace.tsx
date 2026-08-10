@@ -15,6 +15,7 @@ import { BookOutlineSidebar, type Chapter, type Section } from "@/components/boo
 import { BookEditorView } from "@/components/book/BookEditorView";
 import { KhittatBahthModal } from "@/components/book/KhittatBahthModal";
 import { BookExportModal } from "@/components/book/BookExportModal";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 interface BookProject {
   id: string;
@@ -68,7 +69,7 @@ export default function BookWorkspace() {
       }
     } catch (err) {
       console.error(err);
-      toast.error("کتابی پروجیکٹس حاصل کرنے میں ناکامی۔");
+      toast.error(translateStored("toast.book.projects_load_failed"));
     } finally {
       setLoading(false);
     }
@@ -115,7 +116,7 @@ export default function BookWorkspace() {
       }
     } catch (err) {
       console.error(err);
-      toast.error("ابواب و فصول کا خاکہ حاصل نہ ہو سکا۔");
+      toast.error(translateStored("toast.book.outline_load_failed"));
     } finally {
       setLoading(false);
     }
@@ -123,7 +124,7 @@ export default function BookWorkspace() {
 
   const handleCreateBookProject = async () => {
     if (!newTitle.trim()) {
-      toast.error("کتاب کا عنوان درج کریں۔");
+      toast.error(translateStored("toast.book.title_required"));
       return;
     }
     try {
@@ -190,7 +191,7 @@ export default function BookWorkspace() {
         });
       }
 
-      toast.success("نیا کتابی تصنیف پروجیکٹ شروع ہو گیا۔");
+      toast.success(translateStored("toast.book.project_started"));
       setNewBookModal(false);
       setNewTitle("");
       setNewSubtitle("");
@@ -199,7 +200,7 @@ export default function BookWorkspace() {
       selectBookProject(proj);
     } catch (err) {
       console.error(err);
-      toast.error("پروجیکٹ کی تخلیق میں ناکامی۔");
+      toast.error(translateStored("toast.book.project_create_failed"));
     }
   };
 
@@ -222,10 +223,10 @@ export default function BookWorkspace() {
       const newChap: Chapter = { ...data, sections: [] };
       setChapters((prev) => [...prev, newChap]);
       setActiveChapter(newChap);
-      toast.success(`باب #${nextNum} شامل ہو گیا۔`);
+      toast.success(translateStoredFormat("toast.book.chapter_added", { number: nextNum }));
     } catch (err) {
       console.error(err);
-      toast.error("باب کی شمولیت میں ناکامی۔");
+      toast.error(translateStored("toast.book.chapter_add_failed"));
     }
   };
 
@@ -250,10 +251,10 @@ export default function BookWorkspace() {
         prev.map((c) => (c.id === chapterId ? { ...c, sections: [...(c.sections || []), data] } : c))
       );
       setActiveSection(data);
-      toast.success(`فصل #${nextNum} شامل ہو گئی۔`);
+      toast.success(translateStoredFormat("toast.book.section_added", { number: nextNum }));
     } catch (err) {
       console.error(err);
-      toast.error("فصل کی شمولیت میں ناکامی۔");
+      toast.error(translateStored("toast.book.section_add_failed"));
     }
   };
 
@@ -335,7 +336,7 @@ export default function BookWorkspace() {
         </div>
 
         {/* Studio Canvas */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           {/* Projects Quick Picker & Outline Sidebar */}
           <BookOutlineSidebar
             chapters={chapters}
@@ -407,7 +408,7 @@ export default function BookWorkspace() {
           setPendingPlan({ abstract: plan.abstract || "", chapters: plan.chapters || [] });
           setNewBookModal(true);
           if (plan.chapters?.length) {
-            toast.info(`${plan.chapters.length} ابواب خاکے سے شامل کیے جائیں گے۔`);
+            toast.info(translateStoredFormat("toast.book.outline_count", { count: plan.chapters.length }));
           }
         }}
       />

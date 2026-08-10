@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Folder, FileText } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface Chapter {
   id: string;
@@ -39,6 +40,7 @@ export function BookOutlineSidebar({
   onAddChapter,
   onAddSection,
 }: BookOutlineSidebarProps) {
+  const { t } = useLanguage();
   const [newChapterTitle, setNewChapterTitle] = useState("");
   const [addingChapter, setAddingChapter] = useState(false);
   const [addingSectionForChapter, setAddingSectionForChapter] = useState<string | null>(null);
@@ -58,8 +60,11 @@ export function BookOutlineSidebar({
     setAddingSectionForChapter(null);
   };
 
+  // A fixed 18rem column leaves ~87px for the editor on a 375px screen, so on
+  // phones the outline stacks above the canvas at full width with its own
+  // capped height instead of competing with it for horizontal space.
   return (
-    <div className="w-72 border-r border-border bg-muted/20 flex flex-col h-full overflow-y-auto">
+    <div className="w-full md:w-72 max-h-56 md:max-h-none border-b md:border-b-0 md:border-r border-border bg-muted/60 flex flex-col md:h-full overflow-y-auto shrink-0">
       {/* Top Controls */}
       <div className="p-3 border-b border-border flex items-center justify-between">
         <span className="text-xs font-semibold flex items-center gap-1.5">
@@ -81,8 +86,8 @@ export function BookOutlineSidebar({
             className="text-xs h-8"
           />
           <div className="flex gap-1.5 justify-end">
-            <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setAddingChapter(false)}>منسوخ</Button>
-            <Button size="sm" className="h-6 text-[10px]" onClick={handleCreateChapter}>شامل کریں</Button>
+            <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => setAddingChapter(false)}>منسوخ</Button>
+            <Button size="sm" className="h-6 text-xs" onClick={handleCreateChapter}>شامل کریں</Button>
           </div>
         </div>
       )}
@@ -109,6 +114,8 @@ export function BookOutlineSidebar({
                   size="icon"
                   variant="ghost"
                   className="h-5 w-5 opacity-70 hover:opacity-100"
+                  title={t("book.add_section", "Add section")}
+                  aria-label={t("book.add_section", "Add section")}
                   onClick={(e) => {
                     e.stopPropagation();
                     setAddingSectionForChapter(chap.id);
@@ -129,7 +136,7 @@ export function BookOutlineSidebar({
                       className={`flex items-center gap-1.5 p-1.5 rounded text-xs cursor-pointer transition-colors ${
                         isSecActive
                           ? "bg-primary/15 text-primary font-medium border-r-2 border-primary"
-                          : "hover:bg-muted/60 text-muted-foreground"
+                          : "hover:bg-muted text-muted-foreground"
                       }`}
                     >
                       <FileText className="h-3 w-3 shrink-0" />
@@ -148,8 +155,8 @@ export function BookOutlineSidebar({
                       className="text-xs h-7"
                     />
                     <div className="flex gap-1 justify-end">
-                      <Button size="sm" variant="ghost" className="h-5 text-[9px]" onClick={() => setAddingSectionForChapter(null)}>منسوخ</Button>
-                      <Button size="sm" className="h-5 text-[9px]" onClick={() => handleCreateSection(chap.id)}>افزود</Button>
+                      <Button size="sm" variant="ghost" className="h-5 text-xs" onClick={() => setAddingSectionForChapter(null)}>منسوخ</Button>
+                      <Button size="sm" className="h-5 text-xs" onClick={() => handleCreateSection(chap.id)}>افزود</Button>
                     </div>
                   </div>
                 )}

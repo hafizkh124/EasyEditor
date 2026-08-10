@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Search, Languages, Layers, ListChecks, ShieldCheck, StickyNote, X } from "lucide-react";
+import { ListChecks, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResearchPanel } from "@/components/research/ResearchPanel";
@@ -11,6 +11,27 @@ import { AiReaderPanel } from "@/components/reader/AiReaderPanel";
 import { NotesPanel } from "@/components/reader/NotesPanel";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { type WorkbenchTab } from "@/core/workspace/usePanelState";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { availableCapabilities, isCapabilityAvailable } from "@/core/capabilities/registry";
+import type { Capability, CapabilityId } from "@/core/capabilities/registry";
+
+/** Written out so Tailwind's class scanner can see every value it must emit. */
+const GRID_COLS: Record<number, string> = {
+  3: "grid-cols-3", 4: "grid-cols-4", 5: "grid-cols-5", 6: "grid-cols-6", 7: "grid-cols-7",
+};
+
+/**
+ * Translate and Extract are the same paid edge functions as their standalone
+ * pages, so on desktop the tabs go with them. The remaining tabs simply
+ * redistribute across the grid.
+ */
+const TAB_VALUE_BY_CAPABILITY: Partial<Record<CapabilityId, WorkbenchTab>> = {
+  "wb.aiReader": "aiReader",
+  "wb.research": "research",
+  "wb.translate": "translate",
+  "wb.extract": "extract",
+  "wb.notes": "notes",
+};
 
 interface WorkbenchPanelProps {
   /**
@@ -22,11 +43,30 @@ interface WorkbenchPanelProps {
 
 export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = false }) => {
   const { workbenchCollapsed, setWorkbenchOpen, workbenchTab, setWorkbenchTab } = useWorkspace();
+  const { t } = useLanguage();
   const hidden = workbenchCollapsed && !alwaysVisible;
   // Tasks + Trust are both Pillar A/C surfaces, so they ride the flag SPEC-M3
   // §4.3 defines. (An extra `VITE_TRUST_UI` flag would be a fourth, undocumented
   // switch that `.env.example` never mentions.)
   const showTaskTabs = import.meta.env.VITE_TASK_LIBRARY !== "false";
+
+  const baseTabs = React.useMemo(
+    () =>
+      availableCapabilities("workbench-tab")
+        .map((capability) => ({ capability, value: TAB_VALUE_BY_CAPABILITY[capability.id] }))
+        .filter((entry): entry is { capability: Capability; value: WorkbenchTab } => Boolean(entry.value)),
+    [],
+  );
+
+  // A tab can become unreachable between sessions — persisted panel state may
+  // still name "translate" after the same document is opened on desktop. Without
+  // this the Workbench renders a tab strip with no panel under it.
+  const activeTabAvailable =
+    baseTabs.some((entry) => entry.value === workbenchTab)
+    || (showTaskTabs && (workbenchTab === "tasks" || workbenchTab === "trust"));
+  React.useEffect(() => {
+    if (!activeTabAvailable && baseTabs.length > 0) setWorkbenchTab(baseTabs[0].value);
+  }, [activeTabAvailable, baseTabs, setWorkbenchTab]);
 
   return (
     <div
@@ -42,36 +82,34 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
           onValueChange={(val) => setWorkbenchTab(val as WorkbenchTab)}
           className="w-full max-w-sm"
         >
-          {/* The seven labels do not fit the Workbench at its 320px minimum, so
-              the tab layout is icon-only with accessible names (R6/NFR-4). */}
-          <TabsList className={`grid ${showTaskTabs ? "grid-cols-7" : "grid-cols-5"} h-7 bg-muted/60 p-0.5`}>
-            <TabsTrigger value="aiReader" className="text-[11px] h-6 py-0 gap-1 px-1" title="AI Reader" aria-label="AI Reader">
-              <Sparkles className="h-3 w-3 shrink-0 text-primary" />
-              {!showTaskTabs && <span className="truncate">AI</span>}
-            </TabsTrigger>
-            <TabsTrigger value="research" className="text-[11px] h-6 py-0 gap-1 px-1" title="Research" aria-label="Research">
-              <Search className="h-3 w-3 shrink-0" />
-              {!showTaskTabs && <span className="truncate">Research</span>}
-            </TabsTrigger>
-            <TabsTrigger value="translate" className="text-[11px] h-6 py-0 gap-1 px-1" title="Translate" aria-label="Translate">
-              <Languages className="h-3 w-3 shrink-0" />
-              {!showTaskTabs && <span className="truncate">Translate</span>}
-            </TabsTrigger>
-            <TabsTrigger value="extract" className="text-[11px] h-6 py-0 gap-1 px-1" title="Extract" aria-label="Extract">
-              <Layers className="h-3 w-3 shrink-0" />
-              {!showTaskTabs && <span className="truncate">Extract</span>}
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="text-[11px] h-6 py-0 gap-1 px-1" title="Notes" aria-label="Notes">
-              <StickyNote className="h-3 w-3 shrink-0" />
-              {!showTaskTabs && <span className="truncate">Notes</span>}
-            </TabsTrigger>
+          {/* The labels do not fit the Workbench at its 320px minimum, so the
+              tab layout is icon-only with accessible names (R6/NFR-4) — which
+              is exactly why those names must be translated: they are the only
+              text a screen reader or a hovering user ever gets. */}
+          <TabsList className={`grid ${GRID_COLS[baseTabs.length + (showTaskTabs ? 2 : 0)]} h-7 bg-muted p-0.5`}>
+            {baseTabs.map(({ capability, value }) => {
+              const label = t(capability.labelKey, capability.fallbackLabel);
+              const Icon = capability.icon;
+              return (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="text-xs h-6 py-0 gap-1 px-1"
+                  title={label}
+                  aria-label={label}
+                >
+                  <Icon className={`h-3 w-3 shrink-0 ${value === "aiReader" ? "text-primary" : ""}`} />
+                  {!showTaskTabs && <span className="truncate">{label}</span>}
+                </TabsTrigger>
+              );
+            })}
 
             {showTaskTabs && (
               <>
-                <TabsTrigger value="tasks" className="text-[11px] h-6 py-0 gap-1 px-1" title="Tasks" aria-label="Tasks">
+                <TabsTrigger value="tasks" className="text-xs h-6 py-0 gap-1 px-1" title={t("workbench.tasks", "Tasks")} aria-label={t("workbench.tasks", "Tasks")}>
                   <ListChecks className="h-3 w-3 shrink-0" />
                 </TabsTrigger>
-                <TabsTrigger value="trust" className="text-[11px] h-6 py-0 gap-1 px-1" title="Trust" aria-label="Trust">
+                <TabsTrigger value="trust" className="text-xs h-6 py-0 gap-1 px-1" title={t("workbench.trust", "Trust")} aria-label={t("workbench.trust", "Trust")}>
                   <ShieldCheck className="h-3 w-3 shrink-0 text-emerald-600" />
                 </TabsTrigger>
               </>
@@ -84,8 +122,8 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
           size="icon"
           className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0 ms-2"
           onClick={() => setWorkbenchOpen(false)}
-          title="Close Workbench"
-          aria-label="Close Workbench"
+          title={t("workbench.close", "Close Workbench")}
+          aria-label={t("workbench.close", "Close Workbench")}
         >
           <X className="h-4 w-4" />
         </Button>
@@ -99,12 +137,19 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
         <div className={`h-full ${workbenchTab === "research" ? "block" : "hidden"}`}>
           <ResearchPanel />
         </div>
-        <div className={`h-full ${workbenchTab === "translate" ? "block" : "hidden"}`}>
-          <TranslatePanel />
-        </div>
-        <div className={`h-full ${workbenchTab === "extract" ? "block" : "hidden"}`}>
-          <ExtractPanel />
-        </div>
+        {/* These stay mounted-but-hidden on web for tab-switch speed; on desktop
+            they must not mount at all, since both reach for cloud edge functions
+            on first render. */}
+        {isCapabilityAvailable("wb.translate") && (
+          <div className={`h-full ${workbenchTab === "translate" ? "block" : "hidden"}`}>
+            <TranslatePanel />
+          </div>
+        )}
+        {isCapabilityAvailable("wb.extract") && (
+          <div className={`h-full ${workbenchTab === "extract" ? "block" : "hidden"}`}>
+            <ExtractPanel />
+          </div>
+        )}
         <div className={`h-full ${workbenchTab === "notes" ? "block" : "hidden"}`}>
           <NotesPanel active={workbenchTab === "notes"} />
         </div>

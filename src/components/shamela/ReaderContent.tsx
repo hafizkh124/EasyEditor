@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { AlertCircle } from "lucide-react";
 import type { ReaderPage } from "@/hooks/useReaderState";
 import { effectiveDirection, detectTextDirection, type TextDirection } from "@/lib/reader/direction";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ReaderContentProps {
   page: ReaderPage | null;
@@ -37,6 +38,7 @@ export const ReaderContent: React.FC<ReaderContentProps> = ({
   pageCount,
   reader,
 }) => {
+  const { t } = useLanguage();
   const bodyWithFootnotes = useMemo(() => {
     if (!page) return null;
     if (!page.footnotes?.trim()) return page.text;
@@ -54,7 +56,7 @@ export const ReaderContent: React.FC<ReaderContentProps> = ({
     return (
       <div className="flex flex-col items-center justify-center h-full py-24 text-muted-foreground">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary" />
-        <p className="mt-3 text-xs">Loading page {pageNumber}…</p>
+        <p className="mt-3 text-xs">{t("reader.loading_page")} {pageNumber}…</p>
       </div>
     );
   }
@@ -71,7 +73,7 @@ export const ReaderContent: React.FC<ReaderContentProps> = ({
   if (!page) {
     return (
       <div className="flex flex-col items-center justify-center h-full py-24 text-muted-foreground">
-        <p className="text-sm">No content on this page.</p>
+        <p className="text-sm">{t("reader.no_content")}</p>
       </div>
     );
   }
@@ -87,8 +89,8 @@ export const ReaderContent: React.FC<ReaderContentProps> = ({
         lang={lang}
         dangerouslySetInnerHTML={{ __html: bodyWithFootnotes ?? "" }}
       />
-      <p className="mt-10 text-center text-[11px] text-muted-foreground/60">
-        صفحہ {pageNumber} / {pageCount || "…"}
+      <p className="mt-10 text-center text-xs text-muted-foreground/60">
+        {t("reader.page")} {pageNumber} / {pageCount || "…"}
       </p>
     </div>
   );

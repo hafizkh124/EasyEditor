@@ -127,7 +127,8 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed, showNewChat = 
               if (e.key === "Enter") commitRename(item.id);
               if (e.key === "Escape") setRenamingId(null);
             }}
-            className="flex-1 bg-transparent text-sm outline-none border-b border-primary/50"
+            aria-label={t("history.rename", "Rename this session")}
+            className="flex-1 bg-transparent text-sm border-b border-primary/50 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
           />
         ) : (
           <button
@@ -139,7 +140,7 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed, showNewChat = 
           </button>
         )}
 
-        <span className="text-[10px] text-muted-foreground tabular-nums flex-shrink-0">
+        <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0">
           {relativeTime(item.updated_at)}
         </span>
 
@@ -181,7 +182,7 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed, showNewChat = 
   return (
     <div className="flex flex-col min-h-0 flex-1">
       <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-1">
-        <span className="text-[11px] font-medium uppercase tracking-wider text-sidebar-foreground/60">
+        <span className="text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
           {t("sidebar.history") || "History"}
         </span>
         {showNewChat && (
@@ -207,8 +208,8 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed, showNewChat = 
         ) : (
           groups.map((grp) => (
             <div key={grp.bucket} className="space-y-0.5">
-              <p className="px-3 pt-3 pb-1 text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/50">
-                {t(BUCKET_LABEL_KEY[grp.bucket])}
+              <p className="px-3 pt-3 pb-1 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/50">
+                {t(BUCKET_LABEL_KEY[grp.bucket] as import("@/lib/i18n").TranslationKey)}
               </p>
               {grp.rows.map(renderRow)}
             </div>

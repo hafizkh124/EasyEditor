@@ -8,6 +8,8 @@ import {
   Search, BookOpen, Database, FileText, Copy
 } from "lucide-react";
 import { ShamelaGuideModal } from "@/components/mcp/ShamelaGuideModal";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 export interface ShamelaDiagnostics {
   jreFound: boolean;
@@ -36,6 +38,7 @@ interface ShamelaConnectPanelProps {
 }
 
 export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps = {}) {
+  const { t } = useLanguage();
   const [state, setState] = useState<ConnectState>("idle");
   const [diagnostics, setDiagnostics] = useState<ShamelaDiagnostics | null>(null);
   const [status, setStatus] = useState<ShamelaStatus | null>(null);
@@ -49,7 +52,7 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
 
     try {
       if (typeof window === "undefined" || !window.electronAPI?.shamela) {
-        toast.error("شاملہ کا نیٹیو انٹرفیس صرف ڈیسک ٹاپ ورژن میں دستیاب ہے۔");
+        toast.error(translateStored("toast.shamela.native_desktop_only"));
         setState("error");
         return;
       }
@@ -57,7 +60,7 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
       // Step 1: Detect installation
       const det = await window.electronAPI.shamela.detect();
       if (!det.installed || !det.path) {
-        toast.error(det.reason || "مکتبہ شاملہ ۴ نہیں ملی۔");
+        toast.error(det.reason || translateStored("toast.shamela.not_found"));
         setState("error");
         return;
       }
@@ -80,13 +83,13 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
       setState(diag.errors.length === 0 ? "connected" : "connected");
 
       if (diag.errors.length === 0) {
-        toast.success("مکتبہ شاملہ ۴ کامیابی سے منسلک ہو گئی ہے۔");
+        toast.success(translateStored("toast.shamela.connected"));
       } else {
-        toast.warning("شاملہ منسلک ہے لیکن کچھ مسائل ہیں — تشخیصی فہرست دیکھیں۔");
+        toast.warning(translateStored("toast.shamela.connected_warning"));
       }
     } catch (err) {
       console.error("[ShamelaConnectPanel]", err);
-      toast.error("کنکشن کے دوران خرابی: " + (err instanceof Error ? err.message : "unknown"));
+      toast.error(translateStoredFormat("toast.shamela.connection_failed", { error: err instanceof Error ? err.message : "Unknown error" }));
       setState("error");
     }
   };
@@ -119,9 +122,9 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
   const handleCopyDiagnostics = async () => {
     try {
       await navigator.clipboard.writeText(buildDiagnosticsReport());
-      toast.success("تشخیصی رپورٹ کاپی ہو گئی۔");
+      toast.success(translateStored("toast.diagnostics.copied"));
     } catch {
-      toast.error("کاپی نہیں ہو سکی — متن خود منتخب کر کے کاپی کریں۔");
+      toast.error(translateStored("toast.diagnostics.copy_failed"));
     }
   };
 
@@ -136,7 +139,7 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <HardDrive className="h-5 w-5 text-primary" />
-              مکتبہ شاملہ ۴ — مقامی انضمام
+              {t("shamela.connect.title")}
             </CardTitle>
             <div className="flex items-center gap-2">
               <Button
@@ -146,18 +149,18 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
                 className="text-xs gap-1.5 h-8"
               >
                 <HelpCircle className="h-3.5 w-3.5" />
-                گائیڈ
+                {t("shamela.guide")}
               </Button>
               <Badge
                 variant={state === "connected" ? "default" : "outline"}
-                className="text-[10px]"
+                className="text-xs"
               >
-                {state === "connected" ? "Active" : state === "connecting" ? "Connecting..." : "Offline"}
+                {state === "connected" ? t("shamela.status.active") : state === "connecting" ? t("shamela.status.connecting") : t("shamela.status.offline")}
               </Badge>
             </div>
           </div>
           <CardDescription className="text-xs mt-1">
-            اپنے کمپیوٹر پر نصب مکتبہ شاملہ ۴ سے ۴۰,۰۰۰+ کتب کو آف لائن براؤز، تلاش اور امپورٹ کریں
+            {t("shamela.connect.description")}
           </CardDescription>
         </CardHeader>
 
@@ -174,27 +177,27 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
             ) : (
               <Database className="h-5 w-5" />
             )}
-            {state === "connecting" ? "منسلک ہو رہا ہے..." :
-             state === "connected"  ? "دوبارہ جانچ کریں" :
-             "شاملہ سے منسلک ہوں"}
+            {state === "connecting" ? t("shamela.status.connecting") :
+             state === "connected"  ? t("shamela.reconnect") :
+             t("shamela.connect")}
           </Button>
 
           {/* Connection info */}
           {status && (
-            <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-2 text-xs">
+            <div className="p-3 rounded-lg border border-border bg-muted/60 space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-foreground">مقام کا پتہ</span>
-                <code className="font-mono text-[11px] text-muted-foreground ltr">{status.path}</code>
+                <span className="font-medium text-foreground">{t("shamela.location")}</span>
+                <code className="font-mono text-xs text-muted-foreground ltr">{status.path}</code>
               </div>
               {status.version && (
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-foreground">ورژن</span>
+                  <span className="font-medium text-foreground">{t("shamela.version")}</span>
                   <span className="text-muted-foreground">{status.version}</span>
                 </div>
               )}
               {stats && (
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-foreground">دستیاب کتب</span>
+                  <span className="font-medium text-foreground">{t("shamela.books_available")}</span>
                   <span className="text-emerald-600 font-semibold">
                     {stats.totalBooks.toLocaleString()}
                   </span>
@@ -209,7 +212,7 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                   <FileText className="h-3.5 w-3.5 text-primary" />
-                  تشخیصی چیک لسٹ
+                  {t("shamela.diagnostics")}
                 </span>
                 {/* FR-5.9: a report the user can paste into a support message.
                     Reading four icons off a screenshot loses the versions,
@@ -217,48 +220,48 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 gap-1 text-[11px]"
+                  className="h-7 gap-1 text-xs"
                   onClick={handleCopyDiagnostics}
                 >
                   <Copy className="h-3 w-3" />
-                  رپورٹ کاپی کریں
+                  {t("shamela.copy_report")}
                 </Button>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-[11px]">
+                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
                   {statusIcon(diagnostics.jreFound)}
-                  <span>Java Runtime</span>
+                  <span>{t("shamela.java_runtime")}</span>
                   {diagnostics.jreVersion && (
-                    <code className="font-mono text-[10px] text-muted-foreground mr-auto">
+                    <code className="font-mono text-xs text-muted-foreground mr-auto">
                       {diagnostics.jreVersion}
                     </code>
                   )}
                 </div>
-                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-[11px]">
+                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
                   {statusIcon(diagnostics.luceneJarsFound)}
-                  <span>Lucene JARs</span>
+                  <span>{t("shamela.lucene_jars")}</span>
                   {diagnostics.luceneVersion && (
-                    <code className="font-mono text-[10px] text-muted-foreground mr-auto">
+                    <code className="font-mono text-xs text-muted-foreground mr-auto">
                       {diagnostics.luceneVersion}
                     </code>
                   )}
                 </div>
-                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-[11px]">
+                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
                   {statusIcon(diagnostics.masterDbFound)}
-                  <span>master.db (فہرست)</span>
+                  <span>{t("shamela.master_database")}</span>
                 </div>
-                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-[11px]">
+                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
                   {statusIcon(diagnostics.storeIndexFound)}
-                  <span>Store Index (متن)</span>
+                  <span>{t("shamela.store_index")}</span>
                 </div>
               </div>
 
               {diagnostics.errors.length > 0 && (
                 <div className="p-2.5 rounded border border-red-500/30 bg-red-500/5 space-y-1">
-                  <span className="text-[11px] font-semibold text-red-600 dark:text-red-400">
-                    مسائل ({diagnostics.errors.length})
+                  <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                    {t("shamela.issues")} ({diagnostics.errors.length})
                   </span>
-                  <ul className="text-[11px] text-red-600/80 dark:text-red-400/80 list-disc list-inside space-y-0.5">
+                  <ul className="text-xs text-red-600/80 dark:text-red-400/80 list-disc list-inside space-y-0.5">
                     {diagnostics.errors.map((err, i) => (
                       <li key={i}>{err}</li>
                     ))}
@@ -278,7 +281,7 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
                 onClick={() => onBrowseBooks?.(status.masterDbPath!, "search")}
               >
                 <Search className="h-3.5 w-3.5" />
-                کتب تلاش کریں
+                {t("shamela.search_books")}
               </Button>
               <Button
                 variant="outline"
@@ -287,7 +290,7 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
                 onClick={() => onBrowseBooks?.(status.masterDbPath!, "browse")}
               >
                 <BookOpen className="h-3.5 w-3.5" />
-                بک براؤزر
+                {t("shamela.book_browser")}
               </Button>
             </div>
           )}

@@ -15,6 +15,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { formatTranslation } from "@/lib/i18n";
 import { useSeo } from "@/hooks/useSeo";
 import { useDocument } from "@/core/workspace/useDocument";
 import { documentService } from "@/core/workspace/documentService";
@@ -176,7 +177,7 @@ const Editor = () => {
   const handleAudiobookExport = async () => {
     const chapters = splitChaptersFromHtml(stripSuggestions(currentHtml));
     if (chapters.length === 0) {
-      toast.error(t("editor.audiobook_empty") || "آڈیو بک کے لیے کوئی متن نہیں۔");
+      toast.error(t("editor.audiobook_empty", "There is no text to turn into an audiobook."));
       return;
     }
 
@@ -188,15 +189,14 @@ const Editor = () => {
         title: title || t("editor.untitled"),
       });
       if (result.cancelled) {
-        toast.info(t("editor.audiobook_cancelled") || "آڈیو بک ایکسپورٹ منسوخ ہو گئی۔");
+        toast.info(t("editor.audiobook_cancelled", "Audiobook export was cancelled."));
         return;
       }
       const minutes = Math.round(result.durationMs / 60000);
-      toast.success(
-        (t("editor.audiobook_done") || "آڈیو بک تیار: {n} باب، تقریباً {m} منٹ")
-          .replace("{n}", String(result.chapterCount))
-          .replace("{m}", String(minutes)),
-      );
+      toast.success(formatTranslation(t("toast.editor.audiobook_ready"), {
+        chapters: result.chapterCount,
+        minutes,
+      }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
@@ -274,7 +274,7 @@ const Editor = () => {
                     <History className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Versions</span>
                     {versions.length > 0 && (
-                      <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-bold text-primary">
+                      <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.2 text-xs font-bold text-primary">
                         {versions.length}
                       </span>
                     )}
@@ -308,14 +308,14 @@ const Editor = () => {
                           <div key={v.id} className="p-3 text-xs space-y-1 flex items-center justify-between">
                             <div>
                               <p className="font-semibold text-foreground">{v.label || "Snapshot"}</p>
-                              <p className="text-muted-foreground text-[11px]">
+                              <p className="text-muted-foreground text-xs">
                                 {new Date(v.created_at).toLocaleString()}
                               </p>
                             </div>
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-7 px-2 text-[11px] gap-1 shrink-0"
+                              className="h-7 px-2 text-xs gap-1 shrink-0"
                               onClick={() => handleRestoreVersion(v.content_json)}
                             >
                               <RotateCcw className="h-3 w-3" />
@@ -377,7 +377,7 @@ const Editor = () => {
         {/* FR-6.9: a book-length export runs for minutes, so it says where it is
             and offers a way out. */}
         {audiobookProgress && (
-          <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-muted/40 text-xs">
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-muted text-xs">
             <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
             <span className="flex-1 truncate">
               {audiobookProgress.phase === "synthesizing"

@@ -300,7 +300,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
             i === messages.length - 1 - lastAssistantIdx ? { ...m, content: refined } : m
           )
         );
-        toast.success(t(`research.${action}_done` as string));
+        toast.success(t(`research.${action}_done` as import("@/lib/i18n").TranslationKey));
       }
     } catch (err: unknown) {
       toast.error(errMsg(err, t("research.refine_error")));

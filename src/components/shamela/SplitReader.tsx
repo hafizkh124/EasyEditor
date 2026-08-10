@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ReaderSettings } from "./ReaderSettings";
 import { ReaderContent } from "./ReaderContent";
 import { ReaderBottomBar } from "./ReaderBottomBar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface SplitBook {
   bookId: string;
@@ -51,6 +52,7 @@ const SplitPane: React.FC<SplitPaneProps> = React.memo(function SplitPane({
   onClosePane,
   readerSettings,
 }) {
+  const { t } = useLanguage();
   const workspace = useOptionalWorkspace();
   const progress = useReaderProgress(book.bookId, book.title, book.author);
   const startPage =
@@ -103,16 +105,16 @@ const SplitPane: React.FC<SplitPaneProps> = React.memo(function SplitPane({
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium truncate leading-tight">{book.title}</p>
           {book.author && (
-            <p className="text-[10px] text-muted-foreground truncate leading-tight">{book.author}</p>
+            <p className="text-xs text-muted-foreground truncate leading-tight">{book.author}</p>
           )}
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reader.prevPage} disabled={reader.currentPageNumber <= 1} title="Previous page">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reader.prevPage} disabled={reader.currentPageNumber <= 1} title={t("reader.previous_page")} aria-label={t("reader.previous_page")}>
           <PrevIcon className="h-3.5 w-3.5" />
         </Button>
-        <span className="text-[11px] text-muted-foreground px-1 tabular-nums whitespace-nowrap">
+        <span className="text-xs text-muted-foreground px-1 tabular-nums whitespace-nowrap">
           {reader.currentPageNumber} / {reader.pageCount || "…"}
         </span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reader.nextPage} disabled={reader.currentPageNumber >= reader.pageCount} title="Next page">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reader.nextPage} disabled={reader.currentPageNumber >= reader.pageCount} title={t("reader.next_page")} aria-label={t("reader.next_page")}>
           <NextIcon className="h-3.5 w-3.5" />
         </Button>
         <Button
@@ -120,7 +122,8 @@ const SplitPane: React.FC<SplitPaneProps> = React.memo(function SplitPane({
           size="icon"
           className="h-7 w-7"
           onClick={() => progress.toggleBookmark(reader.currentPageNumber)}
-          title={pageBookmarked ? "Remove bookmark from this page" : "Bookmark this page"}
+          title={pageBookmarked ? t("reader.remove_bookmark") : t("reader.bookmark_page")}
+          aria-label={pageBookmarked ? t("reader.remove_bookmark") : t("reader.bookmark_page")}
         >
           <Bookmark className={cn("h-3.5 w-3.5", pageBookmarked && "text-primary fill-current")} />
         </Button>
@@ -129,12 +132,13 @@ const SplitPane: React.FC<SplitPaneProps> = React.memo(function SplitPane({
           size="icon"
           className="h-7 w-7"
           onClick={progress.toggleFavorite}
-          title={progress.isFavorite ? "Remove from favorites" : "Add to favorites"}
+          title={progress.isFavorite ? t("reader.remove_favorite") : t("reader.add_favorite")}
+          aria-label={progress.isFavorite ? t("reader.remove_favorite") : t("reader.add_favorite")}
         >
           <Star className={cn("h-3.5 w-3.5", progress.isFavorite && "text-amber-500 fill-current")} />
         </Button>
         {onClosePane && (
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClosePane} title="Remove this pane">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClosePane} title={t("reader.remove_pane")} aria-label={t("reader.remove_pane")}>
             <X className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -183,6 +187,7 @@ export const SplitReader: React.FC<SplitReaderProps> = ({
   onCloseSecondary,
   onSwap,
 }) => {
+  const { t } = useLanguage();
   const readerSettings = useReaderSettings();
   const [swapped, setSwapped] = useState(false);
 
@@ -203,8 +208,8 @@ export const SplitReader: React.FC<SplitReaderProps> = ({
             <p className="text-sm font-medium truncate leading-tight">
               {primary.title} <span className="text-muted-foreground">↔</span> {secondary.title}
             </p>
-            <p className="text-[11px] text-muted-foreground truncate leading-tight">
-              {[primary.author, secondary.author].filter(Boolean).join(" · ") || "Split view"}
+            <p className="text-xs text-muted-foreground truncate leading-tight">
+              {[primary.author, secondary.author].filter(Boolean).join(" · ") || t("reader.split_view")}
             </p>
           </div>
         </div>
@@ -212,14 +217,14 @@ export const SplitReader: React.FC<SplitReaderProps> = ({
         <ReaderSettings reader={readerSettings} />
 
         {onSwap && (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={doSwap} title="Swap the two books">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={doSwap} title={t("reader.swap_books")} aria-label={t("reader.swap_books")}>
             <ArrowLeftRight className="h-4 w-4" />
           </Button>
         )}
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onCloseSecondary} title="Back to single reader">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onCloseSecondary} title={t("reader.single_view")} aria-label={t("reader.single_view")}>
           <X className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} title="Close reader">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} title={t("reader.close")} aria-label={t("reader.close")}>
           <X className="h-4 w-4" />
         </Button>
       </header>

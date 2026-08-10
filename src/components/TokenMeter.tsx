@@ -71,7 +71,7 @@ export default function TokenMeter({ compact = false }: { compact?: boolean }) {
 
       {/* Token cost quick reference */}
       {!compact && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground pt-1">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground pt-1">
           <span>STT: {TOKEN_COSTS.stt}/{t("tokens.per_min") || "min"}</span>
           <span>OCR: {TOKEN_COSTS.ocr}/{t("tokens.per_page") || "page"}</span>
           <span>Research: {TOKEN_COSTS.research}/{t("tokens.per_query") || "query"}</span>

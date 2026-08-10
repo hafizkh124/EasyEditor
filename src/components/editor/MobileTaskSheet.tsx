@@ -53,12 +53,12 @@ export const MobileTaskSheet: React.FC<MobileTaskSheetProps> = ({
             <Sparkles className="h-4 w-4 text-primary" />
             منتخب متن پر AI اعمال
           </SheetTitle>
-          <SheetDescription className="text-[11px]">
+          <SheetDescription className="text-xs">
             منتخب متن پر چلانے کے لیے کوئی عمل منتخب کریں۔
           </SheetDescription>
         </SheetHeader>
 
-        <p className="text-[11px] text-muted-foreground line-clamp-2 py-2 border-b border-border" dir="auto">
+        <p className="text-xs text-muted-foreground line-clamp-2 py-2 border-b border-border" dir="auto">
           {selectedText}
         </p>
 

@@ -5,7 +5,7 @@ import type { CitationSearchResponse } from "@/lib/editor/citationFormat";
 interface ResourceCountCardProps {
   count: NonNullable<CitationSearchResponse["count"]>;
   onInsertSummary: () => void;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 /**
@@ -42,7 +42,7 @@ export const ResourceCountCard = ({ count, onInsertSummary, t }: ResourceCountCa
     )}
 
     {count.caveats.length > 0 && (
-      <div className="mt-3 flex gap-1.5 text-[11px] text-muted-foreground">
+      <div className="mt-3 flex gap-1.5 text-xs text-muted-foreground">
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
         <ul className="space-y-0.5" dir="rtl">
           {count.caveats.map((c, i) => <li key={i}>{c}</li>)}

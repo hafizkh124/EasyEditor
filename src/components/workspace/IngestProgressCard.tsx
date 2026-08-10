@@ -38,7 +38,7 @@ export const IngestProgressCard: React.FC<IngestProgressCardProps> = ({
       </div>
 
       <div className="space-y-1">
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             {progress.status === "extracting" && "متن نکالا جا رہا ہے…"}
             {progress.status === "embedding" && `ایمبیڈنگز تیار ہو رہی ہیں (${progress.inserted} از ${progress.totalChunks})`}

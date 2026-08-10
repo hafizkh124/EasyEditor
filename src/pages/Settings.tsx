@@ -15,6 +15,7 @@ import { TafsirConnector } from "@/components/mcp/TafsirConnector";
 import { ByokKeyPanel } from "@/components/settings/ByokKeyPanel";
 import { VoiceEnginePanel } from "@/components/settings/VoiceEnginePanel";
 import { AdvancedVoicesPanel } from "@/components/settings/AdvancedVoicesPanel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 // FR-6.1: Settings contains language selection and local MCP companion controls.
 const Settings = () => {
@@ -71,6 +72,16 @@ const Settings = () => {
                 </SelectContent>
               </Select>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">{t("settings.appearance")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">{t("settings.appearance_description")}</p>
+            <ThemeToggle variant="settings" />
           </CardContent>
         </Card>
 

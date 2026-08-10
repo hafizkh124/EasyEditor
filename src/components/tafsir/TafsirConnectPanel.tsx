@@ -18,6 +18,7 @@ import {
 } from "@/lib/tafsir/tafsirService";
 import type { TafsirMode, TafsirDiagnostics, TafsirConnectResult } from "@/lib/tafsir/tafsirService";
 import { TafsirGuideModal } from "./TafsirGuideModal";
+import { translateStored } from "@/lib/i18n";
 
 type ConnectState = "idle" | "connecting" | "connected" | "error";
 
@@ -59,12 +60,12 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
         const det = await tafsirDiagnose();
         setDiag(det);
         if (!det.pythonFound || !det.uvFound) {
-          toast.warning("مقامی موڈ کے لیے Python اور uv درکار ہیں — تشخیص دیکھیں۔");
+          toast.warning(translateStored("toast.tafsir.local_requirements"));
           setState("error");
           return;
         }
         if (!det.dbFound) {
-          toast.error("پہلے مقامی ڈیٹابیس ڈاؤن لوڈ کریں (214 MB)۔");
+          toast.error(translateStored("toast.tafsir.download_first"));
           setState("error");
           return;
         }
@@ -77,16 +78,16 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
         const d = await tafsirDiagnose();
         setDiag(d);
         if (!d.remoteReachable) {
-          toast.warning("ریموٹ سرور تک رسائی نہیں — «مقامی» موڈ آزمائیں۔");
+          toast.warning(translateStored("toast.tafsir.remote_unreachable"));
         }
       }
 
       setState("connected");
       onConnectedChange(true);
-      toast.success(mode === "remote" ? "Tafsir MCP (آن لائن) منسلک ہو گیا۔" : "Tafsir MCP (مقامی) منسلک ہو گیا۔");
+      toast.success(translateStored(mode === "remote" ? "toast.tafsir.remote_connected" : "toast.tafsir.local_connected"));
     } catch (err) {
       console.error("[TafsirConnectPanel]", err);
-      toast.error(err instanceof Error ? err.message : "کنکشن کے دوران خرابی۔");
+      toast.error(err instanceof Error ? err.message : translateStored("toast.common.connection_failed"));
       setState("error");
     }
   };
@@ -100,7 +101,7 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
     setConnectInfo(null);
     setState("idle");
     onConnectedChange(false);
-    toast.success("منقطع۔");
+    toast.success(translateStored("toast.common.disconnected"));
   };
 
   const startDownload = async () => {
@@ -111,12 +112,12 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
     try {
       const status = await tafsirInstallStart();
       if (status.state === "idle") return; // cancelled during the run
-      toast.success("ڈیٹابیس تیار ہے — اب منسلک ہو سکتے ہیں۔");
+      toast.success(translateStored("toast.tafsir.database_ready"));
       const d = await tafsirDiagnose();
       setDiag(d);
     } catch (err) {
       console.error("[TafsirConnectPanel] download:", err);
-      toast.error(err instanceof Error ? err.message : "ڈاؤن لوڈ ناکام۔");
+      toast.error(err instanceof Error ? err.message : translateStored("toast.tafsir.download_failed"));
     } finally {
       off();
       setInstall(null);
@@ -150,9 +151,9 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
   const handleCopyDiagnostics = async () => {
     try {
       await navigator.clipboard.writeText(buildDiagnosticsReport());
-      toast.success("تشخیصی رپورٹ کاپی ہو گئی۔");
+      toast.success(translateStored("toast.diagnostics.copied"));
     } catch {
-      toast.error("کاپی نہیں ہو سکی۔");
+      toast.error(translateStored("toast.common.copy_failed"));
     }
   };
 
@@ -178,7 +179,7 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
               <Button variant="outline" size="sm" className="text-xs gap-1.5 h-8" onClick={() => setGuideOpen(true)}>
                 <FileText className="h-3.5 w-3.5" /> گائیڈ
               </Button>
-              <Badge variant={state === "connected" ? "default" : "outline"} className="text-[10px]">
+              <Badge variant={state === "connected" ? "default" : "outline"} className="text-xs">
                 {state === "connected" ? "Active" : state === "connecting" ? "Connecting…" : "Offline"}
               </Badge>
             </div>
@@ -201,12 +202,12 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
           </Button>
 
           {needsDb && (
-            <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-2">
+            <div className="p-3 rounded-lg border border-border bg-muted/60 space-y-2">
               <div className="flex items-center gap-2 text-xs">
                 <HardDrive className="h-4 w-4 text-primary" />
                 <span className="font-medium text-foreground">مقامی ڈیٹابیس درکار ہے</span>
               </div>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 تفسیر کا آف لائن ڈیٹابیس پہلی بار ~214 MB Hugging Face سے ڈاؤن لوڈ ہوتا ہے — اس کے بعد بغیر انٹرنیٹ کے چلتا ہے۔
               </p>
               {!install ? (
@@ -215,7 +216,7 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
                 </Button>
               ) : (
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center justify-between text-xs">
                     <span>{install.phase === "verifying" ? "SHA256 تصدیق…" : "ڈاؤن لوڈ ہو رہا ہے…"}</span>
                     <span className="tabular-nums">{install.percent}%</span>
                   </div>
@@ -229,7 +230,7 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
           )}
 
           {connectInfo && (
-            <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-2 text-xs">
+            <div className="p-3 rounded-lg border border-border bg-muted/60 space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-foreground">سرور</span>
                 <span className="text-muted-foreground">{connectInfo.server} {connectInfo.version}</span>
@@ -258,37 +259,37 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
                 <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                   <FileText className="h-3.5 w-3.5 text-primary" /> تشخیصی چیک لسٹ
                 </span>
-                <Button variant="ghost" size="sm" className="h-7 gap-1 text-[11px]" onClick={handleCopyDiagnostics}>
+                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={handleCopyDiagnostics}>
                   <Copy className="h-3 w-3" /> رپورٹ کاپی کریں
                 </Button>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-[11px]">
+                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
                   {statusIcon(diag.remoteReachable)}
                   <span>آن لائن سرور</span>
-                  {diag.remoteLatencyMs != null && <code className="mr-auto text-[10px]">{diag.remoteLatencyMs}ms</code>}
+                  {diag.remoteLatencyMs != null && <code className="mr-auto text-xs">{diag.remoteLatencyMs}ms</code>}
                 </div>
-                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-[11px]">
+                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
                   {statusIcon(diag.pythonFound)}
                   <span>Python</span>
-                  {diag.pythonVersion && <code className="mr-auto text-[10px]">{diag.pythonVersion}</code>}
+                  {diag.pythonVersion && <code className="mr-auto text-xs">{diag.pythonVersion}</code>}
                 </div>
-                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-[11px]">
+                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
                   {statusIcon(diag.uvFound)}
                   <span>uv/uvx</span>
-                  {diag.uvVersion && <code className="mr-auto text-[10px]">{diag.uvVersion}</code>}
+                  {diag.uvVersion && <code className="mr-auto text-xs">{diag.uvVersion}</code>}
                 </div>
-                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-[11px]">
+                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
                   {statusIcon(diag.dbFound)}
                   <span>مقامی DB</span>
                 </div>
               </div>
               {diag.errors.length > 0 && (
                 <div className="p-2.5 rounded border border-red-500/30 bg-red-500/5 space-y-1">
-                  <span className="text-[11px] font-semibold text-red-600 dark:text-red-400">
+                  <span className="text-xs font-semibold text-red-600 dark:text-red-400">
                     مسائل ({diag.errors.length})
                   </span>
-                  <ul className="text-[11px] text-red-600/80 dark:text-red-400/80 list-disc list-inside space-y-0.5">
+                  <ul className="text-xs text-red-600/80 dark:text-red-400/80 list-disc list-inside space-y-0.5">
                     {diag.errors.map((e, i) => <li key={i}>{e}</li>)}
                   </ul>
                 </div>

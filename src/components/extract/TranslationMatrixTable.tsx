@@ -33,10 +33,10 @@ export const TranslationMatrixTable: React.FC<TranslationMatrixTableProps> = ({
         موازنہ ({results.length})
       </CardTitle>
       <div className="flex items-center gap-1">
-        <Button variant="outline" size="sm" onClick={onCopyAll} className="h-7 text-[11px] gap-1 px-2">
+        <Button variant="outline" size="sm" onClick={onCopyAll} className="h-7 text-xs gap-1 px-2">
           <Copy className="h-3 w-3" /> کاپی
         </Button>
-        <Button size="sm" onClick={onInsertAll} className="h-7 text-[11px] gap-1 px-2">
+        <Button size="sm" onClick={onInsertAll} className="h-7 text-xs gap-1 px-2">
           <FileEdit className="h-3 w-3" /> Canvas میں رکھیں
         </Button>
       </div>
@@ -44,17 +44,17 @@ export const TranslationMatrixTable: React.FC<TranslationMatrixTableProps> = ({
     <CardContent className="p-2 space-y-2">
       <div className="rounded border border-border overflow-hidden">
         <Table>
-          <TableHeader className="bg-muted/50">
+          <TableHeader className="bg-muted">
             <TableRow>
-              <TableHead className="w-[120px] text-right text-[11px]">مترجم</TableHead>
-              <TableHead className="text-right text-[11px]">ترجمہ</TableHead>
-              <TableHead className="w-[70px] text-center text-[11px]">ایکشن</TableHead>
+              <TableHead className="w-[120px] text-right text-xs">مترجم</TableHead>
+              <TableHead className="text-right text-xs">ترجمہ</TableHead>
+              <TableHead className="w-[70px] text-center text-xs">ایکشن</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {results.map((r, idx) => (
               <TableRow key={r.translator_slug}>
-                <TableCell className="font-semibold text-foreground text-[11px] p-2">{r.full_name}</TableCell>
+                <TableCell className="font-semibold text-foreground text-xs p-2">{r.full_name}</TableCell>
                 <TableCell
                   className="text-xs leading-relaxed text-foreground p-2"
                   dir={r.language === "en" ? "ltr" : "rtl"}
@@ -76,7 +76,7 @@ export const TranslationMatrixTable: React.FC<TranslationMatrixTableProps> = ({
           </TableBody>
         </Table>
         {unavailableNames.length > 0 && (
-          <p className="text-[10px] text-muted-foreground pt-1">
+          <p className="text-xs text-muted-foreground pt-1">
             غیر دستیاب تراجم: {unavailableNames.join("، ")}
           </p>
         )}

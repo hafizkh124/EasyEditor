@@ -99,7 +99,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
         <button
           type="button"
           onClick={() => runSearch(query)}
-          className="mt-1.5 w-full rounded-md bg-primary/10 hover:bg-primary/15 text-primary text-[11px] font-medium py-1 transition-colors"
+          className="mt-1.5 w-full rounded-md bg-primary/10 hover:bg-primary/15 text-primary text-xs font-medium py-1 transition-colors"
         >
           {searching ? "Searching…" : "Search"}
         </button>
@@ -111,7 +111,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
             if (next && query.trim()) runSearch(query);
           }}
           title={s2DbPath ? "Root search: match all morphological forms of the query's root" : "Shamela S2.db not found — root search unavailable"}
-          className={`mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-1 text-[11px] font-medium transition-colors ${
+          className={`mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-1 text-xs font-medium transition-colors ${
             rootMode
               ? "border-primary/40 bg-primary/15 text-primary"
               : "border-border hover:bg-accent text-muted-foreground"
@@ -119,7 +119,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
         >
           <Languages className="h-3 w-3" />
           Root search
-          {!s2DbPath && <span className="text-[9px] opacity-70">(off)</span>}
+          {!s2DbPath && <span className="text-xs opacity-70">(off)</span>}
         </button>
       </div>
 
@@ -148,14 +148,14 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
                   onClick={() => handleSelect(hit)}
                   className="w-full text-right flex flex-col gap-1 px-3 py-2 border-b border-border/40 hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
-                  <span className="flex items-center gap-1.5 text-[11px] font-medium leading-snug">
+                  <span className="flex items-center gap-1.5 text-xs font-medium leading-snug">
                     <FileText className="h-3 w-3 text-primary shrink-0" />
                     <span className="truncate">{hit.title}</span>
                     {hit.pageNumber != null && (
-                      <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">ص {hit.pageNumber}</span>
+                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">ص {hit.pageNumber}</span>
                     )}
                   </span>
-                  <span className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
+                  <span className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
                     {snippet(hit.content, stripHarakat(query))}
                   </span>
                 </button>

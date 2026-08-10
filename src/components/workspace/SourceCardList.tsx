@@ -18,7 +18,7 @@ interface SourceCardListProps {
 export const SourceCardList: React.FC<SourceCardListProps> = ({ sources }) => {
   if (!sources || sources.length === 0) {
     return (
-      <p className="text-[11px] text-muted-foreground py-1">
+      <p className="text-xs text-muted-foreground py-1">
         اس رن میں کوئی ماخذ برآمد نہیں ہوا۔
       </p>
     );
@@ -30,7 +30,7 @@ export const SourceCardList: React.FC<SourceCardListProps> = ({ sources }) => {
     <div className="space-y-2">
       {Object.entries(groups).map(([domain, items]) => (
         <div key={domain} className="space-y-1">
-          <div className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+          <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
             <BookMarked className="h-3 w-3 shrink-0" />
             <span>{domainLabel(domain)}</span>
             <span className="opacity-60">({items.length})</span>
@@ -39,7 +39,7 @@ export const SourceCardList: React.FC<SourceCardListProps> = ({ sources }) => {
           {items.map((s, i) => (
             <div
               key={`${domain}-${i}`}
-              className="rounded border border-border bg-muted/30 p-2 space-y-1"
+              className="rounded border border-border bg-muted/60 p-2 space-y-1"
             >
               <div className="flex items-start justify-between gap-2">
                 <CitationBadge domain={s.domain} citationRef={s.citation_ref ?? {}} />
@@ -59,7 +59,7 @@ export const SourceCardList: React.FC<SourceCardListProps> = ({ sources }) => {
               </div>
 
               {s.snippet && (
-                <p className="text-[11px] leading-relaxed text-muted-foreground line-clamp-3" dir="auto">
+                <p className="text-xs leading-relaxed text-muted-foreground line-clamp-3" dir="auto">
                   {s.snippet}
                 </p>
               )}

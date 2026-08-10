@@ -1,4 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { isLazyEditorFontId, loadEditorFont } from "@/lib/fonts";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("ReaderFonts");
 
 /**
  * Phase 3 (SPEC-M6) — Typography & Reading Settings.
@@ -9,7 +13,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
  * consumed by the `.reader-page` stylesheet.
  */
 
-export type ReaderTheme = "light" | "sepia" | "dark";
+export type ReaderTheme = "auto" | "light" | "sepia" | "dark";
 export type ReaderWidth = "narrow" | "normal" | "wide";
 export type ReaderDirectionPreference = "auto" | "rtl" | "ltr";
 
@@ -73,18 +77,18 @@ const DEFAULTS: ReaderSettings = {
   fontId: "naskh",
   fontSize: 18,
   lineHeight: 2.1,
-  theme: "light",
+  theme: "auto",
   width: "normal",
   direction: "auto",
 };
 
 export const READER_THEME_PALETTES: Record<
-  ReaderTheme,
+  Exclude<ReaderTheme, "auto">,
   { bg: string; fg: string; muted: string; heading: string; border: string }
 > = {
-  light: { bg: "#ffffff", fg: "#1a1a1a", muted: "#6b7280", heading: "#0f766e", border: "rgba(0,0,0,0.1)" },
+  light: { bg: "#ffffff", fg: "#1a1a1a", muted: "#6b7280", heading: "hsl(161 93% 25%)", border: "rgba(0,0,0,0.1)" },
   sepia: { bg: "#f5ecd9", fg: "#3b2f1d", muted: "#8a7a5c", heading: "#9a3412", border: "rgba(90,60,20,0.18)" },
-  dark: { bg: "#121212", fg: "#d6d3d1", muted: "#8a8886", heading: "#7dd3fc", border: "rgba(255,255,255,0.12)" },
+  dark: { bg: "#121212", fg: "#d6d3d1", muted: "#8a8886", heading: "hsl(158 64% 51%)", border: "rgba(255,255,255,0.12)" },
 };
 
 function load(): ReaderSettings {
@@ -97,7 +101,10 @@ function load(): ReaderSettings {
       fontId: typeof parsed.fontId === "string" ? parsed.fontId : DEFAULTS.fontId,
       fontSize: typeof parsed.fontSize === "number" ? clamp(parsed.fontSize, 14, 30) : DEFAULTS.fontSize,
       lineHeight: typeof parsed.lineHeight === "number" ? clamp(parsed.lineHeight, 1.5, 2.8) : DEFAULTS.lineHeight,
-      theme: parsed.theme === "dark" || parsed.theme === "sepia" ? parsed.theme : "light",
+      theme:
+        parsed.theme === "auto" || parsed.theme === "light" || parsed.theme === "dark" || parsed.theme === "sepia"
+          ? parsed.theme
+          : DEFAULTS.theme,
       width: parsed.width === "narrow" || parsed.width === "wide" ? parsed.width : "normal",
       direction: parsed.direction === "rtl" || parsed.direction === "ltr" ? parsed.direction : "auto",
     };
@@ -124,6 +131,13 @@ export function useReaderSettings() {
     settingsRef.current = settings;
   }, [settings]);
 
+  useEffect(() => {
+    if (!isLazyEditorFontId(settings.fontId)) return;
+    void loadEditorFont(settings.fontId).catch((error: unknown) => {
+      log.warn("reader font could not be loaded", { fontId: settings.fontId, error });
+    });
+  }, [settings.fontId]);
+
   const update = useCallback((patch: Partial<ReaderSettings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch };
@@ -143,17 +157,22 @@ export function useReaderSettings() {
   const activeFont = READER_FONTS.find((f) => f.id === settings.fontId) ?? READER_FONTS[0];
 
   // CSS custom properties applied on the reader root by the caller.
-  const palette = READER_THEME_PALETTES[settings.theme];
   const styleProps: Record<string, string> = {
     "--reader-font-family": fontFamilyFor(settings.fontId),
     "--reader-font-size": `${settings.fontSize}px`,
     "--reader-line-height": String(settings.lineHeight),
-    "--reader-theme-bg": palette.bg,
-    "--reader-theme-fg": palette.fg,
-    "--reader-theme-muted": palette.muted,
-    "--reader-theme-heading": palette.heading,
-    "--reader-theme-border": palette.border,
   };
+
+  // Auto deliberately emits no theme colour properties: the reader then uses
+  // the app's semantic tokens and follows light/dark/system automatically.
+  if (settings.theme !== "auto") {
+    const palette = READER_THEME_PALETTES[settings.theme];
+    styleProps["--reader-theme-bg"] = palette.bg;
+    styleProps["--reader-theme-fg"] = palette.fg;
+    styleProps["--reader-theme-muted"] = palette.muted;
+    styleProps["--reader-theme-heading"] = palette.heading;
+    styleProps["--reader-theme-border"] = palette.border;
+  }
 
   return {
     settings,

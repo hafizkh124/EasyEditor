@@ -25,6 +25,7 @@ import { BrowseTab } from "./BrowseTab";
 import { SearchTab } from "./SearchTab";
 import { FavoritesTab } from "./FavoritesTab";
 import type { Document, ProjectKind } from "@/core/workspace/types";
+import { availableCapabilities } from "@/core/capabilities/registry";
 
 interface LibraryPanelProps {
   /** Inside the mobile drawer the icon-rail state makes no sense — stay open. */
@@ -47,6 +48,9 @@ const TAB_GRID: Record<number, string> = {
 export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = false, onNavigate }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  // Only the ingest tools that exist on this runtime (OCR is web-only; the two
+  // voice tools ride the offline-engine flag on desktop).
+  const ingestRoutes = availableCapabilities("dashboard-grid").filter((c) => c.group === "tool");
   const { activeDocumentId, setActiveDocumentId, libraryCollapsed: storedCollapsed, toggleLibrary } = useWorkspace();
   const libraryCollapsed = forceExpanded ? false : storedCollapsed;
 
@@ -140,21 +144,24 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
             <DropdownMenuContent align="start" className="w-48">
               <DropdownMenuItem onClick={() => setNewProjectOpen(true)} className="gap-2 cursor-pointer">
                 <FolderPlus className="h-4 w-4 text-primary" />
-                <span>New Project</span>
+                <span>{t("library.new_project", "New Project")}</span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate("/ocr")} className="gap-2 cursor-pointer text-xs">
-                <Upload className="h-3.5 w-3.5" />
-                <span>Ingest via OCR</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/transcribe")} className="gap-2 cursor-pointer text-xs">
-                <Upload className="h-3.5 w-3.5" />
-                <span>Ingest via Transcribe</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/speak")} className="gap-2 cursor-pointer text-xs">
-                <Volume2 className="h-3.5 w-3.5" />
-                <span>Ingest via Speak</span>
-              </DropdownMenuItem>
+              {/* The workspace IS the desktop home, so this menu was the most
+                  reachable of the three hardcoded tool lists — it offered
+                  "Ingest via OCR" on a build where /ocr redirects straight back. */}
+              {ingestRoutes.length > 0 && <DropdownMenuSeparator />}
+              {ingestRoutes.map((capability) => (
+                <DropdownMenuItem
+                  key={capability.id}
+                  onClick={() => navigate(capability.route!)}
+                  className="gap-2 cursor-pointer text-xs"
+                >
+                  {capability.id === "speak"
+                    ? <Volume2 className="h-3.5 w-3.5" />
+                    : <Upload className="h-3.5 w-3.5" />}
+                  <span>{t("library.ingest_via", "Ingest via {tool}").replace("{tool}", t(capability.labelKey, capability.fallbackLabel))}</span>
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -181,30 +188,30 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
         <div className="px-2 pt-2 border-b border-sidebar-border">
           {/* Tab count follows the flags: with both M4 pillars off the Library
               is back to M2/M3's two tabs, not two dead ones (NFR-6). */}
-          <TabsList className={`grid ${TAB_GRID[tabCount]} h-7 bg-muted/50 p-0.5`}>
-            <TabsTrigger value="home" className="text-[11px] h-6 py-0 px-1 truncate">
+          <TabsList className={`grid ${TAB_GRID[tabCount]} h-7 bg-muted p-0.5`}>
+            <TabsTrigger value="home" className="text-xs h-6 py-0 px-1 truncate">
               <Home className="h-3 w-3 mr-1" />
               Home
             </TabsTrigger>
-            <TabsTrigger value="documents" className="text-[11px] h-6 py-0 px-1 truncate">Docs</TabsTrigger>
-            <TabsTrigger value="browse" className="text-[11px] h-6 py-0 px-1 truncate">
+            <TabsTrigger value="documents" className="text-xs h-6 py-0 px-1 truncate">Docs</TabsTrigger>
+            <TabsTrigger value="browse" className="text-xs h-6 py-0 px-1 truncate">
               <FolderTree className="h-3 w-3 mr-1" />
               Browse
             </TabsTrigger>
-            <TabsTrigger value="search" className="text-[11px] h-6 py-0 px-1 truncate">
+            <TabsTrigger value="search" className="text-xs h-6 py-0 px-1 truncate">
               <Search className="h-3 w-3 mr-1" />
               Search
             </TabsTrigger>
-            <TabsTrigger value="favorites" className="text-[11px] h-6 py-0 px-1 truncate">
+            <TabsTrigger value="favorites" className="text-xs h-6 py-0 px-1 truncate">
               <Star className="h-3 w-3 mr-1" />
               Favorites
             </TabsTrigger>
-            <TabsTrigger value="sources" className="text-[11px] h-6 py-0 px-1 truncate">Sources</TabsTrigger>
+            <TabsTrigger value="sources" className="text-xs h-6 py-0 px-1 truncate">Sources</TabsTrigger>
             {graphEnabled && (
-              <TabsTrigger value="graph" className="text-[11px] h-6 py-0 px-1 truncate">Graph</TabsTrigger>
+              <TabsTrigger value="graph" className="text-xs h-6 py-0 px-1 truncate">Graph</TabsTrigger>
             )}
             {recipesEnabled && (
-              <TabsTrigger value="recipes" className="text-[11px] h-6 py-0 px-1 truncate">Recipes</TabsTrigger>
+              <TabsTrigger value="recipes" className="text-xs h-6 py-0 px-1 truncate">Recipes</TabsTrigger>
             )}
           </TabsList>
         </div>

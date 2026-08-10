@@ -2,6 +2,7 @@ import React from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TocEntry } from "@/hooks/useReaderState";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface TocTreeProps {
   toc: TocEntry[];
@@ -23,18 +24,19 @@ export const TocTree: React.FC<TocTreeProps> = ({
   activeTitleId,
   onSelect,
 }) => {
+  const { t } = useLanguage();
   if (loading) {
-    return <p className="p-3 text-xs text-muted-foreground">Loading contents…</p>;
+    return <p className="p-3 text-xs text-muted-foreground">{t("reader.toc.loading")}</p>;
   }
   if (error) {
     return <p className="p-3 text-xs text-destructive">{error}</p>;
   }
   if (toc.length === 0) {
-    return <p className="p-3 text-xs text-muted-foreground">No contents.</p>;
+    return <p className="p-3 text-xs text-muted-foreground">{t("reader.toc.empty")}</p>;
   }
 
   return (
-    <nav className="py-1" aria-label="Table of contents">
+    <nav className="py-1" aria-label={t("reader.contents")}>
       {toc.map((entry) => {
         const active = entry.titleId === activeTitleId;
         return (

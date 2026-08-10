@@ -30,7 +30,7 @@ interface ChatMessage {
  * cloud `refine-text` edge function.
  */
 export const AiReaderPanel: React.FC = () => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const uiLang: "ur" | "en" = language === "ur" ? "ur" : "en";
   const navigate = useNavigate();
   const workspace = useOptionalWorkspace();
@@ -107,7 +107,7 @@ export const AiReaderPanel: React.FC = () => {
         setBusy(false);
       }
     },
-    [busy, language],
+    [busy, uiLang],
   );
 
   const runAction = useCallback(
@@ -115,7 +115,7 @@ export const AiReaderPanel: React.FC = () => {
       if (!readerPage) return;
       void ask(buildActionPrompt(action, readerPage.text, readerPage.pageNumber, uiLang));
     },
-    [ask, readerPage, language],
+    [ask, readerPage, uiLang],
   );
 
   const handleSend = () => {
@@ -129,7 +129,7 @@ export const AiReaderPanel: React.FC = () => {
       <div className="flex flex-col items-center justify-center h-full p-6 text-center gap-2 bg-background">
         <BookOpen className="h-8 w-8 text-muted-foreground/50" />
         <p className="text-xs text-muted-foreground leading-relaxed">
-          ایک کتاب کھولیں تاکہ AI قاری اس کے صفحہ کے بارے میں جواب دے سکے۔
+          {t("reader.ai.open_book")}
         </p>
       </div>
     );
@@ -143,36 +143,36 @@ export const AiReaderPanel: React.FC = () => {
       <div className="px-3 py-2 border-b border-border shrink-0">
         <div className="flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
-          <span className="text-[11px] font-semibold text-foreground truncate">{readerPage.title}</span>
+          <span className="text-xs font-semibold text-foreground truncate">{readerPage.title}</span>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-0.5">صفحہ {readerPage.pageNumber}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t("reader.page")} {readerPage.pageNumber}</p>
       </div>
 
       {/* Quick actions */}
       <div className="grid grid-cols-3 gap-1 p-2 border-b border-border shrink-0">
-        <Button size="sm" variant="outline" className="h-7 text-[11px] px-1" onClick={() => runAction("explain")} disabled={busy}>
-          وضاحت
+        <Button size="sm" variant="outline" className="h-7 text-xs px-1" onClick={() => runAction("explain")} disabled={busy}>
+          {t("reader.ai.explain")}
         </Button>
-        <Button size="sm" variant="outline" className="h-7 text-[11px] px-1" onClick={() => runAction("summarize")} disabled={busy}>
-          خلاصہ
+        <Button size="sm" variant="outline" className="h-7 text-xs px-1" onClick={() => runAction("summarize")} disabled={busy}>
+          {t("reader.ai.summarize")}
         </Button>
-        <Button size="sm" variant="outline" className="h-7 text-[11px] px-1" onClick={() => runAction("quiz")} disabled={busy}>
-          سوال
+        <Button size="sm" variant="outline" className="h-7 text-xs px-1" onClick={() => runAction("quiz")} disabled={busy}>
+          {t("reader.ai.ask")}
         </Button>
       </div>
 
       {/* No-key hint */}
       {noKey && (
-        <div className="mx-2 mt-2 flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[10px] text-amber-700 dark:text-amber-300 shrink-0">
+        <div className="mx-2 mt-2 flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300 shrink-0">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span className="flex-1">
-            ڈیسک ٹاپ موڈ میں AI قاری کے لیے Gemini API Key درکار ہے۔
+            {t("reader.ai.key_required")}
             <button
               type="button"
               className="underline ms-1 font-medium"
               onClick={() => navigate("/settings")}
             >
-              ترتیبات میں سیٹ کریں
+              {t("reader.ai.open_settings")}
             </button>
           </span>
         </div>
@@ -181,18 +181,18 @@ export const AiReaderPanel: React.FC = () => {
       {/* Conversation */}
       <ScrollArea className="flex-1 min-h-0" ref={scrollRef}>
         {messages.length === 0 ? (
-          <div className="p-4 text-[11px] text-muted-foreground leading-relaxed text-center">
-            اس صفحے کے بارے میں سوال پوچھیں — وضاحت، خلاصہ، یا امتحان۔
+          <div className="p-4 text-xs text-muted-foreground leading-relaxed text-center">
+            {t("reader.ai.prompt_hint")}
           </div>
         ) : (
           <div className="p-2 space-y-2">
             {messages.map((m, i) => (
               <div
                 key={i}
-                className={`max-w-full rounded-md px-2.5 py-1.5 text-[11px] leading-relaxed whitespace-pre-wrap ${
+                className={`max-w-full rounded-md px-2.5 py-1.5 text-xs leading-relaxed whitespace-pre-wrap ${
                   m.role === "user"
                     ? "ms-auto max-w-[85%] bg-primary/10 text-foreground"
-                    : "me-auto max-w-[95%] bg-muted/60 text-foreground"
+                    : "me-auto max-w-[95%] bg-muted text-foreground"
                 }`}
               >
                 {m.content || (m.streaming ? <Loader2 className="h-3 w-3 animate-spin" /> : null)}
@@ -200,7 +200,7 @@ export const AiReaderPanel: React.FC = () => {
             ))}
           </div>
         )}
-        {error && <p className="p-2 text-[10px] text-destructive break-words">{error}</p>}
+        {error && <p className="p-2 text-xs text-destructive break-words">{error}</p>}
       </ScrollArea>
 
       {/* Free-form input */}
@@ -209,11 +209,18 @@ export const AiReaderPanel: React.FC = () => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="اس صفحے کے بارے میں پوچھیں…"
+          placeholder={t("reader.ai.placeholder")}
           className="h-8 text-xs"
           disabled={busy}
         />
-        <Button size="icon" className="h-8 w-8 shrink-0" onClick={handleSend} disabled={busy || !input.trim()}>
+        <Button
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          title={t("research.send")}
+          aria-label={t("research.send")}
+          onClick={handleSend}
+          disabled={busy || !input.trim()}
+        >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
         </Button>
       </div>

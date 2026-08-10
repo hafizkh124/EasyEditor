@@ -6,7 +6,7 @@ export type ResearchMode = "islamic" | "custom" | "general";
 interface ResearchModeSwitcherProps {
   mode: ResearchMode;
   onModeChange: (m: ResearchMode) => void;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 const TABS: Array<{ value: ResearchMode; icon: typeof BookOpen; labelKey: string }> = [
@@ -20,7 +20,7 @@ const ResearchModeSwitcher = ({ mode, onModeChange, t }: ResearchModeSwitcherPro
     <div
       role="tablist"
       aria-label={t("research.mode_label")}
-      className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1"
+      className="flex items-center gap-1 rounded-lg border border-border bg-muted p-1"
     >
       {TABS.map(({ value, icon: Icon, labelKey }) => {
         const active = mode === value;
@@ -38,7 +38,7 @@ const ResearchModeSwitcher = ({ mode, onModeChange, t }: ResearchModeSwitcherPro
             )}
           >
             <Icon className="h-3.5 w-3.5" />
-            <span className="whitespace-nowrap">{t(labelKey)}</span>
+            <span className="whitespace-nowrap">{t(labelKey as import("@/lib/i18n").TranslationKey)}</span>
           </button>
         );
       })}

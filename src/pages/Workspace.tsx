@@ -7,6 +7,7 @@ import { documentService } from "@/core/workspace/documentService";
 import { htmlToTiptapJSON } from "@/core/workspace/bookSectionMigration";
 import { useSeo } from "@/hooks/useSeo";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { translateStored } from "@/lib/i18n";
 
 interface WorkspaceHandoffState {
   content?: string;
@@ -55,7 +56,7 @@ const WorkspacePage: React.FC = () => {
             "editor.untitled";
           const created = await documentService.createDocument(
             proj.id,
-            t(titleKey) || "Untitled Document",
+            t(titleKey as import("@/lib/i18n").TranslationKey) || "Untitled Document",
             htmlToTiptapJSON(handoffContent),
           );
           navigate(`/workspace/${created.id}${panelQuery}`, { replace: true });
@@ -63,7 +64,7 @@ const WorkspacePage: React.FC = () => {
         } catch (err) {
           console.error("[Workspace] Could not resolve a document:", err);
           autoResolveStarted.current = false;
-          toast.error("دستاویز کھولتے ہوئے مسئلہ پیش آیا۔");
+          toast.error(translateStored("toast.workspace.open_failed"));
         }
       };
 

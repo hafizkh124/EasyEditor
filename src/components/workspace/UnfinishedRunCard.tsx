@@ -38,7 +38,7 @@ export const UnfinishedRunCard: React.FC<UnfinishedRunCardProps> = ({
             <Button
               size="sm"
               variant="default"
-              className="h-6 px-2 text-[11px] gap-1 bg-amber-600 hover:bg-amber-700 text-white"
+              className="h-6 px-2 text-xs gap-1 bg-amber-600 hover:bg-amber-700 text-white"
               onClick={onResume}
             >
               <Play className="h-3 w-3" />
@@ -48,7 +48,7 @@ export const UnfinishedRunCard: React.FC<UnfinishedRunCardProps> = ({
           <Button
             size="sm"
             variant="outline"
-            className="h-6 px-2 text-[11px] gap-1 border-amber-500/40 text-amber-700 hover:bg-amber-500/20"
+            className="h-6 px-2 text-xs gap-1 border-amber-500/40 text-amber-700 hover:bg-amber-500/20"
             onClick={onDiscard}
           >
             <Trash2 className="h-3 w-3" />
@@ -57,7 +57,7 @@ export const UnfinishedRunCard: React.FC<UnfinishedRunCardProps> = ({
         </div>
       </div>
       {!canResume && (
-        <p className="text-[11px] text-amber-700/80">
+        <p className="text-xs text-amber-700/80">
           دستاویز کا متن تبدیل ہو چکا ہے — سابقہ نامکمل جگہ پر جاری رکھنا ممکن نہیں۔
         </p>
       )}

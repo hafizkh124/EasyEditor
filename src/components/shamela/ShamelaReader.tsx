@@ -11,6 +11,7 @@ import { TocTree } from "./TocTree";
 import { ReaderContent } from "./ReaderContent";
 import { ReaderBottomBar } from "./ReaderBottomBar";
 import { PdfViewerDialog } from "./PdfViewerDialog";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ShamelaReaderProps {
   bookId: string;
@@ -37,6 +38,7 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
   initialPage,
   onRequestSplit,
 }) => {
+  const { t } = useLanguage();
   const [tocOpen, setTocOpen] = useState(true);
   const [pdfOpen, setPdfOpen] = useState(false);
 
@@ -122,10 +124,10 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
         {tocOpen && (
           <aside
             className={cn(
-              "w-64 border-e border-border bg-muted/30 shrink-0 overflow-y-auto",
+              "w-64 border-e border-border bg-muted/60 shrink-0 overflow-y-auto",
               "max-md:absolute max-md:inset-y-0 max-md:start-0 max-md:z-20 max-md:bg-background max-md:shadow-xl",
             )}
-            aria-label="Table of contents"
+            aria-label={t("reader.contents")}
           >
             <TocTree
               toc={reader.toc}

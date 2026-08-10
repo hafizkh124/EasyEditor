@@ -67,7 +67,7 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
             {summary.applied} از {summary.total} مکمل
           </span>
           {band && (
-            <Badge variant="outline" className={`text-[10px] shrink-0 ${band.cls}`}>
+            <Badge variant="outline" className={`text-xs shrink-0 ${band.cls}`}>
               {band.label} ({percent}%)
             </Badge>
           )}
@@ -109,7 +109,7 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
       </div>
 
       {notes.length > 0 && (
-        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
           <AlertTriangle className="h-3 w-3 shrink-0 text-amber-500" />
           {notes.join("، ")}
         </p>

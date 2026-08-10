@@ -51,44 +51,44 @@ const UserFiltersComponent = ({ filters, onChange }: UserFiltersProps) => {
       </div>
 
       {/* Advanced filters row */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-end gap-3">
+        <div className="space-y-1 w-full sm:w-auto">
           <Label className="text-xs text-muted-foreground">{t("admin.profession_filter")}</Label>
           <Select
             value={filters.profession}
             onValueChange={(val) => onChange({ profession: val === "_all" ? "" : val })}
           >
-            <SelectTrigger className="h-8 w-[140px] text-xs">
+            <SelectTrigger className="h-8 w-full sm:w-[140px] text-xs">
               <SelectValue placeholder={t("admin.profession_filter")} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="_all">{t("admin.filter_all") || "All"}</SelectItem>
               {PROFESSIONS.map((p) => (
                 <SelectItem key={p} value={p}>
-                  {t(`onboarding.profession_${p}`) || p}
+                  {t(`onboarding.profession_${p}` as import("@/lib/i18n").TranslationKey) || p}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1 w-full sm:w-auto">
           <Label className="text-xs text-muted-foreground">{t("admin.date_from")}</Label>
           <Input
             type="date"
             value={filters.dateFrom || ""}
             onChange={(e) => onChange({ dateFrom: e.target.value || null })}
-            className="h-8 w-[140px] text-xs"
+            className="h-8 w-full sm:w-[140px] text-xs"
           />
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1 w-full sm:w-auto">
           <Label className="text-xs text-muted-foreground">{t("admin.date_to")}</Label>
           <Input
             type="date"
             value={filters.dateTo || ""}
             onChange={(e) => onChange({ dateTo: e.target.value || null })}
-            className="h-8 w-[140px] text-xs"
+            className="h-8 w-full sm:w-[140px] text-xs"
           />
         </div>
 

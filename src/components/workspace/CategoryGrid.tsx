@@ -51,7 +51,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium truncate">{cat.name}</p>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {cat.bookCount.toLocaleString()} books
               </p>
             </div>

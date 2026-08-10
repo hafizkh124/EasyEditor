@@ -16,6 +16,7 @@ import {
   parseAyah, parseTafsirList, parseQuranSearch, parseTafsirSearch, rowsFromTextBlocks,
   type TafsirRow,
 } from "@/lib/tafsir/parseTafsir";
+import { translateStored } from "@/lib/i18n";
 
 const LICENSE_NOTE = "مرکز تفسیر (CC BY 4.0)";
 
@@ -60,7 +61,7 @@ export function TafsirSearchDialog({ open, onOpenChange }: TafsirSearchDialogPro
   const runAyah = async () => {
     const s = Number(surah), a = Number(ayah);
     if (!Number.isFinite(s) || !Number.isFinite(a) || s < 1 || a < 1) {
-      toast.error("سورہ اور آیت کے نمبر درج کریں (مثلاً ۱ اور ۷)۔");
+      toast.error(translateStored("toast.tafsir.reference_required"));
       return;
     }
     await capture(async () => {
@@ -73,7 +74,7 @@ export function TafsirSearchDialog({ open, onOpenChange }: TafsirSearchDialogPro
   const runTafsir = async () => {
     const s = Number(surah), a = Number(ayah);
     if (!Number.isFinite(s) || !Number.isFinite(a) || s < 1 || a < 1) {
-      toast.error("سورہ اور آیت کے نمبر درج کریں۔");
+      toast.error(translateStored("toast.tafsir.reference_invalid"));
       return;
     }
     await capture(async () => {
@@ -86,7 +87,7 @@ export function TafsirSearchDialog({ open, onOpenChange }: TafsirSearchDialogPro
 
   const runSearch = async (inTafsir: boolean) => {
     const q = query.trim();
-    if (!q) { toast.error("تلاش کا متن درج کریں۔"); return; }
+    if (!q) { toast.error(translateStored("toast.search.query_required")); return; }
     await capture(async () => {
       const res = inTafsir
         ? await tafsirCall("search_in_tafsir", { query: q, source: source || undefined, limit: 20 })
@@ -105,10 +106,10 @@ export function TafsirSearchDialog({ open, onOpenChange }: TafsirSearchDialogPro
     try {
       const items = await producer();
       setResults(items);
-      if (items.length === 0) toast.info("کوئی نتیجہ نہیں ملا۔");
+      if (items.length === 0) toast.info(translateStored("toast.search.no_results"));
     } catch (err) {
       console.error("[TafsirSearchDialog]", err);
-      toast.error(err instanceof Error ? err.message : "درخواست ناکام۔");
+      toast.error(err instanceof Error ? err.message : translateStored("toast.common.request_failed"));
     } finally {
       setLoading(false);
     }
@@ -124,14 +125,14 @@ export function TafsirSearchDialog({ open, onOpenChange }: TafsirSearchDialogPro
     const outcome = await insertTafsir({
       text: item.text, reference: item.reference, source: item.source, licenseNote: LICENSE_NOTE,
     });
-    if (outcome === "inserted") toast.success("ایڈیٹر میں داخل ہو گیا۔");
-    else if (outcome === "copied") toast.info("کلپ بورڈ پر کاپی ہو گیا۔");
-    else toast.error("داخل نہیں ہو سکا۔");
+    if (outcome === "inserted") toast.success(translateStored("toast.editor.inserted"));
+    else if (outcome === "copied") toast.info(translateStored("toast.clipboard.copied"));
+    else toast.error(translateStored("toast.editor.insert_failed"));
   };
 
   const handleCopy = async (text: string) => {
-    try { await navigator.clipboard.writeText(text); toast.success("کاپی ہو گیا۔"); }
-    catch { toast.error("کاپی نہیں ہو سکا۔"); }
+    try { await navigator.clipboard.writeText(text); toast.success(translateStored("toast.common.copied")); }
+    catch { toast.error(translateStored("toast.common.copy_failed")); }
   };
 
   const showSurahAyah = tab === "ayah" || tab === "tafsir";
@@ -161,23 +162,23 @@ export function TafsirSearchDialog({ open, onOpenChange }: TafsirSearchDialogPro
             {showSurahAyah ? (
               <div className="grid grid-cols-2 gap-2 flex-1">
                 <div className="space-y-1">
-                  <Label className="text-[11px]">سورہ</Label>
+                  <Label className="text-xs">سورہ</Label>
                   <Input inputMode="numeric" value={surah} onChange={(e) => setSurah(e.target.value)} placeholder="1" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px]">آیت</Label>
+                  <Label className="text-xs">آیت</Label>
                   <Input inputMode="numeric" value={ayah} onChange={(e) => setAyah(e.target.value)} placeholder="1" />
                 </div>
               </div>
             ) : (
               <div className="space-y-1 flex-1">
-                <Label className="text-[11px]">تلاش کا متن</Label>
+                <Label className="text-xs">تلاش کا متن</Label>
                 <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="مثال: رحمة" />
               </div>
             )}
             {showSource && (
               <div className="space-y-1 min-w-[150px]">
-                <Label className="text-[11px]">مصدر</Label>
+                <Label className="text-xs">مصدر</Label>
                 <Select value={source} onValueChange={setSource} onOpenChange={(o) => { if (o) void ensureSources(); }}>
                   <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="پیش فرض" /></SelectTrigger>
                   <SelectContent dir="rtl">
@@ -204,9 +205,9 @@ export function TafsirSearchDialog({ open, onOpenChange }: TafsirSearchDialogPro
           )}
           <div className="space-y-3">
             {results.map((item) => (
-              <div key={item.key} className="p-3 rounded-lg border border-border bg-muted/10 space-y-2" dir="rtl">
+              <div key={item.key} className="p-3 rounded-lg border border-border bg-muted/60 space-y-2" dir="rtl">
                 <div className="text-sm leading-relaxed whitespace-pre-wrap">{item.text}</div>
-                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                   {item.reference && <span className="text-primary font-medium" dir="rtl">{item.reference}</span>}
                   {item.source && <span>{item.source}</span>}
                 </div>

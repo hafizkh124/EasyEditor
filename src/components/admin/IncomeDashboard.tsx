@@ -144,7 +144,9 @@ const IncomeDashboard = () => {
                     {incomeSummary.by_type.map((row) => (
                       <TableRow key={row.type}>
                         <TableCell className="text-start">
-                          {t(PAYMENT_TYPE_KEYS[row.type] || "") || row.type}
+                          {PAYMENT_TYPE_KEYS[row.type]
+                            ? t(PAYMENT_TYPE_KEYS[row.type] as import("@/lib/i18n").TranslationKey)
+                            : row.type}
                         </TableCell>
                         <TableCell className="text-end">{row.cnt}</TableCell>
                         <TableCell className="text-end font-medium">{formatPKR(Number(row.total))}</TableCell>

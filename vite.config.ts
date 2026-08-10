@@ -52,7 +52,10 @@ export default defineConfig(({ mode }) => {
         // Native and native-adjacent packages must stay out of the bundle:
         // better-sqlite3 and the whisper addon load .node binaries by path at
         // runtime, and msedge-tts pulls in ws's optional native extras.
-        external: ["better-sqlite3", "sqlite-vec", "@kutalia/whisper-node-addon", "msedge-tts"],
+        // electron-updater is CommonJS and reads app-update.yml from the packaged
+        // resources at runtime, so it has to stay a real require() rather than be
+        // inlined into main.js.
+        external: ["better-sqlite3", "sqlite-vec", "@kutalia/whisper-node-addon", "msedge-tts", "electron-updater"],
       },
     },
   };
@@ -63,6 +66,14 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(resolved.VITE_SUPABASE_PUBLISHABLE_KEY),
       "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(resolved.VITE_SUPABASE_PROJECT_ID),
       "import.meta.env.VITE_DESKTOP": JSON.stringify(isDesktop ? "true" : "false"),
+      // Local Whisper/Piper/edge-tts (electron/voice/*) have been complete since
+      // M5.5, but this flag was never set anywhere — not in .env.example, not
+      // here — so Transcribe and Speak stayed hidden on desktop even though
+      // their offline engines worked. Default it on for desktop builds; an
+      // explicit .env value still wins, so it remains a kill switch.
+      "import.meta.env.VITE_LOCAL_VOICE": JSON.stringify(
+        env.VITE_LOCAL_VOICE || (isDesktop ? "true" : "false"),
+      ),
     },
     server: {
       host: "::",
@@ -146,16 +157,22 @@ export default defineConfig(({ mode }) => {
           // referenced anywhere in src/ or index.html. Together they were
           // 2.26 MB of the 5.38 MB precache: 42%, downloaded by every mobile
           // user, for two images the app never shows.
-          globIgnores: ["og-image.png", "safepay_order_receipt.png"],
+          globIgnores: [
+            "og-image.png",
+            "safepay_order_receipt.png",
+            "**/*noto-nastaliq-urdu*.woff2",
+            "**/*amiri-*.woff2",
+            "**/*vazirmatn-*.woff2",
+          ],
           navigateFallback: "/index.html",
           navigateFallbackDenylist: [/^\/~oauth(?:\/|$)/, /^\/\.lovable(?:\/|$)/],
           runtimeCaching: [
             {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              urlPattern: /\/assets\/.*\.woff2$/i,
               handler: "CacheFirst",
               options: {
-                cacheName: "google-fonts-cache",
-                expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheName: "self-hosted-fonts",
+                expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
                 cacheableResponse: { statuses: [0, 200] },
               },
             },

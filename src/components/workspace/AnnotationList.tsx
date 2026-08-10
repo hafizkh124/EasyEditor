@@ -38,7 +38,7 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
 
       {hasSelection && onCreateAnnotation && (
         <div className="space-y-1.5 mb-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded-md">
-          <p className="text-[11px] text-amber-700 font-medium">منتخب متن پر نوٹ شامل کریں:</p>
+          <p className="text-xs text-amber-700 font-medium">منتخب متن پر نوٹ شامل کریں:</p>
           <div className="flex gap-1">
             <Input
               value={newNote}
@@ -67,7 +67,7 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
                   key={item.id}
                   className={`p-2 rounded-md border text-xs space-y-1 ${
                     isDetached
-                      ? "bg-muted/40 border-muted-foreground/30 text-muted-foreground"
+                      ? "bg-muted border-muted-foreground/30 text-muted-foreground"
                       : "bg-amber-500/5 border-amber-500/20 text-foreground"
                   }`}
                 >
@@ -84,13 +84,13 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
                   </div>
 
                   {item.anchor?.quote && (
-                    <blockquote className="border-r-2 border-amber-500/40 pe-1.5 text-[11px] italic text-muted-foreground truncate">
+                    <blockquote className="border-r-2 border-amber-500/40 pe-1.5 text-xs italic text-muted-foreground truncate">
                       "{item.anchor.quote}"
                     </blockquote>
                   )}
 
                   {isDetached && (
-                    <Badge variant="outline" className="text-[10px] gap-1 text-muted-foreground border-muted-foreground/30">
+                    <Badge variant="outline" className="text-xs gap-1 text-muted-foreground border-muted-foreground/30">
                       <Link2Off className="h-2.5 w-2.5" />
                       منقطع نوٹ (متن تبدیل ہو گیا)
                     </Badge>

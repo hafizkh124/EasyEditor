@@ -37,7 +37,7 @@ function sourceTypeOf(r: ResourceResult): SourceFilter {
  * the dialog can say where they came from. Split out of `ResourceSearchDialog`
  * for the 300-line limit (SPEC-M3 NFR-1).
  */
-export function useResourceSearch(t: (k: string) => string) {
+export function useResourceSearch(t: import("@/lib/i18n").Translator) {
   const { session } = useAuth();
   const [query, setQuery] = useState("");
   const [response, setResponse] = useState<CitationSearchResponse | null>(null);

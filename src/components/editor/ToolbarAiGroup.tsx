@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface ToolbarAiGroupProps {
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
   aiBusy: string | null;
   onAddHarakat: () => void;
   onRemoveHarakat: () => void;

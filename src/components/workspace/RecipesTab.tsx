@@ -23,6 +23,7 @@ import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { documentService, extractPlainTextFromJSON } from "@/core/workspace/documentService";
 import { toast } from "sonner";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 export const RecipesTab: React.FC = () => {
   const { total } = useTokenBalance();
@@ -60,14 +61,14 @@ export const RecipesTab: React.FC = () => {
   const handleOpenRunDialog = async (recipe: Recipe) => {
     const docId = workspace?.activeDocumentId;
     if (!docId) {
-      toast.error("کوئی فعال دستاویز نہیں چنی گئی۔");
+      toast.error(translateStored("toast.workspace.no_document"));
       return;
     }
 
     const doc = await documentService.getDocument(docId);
     const text = doc ? extractPlainTextFromJSON(doc.content_json) || doc.plain_text || "" : "";
     if (!text.trim()) {
-      toast.error("دستاویز کا متن خالی ہے!");
+      toast.error(translateStored("toast.workspace.empty_document"));
       return;
     }
 
@@ -83,7 +84,7 @@ export const RecipesTab: React.FC = () => {
     // Recipes edit the document, so they need the mounted editor's runner.
     const runDocumentTask = workspace?.runDocumentTask;
     if (!runDocumentTask) {
-      toast.error("دستاویز ایڈیٹر میں کھلی نہیں — پہلے Canvas میں دستاویز کھولیں۔");
+      toast.error(translateStored("toast.workspace.open_canvas_first"));
       return;
     }
 
@@ -100,17 +101,19 @@ export const RecipesTab: React.FC = () => {
       const spent = final.stepOutcomes.reduce((sum, s) => sum + s.tokensSpent, 0);
 
       if (final.status === "completed") {
-        toast.success(
-          `'${selectedRecipe.title}' مکمل — ${final.totalSteps} قدم، ${spent} ٹوکن خرچ۔`,
-        );
+        toast.success(translateStoredFormat("toast.recipe.complete", {
+          title: selectedRecipe.title,
+          steps: final.totalSteps,
+          tokens: spent,
+        }));
         setTimeout(() => setSelectedRecipe(null), 1200);
       } else {
         // Never report success for a run that stopped: the applied steps stay
         // in the document, and the user is told exactly where it stopped.
-        toast.error(final.error ?? "Recipe مکمل نہ ہو سکی۔");
+        toast.error(final.error ?? translateStored("toast.recipe.failed"));
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Recipe نہیں چل سکی۔");
+      toast.error(err instanceof Error ? err.message : translateStored("toast.recipe.run_failed"));
     } finally {
       setIsRunning(false);
     }
@@ -153,7 +156,7 @@ export const RecipesTab: React.FC = () => {
                         {item.title}
                       </h4>
                       {item.description && (
-                        <p className="text-[11px] text-muted-foreground">{item.description}</p>
+                        <p className="text-xs text-muted-foreground">{item.description}</p>
                       )}
                     </div>
 
@@ -168,10 +171,10 @@ export const RecipesTab: React.FC = () => {
                     </Button>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t text-[10px] text-muted-foreground">
+                  <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t text-xs text-muted-foreground">
                     <div className="flex flex-wrap gap-1">
                       {item.steps.map((s, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-[9px] px-1 py-0 font-normal">
+                        <Badge key={idx} variant="secondary" className="text-xs px-1 py-0 font-normal">
                           {idx + 1}. {s.stepLabel}
                         </Badge>
                       ))}
@@ -203,12 +206,12 @@ export const RecipesTab: React.FC = () => {
 
           {selectedRecipe && (
             <div className="space-y-3 py-1 text-xs">
-              <div className="p-3 bg-muted/40 rounded-lg border space-y-1.5">
+              <div className="p-3 bg-muted rounded-lg border space-y-1.5">
                 <h4 className="font-semibold text-foreground text-xs">مراحل کی فہرست:</h4>
                 <div className="space-y-1">
                   {selectedRecipe.steps.map((s, i) => (
-                    <div key={i} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="w-4 h-4 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-[10px]">
+                    <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="w-4 h-4 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-xs">
                         {i + 1}
                       </span>
                       <span>{s.stepLabel}</span>
@@ -225,7 +228,7 @@ export const RecipesTab: React.FC = () => {
                 </div>
 
                 {total !== undefined && total < calculateRecipeCost(selectedRecipe, docText.length) && (
-                  <div className="flex items-center gap-1.5 text-destructive text-[11px] font-medium pt-1">
+                  <div className="flex items-center gap-1.5 text-destructive text-xs font-medium pt-1">
                     <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                     <span>ٹوکن ناکافی ہیں! بیلنس: {total}</span>
                   </div>

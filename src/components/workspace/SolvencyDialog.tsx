@@ -68,7 +68,7 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
           </div>
 
           {!isSolvent && (
-            <div className="p-2.5 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-[11px] flex items-center gap-2">
+            <div className="p-2.5 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>آپ کے پاس مطلوبہ ٹوکنز موجود نہیں ہیں۔ براہِ کرم پلان اپگریڈ کریں۔</span>
             </div>

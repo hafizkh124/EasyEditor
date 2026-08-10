@@ -55,11 +55,11 @@ const PendingApproval = () => {
 
   const handleVerifyReceipt = async () => {
     if (!user || !txId.trim() || !receiptFile) {
-      toast.error(direction === "rtl" ? "Transaction ID اور receipt دونوں ضروری ہیں" : "Both transaction ID and receipt are required");
+      toast.error(t("toast.payment.fields_required"));
       return;
     }
     if (receiptFile.size > 5 * 1024 * 1024) {
-      toast.error(direction === "rtl" ? "تصویر 5MB سے کم ہونی چاہیے" : "Image must be smaller than 5MB");
+      toast.error(t("toast.upload.image_too_large"));
       return;
     }
     setVerifying(true);
@@ -78,17 +78,13 @@ const PendingApproval = () => {
       if (data?.error) throw new Error(String(data.error));
 
       if (data?.autoApproved) {
-        toast.success(direction === "rtl"
-          ? "آپ کا اکاؤنٹ فوری فعال ہو گیا!"
-          : "Your account is now active!");
+        toast.success(t("toast.account.activated"));
         setTimeout(() => navigate("/dashboard", { replace: true }), 600);
       } else {
         setTxId("");
         setReceiptFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
-        toast.success(direction === "rtl"
-          ? "Receipt admin کو review کے لیے بھیج دی گئی۔"
-          : "Receipt sent to admin for review.");
+        toast.success(t("toast.account.receipt_sent"));
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Verification failed");
@@ -185,7 +181,7 @@ const PendingApproval = () => {
   const userName = displayName || user.email?.split("@")[0] || "";
   const userEmail = user.email || "";
   const selectedPlan = PLAN_TIERS.find((p) => p.id === selectedPackage)!;
-  const packageLabel = t(selectedPlan.nameKey) || selectedPackage;
+  const packageLabel = t(selectedPlan.nameKey as import("@/lib/i18n").TranslationKey) || selectedPackage;
 
   const whatsappMessage = encodeURIComponent(
     `Assalam-o-Alaikum,\n` +
@@ -259,12 +255,12 @@ const PendingApproval = () => {
                 >
                   {/* Badges */}
                   {plan.popular && (
-                    <Badge className="absolute -top-2.5 end-3 bg-primary text-primary-foreground text-[10px] px-2">
+                    <Badge className="absolute -top-2.5 end-3 bg-primary text-primary-foreground text-xs px-2">
                       {t("pending.recommended") || "Recommended"}
                     </Badge>
                   )}
                   {plan.comingSoon && (
-                    <Badge variant="secondary" className="absolute -top-2.5 end-3 text-[10px] px-2">
+                    <Badge variant="secondary" className="absolute -top-2.5 end-3 text-xs px-2">
                       <Construction className="h-3 w-3 me-1" />
                       {t("pending.coming_soon") || "Coming Soon"}
                     </Badge>
@@ -282,7 +278,7 @@ const PendingApproval = () => {
                     <div className={cn("rounded-lg p-1.5", colors.bg)}>
                       <Icon className={cn("h-4 w-4", colors.icon)} />
                     </div>
-                    <span className="font-semibold text-sm">{t(plan.nameKey)}</span>
+                    <span className="font-semibold text-sm">{t(plan.nameKey as import("@/lib/i18n").TranslationKey)}</span>
                   </div>
 
                   {/* Price */}
@@ -319,14 +315,14 @@ const PendingApproval = () => {
             {PAYMENT_ACCOUNTS.map((acc, i) => (
               <div key={i} className="rounded-lg border border-border p-4 space-y-2 bg-card">
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t(acc.methodKey) || acc.methodKey}
+                  {t(acc.methodKey as import("@/lib/i18n").TranslationKey) || acc.methodKey}
                 </div>
                 <div className="font-medium">{acc.title}</div>
                 <div className="space-y-1">
                   {acc.rows.map((r, j) => (
                     <div key={j} className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="text-[11px] text-muted-foreground">{t(r.labelKey) || r.labelKey}</div>
+                        <div className="text-xs text-muted-foreground">{t(r.labelKey as import("@/lib/i18n").TranslationKey) || r.labelKey}</div>
                         <div className={r.mono ? "font-mono text-sm break-all" : "text-sm"}>{r.value}</div>
                       </div>
                       <Button

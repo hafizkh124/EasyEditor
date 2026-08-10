@@ -225,10 +225,7 @@ const Speak = () => {
         // SPEC-M5 FR-6.6: the online engine can fail and be served by Piper
         // instead — say so, rather than passing off local audio as online.
         if (result.fallbackFrom) {
-          toast.warning(
-            t("tts.online_fallback") ||
-              'آن لائن انجن دستیاب نہیں — آڈیو مقامی Piper سے بنایا گیا۔',
-          );
+          toast.warning(t("tts.online_fallback", "The online engine was unavailable, so Piper created the audio locally."));
           if (import.meta.env.DEV) console.warn('Edge TTS fell back to Piper:', result.fallbackReason);
         }
         return new Blob([result.audio], { type: result.mimeType });
@@ -284,7 +281,7 @@ const Speak = () => {
   const handlePlay = async () => {
     if (!text.trim()) return;
     if (text.length > charLimit) { toast.error(t("tts.text_too_long")); return; }
-    if (!useLocalEngine && !canAffordTts) { toast.error(t("tts.insufficient_tokens") || "Insufficient tokens"); return; }
+    if (!useLocalEngine && !canAffordTts) { toast.error(t("tts.insufficient_tokens", "Insufficient tokens")); return; }
     handleStop();
     setIsLoading(true);
     try {
@@ -334,7 +331,7 @@ const Speak = () => {
   const handleDownload = async () => {
     if (!text.trim()) return;
     if (text.length > charLimit) { toast.error(t("tts.text_too_long")); return; }
-    if (!canAffordTts) { toast.error(t("tts.insufficient_tokens") || "Insufficient tokens"); return; }
+    if (!canAffordTts) { toast.error(t("tts.insufficient_tokens", "Insufficient tokens")); return; }
     setIsDownloading(true);
     try {
       const audioBlob = await callTtsApi();

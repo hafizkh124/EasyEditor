@@ -24,7 +24,7 @@ export function TafsirGuideModal({ open, onOpenChange }: TafsirGuideModalProps) 
         </DialogHeader>
 
         <div className="space-y-6 text-sm">
-          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/20">
+          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/60">
             <div className="flex items-center gap-2 font-bold text-primary text-base">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">۱</span>
               موڈ منتخب کریں
@@ -36,7 +36,7 @@ export function TafsirGuideModal({ open, onOpenChange }: TafsirGuideModalProps) 
             </p>
           </div>
 
-          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/20">
+          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/60">
             <div className="flex items-center gap-2 font-bold text-primary text-base">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">۲</span>
               «منسلک ہوں» دبائیں
@@ -46,7 +46,7 @@ export function TafsirGuideModal({ open, onOpenChange }: TafsirGuideModalProps) 
             </p>
           </div>
 
-          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/20">
+          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/60">
             <div className="flex items-center gap-2 font-bold text-primary text-base">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">۳</span>
               قرآن / تفسیر تلاش کریں
@@ -57,7 +57,7 @@ export function TafsirGuideModal({ open, onOpenChange }: TafsirGuideModalProps) 
             </p>
           </div>
 
-          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/20">
+          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/60">
             <div className="flex items-center gap-2 font-bold text-primary text-base">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">۴</span>
               ایڈیٹر میں داخل کریں

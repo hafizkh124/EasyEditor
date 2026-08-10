@@ -55,7 +55,7 @@ interface SourcesPanelProps {
   madhhab: string;
   onMadhhabChange: (v: string) => void;
   tier: string;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 const DropZone = ({
@@ -65,7 +65,7 @@ const DropZone = ({
 }: {
   onFileDrop: (file: File) => void;
   isUploading: boolean;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const handleDrag = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); }, []);
@@ -155,7 +155,7 @@ const SourcesPanel = ({
           {/* Islamic usage meter */}
           {islamicQueriesLimit > 0 && (
             <div className="mt-3 space-y-1.5">
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{t("research.islamic_queries_label")}</span>
                 <span className={islamicLimitReached ? "text-destructive font-medium" : ""}>
                   {islamicQueriesUsed} / {islamicQueriesLimit}
@@ -167,8 +167,8 @@ const SourcesPanel = ({
               />
               {islamicLimitReached && upgradeKey && (
                 <Link to="/pricing" className="block">
-                  <Badge variant="destructive" className="w-full justify-center text-[10px] cursor-pointer">
-                    {t(upgradeKey)}
+                  <Badge variant="destructive" className="w-full justify-center text-xs cursor-pointer">
+                    {t(upgradeKey as import("@/lib/i18n").TranslationKey)}
                   </Badge>
                 </Link>
               )}
@@ -228,7 +228,7 @@ const SourcesPanel = ({
       </div>
 
       <div className="p-3 space-y-2 border-b border-border">
-        <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-[11px] text-amber-700 dark:text-amber-300">
+        <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs text-amber-700 dark:text-amber-300">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span>{CUSTOM_SOURCE_WARNING}</span>
         </div>
@@ -284,7 +284,7 @@ const SourcesPanel = ({
                   >
                     <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span className="text-sm text-foreground truncate flex-1">{source.title}</span>
-                    <Badge variant="secondary" className="text-[10px] shrink-0">
+                    <Badge variant="secondary" className="text-xs shrink-0">
                       {source.source_type.toUpperCase()}
                     </Badge>
                     <Button
@@ -329,13 +329,13 @@ const SourcesPanel = ({
           </div>
           <Switch id="mode-toggle" checked={!strictMode} onCheckedChange={(v) => onStrictModeChange(!v)} />
         </div>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {strictMode ? t("research.strict_desc") : t("research.extended_desc")}
         </p>
 
         {showUsageMeter && (
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{t("research.queries_label")}</span>
               <span className={researchLimitReached ? "text-destructive font-medium" : ""}>
                 {researchQueriesUsed} / {researchQueriesLimit}
@@ -347,8 +347,8 @@ const SourcesPanel = ({
             />
             {researchLimitReached && upgradeKey && (
               <Link to="/pricing" className="block">
-                <Badge variant="destructive" className="w-full justify-center text-[10px] cursor-pointer">
-                  {t(upgradeKey)}
+                <Badge variant="destructive" className="w-full justify-center text-xs cursor-pointer">
+                  {t(upgradeKey as import("@/lib/i18n").TranslationKey)}
                 </Badge>
               </Link>
             )}
@@ -360,7 +360,7 @@ const SourcesPanel = ({
       {/* General-mode footer: usage meter only (no Extended toggle) */}
       {mode === "general" && showUsageMeter && (
         <div className="p-3 border-t border-border space-y-1.5 mt-auto">
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{t("research.queries_label")}</span>
             <span className={researchLimitReached ? "text-destructive font-medium" : ""}>
               {researchQueriesUsed} / {researchQueriesLimit}
@@ -372,8 +372,8 @@ const SourcesPanel = ({
           />
           {researchLimitReached && upgradeKey && (
             <Link to="/pricing" className="block">
-              <Badge variant="destructive" className="w-full justify-center text-[10px] cursor-pointer">
-                {t(upgradeKey)}
+              <Badge variant="destructive" className="w-full justify-center text-xs cursor-pointer">
+                {t(upgradeKey as import("@/lib/i18n").TranslationKey)}
               </Badge>
             </Link>
           )}

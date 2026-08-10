@@ -39,7 +39,7 @@ interface DocumentBoxProps {
   onCopy: () => void;
   onRegenerate?: () => void;
   onOpenInEditor?: () => void;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 const DocumentBox = ({ content, isRefining, onRefine, onCopy, onRegenerate, onOpenInEditor, t }: DocumentBoxProps) => {
@@ -47,7 +47,7 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onRegenerate, onOp
 
   return (
     <div className="relative rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-      <div className="flex items-center gap-1.5 p-2 border-b border-border bg-muted/30 flex-wrap">
+      <div className="flex items-center gap-1.5 p-2 border-b border-border bg-muted/60 flex-wrap">
         <span className="text-xs font-medium text-muted-foreground mr-1 flex items-center gap-1">
           <Sparkles className="h-3.5 w-3.5" />
           {t("research.ai_tools")}
@@ -122,7 +122,7 @@ const DocumentBox = ({ content, isRefining, onRefine, onCopy, onRegenerate, onOp
 interface SourcesReadyIndicatorProps {
   count: number;
   domains: string[];
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 const DOMAIN_SHORT: Record<string, string> = {
@@ -199,7 +199,7 @@ interface ChatDisplayProps {
   sources: Source[];
   researchLimitReached: boolean;
   chatEndRef: React.RefObject<HTMLDivElement>;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
   mode?: ResearchMode;
   onModeChange?: (mode: ResearchMode) => void;
   sourcesReadyInfo?: { count: number; domains: string[] } | null;
@@ -378,7 +378,7 @@ const ChatDisplay = ({
             className="flex gap-2 group"
           >
             <AiAvatar />
-            <div className="rounded-2xl rounded-tl-md px-4 py-2.5 max-w-[80%] text-sm bg-muted/60 text-foreground border border-border/50 relative shadow-sm">
+            <div className="rounded-2xl rounded-tl-md px-4 py-2.5 max-w-[80%] text-sm bg-muted text-foreground border border-border/50 relative shadow-sm">
               <div dir={isRtl ? "rtl" : "ltr"} className={cn("prose prose-sm dark:prose-invert max-w-none", isRtl && "text-right")}>
                 <ReactMarkdown>{msg.content}</ReactMarkdown>
               </div>
@@ -408,7 +408,7 @@ const ChatDisplay = ({
           className="flex gap-2 items-start"
         >
           <AiAvatar />
-          <div className="rounded-2xl rounded-tl-md px-4 py-3 bg-muted/60 border border-border/50 flex items-center gap-2.5 shadow-sm">
+          <div className="rounded-2xl rounded-tl-md px-4 py-3 bg-muted border border-border/50 flex items-center gap-2.5 shadow-sm">
             <TypingDots />
             <span className="text-xs text-muted-foreground">
               {showSourcesIndicator ? t("research.generating_with_sources") : t("research.thinking")}
@@ -534,13 +534,13 @@ const ChatDisplay = ({
             </Button>
           </div>
           <div className="px-3 pb-2 flex items-center justify-between">
-            <p className="text-[11px] text-muted-foreground">{t("research.send_hint")}</p>
+            <p className="text-xs text-muted-foreground">{t("research.send_hint")}</p>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setIsPromptModalOpen(true)}
-              className="h-6 text-[11px] px-2 gap-1 rounded-lg text-primary border-primary/30 hover:bg-primary/10 transition-colors"
+              className="h-6 text-xs px-2 gap-1 rounded-lg text-primary border-primary/30 hover:bg-primary/10 transition-colors"
             >
               <Sparkles className="h-3 w-3" />
               14 علمی پرامپٹس

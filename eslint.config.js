@@ -28,6 +28,34 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-empty-object-type": "off",
       "@typescript-eslint/no-require-imports": "off",
+      "no-console": "warn",
+    },
+  },
+  {
+    files: ["src/lib/logger.ts"],
+    rules: { "no-console": "off" },
+  },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      "src/lib/**",
+      // Existing navigation debt. Phase 6 removes these exemptions; new files
+      // cannot bypass React Router or the desktop HashRouter this way.
+      "src/components/ErrorBoundary.tsx",
+      "src/components/SidebarHistory.tsx",
+      "src/pages/OAuthConsent.tsx",
+      "src/pages/Pricing.tsx",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "AssignmentExpression[left.type='MemberExpression'][left.object.type='MemberExpression'][left.object.object.name='window'][left.object.property.name='location'][left.property.name='href']",
+          message:
+            "Use React Router navigation (or a helper under src/lib) instead of assigning window.location.href; direct assignment breaks the desktop HashRouter.",
+        },
+      ],
     },
   },
 
@@ -124,9 +152,14 @@ export default tseslint.config(
       //    Those tables exist only in the hosted database, so a local
       //    backend has nothing to migrate — see bookSectionMigration.ts. ────
       "src/core/workspace/bookSectionMigration.ts",
-      // KNOWN PENDING LEAK (FR-1.2's own table, not yet fixed): these insert
-      // into book_sections/translation_chunks directly instead of going
-      // through bookSectionMigration's service layer.
+      // ── Book Studio / Translation Projects. Previously recorded here as a
+      //    "KNOWN PENDING LEAK": both insert into book_sections /
+      //    translation_chunks directly, so on desktop they rendered and then
+      //    failed on save. Resolved by declaring what they are rather than
+      //    porting them — both are registered `desktop: never` in
+      //    core/capabilities/registry.ts and their routes are wrapped in
+      //    CapabilityRoute, so the desktop build cannot reach them at all.
+      //    Same standing as OCR.tsx and ExtractPanel.tsx above. ──────────────
       "src/pages/BookWorkspace.tsx",
       "src/pages/TranslationWorkspace.tsx",
 
@@ -138,11 +171,32 @@ export default tseslint.config(
       "no-restricted-imports": [
         "error",
         {
+          // NOTE: keep every `no-restricted-imports` entry in THIS one rule.
+          // Flat config resolves a rule by last-match-wins, not by merging, so a
+          // second config block redefining `no-restricted-imports` for src/**
+          // silently switches the Supabase boundary below off everywhere.
           paths: [
             {
               name: "@/integrations/supabase/client",
               message:
                 "Workspace code must go through getBackend() or callEdgeFunction() — see src/core/ai/aiAdapter.ts and src/core/backend/. Direct Supabase access here breaks the desktop build.",
+            },
+            // The app mounted BOTH sonner and the shadcn/Radix toaster for
+            // months; the Radix one had exactly one consumer, so that modal's
+            // toasts appeared in a different corner with different styling.
+            // The Radix side is deleted — this stops `npx shadcn add toast`
+            // quietly reintroducing the split.
+            {
+              name: "@/hooks/use-toast",
+              message: 'Use `import { toast } from "sonner"` — the Radix toaster was removed.',
+            },
+            {
+              name: "@/components/ui/toast",
+              message: 'Use `import { toast } from "sonner"` — the Radix toaster was removed.',
+            },
+            {
+              name: "@/components/ui/toaster",
+              message: 'Use `import { toast } from "sonner"` — the Radix toaster was removed.',
             },
           ],
           patterns: [
@@ -156,4 +210,29 @@ export default tseslint.config(
       ],
     },
   },
+
+  // ── Minimum readable type ─────────────────────────────────────────────────
+  // 280 call sites used arbitrary text-[9px]/[10px]/[11px], all below the 12px
+  // accessibility floor — and this app's primary scripts are Nastaliq and
+  // Naskh, which need MORE size than Latin at the same nominal value, not less.
+  // Use the `text-xs … text-fluid-*` scale in tailwind.config.ts instead.
+  {
+    files: ["src/**/*.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/text-\\[(?:[0-9]|1[01])px\\]/]",
+          message:
+            "Font sizes below 12px fail the accessibility floor and are especially hard to read in Nastaliq/Naskh. Use text-xs or the text-fluid-* scale.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/text-\\[(?:[0-9]|1[01])px\\]/]",
+          message:
+            "Font sizes below 12px fail the accessibility floor and are especially hard to read in Nastaliq/Naskh. Use text-xs or the text-fluid-* scale.",
+        },
+      ],
+    },
+  },
+
 );

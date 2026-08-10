@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { libraryChunkService } from "@/lib/corpus/libraryChunkService";
 import { runLibraryIngest } from "@/lib/corpus/ingestOrchestrator";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 interface SaveToLibraryButtonProps {
   /** The finished OCR / transcription text. */
@@ -40,11 +41,11 @@ export const SaveToLibraryButton: React.FC<SaveToLibraryButtonProps> = ({
 
   const handleSave = async () => {
     if (!trimmed) {
-      toast.error("محفوظ کرنے کے لیے کوئی متن نہیں۔");
+      toast.error(translateStored("toast.library.empty"));
       return;
     }
     if ((total ?? 0) < estimatedCost) {
-      toast.error(`ٹوکن ناکافی ہیں: ${estimatedCost} درکار، بیلنس ${total ?? 0}۔`);
+      toast.error(translateStoredFormat("toast.tokens.insufficient", { required: estimatedCost, available: total ?? 0 }));
       return;
     }
 
@@ -55,11 +56,11 @@ export const SaveToLibraryButton: React.FC<SaveToLibraryButtonProps> = ({
       const item = await libraryChunkService.uploadLibraryFile(file, kind);
       if (!item) throw new Error("اپلوڈ ناکام");
 
-      toast.success("کتب خانے میں شامل — پس منظر میں پروسیس جاری ہے…");
+      toast.success(translateStored("toast.library.processing"));
       const final = await runLibraryIngest({ itemId: item.id });
-      if (final.done) toast.success(`'${safeTitle}' اب کتب خانے میں تلاش کے قابل ہے۔`);
+      if (final.done) toast.success(translateStoredFormat("toast.library.searchable", { title: safeTitle }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "کتب خانے میں محفوظ نہ ہو سکا۔");
+      toast.error(err instanceof Error ? err.message : translateStored("toast.library.save_failed"));
     } finally {
       setSaving(false);
     }

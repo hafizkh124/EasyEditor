@@ -23,6 +23,7 @@ import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { documentService, extractPlainTextFromJSON } from "@/core/workspace/documentService";
 import { toast } from "sonner";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 const KIND_ICONS: Record<string, React.ElementType> = {
   person: User,
@@ -74,14 +75,14 @@ export const KnowledgeGraphTab: React.FC = () => {
   const handleExtract = async () => {
     const docId = workspace?.activeDocumentId;
     if (!docId) {
-      toast.error("کوئی فعال دستاویز نہیں چنی گئی۔");
+      toast.error(translateStored("toast.workspace.no_document"));
       return;
     }
 
     const doc = await documentService.getDocument(docId);
     const text = doc ? extractPlainTextFromJSON(doc.content_json) || doc.plain_text || "" : "";
     if (!text.trim()) {
-      toast.error("دستاویز کا متن خالی ہے!");
+      toast.error(translateStored("toast.workspace.empty_document"));
       return;
     }
 
@@ -97,10 +98,10 @@ export const KnowledgeGraphTab: React.FC = () => {
     setExtracting(true);
     try {
       const res = await graphService.extractGraphFromText(pending.text, docId);
-      toast.success(`${res.entities_count} ہستیاں اور ${res.relations_count} روابط شامل کیے گئے۔`);
+      toast.success(translateStoredFormat("toast.graph.extracted", { entities: res.entities_count, relations: res.relations_count }));
       refresh();
     } catch (err: unknown) {
-      toast.error(`ایکسٹریکشن نامکمل: ${err instanceof Error ? err.message : "نامعلوم خرابی"}`);
+      toast.error(translateStoredFormat("toast.graph.extraction_failed", { error: err instanceof Error ? err.message : translateStored("toast.common.unexpected_error") }));
     } finally {
       setExtracting(false);
     }
@@ -113,10 +114,10 @@ export const KnowledgeGraphTab: React.FC = () => {
   const handleMerge = async (keep: Entity, absorb: Entity) => {
     const ok = await graphService.mergeEntities(keep.id, absorb.id, buildMergedAliases(keep, absorb));
     if (ok) {
-      toast.success(`'${absorb.canonical_name}' کو '${keep.canonical_name}' میں ضم کر دیا گیا۔`);
+      toast.success(translateStoredFormat("toast.graph.merged", { source: absorb.canonical_name, target: keep.canonical_name }));
       refresh();
     } else {
-      toast.error("ضم کرنے میں ناکامی۔");
+      toast.error(translateStored("toast.graph.merge_failed"));
     }
   };
 
@@ -137,7 +138,7 @@ export const KnowledgeGraphTab: React.FC = () => {
         <Button
           size="sm"
           variant="outline"
-          className="h-6 px-2 text-[11px] gap-1 border-primary/30 text-primary hover:bg-primary/10"
+          className="h-6 px-2 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
           onClick={handleExtract}
           disabled={extracting}
         >
@@ -166,7 +167,7 @@ export const KnowledgeGraphTab: React.FC = () => {
           <div className="p-3 text-xs text-muted-foreground text-center py-8 space-y-2">
             <GitFork className="h-8 w-8 mx-auto opacity-40 text-primary" />
             <p className="font-semibold text-foreground text-xs">نالیج گراف ابھی خالی ہے</p>
-            <p className="text-[11px]">
+            <p className="text-xs">
               کسی بھی دستاویز سے ہستیاں (شخصیات، کتب، مفاہیم) اور روابط نکالنے کے لیے **"گراف نکالیں"** کا بٹن دباؤ۔
             </p>
           </div>
@@ -189,13 +190,13 @@ export const KnowledgeGraphTab: React.FC = () => {
                       <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
                       {item.canonical_name}
                     </span>
-                    <Badge variant="outline" className="text-[9px] px-1 py-0 bg-primary/5 text-primary border-primary/20">
+                    <Badge variant="outline" className="text-xs px-1 py-0 bg-primary/5 text-primary border-primary/20">
                       {label}
                     </Badge>
                   </div>
 
                   {item.summary && (
-                    <p className="text-[11px] text-muted-foreground line-clamp-2">{item.summary}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{item.summary}</p>
                   )}
                 </div>
               );
@@ -233,14 +234,14 @@ export const KnowledgeGraphTab: React.FC = () => {
                   {KIND_LABELS[entityDetails.entity.kind] || entityDetails.entity.kind}
                 </Badge>
                 {entityDetails.entity.aliases?.length > 0 && (
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     مترادفات: {entityDetails.entity.aliases.join("، ")}
                   </span>
                 )}
               </div>
 
               {entityDetails.entity.summary && (
-                <p className="p-2.5 bg-muted/40 rounded-md border text-muted-foreground text-[11px]">
+                <p className="p-2.5 bg-muted rounded-md border text-muted-foreground text-xs">
                   {entityDetails.entity.summary}
                 </p>
               )}
@@ -249,7 +250,7 @@ export const KnowledgeGraphTab: React.FC = () => {
                 <h4 className="font-semibold text-foreground text-xs">علمی روابط ({entityDetails.outgoingRelations.length + entityDetails.incomingRelations.length})</h4>
 
                 {entityDetails.outgoingRelations.map((r) => (
-                  <div key={r.id} className="p-2 bg-accent/30 rounded border text-[11px] space-y-1">
+                  <div key={r.id} className="p-2 bg-accent/30 rounded border text-xs space-y-1">
                     <div className="flex items-center gap-1 text-primary font-medium">
                       <span>{entityDetails.entity.canonical_name}</span>
                       <ArrowRight className="h-3 w-3 shrink-0" />
@@ -258,7 +259,7 @@ export const KnowledgeGraphTab: React.FC = () => {
                       <span>{r.target_entity?.canonical_name}</span>
                     </div>
                     {r.evidence_quote && (
-                      <p className="text-[10px] text-muted-foreground italic bg-background/50 p-1 rounded">
+                      <p className="text-xs text-muted-foreground italic bg-background/50 p-1 rounded">
                         "{r.evidence_quote}"
                       </p>
                     )}
@@ -274,8 +275,8 @@ export const KnowledgeGraphTab: React.FC = () => {
                   </h4>
                   <div className="space-y-1">
                     {entityDetails.backlinks.map((b) => (
-                      <div key={b.id} className="flex items-center gap-2 p-1.5 bg-muted/40 rounded border text-[11px]">
-                        <Badge variant="outline" className="text-[9px] px-1 py-0">
+                      <div key={b.id} className="flex items-center gap-2 p-1.5 bg-muted rounded border text-xs">
+                        <Badge variant="outline" className="text-xs px-1 py-0">
                           {b.type === "document" ? "دستاویز" : "کتاب"}
                         </Badge>
                         <span className="font-medium text-foreground truncate">{b.title}</span>

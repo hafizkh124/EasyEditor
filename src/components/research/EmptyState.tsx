@@ -5,7 +5,7 @@ import type { ResearchMode } from "./ResearchModeSwitcher";
 interface EmptyStateProps {
   mode: ResearchMode;
   onSuggestionClick: (text: string) => void;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 const SUGGESTIONS: Record<ResearchMode, { icon: typeof Search; labelKey: string; queryKey: string }[]> = {
@@ -70,8 +70,8 @@ const EmptyState = ({ mode, onSuggestionClick, t }: EmptyStateProps) => {
         className="grid gap-2 w-full max-w-md sm:grid-cols-1"
       >
         {suggestions.map((s, i) => {
-          const label = t(s.labelKey);
-          const query = t(s.queryKey) || label;
+          const label = t(s.labelKey as import("@/lib/i18n").TranslationKey);
+          const query = t(s.queryKey as import("@/lib/i18n").TranslationKey) || label;
           if (!label) return null;
           return (
             <button

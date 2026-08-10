@@ -43,7 +43,7 @@ export function TafsirConnector() {
         </RadioGroup>
 
         {mode === "local" && (
-          <p className="flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+          <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             مقامی موڈ کے لیے Python اور uv درکار ہیں؛ اندراج کا بڑا ڈیٹا بیس تیسرے مرحلے میں ہوگا۔
           </p>
@@ -79,13 +79,13 @@ function ModeRadio({
           "cursor-pointer transition-colors select-none",
           checked
             ? "border-primary bg-primary/5"
-            : "border-border bg-muted/20 hover:border-primary/40",
+            : "border-border bg-muted/60 hover:border-primary/40",
         )}
       >
         {icon}
         <span className="leading-tight">
           <span className="block text-xs font-medium text-foreground">{title}</span>
-          <span className="block text-[10px] text-muted-foreground">{desc}</span>
+          <span className="block text-xs text-muted-foreground">{desc}</span>
         </span>
       </div>
     </label>

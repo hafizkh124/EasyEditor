@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Volume2, User, Loader2, Upload, Mic2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Persona, VoiceMode } from "./types";
+import { isCapabilityAvailable } from "@/core/capabilities/registry";
 
 interface VoiceSelectorProps {
   personas: Persona[];
@@ -18,7 +19,7 @@ interface VoiceSelectorProps {
   isCloning: boolean;
   onCloneUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   language: string;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 const VoiceSelector = ({
@@ -35,6 +36,13 @@ const VoiceSelector = ({
   t,
 }: VoiceSelectorProps) => {
   const cloneInputRef = useRef<HTMLInputElement>(null);
+  // Voice cloning is an ElevenLabs round trip billed to our own API and backed
+  // by cloud storage, so it has no desktop counterpart. With it gone the voice
+  // source picker would offer a single option, so the whole block goes rather
+  // than leaving a one-item dropdown next to a card that cannot do anything.
+  const cloningAvailable = isCapabilityAvailable("voice.cloning");
+
+  if (!cloningAvailable) return null;
 
   return (
     <div className="space-y-3">
@@ -132,7 +140,7 @@ const VoiceSelector = ({
                     <p className="font-medium text-sm text-foreground">
                       {language === "ur" ? p.nameUr : p.name}
                     </p>
-                    <Badge variant="secondary" className="text-[10px] mt-0.5">
+                    <Badge variant="secondary" className="text-xs mt-0.5">
                       {p.lang.split("-")[0].toUpperCase()}
                     </Badge>
                   </div>

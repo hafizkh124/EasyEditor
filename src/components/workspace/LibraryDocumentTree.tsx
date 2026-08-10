@@ -33,7 +33,7 @@ export const LibraryDocumentTree: React.FC<LibraryDocumentTreeProps> = ({
   if (searchQuery.trim().length > 0) {
     return (
       <div className="space-y-1">
-        <p className="text-[11px] font-medium text-muted-foreground px-2 py-1">
+        <p className="text-xs font-medium text-muted-foreground px-2 py-1">
           Found {searchResults.length} document(s)
         </p>
         {searchResults.length === 0 ? (
@@ -50,7 +50,7 @@ export const LibraryDocumentTree: React.FC<LibraryDocumentTreeProps> = ({
               }`}
             >
               <p className="text-xs font-semibold truncate">{d.title}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{d.projectName}</p>
+              <p className="text-xs text-muted-foreground truncate">{d.projectName}</p>
             </button>
           ))
         )}
@@ -99,7 +99,7 @@ export const LibraryDocumentTree: React.FC<LibraryDocumentTreeProps> = ({
 
             <div className="ms-3 ps-2 border-s border-sidebar-border space-y-0.5">
               {docs.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground px-2 py-1">No documents</p>
+                <p className="text-xs text-muted-foreground px-2 py-1">No documents</p>
               ) : (
                 docs.map((doc) => {
                   const isActive = activeDocumentId === doc.id;
@@ -114,7 +114,7 @@ export const LibraryDocumentTree: React.FC<LibraryDocumentTreeProps> = ({
                       }`}
                     >
                       <span className="truncate">{doc.title}</span>
-                      <span className="text-[10px] text-muted-foreground shrink-0 ms-1">{doc.word_count}w</span>
+                      <span className="text-xs text-muted-foreground shrink-0 ms-1">{doc.word_count}w</span>
                     </button>
                   );
                 })

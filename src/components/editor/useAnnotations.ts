@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { toast } from "sonner";
 import { annotationService, type AnnotationItem } from "@/core/workspace/annotationService";
+import { translateStored } from "@/lib/i18n";
 
 /**
  * Margin notes on the document (SPEC-M4 FR-1.3).
@@ -66,14 +67,14 @@ export function useAnnotations(editor: Editor | null, documentId?: string | null
       if (!editor || !documentId) return;
       const { from, to, empty } = editor.state.selection;
       if (empty || to <= from) {
-        toast.error("پہلے متن منتخب کریں، پھر نوٹ لگائیں۔");
+        toast.error(translateStored("toast.annotations.select_text"));
         return;
       }
 
       const quote = editor.state.doc.textBetween(from, to, " ").trim();
       const created = await annotationService.createAnnotation({ documentId, quote, note });
       if (!created) {
-        toast.error("نوٹ محفوظ نہ ہو سکا۔");
+        toast.error(translateStored("toast.annotations.save_failed"));
         return;
       }
 
@@ -87,7 +88,7 @@ export function useAnnotations(editor: Editor | null, documentId?: string | null
         .run();
 
       setAnnotations((prev) => [{ ...created, anchor: { quote, isDetached: false } }, ...prev]);
-      toast.success("حاشیہ نوٹ لگ گیا۔");
+      toast.success(translateStored("toast.annotations.added"));
     },
     [editor, documentId],
   );
@@ -96,11 +97,11 @@ export function useAnnotations(editor: Editor | null, documentId?: string | null
     async (id: string) => {
       const ok = await annotationService.deleteAnnotation(id);
       if (!ok) {
-        toast.error("نوٹ حذف نہ ہو سکا۔");
+        toast.error(translateStored("toast.annotations.delete_failed"));
         return;
       }
       setAnnotations((prev) => prev.filter((a) => a.id !== id));
-      toast.success("نوٹ حذف کر دیا گیا۔");
+      toast.success(translateStored("toast.annotations.deleted"));
     },
     [],
   );

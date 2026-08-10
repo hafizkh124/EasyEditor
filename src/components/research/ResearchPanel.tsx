@@ -17,6 +17,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useLimitReached } from "@/hooks/useLimitReached";
 import { useCanAfford } from "@/hooks/useTokenBalance";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { translateStored } from "@/lib/i18n";
 import SourcesPanel from "@/components/research/SourcesPanel";
 import ChatDisplay from "@/components/research/ChatDisplay";
 import ResearchModeSwitcher, { type ResearchMode } from "@/components/research/ResearchModeSwitcher";
@@ -150,7 +151,7 @@ export const ResearchPanel = () => {
   const handleInsertIntoCanvas = () => {
     if (!workspaceCtx || !lastAnswer?.content?.trim()) return;
     workspaceCtx.insertIntoCanvas(textToHtml(lastAnswer.content));
-    toast.success(t("research.inserted_into_canvas") || "Canvas میں داخل کر دیا گیا");
+    toast.success(t("research.inserted_into_canvas") || translateStored("toast.canvas.inserted"));
   };
 
   return (
@@ -163,19 +164,19 @@ export const ResearchPanel = () => {
               variant="outline"
               size="sm"
               onClick={handleInsertIntoCanvas}
-              className="h-7 text-[11px] gap-1 px-2 shrink-0"
+              className="h-7 text-xs gap-1 px-2 shrink-0"
             >
               <FileInput className="h-3.5 w-3.5" />
               <span>Canvas میں داخل کریں</span>
             </Button>
           )}
           {mode === "islamic" && islamicQueriesLimit > 0 && (
-            <span className={`text-[11px] font-medium px-2 py-0.5 rounded border whitespace-nowrap ${islamicLimitReached ? "text-destructive border-destructive/40 bg-destructive/5" : "text-muted-foreground border-border bg-muted/40"}`}>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded border whitespace-nowrap ${islamicLimitReached ? "text-destructive border-destructive/40 bg-destructive/5" : "text-muted-foreground border-border bg-muted"}`}>
               {islamicQueriesUsed} / {islamicQueriesLimit}
             </span>
           )}
           {mode === "general" && (subscription?.research_queries_limit ?? 0) > 0 && (
-            <span className={`text-[11px] font-medium px-2 py-0.5 rounded border whitespace-nowrap ${researchLimitReached ? "text-destructive border-destructive/40 bg-destructive/5" : "text-muted-foreground border-border bg-muted/40"}`}>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded border whitespace-nowrap ${researchLimitReached ? "text-destructive border-destructive/40 bg-destructive/5" : "text-muted-foreground border-border bg-muted"}`}>
               {researchQueriesUsed} / {researchQueriesLimit}
             </span>
           )}

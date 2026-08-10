@@ -70,7 +70,7 @@ export const StatsBar: React.FC<StatsBarProps> = ({
                   {stat.value !== null ? stat.value.toLocaleString() : "—"}
                 </p>
               )}
-              <p className="text-[10px] text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 {stat.label}
               </p>
             </div>

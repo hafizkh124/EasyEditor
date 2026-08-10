@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface SplitBookChoice {
   bookId: string;
@@ -41,6 +42,7 @@ export const SplitBookPickerDialog: React.FC<SplitBookPickerDialogProps> = ({
   onSelect,
   excludeBookId,
 }) => {
+  const { t } = useLanguage();
   const [masterDbPath, setMasterDbPath] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CatalogueRow[]>([]);
@@ -115,9 +117,9 @@ export const SplitBookPickerDialog: React.FC<SplitBookPickerDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl p-0 overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-0 text-start">
-          <DialogTitle className="text-sm">Compare Side by Side</DialogTitle>
+          <DialogTitle className="text-sm">{t("reader.split_picker.title")}</DialogTitle>
           <DialogDescription className="text-xs">
-            Choose a book to open beside the current one.
+            {t("reader.split_picker.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -127,7 +129,7 @@ export const SplitBookPickerDialog: React.FC<SplitBookPickerDialogProps> = ({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search the Shamela catalogue…"
+              placeholder={t("reader.split_picker.search")}
               className="h-9 ps-8 text-xs"
               autoFocus
             />
@@ -158,7 +160,7 @@ export const SplitBookPickerDialog: React.FC<SplitBookPickerDialogProps> = ({
                     >
                       <span className="text-xs font-medium leading-snug line-clamp-2">{row.title}</span>
                       {row.author && (
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <User className="h-3 w-3" />
                           {row.author}
                         </span>

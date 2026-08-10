@@ -35,7 +35,7 @@ export const ChunkProgressBar: React.FC<ChunkProgressBarProps> = ({ progress, on
             {progress.current} از {progress.total} حصے
           </span>
           {progress.throttled && (
-            <span className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
+            <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
               <Timer className="h-3 w-3" />
               سرور کی حد کے سبب وقفہ
             </span>
@@ -60,7 +60,7 @@ export const ChunkProgressBar: React.FC<ChunkProgressBarProps> = ({ progress, on
       <Progress value={percent} className="h-1.5" />
 
       {(progress.failed > 0 || progress.skipped > 0) && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {progress.failed > 0 && <span>{progress.failed} حصے ناکام۔ </span>}
           {progress.skipped > 0 && <span>{progress.skipped} بلاک (جدول/تصاویر) محفوظ رکھے گئے۔</span>}
         </p>

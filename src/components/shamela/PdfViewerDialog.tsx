@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getBookPdfInfo, readBookPdf } from "@/lib/shamela/shamelaPdf";
 import { openPdfDocument, renderPdfPage, type PdfPageRenderResult } from "@/lib/shamela/pdfRender";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translateStored } from "@/lib/i18n";
 
 interface PdfViewerDialogProps {
   open: boolean;
@@ -35,6 +37,7 @@ export const PdfViewerDialog: React.FC<PdfViewerDialogProps> = ({
   title,
   author,
 }) => {
+  const { t } = useLanguage();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [doc, setDoc] = useState<Awaited<ReturnType<typeof openPdfDocument>> | null>(null);
   const [numPages, setNumPages] = useState(0);
@@ -58,7 +61,7 @@ export const PdfViewerDialog: React.FC<PdfViewerDialogProps> = ({
         const info = await getBookPdfInfo(bookId);
         if (cancelled) return;
         if (!info.available || info.files.length === 0) {
-          setError("No PDF file on disk for this book.");
+          setError(translateStored("reader.pdf_missing"));
           return;
         }
         const bytes = await readBookPdf(bookId, info.files[0].fileIndex);
@@ -71,7 +74,7 @@ export const PdfViewerDialog: React.FC<PdfViewerDialogProps> = ({
         setDoc(pdf);
         setNumPages(pdf.numPages);
       } catch (err: unknown) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to open the PDF.");
+        if (!cancelled) setError(err instanceof Error ? err.message : translateStored("reader.pdf_open_failed"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -100,7 +103,7 @@ export const PdfViewerDialog: React.FC<PdfViewerDialogProps> = ({
       );
       setNumPages(result.numPages);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to render the PDF page.");
+      setError(err instanceof Error ? err.message : translateStored("reader.pdf_render_failed"));
     } finally {
       setRendering(false);
     }
@@ -128,7 +131,7 @@ export const PdfViewerDialog: React.FC<PdfViewerDialogProps> = ({
       )}
       role="dialog"
       aria-modal="true"
-      aria-label={`PDF: ${title}`}
+      aria-label={t("reader.pdf_dialog").replace("{title}", title)}
     >
       {/* Header */}
       <header className="flex items-center gap-2 px-3 h-11 border-b border-border shrink-0">
@@ -137,44 +140,44 @@ export const PdfViewerDialog: React.FC<PdfViewerDialogProps> = ({
           <div className="min-w-0">
             <p className="text-sm font-medium truncate leading-tight">{title}</p>
             {author && (
-              <p className="text-[11px] text-muted-foreground truncate leading-tight">{author}</p>
+              <p className="text-xs text-muted-foreground truncate leading-tight">{author}</p>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(page - 1)} disabled={page <= 1} title="Previous page">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(page - 1)} disabled={page <= 1} title={t("reader.previous_page")} aria-label={t("reader.previous_page")}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <span className="text-[11px] text-muted-foreground px-1 tabular-nums whitespace-nowrap">
+          <span className="text-xs text-muted-foreground px-1 tabular-nums whitespace-nowrap">
             {page} / {numPages || "…"}
           </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(page + 1)} disabled={page >= numPages} title="Next page">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(page + 1)} disabled={page >= numPages} title={t("reader.next_page")} aria-label={t("reader.next_page")}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="w-px h-4 bg-border mx-1" />
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} title="Zoom out">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} title={t("reader.zoom_out")} aria-label={t("reader.zoom_out")}>
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <span className="text-[11px] text-muted-foreground px-1 tabular-nums whitespace-nowrap w-11 text-center">
+          <span className="text-xs text-muted-foreground px-1 tabular-nums whitespace-nowrap w-11 text-center">
             {Math.round(zoom * 100)}%
           </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom((z) => Math.min(3, z + 0.25))} title="Zoom in">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom((z) => Math.min(3, z + 0.25))} title={t("reader.zoom_in")} aria-label={t("reader.zoom_in")}>
             <ZoomIn className="h-4 w-4" />
           </Button>
         </div>
 
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={close} title="Close PDF viewer">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={close} title={t("reader.close_pdf")} aria-label={t("reader.close_pdf")}>
           <X className="h-4 w-4" />
         </Button>
       </header>
 
       {/* Body */}
-      <div className="flex-1 min-h-0 overflow-auto bg-muted/30">
+      <div className="flex-1 min-h-0 overflow-auto bg-muted/60">
         {loading ? (
           <div className="h-full flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Opening PDF…
+            {t("reader.opening_pdf")}
           </div>
         ) : error ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6">
@@ -185,9 +188,9 @@ export const PdfViewerDialog: React.FC<PdfViewerDialogProps> = ({
           <div className="min-h-full flex items-start justify-center p-4">
             <div className="relative">
               {rendering && (
-                <div className="absolute -top-8 start-0 text-[10px] text-muted-foreground flex items-center gap-1">
+                <div className="absolute -top-8 start-0 text-xs text-muted-foreground flex items-center gap-1">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Rendering…
+                  {t("reader.rendering_pdf")}
                 </div>
               )}
               <canvas

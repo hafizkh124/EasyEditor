@@ -9,6 +9,7 @@ import { taskRunService } from "@/core/workspace/taskRunService";
 import type { DocumentTaskOutcome, DocumentTaskRunner } from "@/core/workspace/WorkspaceContext";
 import type { TaskRun } from "@/core/workspace/types";
 import type { ExecuteChunkedRun } from "./useChunkedRuns";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 interface UseDocumentRunsArgs {
   editor: Editor | null;
@@ -109,11 +110,11 @@ export function useDocumentRuns({
 
       const task = getTaskBySlug(run.task_slug);
       if (!task) {
-        toast.error(`ٹاسک '${run.task_slug}' اب دستیاب نہیں — رن جاری نہیں رکھا جا سکتا۔`);
+        toast.error(translateStoredFormat("toast.run.task_unavailable", { task: run.task_slug }));
         return;
       }
       if (aiReview) {
-        toast.error("AI Review (Track Changes) آن ہے — پہلے اسے بند کریں، پھر رن جاری رکھیں۔");
+        toast.error(translateStored("toast.run.review_active"));
         return;
       }
 
@@ -122,7 +123,7 @@ export function useDocumentRuns({
       const storedPlan = run.input?.batch_plan as StoredBatchPlan[] | undefined;
 
       if (!canResumeRun(storedPlan, done, plan.batches)) {
-        toast.error("دستاویز کا باقی ماندہ متن تبدیل ہو چکا ہے — رن جاری نہیں رکھا جا سکتا۔");
+        toast.error(translateStored("toast.run.document_changed"));
         return;
       }
 

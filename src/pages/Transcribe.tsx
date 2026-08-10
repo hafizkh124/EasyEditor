@@ -36,6 +36,7 @@ import type { TranscriptSegment } from "@/core/voice/types";
 import { ACCEPTED_MEDIA, isVideoFile, MAX_FILE_SIZE_BYTES } from "@/lib/audio/formatSupport";
 import { SaveToLibraryButton } from "@/components/workspace/SaveToLibraryButton";
 import { editorRoute } from "@/lib/routes";
+import { isDesktop } from "@/utils/environment";
 
 type SttLanguage = TranscribeLanguage;
 type RefineAction = "formalize" | "humanize" | "shorten" | "citations" | "spelling_check" | "normalize_script";
@@ -65,7 +66,7 @@ const STT_LANGUAGES: { code: SttLanguage; labelKey: string }[] = [
 const Transcribe = () => {
   useSeo({ title: "Transcribe — Al-Ulama Easy Editor", description: "Speech-to-text in Urdu, Arabic and English with smart AI editing for scholars and students.", path: "/transcribe", noindex: true });
 
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
@@ -81,7 +82,12 @@ const Transcribe = () => {
   // be gated on the token balance. The route is resolved up front (it depends on
   // whether a Whisper model is downloaded) and drives both the gate and the run.
   const [sttRoute, setSttRoute] = useState<SttRoute>("cloud");
-  const limitReached = !canAffordStt && sttRoute === "cloud";
+  // A desktop user who has not signed in has no cloud route at all, so when no
+  // Whisper model is downloaded the blocker is the missing model — not the
+  // token balance. Saying "insufficient tokens" to someone with no account is
+  // exactly the kind of dead end FR-2.5 exists to prevent.
+  const needsLocalModel = isDesktop() && sttRoute === "cloud" && !user;
+  const limitReached = needsLocalModel || (!canAffordStt && sttRoute === "cloud");
   const [segments, setSegments] = useState<TranscriptSegment[] | null>(null);
   const hasTimestamps = !!segments && segments.length > 0;
   const [isUploading, setIsUploading] = useState(false);
@@ -317,7 +323,7 @@ const Transcribe = () => {
         setOriginalText(transcript);
         setTranscript(data.text);
         persistTranscript(data.text, transcript);
-        toast.success(t(`stt.${action}_done`));
+        toast.success(t(`stt.${action}_done` as import("@/lib/i18n").TranslationKey));
       }
     } catch {
       toast.error(t("stt.refine_error"));
@@ -353,7 +359,7 @@ const Transcribe = () => {
     a.download = `transcript-${Date.now()}.${format}`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(t("stt.subtitles_downloaded") || `${format.toUpperCase()} ڈاؤن لوڈ ہو گیا`);
+    toast.success(t("stt.subtitles_downloaded", `${format.toUpperCase()} downloaded.`));
   };
 
   const handleRevert = () => {
@@ -387,8 +393,12 @@ const Transcribe = () => {
             </>
           ) : (
             <>
-              <TokenCostBadge action="stt" quantity={1} />
-              {limitReached && <span className="text-sm text-destructive">{t("stt.limit_reached") || "Insufficient tokens"}</span>}
+              {!needsLocalModel && <TokenCostBadge action="stt" quantity={1} />}
+              {limitReached && (
+                <span className="text-sm text-destructive">
+                  {needsLocalModel ? t("stt.needs_local_model") : t("stt.limit_reached")}
+                </span>
+              )}
             </>
           )}
         </div>
@@ -502,7 +512,7 @@ const Transcribe = () => {
               <SelectContent>
                 {STT_LANGUAGES.map(({ code, labelKey }) => (
                   <SelectItem key={code} value={code}>
-                    {t(labelKey)}
+                    {t(labelKey as import("@/lib/i18n").TranslationKey)}
                     {(code === "sd" || code === "bal") ? " ⚠️" : ""}
                   </SelectItem>
                 ))}
@@ -538,10 +548,10 @@ const Transcribe = () => {
                     variant="ghost"
                     size="sm"
                     disabled={!hasTimestamps}
-                    aria-label={t(`stt.download_${format}`) || `${format.toUpperCase()} ڈاؤن لوڈ کریں`}
+                    aria-label={t(`stt.download_${format}` as import("@/lib/i18n").TranslationKey) || `${format.toUpperCase()} ڈاؤن لوڈ کریں`}
                     title={
                       hasTimestamps
-                        ? t(`stt.download_${format}`) || `${format.toUpperCase()} ڈاؤن لوڈ کریں`
+                        ? t(`stt.download_${format}` as import("@/lib/i18n").TranslationKey) || `${format.toUpperCase()} ڈاؤن لوڈ کریں`
                         : t("stt.no_timestamps") ||
                           "اس انجن سے وقت کے نشانات نہیں ملے — سب ٹائٹل کے لیے Settings سے مقامی Whisper منتخب کریں۔"
                     }
@@ -649,7 +659,7 @@ const Transcribe = () => {
                       ) : (
                         <Icon className="h-3.5 w-3.5" />
                       )}
-                      {t(labelKey)}
+                      {t(labelKey as import("@/lib/i18n").TranslationKey)}
                     </Button>
                   ))}
 

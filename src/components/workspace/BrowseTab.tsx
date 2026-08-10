@@ -261,19 +261,19 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
           </Button>
           <p className="text-xs font-semibold truncate flex-1">{heading}</p>
           {books.length > 0 && (
-            <span className="text-[10px] text-muted-foreground">{books.length} books</span>
+            <span className="text-xs text-muted-foreground">{books.length} books</span>
           )}
         </div>
 
         {/* Phase 10: rich author header — death text, alpha letter, work count. */}
         {selectedAuthor && (
-          <div className="px-3 py-2.5 border-b border-border bg-muted/30 flex items-center gap-3">
+          <div className="px-3 py-2.5 border-b border-border bg-muted/60 flex items-center gap-3">
             <span className="h-10 w-10 rounded-md bg-primary/15 text-primary flex items-center justify-center text-lg font-semibold shrink-0">
               {alphaLetter(selectedAuthor.alpha) ?? "؟"}
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate leading-tight">{selectedAuthor.name}</p>
-              <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <CalendarDays className="h-3 w-3" />
                   {selectedAuthor.deathNumber != null && selectedAuthor.deathNumber < 99999
@@ -305,9 +305,9 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
                 >
                   <BookCover bookId={book.id} title={book.title} author={book.author} />
                   <div className="min-w-0 px-0.5">
-                    <p className="text-[10px] font-medium leading-snug line-clamp-2">{book.title}</p>
+                    <p className="text-xs font-medium leading-snug line-clamp-2">{book.title}</p>
                     {book.deathYear != null && book.deathYear < 99999 && (
-                      <p className="text-[9px] text-muted-foreground tabular-nums">{book.deathYear} هـ</p>
+                      <p className="text-xs text-muted-foreground tabular-nums">{book.deathYear} هـ</p>
                     )}
                   </div>
                 </button>
@@ -323,7 +323,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
   return (
     <div className="flex flex-col h-full">
       <div className="px-2 pt-2 pb-1.5 border-b border-border">
-        <div className="grid grid-cols-3 gap-1 rounded-md bg-muted/50 p-0.5">
+        <div className="grid grid-cols-3 gap-1 rounded-md bg-muted p-0.5">
           {([
             { id: "categories" as const, label: "Categories", icon: FolderTree },
             { id: "authors" as const, label: "Authors", icon: User },
@@ -334,7 +334,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
               type="button"
               onClick={() => setMode(id)}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded px-1 py-1 text-[11px] transition-colors",
+                "flex items-center justify-center gap-1.5 rounded px-1 py-1 text-xs transition-colors",
                 mode === id
                   ? "bg-background text-foreground shadow-sm font-medium"
                   : "text-muted-foreground hover:text-foreground",
@@ -380,7 +380,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
                     </span>
                     <span className="flex-1 min-w-0 text-right">
                       <span className="block text-xs font-medium truncate">{cat.name}</span>
-                      <span className="block text-[10px] text-muted-foreground">
+                      <span className="block text-xs text-muted-foreground">
                         {cat.bookCount.toLocaleString()} books
                       </span>
                     </span>
@@ -432,7 +432,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
                     </span>
                     <span className="flex-1 min-w-0 text-right">
                       <span className="block text-xs font-medium truncate">{period.label}</span>
-                      <span className="block text-[10px] text-muted-foreground">
+                      <span className="block text-xs text-muted-foreground">
                         {period.bookCount.toLocaleString()} books
                       </span>
                     </span>
@@ -477,8 +477,8 @@ const AuthorList: React.FC<{
     <div className="space-y-3">
       {groups.map(([letter, list]) => (
         <div key={letter}>
-          <p className="px-2 pb-1 text-[10px] font-semibold uppercase text-muted-foreground/70 flex items-center gap-1.5">
-            <span className="h-4 w-4 rounded bg-primary/15 text-primary text-[10px] flex items-center justify-center">
+          <p className="px-2 pb-1 text-xs font-semibold uppercase text-muted-foreground/70 flex items-center gap-1.5">
+            <span className="h-4 w-4 rounded bg-primary/15 text-primary text-xs flex items-center justify-center">
               {letter}
             </span>
             {list.length} author{list.length === 1 ? "" : "s"}
@@ -496,7 +496,7 @@ const AuthorList: React.FC<{
                 </span>
                 <span className="flex-1 min-w-0 text-right">
                   <span className="block text-xs font-medium truncate">{author.name}</span>
-                  <span className="block text-[10px] text-muted-foreground">
+                  <span className="block text-xs text-muted-foreground">
                     {author.deathNumber != null && author.deathNumber < 99999
                       ? `ت ${author.deathNumber} هـ · `
                       : ""}

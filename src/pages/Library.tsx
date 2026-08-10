@@ -121,7 +121,7 @@ const Library = () => {
 
               return (
                 <Card key={p.id} className="overflow-hidden border border-border/80 shadow-sm">
-                  <CardHeader className="bg-muted/30 pb-4">
+                  <CardHeader className="bg-muted/60 pb-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -167,7 +167,7 @@ const Library = () => {
                         <div
                           key={doc.id}
                           onClick={() => navigate(editorRoute(doc.id))}
-                          className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                          className="flex items-center justify-between p-4 hover:bg-muted cursor-pointer transition-colors"
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <FileText className="h-4 w-4 text-muted-foreground shrink-0" />

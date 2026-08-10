@@ -162,7 +162,7 @@ const ContactInfoCard = () => {
             <SelectContent>
               {PROFESSION_OPTIONS.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
-                  {t(opt.labelKey)}
+                  {t(opt.labelKey as import("@/lib/i18n").TranslationKey)}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -7,7 +7,7 @@ import { formatCitation, type ResourceResult } from "@/lib/editor/citationFormat
 interface ResourceResultCardProps {
   result: ResourceResult;
   onInsert: (result: ResourceResult) => void;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 /** One retrieved passage, with the citation it will carry into the document. */
@@ -15,7 +15,7 @@ export const ResourceResultCard = ({ result, onInsert, t }: ResourceResultCardPr
   const rtl = isRtlText(result.content);
 
   return (
-    <div className="rounded-lg border border-border bg-muted/20 p-3 group">
+    <div className="rounded-lg border border-border bg-muted/60 p-3 group">
       <p
         dir={rtl ? "rtl" : "ltr"}
         className={cn("text-sm leading-relaxed line-clamp-4", rtl && "text-right")}
@@ -24,11 +24,11 @@ export const ResourceResultCard = ({ result, onInsert, t }: ResourceResultCardPr
       </p>
 
       {result.reason && (
-        <p className="mt-1.5 text-[11px] text-primary/80" dir="rtl">{result.reason}</p>
+        <p className="mt-1.5 text-xs text-primary/80" dir="rtl">{result.reason}</p>
       )}
 
       <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border/60">
-        <span className="text-[11px] text-muted-foreground truncate">
+        <span className="text-xs text-muted-foreground truncate">
           {formatCitation(result.citation_ref, result.source_url)}
         </span>
         <Button

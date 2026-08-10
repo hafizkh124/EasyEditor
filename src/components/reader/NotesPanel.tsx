@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { readerService } from "@/core/workspace/readerService";
 import type { ReaderBookmark } from "@/core/backend/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface NotesPanelProps {
   /** True when this is the active Workbench tab, so it can refresh on show. */
@@ -21,6 +22,7 @@ interface NotesPanelProps {
  * the readerJump signal.
  */
 export const NotesPanel: React.FC<NotesPanelProps> = ({ active = false }) => {
+  const { t } = useLanguage();
   const workspace = useOptionalWorkspace();
   const readerPage = workspace?.readerPage ?? null;
 
@@ -84,7 +86,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ active = false }) => {
       <div className="flex flex-col items-center justify-center h-full p-6 text-center gap-2 bg-background">
         <BookOpen className="h-8 w-8 text-muted-foreground/50" />
         <p className="text-xs text-muted-foreground leading-relaxed">
-          ایک کتاب کھولیں تاکہ اس کے صفحات پر نوٹس لکھے جا سکیں۔
+          {t("reader.notes.open_book")}
         </p>
       </div>
     );
@@ -96,9 +98,9 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ active = false }) => {
       <div className="px-3 py-2 border-b border-border shrink-0">
         <div className="flex items-center gap-1.5">
           <StickyNote className="h-3.5 w-3.5 text-primary" />
-          <span className="text-[11px] font-semibold text-foreground truncate">{readerPage.title}</span>
+          <span className="text-xs font-semibold text-foreground truncate">{readerPage.title}</span>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-0.5">صفحہ {readerPage.pageNumber}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t("reader.page")} {readerPage.pageNumber}</p>
       </div>
 
       {/* Add note for the current page */}
@@ -107,11 +109,18 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ active = false }) => {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-          placeholder={`صفحہ ${readerPage.pageNumber} کے لیے نوٹ…`}
+          placeholder={`${t("reader.page")} ${readerPage.pageNumber}`}
           className="h-8 text-xs"
           disabled={saving}
         />
-        <Button size="icon" className="h-8 w-8 shrink-0" onClick={handleAdd} disabled={saving || !draft.trim()}>
+        <Button
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          title={t("reader.notes.add", "Add note")}
+          aria-label={t("reader.notes.add", "Add note")}
+          onClick={handleAdd}
+          disabled={saving || !draft.trim()}
+        >
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
         </Button>
       </div>
@@ -123,37 +132,38 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ active = false }) => {
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         ) : notes.length === 0 ? (
-          <div className="p-4 text-[11px] text-muted-foreground leading-relaxed text-center">
-            اس صفحے کے لیے کوئی نوٹ نہیں۔ اوپر والے خانے میں لکھ کر پلس دبائیں۔
+          <div className="p-4 text-xs text-muted-foreground leading-relaxed text-center">
+            {t("reader.notes.empty")}
           </div>
         ) : (
           <div className="p-2 space-y-2">
             {notes.map((n) => (
               <div
                 key={`${n.bookId}:${n.pageNumber}`}
-                className="rounded-md border border-border/60 bg-muted/40 p-2 space-y-1.5"
+                className="rounded-md border border-border/60 bg-muted p-2 space-y-1.5"
               >
                 <div className="flex items-center justify-between gap-1">
                   <button
                     type="button"
                     onClick={() => handleJump(n.pageNumber)}
-                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline"
-                    title="Jump to this page"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                    title={t("reader.notes.jump")}
                   >
                     <CornerDownLeft className="h-3 w-3" />
-                    صفحہ {n.pageNumber}
+                    {t("reader.page")} {n.pageNumber}
                   </button>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 text-muted-foreground/60 hover:text-destructive"
                     onClick={() => handleDelete(n.pageNumber)}
-                    title="Delete note"
+                    title={t("reader.notes.delete")}
+                    aria-label={t("reader.notes.delete")}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <p className="text-[11px] text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words">
                   {n.note}
                 </p>
               </div>

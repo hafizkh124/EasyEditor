@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -12,7 +11,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import LocalePrefixSync from "@/components/LocalePrefixSync";
+import CapabilityRoute from "@/components/CapabilityRoute";
 import { isDesktop } from "@/utils/environment";
+import { ThemeProvider } from "next-themes";
+import { APP_THEME_STORAGE_KEY } from "@/lib/theme";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -81,18 +83,24 @@ const DesktopToWorkspace: React.FC<{ children: React.ReactNode }> = ({ children 
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <SubscriptionProvider>
-          <NotificationProvider>
-          <Toaster />
-          <Sonner />
-          <AppRouter>
-            <ErrorBoundary>
-              <LocalePrefixSync />
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      storageKey={APP_THEME_STORAGE_KEY}
+      disableTransitionOnChange
+    >
+      <TooltipProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <SubscriptionProvider>
+            <NotificationProvider>
+            <Toaster />
+            <AppRouter>
+              <ErrorBoundary>
+                <LocalePrefixSync />
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
                   <Route path="/login" element={<Login />} />
                   <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                   <Route path="/signup" element={<Signup />} />
@@ -131,9 +139,13 @@ const App = () => (
                   <Route path="/ur/refund-policy" element={<DesktopToWorkspace><Refund /></DesktopToWorkspace>} />
                   <Route path="/ur/pricing-info" element={<DesktopToWorkspace><PricingInfo /></DesktopToWorkspace>} />
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/transcribe" element={<ProtectedRoute><ErrorBoundary><Transcribe /></ErrorBoundary></ProtectedRoute>} />
-                  <Route path="/speak" element={<ProtectedRoute><ErrorBoundary><Speak /></ErrorBoundary></ProtectedRoute>} />
-                  <Route path="/ocr" element={<ProtectedRoute><ErrorBoundary><OCR /></ErrorBoundary></ProtectedRoute>} />
+                  {/* allowGuest: on desktop these run on the offline Whisper/Piper
+                      engines, which need no account. CapabilityRoute is what keeps
+                      the cloud-only tools off desktop entirely. On web `allowGuest`
+                      is inert, so the login gate is unchanged. */}
+                  <Route path="/transcribe" element={<CapabilityRoute id="transcribe"><ProtectedRoute allowGuest><ErrorBoundary><Transcribe /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/speak" element={<CapabilityRoute id="speak"><ProtectedRoute allowGuest><ErrorBoundary><Speak /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/ocr" element={<CapabilityRoute id="ocr"><ProtectedRoute><ErrorBoundary><OCR /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
                   <Route path="/workspace" element={<ProtectedRoute allowGuest><ErrorBoundary><Workspace /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/workspace/:documentId" element={<ProtectedRoute allowGuest><ErrorBoundary><Workspace /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/research" element={<ProtectedRoute><ErrorBoundary><Research /></ErrorBoundary></ProtectedRoute>} />
@@ -141,28 +153,29 @@ const App = () => (
                   <Route path="/editor" element={<ProtectedRoute><ErrorBoundary><Editor /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/editor/:documentId" element={<ProtectedRoute><ErrorBoundary><Editor /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/ocr/review" element={<ProtectedRoute><ErrorBoundary><OcrReview /></ErrorBoundary></ProtectedRoute>} />
-                  <Route path="/translate" element={<ProtectedRoute><ErrorBoundary><Translate /></ErrorBoundary></ProtectedRoute>} />
-                  <Route path="/translate-workspace" element={<ProtectedRoute><ErrorBoundary><TranslationWorkspace /></ErrorBoundary></ProtectedRoute>} />
-                  <Route path="/book-workspace" element={<ProtectedRoute><ErrorBoundary><BookWorkspace /></ErrorBoundary></ProtectedRoute>} />
-                  <Route path="/extract" element={<ProtectedRoute><ErrorBoundary><Extract /></ErrorBoundary></ProtectedRoute>} />
+                  <Route path="/translate" element={<CapabilityRoute id="translate"><ProtectedRoute><ErrorBoundary><Translate /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/translate-workspace" element={<CapabilityRoute id="translate-workspace"><ProtectedRoute><ErrorBoundary><TranslationWorkspace /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/book-workspace" element={<CapabilityRoute id="book-workspace"><ProtectedRoute><ErrorBoundary><BookWorkspace /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/extract" element={<CapabilityRoute id="extract"><ProtectedRoute><ErrorBoundary><Extract /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
                   {/* allowGuest: the desktop sidebar links here, and Settings is where the
                       desktop-local panels live (BYOK key, voice engines). Settings.tsx already
                       guards every cloud call with `if (!user) return`. */}
                   <Route path="/settings" element={<ProtectedRoute allowGuest><Settings /></ProtectedRoute>} />
                   <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
-                  <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+                  <Route path="/admin" element={<CapabilityRoute id="admin"><ProtectedRoute><Admin /></ProtectedRoute></CapabilityRoute>} />
                   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </ErrorBoundary>
-          </AppRouter>
-          </NotificationProvider>
-          </SubscriptionProvider>
-        </AuthProvider>
-      </LanguageProvider>
-    </TooltipProvider>
+                  </Routes>
+                </Suspense>
+              </ErrorBoundary>
+            </AppRouter>
+            </NotificationProvider>
+            </SubscriptionProvider>
+          </AuthProvider>
+        </LanguageProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
