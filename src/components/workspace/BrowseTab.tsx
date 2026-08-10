@@ -292,6 +292,11 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
         <ScrollArea className="flex-1 min-h-0">
           {booksLoading ? (
             <p className="p-3 text-xs text-muted-foreground">Loading books…</p>
+          ) : error ? (
+            /* `error` is otherwise only rendered when the bridge is missing, so
+               a catalogue read that failed here reported "No books found." — a
+               user cannot tell an empty category from a locked database. */
+            <p className="p-3 text-xs text-destructive">{error}</p>
           ) : books.length === 0 ? (
             <p className="p-3 text-xs text-muted-foreground">No books found.</p>
           ) : (
