@@ -1,4 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("translationMemory");
 
 export interface TranslationMemoryMatch {
   passage_key?: string;
@@ -79,7 +82,7 @@ export async function lookupTranslationMemory(
       });
     }
   } catch (err) {
-    console.error("Translation memory lookup error:", err);
+    log.error("Translation memory lookup error", { err });
   }
 
   // Deduplicate and sort highest score first

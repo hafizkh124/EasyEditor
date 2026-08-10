@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { isDesktop } from "@/core/backend";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("useLocalShamela");
 
 const STORAGE_URL_KEY = "shamela.mcp_url";
 const STORAGE_CONNECTED_KEY = "shamela.connected";
@@ -113,7 +116,7 @@ export function useLocalShamela() {
         return null;
       }
     } catch (err) {
-      console.error("[useLocalShamela] connection error:", err);
+      log.error("connection error", { err });
       setConnectedState(false);
       setDownloadedBooks(null);
       setCatalogBooks(null);

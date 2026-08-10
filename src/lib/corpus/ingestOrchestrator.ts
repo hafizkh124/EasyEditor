@@ -5,6 +5,9 @@ import { callEdgeFunction, isDesktopEnv } from "@/core/ai/aiAdapter";
 // Auth is cloud-only; desktop mode has no session model.
 // eslint-disable-next-line no-restricted-imports
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("ingestOrchestrator");
 
 export interface IngestProgress {
   itemId: string;
@@ -69,7 +72,7 @@ export async function runLibraryIngest({
     });
 
     if (res.error) {
-      console.error("[ingestOrchestrator] library-ingest error:", res.error);
+      log.error("library-ingest error", { detail: res.error });
       lastProgress.status = "failed";
       lastProgress.error = res.error.message || "Ingest failed";
       onProgress?.(lastProgress);

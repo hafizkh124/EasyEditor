@@ -3,6 +3,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { AdminPayment, IncomeSummary } from "@/components/admin/types";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("useAdminPayments");
 
 export function useAdminPayments() {
   const { t } = useLanguage();
@@ -65,13 +68,13 @@ export function useAdminPayments() {
       });
 
       if (error) {
-        console.error("[AdminPayments] income summary error:", error);
+        log.error("income summary error", { error });
         return;
       }
 
       setIncomeSummary(data as unknown as IncomeSummary);
     } catch (e) {
-      console.error("[AdminPayments] income summary failed:", e);
+      log.error("income summary failed", { e });
     } finally {
       setIncomeLoading(false);
     }
@@ -85,7 +88,7 @@ export function useAdminPayments() {
       .order("payment_date", { ascending: false });
 
     if (error) {
-      console.error("[AdminPayments] user payments error:", error);
+      log.error("user payments error", { error });
       return;
     }
 

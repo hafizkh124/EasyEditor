@@ -14,6 +14,9 @@ import {
   deleteResearchSession,
 } from "@/lib/research/persistence";
 import { callRefineText, isRefineTextAction } from "@/lib/editor/aiActions";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("useResearchChat");
 
 const errMsg = (e: unknown, fallback: string): string =>
   e instanceof Error ? e.message : fallback;
@@ -102,7 +105,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
       // AppLayout) picks up the new/updated session without a page reload.
       window.dispatchEvent(new CustomEvent("session-history-changed", { detail: { section: "research" } }));
     } catch {
-      if (import.meta.env.DEV) console.warn("[Research] research_sessions table not available yet");
+      log.debug("research_sessions table not available yet");
     }
   }, [userId, mode, islamicDomains]);
 
@@ -137,7 +140,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         setCitations(data.citations ?? []);
       }
     } catch {
-      if (import.meta.env.DEV) console.warn("[Research] research_sessions table not available yet");
+      log.debug("research_sessions table not available yet");
     }
   }, [userId, mode, requestedSessionId, searchParams, setSearchParams]);
 

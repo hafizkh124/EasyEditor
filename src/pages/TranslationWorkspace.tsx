@@ -18,6 +18,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { lookupTranslationMemory, GENRE_TRANSLATION_PROMPTS, type TranslationMemoryMatch } from "@/lib/translationMemory";
 import { collectSseText } from "@/lib/sse";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("TranslationWorkspace");
 
 interface Project {
   id: string;
@@ -84,7 +87,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
         selectProject(data[0]);
       }
     } catch (err) {
-      console.error(err);
+      log.error("loading translation projects failed", { err });
       toast.error(translateStored("toast.translation.projects_load_failed"));
     } finally {
       setLoading(false);
@@ -110,7 +113,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
         fetchTm(loadedChunks[0].source_text, proj.target_lang, proj.genre);
       }
     } catch (err) {
-      console.error(err);
+      log.error("opening translation project failed", { err });
       toast.error(translateStored("toast.translation.project_load_failed"));
     } finally {
       setLoading(false);
@@ -162,7 +165,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
       await loadProjects();
       selectProject(proj);
     } catch (err) {
-      console.error(err);
+      log.error("creating translation project failed", { err });
       toast.error(translateStored("toast.book.project_create_failed"));
     } finally {
       setSaving(false);
@@ -206,7 +209,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
       if (error) throw error;
       toast.success(translateStoredFormat("toast.translation.chunk_saved", { number: current.chunk_index }));
     } catch (err) {
-      console.error(err);
+      log.error("saving chunk failed", { err });
       toast.error(translateStored("toast.common.save_failed"));
     } finally {
       setSaving(false);
@@ -256,7 +259,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
         toast.error(translateStored("toast.translation.ai_empty"));
       }
     } catch (err) {
-      console.error(err);
+      log.error("AI translation failed", { err });
       toast.error(translateStored("toast.translation.ai_failed"));
     } finally {
       setTranslating(false);

@@ -1,5 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { SessionSection } from "@/hooks/useSessionHistory";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("userSessions");
 
 // Escape hatch until migrations are reflected in generated Supabase types.
 const fromUserSessions = () =>
@@ -34,7 +37,7 @@ export async function upsertUserSession({ id, userId, section, title, metadata =
     if (error) throw error;
     return (data as { id: string } | null)?.id ?? null;
   } catch (err) {
-    if (import.meta.env.DEV) console.warn("[userSessions.upsert]", err);
+    log.debug("upsert failed", { err });
     return null;
   }
 }
@@ -57,7 +60,7 @@ export async function loadUserSession(id: string, userId: string): Promise<Loade
     const row = data as LoadedUserSession;
     return { ...row, metadata: row.metadata ?? {} };
   } catch (err) {
-    if (import.meta.env.DEV) console.warn("[userSessions.load]", err);
+    log.debug("load failed", { err });
     return null;
   }
 }

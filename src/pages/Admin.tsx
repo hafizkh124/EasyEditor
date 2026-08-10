@@ -14,6 +14,9 @@ import UpgradeRequests from "@/components/admin/UpgradeRequests";
 import CorpusPanel from "@/components/admin/CorpusPanel";
 import IncomeDashboard from "@/components/admin/IncomeDashboard";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("Admin");
 
 const Admin = () => {
   useSeo({ title: "Admin — Al-Ulama Easy Editor", description: "Admin panel for approving registrations and managing Al-Ulama Easy Editor accounts.", path: "/admin", noindex: true });
@@ -28,7 +31,7 @@ const Admin = () => {
     if (!user || approvalLoading) return;
 
     const verifyAdminRole = async () => {
-      if (import.meta.env.DEV) console.log("[Admin] Verifying access...");
+      log.debug("Verifying access...");
       setVerifying(true);
 
       const { data, error } = await supabase
@@ -39,7 +42,7 @@ const Admin = () => {
         .maybeSingle();
 
       if (error) {
-        if (import.meta.env.DEV) console.error("[Admin] Role verification failed:", error.message);
+        log.debug("Role verification failed", { detail: error.message });
         setVerified(false);
       } else {
         setVerified(data !== null);

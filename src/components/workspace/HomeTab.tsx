@@ -7,6 +7,9 @@ import { StatsBar } from "./StatsBar";
 import { RecentBooksGrid } from "./RecentBooksGrid";
 import { CategoryGrid } from "./CategoryGrid";
 import type { RecentItem } from "@/core/backend/types";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("HomeTab");
 
 interface HomeTabProps {
   onSearch?: () => void;
@@ -72,7 +75,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         // Shamela not available — that's fine, show library-only stats
       }
     } catch (err) {
-      console.error("[HomeTab] Failed to load data:", err);
+      log.error("Failed to load data", { err });
     } finally {
       setLoading(false);
     }

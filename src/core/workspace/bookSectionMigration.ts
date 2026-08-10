@@ -2,6 +2,9 @@ import { generateJSON } from "@tiptap/core";
 import { supabase } from "@/integrations/supabase/client";
 import { buildEditorExtensions } from "@/components/editor/editorExtensions";
 import { documentService } from "./documentService";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("bookSectionMigration");
 
 const EMPTY_DOC = { type: "doc", content: [{ type: "paragraph" }] };
 
@@ -26,7 +29,7 @@ export function htmlToTiptapJSON(html: string): Record<string, unknown> {
   } catch (err) {
     // Malformed HTML shouldn't abort a bulk migration, but it must be visible:
     // the section keeps its original `content` column either way.
-    console.error("[bookSectionMigration] HTML → JSON conversion failed:", err);
+    log.error("HTML → JSON conversion failed", { err });
     return { ...EMPTY_DOC };
   }
 }

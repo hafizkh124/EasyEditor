@@ -6,6 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type { TaskRunBackend } from "../types";
 import type { TaskRun, TaskRunStatus, TaskRunSource } from "@/core/workspace/types";
 import type { ChunkProgress } from "@/lib/tasks/types";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("taskRuns");
 
 export const cloudTaskRuns: TaskRunBackend = {
   async createTaskRun(params: {
@@ -36,7 +39,7 @@ export const cloudTaskRuns: TaskRunBackend = {
       .single();
 
     if (error) {
-      console.error("[cloudTaskRuns] createTaskRun error:", error);
+      log.error("createTaskRun error", { error });
       return null;
     }
     return data as TaskRun;
@@ -71,7 +74,7 @@ export const cloudTaskRuns: TaskRunBackend = {
       .eq("id", runId);
 
     if (error) {
-      console.error("[cloudTaskRuns] updateTaskRun error:", error);
+      log.error("updateTaskRun error", { error });
       return false;
     }
     return true;
@@ -84,7 +87,7 @@ export const cloudTaskRuns: TaskRunBackend = {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.warn("[cloudTaskRuns] listTaskRuns error:", error);
+      log.warn("listTaskRuns error", { error });
       return [];
     }
     return (data as TaskRun[]) || [];
@@ -100,7 +103,7 @@ export const cloudTaskRuns: TaskRunBackend = {
       .maybeSingle();
 
     if (error) {
-      console.warn("[cloudTaskRuns] findIncompleteRun error:", error);
+      log.warn("findIncompleteRun error", { error });
       return null;
     }
     return (data as TaskRun) || null;

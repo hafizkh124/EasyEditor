@@ -3,6 +3,9 @@ import * as sqliteVec from 'sqlite-vec';
 import { app } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { logger } from "../lib/logger.js";
+
+const log = logger.child("open");
 
 export type SqliteDatabase = InstanceType<typeof Database>;
 
@@ -38,7 +41,7 @@ export function openWorkspaceDatabase(customPath?: string): SqliteDatabase {
   try {
     sqliteVec.load(db);
   } catch (err) {
-    console.warn('sqlite-vec extension loading warning:', err);
+    log.warn("sqlite-vec extension loading warning", { err });
   }
 
   if (!customPath) {

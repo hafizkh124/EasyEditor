@@ -16,6 +16,9 @@ import { BookEditorView } from "@/components/book/BookEditorView";
 import { KhittatBahthModal } from "@/components/book/KhittatBahthModal";
 import { BookExportModal } from "@/components/book/BookExportModal";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("BookWorkspace");
 
 interface BookProject {
   id: string;
@@ -68,7 +71,7 @@ export default function BookWorkspace() {
         selectBookProject(data[0]);
       }
     } catch (err) {
-      console.error(err);
+      log.error("loading book projects failed", { err });
       toast.error(translateStored("toast.book.projects_load_failed"));
     } finally {
       setLoading(false);
@@ -115,7 +118,7 @@ export default function BookWorkspace() {
         setActiveSection(null);
       }
     } catch (err) {
-      console.error(err);
+      log.error("opening book project failed", { err });
       toast.error(translateStored("toast.book.outline_load_failed"));
     } finally {
       setLoading(false);
@@ -199,7 +202,7 @@ export default function BookWorkspace() {
       await loadBookProjects();
       selectBookProject(proj);
     } catch (err) {
-      console.error(err);
+      log.error("creating book project failed", { err });
       toast.error(translateStored("toast.book.project_create_failed"));
     }
   };
@@ -225,7 +228,7 @@ export default function BookWorkspace() {
       setActiveChapter(newChap);
       toast.success(translateStoredFormat("toast.book.chapter_added", { number: nextNum }));
     } catch (err) {
-      console.error(err);
+      log.error("adding chapter failed", { err });
       toast.error(translateStored("toast.book.chapter_add_failed"));
     }
   };
@@ -253,7 +256,7 @@ export default function BookWorkspace() {
       setActiveSection(data);
       toast.success(translateStoredFormat("toast.book.section_added", { number: nextNum }));
     } catch (err) {
-      console.error(err);
+      log.error("adding section failed", { err });
       toast.error(translateStored("toast.book.section_add_failed"));
     }
   };

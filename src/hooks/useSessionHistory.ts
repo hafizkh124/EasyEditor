@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("useSessionHistory");
 
 export type SessionSection = "transcribe" | "speak" | "ocr" | "research" | "editor" | "translate";
 
@@ -56,7 +59,7 @@ export function useSessionHistory(section: SessionSection) {
           .eq("user_id", user.id)
           .order("updated_at", { ascending: false });
         if (error) {
-          if (import.meta.env.DEV) console.warn("[useSessionHistory] research_sessions:", error.message);
+          log.debug("research_sessions", { detail: error.message });
           setAvailable(false);
           setItems([]);
           return;
@@ -81,7 +84,7 @@ export function useSessionHistory(section: SessionSection) {
         .order("updated_at", { ascending: false });
 
       if (error) {
-        if (import.meta.env.DEV) console.warn("[useSessionHistory]", error.message);
+        log.debug("history fetch failed", { detail: error.message });
         setAvailable(false);
         setItems([]);
         return;

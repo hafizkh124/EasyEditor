@@ -5,6 +5,9 @@
 // stays small enough for the existing stateless `transcribe` edge function.
 
 import { MAX_FILE_SIZE_BYTES, WARN_FILE_SIZE_BYTES, getFormatLabel } from "./formatSupport";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("chunker");
 
 const TARGET_SAMPLE_RATE = 16_000;
 const DEFAULT_CHUNK_SECONDS = 300; // ~5 minutes per FR-3.2
@@ -26,9 +29,7 @@ export async function decodeAudioFile(file: Blob): Promise<AudioBuffer> {
     );
   }
   if (file.size > WARN_FILE_SIZE_BYTES) {
-    console.warn(
-      `[chunker] Large file (${(file.size / 1024 / 1024).toFixed(0)} MB) — decoding may be slow.`,
-    );
+    log.warn("large file, decoding may be slow", { megabytes: Number((file.size / 1024 / 1024).toFixed(0)) });
   }
 
   const Ctx = getAudioContextCtor();

@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { applyPendingReferral, consumePendingReferralCode } from "@/lib/referral";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("AuthContext");
 
 interface AuthContextType {
   user: User | null;
@@ -34,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const hash = window.location.hash;
       if (hash.includes("access_token") || hash === "#") {
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
-        if (import.meta.env.DEV) console.log("[Auth] Hash fragment detected and cleaned safely.");
+        log.debug("Hash fragment detected and cleaned safely.");
       }
     };
 

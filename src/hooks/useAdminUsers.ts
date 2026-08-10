@@ -5,6 +5,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { TIER_LIMITS, TOKEN_ALLOCATIONS } from "@/contexts/SubscriptionContext";
 import type { UserRow, PaidTier, Tier, UserFilters, PaginationState } from "@/components/admin/types";
 import { REFERRAL_CREDIT_AMOUNT } from "@/lib/referral";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("useAdminUsers");
 
 const DEFAULT_FILTERS: UserFilters = {
   search: "",
@@ -45,7 +48,7 @@ export function useAdminUsers(enabled: boolean) {
     });
 
     if (error) {
-      console.error("[AdminUsers] RPC error:", error);
+      log.error("RPC error", { error });
       toast.error(t("admin.update_error"));
       setLoading(false);
       return;
@@ -125,7 +128,7 @@ export function useAdminUsers(enabled: boolean) {
 
     if (subError) {
       if (import.meta.env.DEV)
-        console.error("[Admin] subscriptions PATCH failed →", subError.code, subError.message, subError.details);
+        log.error("subscriptions PATCH failed", { code: subError.code, message: subError.message, details: subError.details });
       toast.error(`${t("admin.update_error")}: ${subError.message}`);
       return;
     }
@@ -140,7 +143,7 @@ export function useAdminUsers(enabled: boolean) {
         monthly_limit: tokenAllocation,
       }, { onConflict: "user_id" });
     if (walletError) {
-      console.error("[Admin] token wallet upsert failed:", walletError);
+      log.error("token wallet upsert failed", { walletError });
       toast.error(`Token wallet not updated: ${walletError.message}`);
       return;
     }
@@ -188,11 +191,11 @@ export function useAdminUsers(enabled: boolean) {
             ),
           );
         } else if (!isUniqueViolation && import.meta.env.DEV) {
-          console.warn("[Admin] referral_events insert error:", eventErr);
+          log.warn("referral_events insert error", { eventErr });
         }
       }
     } catch (e) {
-      if (import.meta.env.DEV) console.warn("[Admin] referral grant skipped:", e);
+      log.debug("referral grant skipped", { e });
     }
 
     toast.success(t("admin.approved"));
@@ -344,7 +347,7 @@ export function useAdminUsers(enabled: boolean) {
 
     if (subError) {
       if (import.meta.env.DEV)
-        console.error("[Admin] revoke subscriptions PATCH failed →", subError.code, subError.message, subError.details);
+        log.error("revoke subscriptions PATCH failed", { code: subError.code, message: subError.message, details: subError.details });
       toast.error(`${t("admin.update_error")}: ${subError.message}`);
       return;
     }
@@ -375,7 +378,7 @@ export function useAdminUsers(enabled: boolean) {
 
     if (error) {
       if (import.meta.env.DEV)
-        console.error("[Admin] changeTier PATCH failed →", error.code, error.message, error.details);
+        log.error("changeTier PATCH failed", { code: error.code, message: error.message, details: error.details });
       toast.error(`${t("admin.update_error")}: ${error.message}`);
       return;
     }

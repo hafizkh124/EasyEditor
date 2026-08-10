@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { SqliteDatabase } from '../open.js';
 import { initializeDatabaseSchema } from '../schema.js';
+import { logger } from "../../lib/logger.js";
+
+const log = logger.child("runner");
 
 export interface Migration {
   version: number;
@@ -38,7 +41,7 @@ async function createPreMigrationBackup(db: SqliteDatabase, dbPath: string, curr
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backupPath = `${dbPath}.bak.v${currentVersion}.${timestamp}`;
   await db.backup(backupPath);
-  console.log(`[DB Migration] Backup created at: ${backupPath}`);
+  log.info("backup created", { backupPath });
   return backupPath;
 }
 
@@ -70,7 +73,7 @@ export async function runDatabaseMigrations(db: SqliteDatabase, dbPath: string):
   await createPreMigrationBackup(db, dbPath, currentVersion);
 
   for (const migration of pendingMigrations) {
-    console.log(`[DB Migration] Applying migration v${migration.version}: ${migration.name}`);
+    log.info("applying migration", { version: migration.version, name: migration.name });
     db.transaction(() => {
       migration.up(db);
       setVersionStmt.run(String(migration.version));

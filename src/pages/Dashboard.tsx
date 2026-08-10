@@ -17,10 +17,13 @@ import { getLifecycleInfo, formatLifecycleDate } from "@/lib/subscriptionLifecyc
 import { WHATSAPP_CONTACT_URL } from "@/lib/paymentAccounts";
 import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 import TokenMeter from "@/components/TokenMeter";
+import { logger } from "@/lib/logger";
 import { availableCapabilities } from "@/core/capabilities/registry";
 import type { CapabilityId } from "@/core/capabilities/registry";
 import type { TranslationKey } from "@/lib/i18n";
 import type { LucideIcon } from "lucide-react";
+
+const log = logger.child("Dashboard");
 
 /**
  * The grid's presentation — the dashboard gives each tool a fuller title and a
@@ -48,7 +51,8 @@ const Dashboard = () => {
 
   // P6: Pass userId to avoid redundant getSession() call inside getRecentActivity
   useEffect(() => {
-    getRecentActivity(user?.id).then(setRecentActivity).catch(console.error);
+    getRecentActivity(user?.id).then(setRecentActivity)
+      .catch((err) => log.error("loading recent activity failed", { err }));
   }, [user]);
 
   useEffect(() => {

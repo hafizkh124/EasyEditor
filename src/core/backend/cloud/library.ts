@@ -8,6 +8,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { LibraryBackend, RecentItem, ChunkSearchHit } from "../types";
 import type { LibraryItem } from "@/core/workspace/types";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("library");
 
 export const cloudLibrary: LibraryBackend = {
   async listItems(projectId?: string): Promise<LibraryItem[]> {
@@ -21,7 +24,7 @@ export const cloudLibrary: LibraryBackend = {
 
     const { data, error } = await query;
     if (error) {
-      console.warn("[cloudLibrary] failed to list library items:", error);
+      log.warn("failed to list library items", { error });
       return [];
     }
     return (data as LibraryItem[]) || [];
@@ -33,7 +36,7 @@ export const cloudLibrary: LibraryBackend = {
       .eq("id", itemId)
       .single();
     if (error) {
-      console.warn("[cloudLibrary] getItem error:", error);
+      log.warn("getItem error", { error });
       return null;
     }
     return (data as LibraryItem) || null;
@@ -57,7 +60,7 @@ export const cloudLibrary: LibraryBackend = {
       .single();
 
     if (error) {
-      console.error("[cloudLibrary] create error:", error);
+      log.error("create error", { error });
       return null;
     }
     return data as LibraryItem;
@@ -83,7 +86,7 @@ export const cloudLibrary: LibraryBackend = {
       .upload(storagePath, file, { upsert: true });
 
     if (storageError) {
-      console.error("[cloudLibrary] Storage upload error:", storageError);
+      log.error("Storage upload error", { storageError });
       throw storageError;
     }
 
@@ -101,7 +104,7 @@ export const cloudLibrary: LibraryBackend = {
       .single();
 
     if (dbError) {
-      console.error("[cloudLibrary] DB insert error:", dbError);
+      log.error("DB insert error", { dbError });
       throw dbError;
     }
 
@@ -128,7 +131,7 @@ export const cloudLibrary: LibraryBackend = {
       .eq("id", itemId);
 
     if (error) {
-      console.error("[cloudLibrary] delete error:", error);
+      log.error("delete error", { error });
       return false;
     }
     return true;
@@ -140,7 +143,7 @@ export const cloudLibrary: LibraryBackend = {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.warn("[cloudLibrary] list error:", error);
+      log.warn("list error", { error });
       return [];
     }
     return (data as LibraryItem[]) || [];

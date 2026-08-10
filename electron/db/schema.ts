@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { EMBED_MODEL, EMBED_DIMS } from '../../shared/ai/embedConstants.js';
 import { normalizeArabicForSearch } from '../../shared/text/arabicSearch.js';
 import type { SqliteDatabase } from './open.js';
+import { logger } from "../lib/logger.js";
+
+const log = logger.child("schema");
 
 /**
  * SPEC-M5 FR-4.2: column names here are copied VERBATIM from the Postgres
@@ -254,7 +257,7 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
       );
     `);
   } catch (err) {
-    console.warn('sqlite-vec table creation warning (falling back if virtual table unavailable):', err);
+    log.warn("sqlite-vec table creation warning (falling back if virtual table unavailable)", { err });
   }
 
   // SPEC-M6 Phase 5: FTS5 keyword search over imported chunks. The index is
@@ -324,7 +327,7 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
         })();
       } catch (err) {
         // FTS5 unavailable (rare): log and continue without keyword search.
-        console.warn('[schema] FTS5 backfill failed (keyword search disabled):', err);
+        log.warn("FTS5 backfill failed (keyword search disabled)", { err });
       }
     }
     setMeta.run('fts_backfilled', '1');

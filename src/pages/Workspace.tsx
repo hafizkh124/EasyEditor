@@ -8,6 +8,9 @@ import { htmlToTiptapJSON } from "@/core/workspace/bookSectionMigration";
 import { useSeo } from "@/hooks/useSeo";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateStored } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("Workspace");
 
 interface WorkspaceHandoffState {
   content?: string;
@@ -62,7 +65,7 @@ const WorkspacePage: React.FC = () => {
           navigate(`/workspace/${created.id}${panelQuery}`, { replace: true });
           return;
         } catch (err) {
-          console.error("[Workspace] Could not resolve a document:", err);
+          log.error("Could not resolve a document", { err });
           autoResolveStarted.current = false;
           toast.error(translateStored("toast.workspace.open_failed"));
         }

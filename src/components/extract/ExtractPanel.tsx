@@ -13,6 +13,9 @@ import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { TranslationMatrixTable, type TranslationRow } from "./TranslationMatrixTable";
 import { editorRoute } from "@/lib/routes";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("ExtractPanel");
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -60,7 +63,7 @@ export const ExtractPanel = () => {
         .eq("corpus_type", "quran")
         .order("sort_order", { ascending: true });
       if (error) {
-        console.error("Failed to load translators:", error);
+        log.error("Failed to load translators", { error });
         toast.error(translateStored("toast.extract.translators_failed"));
       } else if (data) {
         const defaultSlugs = new Set(["ur.junagarhi", "ur.jalandhari", "ur.taqiusmani", "ur.kanzuliman", "ur.maududi"]);
@@ -106,7 +109,7 @@ export const ExtractPanel = () => {
       });
 
       if (error) {
-        console.error("Error fetching translations:", error);
+        log.error("Error fetching translations", { error });
         toast.error(translateStored("toast.extract.fetch_failed"));
         setArabic(null);
         setResults([]);
@@ -121,7 +124,7 @@ export const ExtractPanel = () => {
         else if (!data?.note) toast.info(translateStored("toast.extract.none"));
       }
     } catch (err) {
-      console.error(err);
+      log.error("extracting translations failed", { err });
       toast.error(translateStored("toast.common.unexpected_error"));
       setArabic(null);
       setResults([]);

@@ -15,6 +15,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Progress } from '../ui/progress';
 import { VoiceModelInfo, ModelDownloadProgress } from '../../core/voice/types';
+import { logger } from "@/lib/logger";
+
+const log = logger.child("VoiceEnginePanel");
 
 export const VoiceEnginePanel: React.FC = () => {
   const [urEngine, setUrEngine] = useState<string>('piper');
@@ -30,7 +33,8 @@ export const VoiceEnginePanel: React.FC = () => {
     setSttEngine(getPreferredSttEngine());
 
     if (isDesktop() && window.electronAPI?.voice) {
-      window.electronAPI.voice.getModels().then(setModels).catch(console.error);
+      window.electronAPI.voice.getModels().then(setModels)
+        .catch((err) => log.error("listing voice models failed", { err }));
     }
   }, []);
 
@@ -52,7 +56,7 @@ export const VoiceEnginePanel: React.FC = () => {
       setModels(updated);
       setDownloadProgress((prev) => ({ ...prev, [modelId]: 100 }));
     } catch (err) {
-      console.error('Download failed', err);
+      log.error("Download failed", { err });
     } finally {
       setDownloadingId(null);
     }
@@ -97,7 +101,7 @@ export const VoiceEnginePanel: React.FC = () => {
       const updated = await window.electronAPI.voice.getModels();
       setModels(updated);
     } catch (err) {
-      console.error('Delete failed', err);
+      log.error("Delete failed", { err });
     }
   };
 

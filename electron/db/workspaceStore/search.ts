@@ -2,6 +2,9 @@ import type { SqliteDatabase } from '../open.js';
 import { getCurrentUserId } from './identity.js';
 import { normalizeArabicForSearch } from '../../../shared/text/arabicSearch.js';
 import { expandRootQuery } from '../../shamela/rootSearch.js';
+import { logger } from "../../lib/logger.js";
+
+const log = logger.child("search");
 
 /**
  * SPEC-M6 Phase 5: FTS5 keyword search over imported library chunks.
@@ -96,7 +99,7 @@ export function searchChunks(
     }));
   } catch (err) {
     // FTS5 virtual table missing or query unsupported — fall back to LIKE.
-    console.warn('[search] FTS5 unavailable, using LIKE fallback:', err);
+    log.warn("FTS5 unavailable, using LIKE fallback", { err });
     const pattern = `%${raw}%`;
     const rows = db.prepare(`
       SELECT c.content,
@@ -151,7 +154,7 @@ export function searchChunksByRoot(
   try {
     forms = expandRootQuery(s2DbPath, query, 2000);
   } catch (err) {
-    console.warn('[search] S2 root expansion failed, using keyword search:', err);
+    log.warn("S2 root expansion failed, using keyword search", { err });
     return searchChunks(db, query, limit);
   }
   if (forms.length === 0) return searchChunks(db, query, limit);
@@ -206,7 +209,7 @@ export function searchChunksByRoot(
         ranked.push({ key, rank: r.rank });
       }
     } catch (err) {
-      console.warn('[search] root-expanded FTS query failed:', err);
+      log.warn("root-expanded FTS query failed", { err });
     }
   }
 

@@ -1,5 +1,8 @@
 import { EMBED_MODEL, EMBED_DIMS } from '../../shared/ai/embedConstants.js';
 import type { SqliteDatabase } from './open.js';
+import { logger } from "../lib/logger.js";
+
+const log = logger.child("vectorSearch");
 
 export interface VectorSearchResult {
   chunkId: string;
@@ -168,7 +171,7 @@ export function searchVectorChunks(
   try {
     return vecSearch(db, float32Array, limit);
   } catch (err) {
-    console.warn('[VectorSearch] sqlite-vec unavailable, using brute-force fallback:', err);
+    log.warn("sqlite-vec unavailable, using brute-force fallback", { err });
     return bruteForceCosineSearch(db, queryEmbedding, limit);
   }
 }
@@ -198,7 +201,7 @@ export function upsertChunkVector(
       VALUES (?, ?)
     `).run(chunkId, float32Array);
   } catch (err) {
-    console.warn('[VectorSearch] sqlite-vec unavailable, storing in fallback table only:', err);
+    log.warn("sqlite-vec unavailable, storing in fallback table only", { err });
   }
 
   db.prepare(`

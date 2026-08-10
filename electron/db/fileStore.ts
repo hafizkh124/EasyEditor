@@ -12,6 +12,9 @@
 import { app } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { logger } from "../lib/logger.js";
+
+const log = logger.child("fileStore");
 
 function filesRoot(): string {
   return path.join(app.getPath('userData'), 'files');
@@ -57,6 +60,6 @@ export function deleteLibraryFile(storagePath: string): void {
     const target = resolveWithinRoot(storagePath);
     if (fs.existsSync(target)) fs.unlinkSync(target);
   } catch (err) {
-    console.warn('[fileStore] delete failed:', err);
+    log.warn("delete failed", { err });
   }
 }
