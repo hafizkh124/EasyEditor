@@ -5,6 +5,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { AnnotationBackend } from "../types";
 import type { AnnotationItem } from "@/core/workspace/annotationService";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("annotations");
 
 export const cloudAnnotations: AnnotationBackend = {
   async createAnnotation(params: {
@@ -28,7 +31,7 @@ export const cloudAnnotations: AnnotationBackend = {
       .single();
 
     if (error) {
-      console.error("[cloudAnnotations] create error:", error);
+      log.error("create error", { error });
       return null;
     }
     return data as AnnotationItem;
@@ -47,7 +50,7 @@ export const cloudAnnotations: AnnotationBackend = {
       .eq("id", id);
 
     if (error) {
-      console.error("[cloudAnnotations] update error:", error);
+      log.error("update error", { error });
       return false;
     }
     return true;
@@ -59,7 +62,7 @@ export const cloudAnnotations: AnnotationBackend = {
       .eq("id", id);
 
     if (error) {
-      console.error("[cloudAnnotations] delete error:", error);
+      log.error("delete error", { error });
       return false;
     }
     return true;
@@ -72,7 +75,7 @@ export const cloudAnnotations: AnnotationBackend = {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.warn("[cloudAnnotations] list error:", error);
+      log.warn("list error", { error });
       return [];
     }
     return (data as AnnotationItem[]) || [];

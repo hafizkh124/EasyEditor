@@ -9,6 +9,9 @@ import { useCanAfford } from "@/hooks/useTokenBalance";
 import { isDesktop } from "@/utils/environment";
 import { getPreferredEngine } from "@/core/voice/registry";
 import { LocalTtsEngine } from "@/core/voice/localEngines";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("Speak");
 
 // Max chars per single TTS request (per-request safety cap, not a tier limit)
 const TTS_REQUEST_CHAR_CAP = 5000;
@@ -119,7 +122,7 @@ const Speak = () => {
         .single();
 
       if (!error && data?.cloned_voice_id) {
-        if (import.meta.env.DEV) console.log("[Speak] Voice ID loaded from DB");
+        log.debug("Voice ID loaded from DB");
         setClonedVoiceId(data.cloned_voice_id);
         setCloneSampleName(localStorage.getItem(`cloned-voice-name-${user.id}`));
         return;
@@ -128,7 +131,7 @@ const Speak = () => {
       const savedId = localStorage.getItem(`cloned-voice-${user.id}`);
       const savedName = localStorage.getItem(`cloned-voice-name-${user.id}`);
       if (savedId) {
-        if (import.meta.env.DEV) console.log("[Speak] Voice ID loaded from localStorage (fallback)");
+        log.debug("Voice ID loaded from localStorage (fallback)");
         setClonedVoiceId(savedId);
         setCloneSampleName(savedName);
         await supabase
@@ -226,11 +229,11 @@ const Speak = () => {
         // instead — say so, rather than passing off local audio as online.
         if (result.fallbackFrom) {
           toast.warning(t("tts.online_fallback", "The online engine was unavailable, so Piper created the audio locally."));
-          if (import.meta.env.DEV) console.warn('Edge TTS fell back to Piper:', result.fallbackReason);
+          log.debug("Edge TTS fell back to Piper", { detail: result.fallbackReason });
         }
         return new Blob([result.audio], { type: result.mimeType });
       } catch (err) {
-        if (import.meta.env.DEV) console.error("Local TTS failed, falling back to cloud:", err);
+        log.debug("Local TTS failed, falling back to cloud", { err });
         // Fall through to cloud
       }
     }
@@ -258,7 +261,7 @@ const Speak = () => {
       if (response.status === 429) { toast.error(t("tts.limit_reached")); return null; }
       if (response.status === 401) { toast.error(t("tts.unauthorized")); return null; }
       if (response.status === 403) { toast.error(t("tts.subscription_required")); return null; }
-      if (import.meta.env.DEV) console.error("TTS API error:", response.status, errData);
+      log.debug("TTS API error", { detail: response.status, errData });
       throw new Error(errData.error || "TTS generation failed");
     }
 
@@ -320,7 +323,7 @@ const Speak = () => {
       logActivity("tts", text.slice(0, 60));
       persistTTS(text);
     } catch (err) {
-      if (import.meta.env.DEV) console.error("TTS error:", err);
+      log.debug("TTS error", { err });
       toast.error(t("tts.fallback_browser"));
       playWithBrowserTTS(text);
       logActivity("tts", text.slice(0, 60));

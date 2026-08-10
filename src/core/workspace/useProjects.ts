@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { documentService } from "./documentService";
 import type { Project, ProjectKind } from "./types";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("useProjects");
 
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -30,7 +33,7 @@ export function useProjects() {
       setProjects((prev) => [newProj, ...prev]);
       return newProj;
     } catch (err: any) {
-      console.error("[useProjects] Create project error:", err);
+      log.error("Create project error", { err });
       throw err;
     }
   };

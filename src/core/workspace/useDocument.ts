@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { documentService } from "./documentService";
 import type { Document, DocumentVersion } from "./types";
 import { useDebounce } from "@/hooks/useDebounce";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("useDocument");
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -102,7 +105,7 @@ export function useDocument(documentId?: string) {
         docRef.current = updated;
         setSaveStatus("saved");
       } catch (err) {
-        console.error("[useDocument] Flush save error:", err);
+        log.error("Flush save error", { err });
         setSaveStatus("error");
       }
     }
@@ -132,7 +135,7 @@ export function useDocument(documentId?: string) {
         }
         setSaveStatus("saved");
       } catch (err) {
-        console.error("[useDocument] Autosave error:", err);
+        log.error("Autosave error", { err });
         setSaveStatus("error");
       }
     };
@@ -194,7 +197,7 @@ export function useDocument(documentId?: string) {
       setVersions((prev) => [snapshot, ...prev]);
       return snapshot;
     } catch (err: any) {
-      console.error("[useDocument] Snapshot creation failed:", err);
+      log.error("Snapshot creation failed", { err });
       return null;
     }
   };

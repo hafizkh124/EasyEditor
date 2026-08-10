@@ -2,6 +2,9 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("NotificationContext");
 
 type Notification = Tables<"notifications">;
 
@@ -45,7 +48,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       .limit(20);
     // Gracefully handle 404 (table not yet migrated in this environment)
     if (error && error.code !== "42P01") {
-      if (import.meta.env.DEV) console.warn("[NotificationContext] fetch error:", error.message);
+      log.debug("fetch error", { detail: error.message });
     }
     setNotifications(data ?? []);
     setLoading(false);

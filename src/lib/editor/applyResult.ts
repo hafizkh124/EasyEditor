@@ -1,6 +1,9 @@
 import type { Editor } from "@tiptap/react";
 import { generateJSON } from "@tiptap/core";
 import { buildEditorExtensions } from "@/components/editor/editorExtensions";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("applyResult");
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -45,7 +48,7 @@ export function applyResult(
       editor.commands.setContent(json);
     }
   } catch (err) {
-    console.error("[applyResult] Schema-safe JSON conversion failed, inserting content:", err);
+    log.error("Schema-safe JSON conversion failed, inserting content", { err });
     if (hasSelection && typeof from === "number" && typeof to === "number" && to > from) {
       editor.chain().focus().insertContentAt({ from, to }, content).run();
     } else {

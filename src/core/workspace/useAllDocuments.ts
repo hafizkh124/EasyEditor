@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { documentService } from "@/core/workspace/documentService";
 import type { Project, Document, ProjectKind } from "@/core/workspace/types";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("useAllDocuments");
 
 export interface DocumentWithProject extends Document {
   projectName: string;
@@ -55,7 +58,7 @@ export function useAllDocuments() {
       setDocsMap(map);
       setAllDocs(flatList);
     } catch (err) {
-      console.warn("[useAllDocuments] error loading documents:", err);
+      log.warn("error loading documents", { err });
     } finally {
       setLoading(false);
     }

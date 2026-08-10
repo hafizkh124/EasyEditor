@@ -13,6 +13,9 @@ import type { IdentityBackend, RecipeBackend, CustomTaskBackend } from "../types
 import type { Recipe } from "@/lib/recipes/recipeService";
 import type { CustomTaskRow } from "@/lib/tasks/customTasks";
 import { translateStored } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("misc");
 
 // ── Identity ────────────────────────────────────────────────────────────────
 
@@ -76,7 +79,7 @@ export const cloudCustomTasks: CustomTaskBackend = {
       .order("created_at", { ascending: true });
 
     if (error) {
-      console.warn("[cloudCustomTasks] list error:", error);
+      log.warn("list error", { error });
       return [];
     }
     return (data as CustomTaskRow[]) ?? [];
@@ -115,7 +118,7 @@ export const cloudCustomTasks: CustomTaskBackend = {
       .single();
 
     if (error) {
-      console.error("[cloudCustomTasks] create error:", error);
+      log.error("create error", { error });
       throw new Error(
         error.code === "23505"
           ? "اس نام کا ٹاسک پہلے سے موجود ہے — کوئی اور نام رکھیں۔"
@@ -128,7 +131,7 @@ export const cloudCustomTasks: CustomTaskBackend = {
   async update(id: string, patch: { label?: string; system_prompt?: string }): Promise<boolean> {
     const { error } = await aiTasks().update(patch).eq("id", id);
     if (error) {
-      console.error("[cloudCustomTasks] update error:", error);
+      log.error("update error", { error });
       return false;
     }
     return true;
@@ -140,7 +143,7 @@ export const cloudCustomTasks: CustomTaskBackend = {
       .update({ archived_at: new Date().toISOString() })
       .eq("id", id);
     if (error) {
-      console.error("[cloudCustomTasks] archive error:", error);
+      log.error("archive error", { error });
       return false;
     }
     return true;

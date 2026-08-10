@@ -8,6 +8,9 @@ import { toast } from "sonner";
 import { Save, Sparkles, Quote, Loader2 } from "lucide-react";
 import { callEdgeFunction } from "@/core/ai/aiAdapter";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("BookEditorView");
 
 interface BookEditorViewProps {
   sectionId?: string;
@@ -42,7 +45,7 @@ export function BookEditorView({
       await onSaveContent(content);
       toast.success(translateStored("toast.book.chapter_saved"));
     } catch (err) {
-      console.error(err);
+      log.error("saving chapter content failed", { err });
       toast.error(translateStored("toast.common.save_failed"));
     } finally {
       setSaving(false);
@@ -67,7 +70,7 @@ export function BookEditorView({
         toast.info(translateStored("toast.book.ai_empty"));
       }
     } catch (err: unknown) {
-      console.error(err);
+      log.error("AI refinement failed", { err });
       const msg = err instanceof Error ? err.message : "AI اصلاح میں خرابی پیش آئی۔";
       toast.error(msg);
     } finally {

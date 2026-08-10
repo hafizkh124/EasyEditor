@@ -2,6 +2,9 @@ import { app } from 'electron';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
+import { logger } from "../lib/logger.js";
+
+const log = logger.child("shamelaNative");
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -366,7 +369,7 @@ export async function searchShamelaNative(queryText: string, limit = 20): Promis
     const data = result as { results?: ShamelaSearchResult[] };
     return data.results || [];
   } catch (err) {
-    console.error('[shamelaNative] search error:', err);
+    log.error("search error", { err });
     throw err;
   }
 }
@@ -509,7 +512,7 @@ export async function readShamelaPage(bookId: string, pageNumber: number): Promi
     );
     return result as ShamelaPageContent;
   } catch (err) {
-    console.error('[shamelaNative] read error:', err);
+    log.error("read error", { err });
     throw err;
   }
 }

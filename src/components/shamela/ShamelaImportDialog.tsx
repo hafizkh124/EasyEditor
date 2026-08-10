@@ -15,6 +15,9 @@ import {
 import { ImportEstimateDialog, type ImportEstimate } from "./ImportEstimateDialog";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { formatTranslation, translateStored, translateStoredFormat } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("ShamelaImportDialog");
 
 /** Mirrors electron/shamela/import.ts's ImportProgress. */
 interface ImportProgress {
@@ -77,7 +80,7 @@ export function ShamelaImportDialog({
       const cats = await window.electronAPI.shamela.listCategories(masterDbPath);
       setCategories(cats);
     } catch (err) {
-      console.error("[ShamelaImportDialog] loadCategories error:", err);
+      log.error("loadCategories error", { err });
     }
   }, [masterDbPath]);
 
@@ -91,7 +94,7 @@ export function ShamelaImportDialog({
       const results = await window.electronAPI.shamela.searchBooks(masterDbPath, query, 100);
       setBooks(results);
     } catch (err) {
-      console.error("[ShamelaImportDialog] searchBooks error:", err);
+      log.error("searchBooks error", { err });
       toast.error(translateStored("toast.shamela.search_failed"));
     } finally {
       setLoading(false);
@@ -105,7 +108,7 @@ export function ShamelaImportDialog({
       const results = await window.electronAPI.shamela.booksByCategory(masterDbPath, categoryId, 100);
       setBooks(results);
     } catch (err) {
-      console.error("[ShamelaImportDialog] booksByCategory error:", err);
+      log.error("booksByCategory error", { err });
     } finally {
       setLoading(false);
     }
@@ -178,7 +181,7 @@ export function ShamelaImportDialog({
       const ids = [...selectedBooks];
       setEstimate(await window.electronAPI.shamela.estimateImport(masterDbPath, ids));
     } catch (err) {
-      console.error("[ShamelaImportDialog] estimate error:", err);
+      log.error("estimate error", { err });
       toast.error(err instanceof Error ? err.message : translateStored("toast.shamela.estimate_failed"));
       setEstimateOpen(false);
     } finally {
@@ -209,7 +212,7 @@ export function ShamelaImportDialog({
       setSelectedBooks(new Set());
       if (!result.cancelled) onOpenChange(false);
     } catch (err) {
-      console.error("[ShamelaImportDialog] import error:", err);
+      log.error("import error", { err });
       toast.error(err instanceof Error ? err.message : translateStored("toast.shamela.import_failed"));
     } finally {
       setImporting(false);

@@ -15,6 +15,9 @@
 
 import type { ResourceResult } from "@/lib/editor/citationFormat";
 import { isDesktop } from "@/core/backend";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("localShamelaService");
 
 export interface LocalShamelaSearchResponse {
   status: string;
@@ -145,7 +148,7 @@ export async function searchLocalShamela(query: string, limit = 20): Promise<Res
   try {
     return await searchViaBridge(query, limit);
   } catch (err) {
-    console.error("[searchLocalShamela] Error querying local bridge:", err);
+    log.error("Error querying local bridge", { err });
     return [];
   }
 }

@@ -107,17 +107,21 @@ describe("handleSupabaseError", () => {
     expect(msg).toBe("Session expired — please sign in again.");
   });
 
-  it("logs to console.error with context prefix", () => {
+  // These now go through `logger`, which emits the scope as its own leading
+  // argument rather than inlining it in the message — so the assertion is on
+  // the whole emitted call, which is what a reader of the console actually
+  // sees, instead of on argument zero.
+  it("logs the error with the context in its scope", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     handleSupabaseError(pgError("23505"), "save profile");
-    expect(spy.mock.calls[0][0]).toContain("[save profile]");
+    expect(spy.mock.calls[0].join(" ")).toContain("save profile");
     spy.mockRestore();
   });
 
-  it("logs to console.error with default prefix when no context given", () => {
+  it("falls back to the supabase scope when no context is given", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     handleSupabaseError(pgError("23505"));
-    expect(spy.mock.calls[0][0]).toContain("[supabase]");
+    expect(spy.mock.calls[0].join(" ")).toContain("supabase");
     spy.mockRestore();
   });
 });

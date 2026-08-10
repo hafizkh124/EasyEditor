@@ -19,6 +19,9 @@ import {
 import type { TafsirMode, TafsirDiagnostics, TafsirConnectResult } from "@/lib/tafsir/tafsirService";
 import { TafsirGuideModal } from "./TafsirGuideModal";
 import { translateStored } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("TafsirConnectPanel");
 
 type ConnectState = "idle" | "connecting" | "connected" | "error";
 
@@ -86,7 +89,7 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
       onConnectedChange(true);
       toast.success(translateStored(mode === "remote" ? "toast.tafsir.remote_connected" : "toast.tafsir.local_connected"));
     } catch (err) {
-      console.error("[TafsirConnectPanel]", err);
+      log.error("connection check failed", { err });
       toast.error(err instanceof Error ? err.message : translateStored("toast.common.connection_failed"));
       setState("error");
     }
@@ -96,7 +99,7 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
     try {
       await tafsirDisconnect();
     } catch (err) {
-      console.error("[TafsirConnectPanel] disconnect:", err);
+      log.error("disconnect", { err });
     }
     setConnectInfo(null);
     setState("idle");
@@ -116,7 +119,7 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
       const d = await tafsirDiagnose();
       setDiag(d);
     } catch (err) {
-      console.error("[TafsirConnectPanel] download:", err);
+      log.error("download", { err });
       toast.error(err instanceof Error ? err.message : translateStored("toast.tafsir.download_failed"));
     } finally {
       off();

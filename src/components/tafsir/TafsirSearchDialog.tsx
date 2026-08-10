@@ -17,6 +17,9 @@ import {
   type TafsirRow,
 } from "@/lib/tafsir/parseTafsir";
 import { translateStored } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("TafsirSearchDialog");
 
 const LICENSE_NOTE = "مرکز تفسیر (CC BY 4.0)";
 
@@ -54,7 +57,7 @@ export function TafsirSearchDialog({ open, onOpenChange }: TafsirSearchDialogPro
         );
       }
     } catch (err) {
-      console.error("[TafsirSearchDialog] ensureSources:", err);
+      log.error("ensureSources", { err });
     }
   };
 
@@ -108,7 +111,7 @@ export function TafsirSearchDialog({ open, onOpenChange }: TafsirSearchDialogPro
       setResults(items);
       if (items.length === 0) toast.info(translateStored("toast.search.no_results"));
     } catch (err) {
-      console.error("[TafsirSearchDialog]", err);
+      log.error("search failed", { err });
       toast.error(err instanceof Error ? err.message : translateStored("toast.common.request_failed"));
     } finally {
       setLoading(false);

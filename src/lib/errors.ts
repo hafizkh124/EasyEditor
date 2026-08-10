@@ -1,5 +1,8 @@
 import { toast } from "sonner";
 import type { PostgrestError } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("supabase");
 
 // ── Classification tables ──────────────────────────────────────────────────
 
@@ -79,16 +82,16 @@ export function classifyError(error: unknown): string {
 // ── Public API ─────────────────────────────────────────────────────────────
 
 /**
- * Show a user-friendly toast and log the full technical error to the console.
+ * Show a user-friendly toast and log the full technical error via `logger`.
  * Returns the friendly message so callers can inspect or re-use it.
  *
  * @param error  Anything thrown or returned as an error by Supabase.
- * @param context  Short label shown in the console prefix, e.g. "load subscription".
+ * @param context  Short label appended to the log scope, e.g. "load subscription",
+ *                 giving `[App/supabase/load subscription]`.
  */
 export function handleSupabaseError(error: unknown, context?: string): string {
   const friendly = classifyError(error);
-  const prefix = context ? `[${context}]` : "[supabase]";
-  console.error(`${prefix} ${friendly}`, error);
+  (context ? log.child(context) : log).error(friendly, { error });
   toast.error(friendly);
   return friendly;
 }

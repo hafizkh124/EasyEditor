@@ -10,6 +10,9 @@ import {
 import { ShamelaGuideModal } from "@/components/mcp/ShamelaGuideModal";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("ShamelaConnectPanel");
 
 export interface ShamelaDiagnostics {
   jreFound: boolean;
@@ -88,7 +91,7 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
         toast.warning(translateStored("toast.shamela.connected_warning"));
       }
     } catch (err) {
-      console.error("[ShamelaConnectPanel]", err);
+      log.error("connection check failed", { err });
       toast.error(translateStoredFormat("toast.shamela.connection_failed", { error: err instanceof Error ? err.message : "Unknown error" }));
       setState("error");
     }

@@ -1,6 +1,9 @@
 import enTranslations from "@/locales/en.json";
 import urTranslations from "@/locales/ur.json";
 import arTranslations from "@/locales/ar.json";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("i18n");
 
 export type Language = "en" | "ur" | "ar";
 export type TranslationKey = keyof typeof enTranslations;
@@ -28,8 +31,7 @@ export function translate(language: Language, key: TranslationKey, fallback?: st
     if (!warnedMissingKeys.has(warningKey)) {
       warnedMissingKeys.add(warningKey);
       // Missing keys must be visible during development, but only once.
-      // eslint-disable-next-line no-console
-      console.warn(`[i18n] Missing ${language} translation: ${key}`);
+      log.warn("missing translation", { language, key });
     }
   }
 

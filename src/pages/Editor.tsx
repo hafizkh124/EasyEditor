@@ -24,6 +24,9 @@ import { exportTxt, exportHtml, exportDoc, exportPdf, stripSuggestions } from "@
 import { splitChaptersFromHtml } from "@/lib/audiobook/splitChapters";
 import { isDesktop } from "@/utils/environment";
 import type { AudiobookExportProgress } from "@/core/voice/types";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("Editor");
 
 interface EditorLocationState {
   content?: string;
@@ -130,7 +133,7 @@ const Editor = () => {
         const target = blank ?? (await documentService.createDocument(proj.id, t("editor.untitled")));
         navigate(`/editor/${target.id}`, { replace: true });
       } catch (err) {
-        console.error("[Editor] Could not resolve a document for /editor:", err);
+        log.error("Could not resolve a document for /editor", { err });
         autoResolveStarted.current = false;
         toast.error(t("editor.ai_error"));
       }

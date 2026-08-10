@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { handleSupabaseError } from "@/lib/errors";
 import type { Tables } from "@/integrations/supabase/types";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("SubscriptionContext");
 
 type Subscription = Tables<"subscriptions">;
 
@@ -126,7 +129,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(false);
       return;
     }
-    if (import.meta.env.DEV) console.log("[SubscriptionContext] Fetching subscription for user:", user.id);
+    log.debug("Fetching subscription for user", { detail: user.id });
     // Only show the blocking loading state on the first load for this user.
     // Background refreshes (silent, or any post-initial refetch) leave the app
     // mounted so open pages keep their state.
@@ -149,21 +152,28 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (subResult.error) {
       handleSupabaseError(subResult.error, "load subscription");
     } else {
-      if (import.meta.env.DEV) console.log(
-        `[SubscriptionContext] Loaded — tier: ${subResult.data.tier} | STT: ${subResult.data.transcription_seconds_used}s | TTS: ${subResult.data.tts_characters_used} chars | OCR: ${subResult.data.ocr_pages_used} pages | Research: ${subResult.data.research_queries_used} queries`
-      );
+      log.debug("subscription loaded", {
+        tier: subResult.data.tier,
+        sttSeconds: subResult.data.transcription_seconds_used,
+        ttsChars: subResult.data.tts_characters_used,
+        ocrPages: subResult.data.ocr_pages_used,
+        researchQueries: subResult.data.research_queries_used,
+      });
       setSubscription(subResult.data);
     }
 
     if (walletResult.error) {
       // Wallet may not exist for very old users — not fatal
-      if (import.meta.env.DEV) console.warn("[SubscriptionContext] Token wallet not found:", walletResult.error.message);
+      log.debug("Token wallet not found", { detail: walletResult.error.message });
       setTokenWallet(null);
     } else {
       const w = walletResult.data;
-      if (import.meta.env.DEV) console.log(
-        `[SubscriptionContext] Wallet — monthly: ${w.monthly_balance}/${w.monthly_limit} | topup: ${w.topup_balance} | total: ${w.monthly_balance + w.topup_balance}`
-      );
+      log.debug("token wallet loaded", {
+        monthly: w.monthly_balance,
+        monthlyLimit: w.monthly_limit,
+        topup: w.topup_balance,
+        total: w.monthly_balance + w.topup_balance,
+      });
       setTokenWallet(w);
     }
 

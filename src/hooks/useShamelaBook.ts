@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { libraryItemService } from "@/core/workspace/libraryItemService";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("useShamelaBook");
 
 export interface ResolvedShamelaBook {
   /** The library item id currently selected in the workspace. */
@@ -66,7 +69,7 @@ export function useShamelaBook(itemId: string | null): ResolvedShamelaBook {
         setBook({ itemId: id, bookId: null, title: item?.title ?? "", loading: false, error: null });
       }
     } catch (err: unknown) {
-      console.warn("[useShamelaBook] resolve failed:", err);
+      log.warn("resolve failed", { err });
       setBook((prev) => ({
         ...prev,
         itemId: id,

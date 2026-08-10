@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { logger } from "@/lib/logger";
+
+const log = logger.child("ByokKeyPanel");
 
 export const ByokKeyPanel: React.FC = () => {
   const [keyInput, setKeyInput] = useState('');
@@ -22,7 +25,7 @@ export const ByokKeyPanel: React.FC = () => {
         const st = await window.electronAPI.byok.getKeyStatus();
         setStatus(st);
       } catch (err) {
-        console.error('Failed to get key status:', err);
+        log.error("Failed to get key status", { err });
       }
     }
   };

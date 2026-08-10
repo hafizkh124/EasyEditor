@@ -9,6 +9,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { GraphBackend } from "../types";
 import type { Entity, EntityRelation, EntityBacklink, EntityDetails } from "@/lib/graph/graphService";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("graph");
 
 export const cloudGraph: GraphBackend = {
   /** Search / list entities in the personal Knowledge Graph. */
@@ -23,7 +26,7 @@ export const cloudGraph: GraphBackend = {
 
     const { data, error } = await q;
     if (error) {
-      console.warn("[cloudGraph] listEntities error:", error);
+      log.warn("listEntities error", { error });
       return [];
     }
     return (data as Entity[]) || [];
@@ -94,7 +97,7 @@ export const cloudGraph: GraphBackend = {
       .update({ aliases: mergedAliases })
       .eq("id", keepId);
     if (aliasErr) {
-      console.error("[cloudGraph] merge alias update failed:", aliasErr);
+      log.error("merge alias update failed", { aliasErr });
       return false;
     }
 
@@ -105,7 +108,7 @@ export const cloudGraph: GraphBackend = {
         .update({ [column]: keepId })
         .eq(column, absorbId);
       if (error) {
-        console.error(`[cloudGraph] merge repoint ${column} failed:`, error);
+        log.error("merge repoint failed", { column, error });
         return false;
       }
     }
@@ -114,7 +117,7 @@ export const cloudGraph: GraphBackend = {
       .delete()
       .eq("id", absorbId);
     if (delErr) {
-      console.error("[cloudGraph] merge delete failed:", delErr);
+      log.error("merge delete failed", { delErr });
       return false;
     }
     return true;

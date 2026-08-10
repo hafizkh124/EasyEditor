@@ -23,7 +23,8 @@ export const AdvancedVoicesPanel: React.FC = () => {
 
   useEffect(() => {
     if (isDesktop() && window.electronAPI?.voice?.getSidecarStatus) {
-      window.electronAPI.voice.getSidecarStatus().then(setSidecar).catch(console.error);
+      window.electronAPI.voice.getSidecarStatus().then(setSidecar)
+        .catch((err) => log.error("reading sidecar status failed", { err }));
     }
   }, []);
 
@@ -35,7 +36,7 @@ export const AdvancedVoicesPanel: React.FC = () => {
       const status = await window.electronAPI.voice.getSidecarStatus();
       setSidecar(status);
     } catch (err) {
-      console.error(err);
+      log.error("installing the Python sidecar failed", { err });
     } finally {
       setLoading(false);
     }
@@ -51,7 +52,7 @@ export const AdvancedVoicesPanel: React.FC = () => {
         log.info('voice sample saved', { saved: Boolean(savedPath) });
       } catch (err) {
         toast.error(translateStored("toast.voice.sample_save_failed"));
-        console.error('[VoiceClone] Save failed', err);
+        log.error("Save failed", { err });
       }
     } else {
       toast.success(translateStored("toast.voice.registration_done"));
