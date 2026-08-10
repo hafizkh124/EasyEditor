@@ -25,7 +25,7 @@ export const RecipeRunProgress: React.FC<RecipeRunProgressProps> = ({ problems, 
       {problems && problems.length > 0 && (
         <div className="p-2.5 rounded-md bg-destructive/10 border border-destructive/20 space-y-1">
           {problems.map((p, i) => (
-            <div key={i} className="flex items-start gap-1.5 text-[11px] text-destructive">
+            <div key={i} className="flex items-start gap-1.5 text-xs text-destructive">
               <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-px" />
               <span>{p}</span>
             </div>
@@ -53,7 +53,7 @@ export const RecipeRunProgress: React.FC<RecipeRunProgressProps> = ({ problems, 
           {progress.stepOutcomes.map((o, i) => (
             <div
               key={i}
-              className={`flex items-center justify-between text-[11px] ${
+              className={`flex items-center justify-between text-xs ${
                 o.ok ? "text-muted-foreground" : "text-destructive font-medium"
               }`}
             >
@@ -65,7 +65,7 @@ export const RecipeRunProgress: React.FC<RecipeRunProgressProps> = ({ problems, 
           ))}
 
           {progress.error && (
-            <p className="text-[11px] text-destructive font-medium pt-1">{progress.error}</p>
+            <p className="text-xs text-destructive font-medium pt-1">{progress.error}</p>
           )}
         </div>
       )}

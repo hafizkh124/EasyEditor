@@ -12,6 +12,7 @@ import { isRtlText } from "@/utils/textUtils";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { TranslationMatrixTable, type TranslationRow } from "./TranslationMatrixTable";
 import { editorRoute } from "@/lib/routes";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -60,7 +61,7 @@ export const ExtractPanel = () => {
         .order("sort_order", { ascending: true });
       if (error) {
         console.error("Failed to load translators:", error);
-        toast.error("مترجمین کی فہرست حاصل نہیں ہو سکی۔");
+        toast.error(translateStored("toast.extract.translators_failed"));
       } else if (data) {
         const defaultSlugs = new Set(["ur.junagarhi", "ur.jalandhari", "ur.taqiusmani", "ur.kanzuliman", "ur.maududi"]);
         setTranslators(
@@ -106,7 +107,7 @@ export const ExtractPanel = () => {
 
       if (error) {
         console.error("Error fetching translations:", error);
-        toast.error("تراجم حاصل کرنے میں دشواری پیش آئی۔");
+        toast.error(translateStored("toast.extract.fetch_failed"));
         setArabic(null);
         setResults([]);
         setUnavailable([]);
@@ -116,12 +117,12 @@ export const ExtractPanel = () => {
         setUnavailable((data?.unavailable ?? []) as string[]);
         setNote(data?.note ?? null);
         const n = data?.translations?.length ?? 0;
-        if (n > 0) toast.success(`${n} تراجم برآمد ہوئے۔`);
-        else if (!data?.note) toast.info("اس حوالے کے تراجم دستیاب نہیں ہوئے۔");
+        if (n > 0) toast.success(translateStoredFormat("toast.extract.exported_count", { count: n }));
+        else if (!data?.note) toast.info(translateStored("toast.extract.none"));
       }
     } catch (err) {
       console.error(err);
-      toast.error("ایک غیر متوقع خرابی پیش آئی۔");
+      toast.error(translateStored("toast.common.unexpected_error"));
       setArabic(null);
       setResults([]);
       setUnavailable([]);
@@ -133,7 +134,7 @@ export const ExtractPanel = () => {
   const copyToClipboard = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
-    toast.success("ترجمہ کاپی ہو گیا!");
+    toast.success(translateStored("toast.extract.copied"));
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
@@ -145,7 +146,7 @@ export const ExtractPanel = () => {
       markdown += `**${r.full_name}${r.maslak ? ` (${r.maslak})` : ""}**:\n> ${r.text}\n\n`;
     });
     navigator.clipboard.writeText(markdown);
-    toast.success("مکمل موازنہ جدول کاپی ہو گیا!");
+    toast.success(translateStored("toast.extract.table_copied"));
   };
 
   const citationLine = (r: TranslationRow): string => {
@@ -160,7 +161,7 @@ export const ExtractPanel = () => {
     const html = citationBlockquote(r.text, citationLine(r));
     if (workspaceCtx) {
       workspaceCtx.insertIntoCanvas(html);
-      toast.success("Canvas میں داخل کر دیا گیا");
+      toast.success(translateStored("toast.canvas.inserted"));
     } else {
       navigate(editorRoute(), { state: { content: html, source: "extract" } });
     }
@@ -173,7 +174,7 @@ export const ExtractPanel = () => {
     results.forEach((r) => { html += citationBlockquote(r.text, citationLine(r)); });
     if (workspaceCtx) {
       workspaceCtx.insertIntoCanvas(html);
-      toast.success("Canvas میں داخل کر دیا گیا");
+      toast.success(translateStored("toast.canvas.inserted"));
     } else {
       navigate(editorRoute(), { state: { content: html, source: "extract" } });
     }
@@ -210,8 +211,8 @@ export const ExtractPanel = () => {
             <Search className="h-3.5 w-3.5 text-primary" />
             کیوری و حوالہ درج کریں
           </CardTitle>
-          <CardDescription className="text-[11px]">
-            مثالیں: <code className="bg-muted px-1 py-0.5 rounded dir-ltr inline-block text-[10px]">quran:2:255</code> یا <code className="bg-muted px-1 py-0.5 rounded dir-ltr inline-block text-[10px]">hadith:bukhari:1</code>
+          <CardDescription className="text-xs">
+            مثالیں: <code className="bg-muted px-1 py-0.5 rounded dir-ltr inline-block text-xs">quran:2:255</code> یا <code className="bg-muted px-1 py-0.5 rounded dir-ltr inline-block text-xs">hadith:bukhari:1</code>
           </CardDescription>
         </CardHeader>
         <CardContent className="p-3 pt-0 space-y-3">
@@ -231,13 +232,13 @@ export const ExtractPanel = () => {
 
           {!isHadith && (
             <div className="space-y-1.5 pt-2 border-t border-border">
-              <Label className="text-[11px] font-semibold text-foreground">مترجمین:</Label>
+              <Label className="text-xs font-semibold text-foreground">مترجمین:</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-36 overflow-y-auto">
                 {translators.map((t) => (
                   <div
                     key={t.slug}
                     onClick={() => toggleTranslator(t.slug)}
-                    className={`flex items-center gap-1.5 p-1.5 rounded border text-[11px] cursor-pointer transition-colors ${
+                    className={`flex items-center gap-1.5 p-1.5 rounded border text-xs cursor-pointer transition-colors ${
                       t.isSelected ? "border-primary/50 bg-primary/5" : "border-border bg-card"
                     }`}
                   >

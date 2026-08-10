@@ -1,7 +1,12 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
+import { prefetchStoredReaderFont } from "./lib/fonts";
 import "./index.css";
 import { setupPWAUpdates } from "./pwa/registerSW";
+import { applyInitialAppTheme } from "./lib/theme";
+
+prefetchStoredReaderFont();
+applyInitialAppTheme();
 
 const isOAuthBrokerRoute = window.location.pathname.startsWith("/~oauth");
 

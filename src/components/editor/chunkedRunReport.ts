@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import type { ChunkedRunResult } from "@/lib/tasks/chunkOrchestrator";
 import type { LastRunSummary } from "@/components/workspace/TaskRunCard";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 /**
  * How a finished chunked run is reported to the user.
@@ -20,9 +21,9 @@ export function describeRunResult(result: ChunkedRunResult, totalBatches: number
 /** Announce the outcome. A cancelled run says so — it is not a success. */
 export function announceRunResult(result: ChunkedRunResult, summary: string): void {
   if (result.cancelled) {
-    toast.info(`منسوخ — ${summary}۔ مکمل شدہ حصے محفوظ ہیں۔`);
+    toast.info(translateStoredFormat("toast.run.cancelled_summary", { summary }));
   } else if (result.applied === 0) {
-    toast.error("کوئی حصہ مکمل نہ ہو سکا۔");
+    toast.error(translateStored("toast.run.no_completed_parts"));
   } else {
     toast.success(summary);
   }

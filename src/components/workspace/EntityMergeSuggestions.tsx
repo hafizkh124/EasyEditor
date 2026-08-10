@@ -29,23 +29,23 @@ export const EntityMergeSuggestions: React.FC<EntityMergeSuggestionsProps> = ({
 
   return (
     <div className="mb-2 rounded-md border border-amber-500/25 bg-amber-500/5 p-2 space-y-1.5">
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700">
         <AlertCircle className="h-3.5 w-3.5" />
         <span>ممکنہ ڈپلیکیٹ ({suggestions.length})</span>
       </div>
 
       {suggestions.map(({ entities: [a, b], reason }, i) => (
         <div key={i} className="rounded border border-border/60 bg-background p-1.5 space-y-1">
-          <p className="text-[11px] text-foreground truncate">
+          <p className="text-xs text-foreground truncate">
             «{a.canonical_name}» · «{b.canonical_name}»
           </p>
-          <p className="text-[10px] text-muted-foreground">{REASON_LABEL[reason]}</p>
+          <p className="text-xs text-muted-foreground">{REASON_LABEL[reason]}</p>
 
           <div className="flex items-center gap-1">
             <Button
               size="sm"
               variant="outline"
-              className="h-5 px-1.5 text-[10px] gap-1"
+              className="h-5 px-1.5 text-xs gap-1"
               onClick={() => onMerge(a, b)}
               aria-label={`«${b.canonical_name}» کو «${a.canonical_name}» میں ضم کریں`}
             >
@@ -55,7 +55,7 @@ export const EntityMergeSuggestions: React.FC<EntityMergeSuggestionsProps> = ({
             <Button
               size="sm"
               variant="outline"
-              className="h-5 px-1.5 text-[10px] gap-1"
+              className="h-5 px-1.5 text-xs gap-1"
               onClick={() => onMerge(b, a)}
               aria-label={`«${a.canonical_name}» کو «${b.canonical_name}» میں ضم کریں`}
             >

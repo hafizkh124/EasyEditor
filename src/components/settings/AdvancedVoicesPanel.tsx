@@ -5,6 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Badge } from '../ui/badge';
 import { VoiceCloningDialog } from '../voice/VoiceCloningDialog';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
+
+const log = logger.child('VoiceClone');
 
 interface SidecarState {
   installed: boolean;
@@ -43,14 +47,14 @@ export const AdvancedVoicesPanel: React.FC = () => {
         const arrayBuffer = await blob.arrayBuffer();
         const filename = `clone-${Date.now()}.webm`;
         const savedPath = await window.electronAPI.voice.saveCloneSample(arrayBuffer, filename);
-        toast.success(`آواز کا نمونہ محفوظ ہو گیا: ${filename}`);
-        console.log('[VoiceClone] Saved to', savedPath);
+        toast.success(translateStoredFormat("toast.voice.sample_saved", { filename }));
+        log.info('voice sample saved', { saved: Boolean(savedPath) });
       } catch (err) {
-        toast.error('آواز کا نمونہ محفوظ کرنے میں ناکامی');
+        toast.error(translateStored("toast.voice.sample_save_failed"));
         console.error('[VoiceClone] Save failed', err);
       }
     } else {
-      toast.success('آواز کا اندراج مکمل ہو گیا');
+      toast.success(translateStored("toast.voice.registration_done"));
     }
   }, []);
 
@@ -84,7 +88,7 @@ export const AdvancedVoicesPanel: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-6">
         {!sidecar.installed ? (
-          <div className="p-4 border rounded-lg bg-muted/40 space-y-3 dir-rtl">
+          <div className="p-4 border rounded-lg bg-muted space-y-3 dir-rtl">
             <p className="text-sm font-medium">Python Sidecar ماحول موجود نہیں ہے۔</p>
             <p className="text-xs text-muted-foreground">
               ماڈلز ڈاؤن لوڈ اور سیٹ اپ کرنے کے لیے بٹن دبائیں۔ یہ عمل چند منٹ لے سکتا ہے۔

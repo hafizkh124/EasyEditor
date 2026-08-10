@@ -51,7 +51,7 @@ export function ScholarlyPromptModal({ isOpen, onClose, onSelectPrompt }: Schola
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden" dir="rtl">
-        <DialogHeader className="p-4 border-b border-border bg-muted/30">
+        <DialogHeader className="p-4 border-b border-border bg-muted/60">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             <DialogTitle className="text-lg font-bold">14 علمی پرامپٹس فریم ورک (Scholarly Workflows)</DialogTitle>
@@ -104,20 +104,20 @@ export function ScholarlyPromptModal({ isOpen, onClose, onSelectPrompt }: Schola
                   className={`w-full text-right p-2.5 rounded-lg border transition-all text-xs mb-1.5 flex flex-col gap-1 ${
                     isSelected
                       ? "border-primary bg-primary/10 font-semibold"
-                      : "border-border/60 hover:bg-muted/50"
+                      : "border-border/60 hover:bg-muted"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-foreground">{p.titleUr}</span>
-                    <Badge variant="secondary" className="text-[9px] px-1 py-0 font-sans dir-ltr">
+                    <Badge variant="secondary" className="text-xs px-1 py-0 font-sans dir-ltr">
                       {p.titleAr}
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                     {p.descriptionUr}
                   </p>
                   {!p.corpusReady && (
-                    <span className="text-[9px] text-amber-700 dark:text-amber-500 flex items-center gap-0.5">
+                    <span className="text-xs text-amber-700 dark:text-amber-500 flex items-center gap-0.5">
                       <AlertTriangle className="h-2.5 w-2.5" /> ذخیرہ زیرِ تعمیر — نتائج غیر مصدقہ
                     </span>
                   )}
@@ -137,12 +137,12 @@ export function ScholarlyPromptModal({ isOpen, onClose, onSelectPrompt }: Schola
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">{selectedPrompt.descriptionUr}</p>
                   {selectedPrompt.grounded && (
-                    <p className="text-[10px] text-primary mt-1 flex items-center gap-1">
+                    <p className="text-xs text-primary mt-1 flex items-center gap-1">
                       <ShieldCheck className="h-3 w-3" /> یہ پرامپٹ گراؤنڈڈ اسلامی موڈ (مصدر سے حوالہ) پر چلے گا۔
                     </p>
                   )}
                   {!selectedPrompt.corpusReady && (
-                    <p className="text-[10px] text-amber-700 dark:text-amber-500 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-amber-700 dark:text-amber-500 mt-1 flex items-center gap-1">
                       <AlertTriangle className="h-3 w-3" /> اس فن کا حوالہ ذخیرہ ابھی مکمل نہیں؛ حوالہ جات کی خود تصدیق ضروری ہے۔
                     </p>
                   )}
@@ -173,7 +173,7 @@ export function ScholarlyPromptModal({ isOpen, onClose, onSelectPrompt }: Schola
           </div>
         </div>
 
-        <DialogFooter className="p-3 border-t border-border bg-muted/20 flex items-center justify-between sm:justify-between">
+        <DialogFooter className="p-3 border-t border-border bg-muted/60 flex items-center justify-between sm:justify-between">
           <Button variant="ghost" size="sm" onClick={onClose} className="text-xs">
             منسوخ کریں
           </Button>

@@ -21,7 +21,7 @@ interface TranslationOutputProps {
   onTranslateAi: () => void;
   onUpdateText: (text: string) => void;
   onVoiceResult: (text: string) => void;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 const TranslationOutput = ({
@@ -117,7 +117,7 @@ const TranslationOutput = ({
   return (
     <div className="flex flex-col h-full">
       {/* Mode tabs */}
-      <div className="flex items-center gap-1 p-2 border-b border-border bg-muted/20">
+      <div className="flex items-center gap-1 p-2 border-b border-border bg-muted/60">
         {modes.map((m) => (
           <Button
             key={m.key}

@@ -12,6 +12,7 @@ import { BUILTIN_RECIPES } from "@/lib/recipes/builtinRecipes";
 import type { IdentityBackend, RecipeBackend, CustomTaskBackend } from "../types";
 import type { Recipe } from "@/lib/recipes/recipeService";
 import type { CustomTaskRow } from "@/lib/tasks/customTasks";
+import { translateStored } from "@/lib/i18n";
 
 // ── Identity ────────────────────────────────────────────────────────────────
 
@@ -118,7 +119,7 @@ export const cloudCustomTasks: CustomTaskBackend = {
       throw new Error(
         error.code === "23505"
           ? "اس نام کا ٹاسک پہلے سے موجود ہے — کوئی اور نام رکھیں۔"
-          : "ٹاسک محفوظ نہ ہو سکا۔",
+          : translateStored("toast.task.save_failed"),
       );
     }
     return data as CustomTaskRow;

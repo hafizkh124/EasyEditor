@@ -4,6 +4,7 @@
 
 import { registerSW } from "virtual:pwa-register";
 import { toast } from "sonner";
+import { getStoredLanguage, translate } from "@/lib/i18n";
 
 const isInIframe = (() => {
   try {
@@ -37,12 +38,12 @@ export function setupPWAUpdates() {
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
-      toast("نیا ورژن دستیاب ہے / New version available", {
-        description:
-          "ایپ کا تازہ ترین ورژن آ گیا ہے۔ اپڈیٹ کے لیے کلک کریں۔ / Click to update to the latest version.",
+      const language = getStoredLanguage();
+      toast(translate(language, "pwa.update_title"), {
+        description: translate(language, "pwa.update_description"),
         duration: Infinity,
         action: {
-          label: "اپڈیٹ / Update",
+          label: translate(language, "pwa.update_action"),
           onClick: () => {
             updateSW(true); // activates new SW + reloads
           },

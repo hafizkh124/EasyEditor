@@ -14,6 +14,7 @@ import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { useAllDocuments } from "@/core/workspace/useAllDocuments";
 import { documentService } from "@/core/workspace/documentService";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { translateStored } from "@/lib/i18n";
 import { stripHarakat } from "@/utils/arabicUtils";
 import { toast } from "sonner";
 
@@ -76,7 +77,7 @@ export const CommandPalette: React.FC = () => {
       navigate(`/workspace/${created.id}`, { replace: true });
       handleOpenChange(false);
     } catch {
-      toast.error("دستاویز بنانے میں ناکامی");
+      toast.error(translateStored("toast.workspace.document_create_failed"));
     }
   };
 
@@ -86,10 +87,10 @@ export const CommandPalette: React.FC = () => {
       if (!title?.trim()) return;
       await documentService.createProject(title.trim(), "general");
       refreshAllDocs();
-      toast.success("پروجیکٹ بن گیا");
+      toast.success(translateStored("toast.workspace.project_created"));
       handleOpenChange(false);
     } catch {
-      toast.error("پروجیکٹ بنانے میں ناکامی");
+      toast.error(translateStored("toast.workspace.project_create_failed"));
     }
   };
 
@@ -146,7 +147,7 @@ export const CommandPalette: React.FC = () => {
                 if (firstDoc) {
                   handleSelectDoc(firstDoc.id, p.kind);
                 } else {
-                  toast.info("اس پروجیکٹ میں ابھی کوئی دستاویز نہیں ہے۔");
+                  toast.info(translateStored("toast.workspace.project_empty"));
                   handleOpenChange(false);
                 }
               }}

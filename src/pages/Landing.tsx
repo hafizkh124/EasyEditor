@@ -292,10 +292,10 @@ const Landing = () => {
                   <Icon className="h-6 w-6" />
                 </div>
                 <h3 className="mb-2 text-lg font-semibold">
-                  {t(`landing.feature_${key}_title`)}
+                  {t(`landing.feature_${key}_title` as import("@/lib/i18n").TranslationKey)}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {t(`landing.feature_${key}_desc`)}
+                  {t(`landing.feature_${key}_desc` as import("@/lib/i18n").TranslationKey)}
                 </p>
               </CardContent>
             </Card>
@@ -349,7 +349,7 @@ const Landing = () => {
                       <Icon className={`h-6 w-6 ${plan.iconClass}`} />
                     </div>
                     <h3 className="mb-1 text-lg font-semibold">
-                      {t(plan.nameKey)}
+                      {t(plan.nameKey as import("@/lib/i18n").TranslationKey)}
                     </h3>
                     <div className="mb-1">
                       <span className="text-2xl font-bold text-primary">{priceForCurrency(plan, currency)}</span>
@@ -357,7 +357,7 @@ const Landing = () => {
                         {" "}/ {t("pricing.per_month")}
                       </span>
                     </div>
-                    <div className="mb-4 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                    <div className="mb-4 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                       <Zap className="h-3 w-3" /> {language === "ar" ? "تحقّق فوري من النظام" : language === "ur" ? "سسٹم سے فوری تصدیق" : "Instant system verification"}
                     </div>
                     <ul className="space-y-2 text-start">
@@ -370,7 +370,7 @@ const Landing = () => {
                           )}
                           <span className="text-foreground/90 flex-1">{f.label}</span>
                           {f.comingSoon && (
-                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-amber-400/60 text-amber-700 dark:text-amber-400">
+                            <Badge variant="outline" className="text-xs py-0 px-1.5 border-amber-400/60 text-amber-700 dark:text-amber-400">
                               {t("pricing.coming_soon")}
                             </Badge>
                           )}
@@ -385,7 +385,7 @@ const Landing = () => {
                         size="sm"
                       >
                         <CreditCard className="h-4 w-4" />
-                        {language === "ar" ? `اشترك في ${t(plan.nameKey)}` : language === "ur" ? `${t(plan.nameKey)} حاصل کریں` : `Get ${t(plan.nameKey)}`}
+                        {language === "ar" ? `اشترك في ${t(plan.nameKey as import("@/lib/i18n").TranslationKey)}` : language === "ur" ? `${t(plan.nameKey as import("@/lib/i18n").TranslationKey)} حاصل کریں` : `Get ${t(plan.nameKey as import("@/lib/i18n").TranslationKey)}`}
                       </Button>
                     )}
                     {comingSoon && (

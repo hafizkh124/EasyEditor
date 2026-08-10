@@ -100,7 +100,7 @@ const CitationBadge = ({ domain, citationRef, className }: CitationBadgeProps) =
   const inner = (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none whitespace-nowrap",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium leading-none whitespace-nowrap",
         colorClass,
         citationRef.url && "cursor-pointer hover:opacity-80 transition-opacity",
         className

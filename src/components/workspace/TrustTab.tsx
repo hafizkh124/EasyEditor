@@ -55,7 +55,7 @@ export const TrustTab: React.FC = () => {
           <ShieldCheck className="h-4 w-4" />
           <span>اعتماد و تصدیق (Trust UI & Audit)</span>
         </div>
-        <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground border-border">
+        <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border">
           {runs.length} رن
         </Badge>
       </div>
@@ -86,7 +86,7 @@ export const TrustTab: React.FC = () => {
               )}
             </div>
             {confidencePercent !== null && <Progress value={confidencePercent} className="h-2" />}
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1 pt-1">
+            <p className="text-xs text-muted-foreground flex items-center gap-1 pt-1">
               <Info className="h-3 w-3 shrink-0 text-blue-500" />
               {confidencePercent === null
                 ? "اعتماد کا عدد صرف حوالہ جات والے کاموں پر آتا ہے؛ املا یا حرکات پر کوئی عدد نہیں دکھایا جاتا۔"
@@ -100,14 +100,14 @@ export const TrustTab: React.FC = () => {
               <Cpu className="h-3.5 w-3.5 text-primary" />
               <span>مصنوعی ذہانت ماڈل کا لاگ</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-border/50">
-              <div className="bg-muted/40 p-2 rounded">
+            <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/50">
+              <div className="bg-muted p-2 rounded">
                 <span className="text-muted-foreground block">استعمال شدہ ماڈل</span>
                 <span className="font-medium text-foreground">
                   {models.length > 0 ? models.join("، ") : "ابھی کوئی رن نہیں"}
                 </span>
               </div>
-              <div className="bg-muted/40 p-2 rounded">
+              <div className="bg-muted p-2 rounded">
                 <span className="text-muted-foreground block">اس دستاویز پر کل رن</span>
                 <span className="font-medium text-foreground">{runs.length}</span>
               </div>
@@ -123,7 +123,7 @@ export const TrustTab: React.FC = () => {
               </span>
               <span className="text-primary font-bold">{totalTokensSpent} ٹوکنز</span>
             </div>
-            <div className="space-y-1 pt-1 border-t border-border/50 text-[11px]">
+            <div className="space-y-1 pt-1 border-t border-border/50 text-xs">
               {runs.length === 0 ? (
                 <p className="text-muted-foreground py-1">
                   اس دستاویز پر ابھی کوئی AI رن نہیں ہوا۔
@@ -154,7 +154,7 @@ export const TrustTab: React.FC = () => {
                   .slice(0, 5)
                   .map((r) => (
                     <div key={r.id} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span className="font-medium text-foreground">{r.task_slug}</span>
                         <span>
                           {typeof r.confidence === "number"
@@ -175,7 +175,7 @@ export const TrustTab: React.FC = () => {
               <CheckCircle className="h-3.5 w-3.5" />
               <span>علمی غیر جانبداری اور آڈٹ کی ضمانت</span>
             </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               تمام رن کی لاگز دیتابیس میں محفوظ ہوتی ہیں۔ صارف کسی بھی وقت AI کے فراہم کردہ نتیجے کو رد یا قبول کر سکتا ہے۔
             </p>
           </div>

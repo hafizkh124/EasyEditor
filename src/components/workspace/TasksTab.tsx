@@ -10,6 +10,7 @@ import { customTaskService, rowToDefinition, type CustomTaskRow } from "@/lib/ta
 import { stripHarakat } from "@/utils/arabicUtils";
 import { TaskEditorDialog } from "./TaskEditorDialog";
 import type { TaskDefinition } from "@/lib/tasks/types";
+import { translateStored } from "@/lib/i18n";
 
 /**
  * The AI Task Library (SPEC-M3 FR-2.4) — the catalogue of what the editor can
@@ -69,10 +70,10 @@ export const TasksTab: React.FC = () => {
   const handleArchive = async (row: CustomTaskRow) => {
     const ok = await customTaskService.archive(row.id);
     if (ok) {
-      toast.success("ٹاسک محفوظ خانے میں چلا گیا۔");
+      toast.success(translateStored("toast.task.archived"));
       refresh();
     } else {
-      toast.error("ٹاسک ہٹایا نہ جا سکا۔");
+      toast.error(translateStored("toast.task.archive_failed"));
     }
   };
 
@@ -100,13 +101,13 @@ export const TasksTab: React.FC = () => {
           <section aria-labelledby="custom-tasks-heading">
             <h3
               id="custom-tasks-heading"
-              className="text-[11px] font-semibold text-muted-foreground mb-1.5"
+              className="text-xs font-semibold text-muted-foreground mb-1.5"
             >
               میرے ٹاسک ({filtered.customs.length})
             </h3>
 
             {filtered.customs.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground italic pb-1">
+              <p className="text-xs text-muted-foreground italic pb-1">
                 ابھی کوئی ذاتی ٹاسک نہیں۔ نیچے کسی بلٹ اِن ٹاسک کے سامنے
                 <Copy className="h-3 w-3 inline mx-1" />
                 دبا کر اپنی ہدایت کے ساتھ نقل بنائیں۔
@@ -141,7 +142,7 @@ export const TasksTab: React.FC = () => {
                         </Button>
                       </span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground line-clamp-2">{row.system_prompt}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{row.system_prompt}</p>
                   </div>
                 ))}
               </div>
@@ -151,7 +152,7 @@ export const TasksTab: React.FC = () => {
           <section aria-labelledby="builtin-tasks-heading">
             <h3
               id="builtin-tasks-heading"
-              className="text-[11px] font-semibold text-muted-foreground mb-1.5"
+              className="text-xs font-semibold text-muted-foreground mb-1.5"
             >
               بلٹ اِن ٹاسک ({filtered.builtins.length})
             </h3>
@@ -168,17 +169,17 @@ export const TasksTab: React.FC = () => {
                     </span>
                     <span className="flex items-center gap-1 mt-0.5">
                       {task.chunkable && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
+                        <Badge variant="outline" className="text-xs px-1 py-0 h-4">
                           طویل متن
                         </Badge>
                       )}
                       {task.producesSources && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
+                        <Badge variant="outline" className="text-xs px-1 py-0 h-4">
                           حوالہ جات
                         </Badge>
                       )}
                       {task.engine === "client" && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
+                        <Badge variant="outline" className="text-xs px-1 py-0 h-4">
                           مفت
                         </Badge>
                       )}

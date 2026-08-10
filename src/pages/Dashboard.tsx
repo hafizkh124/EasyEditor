@@ -17,6 +17,24 @@ import { getLifecycleInfo, formatLifecycleDate } from "@/lib/subscriptionLifecyc
 import { WHATSAPP_CONTACT_URL } from "@/lib/paymentAccounts";
 import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 import TokenMeter from "@/components/TokenMeter";
+import { availableCapabilities } from "@/core/capabilities/registry";
+import type { CapabilityId } from "@/core/capabilities/registry";
+import type { TranslationKey } from "@/lib/i18n";
+import type { LucideIcon } from "lucide-react";
+
+/**
+ * The grid's presentation — the dashboard gives each tool a fuller title and a
+ * different icon than the sidebar does — stays here. Only *which* cards exist
+ * comes from the registry: these were three hardcoded `<Link>`s, and since
+ * /dashboard is not one of the routes `DesktopToWorkspace` redirects, they were
+ * a second live path to the cloud-only tools on desktop.
+ */
+const DASHBOARD_CARDS: Partial<Record<CapabilityId, { titleKey: TranslationKey; icon: LucideIcon }>> = {
+  transcribe: { titleKey: "stt.title", icon: Mic },
+  speak: { titleKey: "dashboard.tts", icon: Volume2 },
+  ocr: { titleKey: "dashboard.ocr", icon: Image },
+  research: { titleKey: "dashboard.research_assistant", icon: BookOpen },
+};
 
 const Dashboard = () => {
   useSeo({ title: "Dashboard — Al-Ulama Easy Editor", description: "Your Al-Ulama Easy Editor home: recent activity, usage limits and shortcuts to every tool.", path: "/dashboard", noindex: true });
@@ -155,7 +173,7 @@ const Dashboard = () => {
                     const upgradeKey = getUpgradeLabelKey(subscription.tier);
                     return upgradeKey ? (
                       <Link to="/pricing">
-                        <Button variant="outline" size="sm">{t(upgradeKey)}</Button>
+                        <Button variant="outline" size="sm">{t(upgradeKey as import("@/lib/i18n").TranslationKey)}</Button>
                       </Link>
                     ) : null;
                   })()}
@@ -167,57 +185,25 @@ const Dashboard = () => {
 
         {/* Tools Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Link to="/transcribe">
-            <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-primary/10 p-2">
-                    <Mic className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg">{t("stt.title")}</CardTitle>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-
-          <Link to="/speak">
-            <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-primary/10 p-2">
-                    <Volume2 className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg">{t("dashboard.tts")}</CardTitle>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-
-          <Link to="/ocr">
-            <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-primary/10 p-2">
-                    <Image className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg">{t("dashboard.ocr")}</CardTitle>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-
-          <Link to="/research">
-            <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-primary/10 p-2">
-                    <BookOpen className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg">{t("dashboard.research_assistant")}</CardTitle>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
+          {availableCapabilities("dashboard-grid").map((capability) => {
+            const card = DASHBOARD_CARDS[capability.id];
+            if (!card) return null;
+            const Icon = card.icon;
+            return (
+              <Link key={capability.id} to={capability.route!}>
+                <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-lg bg-primary/10 p-2">
+                        <Icon className="h-6 w-6 text-primary" />
+                      </div>
+                      <CardTitle className="text-lg">{t(card.titleKey)}</CardTitle>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
 
         {/* Recent Activity */}
@@ -245,7 +231,7 @@ const Dashboard = () => {
                   </div>
                   <span className="text-foreground truncate flex-1">{entry.label}</span>
                   {entry.tokensSpent != null && entry.tokensSpent > 0 && (
-                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {entry.tokensSpent} tokens
                     </span>
                   )}

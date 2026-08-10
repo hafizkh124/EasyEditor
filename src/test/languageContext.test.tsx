@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
+import { translate, type TranslationKey } from "@/lib/i18n";
 
 // Test component that consumes the language context
 function TestConsumer() {
@@ -58,7 +59,7 @@ describe("LanguageContext", () => {
   it("returns the key itself for unknown translation keys", () => {
     function UnknownKeyConsumer() {
       const { t } = useLanguage();
-      return <span data-testid="unknown">{t("non.existent.key")}</span>;
+      return <span data-testid="unknown">{t("non.existent.key" as TranslationKey)}</span>;
     }
     render(
       <LanguageProvider>
@@ -66,5 +67,11 @@ describe("LanguageContext", () => {
       </LanguageProvider>
     );
     expect(screen.getByTestId("unknown").textContent).toBe("non.existent.key");
+  });
+
+  it("uses English and explicit fallbacks without returning an empty label", () => {
+    expect(translate("ur", "nav.home")).toBeTruthy();
+    expect(translate("ar", "nav.home")).toBeTruthy();
+    expect(translate("en", "non.existent.key" as TranslationKey, "Safe fallback")).toBe("Safe fallback");
   });
 });

@@ -22,7 +22,7 @@ interface ResourceSearchDialogProps {
    *  consumer can apply every citation in one state update (avoids stale-closure
    *  overwrites in React setters). Falls back to serial `onInsert` calls. */
   onInsertMany?: (items: Array<{ text: string; citation: string }>) => void;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }: ResourceSearchDialogProps) => {
@@ -98,7 +98,7 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
         </div>
 
         {arabicTerms.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-muted-foreground flex items-center gap-1">
               <Sparkles className="h-3 w-3" />
               {t("editor.searched_terms")}
@@ -107,7 +107,7 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
               <span
                 key={term}
                 dir="rtl"
-                className="rounded-full border border-border bg-muted/50 px-2 py-0.5 font-medium"
+                className="rounded-full border border-border bg-muted px-2 py-0.5 font-medium"
               >
                 {term}
               </span>
@@ -139,7 +139,7 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
                         key={value}
                         onClick={() => setFilter(value as SourceFilter)}
                         className={cn(
-                          "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                          "rounded-md px-2 py-1 text-xs font-medium transition-colors",
                           filter === value
                             ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:bg-muted",

@@ -96,7 +96,7 @@ export const RecentBooksGrid: React.FC<RecentBooksGridProps> = ({
 
               {/* Author */}
               {author && (
-                <p className="text-[10px] text-muted-foreground truncate w-full mt-0.5">
+                <p className="text-xs text-muted-foreground truncate w-full mt-0.5">
                   {author}
                 </p>
               )}
@@ -104,7 +104,7 @@ export const RecentBooksGrid: React.FC<RecentBooksGridProps> = ({
               {/* Time ago */}
               <div className="flex items-center gap-1 mt-1">
                 <Clock className="h-2.5 w-2.5 text-muted-foreground/50" />
-                <p className="text-[9px] text-muted-foreground/70">
+                <p className="text-xs text-muted-foreground/70">
                   {formatTimeAgo(item.accessedAt)}
                 </p>
               </div>

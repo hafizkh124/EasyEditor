@@ -16,6 +16,7 @@ import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { libraryChunkService } from "@/lib/corpus/libraryChunkService";
 import { runLibraryIngest, type IngestProgress } from "@/lib/corpus/ingestOrchestrator";
 import { IngestProgressCard } from "./IngestProgressCard";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 interface SourceUploadDialogProps {
   open: boolean;
@@ -52,7 +53,7 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
   const handleUpload = async () => {
     if (!file) return;
     if (!isSolvent) {
-      toast.error(`ٹوکن ناکافی ہیں: اس کتاب کو شامل کرنے کے لیے ${estimatedCost} ٹوکن درکار ہیں، آپ کے پاس ${available} ہیں۔`);
+      toast.error(translateStoredFormat("toast.tokens.book_insufficient", { required: estimatedCost, available }));
       return;
     }
 
@@ -61,7 +62,7 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
       const item = await libraryChunkService.uploadLibraryFile(file, kind);
       if (!item) throw new Error("اپلوڈ ناکام ہو گیا");
 
-      toast.success("فائل محفوظ ہو گئی۔ پس منظر میں کتب خانے کا پروسیس شروع ہے…");
+      toast.success(translateStored("toast.library.file_saved"));
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -74,25 +75,23 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
         .then((final) => {
           onSuccess?.();
           if (final.done) {
-            toast.success("کتب خانے میں کتاب کا پروسیس مکمل ہو گیا!");
+            toast.success(translateStored("toast.library.processing_done"));
             onOpenChange(false);
           } else {
             // Cancelled: everything embedded so far is already stored, and the
             // Sources tab offers "جاری رکھیں" to finish the rest.
-            toast.info(
-              `منسوخ — ${final.inserted} حصے محفوظ ہیں۔ بعد میں "جاری رکھیں" سے مکمل کر سکتے ہیں۔`,
-            );
+            toast.info(translateStoredFormat("toast.library.cancelled", { count: final.inserted }));
           }
         })
         .catch((err) => {
           onSuccess?.();
-          toast.error(`پروسیسنگ کے دوران خرابی: ${err.message}`);
+          toast.error(translateStoredFormat("toast.library.processing_failed", { error: err.message }));
         })
         .finally(() => {
           abortRef.current = null;
         });
     } catch (err: any) {
-      toast.error(`اپلوڈ ناکام: ${err.message}`);
+      toast.error(translateStoredFormat("toast.library.upload_failed", { error: err.message }));
     } finally {
       setIsUploading(false);
     }
@@ -125,13 +124,13 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
           </div>
 
           {file && (
-            <div className="p-3 bg-muted/40 rounded-lg space-y-2 border text-xs">
+            <div className="p-3 bg-muted rounded-lg space-y-2 border text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-foreground truncate">{file.name}</span>
                 <span className="text-muted-foreground">({Math.round(file.size / 1024)} KB)</span>
               </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-border/50 text-[11px]">
+              <div className="flex items-center justify-between pt-1 border-t border-border/50 text-xs">
                 <span className="text-muted-foreground">تخمینی chunks: ~{estimatedChunks}</span>
                 <span className="flex items-center gap-1 font-medium text-primary">
                   <Coins className="h-3.5 w-3.5" />
@@ -140,7 +139,7 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
               </div>
 
               {!isSolvent && (
-                <div className="flex items-center gap-1.5 text-destructive text-[11px] font-medium pt-1">
+                <div className="flex items-center gap-1.5 text-destructive text-xs font-medium pt-1">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   <span>ٹوکن ناکافی ہیں! بیلنس: {available}</span>
                 </div>

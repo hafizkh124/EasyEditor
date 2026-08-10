@@ -87,11 +87,11 @@ export const BookCover: React.FC<BookCoverProps> = ({ bookId, title, author, gen
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-2 text-center">
           <BookOpen className="h-4 w-4 text-white/60" />
-          <p className="line-clamp-5 text-[10px] font-medium leading-relaxed text-white" dir="rtl">
+          <p className="line-clamp-5 text-xs font-medium leading-relaxed text-white" dir="rtl">
             {title}
           </p>
           {author && (
-            <p className="line-clamp-1 text-[9px] text-white/70" dir="rtl">
+            <p className="line-clamp-1 text-xs text-white/70" dir="rtl">
               {author}
             </p>
           )}

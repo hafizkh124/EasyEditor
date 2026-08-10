@@ -1,36 +1,28 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
-import enTranslations from "@/locales/en.json";
-import urTranslations from "@/locales/ur.json";
-import arTranslations from "@/locales/ar.json";
-
-type Language = "en" | "ur" | "ar";
+import {
+  getStoredLanguage,
+  translate,
+  type Language,
+  type TranslationKey,
+  type Translator,
+} from "@/lib/i18n";
 type Direction = "ltr" | "rtl";
-
-export type TranslationKey = keyof typeof enTranslations;
 
 interface LanguageContextType {
   language: Language;
   direction: Direction;
   setLanguage: (lang: Language) => void;
-  t: (key: TranslationKey | string) => string;
+  t: Translator;
 }
-
-const translationMap: Record<Language, Record<string, string>> = {
-  en: enTranslations,
-  ur: urTranslations,
-  ar: arTranslations,
-};
 
 const LanguageContext = createContext<LanguageContextType>({
   language: "en",
   direction: "ltr",
   setLanguage: () => {},
-  t: (key: string) => key,
+  t: (key, fallback) => translate("en", key, fallback),
 });
 
 export const useLanguage = () => useContext(LanguageContext);
-
-const isLanguage = (v: unknown): v is Language => v === "en" || v === "ur" || v === "ar";
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
@@ -40,8 +32,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (seg === "ar") return "ar";
       if (seg === "ur") return "ur";
     }
-    const saved = localStorage.getItem("easyeditor-lang");
-    return isLanguage(saved) ? saved : "en";
+    return getStoredLanguage();
   });
 
   const direction: Direction = language === "ur" || language === "ar" ? "rtl" : "ltr";
@@ -52,13 +43,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const t = useCallback(
-    (key: TranslationKey | string): string => {
-      const dict = translationMap[language] ?? translationMap.en ?? {};
-      const value = dict[key];
-      if (value) return value;
-      const enValue = translationMap.en?.[key];
-      return enValue ?? key;
-    },
+    (key: TranslationKey, fallback?: string): string => translate(language, key, fallback),
     [language]
   );
 

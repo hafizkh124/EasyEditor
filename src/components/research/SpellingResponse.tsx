@@ -16,7 +16,7 @@ interface SpellingResponseProps {
   original: string;
   corrected: string;
   changes: SpellingChange[];
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 /**
@@ -164,7 +164,7 @@ const SpellingResponse = ({ original, corrected, changes, t }: SpellingResponseP
         )}
       </div>
       {changes.length > 0 && (
-        <p className="text-[10px] text-muted-foreground mt-3">
+        <p className="text-xs text-muted-foreground mt-3">
           {changes.length} {changes.length === 1 ? t("research.change_singular") : t("research.change_plural")}
         </p>
       )}

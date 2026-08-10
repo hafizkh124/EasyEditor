@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { Coins, ArrowUpCircle } from "lucide-react";
 
@@ -24,7 +24,6 @@ export default function UpsellModal({
 }) {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const [view, setView] = useState<"main" | "manual">("main");
   const [tokenAmount, setTokenAmount] = useState(2500);
@@ -42,7 +41,7 @@ export default function UpsellModal({
   const handleManualTopup = async () => {
     if (!user) return;
     if (tokenAmount < 2500) {
-      toast({ title: t("tokens.min_topup_error") || "Minimum top-up is 2,500 tokens", variant: "destructive" });
+      toast.error(t("tokens.min_topup_error", "Minimum top-up is 2,500 tokens"));
       return;
     }
     setSubmitting(true);
@@ -54,9 +53,9 @@ export default function UpsellModal({
       status: "pending",
     });
     if (error) {
-      toast({ title: t("tokens.topup_error") || "Failed to submit top-up request", variant: "destructive" });
+      toast.error(t("tokens.topup_error", "Failed to submit top-up request"));
     } else {
-      toast({ title: t("tokens.topup_submitted") || "Top-up request submitted! Awaiting admin approval." });
+      toast.success(t("tokens.topup_submitted", "Top-up request submitted! Awaiting admin approval."));
       onOpenChange(false);
       reset();
     }

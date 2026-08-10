@@ -20,7 +20,7 @@ export function ModeBadge() {
   return (
     <Badge
       variant="outline"
-      className="gap-1 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-medium"
+      className="gap-1 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-medium"
       title="آپ کا کام اسی کمپیوٹر پر محفوظ ہے — کلاؤڈ پر نہیں"
     >
       <HardDrive className="h-3 w-3" />

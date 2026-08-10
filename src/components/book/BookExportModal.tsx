@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Download } from "lucide-react";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 interface BookExportModalProps {
   open: boolean;
@@ -17,7 +18,7 @@ export function BookExportModal({ open, onOpenChange, bookTitle, fullContent }: 
 
   const handleExport = () => {
     if (!fullContent.trim()) {
-      toast.error("کتاب کا متن خالی ہے۔");
+      toast.error(translateStored("toast.book.empty"));
       return;
     }
 
@@ -53,7 +54,7 @@ export function BookExportModal({ open, onOpenChange, bookTitle, fullContent }: 
       a.download = `${bookTitle.replace(/\s+/g, "_")}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success(`کتاب فائنل فارمیٹ (${format.toUpperCase()}) میں ڈسک پر محفوظ ہو گئی۔`);
+      toast.success(translateStoredFormat("toast.book.export_saved", { format: format.toUpperCase() }));
     }
     onOpenChange(false);
   };

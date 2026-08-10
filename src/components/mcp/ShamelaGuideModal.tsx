@@ -29,7 +29,7 @@ export function ShamelaGuideModal({ open, onOpenChange }: ShamelaGuideModalProps
 
         <div className="space-y-6 text-sm">
           {/* Step 1 */}
-          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/20">
+          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/60">
             <div className="flex items-center gap-2 font-bold text-primary text-base">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
                 ۱
@@ -53,7 +53,7 @@ export function ShamelaGuideModal({ open, onOpenChange }: ShamelaGuideModalProps
           </div>
 
           {/* Step 2 */}
-          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/20">
+          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/60">
             <div className="flex items-center gap-2 font-bold text-primary text-base">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
                 ۲
@@ -66,7 +66,7 @@ export function ShamelaGuideModal({ open, onOpenChange }: ShamelaGuideModalProps
           </div>
 
           {/* Step 3 */}
-          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/20">
+          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/60">
             <div className="flex items-center gap-2 font-bold text-primary text-base">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
                 ۳
@@ -79,7 +79,7 @@ export function ShamelaGuideModal({ open, onOpenChange }: ShamelaGuideModalProps
           </div>
 
           {/* Step 4 */}
-          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/20">
+          <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/60">
             <div className="flex items-center gap-2 font-bold text-primary text-base">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
                 ۴

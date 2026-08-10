@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { lookupTranslationMemory, GENRE_TRANSLATION_PROMPTS, type TranslationMemoryMatch } from "@/lib/translationMemory";
 import { collectSseText } from "@/lib/sse";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 interface Project {
   id: string;
@@ -84,7 +85,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
       }
     } catch (err) {
       console.error(err);
-      toast.error("پروژیکٹس لوڈ کرنے میں ناکامی ہوئی۔");
+      toast.error(translateStored("toast.translation.projects_load_failed"));
     } finally {
       setLoading(false);
     }
@@ -110,7 +111,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
       }
     } catch (err) {
       console.error(err);
-      toast.error("پروجیکٹ ڈیٹا لوڈ کرنے میں ناکامی۔");
+      toast.error(translateStored("toast.translation.project_load_failed"));
     } finally {
       setLoading(false);
     }
@@ -118,7 +119,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
 
   const handleCreateProject = async () => {
     if (!newTitle.trim()) {
-      toast.error("پروجیکٹ کا عنوان درج کریں۔");
+      toast.error(translateStored("toast.translation.title_required"));
       return;
     }
     setSaving(true);
@@ -154,7 +155,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
       const { error: cErr } = await supabase.from("translation_chunks").insert(chunkRows);
       if (cErr) throw cErr;
 
-      toast.success("نیا ٹرانسلیشن پروجیکٹ تیار ہو گیا۔");
+      toast.success(translateStored("toast.translation.project_created"));
       setNewProjectModal(false);
       setNewTitle("");
       setRawTextImport("");
@@ -162,7 +163,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
       selectProject(proj);
     } catch (err) {
       console.error(err);
-      toast.error("پروجیکٹ کی تخلیق میں ناکامی۔");
+      toast.error(translateStored("toast.book.project_create_failed"));
     } finally {
       setSaving(false);
     }
@@ -203,10 +204,10 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
         .eq("id", current.id);
 
       if (error) throw error;
-      toast.success(`ٹکڑا #${current.chunk_index} محفوظ ہو گیا۔`);
+      toast.success(translateStoredFormat("toast.translation.chunk_saved", { number: current.chunk_index }));
     } catch (err) {
       console.error(err);
-      toast.error("محفوظ کرنے میں ناکامی۔");
+      toast.error(translateStored("toast.common.save_failed"));
     } finally {
       setSaving(false);
     }
@@ -250,13 +251,13 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
       const translation = await collectSseText(res);
       if (translation.trim()) {
         handleUpdateTranslationText(translation.trim());
-        toast.success("AI ترجمہ مکمل ہو گیا۔");
+        toast.success(translateStored("toast.translation.ai_done"));
       } else {
-        toast.error("ترجمہ موصول نہیں ہوا۔");
+        toast.error(translateStored("toast.translation.ai_empty"));
       }
     } catch (err) {
       console.error(err);
-      toast.error("AI ترجمہ کرنے میں خرابی پیش آئی۔");
+      toast.error(translateStored("toast.translation.ai_failed"));
     } finally {
       setTranslating(false);
     }
@@ -264,7 +265,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
 
   const applyTmMatch = (match: TranslationMemoryMatch) => {
     handleUpdateTranslationText(match.translated_text);
-    toast.success("Translation Memory ترجمہ منتقل کر دیا گیا۔");
+    toast.success(translateStored("toast.translation.memory_applied"));
   };
 
   const activeChunk = chunks[activeChunkIndex];
@@ -294,9 +295,10 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
         </div>
 
         {/* Workspace Body */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Sidebar: Projects & Chunk List */}
-          <div className="w-72 border-r border-border bg-muted/20 flex flex-col overflow-y-auto">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          {/* Sidebar: Projects & Chunk List. Same reasoning as the Book Studio
+              outline — stacked and height-capped on phones, a column from md up. */}
+          <div className="w-full md:w-72 max-h-56 md:max-h-none border-b md:border-b-0 md:border-r border-border bg-muted/60 flex flex-col overflow-y-auto shrink-0">
             <div className="p-3 border-b border-border">
               <Label className="text-xs font-semibold mb-1 block">پروژیکٹس فہرست</Label>
               <div className="space-y-1">
@@ -311,8 +313,8 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
                     }`}
                   >
                     <div className="truncate font-semibold">{p.title}</div>
-                    <div className="flex items-center gap-1 mt-0.5 opacity-80 text-[10px]">
-                      <Badge variant="outline" className="text-[9px] px-1 py-0">{p.genre}</Badge>
+                    <div className="flex items-center gap-1 mt-0.5 opacity-80 text-xs">
+                      <Badge variant="outline" className="text-xs px-1 py-0">{p.genre}</Badge>
                       <span>{p.source_lang.toUpperCase()} ➔ {p.target_lang.toUpperCase()}</span>
                     </div>
                   </button>
@@ -334,7 +336,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
                       className={`w-full text-right p-2 rounded border text-xs flex items-center justify-between transition-colors ${
                         activeChunkIndex === idx
                           ? "border-primary bg-primary/10 font-medium"
-                          : "border-border hover:bg-muted/50"
+                          : "border-border hover:bg-muted"
                       }`}
                     >
                       <span className="truncate flex-1 pl-2">ٹکڑا #{c.chunk_index}: {c.source_text.slice(0, 20)}...</span>
@@ -414,7 +416,7 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
                         <div key={idx} className="p-2 rounded border border-border bg-card text-xs flex items-center justify-between gap-2">
                           <div dir="rtl" className="flex-1">
                             <div className="font-semibold text-foreground">{m.translated_text}</div>
-                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                            <div className="text-xs text-muted-foreground mt-0.5">
                               مطابقت: {(m.match_score * 100).toFixed(0)}% | ذریعہ: {m.source_type}
                             </div>
                           </div>

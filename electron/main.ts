@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, session, Menu } from 'electron';
+import { app, BrowserWindow, shell, session, Menu, nativeTheme } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerSystemHandlers } from './ipc/systemHandlers.js';
@@ -103,6 +103,7 @@ const __dirname = path.dirname(__filename);
 
 // Disable hardware acceleration issues on some Windows systems if needed
 app.disableHardwareAcceleration();
+nativeTheme.themeSource = 'system';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -224,6 +225,29 @@ if (!gotSingleInstanceLock) {
     forwardDeepLink(url);
   });
 
+  /**
+   * Ships updates without asking the user to hunt for an installer.
+   *
+   * This is the one network call the app makes that the user did not initiate,
+   * which sits in tension with local mode's "no request you did not ask for"
+   * premise — so it is deliberately narrow: it runs only in a packaged build
+   * (never in dev, where there is no update feed), it talks only to the GitHub
+   * releases endpoint declared in package.json `build.publish`, and it carries
+   * no user data. A failed check is not worth a dialog: an offline scholar is
+   * the expected case here, not an error.
+   */
+  function checkForUpdates(): void {
+    if (!app.isPackaged) return;
+    void import('electron-updater')
+      .then(({ autoUpdater }) => {
+        autoUpdater.logger = null;
+        return autoUpdater.checkForUpdatesAndNotify();
+      })
+      .catch(() => {
+        /* offline, rate-limited, or no release yet — all non-events */
+      });
+  }
+
   app.whenReady().then(() => {
     // In dev the executable is Electron itself, so the OS needs the path to the
     // app entry as well or it registers the wrong command for the scheme.
@@ -241,6 +265,7 @@ if (!gotSingleInstanceLock) {
     registerTafsirHandlers();
     registerVoiceHandlers();
     createWindow();
+    checkForUpdates();
 
     // Cold start FROM a deep link (the app was not running when the browser
     // handed the callback over). The renderer is not listening yet, so wait for

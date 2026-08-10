@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Save, Sparkles, Quote, Loader2 } from "lucide-react";
 import { callEdgeFunction } from "@/core/ai/aiAdapter";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 interface BookEditorViewProps {
   sectionId?: string;
@@ -39,10 +40,10 @@ export function BookEditorView({
     setSaving(true);
     try {
       await onSaveContent(content);
-      toast.success("فصل کا متن محفوظ کر لیا گیا۔");
+      toast.success(translateStored("toast.book.chapter_saved"));
     } catch (err) {
       console.error(err);
-      toast.error("محفوظ کرنے میں ناکامی۔");
+      toast.error(translateStored("toast.common.save_failed"));
     } finally {
       setSaving(false);
     }
@@ -61,9 +62,9 @@ export function BookEditorView({
       const refinedText = (data as { text?: string } | null)?.text ?? "";
       if (refinedText) {
         setContent(refinedText);
-        toast.success(`AI اصلاح (${action}) مکمل ہو گئی۔`);
+        toast.success(translateStoredFormat("toast.book.ai_done", { action }));
       } else {
-        toast.info("اصلاح شدہ متن برآمد نہیں ہوا۔");
+        toast.info(translateStored("toast.book.ai_empty"));
       }
     } catch (err: unknown) {
       console.error(err);
@@ -79,7 +80,7 @@ export function BookEditorView({
    */
   const handleInsertFootnote = () => {
     if (!customFootnoteText.trim()) {
-      toast.error("فُٹ نوٹ کا حوالہ درج کریں۔");
+      toast.error(translateStored("toast.book.footnote_required"));
       return;
     }
     const fnNumber = (content.match(/\[\^\d+\]/g) || []).length + 1;
@@ -88,7 +89,7 @@ export function BookEditorView({
     setContent((prev) => prev + noteRef + noteEntry);
     setCustomFootnoteText("");
     setFootnoteModalOpen(false);
-    toast.success(`فُٹ نوٹ #${fnNumber} شامل کر دیا گیا۔`);
+    toast.success(translateStoredFormat("toast.book.footnote_added", { number: fnNumber }));
   };
 
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
@@ -103,7 +104,7 @@ export function BookEditorView({
             <span className="text-xs text-muted-foreground">/</span>
             <h2 className="text-sm font-semibold text-foreground">{sectionTitle}</h2>
           </div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">الفاظ کی تعداد: {wordCount}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">الفاظ کی تعداد: {wordCount}</p>
         </div>
 
         {/* Action Buttons */}

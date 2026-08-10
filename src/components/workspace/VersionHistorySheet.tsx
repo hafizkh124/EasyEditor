@@ -35,7 +35,7 @@ export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
           <History className="h-3.5 w-3.5" />
           <span className="hidden lg:inline">Versions</span>
           {versions.length > 0 && (
-            <span className="rounded-full bg-primary/10 px-1.5 text-[10px] font-bold text-primary">
+            <span className="rounded-full bg-primary/10 px-1.5 text-xs font-bold text-primary">
               {versions.length}
             </span>
           )}
@@ -69,14 +69,14 @@ export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
                 <div key={v.id} className="p-3 text-xs flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-semibold text-foreground truncate">{v.label || "Snapshot"}</p>
-                    <p className="text-muted-foreground text-[11px]">
+                    <p className="text-muted-foreground text-xs">
                       {new Date(v.created_at).toLocaleString()}
                     </p>
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 px-2 text-[11px] gap-1 shrink-0"
+                    className="h-7 px-2 text-xs gap-1 shrink-0"
                     onClick={() => {
                       onRestoreVersion(v.content_json);
                       setOpen(false);

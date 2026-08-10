@@ -56,7 +56,7 @@ export default function PricingInfo() {
       <h2>Subscription plans</h2>
       <div className="not-prose overflow-x-auto my-4">
         <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
-          <thead className="bg-muted/50">
+          <thead className="bg-muted">
             <tr>
               <th className="text-start p-3">Plan</th>
               <th className="text-start p-3">International (USD)</th>
@@ -91,7 +91,7 @@ export default function PricingInfo() {
       </p>
       <div className="not-prose overflow-x-auto my-4">
         <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
-          <thead className="bg-muted/50">
+          <thead className="bg-muted">
             <tr>
               <th className="text-start p-3">Tokens</th>
               <th className="text-start p-3">International (USD)</th>

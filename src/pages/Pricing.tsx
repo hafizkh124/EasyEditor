@@ -142,7 +142,7 @@ const Pricing = () => {
   const submitUpgradeRequest = async () => {
     if (!user || !txId.trim() || !receiptFile) return;
     if (receiptFile.size > 5 * 1024 * 1024) {
-      toast.error(language === "ur" ? "تصویر 5MB سے کم ہونی چاہیے" : "Image must be smaller than 5MB");
+      toast.error(t("toast.upload.image_too_large"));
       return;
     }
     setSubmitting(true);
@@ -165,18 +165,14 @@ const Pricing = () => {
       if (data?.error) throw new Error(String(data.error));
 
       if (data?.autoApproved) {
-        toast.success(language === "ur"
-          ? "آپ کا اکاؤنٹ فوری طور پر فعال ہو گیا!"
-          : "Your account is now active!");
+        toast.success(t("toast.account.activated"));
         setDialogOpen(false);
         await refetch();
         setTimeout(() => { window.location.href = "/dashboard"; }, 800);
       } else {
         setUpgradeRequested(true);
         setDialogOpen(false);
-        toast.success(language === "ur"
-          ? "آپ کی receipt admin کو review کے لیے بھیج دی گئی ہے۔"
-          : "Receipt sent to admin for review.");
+        toast.success(t("toast.account.receipt_sent"));
         await refetch();
       }
     } catch (e) {
@@ -213,8 +209,10 @@ const Pricing = () => {
       <AppLayout>
         <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-10" dir={direction} aria-busy="true" aria-live="polite">
           <div className="space-y-3 text-center">
-            <Skeleton className="h-9 w-72 mx-auto" />
-            <Skeleton className="h-4 w-96 mx-auto" />
+            {/* w-96 is 384px — wider than a 375px viewport, so the loading
+                state overflowed horizontally before the page even rendered. */}
+            <Skeleton className="h-9 w-full max-w-xs mx-auto" />
+            <Skeleton className="h-4 w-full max-w-sm mx-auto" />
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
@@ -343,13 +341,13 @@ const Pricing = () => {
                     </div>
                   </motion.div>
 
-                  <CardTitle className="text-xl">{t(plan.nameKey)}</CardTitle>
+                  <CardTitle className="text-xl">{t(plan.nameKey as import("@/lib/i18n").TranslationKey)}</CardTitle>
                   <div className="mt-2 space-y-1">
                     <div className="flex items-baseline justify-center gap-1">
                       <span className="text-3xl font-bold text-primary">{priceForCurrency(plan, currency)}</span>
                       <span className="text-sm text-muted-foreground">/ {t("pricing.per_month")}</span>
                     </div>
-                    <div className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                    <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                       <Sparkles className="h-3 w-3" /> {language === "ur" ? "سسٹم سے فوری تصدیق" : "Instant system verification"}
                     </div>
                   </div>
@@ -402,7 +400,7 @@ const Pricing = () => {
                         {f.label}
                       </span>
                       {f.comingSoon && (
-                        <Badge variant="outline" className="ms-auto text-[10px] py-0 px-1.5 border-amber-400/60 text-amber-700 dark:text-amber-400">
+                        <Badge variant="outline" className="ms-auto text-xs py-0 px-1.5 border-amber-400/60 text-amber-700 dark:text-amber-400">
                           {t("pricing.coming_soon")}
                         </Badge>
                       )}
@@ -444,7 +442,7 @@ const Pricing = () => {
                           className="w-full h-11 rounded-xl"
                         >
                           <Icon className="h-4 w-4 me-2" />
-                          {language === "ur" ? `${t(plan.nameKey)} حاصل کریں` : `Get ${t(plan.nameKey)}`}
+                          {language === "ur" ? `${t(plan.nameKey as import("@/lib/i18n").TranslationKey)} حاصل کریں` : `Get ${t(plan.nameKey as import("@/lib/i18n").TranslationKey)}`}
                         </Button>
                       </motion.div>
                     ) : null}
@@ -462,7 +460,7 @@ const Pricing = () => {
         <DialogContent className="sm:max-w-md" dir={direction}>
           <DialogHeader>
             <DialogTitle>
-              {t("pricing.payment_dialog_title")} — {t(selectedPlan.nameKey)}
+              {t("pricing.payment_dialog_title")} — {t(selectedPlan.nameKey as import("@/lib/i18n").TranslationKey)}
             </DialogTitle>
             <DialogDescription>{t("pricing.payment_dialog_desc")}</DialogDescription>
           </DialogHeader>
@@ -475,7 +473,7 @@ const Pricing = () => {
               </p>
 
               {/* 1. NBP */}
-              <div className="rounded-lg border bg-muted/50 p-3 space-y-1.5">
+              <div className="rounded-lg border bg-muted p-3 space-y-1.5">
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_nbp")}
                 </p>
@@ -490,7 +488,7 @@ const Pricing = () => {
               </div>
 
               {/* 2. JazzCash Business */}
-              <div className="rounded-lg border bg-muted/50 p-3 space-y-1.5">
+              <div className="rounded-lg border bg-muted p-3 space-y-1.5">
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_jazzcash_business")}
                 </p>
@@ -503,7 +501,7 @@ const Pricing = () => {
               </div>
 
               {/* 3. JazzCash Personal */}
-              <div className="rounded-lg border bg-muted/50 p-3 space-y-1.5">
+              <div className="rounded-lg border bg-muted p-3 space-y-1.5">
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_jazzcash_personal")}
                 </p>
@@ -516,7 +514,7 @@ const Pricing = () => {
               </div>
 
               {/* 4. EasyPaisa Personal */}
-              <div className="rounded-lg border bg-muted/50 p-3 space-y-1.5">
+              <div className="rounded-lg border bg-muted p-3 space-y-1.5">
                 <p className="text-sm font-semibold text-foreground">
                   {t("pricing.payment_method_easypaisa_personal")}
                 </p>
@@ -531,7 +529,7 @@ const Pricing = () => {
 
             {/* Dynamic plan amount */}
             <p className="text-sm font-semibold text-primary">
-              {t(selectedPlan.priceAmountKey)}
+              {t(selectedPlan.priceAmountKey as import("@/lib/i18n").TranslationKey)}
             </p>
 
             {/* Transaction ID */}

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Sparkles, Loader2, Search, CheckCircle, AlertTriangle } from "lucide-react";
 import { streamResearchQuery } from "@/lib/research/streamers";
+import { translateStored, translateStoredFormat } from "@/lib/i18n";
 
 interface KhittatBahthModalProps {
   open: boolean;
@@ -20,7 +21,7 @@ export function KhittatBahthModal({ open, onOpenChange, onApplyPlan }: KhittatBa
 
   const handleRunAnalysis = async () => {
     if (!topic.trim()) {
-      toast.error("موضوعِ تصنیف درج کریں۔");
+      toast.error(translateStored("toast.book.topic_required"));
       return;
     }
     setAnalyzing(true);
@@ -49,11 +50,11 @@ export function KhittatBahthModal({ open, onOpenChange, onApplyPlan }: KhittatBa
       },
       onDone: () => {
         setAnalyzing(false);
-        toast.success("تحلیل و خطة البحث کی تیاری مکمل ہو گئی۔");
+        toast.success(translateStored("toast.book.plan_ready"));
       },
       onError: (err) => {
         setAnalyzing(false);
-        toast.error(`خرابی: ${err}`);
+        toast.error(translateStoredFormat("toast.common.error_detail", { error: String(err) }));
       },
     });
   };
@@ -126,7 +127,7 @@ export function KhittatBahthModal({ open, onOpenChange, onApplyPlan }: KhittatBa
               <Label className="text-xs font-semibold text-primary block">علمی تحلیل و خطة البحث المقترحة:</Label>
               <div
                 dir="rtl"
-                className="text-xs leading-relaxed font-serif whitespace-pre-wrap max-h-60 overflow-y-auto p-3 rounded bg-muted/30 border border-border/50 text-foreground"
+                className="text-xs leading-relaxed font-serif whitespace-pre-wrap max-h-60 overflow-y-auto p-3 rounded bg-muted/60 border border-border/50 text-foreground"
               >
                 {streamedText || "علمی جائزہ اور خاکہ تیار کیا جا رہا ہے..."}
               </div>
@@ -135,7 +136,7 @@ export function KhittatBahthModal({ open, onOpenChange, onApplyPlan }: KhittatBa
                 <>
                   <div className="flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-2.5">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-500" />
-                    <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+                    <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
                       یہ AI کا ابتدائی تجزیہ ہے، مکمل علمی سروے نہیں۔ «عدمِ سبقِ دراسہ» کی حتمی تصدیق
                       مکتبات و فہارس میں خود کریں؛ اگر کوئی کتاب یا مقالہ ذکر ہوا ہو تو اس کا حوالہ بھی خود جانچ لیں۔
                     </p>
@@ -149,13 +150,13 @@ export function KhittatBahthModal({ open, onOpenChange, onApplyPlan }: KhittatBa
                           نکالے گئے ابواب ({chapters.length}) — «خاکہ لاگو کریں» پر یہی شامل ہوں گے:
                         </Label>
                         {chapters.map((ch, i) => (
-                          <div key={i} className="p-1.5 rounded bg-muted/40 text-[11px] border border-border">
+                          <div key={i} className="p-1.5 rounded bg-muted text-xs border border-border">
                             {ch}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         جواب سے ابواب کی الگ فہرست نہیں نکل سکی — خاکہ لاگو کرنے پر صرف عنوان و خلاصہ شامل ہوگا،
                         ابواب آپ خود شامل کر سکتے ہیں۔
                       </p>

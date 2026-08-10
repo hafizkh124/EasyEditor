@@ -37,7 +37,7 @@ interface UseEditorAiActionsArgs {
   editor: Editor | null;
   accessToken?: string;
   emitChange: () => void;
-  t: (key: string) => string;
+  t: import("@/lib/i18n").Translator;
   aiReview: boolean;
   trackMode: TrackMode;
   applyAsSuggestion: (from: number, to: number, newText: string) => boolean;
@@ -130,9 +130,7 @@ export function useEditorAiActions({
           // Track Changes cannot represent a multi-line replacement, so a
           // chunked run would silently bypass review (FR-5.8).
           if (aiReview) {
-            toast.error(
-              "AI Review (Track Changes) آن ہے — پوری دستاویز پر چلنے والا کام تبدیلیاں track نہیں کر سکتا۔ پہلے Review بند کریں، یا متن منتخب کریں۔",
-            );
+            toast.error(t("toast.editor.review_track_warning"));
             return;
           }
           const totalCost = plan.batches.reduce(

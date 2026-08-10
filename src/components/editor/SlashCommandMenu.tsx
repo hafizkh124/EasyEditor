@@ -232,7 +232,7 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
       aria-label="ایڈیٹر کمانڈ مینو"
       onMouseDown={(e) => e.preventDefault()}
     >
-      <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground border-b border-border mb-1">
+      <div className="px-2 py-1 text-xs font-semibold text-muted-foreground border-b border-border mb-1">
         کمانڈ منتخب کریں ({filteredOptions.length})
       </div>
       <div className="max-h-60 overflow-y-auto space-y-0.5">
@@ -251,7 +251,7 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
             >
               <Icon className="h-4 w-4 shrink-0" />
               <span className="truncate flex-1">{opt.label}</span>
-              <span className="text-[10px] opacity-75">{opt.category}</span>
+              <span className="text-xs opacity-75">{opt.category}</span>
             </button>
           );
         })}

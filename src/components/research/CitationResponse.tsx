@@ -21,7 +21,7 @@ interface CitationResponseProps {
   rejectedSegments?: number[];
   /** Segments the pipeline could not confidently cite. */
   uncitedSegments?: number[];
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 /**
@@ -121,13 +121,13 @@ const CitationResponse = ({
 
       {citations.length > 0 && (
         <div className="pt-3 border-t border-border space-y-2">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             {t("research.citations_sources")} ({citations.length})
           </p>
           <ol className="space-y-1.5">
             {citations.map((c) => (
               <li key={c.index} className="text-xs text-muted-foreground flex gap-2">
-                <span className="font-mono text-[10px] text-primary shrink-0">[{c.index}]</span>
+                <span className="font-mono text-xs text-primary shrink-0">[{c.index}]</span>
                 <span className="flex-1">
                   <span className="font-medium text-foreground">{c.reference}</span>
                   {c.source_url && (

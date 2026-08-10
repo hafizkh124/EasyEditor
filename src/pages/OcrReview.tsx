@@ -243,10 +243,10 @@ const OcrReview = () => {
         </div>
 
         {/* Progress bar */}
-        <div className="px-4 py-1.5 border-b border-border bg-muted/20">
+        <div className="px-4 py-1.5 border-b border-border bg-muted/60">
           <div className="flex items-center gap-3 max-w-full">
             <Progress value={progressPercent} className="h-1.5 flex-1" />
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
               {reviewedCount}/{review.totalPages} {t("ocr_review.pages_reviewed")}
             </span>
           </div>

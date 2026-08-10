@@ -176,7 +176,7 @@ const CorpusPanel = () => {
                           job.status === "done" ? "default" :
                           job.status === "error" ? "destructive" :
                           job.status === "running" ? "secondary" : "outline"
-                        } className="text-[10px]">
+                        } className="text-xs">
                           {job.status}
                         </Badge>
                       </td>
@@ -235,7 +235,7 @@ const CorpusPanel = () => {
                 </div>
               ))}
               {healthGeneratedAt && (
-                <p className="text-[11px] text-muted-foreground pt-1">
+                <p className="text-xs text-muted-foreground pt-1">
                   Generated {new Date(healthGeneratedAt).toLocaleString()}
                 </p>
               )}

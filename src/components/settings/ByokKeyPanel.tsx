@@ -99,7 +99,7 @@ export const ByokKeyPanel: React.FC = () => {
       </CardHeader>
       <CardContent dir="rtl" className="space-y-4">
         {/* Status Indicator */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted border">
           <span className="text-sm font-medium">حالت:</span>
           {status.hasKey ? (
             <div className="flex items-center gap-2 text-emerald-600 font-semibold text-sm">

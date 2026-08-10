@@ -132,7 +132,7 @@ const ReferralCard = () => {
             <p className="text-xs text-muted-foreground">{t("referral.credits_balance") || "Credits earned"}</p>
             <div className="flex items-center justify-between gap-2">
               <span className="text-base font-semibold">{credits.toLocaleString()}</span>
-              <Badge variant="secondary" className="text-[10px]">
+              <Badge variant="secondary" className="text-xs">
                 {t("referral.redeemable_soon") || "Redeemable soon"}
               </Badge>
             </div>
@@ -146,7 +146,8 @@ const ReferralCard = () => {
               <input
                 readOnly
                 value={referralLink}
-                className="flex-1 bg-transparent text-xs font-mono outline-none border-b border-border min-w-0"
+                aria-label={t("referral.link_input", "Your referral link")}
+                className="flex-1 bg-transparent text-xs font-mono border-b border-border min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm"
                 onClick={(e) => (e.target as HTMLInputElement).select()}
               />
               <Button size="sm" variant="outline" onClick={() => copy(referralLink)}>
@@ -175,7 +176,7 @@ const ReferralCard = () => {
                 <div key={e.id} className="flex items-center justify-between py-2 text-sm">
                   <div className="min-w-0">
                     <p className="truncate">{e.referee_name || t("referral.anonymous_friend") || "Friend"}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {new Date(e.granted_at).toLocaleDateString()}
                     </p>
                   </div>
@@ -186,7 +187,7 @@ const ReferralCard = () => {
           )}
         </div>
 
-        <p className="text-[11px] text-muted-foreground italic">
+        <p className="text-xs text-muted-foreground italic">
           {t("referral.disclaimer") ||
             "Credits will be redeemable for subscription discounts in a future update."}
         </p>

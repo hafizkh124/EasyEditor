@@ -77,6 +77,14 @@ export async function invokeAiText(options: AiRefineOptions): Promise<string> {
 
 /**
  * Embeds text using gemini-embedding-001 (768 dimensions).
+ *
+ * Desktop only. The cloud branch used to call `supabase.functions.invoke("embed")`
+ * — an edge function that has never existed in `supabase/functions/` — so on web
+ * it could only ever fail, and it failed by returning `[]` on the error path
+ * rather than saying so. Nothing calls this yet; embedding on the cloud side runs
+ * inside `library-ingest` and `vector-search`, which do their own embedding
+ * server-side. Making the gap explicit here means whoever wires up the first web
+ * caller gets a message instead of a silently empty vector.
  */
 export async function embedText(text: string): Promise<number[]> {
   if (isDesktopEnv() && window.electronAPI) {
@@ -87,16 +95,10 @@ export async function embedText(text: string): Promise<number[]> {
     return result;
   }
 
-  // Cloud Mode
-  const { data, error } = await supabase.functions.invoke('embed', {
-    body: { text },
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return data?.embedding || [];
+  throw new Error(
+    'embedText is desktop-only: there is no `embed` edge function. On the cloud, ' +
+    'embedding happens inside library-ingest / vector-search.',
+  );
 }
 
 /**

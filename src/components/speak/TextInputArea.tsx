@@ -11,7 +11,7 @@ interface TextInputAreaProps {
   charLimit: number;
   isRtlInput: boolean;
   voiceMode: VoiceMode;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 const TextInputArea = ({

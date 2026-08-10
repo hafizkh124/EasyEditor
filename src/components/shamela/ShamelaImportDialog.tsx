@@ -13,6 +13,8 @@ import {
   Loader2
 } from "lucide-react";
 import { ImportEstimateDialog, type ImportEstimate } from "./ImportEstimateDialog";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { formatTranslation, translateStored, translateStoredFormat } from "@/lib/i18n";
 
 /** Mirrors electron/shamela/import.ts's ImportProgress. */
 interface ImportProgress {
@@ -53,6 +55,7 @@ interface ShamelaImportDialogProps {
 export function ShamelaImportDialog({
   open, onOpenChange, masterDbPath, initialTab = "browse",
 }: ShamelaImportDialogProps) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [books, setBooks] = useState<ShamelaBook[]>([]);
@@ -89,7 +92,7 @@ export function ShamelaImportDialog({
       setBooks(results);
     } catch (err) {
       console.error("[ShamelaImportDialog] searchBooks error:", err);
-      toast.error("تلاش کے دوران خرابی۔");
+      toast.error(translateStored("toast.shamela.search_failed"));
     } finally {
       setLoading(false);
     }
@@ -161,11 +164,11 @@ export function ShamelaImportDialog({
    */
   const handleReviewSelection = async () => {
     if (selectedBooks.size === 0) {
-      toast.error("براہ کرم کم از کم ایک کتاب منتخب کریں۔");
+      toast.error(translateStored("toast.shamela.select_book"));
       return;
     }
     if (!window.electronAPI?.shamela) {
-      toast.error("درآمد صرف ڈیسک ٹاپ ورژن میں دستیاب ہے۔");
+      toast.error(translateStored("toast.shamela.desktop_only"));
       return;
     }
 
@@ -176,7 +179,7 @@ export function ShamelaImportDialog({
       setEstimate(await window.electronAPI.shamela.estimateImport(masterDbPath, ids));
     } catch (err) {
       console.error("[ShamelaImportDialog] estimate error:", err);
-      toast.error(err instanceof Error ? err.message : "تخمینہ لگانے میں خرابی۔");
+      toast.error(err instanceof Error ? err.message : translateStored("toast.shamela.estimate_failed"));
       setEstimateOpen(false);
     } finally {
       setEstimating(false);
@@ -197,9 +200,9 @@ export function ShamelaImportDialog({
       const result = await window.electronAPI!.shamela.importBooks(selected);
 
       if (result.cancelled) {
-        toast.info(`درآمد منسوخ — ${result.imported} کتابیں محفوظ ہو چکی ہیں۔`);
+        toast.info(translateStoredFormat("toast.shamela.import_cancelled", { count: result.imported }));
       } else {
-        toast.success(`${result.imported} کتابیں کتب خانے میں شامل ہو گئیں۔`);
+        toast.success(translateStoredFormat("toast.shamela.imported_count", { count: result.imported }));
       }
 
       setImported((prev) => new Set([...prev, ...result.items.map((it) => it.bookId)]));
@@ -207,7 +210,7 @@ export function ShamelaImportDialog({
       if (!result.cancelled) onOpenChange(false);
     } catch (err) {
       console.error("[ShamelaImportDialog] import error:", err);
-      toast.error(err instanceof Error ? err.message : "امپورٹ کے دوران خرابی۔");
+      toast.error(err instanceof Error ? err.message : translateStored("toast.shamela.import_failed"));
     } finally {
       setImporting(false);
       setProgress(null);
@@ -226,10 +229,10 @@ export function ShamelaImportDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <BookOpen className="h-5 w-5 text-primary" />
-            مکتبہ شاملہ — کتاب براؤزر اور امپورٹ
+            {t("shamela.import.title")}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            شاملہ ۴ کی ڈائریکٹری سے کتب براؤز کریں، تلاش کریں اور امپورٹ کریں
+            {t("shamela.import.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -237,34 +240,34 @@ export function ShamelaImportDialog({
           <TabsList className="grid grid-cols-2 w-64">
             <TabsTrigger value="browse" className="gap-1.5 text-xs">
               <Layers className="h-3.5 w-3.5" />
-              زمرہ جات
+              {t("shamela.categories")}
             </TabsTrigger>
             <TabsTrigger value="search" className="gap-1.5 text-xs">
               <Search className="h-3.5 w-3.5" />
-              تلاش
+              {t("common.search")}
             </TabsTrigger>
           </TabsList>
 
           {/* Browse by category */}
           <TabsContent value="browse" className="flex-1 flex gap-4 min-h-0 mt-4">
             <div className="w-64 shrink-0 space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground px-1">زمرہ جات</span>
+              <span className="text-xs font-semibold text-muted-foreground px-1">{t("shamela.categories")}</span>
               <ScrollArea className="h-[400px] rounded border border-border">
                 {categories.length === 0 ? (
                   <div className="p-4 text-xs text-muted-foreground text-center">
-                    کوئی زمرہ جات نہیں ملے
+                    {t("shamela.no_categories")}
                   </div>
                 ) : (
                   categories.map((cat) => (
                     <button
                       key={cat.id}
                       onClick={() => handleCategorySelect(cat.id)}
-                      className={`w-full text-right px-3 py-2 text-xs flex items-center justify-between gap-2 hover:bg-muted/50 transition-colors ${
+                      className={`w-full text-right px-3 py-2 text-xs flex items-center justify-between gap-2 hover:bg-muted transition-colors ${
                         selectedCategory === cat.id ? "bg-primary/10 text-primary font-medium" : ""
                       }`}
                     >
                       <span className="truncate">{cat.name}</span>
-                      <Badge variant="outline" className="text-[10px] shrink-0">
+                      <Badge variant="outline" className="text-xs shrink-0">
                         {cat.bookCount}
                       </Badge>
                     </button>
@@ -296,12 +299,12 @@ export function ShamelaImportDialog({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="کتاب یا مصنف کا نام درج کریں..."
+                placeholder={t("shamela.search_placeholder")}
                 className="text-xs"
               />
               <Button size="sm" onClick={handleSearch} disabled={loading} className="gap-1.5 shrink-0">
                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                تلاش
+                {t("common.search")}
               </Button>
             </div>
             <div className="flex-1 min-h-0">
@@ -319,7 +322,7 @@ export function ShamelaImportDialog({
         <DialogFooter className="border-t border-border pt-4 mt-4 flex items-center gap-2">
           <div className="flex-1 text-xs text-muted-foreground">
             {importing && progress
-              ? `کتاب ${progress.bookIndex} از ${progress.totalBooks} — «${progress.title}» — ${progress.pagesRead} صفحات، ${progress.chunksStored} ٹکڑے`
+              ? formatTranslation(t("shamela.import.progress"), { current: progress.bookIndex, total: progress.totalBooks, title: progress.title, pages: progress.pagesRead, chunks: progress.chunksStored })
               : totalSelected > 0
               ? `${totalSelected} کتاب(یں) منتخب`
               : "کوئی کتاب منتخب نہیں"}
@@ -327,11 +330,11 @@ export function ShamelaImportDialog({
 
           {importing ? (
             <Button variant="outline" size="sm" onClick={handleCancelImport}>
-              درآمد روکیں
+              {t("shamela.stop_import")}
             </Button>
           ) : (
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-              بند کریں
+              {t("common.close")}
             </Button>
           )}
 
@@ -346,7 +349,7 @@ export function ShamelaImportDialog({
             ) : (
               <Download className="h-4 w-4" />
             )}
-            {importing ? "درآمد جاری ہے..." : "منتخب کردہ درآمد کریں"}
+            {importing ? t("shamela.importing") : t("shamela.import_selected")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -375,11 +378,12 @@ function BookList({
   onToggle: (id: number) => void;
   imported: Set<number>;
 }) {
+  const { t } = useLanguage();
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40 text-xs text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin ml-2" />
-        تلاش جاری ہے...
+        {t("shamela.searching")}
       </div>
     );
   }
@@ -388,7 +392,7 @@ function BookList({
     return (
       <div className="flex flex-col items-center justify-center h-40 text-xs text-muted-foreground gap-2">
         <BookOpen className="h-8 w-8 text-muted-foreground/40" />
-        کوئی کتاب نہیں ملی
+        {t("shamela.no_books")}
       </div>
     );
   }
@@ -399,7 +403,7 @@ function BookList({
         <div
           key={book.id}
           onClick={() => onToggle(book.id)}
-          className={`flex items-start gap-3 p-3 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-muted/30 ${
+          className={`flex items-start gap-3 p-3 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-muted ${
             selectedBooks.has(book.id) ? "bg-primary/5 border-primary/30" : ""
           }`}
         >
@@ -407,13 +411,13 @@ function BookList({
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium truncate">{book.title}</span>
               {imported.has(book.id) && (
-                <Badge variant="secondary" className="text-[10px] shrink-0">پہلے سے درآمد شدہ</Badge>
+                <Badge variant="secondary" className="text-xs shrink-0">{t("shamela.imported")}</Badge>
               )}
               {selectedBooks.has(book.id) && !imported.has(book.id) && (
-                <Badge variant="default" className="text-[10px] shrink-0">منتخب</Badge>
+                <Badge variant="default" className="text-xs shrink-0">{t("common.selected")}</Badge>
               )}
             </div>
-            <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
               {book.author && (
                 <span className="flex items-center gap-1">
                   <User className="h-3 w-3" />
@@ -429,7 +433,7 @@ function BookList({
               {book.deathYear != null && book.deathYear < 99999 && (
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {book.deathYear} هـ
+                  {book.deathYear} {t("shamela.hijri_suffix")}
                 </span>
               )}
             </div>

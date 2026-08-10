@@ -54,7 +54,7 @@ interface EditorMenusAndOverlaysProps {
     onCreate: (note: string) => void;
     onDelete: (id: string) => void;
   };
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({

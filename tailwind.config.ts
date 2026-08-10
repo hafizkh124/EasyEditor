@@ -59,6 +59,11 @@ export default {
   			}
   		},
   		borderRadius: {
+  			// `xl`/`2xl` were the only radii not derived from --radius, so ~29 call
+  			// sites silently opted out of the token and would not follow a change
+  			// to it. Wiring them is cheaper than chasing every call site.
+  			'2xl': 'calc(var(--radius) + 8px)',
+  			xl: 'calc(var(--radius) + 4px)',
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
@@ -112,6 +117,9 @@ export default {
   		fontFamily: {
   			sans: [
   				'Work Sans',
+  				// Work Sans has no Arabic glyphs; without this the whole Urdu/Arabic
+  				// UI falls back to an OS font. See the note in src/index.css.
+  				'Noto Naskh Arabic',
   				'ui-sans-serif',
   				'system-ui',
   				'-apple-system',
@@ -125,6 +133,7 @@ export default {
   			],
   			serif: [
   				'Lora',
+  				'Noto Naskh Arabic',
   				'ui-serif',
   				'Georgia',
   				'Cambria',

@@ -16,6 +16,9 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Upload, Camera, Copy, Volume2, Loader2, ImageIcon, X, Crop, SpellCheck, Languages, MessageSquarePlus, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("OCR");
 import { Badge } from "@/components/ui/badge";
 import AppLayout from "@/components/AppLayout";
 import ImageCropper from "@/components/ImageCropper";
@@ -283,7 +286,7 @@ const OCR = () => {
 
       // Increment usage counter and sync context
       if (user) {
-        console.log("[OCR] Incrementing ocr_pages_used for user:", user.id);
+        log.info("incrementing OCR usage", { hasUser: Boolean(user.id) });
         const { error } = await supabase
           .from("subscriptions")
           .update({ ocr_pages_used: ocrPagesUsed + 1 })
@@ -340,7 +343,7 @@ const OCR = () => {
       if (data.text) {
         setExtractedText(data.text);
         saveSession({ title: data.text.slice(0, 80), metadata: { extractedText: data.text } });
-        toast.success(t(`ocr.${action}_done`));
+        toast.success(t(`ocr.${action}_done` as import("@/lib/i18n").TranslationKey));
       }
     } catch {
       toast.error(t("ocr.refine_error"));
@@ -389,7 +392,7 @@ const OCR = () => {
             <span>{t("ocr.limit_reached")}</span>
             {upgradeKey && (
               <Link to="/pricing">
-                <Badge variant="destructive" className="cursor-pointer">{t(upgradeKey)}</Badge>
+                <Badge variant="destructive" className="cursor-pointer">{t(upgradeKey as import("@/lib/i18n").TranslationKey)}</Badge>
               </Link>
             )}
           </div>

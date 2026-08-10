@@ -93,10 +93,10 @@ const IslamicResearchPanel = ({
           {t("islamic.domain_focus")}
         </span>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={selectAll}>
+          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={selectAll}>
             {t("islamic.select_all")}
           </Button>
-          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={clearAll}>
+          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={clearAll}>
             {t("islamic.clear_all")}
           </Button>
         </div>
@@ -109,8 +109,8 @@ const IslamicResearchPanel = ({
         return (
           <div key={group} className="space-y-1">
             <div className="flex items-center gap-1.5">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                {t(GROUP_LABELS[group])}
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t(GROUP_LABELS[group] as import("@/lib/i18n").TranslationKey)}
               </p>
             </div>
             <div className="grid grid-cols-1 gap-1">
@@ -122,7 +122,7 @@ const IslamicResearchPanel = ({
                     key={domain.id}
                     onClick={() => toggleDomain(domain.id)}
                     className={cn(
-                      "flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors cursor-pointer hover:bg-muted/70",
+                      "flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors cursor-pointer hover:bg-muted",
                       isSelected && "bg-primary/5 border border-primary/20"
                     )}
                   >
@@ -131,7 +131,7 @@ const IslamicResearchPanel = ({
                     ) : (
                       <Square className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     )}
-                    <span className="text-xs text-foreground flex-1 truncate">{t(domain.labelKey)}</span>
+                    <span className="text-xs text-foreground flex-1 truncate">{t(domain.labelKey as import("@/lib/i18n").TranslationKey)}</span>
                   </button>
                 );
               })}

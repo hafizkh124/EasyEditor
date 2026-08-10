@@ -8,6 +8,7 @@ import { runSingleBatchTask } from "@/lib/tasks/runTask";
 import { getTaskBySlug } from "@/lib/tasks/registry";
 import { calculateTaskCost } from "@/lib/tasks/cost";
 import type { PendingChunkedRun } from "./useChunkedRuns";
+import { translateStored } from "@/lib/i18n";
 
 interface UseAutoFormatArgs {
   editor: Editor | null;
@@ -18,7 +19,7 @@ interface UseAutoFormatArgs {
   emitChange: () => void;
   setAiBusy: (key: string | null) => void;
   setPendingChunkedRun: (plan: PendingChunkedRun | null) => void;
-  t: (key: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 /**
@@ -45,7 +46,7 @@ export function useAutoFormat({
     const plan = planDocumentChunks(editor);
     if (plan.batches.length <= 1 || !task) return false;
     if (aiReview) {
-      toast.error("AI Review آن ہے — پوری دستاویز پر چلنے والا کام پہلے Review بند کرنے کا تقاضا کرتا ہے۔");
+      toast.error(translateStored("toast.editor.disable_review"));
       return true;
     }
     // auto_format used to send the whole document and overwrite it wholesale,

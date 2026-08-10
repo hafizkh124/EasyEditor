@@ -55,17 +55,17 @@ export const AppVersionBadge: React.FC<AppVersionBadgeProps> = ({
       <Tooltip>
         <TooltipTrigger asChild>
           <div
-            className={`inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted ${className}`}
+            className={`inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted ${className}`}
             data-testid="app-version-badge"
           >
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
             {!compact && <span className="font-medium">Easy Editor</span>}
-            <span className="font-mono text-[11px]">{displayVersion}</span>
+            <span className="font-mono text-xs">{displayVersion}</span>
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs space-y-1">
           <p className="font-semibold text-foreground">Easy Editor {info.version}</p>
-          <div className="text-muted-foreground font-mono text-[11px] space-y-0.5">
+          <div className="text-muted-foreground font-mono text-xs space-y-0.5">
             <p>Commit: {info.commit}</p>
             <p>Branch: {info.branch}</p>
             {info.builtAt && <p>Built: {new Date(info.builtAt).toLocaleString()}</p>}

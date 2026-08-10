@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import TranslationOutput from "@/components/translate/TranslationOutput";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { translateStored } from "@/lib/i18n";
 import { useTranslation, type TranslationInputType } from "@/hooks/useTranslation";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { cn } from "@/lib/utils";
@@ -89,7 +90,7 @@ export const TranslatePanel = () => {
     const full = trans.getFullTranslation();
     if (workspaceCtx) {
       workspaceCtx.insertIntoCanvas(`<p>${full}</p>`);
-      toast.success("Canvas میں داخل کر دیا گیا");
+      toast.success(translateStored("toast.canvas.inserted"));
     } else {
       navigate(editorRoute(), { state: { content: full, source: "manual" } });
     }
@@ -113,7 +114,7 @@ export const TranslatePanel = () => {
               onClick={() => handleInputTypeChange(it.key)}
             >
               <it.icon className="h-3.5 w-3.5" />
-              {t(it.labelKey) || it.key}
+              {t(it.labelKey as import("@/lib/i18n").TranslationKey) || it.key}
             </Button>
           ))}
         </div>

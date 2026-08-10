@@ -139,7 +139,7 @@ const UserTable = ({
               return (
                 <TableRow
                   key={u.user_id}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="cursor-pointer hover:bg-muted"
                   onClick={() => toggleRow(u.user_id)}
                 >
                   <TableCell colSpan={7} className="p-0">
@@ -162,19 +162,19 @@ const UserTable = ({
                       </div>
                       <div className="flex-shrink-0">
                         {status === "approved" && (
-                          <Badge variant="default" className="text-[10px]">{t("admin.status_approved")}</Badge>
+                          <Badge variant="default" className="text-xs">{t("admin.status_approved")}</Badge>
                         )}
                         {status === "pending" && (
-                          <Badge variant="destructive" className="text-[10px]">{t("admin.status_pending")}</Badge>
+                          <Badge variant="destructive" className="text-xs">{t("admin.status_pending")}</Badge>
                         )}
                         {status === "rejected" && (
-                          <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40">
+                          <Badge variant="outline" className="text-xs text-destructive border-destructive/40">
                             {t("admin.status_rejected") || "Rejected"}
                           </Badge>
                         )}
                       </div>
                       <div className="flex-shrink-0">
-                        <Badge variant={u.tier === "free" ? "secondary" : "default"} className="text-[10px]">
+                        <Badge variant={u.tier === "free" ? "secondary" : "default"} className="text-xs">
                           {tierLabel(u.tier)}
                         </Badge>
                       </div>
@@ -189,7 +189,7 @@ const UserTable = ({
                     {/* Expanded detail */}
                     {isExpanded && (
                       <div
-                        className="px-4 pb-4 pt-1 border-t bg-muted/30 space-y-3"
+                        className="px-4 pb-4 pt-1 border-t bg-muted/60 space-y-3"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {/* Info row */}
@@ -217,7 +217,7 @@ const UserTable = ({
                           {u.profession && (
                             <span className="flex items-center gap-1 capitalize">
                               <Briefcase className="h-3 w-3" />
-                              {t(`onboarding.profession_${u.profession}`) || u.profession}
+                              {t(`onboarding.profession_${u.profession}` as import("@/lib/i18n").TranslationKey) || u.profession}
                             </span>
                           )}
                           <span className="flex items-center gap-1">
@@ -250,12 +250,12 @@ const UserTable = ({
                               </>
                             )}
                             {lifecycle.status === "expiring_soon" && (
-                              <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-400 border-amber-400">
+                              <Badge variant="outline" className="text-xs text-amber-700 dark:text-amber-400 border-amber-400">
                                 {(t("admin.expiring_in") || "Expires in {n}d").replace("{n}", String(lifecycle.daysRemaining ?? 0))}
                               </Badge>
                             )}
                             {lifecycle.status === "expired" && (
-                              <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40">
+                              <Badge variant="outline" className="text-xs text-destructive border-destructive/40">
                                 {t("admin.expired") || "Expired"}
                               </Badge>
                             )}

@@ -6,7 +6,7 @@ interface ModeChipsProps {
   modes: ResearchAssistMode[];
   onModesChange: (modes: ResearchAssistMode[]) => void;
   disabled?: boolean;
-  t: (k: string) => string;
+  t: import("@/lib/i18n").Translator;
 }
 
 const CHIPS: Array<{ value: ResearchAssistMode; icon: typeof Check; labelKey: string }> = [
@@ -42,7 +42,7 @@ const ModeChips = ({ modes, onModesChange, disabled = false, t }: ModeChipsProps
             )}
           >
             {active ? <Check className="h-3 w-3" /> : <Icon className="h-3 w-3" />}
-            {t(labelKey)}
+            {t(labelKey as import("@/lib/i18n").TranslationKey)}
           </button>
         );
       })}
