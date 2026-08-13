@@ -107,7 +107,9 @@ export function useResourceSearch(t: import("@/lib/i18n").Translator) {
     }
   }, [query, session, t]);
 
-  const results = response?.results ?? [];
+  // `?? []` mints a fresh array on every render while there is no response,
+  // which made both memos below recompute every time.
+  const results = useMemo(() => response?.results ?? [], [response]);
 
   const visibleResults = useMemo(
     () => (filter === "all" ? results : results.filter((r) => sourceTypeOf(r) === filter)),

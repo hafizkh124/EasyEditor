@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useSeo } from "@/hooks/useSeo";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -32,7 +32,10 @@ const FaqAiHaram = () => {
     path: PATH,
   });
 
-  const qas: QA[] =
+  // Rebuilt on every render, this fed the JSON-LD effect's dependency list —
+  // so the structured-data <script> was torn out of <head> and re-injected
+  // each time the page rendered. It only ever depends on the language.
+  const qas: QA[] = useMemo(() =>
     lang === "ar"
       ? [
           {
@@ -88,7 +91,7 @@ const FaqAiHaram = () => {
             q: "How does Al-Ulama Easy Editor handle this?",
             a: "Our Islamic AI assistant is only an aid (assistant). It surfaces citations from the Quran, Hadith and classical sources — it does not issue fatwas. Every answer ships with its sources so the user can verify with the ulama.",
           },
-        ];
+        ], [lang]);
 
   // Inject FAQPage JSON-LD
   useEffect(() => {

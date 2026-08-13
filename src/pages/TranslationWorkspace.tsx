@@ -68,9 +68,12 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
   const [tmMatches, setTmMatches] = useState<TranslationMemoryMatch[]>([]);
   const [tmLoading, setTmLoading] = useState(false);
 
-  // Load User Projects
+  // Load User Projects once. `loadProjects` is redeclared every render (it is a
+  // plain async function, not a useCallback), so depending on it would refetch
+  // on every render.
   useEffect(() => {
     loadProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadProjects = async () => {

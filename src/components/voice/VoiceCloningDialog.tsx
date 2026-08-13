@@ -65,7 +65,7 @@ export const VoiceCloningDialog: React.FC<DialogProps> = ({ open, onClose, onClo
         setError(err.message || 'Could not access microphone.');
       }
     }
-  }, [recording]);
+  }, [recording, onCloneComplete]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

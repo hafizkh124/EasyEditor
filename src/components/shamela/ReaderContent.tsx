@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { AlertCircle } from "lucide-react";
 import type { ReaderPage } from "@/hooks/useReaderState";
-import { effectiveDirection, detectTextDirection, type TextDirection } from "@/lib/reader/direction";
+import { effectiveDirection, type TextDirection } from "@/lib/reader/direction";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ReaderContentProps {
@@ -95,5 +95,3 @@ export const ReaderContent: React.FC<ReaderContentProps> = ({
     </div>
   );
 };
-
-export { detectTextDirection };

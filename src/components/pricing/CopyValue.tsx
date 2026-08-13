@@ -7,7 +7,8 @@ import { toast } from "sonner";
  * pricing dialog is built from.
  */
 
-export const copyToClipboard = async (value: string, copiedLabel: string) => {
+/** Local to this module — both controls below are the only callers. */
+const copyToClipboard = async (value: string, copiedLabel: string) => {
   try {
     await navigator.clipboard.writeText(value);
     toast.success(copiedLabel);

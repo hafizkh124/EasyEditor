@@ -46,15 +46,26 @@ vi.mock("@/integrations/supabase/client", () => ({
 const TEMPLATES: Record<string, string> = {
   "stt.upload_success_chunked": "Done in {n} chunks",
 };
+// `t` is memoised by the real LanguageContext (useCallback on [language]), so
+// the mock must hold one identity too. A fresh arrow per render rebuilds every
+// useCallback that lists `t`, which is enough to hide a stale closure.
+const stableT = (k: string, fb?: string) => TEMPLATES[k] ?? fb ?? k;
 vi.mock("@/contexts/LanguageContext", () => ({
-  useLanguage: () => ({ t: (k: string, fb?: string) => TEMPLATES[k] ?? fb ?? k, direction: "rtl", language: "ur" }),
+  useLanguage: () => ({ t: stableT, direction: "rtl", language: "ur" }),
 }));
 vi.mock("@/hooks/useSeo", () => ({ useSeo: () => {} }));
 // The real hook returns { save, reset, currentId }; the page destructures
 // `save` as `saveSession`. Getting this shape wrong throws inside the success
 // path, which is caught and reported as a generic failure.
+//
+// `save` MUST keep a stable identity across renders, because the real one is a
+// useCallback. Returning a fresh vi.fn() each render silently rebuilt every
+// downstream useCallback, which hid a stale-closure bug in the upload handler:
+// the route test passed for the wrong reason.
+const stableSave = vi.fn();
+const stableReset = vi.fn();
 vi.mock("@/hooks/usePageSession", () => ({
-  usePageSession: () => ({ save: vi.fn(), reset: vi.fn(), currentId: null }),
+  usePageSession: () => ({ save: stableSave, reset: stableReset, currentId: null }),
 }));
 vi.mock("@/lib/activityLog", () => ({ logActivity: vi.fn() }));
 vi.mock("@/components/AppLayout", () => ({

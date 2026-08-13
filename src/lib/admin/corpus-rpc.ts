@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 // These tables/RPCs may not be present in the generated Supabase types
 // until the corpus migration is applied. Centralize the untyped access here.
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 export interface CorpusStat {
   domain: string;

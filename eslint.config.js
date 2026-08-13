@@ -224,6 +224,28 @@ export default tseslint.config(
     },
   },
 
+  // ── Fast Refresh: two places where the shape is deliberate ────────────────
+  // `react-refresh/only-export-components` warns when a module exports both a
+  // component and something else, because editing it forces a full reload
+  // instead of a hot swap. That is a real cost, but in these two cases the
+  // alternative costs more than it saves.
+  {
+    // Vendored shadcn/ui. `buttonVariants`, `badgeVariants`, `useFormField` and
+    // friends sit beside their component in upstream's own files. Splitting
+    // them is a permanent divergence that makes every future `npx shadcn add`
+    // a manual merge, to save a reload on files nobody edits.
+    files: ["src/components/ui/**/*.tsx"],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
+  {
+    // Context modules. Exporting the provider next to its `useX()` hook is the
+    // standard React pattern, and these hooks are imported in roughly a hundred
+    // files — moving them would mean touching all of those to buy a
+    // development-only refresh nicety.
+    files: ["src/contexts/*.tsx", "src/core/workspace/WorkspaceContext.tsx"],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
+
   // ── Minimum readable type ─────────────────────────────────────────────────
   // 280 call sites used arbitrary text-[9px]/[10px]/[11px], all below the 12px
   // accessibility floor — and this app's primary scripts are Nastaliq and
