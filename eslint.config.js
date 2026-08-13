@@ -122,8 +122,8 @@ export default tseslint.config(
       "src/components/ReferralCard.tsx",
       // ── notifications ───────────────────────────────────────────────────
       "src/contexts/NotificationContext.tsx",
-      // ── OCR ─────────────────────────────────────────────────────────────
-      "src/pages/OCR.tsx",
+      // (OCR's exemption moved to src/pages/ocr/useOcrWorkflow.ts below, with
+      //  the page split — OCR.tsx itself no longer touches Supabase.)
       // ── shared scholarly research (research_sources/research_sessions — not
       //    WorkspaceBackend tables; FR-1.2 lists projects/documents/
       //    library_items/... only) ─────────────────────────────────────────
@@ -145,8 +145,19 @@ export default tseslint.config(
       // ── Transcribe: calls functions.invoke("transcribe") directly instead
       //    of through callEdgeFunction() — same class of leak FR-1.2 flags for
       //    BookEditorView's refine-text call. Local mode's real STT path is
-      //    core/voice's whisper engine (Gate 4), not this file. ─────────────
-      "src/pages/Transcribe.tsx",
+      //    core/voice's whisper engine (Gate 4), not this file.
+      //    The workflow moved into a hook when the page was split; the
+      //    exemption follows the code. Only the live-recording path still
+      //    needs the client — the upload path already runs through
+      //    transcribeLongForm, and no test covers recording yet, so routing it
+      //    through callEdgeFunction() is left for when one does. ────────────
+      "src/pages/transcribe/useTranscribeWorkflow.ts",
+      // ── OCR: reaches the process-ocr edge function by raw fetch (not the
+      //    Supabase client) and uses the client only to increment the
+      //    `subscriptions.ocr_pages_used` counter — a hosted-only table, so
+      //    there is nothing for callEdgeFunction() to route. Exemption follows
+      //    the workflow hook the page was split into. ───────────────────────
+      "src/pages/ocr/useOcrWorkflow.ts",
       // ── Legacy migration of book_projects/book_chapters/book_sections and
       //    translation_projects/translation_chunks into projects/documents.
       //    Those tables exist only in the hosted database, so a local

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   FolderTree, User, Clock, ChevronRight, ChevronLeft, Search, CalendarDays, BookMarked,
 } from "lucide-react";
@@ -8,6 +8,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BookCover } from "@/components/shamela/BookCover";
+import { useCatalogueBrowser } from "./browse/useCatalogueBrowser";
+import type { CatalogueBook, CatalogueAuthor } from "./browse/useCatalogueBrowser";
 
 /**
  * Phase 4 (SPEC-M6) — Library Browser.
@@ -21,44 +23,10 @@ import { BookCover } from "@/components/shamela/BookCover";
  * letter badge, work count, covers) and the list is grouped by Arabic letter.
  */
 
-type BrowseMode = "categories" | "authors" | "periods";
-
-interface CatalogueBook {
-  id: number;
-  title: string;
-  author: string | null;
-  category: string | null;
-  deathYear: number | null;
-  bookType: number | null;
-}
-
-interface CatalogueCategory {
-  id: number;
-  name: string;
-  bookCount: number;
-}
-
-interface CatalogueAuthor {
-  id: number;
-  name: string;
-  deathNumber: number | null;
-  deathText: string | null;
-  bookCount: number;
-  alpha: number | null;
-}
-
-interface CataloguePeriod {
-  century: number;
-  label: string;
-  bookCount: number;
-}
-
 interface BrowseTabProps {
   onSelectBook?: (bookId: string) => void;
   onNavigate?: () => void;
 }
-
-const BROWSE_LIMIT = 100;
 
 // Shamela groups authors by the Arabic alphabet; master.db's `alpha` column is
 // the 1-based letter index. Used to show letter badges and group the list.
@@ -74,180 +42,20 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
   const rtl = direction === "rtl";
   const BackIcon = rtl ? ChevronRight : ChevronLeft;
 
-  const [masterDbPath, setMasterDbPath] = useState<string | null>(null);
-  const [detecting, setDetecting] = useState(true);
-  const [mode, setMode] = useState<BrowseMode>("categories");
-  const [error, setError] = useState<string | null>(null);
-
-  // Categories
-  const [categories, setCategories] = useState<CatalogueCategory[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
-
-  // Authors
-  const [authors, setAuthors] = useState<CatalogueAuthor[]>([]);
-  const [authorsLoading, setAuthorsLoading] = useState(false);
-  const [authorQuery, setAuthorQuery] = useState("");
-
-  // Periods
-  const [periods, setPeriods] = useState<CataloguePeriod[]>([]);
-  const [periodsLoading, setPeriodsLoading] = useState(false);
-
-  // Drill-down state: what is currently shown in the books pane
-  const [selectedCategory, setSelectedCategory] = useState<CatalogueCategory | null>(null);
-  const [selectedAuthor, setSelectedAuthor] = useState<CatalogueAuthor | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState<CataloguePeriod | null>(null);
-
-  // Books pane
-  const [books, setBooks] = useState<CatalogueBook[]>([]);
-  const [booksLoading, setBooksLoading] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    const detect = async () => {
-      setDetecting(true);
-      try {
-        const api = window.electronAPI?.shamela;
-        if (!api) {
-          setError("Native Shamela bridge is unavailable.");
-          return;
-        }
-        const state = await api.detect();
-        if (cancelled) return;
-        if (state?.installed && state.masterDbPath) {
-          setMasterDbPath(state.masterDbPath);
-          setError(null);
-        } else {
-          setMasterDbPath(null);
-          setError("شاملہ ۴ نصب نہیں ہے۔");
-        }
-      } catch (err: unknown) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to detect Shamela.");
-      } finally {
-        if (!cancelled) setDetecting(false);
-      }
-    };
-    detect();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const loadCategories = useCallback(async () => {
-    if (!masterDbPath) return;
-    setCategoriesLoading(true);
-    try {
-      const api = window.electronAPI!.shamela;
-      const cats = await api.listCategories(masterDbPath);
-      setCategories(cats.map((c) => ({ id: c.id, name: c.name, bookCount: c.bookCount })));
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load categories.");
-    } finally {
-      setCategoriesLoading(false);
-    }
-  }, [masterDbPath]);
-
-  const loadAuthors = useCallback(async (query: string) => {
-    if (!masterDbPath) return;
-    setAuthorsLoading(true);
-    try {
-      const api = window.electronAPI!.shamela;
-      const rows = query.trim()
-        ? await api.searchAuthors(masterDbPath, query.trim(), BROWSE_LIMIT)
-        : await api.authors(masterDbPath, BROWSE_LIMIT);
-      setAuthors(rows.map((a) => ({
-        id: a.id,
-        name: a.name,
-        deathNumber: a.deathNumber,
-        deathText: a.deathText,
-        bookCount: a.bookCount,
-        alpha: a.alpha,
-      })));
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load authors.");
-    } finally {
-      setAuthorsLoading(false);
-    }
-  }, [masterDbPath]);
-
-  const loadPeriods = useCallback(async () => {
-    if (!masterDbPath) return;
-    setPeriodsLoading(true);
-    try {
-      const api = window.electronAPI!.shamela;
-      const rows = await api.periods(masterDbPath);
-      setPeriods(rows);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load periods.");
-    } finally {
-      setPeriodsLoading(false);
-    }
-  }, [masterDbPath]);
-
-  useEffect(() => {
-    if (mode === "categories") loadCategories();
-    if (mode === "authors") loadAuthors(authorQuery);
-    if (mode === "periods") loadPeriods();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, masterDbPath]);
-
-  const loadBooks = useCallback(async (fn: () => Promise<CatalogueBook[]>) => {
-    setBooksLoading(true);
-    try {
-      const rows = await fn();
-      setBooks(rows);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load books.");
-    } finally {
-      setBooksLoading(false);
-    }
-  }, []);
-
-  const openCategory = (cat: CatalogueCategory) => {
-    setSelectedCategory(cat);
-    setSelectedAuthor(null);
-    setSelectedPeriod(null);
-    setBooks([]);
-    loadBooks(async () => {
-      const api = window.electronAPI!.shamela;
-      const rows = await api.booksByCategory(masterDbPath!, cat.id, BROWSE_LIMIT);
-      return rows;
-    });
-  };
-
-  const openAuthor = (author: CatalogueAuthor) => {
-    setSelectedAuthor(author);
-    setSelectedCategory(null);
-    setSelectedPeriod(null);
-    setBooks([]);
-    loadBooks(async () => {
-      const api = window.electronAPI!.shamela;
-      const rows = await api.booksByAuthor(masterDbPath!, author.id, BROWSE_LIMIT);
-      return rows;
-    });
-  };
-
-  const openPeriod = (period: CataloguePeriod) => {
-    setSelectedPeriod(period);
-    setSelectedCategory(null);
-    setSelectedAuthor(null);
-    setBooks([]);
-    loadBooks(async () => {
-      const api = window.electronAPI!.shamela;
-      const rows = await api.booksByPeriod(masterDbPath!, period.century, BROWSE_LIMIT);
-      return rows;
-    });
-  };
+  const {
+    masterDbPath, detecting, error,
+    mode, setMode,
+    categories, categoriesLoading,
+    authors, authorsLoading, authorQuery, changeAuthorQuery,
+    periods, periodsLoading,
+    selectedCategory, selectedAuthor, selectedPeriod,
+    books, booksLoading,
+    openCategory, openAuthor, openPeriod, goBackToBrowse,
+  } = useCatalogueBrowser();
 
   const handleSelectBook = (book: CatalogueBook) => {
     onNavigate?.();
     onSelectBook?.(String(book.id));
-  };
-
-  const goBackToBrowse = () => {
-    setSelectedCategory(null);
-    setSelectedAuthor(null);
-    setSelectedPeriod(null);
-    setBooks([]);
   };
 
   // ── View: drilling into a category/author/period's book list ────────────
@@ -402,10 +210,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
                 <Search className="absolute end-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   value={authorQuery}
-                  onChange={(e) => {
-                    setAuthorQuery(e.target.value);
-                    loadAuthors(e.target.value);
-                  }}
+                  onChange={(e) => changeAuthorQuery(e.target.value)}
                   placeholder="Search authors…"
                   className="h-8 text-xs pe-8"
                 />
