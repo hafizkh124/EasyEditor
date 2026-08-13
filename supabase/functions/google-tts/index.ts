@@ -174,6 +174,47 @@ async function tryGoogleCloudTts(
   }
 }
 
+/** Last-resort fallback: Lovable AI Gateway TTS (Gemini voices, separate key
+ *  and billing path) → returns a complete WAV file. */
+async function tryLovableTts(
+  text: string,
+  voiceName: string,
+): Promise<{ ok: true; wavBytes: Uint8Array } | { ok: false; error: string }> {
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!lovableKey) return { ok: false, error: "LOVABLE_API_KEY not configured" };
+
+  try {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/audio/speech", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-tts",
+        contents: [{ role: "user", parts: [{ text }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
+        },
+      }),
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => "");
+      console.error(`[TTS] Lovable TTS error ${resp.status}:`, errText.slice(0, 300));
+      return { ok: false, error: `Lovable TTS error ${resp.status}: ${errText.slice(0, 200)}` };
+    }
+
+    const bytes = new Uint8Array(await resp.arrayBuffer());
+    if (bytes.length === 0) return { ok: false, error: "Lovable TTS returned empty audio" };
+
+    console.log("[TTS] Lovable AI TTS succeeded");
+    return { ok: true, wavBytes: bytes };
+  } catch (err) {
+    console.error("[TTS] Lovable TTS network error:", err);
+    return { ok: false, error: `Lovable TTS network error: ${String(err)}` };
+  }
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
