@@ -247,23 +247,41 @@ Deno.serve(async (req) => {
       console.warn(`[TTS] Gemini failed: ${geminiResult.error}. Trying Cloud TTS...`);
       const cloudResult = await tryGoogleCloudTts(text, pid, apiKey);
 
-      if (!cloudResult.ok) {
-        // Refund tokens — both engines failed
-        await refundTokens(supabase, user.id, tokenCost, "tts_google", "All TTS engines failed");
+      if (cloudResult.ok) {
+        // Cloud TTS LINEAR16 already returns a full WAV
+        wavFile = cloudResult.wavBytes;
+      } else {
+        // ── Step 3: Fallback to Lovable AI Gateway TTS ──
+        // Cloud TTS can be permanently unavailable (API not enabled on the
+        // Google project), so a third, independently-keyed engine keeps voice
+        // output working during Gemini outages.
+        console.warn(`[TTS] Cloud TTS failed: ${cloudResult.error}. Trying Lovable AI TTS...`);
+        const lovableResult = await tryLovableTts(text, voiceName);
 
-        console.error(`[TTS] All engines failed. Gemini: ${geminiResult.error}. Cloud: ${cloudResult.error}`);
-        return new Response(
-          JSON.stringify({
-            error: "TTS generation failed — all engines exhausted",
-            details: { gemini: geminiResult.error, cloudTts: cloudResult.error },
-          }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        if (!lovableResult.ok) {
+          // Refund tokens — all engines failed
+          await refundTokens(supabase, user.id, tokenCost, "tts_google", "All TTS engines failed");
+
+          console.error(
+            `[TTS] All engines failed. Gemini: ${geminiResult.error}. Cloud: ${cloudResult.error}. Lovable: ${lovableResult.error}`,
+          );
+          return new Response(
+            JSON.stringify({
+              error: "TTS generation failed — all engines exhausted",
+              details: {
+                gemini: geminiResult.error,
+                cloudTts: cloudResult.error,
+                lovable: lovableResult.error,
+              },
+            }),
+            { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        wavFile = lovableResult.wavBytes;
       }
-
-      // Cloud TTS LINEAR16 already returns a full WAV
-      wavFile = cloudResult.wavBytes;
     }
+
 
     // Update legacy usage counter (backward compat analytics)
     supabase
