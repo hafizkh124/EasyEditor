@@ -24,7 +24,7 @@ type OAuthApi = {
 };
 
 export function getSupabaseOauth(): OAuthApi {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const api = (supabase.auth as any).oauth as OAuthApi | undefined;
   if (!api) {
     throw new Error(

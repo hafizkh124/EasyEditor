@@ -64,7 +64,7 @@ export function useSessionHistory(section: SessionSection) {
           setItems([]);
           return;
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const rows = (data ?? []) as any[];
         setItems(rows.map((r) => ({
           id:         r.id,

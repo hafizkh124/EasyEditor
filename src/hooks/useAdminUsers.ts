@@ -62,9 +62,14 @@ export function useAdminUsers(enabled: boolean) {
     setLoading(false);
   }, [t]);
 
+  // `pagination.page` / `pagination.pageSize` rather than `pagination`: the
+  // fetch writes `totalCount` back into that same object (above), so depending
+  // on the whole thing is an infinite loop — fetch, set totalCount, new object,
+  // fetch. `fetchUsers` is memoised on [t] and safe to depend on.
   useEffect(() => {
     if (enabled) fetchUsers(filters, pagination);
-  }, [enabled, filters, pagination.page, pagination.pageSize]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, filters, pagination.page, pagination.pageSize, fetchUsers]);
 
   const refetch = () => fetchUsers(filters, pagination);
 

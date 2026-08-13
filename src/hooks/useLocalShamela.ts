@@ -127,9 +127,12 @@ export function useLocalShamela() {
     }
   }, [mcpUrl]);
 
+  // `testConnection` is memoised on [mcpUrl], so this reads as "probe on mount,
+  // and again if the bridge URL changes" — which is the intent. It cannot loop:
+  // nothing calls `setMcpUrl`, so the URL only ever comes from localStorage.
   useEffect(() => {
     testConnection();
-  }, []);
+  }, [testConnection]);
 
   const setMcpUrl = (url: string) => setMcpUrlState(url);
 

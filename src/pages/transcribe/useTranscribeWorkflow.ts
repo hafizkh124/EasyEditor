@@ -195,7 +195,12 @@ export function useTranscribeWorkflow() {
       setIsUploading(false);
       resetProgress();
     }
-  }, [sttLanguage, limitReached, t, transcript, persistTranscript, resetProgress]);
+    // `sttRoute` is resolved asynchronously on mount, so it MUST be a
+    // dependency: without it this callback keeps the initial "cloud" value and
+    // a desktop user with a downloaded Whisper model is silently routed to the
+    // cloud — billed for a transcription that FR-6.2/FR-6.8 promise is free
+    // and offline. Nothing else in this list changes when the route resolves.
+  }, [sttLanguage, sttRoute, limitReached, t, transcript, persistTranscript, resetProgress]);
 
   const startRecording = useCallback(async () => {
     if (limitReached) {
@@ -250,7 +255,9 @@ export function useTranscribeWorkflow() {
     } catch {
       toast.error("Microphone access denied");
     }
-  }, [sttLanguage, limitReached, t, transcript]);
+    // Same reasoning as the upload handler: `persistTranscript` closes over
+    // `originalText`, so leaving it out saves the session with a stale value.
+  }, [sttLanguage, limitReached, t, transcript, persistTranscript]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {

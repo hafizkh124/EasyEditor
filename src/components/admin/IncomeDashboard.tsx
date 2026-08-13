@@ -29,8 +29,13 @@ const IncomeDashboard = () => {
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
 
+  // Load once with the default (unbounded) range. Changing the dates must NOT
+  // refetch on its own — these are free-text date inputs, so a dependency here
+  // would fire a query per keystroke. `handleRefresh` below is the deliberate
+  // trigger.
   useEffect(() => {
     fetchIncomeSummary(dateFrom || null, dateTo || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRefresh = () =>

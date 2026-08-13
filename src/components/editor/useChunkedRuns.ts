@@ -180,7 +180,7 @@ export function useChunkedRuns({
         setAiBusy(null);
       }
     },
-    [editor, accessToken, documentId, availableTokens, emitChange, t],
+    [editor, accessToken, documentId, availableTokens, emitChange, t, setAiBusy],
   );
 
   const confirmChunkedRun = useCallback(() => {

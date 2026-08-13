@@ -60,7 +60,7 @@ export function useAutoFormat({
       totalCost: plan.batches.reduce((sum, b) => sum + calculateTaskCost(task, b.charCount), 0),
     });
     return true;
-  }, [editor, aiReview]);
+  }, [editor, aiReview, setPendingChunkedRun]);
 
   const handleAutoFormat = useCallback(async () => {
     if (!editor) return;
@@ -95,7 +95,7 @@ export function useAutoFormat({
     } finally {
       setAiBusy(null);
     }
-  }, [editor, accessToken, emitChange, t, documentId, availableTokens, handleAutoFormatChunked]);
+  }, [editor, accessToken, emitChange, t, documentId, availableTokens, handleAutoFormatChunked, setAiBusy]);
 
   return { handleAutoFormat };
 }

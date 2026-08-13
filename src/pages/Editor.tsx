@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   FileText, Download, Copy, ArrowLeft, ChevronDown, FileType, FileCode, File,
@@ -38,7 +38,9 @@ const Editor = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { documentId } = useParams<{ documentId?: string }>();
-  const state = (location.state as EditorLocationState) ?? {};
+  // `?? {}` would be a new object on every render, and this feeds the redirect
+  // effect's dependency list — so the redirect fired on every render.
+  const state = useMemo(() => (location.state as EditorLocationState) ?? {}, [location.state]);
 
   // When the workspace shell is on, this page is only a redirect stub — the
   // handoff state travels with it and is consumed by /workspace.

@@ -226,6 +226,7 @@ export function useEditorAiActions({
       editor, accessToken, getSelectionOrAll, applyTextResult, emitChange, t,
       aiReview, applyAsSuggestion, trackMode, onSetTrackMode,
       documentId, availableTokens,
+      preRunDocRef, setLastRun, setPendingChunkedRun,
     ],
   );
 

@@ -16,7 +16,7 @@ type ResearchSessionRow = {
 // `research_sessions` may not be present in generated Supabase types if the
 // migration has not been applied to this environment. These helpers isolate
 // the untyped access to a single spot.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const fromSessions = () => (supabase.from as any)("research_sessions");
 
 export async function upsertResearchSession(params: {
@@ -89,7 +89,7 @@ export async function listResearchSessions(
     .order("updated_at", { ascending: false })
     .limit(limit);
   if (error || !data) return [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return (data as any[]).map((row) => ({
     id:            row.id,
     title:         row.title ?? "Untitled",
@@ -123,7 +123,7 @@ export async function incrementQueryCount(
   rpc: IncrementRpc,
   userId: string,
 ): Promise<boolean> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { error } = await (supabase.rpc as any)(rpc, { p_user_id: userId });
   return !error;
 }
