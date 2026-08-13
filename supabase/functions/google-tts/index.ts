@@ -174,6 +174,47 @@ async function tryGoogleCloudTts(
   }
 }
 
+/** Last-resort fallback: Lovable AI Gateway TTS (Gemini voices, separate key
+ *  and billing path) → returns a complete WAV file. */
+async function tryLovableTts(
+  text: string,
+  voiceName: string,
+): Promise<{ ok: true; wavBytes: Uint8Array } | { ok: false; error: string }> {
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!lovableKey) return { ok: false, error: "LOVABLE_API_KEY not configured" };
+
+  try {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/audio/speech", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-tts",
+        contents: [{ role: "user", parts: [{ text }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
+        },
+      }),
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => "");
+      console.error(`[TTS] Lovable TTS error ${resp.status}:`, errText.slice(0, 300));
+      return { ok: false, error: `Lovable TTS error ${resp.status}: ${errText.slice(0, 200)}` };
+    }
+
+    const bytes = new Uint8Array(await resp.arrayBuffer());
+    if (bytes.length === 0) return { ok: false, error: "Lovable TTS returned empty audio" };
+
+    console.log("[TTS] Lovable AI TTS succeeded");
+    return { ok: true, wavBytes: bytes };
+  } catch (err) {
+    console.error("[TTS] Lovable TTS network error:", err);
+    return { ok: false, error: `Lovable TTS network error: ${String(err)}` };
+  }
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -247,23 +288,41 @@ Deno.serve(async (req) => {
       console.warn(`[TTS] Gemini failed: ${geminiResult.error}. Trying Cloud TTS...`);
       const cloudResult = await tryGoogleCloudTts(text, pid, apiKey);
 
-      if (!cloudResult.ok) {
-        // Refund tokens — both engines failed
-        await refundTokens(supabase, user.id, tokenCost, "tts_google", "All TTS engines failed");
+      if (cloudResult.ok) {
+        // Cloud TTS LINEAR16 already returns a full WAV
+        wavFile = cloudResult.wavBytes;
+      } else {
+        // ── Step 3: Fallback to Lovable AI Gateway TTS ──
+        // Cloud TTS can be permanently unavailable (API not enabled on the
+        // Google project), so a third, independently-keyed engine keeps voice
+        // output working during Gemini outages.
+        console.warn(`[TTS] Cloud TTS failed: ${cloudResult.error}. Trying Lovable AI TTS...`);
+        const lovableResult = await tryLovableTts(text, voiceName);
 
-        console.error(`[TTS] All engines failed. Gemini: ${geminiResult.error}. Cloud: ${cloudResult.error}`);
-        return new Response(
-          JSON.stringify({
-            error: "TTS generation failed — all engines exhausted",
-            details: { gemini: geminiResult.error, cloudTts: cloudResult.error },
-          }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        if (!lovableResult.ok) {
+          // Refund tokens — all engines failed
+          await refundTokens(supabase, user.id, tokenCost, "tts_google", "All TTS engines failed");
+
+          console.error(
+            `[TTS] All engines failed. Gemini: ${geminiResult.error}. Cloud: ${cloudResult.error}. Lovable: ${lovableResult.error}`,
+          );
+          return new Response(
+            JSON.stringify({
+              error: "TTS generation failed — all engines exhausted",
+              details: {
+                gemini: geminiResult.error,
+                cloudTts: cloudResult.error,
+                lovable: lovableResult.error,
+              },
+            }),
+            { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        wavFile = lovableResult.wavBytes;
       }
-
-      // Cloud TTS LINEAR16 already returns a full WAV
-      wavFile = cloudResult.wavBytes;
     }
+
 
     // Update legacy usage counter (backward compat analytics)
     supabase
