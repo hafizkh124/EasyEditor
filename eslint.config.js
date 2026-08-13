@@ -163,6 +163,9 @@ export default tseslint.config(
       //    Those tables exist only in the hosted database, so a local
       //    backend has nothing to migrate — see bookSectionMigration.ts. ────
       "src/core/workspace/bookSectionMigration.ts",
+      // ── Orchestrates the above across every legacy project the signed-in
+      //    user still has. Same hosted-only tables, same reasoning. ─────────
+      "src/core/workspace/legacyMigration.ts",
       // ── Book Studio / Translation Projects. Previously recorded here as a
       //    "KNOWN PENDING LEAK": both insert into book_sections /
       //    translation_chunks directly, so on desktop they rendered and then

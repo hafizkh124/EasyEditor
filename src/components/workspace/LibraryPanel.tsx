@@ -26,6 +26,7 @@ import { SearchTab } from "./SearchTab";
 import { FavoritesTab } from "./FavoritesTab";
 import type { Document, ProjectKind } from "@/core/workspace/types";
 import { availableCapabilities } from "@/core/capabilities/registry";
+import { LegacyImportBanner } from "./LegacyImportBanner";
 
 interface LibraryPanelProps {
   /** Inside the mobile drawer the icon-rail state makes no sense — stay open. */
@@ -240,6 +241,9 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
 
         <TabsContent value="documents" className="flex-1 min-h-0 m-0">
           <ScrollArea className="h-full">
+            {/* Renders only while the user still has Book Studio / Translation
+                Projects data to bring across; see LegacyImportBanner. */}
+            <LegacyImportBanner />
             <div className="p-2 space-y-3">
               <LibraryDocumentTree
                 projects={projects}
