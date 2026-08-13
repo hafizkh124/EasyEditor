@@ -166,15 +166,14 @@ export default tseslint.config(
       // ── Orchestrates the above across every legacy project the signed-in
       //    user still has. Same hosted-only tables, same reasoning. ─────────
       "src/core/workspace/legacyMigration.ts",
-      // ── Book Studio / Translation Projects. Previously recorded here as a
-      //    "KNOWN PENDING LEAK": both insert into book_sections /
-      //    translation_chunks directly, so on desktop they rendered and then
-      //    failed on save. Resolved by declaring what they are rather than
-      //    porting them — both are registered `desktop: never` in
-      //    core/capabilities/registry.ts and their routes are wrapped in
-      //    CapabilityRoute, so the desktop build cannot reach them at all.
-      //    Same standing as OCR.tsx and ExtractPanel.tsx above. ──────────────
-      "src/pages/BookWorkspace.tsx",
+      // ── Translation Projects. Recorded here for years as a "KNOWN PENDING
+      //    LEAK": it inserts into translation_chunks directly, so on desktop it
+      //    rendered and then failed on save. Its standalone route is gone, but
+      //    the component itself is NOT dead — CanvasPanel renders it embedded
+      //    when a translation project is open, so the exemption stays. The
+      //    chunks are a hosted-only table; `legacyMigration.ts` is the path out
+      //    of them. (Book Studio, which sat here too, was deleted outright —
+      //    it had no such second life.) ────────────────────────────────────
       "src/pages/TranslationWorkspace.tsx",
 
       // Tests exercise the real Supabase client/mocks directly and are never

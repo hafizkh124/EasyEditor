@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, PackageOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { isCapabilityAvailable } from "@/core/capabilities/registry";
+import { isDesktop } from "@/utils/environment";
 import { countPendingLegacyData, migrateLegacyWorkspaces } from "@/core/workspace/legacyMigration";
 
 /**
@@ -22,8 +22,11 @@ export const LegacyImportBanner = () => {
   const [pending, setPending] = useState<{ books: number; translations: number } | null>(null);
   const [running, setRunning] = useState(false);
 
-  // Both legacy surfaces are hosted-only; a desktop build has nothing to move.
-  const relevant = isCapabilityAvailable("book-workspace") || isCapabilityAvailable("translate-workspace");
+  // `book_projects` and `translation_projects` exist only in the hosted
+  // database, so a desktop build has nothing to move. (This used to ask the
+  // capability registry, but those two entries went with the pages they
+  // described — the data they held outlives the UI that wrote it.)
+  const relevant = !isDesktop();
 
   useEffect(() => {
     if (!relevant) return;
