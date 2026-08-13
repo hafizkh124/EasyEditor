@@ -1,9 +1,31 @@
+export interface PaymentAccountRow {
+  labelKey: string;
+  value: string;
+  mono?: boolean;
+  small?: boolean;
+  /**
+   * Dialable form of `value`, digits only. Present makes the row a phone: the
+   * pricing dialog turns it into a `tel:` link, and `whatsapp` adds a chat link.
+   */
+  tel?: string;
+  whatsapp?: string;
+}
+
 export interface PaymentAccount {
   methodKey: string;
   title: string;
-  rows: { labelKey: string; value: string; mono?: boolean; small?: boolean }[];
+  rows: PaymentAccountRow[];
 }
 
+/**
+ * The one place account details live.
+ *
+ * They were previously duplicated: PendingApproval rendered this list while
+ * Pricing hardcoded the same four accounts in its dialog's JSX. Two copies of a
+ * bank account number is not a formatting problem — change an account in one
+ * place and the other screen keeps quietly showing the old one, and a user
+ * sends money to it. Both screens now read from here and keep their own layout.
+ */
 export const PAYMENT_ACCOUNTS: PaymentAccount[] = [
   {
     methodKey: "pricing.payment_method_nbp",
@@ -21,12 +43,21 @@ export const PAYMENT_ACCOUNTS: PaymentAccount[] = [
   {
     methodKey: "pricing.payment_method_jazzcash_personal",
     title: "Hafiz Khizar Hayat",
-    rows: [{ labelKey: "pricing.payment_number", value: "0308 4164816", mono: true }],
+    rows: [
+      {
+        labelKey: "pricing.payment_number",
+        value: "0308 4164816",
+        mono: true,
+        tel: "03084164816",
+        whatsapp: "923084164816",
+      },
+    ],
   },
   {
     methodKey: "pricing.payment_method_easypaisa_personal",
     title: "Hafiz Khizar Hayat",
-    rows: [{ labelKey: "pricing.payment_number", value: "0308 4164816", mono: true }],
+    // EasyPaisa has no WhatsApp channel — same number, dialable only.
+    rows: [{ labelKey: "pricing.payment_number", value: "0308 4164816", mono: true, tel: "03084164816" }],
   },
 ];
 
