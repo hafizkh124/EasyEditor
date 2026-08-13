@@ -48,7 +48,6 @@ export type Surface =
 export type CapabilityId =
   | "workspace" | "transcribe" | "ocr" | "speak" | "extract" | "translate"
   | "research" | "settings" | "dashboard" | "profile" | "admin"
-  | "book-workspace" | "translate-workspace"
   | "voice.cloning" | "tokens.meter"
   | "wb.aiReader" | "wb.research" | "wb.translate" | "wb.extract" | "wb.notes";
 
@@ -142,26 +141,6 @@ export const CAPABILITIES: readonly Capability[] = [
     icon: Shield,
     runtimes: { web: ALWAYS, desktop: { on: "never", reason: "The admin console administers cloud accounts." } },
     surfaces: ["sidebar"],
-  },
-
-  /**
-   * Routed but not linked from anywhere — reachable only by typing the URL.
-   * Both write straight to hosted tables (`book_sections`, `translation_chunks`),
-   * which is the "KNOWN PENDING LEAK" recorded in eslint.config.js: on desktop
-   * they rendered and then failed on save. They are cloud features, so the
-   * honest fix is to say so rather than port them to the local backend.
-   */
-  {
-    id: "book-workspace", route: "/book-workspace", labelKey: "nav.book_workspace", fallbackLabel: "بک اسٹوڈیو",
-    icon: BookOpen,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Book Studio stores sections in the hosted book_sections table." } },
-    surfaces: [],
-  },
-  {
-    id: "translate-workspace", route: "/translate-workspace", labelKey: "nav.translate_workspace", fallbackLabel: "ترجمہ پروجیکٹس",
-    icon: Languages,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Translation Projects store chunks in the hosted translation_chunks table." } },
-    surfaces: [],
   },
 
   // Cloud-only halves of otherwise-local features. No route and no nav surface:

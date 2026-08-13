@@ -41,8 +41,6 @@ const Editor = lazy(() => import("./pages/Editor"));
 const Workspace = lazy(() => import("./pages/Workspace"));
 const OcrReview = lazy(() => import("./pages/OcrReview"));
 const Translate = lazy(() => import("./pages/Translate"));
-const TranslationWorkspace = lazy(() => import("./pages/TranslationWorkspace"));
-const BookWorkspace = lazy(() => import("./pages/BookWorkspace"));
 const Extract = lazy(() => import("./pages/Extract"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
@@ -154,8 +152,13 @@ const App = () => (
                   <Route path="/editor/:documentId" element={<ProtectedRoute><ErrorBoundary><Editor /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/ocr/review" element={<ProtectedRoute><ErrorBoundary><OcrReview /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/translate" element={<CapabilityRoute id="translate"><ProtectedRoute><ErrorBoundary><Translate /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
-                  <Route path="/translate-workspace" element={<CapabilityRoute id="translate-workspace"><ProtectedRoute><ErrorBoundary><TranslationWorkspace /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
-                  <Route path="/book-workspace" element={<CapabilityRoute id="book-workspace"><ProtectedRoute><ErrorBoundary><BookWorkspace /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  {/* /book-workspace and /translate-workspace are gone. Both
+                      predated the three-pillar workspace, which supports
+                      `kind: "book"` and `kind: "translation"` natively, and
+                      neither was linked from any menu. TranslationWorkspace
+                      itself lives on: CanvasPanel renders it embedded when a
+                      translation project is open. Book Studio had no such
+                      second life and was deleted with its components. */}
                   <Route path="/extract" element={<CapabilityRoute id="extract"><ProtectedRoute><ErrorBoundary><Extract /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
                   {/* allowGuest: the desktop sidebar links here, and Settings is where the
                       desktop-local panels live (BYOK key, voice engines). Settings.tsx already
