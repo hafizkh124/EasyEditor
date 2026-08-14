@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { recipeService, type Recipe } from "@/lib/recipes/recipeService";
 import { RecipeRunProgress } from "./RecipeRunProgress";
+import { EmptyState } from "./EmptyState";
 import {
   runRecipePipeline,
   calculateRecipeCost,
@@ -24,8 +25,10 @@ import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { documentService, extractPlainTextFromJSON } from "@/core/workspace/documentService";
 import { toast } from "sonner";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const RecipesTab: React.FC = () => {
+  const { t } = useLanguage();
   const { total } = useTokenBalance();
   const workspace = useOptionalWorkspace();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -120,11 +123,11 @@ export const RecipesTab: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background p-2" dir="rtl">
+    <div className="flex flex-col h-full bg-background p-3">
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
         <div className="flex items-center gap-1.5 font-semibold text-xs text-primary">
           <ChefHat className="h-4 w-4" />
-          <span>خودکار پیپ لائنز (Recipes)</span>
+          <span>{t("library.recipes_title", "Automated pipelines (Recipes)")}</span>
         </div>
       </div>
 
@@ -132,13 +135,14 @@ export const RecipesTab: React.FC = () => {
         {loading ? (
           <div className="p-4 text-xs text-muted-foreground text-center py-8">
             <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1 text-primary" />
-            پیپ لائنز لوڈ ہو رہی ہیں…
+            {t("library.recipes_loading", "Loading pipelines…")}
           </div>
         ) : recipes.length === 0 ? (
-          <div className="p-3 text-xs text-muted-foreground text-center py-8 space-y-2">
-            <ChefHat className="h-8 w-8 mx-auto opacity-40 text-primary" />
-            <p className="font-semibold text-foreground text-xs">کوئی ریسیپی دستیاب نہیں</p>
-          </div>
+          <EmptyState
+            icon={ChefHat}
+            title={t("library.no_recipes", "No recipes available")}
+            description={t("library.no_recipes_hint", "Recipes run a fixed set of AI steps over the open document — check that the recipes feature is enabled.")}
+          />
         ) : (
           <div className="space-y-2">
             {recipes.map((item) => {
@@ -166,8 +170,8 @@ export const RecipesTab: React.FC = () => {
                       className="h-7 px-2.5 text-xs gap-1 bg-primary shrink-0"
                       onClick={() => handleOpenRunDialog(item)}
                     >
-                      <Play className="h-3 w-3 fill-current" />
-                      چلائیں
+                      <Play className="h-3.5 w-3.5 fill-current" />
+                      {t("library.run_recipe", "Run")}
                     </Button>
                   </div>
 
@@ -180,8 +184,8 @@ export const RecipesTab: React.FC = () => {
                       ))}
                     </div>
                     <span className="font-medium text-primary flex items-center gap-0.5">
-                      <Coins className="h-3 w-3" />
-                      ~{estimatedCost} ٹوکن
+                      <Coins className="h-3.5 w-3.5" />
+                      ~{t("library.tokens", "{count} tokens").replace("{count}", String(estimatedCost))}
                     </span>
                   </div>
                 </div>
@@ -193,21 +197,21 @@ export const RecipesTab: React.FC = () => {
 
       {/* Pre-flight Solvency Run Dialog */}
       <Dialog open={selectedRecipe !== null} onOpenChange={(open) => !open && !isRunning && setSelectedRecipe(null)}>
-        <DialogContent className="max-w-md" dir="rtl">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base text-primary">
               <ChefHat className="h-5 w-5" />
               {selectedRecipe?.title}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              یہ خودکار پیپ لائن ذیل کے تمام مراحل پر ترتیب سے کام کرے گی۔
+              {t("library.recipe_dialog_desc", "This automated pipeline will run through all the steps below in order.")}
             </DialogDescription>
           </DialogHeader>
 
           {selectedRecipe && (
             <div className="space-y-3 py-1 text-xs">
               <div className="p-3 bg-muted rounded-lg border space-y-1.5">
-                <h4 className="font-semibold text-foreground text-xs">مراحل کی فہرست:</h4>
+                <h4 className="font-semibold text-foreground text-xs">{t("library.steps_heading", "Steps:")}</h4>
                 <div className="space-y-1">
                   {selectedRecipe.steps.map((s, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -220,17 +224,17 @@ export const RecipesTab: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
-                  <span className="text-muted-foreground">تخمینی کل لاگت:</span>
+                  <span className="text-muted-foreground">{t("library.est_total_cost", "Estimated total cost:")}</span>
                   <span className="font-bold text-primary flex items-center gap-1">
                     <Coins className="h-3.5 w-3.5" />
-                    {calculateRecipeCost(selectedRecipe, docText.length)} ٹوکن
+                    {t("library.tokens", "{count} tokens").replace("{count}", String(calculateRecipeCost(selectedRecipe, docText.length)))}
                   </span>
                 </div>
 
                 {total !== undefined && total < calculateRecipeCost(selectedRecipe, docText.length) && (
                   <div className="flex items-center gap-1.5 text-destructive text-xs font-medium pt-1">
                     <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                    <span>ٹوکن ناکافی ہیں! بیلنس: {total}</span>
+                    <span>{t("library.insufficient_tokens", "Insufficient tokens! Balance: {balance}").replace("{balance}", String(total))}</span>
                   </div>
                 )}
               </div>
@@ -244,7 +248,7 @@ export const RecipesTab: React.FC = () => {
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" size="sm" onClick={() => setSelectedRecipe(null)} disabled={isRunning}>
-              منسوخ کریں
+              {t("common.cancel", "Cancel")}
             </Button>
             <Button
               size="sm"
@@ -258,7 +262,7 @@ export const RecipesTab: React.FC = () => {
               className="gap-1.5 bg-primary hover:bg-primary/90"
             >
               {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-current" />}
-              پیپ لائن شروع کریں
+              {t("library.start_pipeline", "Start pipeline")}
             </Button>
           </DialogFooter>
         </DialogContent>

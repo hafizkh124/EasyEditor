@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate, useLocation } from "react-rout
 import { toast } from "sonner";
 import { WorkspaceProvider } from "@/core/workspace/WorkspaceContext";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
+import { isWorkbenchTab } from "@/core/workspace/usePanelState";
 import { documentService } from "@/core/workspace/documentService";
 import { htmlToTiptapJSON } from "@/core/workspace/bookSectionMigration";
 import { useSeo } from "@/hooks/useSeo";
@@ -28,7 +29,11 @@ const WorkspacePage: React.FC = () => {
   const handoffContent = handoff.content;
   const handoffSource = handoff.source;
 
-  const openWorkbenchFromUrl = searchParams.get("panel") === "research";
+  // Generalized so /translate and /extract (UX-v1 P3) can redirect here with
+  // their own tab preselected, the same way /research already did.
+  const panelParam = searchParams.get("panel");
+  const workbenchTabFromUrl = isWorkbenchTab(panelParam) ? panelParam : undefined;
+  const openWorkbenchFromUrl = workbenchTabFromUrl !== undefined;
 
   useSeo({
     title: "Workspace — Easy Editor",
@@ -49,7 +54,7 @@ const WorkspacePage: React.FC = () => {
         try {
           const projects = await documentService.listProjects();
           const proj = projects[0] ?? (await documentService.createProject("General Workspace", "general"));
-          const panelQuery = openWorkbenchFromUrl ? "?panel=research" : "";
+          const panelQuery = workbenchTabFromUrl ? `?panel=${workbenchTabFromUrl}` : "";
 
           const titleKey =
             handoffSource === "research" ? "editor.from_research" :
@@ -73,12 +78,13 @@ const WorkspacePage: React.FC = () => {
 
       resolveDocument();
     }
-  }, [documentId, navigate, openWorkbenchFromUrl, t, handoffContent, handoffSource]);
+  }, [documentId, navigate, workbenchTabFromUrl, t, handoffContent, handoffSource]);
 
   return (
     <WorkspaceProvider
       documentId={documentId}
       initialWorkbenchOpenFromUrl={openWorkbenchFromUrl}
+      initialWorkbenchTab={workbenchTabFromUrl}
     >
       <WorkspaceLayout />
     </WorkspaceProvider>

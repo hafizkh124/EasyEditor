@@ -81,7 +81,7 @@ export const ReaderSettings: React.FC<ReaderSettingsProps> = ({ reader, triggerC
                   style={{ fontFamily: f.family }}
                   title={f.label}
                 >
-                  {settings.fontId === f.id ? <Type className="h-3 w-3 shrink-0" /> : null}
+                  {settings.fontId === f.id ? <Type className="h-3.5 w-3.5 shrink-0" /> : null}
                   <span className="truncate">{f.label}</span>
                 </button>
               ))}
@@ -104,7 +104,7 @@ export const ReaderSettings: React.FC<ReaderSettingsProps> = ({ reader, triggerC
                   title={t("reader.settings.smaller")}
                   aria-label={t("reader.settings.smaller")}
                 >
-                  <Minus className="h-3 w-3" />
+                  <Minus className="h-3.5 w-3.5" />
                 </Button>
                 <span className="text-center text-xs tabular-nums">{settings.fontSize} {t("reader.settings.pixels")}</span>
                 <Button
@@ -116,7 +116,7 @@ export const ReaderSettings: React.FC<ReaderSettingsProps> = ({ reader, triggerC
                   title={t("reader.settings.larger")}
                   aria-label={t("reader.settings.larger")}
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
@@ -179,7 +179,7 @@ export const ReaderSettings: React.FC<ReaderSettingsProps> = ({ reader, triggerC
                       )}
                       style={palette ? { backgroundColor: palette.bg, color: palette.fg } : undefined}
                     >
-                      {theme === "auto" ? <Monitor className="h-3 w-3" /> : theme === "dark" ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
+                      {theme === "auto" ? <Monitor className="h-3.5 w-3.5" /> : theme === "dark" ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
                     </span>
                     <span>{t(THEME_LABEL_KEYS[theme] as import("@/lib/i18n").TranslationKey)}</span>
                   </button>
@@ -208,11 +208,11 @@ export const ReaderSettings: React.FC<ReaderSettingsProps> = ({ reader, triggerC
                   )}
                 >
                   {dir === "auto" ? (
-                    <ScanText className="h-3 w-3 shrink-0" />
+                    <ScanText className="h-3.5 w-3.5 shrink-0" />
                   ) : dir === "rtl" ? (
-                    <AlignRight className="h-3 w-3 shrink-0" />
+                    <AlignRight className="h-3.5 w-3.5 shrink-0" />
                   ) : (
-                    <AlignLeft className="h-3 w-3 shrink-0" />
+                    <AlignLeft className="h-3.5 w-3.5 shrink-0" />
                   )}
                   {t(DIRECTION_LABEL_KEYS[dir] as import("@/lib/i18n").TranslationKey)}
                 </button>

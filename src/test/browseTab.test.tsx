@@ -42,21 +42,33 @@ function installBridge(overrides: Partial<ShamelaApi> = {}) {
     booksByPeriod: vi.fn().mockResolvedValue([{ id: 303, title: "كتاب القرن", author: "مؤلف" }]),
     ...overrides,
   };
-  (window as unknown as { electronAPI?: unknown }).electronAPI = { shamela: api };
+  // `isDesktop: true` is what shamelaClient (UX-v1 P7) actually keys transport
+  // selection on now, not merely the presence of `window.electronAPI` — a
+  // plain web browser can have neither and still reach a bridge companion.
+  (window as unknown as { electronAPI?: unknown }).electronAPI = { isDesktop: true, shamela: api };
   return api;
 }
 
 afterEach(() => {
   delete (window as unknown as { electronAPI?: unknown }).electronAPI;
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("BrowseTab — catalogue browsing state machine", () => {
   describe("detection", () => {
     it("reports the missing bridge instead of rendering an empty catalogue", async () => {
+      // No electronAPI at all → isDesktop() is false → shamelaClient falls
+      // through to the web/bridge transport, whose own detect() fails. Stub
+      // fetch rather than relying on nothing answering 127.0.0.1:8000 — a
+      // real companion may genuinely be running on the machine this suite
+      // executes on, which must not change the result.
       delete (window as unknown as { electronAPI?: unknown }).electronAPI;
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("ECONNREFUSED")));
       render(<BrowseTab />);
-      expect(await screen.findByText(/Native Shamela bridge is unavailable/i)).toBeInTheDocument();
+      expect(
+        await screen.findByText(/Shamela 4 catalogue is not available/i),
+      ).toBeInTheDocument();
     });
 
     it("reports Shamela not being installed", async () => {
@@ -88,7 +100,10 @@ describe("BrowseTab — catalogue browsing state machine", () => {
       render(<BrowseTab />);
       fireEvent.click(await screen.findByText("فقه"));
       expect(await screen.findByText("كتاب الفقه")).toBeInTheDocument();
-      expect(api.booksByCategory).toHaveBeenCalledWith(MASTER_DB, 1, expect.any(Number));
+      // shamelaClient's desktop transport forwards `offset` positionally even
+      // when the caller left it unset — harmless (the IPC layer treats it as
+      // optional) but a real 4th argument.
+      expect(api.booksByCategory).toHaveBeenCalledWith(MASTER_DB, 1, expect.any(Number), undefined);
     });
 
     it("clears the drilled-in book list when going back", async () => {
@@ -121,7 +136,7 @@ describe("BrowseTab — catalogue browsing state machine", () => {
       fireEvent.click(screen.getByText("Authors"));
 
       expect(await screen.findByText("ابن تيمية")).toBeInTheDocument();
-      expect(api.authors).toHaveBeenCalledWith(MASTER_DB, expect.any(Number));
+      expect(api.authors).toHaveBeenCalledWith(MASTER_DB, expect.any(Number), undefined);
       expect(api.searchAuthors).not.toHaveBeenCalled();
     });
 
@@ -134,7 +149,7 @@ describe("BrowseTab — catalogue browsing state machine", () => {
       fireEvent.change(screen.getByPlaceholderText("Search authors…"), { target: { value: "قيم" } });
 
       await waitFor(() =>
-        expect(api.searchAuthors).toHaveBeenCalledWith(MASTER_DB, "قيم", expect.any(Number)),
+        expect(api.searchAuthors).toHaveBeenCalledWith(MASTER_DB, "قيم", expect.any(Number), undefined),
       );
       expect(await screen.findByText("ابن القيم")).toBeInTheDocument();
     });
@@ -146,7 +161,7 @@ describe("BrowseTab — catalogue browsing state machine", () => {
 
       fireEvent.click(await screen.findByText("القرن السابع"));
       expect(await screen.findByText("كتاب القرن")).toBeInTheDocument();
-      expect(api.booksByPeriod).toHaveBeenCalledWith(MASTER_DB, 7, expect.any(Number));
+      expect(api.booksByPeriod).toHaveBeenCalledWith(MASTER_DB, 7, expect.any(Number), undefined);
     });
 
     it("keeps only one drill-down selection at a time", async () => {

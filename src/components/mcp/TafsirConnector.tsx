@@ -4,7 +4,7 @@ import { TafsirSearchDialog } from "@/components/tafsir/TafsirSearchDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import { Globe, HardDrive, AlertTriangle } from "lucide-react";
-import type { TafsirMode } from "@/lib/tafsir/tafsirService";
+import { hasTafsirNative, type TafsirMode } from "@/lib/tafsir/tafsirService";
 
 /**
  * Tafsir connector (SPEC-TAFSIR §FR-5.2, §FR-5.4):
@@ -16,6 +16,13 @@ import type { TafsirMode } from "@/lib/tafsir/tafsirService";
 export function TafsirConnector() {
   const [mode, setMode] = useState<TafsirMode>("remote");
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Every method in tafsirService routes through the main-process MCP client and
+  // throws "desktop only" without it (§FR-5.6 — the web adapter is still unbuilt).
+  // Rendering the panel anyway gave web users a connect form where every button
+  // threw, which SPEC-M5 FR-2.5 forbids: a feature that cannot work is absent,
+  // not broken. ByokKeyPanel gates itself the same way.
+  if (!hasTafsirNative()) return null;
 
   return (
     <>

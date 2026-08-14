@@ -1,10 +1,11 @@
 import React, { useMemo } from "react";
 import {
-  FolderTree, User, Clock, ChevronRight, ChevronLeft, Search, CalendarDays, BookMarked,
+  FolderTree, User, Clock, ChevronRight, ChevronLeft, Search, CalendarDays, BookMarked, BookOpen,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { EmptyState } from "./EmptyState";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BookCover } from "@/components/shamela/BookCover";
@@ -38,12 +39,12 @@ const alphaLetter = (alpha: number | null): string | null =>
     : null;
 
 export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }) => {
-  const { direction } = useLanguage();
+  const { t, direction } = useLanguage();
   const rtl = direction === "rtl";
   const BackIcon = rtl ? ChevronRight : ChevronLeft;
 
   const {
-    masterDbPath, detecting, error,
+    available, detecting, error,
     mode, setMode,
     categories, categoriesLoading,
     authors, authorsLoading, authorQuery, changeAuthorQuery,
@@ -64,12 +65,12 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goBackToBrowse} title="Back to browse">
+          <Button variant="ghost" size="icon" className="h-7 w-7 min-h-touch min-w-touch md:h-7 md:w-7 md:min-h-0 md:min-w-0" onClick={goBackToBrowse} title={t("library.back_to_browse", "Back to browse")}>
             <BackIcon className="h-4 w-4" />
           </Button>
           <p className="text-xs font-semibold truncate flex-1">{heading}</p>
           {books.length > 0 && (
-            <span className="text-xs text-muted-foreground">{books.length} books</span>
+            <span className="text-xs text-muted-foreground">{t("library.book_count", "{count} books").replace("{count}", String(books.length))}</span>
           )}
         </div>
 
@@ -83,14 +84,14 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
               <p className="text-sm font-semibold truncate leading-tight">{selectedAuthor.name}</p>
               <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <CalendarDays className="h-3 w-3" />
+                  <CalendarDays className="h-3.5 w-3.5" />
                   {selectedAuthor.deathNumber != null && selectedAuthor.deathNumber < 99999
-                    ? `ت ${selectedAuthor.deathNumber} هـ`
-                    : "وفات نامعلوم"}
+                    ? t("library.death_ah", "d. {year} AH").replace("{year}", String(selectedAuthor.deathNumber))
+                    : t("library.death_unknown", "Death date unknown")}
                 </span>
                 <span className="flex items-center gap-1">
-                  <BookMarked className="h-3 w-3" />
-                  {selectedAuthor.bookCount} book{selectedAuthor.bookCount === 1 ? "" : "s"}
+                  <BookMarked className="h-3.5 w-3.5" />
+                  {t("library.author_book_count", "{count} book(s)").replace("{count}", String(selectedAuthor.bookCount))}
                 </span>
               </div>
             </div>
@@ -99,14 +100,18 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
 
         <ScrollArea className="flex-1 min-h-0">
           {booksLoading ? (
-            <p className="p-3 text-xs text-muted-foreground">Loading books…</p>
+            <p className="p-3 text-xs text-muted-foreground">{t("library.loading_books", "Loading books…")}</p>
           ) : error ? (
             /* `error` is otherwise only rendered when the bridge is missing, so
                a catalogue read that failed here reported "No books found." — a
                user cannot tell an empty category from a locked database. */
             <p className="p-3 text-xs text-destructive">{error}</p>
           ) : books.length === 0 ? (
-            <p className="p-3 text-xs text-muted-foreground">No books found.</p>
+            <EmptyState
+              icon={BookOpen}
+              title={t("library.no_books", "No books found.")}
+              description={t("library.no_books_hint", "Try another category, author, or period.")}
+            />
           ) : (
             <div className="p-2 grid grid-cols-3 gap-2">
               {books.map((book) => (
@@ -120,7 +125,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
                   <div className="min-w-0 px-0.5">
                     <p className="text-xs font-medium leading-snug line-clamp-2">{book.title}</p>
                     {book.deathYear != null && book.deathYear < 99999 && (
-                      <p className="text-xs text-muted-foreground tabular-nums">{book.deathYear} هـ</p>
+                      <p className="text-xs text-muted-foreground tabular-nums">{t("library.death_ah", "d. {year} AH").replace("{year}", String(book.deathYear))}</p>
                     )}
                   </div>
                 </button>
@@ -138,9 +143,9 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
       <div className="px-2 pt-2 pb-1.5 border-b border-border">
         <div className="grid grid-cols-3 gap-1 rounded-md bg-muted p-0.5">
           {([
-            { id: "categories" as const, label: "Categories", icon: FolderTree },
-            { id: "authors" as const, label: "Authors", icon: User },
-            { id: "periods" as const, label: "Periods", icon: Clock },
+            { id: "categories" as const, label: t("library.categories_tab", "Categories"), icon: FolderTree },
+            { id: "authors" as const, label: t("library.authors_tab", "Authors"), icon: User },
+            { id: "periods" as const, label: t("library.periods_tab", "Periods"), icon: Clock },
           ]).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -153,25 +158,25 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <Icon className="h-3 w-3" />
+              <Icon className="h-3.5 w-3.5" />
               {label}
             </button>
           ))}
         </div>
       </div>
 
-      {error && !masterDbPath && (
+      {error && !available && (
         <div className="p-3 text-xs text-destructive">{error}</div>
       )}
 
       {detecting ? (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-xs text-muted-foreground">Detecting Shamela…</p>
+          <p className="text-xs text-muted-foreground">{t("library.detecting_shamela", "Detecting Shamela…")}</p>
         </div>
-      ) : !masterDbPath ? (
+      ) : !available ? (
         <div className="flex-1 flex items-center justify-center p-6 text-center">
           <p className="text-xs text-muted-foreground">
-            شاملہ ۴ کا کیٹلاگ دستیاب نہیں ہے۔ انسٹال شدہ شاملہ ۴ کا راستہ سیٹ کریں۔
+            {t("library.no_shamela", "The Shamela 4 catalogue is not available. Set the path to your installed Shamela 4.")}
           </p>
         </div>
       ) : (
@@ -179,7 +184,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
           {mode === "categories" && (
             <div className="p-2 space-y-1">
               {categoriesLoading ? (
-                <p className="p-3 text-xs text-muted-foreground">Loading categories…</p>
+                <p className="p-3 text-xs text-muted-foreground">{t("library.loading_categories", "Loading categories…")}</p>
               ) : (
                 categories.map((cat) => (
                   <button
@@ -194,7 +199,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
                     <span className="flex-1 min-w-0 text-right">
                       <span className="block text-xs font-medium truncate">{cat.name}</span>
                       <span className="block text-xs text-muted-foreground">
-                        {cat.bookCount.toLocaleString()} books
+                        {t("library.book_count", "{count} books").replace("{count}", cat.bookCount.toLocaleString())}
                       </span>
                     </span>
                     <BackIcon className="h-3.5 w-3.5 text-muted-foreground rotate-180 rtl:rotate-0" />
@@ -211,14 +216,18 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
                 <Input
                   value={authorQuery}
                   onChange={(e) => changeAuthorQuery(e.target.value)}
-                  placeholder="Search authors…"
+                  placeholder={t("library.search_authors", "Search authors…")}
                   className="h-8 text-xs pe-8"
                 />
               </div>
               {authorsLoading ? (
-                <p className="p-3 text-xs text-muted-foreground">Loading authors…</p>
+                <p className="p-3 text-xs text-muted-foreground">{t("library.loading_authors", "Loading authors…")}</p>
               ) : authors.length === 0 ? (
-                <p className="p-3 text-xs text-muted-foreground">No authors found.</p>
+                <EmptyState
+                  icon={User}
+                  title={t("library.no_authors", "No authors found.")}
+                  description={t("library.no_authors_hint", "Try another letter or search term.")}
+                />
               ) : (
                 <AuthorList authors={authors} flat={authorQuery.trim().length > 0} onOpen={openAuthor} />
               )}
@@ -228,7 +237,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
           {mode === "periods" && (
             <div className="p-2 space-y-1">
               {periodsLoading ? (
-                <p className="p-3 text-xs text-muted-foreground">Loading periods…</p>
+                <p className="p-3 text-xs text-muted-foreground">{t("library.loading_periods", "Loading periods…")}</p>
               ) : (
                 periods.map((period) => (
                   <button
@@ -243,7 +252,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
                     <span className="flex-1 min-w-0 text-right">
                       <span className="block text-xs font-medium truncate">{period.label}</span>
                       <span className="block text-xs text-muted-foreground">
-                        {period.bookCount.toLocaleString()} books
+                        {t("library.book_count", "{count} books").replace("{count}", period.bookCount.toLocaleString())}
                       </span>
                     </span>
                     <BackIcon className="h-3.5 w-3.5 text-muted-foreground rotate-180 rtl:rotate-0" />
@@ -268,7 +277,7 @@ const AuthorList: React.FC<{
   flat?: boolean;
   onOpen: (author: CatalogueAuthor) => void;
 }> = ({ authors, flat = false, onOpen }) => {
-  const { direction } = useLanguage();
+  const { t, direction } = useLanguage();
   const rtl = direction === "rtl";
   const ChevronIcon = rtl ? ChevronLeft : ChevronRight;
 
@@ -291,7 +300,7 @@ const AuthorList: React.FC<{
             <span className="h-4 w-4 rounded bg-primary/15 text-primary text-xs flex items-center justify-center">
               {letter}
             </span>
-            {list.length} author{list.length === 1 ? "" : "s"}
+            {t("library.author_count_group", "{count} author(s)").replace("{count}", String(list.length))}
           </p>
           <div className="space-y-0.5">
             {list.map((author) => (
@@ -308,9 +317,9 @@ const AuthorList: React.FC<{
                   <span className="block text-xs font-medium truncate">{author.name}</span>
                   <span className="block text-xs text-muted-foreground">
                     {author.deathNumber != null && author.deathNumber < 99999
-                      ? `ت ${author.deathNumber} هـ · `
+                      ? t("library.death_ah", "d. {year} AH").replace("{year}", String(author.deathNumber)) + " · "
                       : ""}
-                    {author.bookCount} book{author.bookCount === 1 ? "" : "s"}
+                    {t("library.author_book_count", "{count} book(s)").replace("{count}", String(author.bookCount))}
                   </span>
                 </span>
                 <ChevronIcon className="h-3.5 w-3.5 text-muted-foreground rotate-180 rtl:rotate-0" />

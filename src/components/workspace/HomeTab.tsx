@@ -6,13 +6,18 @@ import { getBackend } from "@/core/backend";
 import { StatsBar } from "./StatsBar";
 import { RecentBooksGrid } from "./RecentBooksGrid";
 import { CategoryGrid } from "./CategoryGrid";
+import { FirstRunHint } from "./FirstRunHint";
 import type { RecentItem } from "@/core/backend/types";
 import { logger } from "@/lib/logger";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const log = logger.child("HomeTab");
 
 interface HomeTabProps {
+  /** Omitted entirely (not just a no-op) when Shamela search isn't reachable —
+   *  the button hides itself rather than opening an always-empty tab. */
   onSearch?: () => void;
+  /** Omitted when no Shamela library is detected — same reasoning as onSearch. */
   onImport?: () => void;
   onOpenFile?: () => void;
   onSelectBook?: (itemId: string) => void;
@@ -37,6 +42,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   onOpenFile,
   onSelectBook,
 }) => {
+  const { t } = useLanguage();
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [shamelaStats, setShamelaStats] = useState<ShamelaStats | null>(null);
   const [categories, setCategories] = useState<ShamelaCategory[]>([]);
@@ -88,6 +94,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   return (
     <ScrollArea className="h-full">
       <div className="p-4 space-y-6">
+        {/* First-run hint — hides once the library has content (dismissed on use). */}
+        <FirstRunHint hidden={libraryCount > 0 || recentItems.length > 0 || loading} />
+
         {/* Stats Bar */}
         <StatsBar
           libraryCount={libraryCount}
@@ -113,27 +122,31 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         {/* Quick Actions */}
         <div className="space-y-2">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Quick Actions
+            {t("home.quick_actions", "Quick Actions")}
           </h3>
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onSearch}
-              className="gap-2"
-            >
-              <Search className="h-3.5 w-3.5" />
-              Search All Books
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onImport}
-              className="gap-2"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Import Books
-            </Button>
+            {onSearch && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onSearch}
+                className="gap-2"
+              >
+                <Search className="h-3.5 w-3.5" />
+                {t("home.search_all_books", "Search All Books")}
+              </Button>
+            )}
+            {onImport && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onImport}
+                className="gap-2"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                {t("home.import_books", "Import Books")}
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -141,7 +154,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
               className="gap-2"
             >
               <FolderOpen className="h-3.5 w-3.5" />
-              Open File
+              {t("common.open_file", "Open File")}
             </Button>
           </div>
         </div>
@@ -151,16 +164,24 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <BookOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-              Your Library is Empty
+              {t("home.library_empty", "Your Library is Empty")}
             </h3>
             <p className="text-sm text-muted-foreground/70 mb-4 max-w-xs">
-              Import books from Shamela or open files to start building your
-              library.
+              {onImport
+                ? t("home.library_empty_hint_import", "Import books from Shamela or open files to start building your library.")
+                : t("home.library_empty_hint", "Open a file to start building your library.")}
             </p>
-            <Button onClick={onImport} className="gap-2">
-              <Upload className="h-4 w-4" />
-              Import Your First Book
-            </Button>
+            {onImport ? (
+              <Button onClick={onImport} className="gap-2">
+                <Upload className="h-4 w-4" />
+                {t("home.import_first_book", "Import Your First Book")}
+              </Button>
+            ) : (
+              <Button onClick={onOpenFile} variant="outline" className="gap-2">
+                <FolderOpen className="h-4 w-4" />
+                {t("common.open_file", "Open File")}
+              </Button>
+            )}
           </div>
         )}
       </div>

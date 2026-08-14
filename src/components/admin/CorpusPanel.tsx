@@ -286,7 +286,7 @@ const CorpusPanel = () => {
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>{t("admin.cancel") || "Cancel"}</AlertDialogCancel>
+                  <AlertDialogCancel>{t("admin.cancel", "Cancel")}</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleResetQuotas}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

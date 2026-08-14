@@ -40,12 +40,12 @@ const UserFiltersComponent = ({ filters, onChange }: UserFiltersProps) => {
             className="h-7 text-xs"
           >
             {s === "all"
-              ? t("admin.filter_all") || "All"
+              ? t("admin.filter_all", "All")
               : s === "pending"
-              ? t("admin.status_pending") || "Pending"
+              ? t("admin.status_pending", "Pending")
               : s === "approved"
-              ? t("admin.status_approved") || "Approved"
-              : t("admin.status_rejected") || "Rejected"}
+              ? t("admin.status_approved", "Approved")
+              : t("admin.status_rejected", "Rejected")}
           </Button>
         ))}
       </div>
@@ -62,7 +62,7 @@ const UserFiltersComponent = ({ filters, onChange }: UserFiltersProps) => {
               <SelectValue placeholder={t("admin.profession_filter")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_all">{t("admin.filter_all") || "All"}</SelectItem>
+              <SelectItem value="_all">{t("admin.filter_all", "All")}</SelectItem>
               {PROFESSIONS.map((p) => (
                 <SelectItem key={p} value={p}>
                   {t(`onboarding.profession_${p}` as import("@/lib/i18n").TranslationKey) || p}

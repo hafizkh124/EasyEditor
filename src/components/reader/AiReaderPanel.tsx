@@ -195,7 +195,7 @@ export const AiReaderPanel: React.FC = () => {
                     : "me-auto max-w-[95%] bg-muted text-foreground"
                 }`}
               >
-                {m.content || (m.streaming ? <Loader2 className="h-3 w-3 animate-spin" /> : null)}
+                {m.content || (m.streaming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null)}
               </div>
             ))}
           </div>

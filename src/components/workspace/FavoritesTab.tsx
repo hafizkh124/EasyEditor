@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { readerService } from "@/core/workspace/readerService";
 import { BookCover } from "@/components/shamela/BookCover";
 import type { ReaderFavorite, ReadingProgress } from "@/core/backend/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface FavoritesTabProps {
   onSelectBook?: (bookId: string) => void;
@@ -17,6 +18,7 @@ interface FavoritesTabProps {
  * progress exists. Clicking a favorite opens the reader on that page.
  */
 export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
+  const { t } = useLanguage();
   const [favorites, setFavorites] = useState<ReaderFavorite[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, ReadingProgress>>({});
   const [loading, setLoading] = useState(true);
@@ -68,11 +70,10 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
       <div className="flex flex-col items-center justify-center py-16 text-center px-4">
         <Star className="h-10 w-10 text-muted-foreground/40 mb-3" />
         <h3 className="text-sm font-semibold text-muted-foreground mb-1">
-          No favorites yet
+          {t("library.no_favorites", "No favorites yet")}
         </h3>
         <p className="text-xs text-muted-foreground/70 max-w-[240px]">
-          Tap the star in the reader toolbar to save books here for quick
-          access.
+          {t("library.no_favorites_hint", "Tap the star in the reader toolbar to save books here for quick access.")}
         </p>
       </div>
     );
@@ -82,7 +83,7 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
     <ScrollArea className="h-full">
       <div className="p-3 space-y-3">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
-          Favorites
+          {t("library.favorites", "Favorites")}
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {favorites.map((fav) => {
@@ -105,7 +106,7 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
                     e.stopPropagation();
                     handleRemove(fav.bookId);
                   }}
-                  title="Remove from favorites"
+                  title={t("library.remove_favorite", "Remove from favorites")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -129,7 +130,7 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
                   <div className="w-full mt-2">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs text-muted-foreground/70">
-                        Page {progress.pageNumber} / {progress.pageCount}
+                        {t("library.page_of", "Page {current} / {total}").replace("{current}", String(progress.pageNumber)).replace("{total}", String(progress.pageCount))}
                       </span>
                       <span className="text-xs text-muted-foreground/70">{pct}%</span>
                     </div>
@@ -147,8 +148,8 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
         </div>
 
         <div className="flex items-center gap-1.5 px-1 pt-1 text-xs text-muted-foreground/70">
-          <BookOpen className="h-3 w-3" />
-          Click a book to continue reading from where you left off.
+          <BookOpen className="h-3.5 w-3.5" />
+          {t("library.continue_hint", "Click a book to continue reading from where you left off.")}
         </div>
       </div>
     </ScrollArea>

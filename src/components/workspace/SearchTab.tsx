@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Search, FileText, Loader2, Languages } from "lucide-react";
+import { Search, FileText, Loader2, Languages, BookOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { EmptyState } from "./EmptyState";
 import { libraryItemService } from "@/core/workspace/libraryItemService";
 import type { ChunkSearchHit } from "@/core/backend/types";
 import { stripHarakat } from "@/utils/arabicUtils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SearchTabProps {
   onSelectResult?: (hit: ChunkSearchHit) => void;
@@ -23,6 +25,7 @@ interface SearchTabProps {
  * (Phase 6), so كتب also matches مكتوب، الكاتب، بكتابة ….
  */
 export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate }) => {
+  const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ChunkSearchHit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -62,7 +65,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
       setResults(hits);
       setSearched(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Search failed.");
+      setError(err instanceof Error ? err.message : t("library.search_failed", "Search failed."));
       setResults([]);
       setSearched(true);
     } finally {
@@ -92,7 +95,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
             onKeyDown={(e) => {
               if (e.key === "Enter") runSearch(query);
             }}
-            placeholder="Search imported books…"
+            placeholder={t("library.search_books_placeholder", "Search imported books…")}
             className="h-8 text-xs ps-8"
           />
         </div>
@@ -101,7 +104,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
           onClick={() => runSearch(query)}
           className="mt-1.5 w-full rounded-md bg-primary/10 hover:bg-primary/15 text-primary text-xs font-medium py-1 transition-colors"
         >
-          {searching ? "Searching…" : "Search"}
+          {searching ? t("common.searching", "Searching…") : t("common.search", "Search")}
         </button>
         <button
           type="button"
@@ -110,16 +113,16 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
             setRootMode(next);
             if (next && query.trim()) runSearch(query);
           }}
-          title={s2DbPath ? "Root search: match all morphological forms of the query's root" : "Shamela S2.db not found — root search unavailable"}
+          title={s2DbPath ? t("library.root_search_title_available", "Root search: match all morphological forms of the query's root") : t("library.root_search_title_unavailable", "Shamela S2.db not found — root search unavailable")}
           className={`mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-1 text-xs font-medium transition-colors ${
             rootMode
               ? "border-primary/40 bg-primary/15 text-primary"
               : "border-border hover:bg-accent text-muted-foreground"
           } ${!s2DbPath ? "opacity-50" : ""}`}
         >
-          <Languages className="h-3 w-3" />
-          Root search
-          {!s2DbPath && <span className="text-xs opacity-70">(off)</span>}
+          <Languages className="h-3.5 w-3.5" />
+          {t("library.root_search", "Root search")}
+          {!s2DbPath && <span className="text-xs opacity-70">{t("library.root_off", "(off)")}</span>}
         </button>
       </div>
 
@@ -127,18 +130,28 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
         {searching ? (
           <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Searching…
+            {t("common.searching", "Searching…")}
           </div>
         ) : error ? (
           <p className="p-4 text-xs text-destructive">{error}</p>
         ) : results.length === 0 ? (
-          <p className="p-4 text-xs text-muted-foreground">
-            {searched
-              ? rootMode
-                ? "No results for any form of this root. Try a different word."
-                : "No results. Try a different keyword."
-              : "Type a keyword to search every imported book."}
-          </p>
+          searched ? (
+            <EmptyState
+              icon={FileText}
+              title={t("library.no_results_title", "No results")}
+              description={
+                rootMode
+                  ? t("library.root_no_results", "No results for any form of this root. Try a different word.")
+                  : t("library.no_results", "No results. Try a different keyword.")
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={BookOpen}
+              title={t("library.search_prompt_title", "Search every imported book")}
+              description={t("library.search_prompt", "Type a keyword to search every imported book.")}
+            />
+          )
         ) : (
           <ul className="py-1">
             {results.map((hit, i) => (
@@ -149,10 +162,10 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
                   className="w-full text-right flex flex-col gap-1 px-3 py-2 border-b border-border/40 hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
                   <span className="flex items-center gap-1.5 text-xs font-medium leading-snug">
-                    <FileText className="h-3 w-3 text-primary shrink-0" />
+                    <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
                     <span className="truncate">{hit.title}</span>
                     {hit.pageNumber != null && (
-                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">ص {hit.pageNumber}</span>
+                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">{t("library.page_number", "p. {page}").replace("{page}", String(hit.pageNumber))}</span>
                     )}
                   </span>
                   <span className="text-xs text-muted-foreground leading-relaxed line-clamp-2">

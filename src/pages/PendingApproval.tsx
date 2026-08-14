@@ -129,7 +129,7 @@ const PendingApproval = () => {
         .eq("user_id", user.id)
         .single();
       if (data?.is_approved === true) {
-        toast.success(t("pending.approved_toast") || "Your account has been approved!");
+        toast.success(t("pending.approved_toast", "Your account has been approved!"));
         navigate("/dashboard", { replace: true });
       }
     }, 30_000);
@@ -156,10 +156,10 @@ const PendingApproval = () => {
       .single();
     setRefreshing(false);
     if (data?.is_approved === true) {
-      toast.success(t("pending.approved_toast") || "Your account has been approved!");
+      toast.success(t("pending.approved_toast", "Your account has been approved!"));
       navigate("/dashboard", { replace: true });
     } else {
-      toast.info(t("pending.still_pending") || "Still pending — please contact admin if you have already paid.");
+      toast.info(t("pending.still_pending", "Still pending — please contact admin if you have already paid."));
     }
   };
 
@@ -171,9 +171,9 @@ const PendingApproval = () => {
   const copyValue = async (value: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      toast.success(t("pending.copied") || "Copied!");
+      toast.success(t("pending.copied", "Copied!"));
     } catch {
-      toast.error(t("pending.copy_failed") || "Could not copy");
+      toast.error(t("pending.copy_failed", "Could not copy"));
     }
   };
 
@@ -185,11 +185,10 @@ const PendingApproval = () => {
 
   const whatsappMessage = encodeURIComponent(
     `Assalam-o-Alaikum,\n` +
-    `${t("pending.wa_name") || "Name"}: ${userName}\n` +
-    `${t("pending.wa_email") || "Email"}: ${userEmail}\n` +
-    `${t("pending.wa_package") || "Package"}: ${packageLabel} (${selectedPlan.price})\n\n` +
-    (t("pending.whatsapp_template") ||
-      "I have transferred the subscription fee. Please find the receipt attached."),
+    `${t("pending.wa_name", "Name")}: ${userName}\n` +
+    `${t("pending.wa_email", "Email")}: ${userEmail}\n` +
+    `${t("pending.wa_package", "Package")}: ${packageLabel} (${selectedPlan.price})\n\n` +
+    (t("pending.whatsapp_template", "I have transferred the subscription fee. Please find the receipt attached.")),
   );
 
   return (
@@ -200,21 +199,20 @@ const PendingApproval = () => {
           <CardHeader className="space-y-2">
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-destructive" />
-              <CardTitle className="text-xl">{t("pending.title") || "Awaiting Admin Approval"}</CardTitle>
-              <Badge variant="destructive" className="ms-auto">{t("pending.status_pending") || "Pending"}</Badge>
+              <CardTitle className="text-xl">{t("pending.title", "Awaiting Admin Approval")}</CardTitle>
+              <Badge variant="destructive" className="ms-auto">{t("pending.status_pending", "Pending")}</Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              {t("pending.intro") ||
-                "Thank you for registering! To activate your account, please complete the payment steps below and send us your receipt via WhatsApp."}
+              {t("pending.intro", "Thank you for registering! To activate your account, please complete the payment steps below and send us your receipt via WhatsApp.")}
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
             <ol className="list-decimal space-y-1.5 ps-5 text-sm">
-              <li>{t("pending.step1") || "Select your preferred package below."}</li>
-              <li>{t("pending.step2") || "Transfer the subscription fee to one of the accounts below."}</li>
-              <li>{t("pending.step3") || "Take a screenshot of the transfer receipt."}</li>
-              <li>{t("pending.step4") || "Send the screenshot on WhatsApp to the number below."}</li>
-              <li>{t("pending.step5") || "Wait for admin approval — usually within a few hours."}</li>
+              <li>{t("pending.step1", "Select your preferred package below.")}</li>
+              <li>{t("pending.step2", "Transfer the subscription fee to one of the accounts below.")}</li>
+              <li>{t("pending.step3", "Take a screenshot of the transfer receipt.")}</li>
+              <li>{t("pending.step4", "Send the screenshot on WhatsApp to the number below.")}</li>
+              <li>{t("pending.step5", "Wait for admin approval — usually within a few hours.")}</li>
             </ol>
           </CardContent>
         </Card>
@@ -222,9 +220,9 @@ const PendingApproval = () => {
         {/* Package Selection */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">{t("pending.select_package") || "Select Your Package"}</CardTitle>
+            <CardTitle className="text-lg">{t("pending.select_package", "Select Your Package")}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              {t("pending.select_package_desc") || "Choose the plan that suits your needs."}
+              {t("pending.select_package_desc", "Choose the plan that suits your needs.")}
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-3">
@@ -256,13 +254,13 @@ const PendingApproval = () => {
                   {/* Badges */}
                   {plan.popular && (
                     <Badge className="absolute -top-2.5 end-3 bg-primary text-primary-foreground text-xs px-2">
-                      {t("pending.recommended") || "Recommended"}
+                      {t("pending.recommended", "Recommended")}
                     </Badge>
                   )}
                   {plan.comingSoon && (
                     <Badge variant="secondary" className="absolute -top-2.5 end-3 text-xs px-2">
                       <Construction className="h-3 w-3 me-1" />
-                      {t("pending.coming_soon") || "Coming Soon"}
+                      {t("pending.coming_soon", "Coming Soon")}
                     </Badge>
                   )}
 
@@ -305,9 +303,9 @@ const PendingApproval = () => {
         {/* Payment Accounts */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">{t("pending.payment_accounts") || "Payment Accounts"}</CardTitle>
+            <CardTitle className="text-lg">{t("pending.payment_accounts", "Payment Accounts")}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              {t("pending.transfer_amount") || "Transfer the amount for your selected package:"}{" "}
+              {t("pending.transfer_amount", "Transfer the amount for your selected package:")}{" "}
               <span className="font-semibold text-foreground">{selectedPlan.price}</span>
             </p>
           </CardHeader>
@@ -330,7 +328,7 @@ const PendingApproval = () => {
                         variant="ghost"
                         className="h-8 w-8 flex-shrink-0"
                         onClick={() => copyValue(r.value)}
-                        aria-label={t("pending.copy") || "Copy"}
+                        aria-label={t("pending.copy", "Copy")}
                         data-approval-allow
                       >
                         <Copy className="h-3.5 w-3.5" />
@@ -399,7 +397,7 @@ const PendingApproval = () => {
         <Card className="border-green-500/30 bg-green-500/5">
           <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
             <div className="space-y-0.5">
-              <p className="font-medium text-sm">{t("pending.whatsapp_label") || "Send Receipt on WhatsApp"}</p>
+              <p className="font-medium text-sm">{t("pending.whatsapp_label", "Send Receipt on WhatsApp")}</p>
               <p className="text-xs text-muted-foreground font-mono">+{WHATSAPP_CONTACT_NUMBER}</p>
             </div>
             <Button
@@ -413,7 +411,7 @@ const PendingApproval = () => {
                 rel="noopener noreferrer"
               >
                 <MessageCircle className="h-4 w-4 me-2" />
-                {t("pending.send_receipt") || "Open WhatsApp"}
+                {t("pending.send_receipt", "Open WhatsApp")}
               </a>
             </Button>
           </CardContent>
@@ -433,7 +431,7 @@ const PendingApproval = () => {
             ) : (
               <RefreshCw className="h-4 w-4 me-2" />
             )}
-            {t("pending.refresh_status") || "Refresh Status"}
+            {t("pending.refresh_status", "Refresh Status")}
           </Button>
           <Button
             variant="ghost"
@@ -442,7 +440,7 @@ const PendingApproval = () => {
             data-approval-allow
           >
             <LogOut className="h-4 w-4 me-2" />
-            {t("pending.sign_out") || "Sign Out"}
+            {t("pending.sign_out", "Sign Out")}
           </Button>
         </div>
       </div>

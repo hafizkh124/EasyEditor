@@ -117,6 +117,7 @@ export default tseslint.config(
       "src/pages/Settings.tsx",
       "src/pages/Dashboard.tsx",
       "src/components/ContactInfoCard.tsx",
+      "src/components/FirstRunLanguageGate.tsx",
       "src/lib/activityLog.ts",
       // ── referrals ───────────────────────────────────────────────────────
       "src/components/ReferralCard.tsx",

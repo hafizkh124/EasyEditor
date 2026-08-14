@@ -84,13 +84,13 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "workspace", route: "/workspace", labelKey: "nav.workspace", fallbackLabel: "ورک اسپیس",
     icon: BookOpen, runtimes: { web: ALWAYS, desktop: ALWAYS },
-    surfaces: ["sidebar", "mobile-nav", "command-palette"],
+    surfaces: ["sidebar", "mobile-nav", "dashboard-grid", "command-palette"],
   },
   {
     id: "transcribe", route: "/transcribe", labelKey: "nav.transcribe", fallbackLabel: "ٹرانسکرائب",
     icon: Mic,
     runtimes: { web: ALWAYS, desktop: { on: "flag", flag: "VITE_LOCAL_VOICE" } },
-    surfaces: ["sidebar", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    surfaces: ["sidebar", "mobile-nav", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
   },
   {
     id: "speak", route: "/speak", labelKey: "nav.speak", fallbackLabel: "بولیں",
@@ -124,12 +124,12 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "settings", route: "/settings", labelKey: "nav.settings", fallbackLabel: "ترتیبات",
     icon: SettingsIcon, runtimes: { web: ALWAYS, desktop: ALWAYS },
-    surfaces: ["sidebar", "command-palette"],
+    surfaces: ["sidebar", "mobile-nav", "workspace-menu", "command-palette"],
   },
   {
     id: "dashboard", route: "/dashboard", labelKey: "nav.dashboard", fallbackLabel: "ڈیش بورڈ",
     icon: LayoutDashboard, runtimes: { web: ALWAYS, desktop: ALWAYS },
-    surfaces: ["workspace-menu", "command-palette"],
+    surfaces: ["mobile-nav", "workspace-menu", "command-palette"],
   },
   {
     id: "profile", route: "/profile", labelKey: "nav.profile", fallbackLabel: "میری پروفائل",
@@ -232,8 +232,4 @@ export function capabilityUnavailableReason(id: CapabilityId): string | null {
 /** Every capability that belongs on `surface` and is available on this runtime, in registry order. */
 export function availableCapabilities(surface: Surface): Capability[] {
   return CAPABILITIES.filter((c) => c.surfaces.includes(surface) && isCapabilityAvailable(c.id));
-}
-
-export function capabilityForRoute(route: string): Capability | undefined {
-  return CAPABILITIES.find((c) => c.route === route);
 }

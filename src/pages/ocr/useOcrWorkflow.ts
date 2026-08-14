@@ -208,7 +208,7 @@ export function useOcrWorkflow() {
 
           const text = await ocrSingleImage(page.imageBase64, page.mimeType);
           if (text.trim()) {
-            parts.push(`--- ${t("ocr.page_label") || "Page"} ${page.pageNum} ---\n${text}`);
+            parts.push(`--- ${t("ocr.page_label", "Page")} ${page.pageNum} ---\n${text}`);
           }
           // Show incremental results
           setExtractedText(parts.join("\n\n"));

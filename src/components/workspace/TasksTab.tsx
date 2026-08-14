@@ -11,6 +11,7 @@ import { stripHarakat } from "@/utils/arabicUtils";
 import { TaskEditorDialog } from "./TaskEditorDialog";
 import type { TaskDefinition } from "@/lib/tasks/types";
 import { translateStored } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 /**
  * The AI Task Library (SPEC-M3 FR-2.4) — the catalogue of what the editor can
@@ -20,6 +21,7 @@ import { translateStored } from "@/lib/i18n";
  * of `task_runs`.
  */
 export const TasksTab: React.FC = () => {
+  const { t } = useLanguage();
   const [customRows, setCustomRows] = useState<CustomTaskRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
@@ -78,11 +80,11 @@ export const TasksTab: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background p-3" dir="rtl">
+    <div className="flex flex-col h-full bg-background p-3">
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
         <div className="flex items-center gap-1.5 font-semibold text-xs text-primary">
           <ListChecks className="h-4 w-4" />
-          <span>AI ٹاسک لائبریری</span>
+          <span>{t("library.task_library_title", "AI Task Library")}</span>
         </div>
         {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
       </div>
@@ -90,9 +92,9 @@ export const TasksTab: React.FC = () => {
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="ٹاسک تلاش کریں…"
+        placeholder={t("library.task_search", "Search tasks…")}
         className="h-7 text-xs mb-2"
-        aria-label="ٹاسک تلاش کریں"
+        aria-label={t("library.task_search", "Search tasks…")}
       />
 
       <ScrollArea className="flex-1 pe-2">
@@ -103,14 +105,12 @@ export const TasksTab: React.FC = () => {
               id="custom-tasks-heading"
               className="text-xs font-semibold text-muted-foreground mb-1.5"
             >
-              میرے ٹاسک ({filtered.customs.length})
+              {t("library.my_tasks", "My tasks ({count})").replace("{count}", String(filtered.customs.length))}
             </h3>
 
             {filtered.customs.length === 0 ? (
               <p className="text-xs text-muted-foreground italic pb-1">
-                ابھی کوئی ذاتی ٹاسک نہیں۔ نیچے کسی بلٹ اِن ٹاسک کے سامنے
-                <Copy className="h-3 w-3 inline mx-1" />
-                دبا کر اپنی ہدایت کے ساتھ نقل بنائیں۔
+                {t("library.no_custom_tasks", "No custom tasks yet. Tap the copy icon next to any built-in task below to make your own with your own instructions.")}
               </p>
             ) : (
               <div className="space-y-1.5">
@@ -127,18 +127,18 @@ export const TasksTab: React.FC = () => {
                           variant="ghost"
                           className="h-6 w-6 p-0"
                           onClick={() => handleEdit(row)}
-                          aria-label={`${row.label} میں ترمیم کریں`}
+                          aria-label={t("library.edit_task", "Edit {label}").replace("{label}", row.label)}
                         >
-                          <Pencil className="h-3 w-3" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0 text-destructive"
                           onClick={() => handleArchive(row)}
-                          aria-label={`${row.label} ہٹائیں`}
+                          aria-label={t("library.remove_task", "Remove {label}").replace("{label}", row.label)}
                         >
-                          <Archive className="h-3 w-3" />
+                          <Archive className="h-3.5 w-3.5" />
                         </Button>
                       </span>
                     </div>
@@ -154,7 +154,7 @@ export const TasksTab: React.FC = () => {
               id="builtin-tasks-heading"
               className="text-xs font-semibold text-muted-foreground mb-1.5"
             >
-              بلٹ اِن ٹاسک ({filtered.builtins.length})
+              {t("library.builtin_tasks", "Built-in tasks ({count})").replace("{count}", String(filtered.builtins.length))}
             </h3>
 
             <div className="space-y-1.5">
@@ -170,17 +170,17 @@ export const TasksTab: React.FC = () => {
                     <span className="flex items-center gap-1 mt-0.5">
                       {task.chunkable && (
                         <Badge variant="outline" className="text-xs px-1 py-0 h-4">
-                          طویل متن
+                          {t("library.chunkable_badge", "Long text")}
                         </Badge>
                       )}
                       {task.producesSources && (
                         <Badge variant="outline" className="text-xs px-1 py-0 h-4">
-                          حوالہ جات
+                          {t("library.sources_badge", "Citations")}
                         </Badge>
                       )}
                       {task.engine === "client" && (
                         <Badge variant="outline" className="text-xs px-1 py-0 h-4">
-                          مفت
+                          {t("library.free_badge", "Free")}
                         </Badge>
                       )}
                     </span>
@@ -193,9 +193,9 @@ export const TasksTab: React.FC = () => {
                       variant="ghost"
                       className="h-6 w-6 p-0 shrink-0"
                       onClick={() => handleDuplicate(task)}
-                      aria-label={`${task.defaultLabel} کی نقل بنائیں`}
+                      aria-label={t("library.duplicate_task", "Duplicate {label}").replace("{label}", task.defaultLabel)}
                     >
-                      <Copy className="h-3 w-3" />
+                      <Copy className="h-3.5 w-3.5" />
                     </Button>
                   )}
                 </div>
@@ -211,8 +211,8 @@ export const TasksTab: React.FC = () => {
         className="w-full h-7 text-xs gap-1 mt-2 shrink-0"
         onClick={() => handleDuplicate(BUILTIN_TASKS[0])}
       >
-        <Plus className="h-3 w-3" />
-        نیا ٹاسک بنائیں
+        <Plus className="h-3.5 w-3.5" />
+        {t("library.new_task", "New task")}
       </Button>
 
       <TaskEditorDialog

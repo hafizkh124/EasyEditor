@@ -1,6 +1,7 @@
 import React from "react";
 import { BookOpen, Users, FolderTree } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface StatsBarProps {
   libraryCount: number;
@@ -17,31 +18,32 @@ export const StatsBar: React.FC<StatsBarProps> = ({
   shamelaStats,
   loading,
 }) => {
+  const { t } = useLanguage();
   const stats = [
     {
       icon: BookOpen,
-      label: "Library Books",
+      label: t("library.stat_library_books", "Library Books"),
       value: libraryCount,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
     },
     {
       icon: BookOpen,
-      label: "Shamela Books",
+      label: t("library.stat_shamela_books", "Shamela Books"),
       value: shamelaStats?.totalBooks ?? null,
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
     },
     {
       icon: Users,
-      label: "Authors",
+      label: t("library.stat_authors", "Authors"),
       value: shamelaStats?.totalAuthors ?? null,
       color: "text-amber-500",
       bgColor: "bg-amber-500/10",
     },
     {
       icon: FolderTree,
-      label: "Categories",
+      label: t("library.stat_categories", "Categories"),
       value: shamelaStats?.totalCategories ?? null,
       color: "text-purple-500",
       bgColor: "bg-purple-500/10",
@@ -51,7 +53,7 @@ export const StatsBar: React.FC<StatsBarProps> = ({
   return (
     <div className="space-y-2">
       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        Overview
+        {t("library.overview", "Overview")}
       </h3>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {stats.map((stat) => (

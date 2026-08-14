@@ -21,10 +21,10 @@ export default function TokenCostBadge({
   return (
     <span
       className={`inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5 ${className}`}
-      title={t("tokens.estimated_cost") || "Estimated token cost"}
+      title={t("tokens.estimated_cost", "Estimated token cost")}
     >
       <Coins className="h-3 w-3" />
-      ~{cost.toLocaleString()} {t("tokens.tokens") || "tokens"}
+      ~{cost.toLocaleString()} {t("tokens.tokens", "tokens")}
     </span>
   );
 }

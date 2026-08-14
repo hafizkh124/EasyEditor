@@ -92,7 +92,7 @@ const ImageCropper = ({ imageSrc, onCropComplete, onCancel }: ImageCropperProps)
         />
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-xs text-muted-foreground min-w-12">{t("ocr.zoom") || "Zoom"}</span>
+        <span className="text-xs text-muted-foreground min-w-12">{t("ocr.zoom", "Zoom")}</span>
         <Slider
           value={[zoom]}
           onValueChange={(v) => setZoom(v[0])}
@@ -109,16 +109,16 @@ const ImageCropper = ({ imageSrc, onCropComplete, onCancel }: ImageCropperProps)
           onClick={() => setRotation((r) => (r + 90) % 360)}
         >
           <RotateCw className="h-4 w-4" />
-          {t("ocr.rotate") || "Rotate"}
+          {t("ocr.rotate", "Rotate")}
         </Button>
         <div className="flex-1" />
         <Button variant="outline" size="sm" onClick={onCancel}>
           <X className="h-4 w-4" />
-          {t("ocr.cancel") || "Cancel"}
+          {t("ocr.cancel", "Cancel")}
         </Button>
         <Button size="sm" onClick={handleConfirm}>
           <Check className="h-4 w-4" />
-          {t("ocr.apply_crop") || "Apply"}
+          {t("ocr.apply_crop", "Apply")}
         </Button>
       </div>
     </div>

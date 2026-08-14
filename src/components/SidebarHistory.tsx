@@ -150,7 +150,7 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed, showNewChat = 
               variant="ghost"
               size="icon"
               className="h-8 w-8 opacity-100 focus:opacity-100 data-[state=open]:opacity-100 md:opacity-0 md:group-hover:opacity-100"
-              aria-label={t("sidebar.history_item_menu") || "Item menu"}
+              aria-label={t("sidebar.history_item_menu", "Item menu")}
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -158,14 +158,14 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed, showNewChat = 
           <DropdownMenuContent align="end" className="w-36">
             <DropdownMenuItem onClick={() => startRename(item)}>
               <Pencil className="h-3.5 w-3.5 me-2" />
-              {t("sidebar.rename") || "Rename"}
+              {t("sidebar.rename", "Rename")}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => remove(item.id)}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="h-3.5 w-3.5 me-2" />
-              {t("sidebar.delete") || "Delete"}
+              {t("sidebar.delete", "Delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -183,7 +183,7 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed, showNewChat = 
     <div className="flex flex-col min-h-0 flex-1">
       <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-1">
         <span className="text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
-          {t("sidebar.history") || "History"}
+          {t("sidebar.history", "History")}
         </span>
         {showNewChat && (
           <Button
@@ -191,10 +191,10 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed, showNewChat = 
             size="sm"
             onClick={startNewChat}
             className="h-7 gap-1 px-2 text-xs"
-            aria-label={t("sidebar.new_chat") || "New"}
+            aria-label={t("sidebar.new_chat", "New")}
           >
             <Plus className="h-3.5 w-3.5" />
-            {t("sidebar.new_chat") || "New"}
+            {t("sidebar.new_chat", "New")}
           </Button>
         )}
       </div>
@@ -203,7 +203,7 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed, showNewChat = 
           <p className="px-3 py-2 text-xs text-muted-foreground">…</p>
         ) : items.length === 0 ? (
           <p className="px-3 py-2 text-xs text-muted-foreground">
-            {t("sidebar.history_empty") || "No sessions yet"}
+            {t("sidebar.history_empty", "No sessions yet")}
           </p>
         ) : (
           groups.map((grp) => (

@@ -71,7 +71,7 @@ export const CommandPalette: React.FC = () => {
   const handleCreateNewDoc = async () => {
     if (!projects[0]) return;
     try {
-      const created = await documentService.createDocument(projects[0].id, t("editor.untitled") || "Untitled Document");
+      const created = await documentService.createDocument(projects[0].id, t("editor.untitled", "Untitled Document"));
       refreshAllDocs();
       setActiveDocumentId(created.id);
       navigate(`/workspace/${created.id}`, { replace: true });
@@ -83,7 +83,7 @@ export const CommandPalette: React.FC = () => {
 
   const handleCreateNewProject = async () => {
     try {
-      const title = window.prompt("نئے پروجیکٹ کا عنوان:");
+      const title = window.prompt(t("library.cmd_project_prompt", "New project title:"));
       if (!title?.trim()) return;
       await documentService.createProject(title.trim(), "general");
       refreshAllDocs();
@@ -111,15 +111,15 @@ export const CommandPalette: React.FC = () => {
   return (
     <CommandDialog open={commandPaletteOpen} onOpenChange={handleOpenChange}>
       <CommandInput
-        placeholder="ایکشن، پروجیکٹ یا دستاویز تلاش کریں..."
+        placeholder={t("library.cmd_placeholder", "Search actions, projects or documents...")}
         value={search}
         onValueChange={setSearch}
       />
       <CommandList>
-        <CommandEmpty>کوئی نتیجہ نہیں ملا۔</CommandEmpty>
+        <CommandEmpty>{t("library.cmd_no_results", "No results found.")}</CommandEmpty>
 
         {/* Documents */}
-        <CommandGroup heading="دستاویزات (Documents)">
+        <CommandGroup heading={t("library.cmd_documents", "Documents")}>
           {filteredDocs.slice(0, 8).map((d) => (
             <CommandItem
               key={d.id}
@@ -138,7 +138,7 @@ export const CommandPalette: React.FC = () => {
         <CommandSeparator />
 
         {/* Projects */}
-        <CommandGroup heading="پروجیکٹس (Projects)">
+        <CommandGroup heading={t("library.cmd_projects", "Projects")}>
           {filteredProjects.slice(0, 5).map((p) => (
             <CommandItem
               key={p.id}
@@ -163,15 +163,15 @@ export const CommandPalette: React.FC = () => {
         <CommandSeparator />
 
         {/* Quick Actions */}
-        <CommandGroup heading="ایکشنز (Actions)">
+        <CommandGroup heading={t("library.cmd_actions", "Actions")}>
           <CommandItem onSelect={handleCreateNewDoc} className="cursor-pointer gap-2">
             <Plus className="h-4 w-4 text-emerald-500" />
-            <span>نئی دستاویز بنائیں (New Document)</span>
+            <span>{t("library.cmd_new_document", "New Document")}</span>
           </CommandItem>
 
           <CommandItem onSelect={handleCreateNewProject} className="cursor-pointer gap-2">
             <FolderPlus className="h-4 w-4 text-amber-500" />
-            <span>نیا پروجیکٹ بنائیں (New Project)</span>
+            <span>{t("library.cmd_new_project", "New Project")}</span>
           </CommandItem>
 
           <CommandItem
@@ -182,7 +182,7 @@ export const CommandPalette: React.FC = () => {
             className="cursor-pointer gap-2"
           >
             <PanelRight className="h-4 w-4 text-primary" />
-            <span>ورک بینچ کھولیں/بند کریں (Toggle Workbench)</span>
+            <span>{t("library.cmd_toggle_workbench", "Toggle Workbench")}</span>
           </CommandItem>
 
           <CommandItem
@@ -193,7 +193,7 @@ export const CommandPalette: React.FC = () => {
             className="cursor-pointer gap-2"
           >
             <Search className="h-4 w-4 text-blue-500" />
-            <span>تحقیقاتی ٹیب کھولیں (Open Research Tab)</span>
+            <span>{t("library.cmd_open_research", "Open Research Tab")}</span>
           </CommandItem>
 
           <CommandItem
@@ -204,7 +204,7 @@ export const CommandPalette: React.FC = () => {
             className="cursor-pointer gap-2"
           >
             <Languages className="h-4 w-4 text-purple-500" />
-            <span>زبان بدلیں (Switch Language / RTL)</span>
+            <span>{t("library.cmd_switch_language", "Switch Language / RTL")}</span>
           </CommandItem>
         </CommandGroup>
       </CommandList>

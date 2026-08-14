@@ -2,6 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 
 export type WorkbenchTab = "aiReader" | "research" | "translate" | "extract" | "notes" | "tasks" | "trust";
 
+export const WORKBENCH_TABS: readonly WorkbenchTab[] =
+  ["aiReader", "research", "translate", "extract", "notes", "tasks", "trust"];
+
+export function isWorkbenchTab(value: unknown): value is WorkbenchTab {
+  return typeof value === "string" && (WORKBENCH_TABS as readonly string[]).includes(value);
+}
+
 interface PanelState {
   libraryWidth: number;
   workbenchWidth: number;
@@ -30,18 +37,21 @@ function loadStoredState(): PanelState {
       workbenchWidth: typeof parsed.workbenchWidth === "number" ? parsed.workbenchWidth : DEFAULT_STATE.workbenchWidth,
       libraryCollapsed: Boolean(parsed.libraryCollapsed),
       workbenchCollapsed: Boolean(parsed.workbenchCollapsed),
-      workbenchTab: ["aiReader", "research", "translate", "extract", "notes", "tasks", "trust"].includes(parsed.workbenchTab)
-        ? parsed.workbenchTab
-        : DEFAULT_STATE.workbenchTab,
+      workbenchTab: isWorkbenchTab(parsed.workbenchTab) ? parsed.workbenchTab : DEFAULT_STATE.workbenchTab,
     };
   } catch {
     return DEFAULT_STATE;
   }
 }
 
-export function usePanelState(initialWorkbenchOpenFromUrl = false) {
+export function usePanelState(initialWorkbenchOpenFromUrl = false, initialWorkbenchTab?: WorkbenchTab) {
   const [state, setState] = useState<PanelState>(() => {
     const loaded = loadStoredState();
+    // A specific tab (e.g. `?panel=translate`) implies opening the workbench
+    // on it, regardless of whichever tab localStorage last remembered.
+    if (initialWorkbenchTab) {
+      return { ...loaded, workbenchCollapsed: false, workbenchTab: initialWorkbenchTab };
+    }
     if (initialWorkbenchOpenFromUrl) {
       return { ...loaded, workbenchCollapsed: false };
     }

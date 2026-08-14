@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { customTaskService } from "@/lib/tasks/customTasks";
 import type { TaskDefinition } from "@/lib/tasks/types";
 import { translateStored } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface TaskEditorDialogProps {
   open: boolean;
@@ -42,15 +43,16 @@ export const TaskEditorDialog: React.FC<TaskEditorDialogProps> = ({
   existing,
   onSaved,
 }) => {
+  const { t } = useLanguage();
   const [label, setLabel] = useState(existing?.label ?? "");
   const [prompt, setPrompt] = useState(existing?.systemPrompt ?? "");
   const [saving, setSaving] = useState(false);
 
   React.useEffect(() => {
     if (!open) return;
-    setLabel(existing?.label ?? (baseTask ? `${baseTask.defaultLabel} (میرا)` : ""));
+    setLabel(existing?.label ?? (baseTask ? t("library.my_suffix", "{label} (mine)").replace("{label}", baseTask.defaultLabel) : ""));
     setPrompt(existing?.systemPrompt ?? "");
-  }, [open, existing, baseTask]);
+  }, [open, existing, baseTask, t]);
 
   const canSave = label.trim().length >= 2 && prompt.trim().length >= 20 && !saving;
 
@@ -79,54 +81,54 @@ export const TaskEditorDialog: React.FC<TaskEditorDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg" dir="rtl">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Wand2 className="h-4 w-4 text-primary" />
-            {existing ? "ٹاسک میں ترمیم" : "بلٹ اِن ٹاسک کی نقل بنائیں"}
+            {existing ? t("library.edit_task_title", "Edit task") : t("library.duplicate_task_title", "Duplicate built-in task")}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {baseTask
-              ? `بنیاد: ${baseTask.defaultLabel} — اس کا طرزِ عمل وہی رہے گا، صرف ہدایت بدلے گی۔`
-              : "اپنی ہدایت میں ترمیم کریں۔"}
+              ? t("library.task_base_desc", "Base: {label} — its behaviour flags stay the same, only the instruction changes.").replace("{label}", baseTask.defaultLabel)
+              : t("library.task_edit_prompt_desc", "Edit your instruction.")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-1 text-xs">
           <div className="space-y-1.5">
-            <Label htmlFor="task-label" className="text-xs">ٹاسک کا نام</Label>
+            <Label htmlFor="task-label" className="text-xs">{t("library.task_name_label", "Task name:")}</Label>
             <Input
               id="task-label"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="مثلاً: فقہی اسلوب میں ڈھالیں"
+              placeholder={t("library.task_name_placeholder", "e.g. In a fiqh style")}
               className="text-xs"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="task-prompt" className="text-xs">ہدایت (System Prompt)</Label>
+            <Label htmlFor="task-prompt" className="text-xs">{t("library.task_prompt_label", "Instruction (System Prompt)")}</Label>
             <Textarea
               id="task-prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={7}
-              placeholder="ماڈل کو بتائیں کہ متن کے ساتھ کیا کرنا ہے۔ زبان برقرار رکھنے کی ہدایت لکھنا مفید ہے۔"
+              placeholder={t("library.task_prompt_placeholder", "Tell the model what to do with the text. A keep-the-language instruction is useful.")}
               className="text-xs leading-relaxed"
             />
             <p className="text-xs text-muted-foreground flex items-start gap-1">
-              <Info className="h-3 w-3 shrink-0 mt-0.5 text-blue-500" />
-              ہدایت سرور پر محفوظ رہتی ہے اور صرف آپ کے اکاؤنٹ سے پڑھی جاتی ہے۔ کم از کم 20 حروف۔
+              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-500" />
+              {t("library.task_prompt_hint", "The instruction is stored on the server and only read from your account. At least 20 characters.")}
             </p>
           </div>
         </div>
 
         <DialogFooter className="gap-2">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            منسوخ
+            {t("common.cancel", "Cancel")}
           </Button>
           <Button size="sm" disabled={!canSave} onClick={handleSave}>
-            {saving ? "محفوظ ہو رہا ہے…" : "محفوظ کریں"}
+            {saving ? t("library.saving_task", "Saving…") : t("common.save", "Save")}
           </Button>
         </DialogFooter>
       </DialogContent>

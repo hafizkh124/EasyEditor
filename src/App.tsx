@@ -12,6 +12,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import LocalePrefixSync from "@/components/LocalePrefixSync";
 import CapabilityRoute from "@/components/CapabilityRoute";
+import FirstRunLanguageGate from "@/components/FirstRunLanguageGate";
+import RedirectToWorkspace from "@/components/RedirectToWorkspace";
 import { isDesktop } from "@/utils/environment";
 import { ThemeProvider } from "next-themes";
 import { APP_THEME_STORAGE_KEY } from "@/lib/theme";
@@ -25,23 +27,18 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Transcribe = lazy(() => import("./pages/Transcribe"));
 const Speak = lazy(() => import("./pages/Speak"));
 const OCR = lazy(() => import("./pages/OCR"));
-const Research = lazy(() => import("./pages/Research"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Profile = lazy(() => import("./pages/Profile"));
-const Library = lazy(() => import("./pages/Library"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const AccountRejected = lazy(() => import("./pages/AccountRejected"));
 const CompleteProfile = lazy(() => import("./pages/CompleteProfile"));
 const About = lazy(() => import("./pages/About"));
 const FaqAiHaram = lazy(() => import("./pages/FaqAiHaram"));
 const Answers = lazy(() => import("./pages/Answers"));
-const Editor = lazy(() => import("./pages/Editor"));
 const Workspace = lazy(() => import("./pages/Workspace"));
 const OcrReview = lazy(() => import("./pages/OcrReview"));
-const Translate = lazy(() => import("./pages/Translate"));
-const Extract = lazy(() => import("./pages/Extract"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const Terms = lazy(() => import("./pages/legal/Terms"));
@@ -91,6 +88,7 @@ const App = () => (
       <TooltipProvider>
         <LanguageProvider>
           <AuthProvider>
+          <FirstRunLanguageGate>
             <SubscriptionProvider>
             <NotificationProvider>
             <Toaster />
@@ -146,12 +144,25 @@ const App = () => (
                   <Route path="/ocr" element={<CapabilityRoute id="ocr"><ProtectedRoute><ErrorBoundary><OCR /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
                   <Route path="/workspace" element={<ProtectedRoute allowGuest><ErrorBoundary><Workspace /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/workspace/:documentId" element={<ProtectedRoute allowGuest><ErrorBoundary><Workspace /></ErrorBoundary></ProtectedRoute>} />
-                  <Route path="/research" element={<ProtectedRoute><ErrorBoundary><Research /></ErrorBoundary></ProtectedRoute>} />
-                  <Route path="/library" element={<ProtectedRoute><ErrorBoundary><Library /></ErrorBoundary></ProtectedRoute>} />
-                  <Route path="/editor" element={<ProtectedRoute><ErrorBoundary><Editor /></ErrorBoundary></ProtectedRoute>} />
-                  <Route path="/editor/:documentId" element={<ProtectedRoute><ErrorBoundary><Editor /></ErrorBoundary></ProtectedRoute>} />
+                  {/* /research and /editor are retired pages (UX-v1 P3): the workspace
+                      absorbed both in M2, and the flag that could still render their old
+                      bodies (VITE_WORKSPACE_SHELL=false) never had a build that set it.
+                      Both routes survive only so a bookmark or an external link still
+                      lands somewhere real. */}
+                  <Route path="/research" element={<Navigate to="/workspace?panel=research" replace />} />
+                  {/* /library is a retired page (UX-v1 P3): LibraryPanel inside the
+                      workspace is the only Library that was ever linked to. This had
+                      zero inbound links anywhere in the app before removal. */}
+                  <Route path="/library" element={<Navigate to="/workspace" replace />} />
+                  <Route path="/editor" element={<RedirectToWorkspace />} />
+                  <Route path="/editor/:documentId" element={<RedirectToWorkspace />} />
                   <Route path="/ocr/review" element={<ProtectedRoute><ErrorBoundary><OcrReview /></ErrorBoundary></ProtectedRoute>} />
-                  <Route path="/translate" element={<CapabilityRoute id="translate"><ProtectedRoute><ErrorBoundary><Translate /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  {/* /translate and /extract are retired pages (UX-v1 P3): both mounted
+                      the exact same TranslatePanel/ExtractPanel as their Workbench tab,
+                      so the standalone page was a second door to the same room. The
+                      capability entry (and CapabilityRoute's desktop gate) stays —
+                      only the destination changed. */}
+                  <Route path="/translate" element={<CapabilityRoute id="translate"><Navigate to="/workspace?panel=translate" replace /></CapabilityRoute>} />
                   {/* /book-workspace and /translate-workspace are gone. Both
                       predated the three-pillar workspace, which supports
                       `kind: "book"` and `kind: "translation"` natively, and
@@ -159,7 +170,7 @@ const App = () => (
                       itself lives on: CanvasPanel renders it embedded when a
                       translation project is open. Book Studio had no such
                       second life and was deleted with its components. */}
-                  <Route path="/extract" element={<CapabilityRoute id="extract"><ProtectedRoute><ErrorBoundary><Extract /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/extract" element={<CapabilityRoute id="extract"><Navigate to="/workspace?panel=extract" replace /></CapabilityRoute>} />
                   {/* allowGuest: the desktop sidebar links here, and Settings is where the
                       desktop-local panels live (BYOK key, voice engines). Settings.tsx already
                       guards every cloud call with `if (!user) return`. */}
@@ -175,6 +186,7 @@ const App = () => (
             </AppRouter>
             </NotificationProvider>
             </SubscriptionProvider>
+          </FirstRunLanguageGate>
           </AuthProvider>
         </LanguageProvider>
       </TooltipProvider>

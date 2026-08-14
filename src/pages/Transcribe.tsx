@@ -54,12 +54,11 @@ const Transcribe = () => {
           {sttRoute === "local" ? (
             <>
               <Badge variant="outline" className="text-xs">
-                {t("stt.local_mode") || "مقامی Whisper — مفت"}
+                {t("stt.local_mode", "مقامی Whisper — مفت")}
               </Badge>
               {/* FR-6.10: state the known quality limits before the user relies on it. */}
               <span className="text-xs text-muted-foreground">
-                {t("stt.local_quality_note") ||
-                  "نتیجہ ایک مسودہ ہے — اردو میں تقریباً 10–15% الفاظ کی غلطی متوقع ہے، اور اردو‑انگریزی ملے جلے کلام میں اس سے زیادہ۔"}
+                {t("stt.local_quality_note", "نتیجہ ایک مسودہ ہے — اردو میں تقریباً 10–15% الفاظ کی غلطی متوقع ہے، اور اردو‑انگریزی ملے جلے کلام میں اس سے زیادہ۔")}
               </span>
             </>
           ) : (
@@ -223,8 +222,7 @@ const Transcribe = () => {
                     title={
                       hasTimestamps
                         ? t(`stt.download_${format}` as import("@/lib/i18n").TranslationKey) || `${format.toUpperCase()} ڈاؤن لوڈ کریں`
-                        : t("stt.no_timestamps") ||
-                          "اس انجن سے وقت کے نشانات نہیں ملے — سب ٹائٹل کے لیے Settings سے مقامی Whisper منتخب کریں۔"
+                        : t("stt.no_timestamps", "اس انجن سے وقت کے نشانات نہیں ملے — سب ٹائٹل کے لیے Settings سے مقامی Whisper منتخب کریں۔")
                     }
                     onClick={() => handleSubtitleDownload(format)}
                   >

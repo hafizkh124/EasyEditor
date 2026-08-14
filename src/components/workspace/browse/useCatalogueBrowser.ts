@@ -1,45 +1,29 @@
 import { useCallback, useEffect, useState } from "react";
+import { getShamelaClient } from "@/core/shamela/shamelaClient";
+import type {
+  CatalogueAuthor,
+  CatalogueBook,
+  CatalogueCategory,
+  CataloguePeriod,
+} from "@/core/shamela/shamelaClient";
 
 /**
  * The Shamela catalogue browser's state machine, lifted out of BrowseTab.
  *
- * One flow, seventeen pieces of state: detect the native bridge → list
- * categories, authors or periods for the current mode → drill into one → load
- * its books. Keeping it here leaves BrowseTab as presentation, and lets the
- * flow be exercised without a DOM.
+ * One flow, seventeen pieces of state: detect the client → list categories,
+ * authors or periods for the current mode → drill into one → load its books.
+ * Keeping it here leaves BrowseTab as presentation, and lets the flow be
+ * exercised without a DOM.
+ *
+ * Goes through `shamelaClient` (UX-v1 P7) rather than
+ * `window.electronAPI.shamela.*` directly, so the same flow now works on the
+ * web build once a `tools/shamela-bridge` companion is connected —
+ * `masterDbPath` is the client's concern, not this hook's.
  */
 
 export type BrowseMode = "categories" | "authors" | "periods";
 
-export interface CatalogueBook {
-  id: number;
-  title: string;
-  author: string | null;
-  category: string | null;
-  deathYear: number | null;
-  bookType: number | null;
-}
-
-export interface CatalogueCategory {
-  id: number;
-  name: string;
-  bookCount: number;
-}
-
-export interface CatalogueAuthor {
-  id: number;
-  name: string;
-  deathNumber: number | null;
-  deathText: string | null;
-  bookCount: number;
-  alpha: number | null;
-}
-
-export interface CataloguePeriod {
-  century: number;
-  label: string;
-  bookCount: number;
-}
+export type { CatalogueAuthor, CatalogueBook, CatalogueCategory, CataloguePeriod };
 
 export const BROWSE_LIMIT = 100;
 
@@ -47,7 +31,7 @@ const message = (err: unknown, fallback: string) =>
   err instanceof Error ? err.message : fallback;
 
 export function useCatalogueBrowser() {
-  const [masterDbPath, setMasterDbPath] = useState<string | null>(null);
+  const [available, setAvailable] = useState(false);
   const [detecting, setDetecting] = useState(true);
   const [mode, setMode] = useState<BrowseMode>("categories");
   const [error, setError] = useState<string | null>(null);
@@ -75,19 +59,14 @@ export function useCatalogueBrowser() {
     const detect = async () => {
       setDetecting(true);
       try {
-        const api = window.electronAPI?.shamela;
-        if (!api) {
-          setError("Native Shamela bridge is unavailable.");
-          return;
-        }
-        const state = await api.detect();
+        const result = await getShamelaClient().detect();
         if (cancelled) return;
-        if (state?.installed && state.masterDbPath) {
-          setMasterDbPath(state.masterDbPath);
+        if (result.available) {
+          setAvailable(true);
           setError(null);
         } else {
-          setMasterDbPath(null);
-          setError("شاملہ ۴ نصب نہیں ہے۔");
+          setAvailable(false);
+          setError(result.reason || "شاملہ ۴ نصب نہیں ہے۔");
         }
       } catch (err: unknown) {
         if (!cancelled) setError(message(err, "Failed to detect Shamela."));
@@ -102,61 +81,51 @@ export function useCatalogueBrowser() {
   }, []);
 
   const loadCategories = useCallback(async () => {
-    if (!masterDbPath) return;
+    if (!available) return;
     setCategoriesLoading(true);
     try {
-      const api = window.electronAPI!.shamela;
-      const cats = await api.listCategories(masterDbPath);
-      setCategories(cats.map((c) => ({ id: c.id, name: c.name, bookCount: c.bookCount })));
+      setCategories(await getShamelaClient().listCategories());
     } catch (err: unknown) {
       setError(message(err, "Failed to load categories."));
     } finally {
       setCategoriesLoading(false);
     }
-  }, [masterDbPath]);
+  }, [available]);
 
   const loadAuthors = useCallback(async (query: string) => {
-    if (!masterDbPath) return;
+    if (!available) return;
     setAuthorsLoading(true);
     try {
-      const api = window.electronAPI!.shamela;
+      const client = getShamelaClient();
       const rows = query.trim()
-        ? await api.searchAuthors(masterDbPath, query.trim(), BROWSE_LIMIT)
-        : await api.authors(masterDbPath, BROWSE_LIMIT);
-      setAuthors(rows.map((a) => ({
-        id: a.id,
-        name: a.name,
-        deathNumber: a.deathNumber,
-        deathText: a.deathText,
-        bookCount: a.bookCount,
-        alpha: a.alpha,
-      })));
+        ? await client.searchAuthors(query.trim(), BROWSE_LIMIT)
+        : await client.authors(BROWSE_LIMIT);
+      setAuthors(rows);
     } catch (err: unknown) {
       setError(message(err, "Failed to load authors."));
     } finally {
       setAuthorsLoading(false);
     }
-  }, [masterDbPath]);
+  }, [available]);
 
   const loadPeriods = useCallback(async () => {
-    if (!masterDbPath) return;
+    if (!available) return;
     setPeriodsLoading(true);
     try {
-      const api = window.electronAPI!.shamela;
-      setPeriods(await api.periods(masterDbPath));
+      setPeriods(await getShamelaClient().periods());
     } catch (err: unknown) {
       setError(message(err, "Failed to load periods."));
     } finally {
       setPeriodsLoading(false);
     }
-  }, [masterDbPath]);
+  }, [available]);
 
   useEffect(() => {
     if (mode === "categories") loadCategories();
     if (mode === "authors") loadAuthors(authorQuery);
     if (mode === "periods") loadPeriods();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, masterDbPath]);
+  }, [mode, available]);
 
   const loadBooks = useCallback(async (fn: () => Promise<CatalogueBook[]>) => {
     setBooksLoading(true);
@@ -181,20 +150,20 @@ export function useCatalogueBrowser() {
   const openCategory = useCallback((cat: CatalogueCategory) => {
     enterDrilldown();
     setSelectedCategory(cat);
-    loadBooks(() => window.electronAPI!.shamela.booksByCategory(masterDbPath!, cat.id, BROWSE_LIMIT));
-  }, [enterDrilldown, loadBooks, masterDbPath]);
+    loadBooks(() => getShamelaClient().booksByCategory(cat.id, BROWSE_LIMIT));
+  }, [enterDrilldown, loadBooks]);
 
   const openAuthor = useCallback((author: CatalogueAuthor) => {
     enterDrilldown();
     setSelectedAuthor(author);
-    loadBooks(() => window.electronAPI!.shamela.booksByAuthor(masterDbPath!, author.id, BROWSE_LIMIT));
-  }, [enterDrilldown, loadBooks, masterDbPath]);
+    loadBooks(() => getShamelaClient().booksByAuthor(author.id, BROWSE_LIMIT));
+  }, [enterDrilldown, loadBooks]);
 
   const openPeriod = useCallback((period: CataloguePeriod) => {
     enterDrilldown();
     setSelectedPeriod(period);
-    loadBooks(() => window.electronAPI!.shamela.booksByPeriod(masterDbPath!, period.century, BROWSE_LIMIT));
-  }, [enterDrilldown, loadBooks, masterDbPath]);
+    loadBooks(() => getShamelaClient().booksByPeriod(period.century, BROWSE_LIMIT));
+  }, [enterDrilldown, loadBooks]);
 
   const goBackToBrowse = useCallback(() => {
     enterDrilldown();
@@ -206,7 +175,7 @@ export function useCatalogueBrowser() {
   }, [loadAuthors]);
 
   return {
-    masterDbPath, detecting, error,
+    available, detecting, error,
     mode, setMode,
     categories, categoriesLoading,
     authors, authorsLoading, authorQuery, changeAuthorQuery,

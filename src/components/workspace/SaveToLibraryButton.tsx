@@ -6,6 +6,7 @@ import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { libraryChunkService } from "@/lib/corpus/libraryChunkService";
 import { runLibraryIngest } from "@/lib/corpus/ingestOrchestrator";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SaveToLibraryButtonProps {
   /** The finished OCR / transcription text. */
@@ -31,6 +32,7 @@ export const SaveToLibraryButton: React.FC<SaveToLibraryButtonProps> = ({
   kind,
   className,
 }) => {
+  const { t } = useLanguage();
   const { total } = useTokenBalance();
   const [saving, setSaving] = useState(false);
 
@@ -49,12 +51,12 @@ export const SaveToLibraryButton: React.FC<SaveToLibraryButtonProps> = ({
       return;
     }
 
-    const safeTitle = (title.trim() || "بغیر عنوان").slice(0, 80);
+    const safeTitle = (title.trim() || t("library.untitled_title", "Untitled")).slice(0, 80);
     setSaving(true);
     try {
       const file = new File([trimmed], `${safeTitle}.txt`, { type: "text/plain" });
       const item = await libraryChunkService.uploadLibraryFile(file, kind);
-      if (!item) throw new Error("اپلوڈ ناکام");
+      if (!item) throw new Error(t("library.upload_failed", "Upload failed"));
 
       toast.success(translateStored("toast.library.processing"));
       const final = await runLibraryIngest({ itemId: item.id });
@@ -73,11 +75,11 @@ export const SaveToLibraryButton: React.FC<SaveToLibraryButtonProps> = ({
       className={className}
       onClick={handleSave}
       disabled={saving || !trimmed}
-      title={`کتب خانے میں محفوظ کریں (~${estimatedCost} ٹوکن)`}
-      aria-label="کتب خانے میں محفوظ کریں"
+      title={t("library.save_to_library_cost", "Save to library (~{cost} tokens)").replace("{cost}", String(estimatedCost))}
+      aria-label={t("library.save_to_library", "Save to library")}
     >
       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Library className="h-4 w-4" />}
-      <span className="ms-1">کتب خانے میں محفوظ کریں</span>
+      <span className="ms-1">{t("library.save_to_library", "Save to library")}</span>
     </Button>
   );
 };

@@ -17,7 +17,7 @@ const UserPagination = ({ pagination, onPageChange, onPageSizeChange }: UserPagi
   const from = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, totalCount);
 
-  const showingText = (t("admin.showing_results") || "Showing {from}-{to} of {total}")
+  const showingText = (t("admin.showing_results", "Showing {from}-{to} of {total}"))
     .replace("{from}", String(from))
     .replace("{to}", String(to))
     .replace("{total}", String(totalCount));

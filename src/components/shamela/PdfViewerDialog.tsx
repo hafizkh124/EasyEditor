@@ -189,7 +189,7 @@ export const PdfViewerDialog: React.FC<PdfViewerDialogProps> = ({
             <div className="relative">
               {rendering && (
                 <div className="absolute -top-8 start-0 text-xs text-muted-foreground flex items-center gap-1">
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   {t("reader.rendering_pdf")}
                 </div>
               )}

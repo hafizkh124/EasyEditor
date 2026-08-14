@@ -90,9 +90,11 @@ export const WorkspaceProvider: React.FC<{
   /** The document in the URL. Not just an initial value — see the effect below. */
   documentId?: string;
   initialWorkbenchOpenFromUrl?: boolean;
-}> = ({ children, documentId, initialWorkbenchOpenFromUrl = false }) => {
+  /** e.g. `?panel=translate` — opens the workbench on that specific tab. */
+  initialWorkbenchTab?: WorkbenchTab;
+}> = ({ children, documentId, initialWorkbenchOpenFromUrl = false, initialWorkbenchTab }) => {
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(documentId ?? null);
-  const panelState = usePanelState(initialWorkbenchOpenFromUrl);
+  const panelState = usePanelState(initialWorkbenchOpenFromUrl, initialWorkbenchTab);
 
   // `/workspace` resolves a blank document and redirects to `/workspace/:id`,
   // but React keeps this provider mounted across that redirect — both routes

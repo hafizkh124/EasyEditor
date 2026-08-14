@@ -1,6 +1,7 @@
 import React from "react";
 import { FolderTree } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface CategoryGridProps {
   categories: Array<{
@@ -16,11 +17,12 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   categories,
   loading,
 }) => {
+  const { t } = useLanguage();
   if (loading && categories.length === 0) {
     return (
       <div className="space-y-2">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Browse by Category
+          {t("library.browse_by_category", "Browse by Category")}
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -38,7 +40,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   return (
     <div className="space-y-2">
       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        Browse by Category
+        {t("library.browse_by_category", "Browse by Category")}
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
         {categories.map((cat) => (
@@ -52,7 +54,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium truncate">{cat.name}</p>
               <p className="text-xs text-muted-foreground">
-                {cat.bookCount.toLocaleString()} books
+                {t("library.book_count", "{count} books").replace("{count}", cat.bookCount.toLocaleString())}
               </p>
             </div>
           </div>

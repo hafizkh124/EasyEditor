@@ -1,5 +1,8 @@
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { classifyHadithGrade, GRADE_FAMILY_STYLE } from "@/lib/citations/hadithGrade";
+import { domainLabel } from "@/lib/citations/domains";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface CitationRef {
   // Hadith fields
@@ -41,7 +44,8 @@ function formatCitation(domain: string, ref: CitationRef): string {
     const parts: string[] = [];
     if (ref.book) parts.push(ref.book);
     if (ref.hadith_number !== undefined) parts.push(`No. ${ref.hadith_number}`);
-    if (ref.grade) parts.push(ref.grade);
+    // Grade renders as its own chip (below), not folded into this label —
+    // STRATEGY-v1 P2 wants it visually distinct, not buried in a joined string.
     if (ref.rawi) parts.push(`Narrated: ${ref.rawi}`);
     return parts.join(" · ") || "Hadith";
   }
@@ -94,6 +98,7 @@ function domainColor(domain: string): string {
 }
 
 const CitationBadge = ({ domain, citationRef, className }: CitationBadgeProps) => {
+  const { t } = useLanguage();
   const label = formatCitation(domain, citationRef);
   const colorClass = domainColor(domain);
 
@@ -111,15 +116,41 @@ const CitationBadge = ({ domain, citationRef, className }: CitationBadgeProps) =
     </span>
   );
 
-  if (citationRef.url) {
-    return (
-      <a href={citationRef.url} target="_blank" rel="noopener noreferrer" className="no-underline">
-        {inner}
-      </a>
-    );
-  }
+  const badge = citationRef.url ? (
+    <a href={citationRef.url} target="_blank" rel="noopener noreferrer" className="no-underline">
+      {inner}
+    </a>
+  ) : (
+    inner
+  );
 
-  return inner;
+  if (!citationRef.grade) return badge;
+
+  // STRATEGY-v1 P2 — a quiet grading chip, Dorar-style: never a banner, and
+  // never presented as our own verdict. Unclassifiable text still shows the
+  // source's exact wording, just without a colour claim we can't back up
+  // (STRATEGY-v1 risk #1 — overclaiming grading precision).
+  const family = classifyHadithGrade(citationRef.grade);
+  const style = family ? GRADE_FAMILY_STYLE[family] : null;
+  const source = domainLabel(domain);
+  const disclaimer = t("citations.grade_disclaimer", "{source}: {grade} — graded by the source, not by us")
+    .replace("{source}", source)
+    .replace("{grade}", citationRef.grade);
+
+  return (
+    <span className="inline-flex items-center gap-1 flex-wrap">
+      {badge}
+      <span
+        className={cn(
+          "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium leading-none whitespace-nowrap",
+          style ? style.chip : "bg-muted border-border text-muted-foreground",
+        )}
+        title={disclaimer}
+      >
+        {style ? style.label : citationRef.grade}
+      </span>
+    </span>
+  );
 };
 
 export default CitationBadge;

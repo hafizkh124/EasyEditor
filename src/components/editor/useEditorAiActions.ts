@@ -151,8 +151,7 @@ export function useEditorAiActions({
 
       if (shouldConfirmWholeDocument(hasSelection, editor.getJSON())) {
         const proceed = window.confirm(
-          t("editor.confirm_whole_document") ||
-            "یہ عمل پوری دستاویز پر چلے گا اور اس کی فارمیٹنگ ختم ہو جائے گی۔ بہتر ہے پہلے متن منتخب کر لیں۔ کیا پھر بھی جاری رکھیں؟",
+          t("editor.confirm_whole_document", "یہ عمل پوری دستاویز پر چلے گا اور اس کی فارمیٹنگ ختم ہو جائے گی۔ بہتر ہے پہلے متن منتخب کر لیں۔ کیا پھر بھی جاری رکھیں؟"),
         );
         if (!proceed) return;
       }

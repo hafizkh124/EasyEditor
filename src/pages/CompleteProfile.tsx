@@ -91,18 +91,17 @@ const CompleteProfile = () => {
     e.preventDefault();
     const trimmedName = fullName.trim();
     if (!trimmedName) {
-      toast.error(t("onboarding.validation_name_required") || "Please enter your full name.");
+      toast.error(t("onboarding.validation_name_required", "Please enter your full name."));
       return;
     }
     if (!whatsapp.trim()) {
-      toast.error(t("onboarding.validation_whatsapp_required") || "Please enter your WhatsApp number.");
+      toast.error(t("onboarding.validation_whatsapp_required", "Please enter your WhatsApp number."));
       return;
     }
     const normalized = normalizeWhatsAppNumber(whatsapp);
     if (!normalized) {
       toast.error(
-        t("onboarding.validation_whatsapp_format") ||
-          "Please enter a valid WhatsApp number with your country code.",
+        t("onboarding.validation_whatsapp_format", "Please enter a valid WhatsApp number with your country code."),
       );
       return;
     }
@@ -124,7 +123,7 @@ const CompleteProfile = () => {
       return;
     }
 
-    toast.success(t("onboarding.saved") || "Profile saved!");
+    toast.success(t("onboarding.saved", "Profile saved!"));
     await refetch();
     navigate("/pending-approval", { replace: true });
   };
@@ -142,25 +141,24 @@ const CompleteProfile = () => {
             <div className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-primary" />
               <CardTitle className="text-xl">
-                {t("onboarding.title") || "Complete Your Profile"}
+                {t("onboarding.title", "Complete Your Profile")}
               </CardTitle>
             </div>
             <p className="text-sm text-muted-foreground">
-              {t("onboarding.intro") ||
-                "We need to be able to contact you about your subscription. Please share your WhatsApp number — our team will reach out for payment confirmation and support."}
+              {t("onboarding.intro", "We need to be able to contact you about your subscription. Please share your WhatsApp number — our team will reach out for payment confirmation and support.")}
             </p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="fullName">
-                  {t("onboarding.full_name_label") || "Full Name"} <span className="text-destructive">*</span>
+                  {t("onboarding.full_name_label", "Full Name")} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="fullName"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder={t("onboarding.full_name_placeholder") || "e.g. Hafiz Muhammad Ali"}
+                  placeholder={t("onboarding.full_name_placeholder", "e.g. Hafiz Muhammad Ali")}
                   maxLength={80}
                   required
                   autoFocus
@@ -169,50 +167,49 @@ const CompleteProfile = () => {
 
               <div className="space-y-1.5">
                 <Label htmlFor="whatsapp">
-                  {t("onboarding.whatsapp_label") || "WhatsApp Number"} <span className="text-destructive">*</span>
+                  {t("onboarding.whatsapp_label", "WhatsApp Number")} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="whatsapp"
                   type="tel"
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder={t("onboarding.whatsapp_placeholder") || "+92 308 4164816"}
+                  placeholder={t("onboarding.whatsapp_placeholder", "+92 308 4164816")}
                   required
                   dir="ltr"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {t("onboarding.whatsapp_hint") ||
-                    "Include your country code, e.g. +92 308 4164816 or +44 7700 900123."}
+                  {t("onboarding.whatsapp_hint", "Include your country code, e.g. +92 308 4164816 or +44 7700 900123.")}
                 </p>
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="country">
-                  {t("onboarding.country_label") || "Country / City"}{" "}
+                  {t("onboarding.country_label", "Country / City")}{" "}
                   <span className="text-xs text-muted-foreground">
-                    ({t("onboarding.optional") || "optional"})
+                    ({t("onboarding.optional", "optional")})
                   </span>
                 </Label>
                 <Input
                   id="country"
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
-                  placeholder={t("onboarding.country_placeholder") || "e.g. Lahore, Pakistan"}
+                  placeholder={t("onboarding.country_placeholder", "e.g. Lahore, Pakistan")}
                   maxLength={80}
                 />
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="profession">
-                  {t("onboarding.profession_label") || "Profession / Role"}{" "}
+                  {t("onboarding.profession_label", "Profession / Role")}{" "}
                   <span className="text-xs text-muted-foreground">
-                    ({t("onboarding.optional") || "optional"})
+                    ({t("onboarding.optional", "optional")})
                   </span>
                 </Label>
                 <Select value={profession} onValueChange={setProfession}>
                   <SelectTrigger id="profession">
                     <SelectValue
-                      placeholder={t("onboarding.profession_placeholder") || "Select your role"}
+                      placeholder={t("onboarding.profession_placeholder", "Select your role")}
                     />
                   </SelectTrigger>
                   <SelectContent>
@@ -228,15 +225,15 @@ const CompleteProfile = () => {
               <Button type="submit" disabled={submitting} className="w-full">
                 {submitting && <Loader2 className="h-4 w-4 me-2 animate-spin" />}
                 {submitting
-                  ? t("onboarding.saving") || "Saving…"
-                  : t("onboarding.submit") || "Continue"}
+                  ? t("onboarding.saving", "Saving…")
+                  : t("onboarding.submit", "Continue")}
               </Button>
             </form>
 
             <div className="mt-4 pt-4 border-t border-border text-center">
               <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground">
                 <LogOut className="h-3.5 w-3.5 me-2" />
-                {t("onboarding.sign_out") || "Sign Out"}
+                {t("onboarding.sign_out", "Sign Out")}
               </Button>
             </div>
           </CardContent>

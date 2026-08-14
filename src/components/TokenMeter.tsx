@@ -27,11 +27,11 @@ export default function TokenMeter({ compact = false }: { compact?: boolean }) {
         <div className="flex items-center gap-2">
           <Coins className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">
-            {t("tokens.balance") || "Token Balance"}
+            {t("tokens.balance", "Token Balance")}
           </span>
         </div>
         <span className="text-sm font-semibold tabular-nums">
-          {total.toLocaleString()} {t("tokens.tokens") || "tokens"}
+          {total.toLocaleString()} {t("tokens.tokens", "tokens")}
         </span>
       </div>
 
@@ -59,11 +59,11 @@ export default function TokenMeter({ compact = false }: { compact?: boolean }) {
       {!compact && (
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>
-            {t("tokens.monthly_used") || "Used"}: {monthlyUsed.toLocaleString()} / {monthlyLimit.toLocaleString()}
+            {t("tokens.monthly_used", "Used")}: {monthlyUsed.toLocaleString()} / {monthlyLimit.toLocaleString()}
           </span>
           {topup > 0 && (
             <span>
-              {t("tokens.topup") || "Top-up"}: {topup.toLocaleString()}
+              {t("tokens.topup", "Top-up")}: {topup.toLocaleString()}
             </span>
           )}
         </div>
@@ -72,11 +72,11 @@ export default function TokenMeter({ compact = false }: { compact?: boolean }) {
       {/* Token cost quick reference */}
       {!compact && (
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground pt-1">
-          <span>STT: {TOKEN_COSTS.stt}/{t("tokens.per_min") || "min"}</span>
-          <span>OCR: {TOKEN_COSTS.ocr}/{t("tokens.per_page") || "page"}</span>
-          <span>Research: {TOKEN_COSTS.research}/{t("tokens.per_query") || "query"}</span>
-          <span>Islamic: {TOKEN_COSTS.islamic}/{t("tokens.per_query") || "query"}</span>
-          <span>TTS: {TOKEN_COSTS.tts_google}/{t("tokens.per_1k") || "1K chars"}</span>
+          <span>STT: {TOKEN_COSTS.stt}/{t("tokens.per_min", "min")}</span>
+          <span>OCR: {TOKEN_COSTS.ocr}/{t("tokens.per_page", "page")}</span>
+          <span>Research: {TOKEN_COSTS.research}/{t("tokens.per_query", "query")}</span>
+          <span>Islamic: {TOKEN_COSTS.islamic}/{t("tokens.per_query", "query")}</span>
+          <span>TTS: {TOKEN_COSTS.tts_google}/{t("tokens.per_1k", "1K chars")}</span>
         </div>
       )}
     </div>

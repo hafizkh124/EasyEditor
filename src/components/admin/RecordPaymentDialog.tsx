@@ -162,7 +162,7 @@ const RecordPaymentDialog = ({ user, onClose }: RecordPaymentDialogProps) => {
 
         <DialogFooter>
           <Button variant="ghost" onClick={handleClose} disabled={saving}>
-            {t("admin.cancel") || "Cancel"}
+            {t("admin.cancel", "Cancel")}
           </Button>
           <Button
             onClick={handleSave}

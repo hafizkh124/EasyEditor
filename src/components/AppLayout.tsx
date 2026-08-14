@@ -16,6 +16,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { sectionNav, adminNavItem, useActiveSection, type NavItem } from "@/components/layout/appNav";
+import { availableCapabilities } from "@/core/capabilities/registry";
 
 /* ─── Main Layout ─── */
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -36,7 +37,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:start-2 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       >
-        {t("a11y.skip_to_main") || "Skip to main content"}
+        {t("a11y.skip_to_main", "Skip to main content")}
       </a>
 
       {/* Desktop Sidebar */}
@@ -109,22 +110,29 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {children}
         </main>
 
-        {/* Mobile Bottom Navigation — trimmed to the 4 core sections */}
+        {/* Mobile Bottom Navigation. Reads the `mobile-nav` capability surface
+            rather than `sectionNav` (the sidebar's list): sidebar entries can
+            carry a `children` group — Tools, holding Transcribe/Speak/OCR/etc.
+            — which this flat icon row cannot expand. Mapping it directly used
+            to send the whole group to `children[0].path`, so tapping "Tools"
+            silently landed on Speech-to-Text. Registry capabilities are always
+            individually routable, so that shortcut cannot happen here. */}
         <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm md:hidden pb-[env(safe-area-inset-bottom)]">
           <div className="flex items-center justify-around h-16">
-            {sectionNav.map((item) => {
-              const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+            {availableCapabilities("mobile-nav").map((capability) => {
+              const path = capability.route!;
+              const isActive = location.pathname === path || location.pathname.startsWith(path + "/");
               return (
                 <Link
-                  key={item.path}
-                  to={item.path}
+                  key={capability.id}
+                  to={path}
                   className={cn(
                     "flex flex-col items-center justify-center gap-1 px-2 py-1.5 rounded-lg transition-colors min-w-touch min-h-touch flex-1",
                     isActive ? "text-primary" : "text-muted-foreground active:text-foreground",
                   )}
                 >
-                  <item.icon className={cn("h-5 w-5", isActive && "text-primary")} />
-                  <span className="text-xs font-medium leading-none">{t(item.labelKey, item.fallbackLabel)}</span>
+                  <capability.icon className={cn("h-5 w-5", isActive && "text-primary")} />
+                  <span className="text-xs font-medium leading-none">{t(capability.labelKey, capability.fallbackLabel)}</span>
                 </Link>
               );
             })}

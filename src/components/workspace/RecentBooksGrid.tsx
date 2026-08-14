@@ -2,7 +2,9 @@ import React from "react";
 import { BookOpen, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookCover } from "@/components/shamela/BookCover";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { RecentItem } from "@/core/backend/types";
+import type { Translator } from "@/lib/i18n";
 
 interface RecentBooksGridProps {
   items: RecentItem[];
@@ -18,7 +20,7 @@ function getSourceInfo(item: RecentItem): { author?: string; shamelaBookId?: num
   };
 }
 
-function formatTimeAgo(dateStr: string): string {
+function formatTimeAgo(dateStr: string, t: Translator): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -26,10 +28,10 @@ function formatTimeAgo(dateStr: string): string {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 1) return t("library.time_just_now", "Just now");
+  if (diffMins < 60) return t("library.time_minutes_ago", "{count}m ago").replace("{count}", String(diffMins));
+  if (diffHours < 24) return t("library.time_hours_ago", "{count}h ago").replace("{count}", String(diffHours));
+  if (diffDays < 7) return t("library.time_days_ago", "{count}d ago").replace("{count}", String(diffDays));
   return date.toLocaleDateString();
 }
 
@@ -38,11 +40,12 @@ export const RecentBooksGrid: React.FC<RecentBooksGridProps> = ({
   onSelectBook,
   loading,
 }) => {
+  const { t } = useLanguage();
   if (loading && items.length === 0) {
     return (
       <div className="space-y-2">
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Recently Read
+          {t("library.recently_read", "Recently Read")}
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -64,7 +67,7 @@ export const RecentBooksGrid: React.FC<RecentBooksGridProps> = ({
   return (
     <div className="space-y-2">
       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        Recently Read
+        {t("library.recently_read", "Recently Read")}
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {items.map((item) => {
@@ -103,9 +106,9 @@ export const RecentBooksGrid: React.FC<RecentBooksGridProps> = ({
 
               {/* Time ago */}
               <div className="flex items-center gap-1 mt-1">
-                <Clock className="h-2.5 w-2.5 text-muted-foreground/50" />
+                <Clock className="h-3 w-3 text-muted-foreground/50" />
                 <p className="text-xs text-muted-foreground/70">
-                  {formatTimeAgo(item.accessedAt)}
+                  {formatTimeAgo(item.accessedAt, t)}
                 </p>
               </div>
             </button>

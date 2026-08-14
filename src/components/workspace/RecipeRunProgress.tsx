@@ -1,5 +1,6 @@
 import React from "react";
 import { AlertCircle } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { RecipeProgress } from "@/lib/recipes/recipeOrchestrator";
 
 interface RecipeRunProgressProps {
@@ -16,6 +17,7 @@ interface RecipeRunProgressProps {
  * must never look like one that completed (SPEC-M4 FR-4.6).
  */
 export const RecipeRunProgress: React.FC<RecipeRunProgressProps> = ({ problems, progress }) => {
+  const { t } = useLanguage();
   const percent = progress
     ? Math.round(((progress.currentStepIndex + 1) / progress.totalSteps) * 100)
     : 0;
@@ -37,8 +39,10 @@ export const RecipeRunProgress: React.FC<RecipeRunProgressProps> = ({ problems, 
         <div className="space-y-1.5 p-2.5 bg-primary/10 border border-primary/20 rounded-md">
           <div className="flex justify-between font-medium text-primary text-xs">
             <span>
-              مرحلہ {progress.currentStepIndex + 1} از {progress.totalSteps}:{" "}
-              {progress.currentStepLabel}
+              {t("library.step_of", "Step {current} of {total}: {label}")
+                .replace("{current}", String(progress.currentStepIndex + 1))
+                .replace("{total}", String(progress.totalSteps))
+                .replace("{label}", progress.currentStepLabel)}
             </span>
             <span>{percent}%</span>
           </div>
@@ -59,7 +63,7 @@ export const RecipeRunProgress: React.FC<RecipeRunProgressProps> = ({ problems, 
             >
               <span className="truncate">{o.stepLabel}</span>
               <span className="shrink-0 ps-2">
-                {o.ok ? `${o.applied} از ${o.total} حصے` : (o.reason ?? "ناکام")}
+                {o.ok ? t("library.completed_of", "{applied} of {total} complete").replace("{applied}", String(o.applied)).replace("{total}", String(o.total)) : (o.reason ?? t("library.failed", "Failed"))}
               </span>
             </div>
           ))}

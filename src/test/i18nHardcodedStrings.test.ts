@@ -49,13 +49,19 @@ describe("hardcoded user-facing strings", () => {
     expect(unexpected).toEqual([]);
   }, 60_000);
 
-  it("does not leave bare UI literals in Shamela or reader components", () => {
+  it("does not leave bare UI literals in Shamela, reader, or workspace components", () => {
     const violations: string[] = [];
     const checkedAttributes = new Set(["title", "aria-label", "placeholder"]);
 
     for (const file of sourceFiles()) {
       const relative = relativeSourcePath(file).replace(/\\/g, "/");
-      if (!relative.startsWith("src/components/shamela/") && !relative.startsWith("src/components/reader/")) continue;
+      if (
+        !relative.startsWith("src/components/shamela/") &&
+        !relative.startsWith("src/components/reader/") &&
+        !relative.startsWith("src/components/workspace/")
+      ) {
+        continue;
+      }
 
       const source = readSource(file);
       const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);

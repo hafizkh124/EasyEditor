@@ -53,7 +53,7 @@ export const TocTree: React.FC<TocTreeProps> = ({
             title={entry.text}
           >
             {entry.depth > 0 && (
-              <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/50" />
+              <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
             )}
             <span className="truncate">{entry.text}</span>
           </button>

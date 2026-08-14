@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SourceCardList } from "./SourceCardList";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { TaskRunSource } from "@/core/workspace/types";
 
 export interface LastRunSummary {
@@ -34,6 +35,7 @@ interface TaskRunCardProps {
  * one-click reversal while the change is still fresh.
  */
 export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDismiss }) => {
+  const { t } = useLanguage();
   const workspace = useOptionalWorkspace();
   const percent = summary.confidence === null ? null : Math.round(summary.confidence * 100);
 
@@ -41,20 +43,19 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
     percent === null
       ? null
       : percent >= 70
-        ? { label: "اعلیٰ اعتماد", cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" }
+        ? { label: t("library.confidence_high", "High confidence"), cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" }
         : percent >= 40
-          ? { label: "متوسط اعتماد", cls: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20" }
-          : { label: "کم اعتماد — جانچ لیں", cls: "bg-red-500/10 text-red-600 border-red-500/20" };
+          ? { label: t("library.confidence_medium", "Medium confidence"), cls: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20" }
+          : { label: t("library.confidence_low", "Low confidence — check"), cls: "bg-red-500/10 text-red-600 border-red-500/20" };
 
   const notes: string[] = [];
-  if (summary.failed > 0) notes.push(`${summary.failed} حصے ناکام`);
-  if (summary.invalidated > 0) notes.push(`${summary.invalidated} حصے حذف شدہ`);
-  if (summary.skipped > 0) notes.push(`${summary.skipped} بلاک (جدول/تصاویر) محفوظ رکھے گئے`);
+  if (summary.failed > 0) notes.push(t("library.parts_failed", "{count} parts failed").replace("{count}", String(summary.failed)));
+  if (summary.invalidated > 0) notes.push(t("library.parts_invalidated", "{count} parts removed").replace("{count}", String(summary.invalidated)));
+  if (summary.skipped > 0) notes.push(t("library.parts_skipped", "{count} blocks (tables/images) kept").replace("{count}", String(summary.skipped)));
 
   return (
     <div
       className="border-t border-border bg-card px-3 py-2 space-y-2 text-xs max-h-56 overflow-y-auto"
-      dir="rtl"
       role="status"
       aria-live="polite"
     >
@@ -63,27 +64,27 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
           <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" />
           <span className="font-medium text-foreground truncate">{summary.taskLabel}</span>
           <span className="text-muted-foreground shrink-0">
-            {summary.cancelled ? "منسوخ — " : ""}
-            {summary.applied} از {summary.total} مکمل
+            {summary.cancelled ? t("library.cancelled_prefix", "Cancelled — ") : ""}
+            {t("library.completed_of", "{applied} of {total} complete").replace("{applied}", String(summary.applied)).replace("{total}", String(summary.total))}
           </span>
           {band && (
             <Badge variant="outline" className={`text-xs shrink-0 ${band.cls}`}>
-              {band.label} ({percent}%)
+              {t("library.confidence_badge", "{label} ({percent}%)").replace("{label}", band.label).replace("{percent}", String(percent))}
             </Badge>
           )}
         </span>
 
         <span className="flex items-center gap-1 shrink-0">
-          <span className="text-muted-foreground">{summary.tokensSpent} ٹوکن</span>
+          <span className="text-muted-foreground">{t("library.tokens", "{count} tokens").replace("{count}", String(summary.tokensSpent))}</span>
           <Button
             size="sm"
             variant="ghost"
             className="h-6 px-2 text-xs gap-1"
             onClick={onUndo}
-            aria-label="اس پورے رن کی تبدیلیاں واپس لیں"
+            aria-label={t("library.undo_run_aria", "Undo all changes from this run")}
           >
-            <Undo2 className="h-3 w-3" />
-            پورا رن واپس لیں
+            <Undo2 className="h-3.5 w-3.5" />
+            {t("library.undo_run", "Undo whole run")}
           </Button>
           {workspace && (
             <Button
@@ -91,9 +92,9 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
               variant="ghost"
               className="h-6 w-6 p-0"
               onClick={() => workspace.setWorkbenchTab("trust")}
-              aria-label="Trust ٹیب میں کھولیں"
+              aria-label={t("library.open_trust", "Open in Trust tab")}
             >
-              <ExternalLink className="h-3 w-3" />
+              <ExternalLink className="h-3.5 w-3.5" />
             </Button>
           )}
           <Button
@@ -101,16 +102,16 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
             variant="ghost"
             className="h-6 w-6 p-0"
             onClick={onDismiss}
-            aria-label="یہ کارڈ بند کریں"
+            aria-label={t("library.close_card", "Close this card")}
           >
-            <X className="h-3 w-3" />
+            <X className="h-3.5 w-3.5" />
           </Button>
         </span>
       </div>
 
       {notes.length > 0 && (
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
-          <AlertTriangle className="h-3 w-3 shrink-0 text-amber-500" />
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
           {notes.join("، ")}
         </p>
       )}

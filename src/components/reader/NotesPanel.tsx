@@ -149,7 +149,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ active = false }) => {
                     className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                     title={t("reader.notes.jump")}
                   >
-                    <CornerDownLeft className="h-3 w-3" />
+                    <CornerDownLeft className="h-3.5 w-3.5" />
                     {t("reader.page")} {n.pageNumber}
                   </button>
                   <Button

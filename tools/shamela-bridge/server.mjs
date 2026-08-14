@@ -185,6 +185,165 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Catalogue endpoints (UX-v1 P7) ──────────────────────────────────
+  // Browse only — categories, authors, periods, books-by-X, stats. Uses the
+  // same low-level `backend.catalog.*` methods the /health endpoint already
+  // proves work, rather than replicating the MCP tools' JSON-schema argument
+  // shapes; author search goes through the registered-tool layer (Lucene),
+  // the same way /search already does. Deliberately NOT covering
+  // readPage/readToc/pageCount — see shamelaClient.ts for why the reader
+  // stays desktop-only for now.
+  if (req.method === 'GET' && url.pathname === '/catalogue/stats') {
+    try {
+      const { backend } = await getBackendAndServer();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        totalBooks: backend.catalog.bookCount(),
+        totalAuthors: backend.catalog.authorCount(),
+        totalCategories: backend.catalog.categoryCount(),
+      }));
+    } catch (err) {
+      console.error('[Bridge] catalogue/stats error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/catalogue/categories') {
+    try {
+      const { backend } = await getBackendAndServer();
+      const cats = backend.catalog.listCategories().map((c) => ({
+        id: c.category_id,
+        name: stripHtml(c.category_name),
+        bookCount: backend.catalog.booksInCategory(c.category_id).length,
+      }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(cats));
+    } catch (err) {
+      console.error('[Bridge] catalogue/categories error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/catalogue/periods') {
+    try {
+      const { backend } = await getBackendAndServer();
+      const counts = new Map();
+      for (const b of backend.catalog.allBooks()) {
+        if (b.book_date === null || b.book_date === undefined) continue;
+        const century = Math.max(1, Math.ceil(b.book_date / 100));
+        counts.set(century, (counts.get(century) || 0) + 1);
+      }
+      const periods = [...counts.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([century, bookCount]) => ({
+          century,
+          label: `القرن ${century} الهجري`,
+          bookCount,
+        }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(periods));
+    } catch (err) {
+      console.error('[Bridge] catalogue/periods error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/catalogue/books') {
+    try {
+      const { backend } = await getBackendAndServer();
+      const categoryId = url.searchParams.get('categoryId');
+      const authorId = url.searchParams.get('authorId');
+      const century = url.searchParams.get('century');
+      const limit = Math.min(Number(url.searchParams.get('limit')) || 100, 200);
+      const offset = Number(url.searchParams.get('offset')) || 0;
+
+      let bookIds;
+      if (categoryId !== null) {
+        bookIds = backend.catalog.booksInCategory(Number(categoryId));
+      } else if (authorId !== null) {
+        bookIds = backend.catalog.booksByAuthorId(Number(authorId));
+      } else if (century !== null) {
+        const c = Number(century);
+        bookIds = backend.catalog.allBooks()
+          .filter((b) => b.book_date != null && Math.max(1, Math.ceil(b.book_date / 100)) === c)
+          .map((b) => b.book_id);
+      } else {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'One of categoryId, authorId, century is required' }));
+        return;
+      }
+
+      const page = bookIds.slice(offset, offset + limit).map((id) => {
+        const rec = backend.catalog.bookRecord(id);
+        if (!rec) return null;
+        const mainAuthor = rec.main_author != null ? backend.catalog.authorRecord(rec.main_author) : null;
+        return {
+          id: rec.book_id,
+          title: stripHtml(rec.book_name),
+          author: rec.main_author != null ? stripHtml(backend.catalog.mainAuthorName(rec) || '') || null : null,
+          category: backend.catalog.categoryPath(rec.book_category)[0] ?? null,
+          deathYear: mainAuthor?.death_year ?? null,
+          bookType: rec.book_type ?? null,
+        };
+      }).filter(Boolean);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(page));
+    } catch (err) {
+      console.error('[Bridge] catalogue/books error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/catalogue/authors') {
+    try {
+      const query = (url.searchParams.get('q') || '').trim();
+      const limit = Math.min(Number(url.searchParams.get('limit')) || 100, 200);
+      const offset = Number(url.searchParams.get('offset')) || 0;
+
+      // No low-level "list all ~3,100 authors" method exists in the wrapped
+      // package, only a Lucene name search — an empty query on web returns
+      // an honest empty list rather than guessing at pagination over nothing.
+      if (!query) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+        return;
+      }
+
+      const { backend, serverInstance } = await getBackendAndServer();
+      const tool = serverInstance._registeredTools?.['shamela_search_authors'];
+      if (!tool) throw new Error('shamela_search_authors tool handler not found');
+
+      const response = await tool.handler({ query, limit, offset, response_format: 'json' });
+      const results = response.structuredContent?.results || [];
+
+      const authors = results.map((r) => ({
+        id: r.author_id,
+        name: stripHtml(r.author_name || ''),
+        deathNumber: r.death_year ?? null,
+        deathText: r.death_year ? null : (backend.catalog.authorRecord(r.author_id)?.death_text ?? null),
+        bookCount: r.book_count ?? backend.catalog.booksByAuthorId(r.author_id).length,
+        alpha: null,
+      }));
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(authors));
+    } catch (err) {
+      console.error('[Bridge] catalogue/authors error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // 4. POST /search Endpoint
   if (req.method === 'POST' && url.pathname === '/search') {
     let bodyText = '';

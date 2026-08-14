@@ -16,11 +16,12 @@ All colors MUST be HSL.
 
     /* Was 89% — darker than --background (96%), which inverted the elevation
        ladder this palette follows everywhere else. Dark mode raises each
-       layer (background 9% -> card 14% -> popover 25%); light mode dropped the
-       popover below the page instead. That also made it the one surface where
-       `text-primary` could not reach WCAG AA (4.12:1 at best). Continuing the
-       ladder to card level fixes both: 5.07:1 for text-primary, and popovers
-       now read as raised rather than sunken. --border still separates them. */
+       layer once (background 9% -> card/popover 14%, both at the same level);
+       light mode dropped the popover below the page instead. That also made
+       it the one surface where `text-primary` could not reach WCAG AA (4.12:1
+       at best). Matching --card fixes both: 5.07:1 for text-primary, and
+       popovers now read as raised rather than sunken. --border still
+       separates card and popover from each other where they're adjacent. */
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
 
@@ -68,8 +69,6 @@ All colors MUST be HSL.
     --chart-4: 82 77% 55%;
 
     --chart-5: 0 0% 45%;
-
-    --sidebar: 0 0% 98%;
 
     /* 'Noto Naskh Arabic' sits directly after Work Sans on purpose. Work Sans
        carries no Arabic-script glyphs, so before this the ENTIRE Urdu and
@@ -151,7 +150,6 @@ All colors MUST be HSL.
     --chart-3: 170 76% 64%;
     --chart-4: 81 84% 67%;
     --chart-5: 0 0% 45%;
-    --sidebar: 0 0% 14%;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
     --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
@@ -255,6 +253,21 @@ All colors MUST be HSL.
     textarea,
     select {
       font-size: 16px;
+    }
+  }
+
+  /* UX-v1 P2.4 — WCAG 2.3.3. Nothing in the app opted into `prefers-reduced-motion`
+     before this; spinners, drawer slides and Tailwind's transition utilities all ran
+     unconditionally. This collapses every animation/transition to near-instant for
+     users who asked the OS for that, without hunting down each call site. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
     }
   }
 }

@@ -17,6 +17,7 @@ import { libraryChunkService } from "@/lib/corpus/libraryChunkService";
 import { runLibraryIngest, type IngestProgress } from "@/lib/corpus/ingestOrchestrator";
 import { IngestProgressCard } from "./IngestProgressCard";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SourceUploadDialogProps {
   open: boolean;
@@ -29,6 +30,7 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
   onOpenChange,
   onSuccess,
 }) => {
+  const { t } = useLanguage();
   const { total } = useTokenBalance();
   const [file, setFile] = useState<File | null>(null);
   const [kind] = useState<"book" | "ocr" | "audio" | "custom">("book");
@@ -60,7 +62,7 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
     setIsUploading(true);
     try {
       const item = await libraryChunkService.uploadLibraryFile(file, kind);
-      if (!item) throw new Error("اپلوڈ ناکام ہو گیا");
+      if (!item) throw new Error(t("library.upload_failed", "Upload failed"));
 
       toast.success(translateStored("toast.library.file_saved"));
 
@@ -99,20 +101,20 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir="rtl">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base text-primary">
             <BookOpen className="h-5 w-5" />
-            ذاتی کتب خانے میں کتاب / دستاویز اپلوڈ کریں
+            {t("library.upload_title", "Upload a book/document to your personal library")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            PDF, DOCX, TXT, یا MD فائل منتخب کریں۔ متن نکال کر کتب خانے کی محفوظ تلاش کے لیے تیار کیا جائے گا۔
+            {t("library.upload_desc", "Select a PDF, DOCX, TXT, or MD file. Text will be extracted and prepared for safe library search.")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label htmlFor="file-upload" className="text-xs font-medium">فائل منتخب کریں</Label>
+            <Label htmlFor="file-upload" className="text-xs font-medium">{t("library.select_file", "Select file")}</Label>
             <Input
               id="file-upload"
               type="file"
@@ -127,21 +129,21 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
             <div className="p-3 bg-muted rounded-lg space-y-2 border text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-foreground truncate">{file.name}</span>
-                <span className="text-muted-foreground">({Math.round(file.size / 1024)} KB)</span>
+                <span className="text-muted-foreground">{t("library.file_size", "({size} KB)").replace("{size}", String(Math.round(file.size / 1024)))}</span>
               </div>
 
               <div className="flex items-center justify-between pt-1 border-t border-border/50 text-xs">
-                <span className="text-muted-foreground">تخمینی chunks: ~{estimatedChunks}</span>
+                <span className="text-muted-foreground">{t("library.est_chunks", "Estimated chunks: ~{count}").replace("{count}", String(estimatedChunks))}</span>
                 <span className="flex items-center gap-1 font-medium text-primary">
                   <Coins className="h-3.5 w-3.5" />
-                  تخمینی لاگت: {estimatedCost} ٹوکن
+                  {t("library.est_cost", "Estimated cost: {cost} tokens").replace("{cost}", String(estimatedCost))}
                 </span>
               </div>
 
               {!isSolvent && (
                 <div className="flex items-center gap-1.5 text-destructive text-xs font-medium pt-1">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  <span>ٹوکن ناکافی ہیں! بیلنس: {available}</span>
+                  <span>{t("library.insufficient_tokens", "Insufficient tokens! Balance: {balance}").replace("{balance}", String(available))}</span>
                 </div>
               )}
             </div>
@@ -149,7 +151,7 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
 
           {ingestProgress && (
             <IngestProgressCard
-              title={file?.name ?? "کتاب"}
+              title={file?.name ?? t("library.book_upload", "Book")}
               progress={ingestProgress}
               onCancel={() => abortRef.current?.abort()}
             />
@@ -158,7 +160,7 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={isUploading}>
-            منسوخ کریں
+            {t("common.cancel", "Cancel")}
           </Button>
           <Button
             size="sm"
@@ -167,7 +169,7 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
             className="gap-1.5 bg-primary hover:bg-primary/90"
           >
             {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            اپلوڈ اور پروسیس کریں
+            {t("library.upload_process", "Upload and process")}
           </Button>
         </DialogFooter>
       </DialogContent>

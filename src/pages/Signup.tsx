@@ -101,8 +101,8 @@ const Signup = () => {
             <Gift className="h-4 w-4 text-green-600 flex-shrink-0" />
             <span className="text-foreground">
               {referrerName
-                ? (t("signup.referred_by_named") || "Referred by {name}").replace("{name}", referrerName)
-                : (t("signup.referred_with_code") || "Joining with referral code {code}").replace("{code}", referralCode)}
+                ? (t("signup.referred_by_named", "Referred by {name}")).replace("{name}", referrerName)
+                : (t("signup.referred_with_code", "Joining with referral code {code}")).replace("{code}", referralCode)}
             </span>
           </div>
         )}
