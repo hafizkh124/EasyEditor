@@ -249,8 +249,8 @@ export const ResearchPanel = () => {
             <AlertDialogDescription>{t("research.mode_switch_unsaved")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingMode(null)}>{t("common.cancel") || "Cancel"}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmModeChange}>{t("common.confirm") || "Confirm"}</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setPendingMode(null)}>{t("common.cancel", "Cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmModeChange}>{t("common.confirm", "Confirm")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import {
   getStoredLanguage,
+  persistLanguage,
   translate,
   type Language,
   type TranslationKey,
@@ -39,7 +40,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem("easyeditor-lang", lang);
+    persistLanguage(lang);
   }, []);
 
   const t = useCallback(

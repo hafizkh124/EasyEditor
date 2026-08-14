@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  Languages, Plus, BookOpen, Sparkles, Check, Copy, ArrowLeft, Loader2,
+  Languages, Plus, BookOpen, Sparkles, Check, Copy, Loader2,
   BookmarkCheck, Save
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,12 +41,12 @@ interface Chunk {
   notes?: string | null;
 }
 
-export interface TranslationWorkspaceProps {
-  embedded?: boolean;
-}
-
-export default function TranslationWorkspace({ embedded = false }: TranslationWorkspaceProps) {
-  const navigate = useNavigate();
+/**
+ * Always rendered embedded inside the Canvas pillar (CanvasTranslationView),
+ * never standalone — the standalone `AppLayout`-wrapped shell was retired in
+ * UX-v1 P3, since nothing ever passed `embedded={false}` to reach it.
+ */
+export default function TranslationWorkspace() {
   const { session } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -277,15 +275,10 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
   const activeChunk = chunks[activeChunkIndex];
 
   const body = (
-    <div className={embedded ? "flex flex-col h-full w-full overflow-hidden bg-background" : "flex flex-col h-[calc(100vh-3.5rem-4rem)] md:h-[calc(100vh-3.5rem)] overflow-hidden bg-background"}>
+    <div className="flex flex-col h-full w-full overflow-hidden bg-background">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-3">
-          {!embedded && (
-<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/dashboard")} aria-label="Back to dashboard">
-  <ArrowLeft className="h-4 w-4" />
-</Button>
-          )}
           <Languages className="h-5 w-5 text-primary" />
             <div>
               <h1 className="text-base font-semibold">ترجمہ پروجیکٹس (Translation Workspace)</h1>
@@ -504,6 +497,5 @@ export default function TranslationWorkspace({ embedded = false }: TranslationWo
     </div>
   );
 
-  if (embedded) return body;
-  return <AppLayout>{body}</AppLayout>;
+  return body;
 }

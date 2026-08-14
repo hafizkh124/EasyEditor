@@ -101,7 +101,7 @@ const OCR = () => {
                   size="icon"
                   className="h-10 w-10"
                   onClick={clearImage}
-                  aria-label={t("ocr.remove_image") || "Remove"}
+                  aria-label={t("ocr.remove_image", "Remove")}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -139,7 +139,7 @@ const OCR = () => {
                     disabled={isProcessing || ocrLimitReached}
                     className="w-full"
                   >
-                    {t("ocr.extract")} ({pdfPageCount} {t("ocr.page_label") || "pages"})
+                    {t("ocr.extract")} ({pdfPageCount} {t("ocr.page_label", "pages")})
                   </Button>
                   <Button
                     variant="outline"
@@ -171,7 +171,7 @@ const OCR = () => {
                 <ImageIcon className="h-8 w-8 text-muted-foreground" />
               </div>
               <p className="text-sm text-muted-foreground text-center">
-                {isDragOver ? (t("ocr.drop_here") || "Drop image here") : t("ocr.upload_hint")}
+                {isDragOver ? (t("ocr.drop_here", "Drop image here")) : t("ocr.upload_hint")}
               </p>
               <div className="flex gap-3">
                 <Button onClick={() => fileInputRef.current?.click()} variant="outline">
@@ -218,7 +218,7 @@ const OCR = () => {
               <div className="relative">
                 <img
                   src={imagePreview ?? undefined}
-                  alt={t("ocr.uploaded_alt") || "Uploaded document for text extraction"}
+                  alt={t("ocr.uploaded_alt", "Uploaded document for text extraction")}
                   className="w-full max-h-64 object-contain rounded-lg bg-muted"
                 />
                 <div className="absolute top-2 end-2 flex gap-1.5">
@@ -227,7 +227,7 @@ const OCR = () => {
                     size="icon"
                     className="h-10 w-10"
                     onClick={() => setIsCropping(true)}
-                    aria-label={t("ocr.crop_image") || "Crop image"}
+                    aria-label={t("ocr.crop_image", "Crop image")}
                   >
                     <Crop className="h-4 w-4" />
                   </Button>
@@ -236,7 +236,7 @@ const OCR = () => {
                     size="icon"
                     className="h-10 w-10"
                     onClick={clearImage}
-                    aria-label={t("ocr.remove_image") || "Remove image"}
+                    aria-label={t("ocr.remove_image", "Remove image")}
                   >
                     <X className="h-4 w-4" />
                   </Button>

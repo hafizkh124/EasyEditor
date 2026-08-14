@@ -1,6 +1,7 @@
 import React from "react";
 import { BookOpen, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { IngestProgress } from "@/lib/corpus/ingestOrchestrator";
 
 interface IngestProgressCardProps {
@@ -14,10 +15,10 @@ export const IngestProgressCard: React.FC<IngestProgressCardProps> = ({
   progress,
   onCancel,
 }) => {
+  const { t } = useLanguage();
   return (
     <div
       className="border border-primary/20 bg-primary/5 p-3 rounded-lg space-y-2 text-xs"
-      dir="rtl"
     >
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 font-medium text-foreground truncate min-w-0">
@@ -40,12 +41,12 @@ export const IngestProgressCard: React.FC<IngestProgressCardProps> = ({
       <div className="space-y-1">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            {progress.status === "extracting" && "متن نکالا جا رہا ہے…"}
-            {progress.status === "embedding" && `ایمبیڈنگز تیار ہو رہی ہیں (${progress.inserted} از ${progress.totalChunks})`}
-            {progress.status === "ready" && "کتب خانے میں محفوظ ہو گیا"}
+            {progress.status === "extracting" && t("library.status_extracting", "Extracting text…")}
+            {progress.status === "embedding" && t("library.status_embedding", "Preparing embeddings ({inserted} of {total})").replace("{inserted}", String(progress.inserted)).replace("{total}", String(progress.totalChunks))}
+            {progress.status === "ready" && t("library.status_ready", "Saved to library")}
             {progress.status === "cancelled" &&
-              `منسوخ — ${progress.inserted} حصے محفوظ ہیں`}
-            {progress.status === "failed" && "پروسیسنگ نامکمل"}
+              t("library.status_cancelled", "Cancelled — {count} parts saved").replace("{count}", String(progress.inserted))}
+            {progress.status === "failed" && t("library.status_failed", "Processing incomplete")}
           </span>
           <span className="font-semibold text-primary">{progress.progressPercent}%</span>
         </div>

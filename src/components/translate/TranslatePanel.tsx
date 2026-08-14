@@ -55,13 +55,13 @@ export const TranslatePanel = () => {
 
     if (trans.inputType === "pdf") {
       if (file.type !== "application/pdf") {
-        toast.error(t("ocr.invalid_file") || "Invalid PDF file");
+        toast.error(t("ocr.invalid_file", "Invalid PDF file"));
         return;
       }
       await trans.loadPdf(file);
     } else if (trans.inputType === "image") {
       if (!file.type.startsWith("image/")) {
-        toast.error(t("ocr.invalid_file") || "Invalid image file");
+        toast.error(t("ocr.invalid_file", "Invalid image file"));
         return;
       }
       await trans.loadImage(file);
@@ -83,7 +83,7 @@ export const TranslatePanel = () => {
 
   const handleCopyAll = () => {
     navigator.clipboard.writeText(trans.getFullTranslation());
-    toast.success(t("editor.copied") || "Copied to clipboard");
+    toast.success(t("editor.copied", "Copied to clipboard"));
   };
 
   const handleOpenInEditor = () => {
@@ -101,7 +101,7 @@ export const TranslatePanel = () => {
       <div className="flex flex-col h-full overflow-y-auto p-4 max-w-md mx-auto w-full justify-center bg-background">
         <div className="text-center mb-4">
           <Languages className="h-8 w-8 text-primary mx-auto mb-2" />
-          <h2 className="text-base font-semibold">{t("translate.title") || "Quick Translate"}</h2>
+          <h2 className="text-base font-semibold">{t("translate.title", "Quick Translate")}</h2>
         </div>
 
         {/* Input type selector */}
@@ -151,11 +151,11 @@ export const TranslatePanel = () => {
               onChange={(e) => setSourceText(e.target.value)}
               dir={isRtlText(sourceText) ? "rtl" : "ltr"}
               className={cn("min-h-[120px] text-xs resize-none", isRtlText(sourceText) && "text-right")}
-              placeholder={t("translate.text_placeholder") || "Enter text to translate..."}
+              placeholder={t("translate.text_placeholder", "Enter text to translate...")}
             />
             <Button onClick={handleTextSubmit} disabled={!sourceText.trim()} className="w-full gap-2 h-8 text-xs">
               <Languages className="h-3.5 w-3.5" />
-              {t("translate.start_translation") || "Translate"}
+              {t("translate.start_translation", "Translate")}
             </Button>
           </div>
         )}

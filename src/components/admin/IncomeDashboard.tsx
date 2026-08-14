@@ -79,7 +79,7 @@ const IncomeDashboard = () => {
         </div>
         <Button size="sm" variant="outline" className="h-8" onClick={handleRefresh} disabled={incomeLoading}>
           <RefreshCw className={`h-3.5 w-3.5 me-1 ${incomeLoading ? "animate-spin" : ""}`} />
-          {t("admin.corpus_refresh") || "Refresh"}
+          {t("admin.corpus_refresh", "Refresh")}
         </Button>
       </div>
 

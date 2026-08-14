@@ -173,7 +173,6 @@ All default to `true` in `.env.example`.
 
 | Flag | Turns off |
 |---|---|
-| `VITE_WORKSPACE_SHELL` | The whole three-pillar workspace (reverts to standalone pages) |
 | `VITE_TASK_LIBRARY` | AI Task Library, custom tasks, Tasks + Trust tabs |
 | `VITE_EDITOR_MENUS` | Bubble menu, slash commands, mobile task sheet |
 | `VITE_TASK_CHUNKING` | Long-document chunked runs |

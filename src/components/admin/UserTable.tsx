@@ -169,7 +169,7 @@ const UserTable = ({
                         )}
                         {status === "rejected" && (
                           <Badge variant="outline" className="text-xs text-destructive border-destructive/40">
-                            {t("admin.status_rejected") || "Rejected"}
+                            {t("admin.status_rejected", "Rejected")}
                           </Badge>
                         )}
                       </div>
@@ -227,7 +227,7 @@ const UserTable = ({
                           {(u.referred_by || (u.referral_credits ?? 0) > 0) && (
                             <span className="flex items-center gap-1">
                               <Gift className="h-3 w-3 text-green-600" />
-                              {u.referred_by ? (t("admin.referred_user") || "Referred") : ""}
+                              {u.referred_by ? (t("admin.referred_user", "Referred")) : ""}
                               {(u.referral_credits ?? 0) > 0 ? ` • Credits: ${u.referral_credits}` : ""}
                             </span>
                           )}
@@ -237,26 +237,26 @@ const UserTable = ({
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <CalendarClock className="h-3 w-3" />
-                              {t("admin.activated_on") || "Activated"}: {formatLifecycleDate(lifecycle.activatedAt)}
+                              {t("admin.activated_on", "Activated")}: {formatLifecycleDate(lifecycle.activatedAt)}
                             </span>
                             <span>•</span>
                             <span>
-                              {t("admin.expires_on") || "Expires"}: {formatLifecycleDate(lifecycle.expiresAt)}
+                              {t("admin.expires_on", "Expires")}: {formatLifecycleDate(lifecycle.expiresAt)}
                             </span>
                             {(u.renewal_count ?? 0) > 0 && (
                               <>
                                 <span>•</span>
-                                <span>{t("admin.renewals") || "Renewals"}: {u.renewal_count}</span>
+                                <span>{t("admin.renewals", "Renewals")}: {u.renewal_count}</span>
                               </>
                             )}
                             {lifecycle.status === "expiring_soon" && (
                               <Badge variant="outline" className="text-xs text-amber-700 dark:text-amber-400 border-amber-400">
-                                {(t("admin.expiring_in") || "Expires in {n}d").replace("{n}", String(lifecycle.daysRemaining ?? 0))}
+                                {(t("admin.expiring_in", "Expires in {n}d")).replace("{n}", String(lifecycle.daysRemaining ?? 0))}
                               </Badge>
                             )}
                             {lifecycle.status === "expired" && (
                               <Badge variant="outline" className="text-xs text-destructive border-destructive/40">
-                                {t("admin.expired") || "Expired"}
+                                {t("admin.expired", "Expired")}
                               </Badge>
                             )}
                           </div>
@@ -264,7 +264,7 @@ const UserTable = ({
 
                         {status === "rejected" && u.rejection_reason && (
                           <p className="text-xs text-destructive/80 italic">
-                            {t("admin.rejection_reason_label") || "Reason"}: {u.rejection_reason}
+                            {t("admin.rejection_reason_label", "Reason")}: {u.rejection_reason}
                           </p>
                         )}
 
@@ -279,7 +279,7 @@ const UserTable = ({
                                 className="text-green-700 border-green-300 hover:bg-green-50 h-7 text-xs"
                               >
                                 <RefreshCw className="h-3.5 w-3.5 me-1" />
-                                {t("admin.renew") || "Renew"}
+                                {t("admin.renew", "Renew")}
                               </Button>
                               <Button
                                 size="sm"
@@ -350,7 +350,7 @@ const UserTable = ({
                                 className="text-destructive border-destructive/30 hover:bg-destructive/10 h-7 text-xs"
                               >
                                 <Ban className="h-3.5 w-3.5 me-1" />
-                                {t("admin.reject") || "Reject"}
+                                {t("admin.reject", "Reject")}
                               </Button>
                               <Button
                                 size="sm"
@@ -397,7 +397,7 @@ const UserTable = ({
                                 className="h-7 text-xs"
                               >
                                 <Undo2 className="h-3.5 w-3.5 me-1" />
-                                {t("admin.unreject") || "Return to Pending"}
+                                {t("admin.unreject", "Return to Pending")}
                               </Button>
                             </>
                           )}
@@ -416,9 +416,9 @@ const UserTable = ({
       <Dialog open={!!rejectingUser} onOpenChange={(open) => !open && setRejectingUser(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("admin.reject_dialog_title") || "Reject User"}</DialogTitle>
+            <DialogTitle>{t("admin.reject_dialog_title", "Reject User")}</DialogTitle>
             <DialogDescription>
-              {t("admin.reject_dialog_desc") || "Optional: explain why this user is being rejected. The reason will be shown to them."}
+              {t("admin.reject_dialog_desc", "Optional: explain why this user is being rejected. The reason will be shown to them.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -428,18 +428,18 @@ const UserTable = ({
             <Textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder={t("admin.reject_reason_placeholder") || "Reason (optional)"}
+              placeholder={t("admin.reject_reason_placeholder", "Reason (optional)")}
               rows={3}
               maxLength={500}
             />
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setRejectingUser(null)}>
-              {t("admin.cancel") || "Cancel"}
+              {t("admin.cancel", "Cancel")}
             </Button>
             <Button variant="destructive" onClick={confirmReject}>
               <Ban className="h-4 w-4 me-1" />
-              {t("admin.confirm_reject") || "Reject"}
+              {t("admin.confirm_reject", "Reject")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -455,8 +455,8 @@ const Speak = () => {
           <Badge variant="outline" className="ms-auto text-xs">
             {useLocalEngine
               ? localEngineId === 'edge-tts'
-                ? t("tts.online_mode") || "Online (Microsoft)"
-                : t("tts.local_mode") || "Local"
+                ? t("tts.online_mode", "Online (Microsoft)")
+                : t("tts.local_mode", "Local")
               : voiceMode === "cloned" ? t("tts.using_cloned") : selectedPersona.name}
           </Badge>
 

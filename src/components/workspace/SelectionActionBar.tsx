@@ -2,6 +2,7 @@ import React from "react";
 import { Sparkles, Search, VolumeX, SpellCheck, RefreshCw, FileText, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SelectionActionBarProps {
   selectedText: string;
@@ -24,6 +25,7 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
   onCitations,
   isBusy = false,
 }) => {
+  const { t } = useLanguage();
   // Outside a workspace (the standalone /editor page) there is no Workbench to
   // send anything to, so that one button simply doesn't appear.
   const workspace = useOptionalWorkspace();
@@ -46,7 +48,7 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
             className="h-7 text-xs gap-1 px-2 font-medium text-primary hover:text-primary hover:bg-primary/10"
           >
             <Search className="h-3.5 w-3.5" />
-            <span>Workbench میں تحقیق کریں</span>
+            <span>{t("library.research_in_workbench", "Research in Workbench")}</span>
           </Button>
 
           <div className="h-4 w-[1px] bg-border mx-0.5" />
@@ -60,10 +62,10 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
         disabled={isBusy}
         onClick={onAddHarakat}
         className="h-7 text-xs gap-1 px-1.5"
-        title="حرکات لگائیں"
+        title={t("library.harakat_full", "Add harakat")}
       >
-        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-        <span className="hidden sm:inline">حرکات</span>
+        <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="hidden sm:inline">{t("library.harakat_short", "Harakat")}</span>
       </Button>
 
       <Button
@@ -72,10 +74,10 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
         disabled={isBusy}
         onClick={onRemoveHarakat}
         className="h-7 text-xs gap-1 px-1.5"
-        title="حرکات ہٹائیں"
+        title={t("library.remove_harakat_full", "Remove harakat")}
       >
         <VolumeX className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="hidden sm:inline">ہٹائیں</span>
+        <span className="hidden sm:inline">{t("library.remove_short", "Remove")}</span>
       </Button>
 
       <Button
@@ -84,10 +86,10 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
         disabled={isBusy}
         onClick={onSpellCheck}
         className="h-7 text-xs gap-1 px-1.5"
-        title="املا کی درستگی"
+        title={t("library.spell_full", "Spell check")}
       >
-        <SpellCheck className="h-3.5 w-3.5 text-emerald-500" />
-        <span className="hidden sm:inline">املا</span>
+        <SpellCheck className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="hidden sm:inline">{t("library.spell_short", "Spell")}</span>
       </Button>
 
       <Button
@@ -96,10 +98,10 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
         disabled={isBusy}
         onClick={onParaphrase}
         className="h-7 text-xs gap-1 px-1.5"
-        title="تفہیم (Paraphrase)"
+        title={t("library.paraphrase_full", "Paraphrase")}
       >
-        <RefreshCw className="h-3.5 w-3.5 text-blue-500" />
-        <span className="hidden sm:inline">تفہیم</span>
+        <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="hidden sm:inline">{t("library.paraphrase_short", "Paraphrase")}</span>
       </Button>
 
       <Button
@@ -108,10 +110,10 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
         disabled={isBusy}
         onClick={onSummarize}
         className="h-7 text-xs gap-1 px-1.5"
-        title="خلاصہ"
+        title={t("library.summarize_full", "Summarize")}
       >
-        <FileText className="h-3.5 w-3.5 text-purple-500" />
-        <span className="hidden sm:inline">خلاصہ</span>
+        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="hidden sm:inline">{t("library.summarize_short", "Summarize")}</span>
       </Button>
 
       <Button
@@ -120,10 +122,10 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
         disabled={isBusy}
         onClick={onCitations}
         className="h-7 text-xs gap-1 px-1.5"
-        title="حوالہ جات"
+        title={t("library.citations_full", "Citations")}
       >
-        <Quote className="h-3.5 w-3.5 text-indigo-500" />
-        <span className="hidden sm:inline">حوالہ جات</span>
+        <Quote className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="hidden sm:inline">{t("library.citations_short", "Citations")}</span>
       </Button>
     </div>
   );

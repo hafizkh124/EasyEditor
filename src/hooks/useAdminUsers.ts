@@ -189,8 +189,8 @@ export function useAdminUsers(enabled: boolean) {
             .eq("user_id", referrerId);
           await sendNotification(
             referrerId,
-            t("notification.referral_earned_title") || "Referral credits earned",
-            (t("notification.referral_earned_msg") || "You earned {n} credits for referring a new subscriber.").replace(
+            t("notification.referral_earned_title", "Referral credits earned"),
+            (t("notification.referral_earned_msg", "You earned {n} credits for referring a new subscriber.")).replace(
               "{n}",
               String(REFERRAL_CREDIT_AMOUNT),
             ),
@@ -264,16 +264,16 @@ export function useAdminUsers(enabled: boolean) {
 
     await sendNotification(
       userId,
-      t("notification.subscription_renewed_title") || "Subscription renewed",
+      t("notification.subscription_renewed_title", "Subscription renewed"),
       newExpiry
-        ? (t("notification.subscription_renewed_msg") || "Your subscription has been renewed. New expiry: {date}").replace(
+        ? (t("notification.subscription_renewed_msg", "Your subscription has been renewed. New expiry: {date}")).replace(
             "{date}",
             newExpiry.toLocaleDateString(),
           )
-        : (t("notification.subscription_no_expiry") || "Your subscription is active with no expiry."),
+        : (t("notification.subscription_no_expiry", "Your subscription is active with no expiry.")),
     );
 
-    toast.success(t("admin.renewed_done") || "Subscription renewed");
+    toast.success(t("admin.renewed_done", "Subscription renewed"));
     refetch();
   };
 
@@ -298,13 +298,13 @@ export function useAdminUsers(enabled: boolean) {
 
     await sendNotification(
       userId,
-      t("notification.account_rejected_title") || "Account rejected",
+      t("notification.account_rejected_title", "Account rejected"),
       trimmedReason
-        ? (t("notification.account_rejected_msg_with_reason") || "Your account was rejected. Reason: {reason}").replace("{reason}", trimmedReason)
-        : (t("notification.account_rejected_msg") || "Your account registration has been rejected. Please contact the admin if you believe this is a mistake."),
+        ? (t("notification.account_rejected_msg_with_reason", "Your account was rejected. Reason: {reason}")).replace("{reason}", trimmedReason)
+        : (t("notification.account_rejected_msg", "Your account registration has been rejected. Please contact the admin if you believe this is a mistake.")),
     );
 
-    toast.success(t("admin.rejected_done") || "User rejected");
+    toast.success(t("admin.rejected_done", "User rejected"));
     refetch();
   };
 
@@ -324,7 +324,7 @@ export function useAdminUsers(enabled: boolean) {
       return;
     }
 
-    toast.success(t("admin.unrejected_done") || "Returned to pending queue");
+    toast.success(t("admin.unrejected_done", "Returned to pending queue"));
     refetch();
   };
 

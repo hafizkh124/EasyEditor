@@ -145,7 +145,7 @@ export const AppSidebar = ({
   <div className="flex h-full flex-col bg-sidebar">
     <div className={cn(
       "flex h-14 items-center border-b border-sidebar-border",
-      collapsed ? "justify-center px-2" : "justify-between px-5",
+      collapsed ? "justify-center px-2" : "justify-between px-4",
     )}>
       <Link to="/" onClick={onItemClick} className="flex items-center gap-2.5 min-w-0">
         <img src="/favicon.webp" alt="Easy Editor" width={26} height={26} className="rounded flex-shrink-0" />

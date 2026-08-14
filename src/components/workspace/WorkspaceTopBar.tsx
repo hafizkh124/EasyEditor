@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FileText, Download, Copy, CheckCircle2, Loader2, AlertCircle,
   ChevronDown, FileType, FileCode, File, Search, PanelRight, PanelLeft,
-  Languages, MoreHorizontal, ArrowLeft
+  Languages, MoreHorizontal, ArrowLeft, History, AudioLines, X
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,13 +13,17 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { formatTranslation } from "@/lib/i18n";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { VersionHistorySheet } from "./VersionHistorySheet";
 import { exportTxt, exportHtml, exportDoc, exportPdf, stripSuggestions } from "@/lib/editor/exporters";
+import { splitChaptersFromHtml } from "@/lib/audiobook/splitChapters";
+import { isDesktop } from "@/utils/environment";
 import AppVersionBadge from "@/components/AppVersionBadge";
 import { WorkspaceAppMenu } from "./WorkspaceAppMenu";
 import { DesktopAccountMenu } from "@/components/auth/DesktopAccountMenu";
 import type { Document, DocumentVersion } from "@/core/workspace/types";
+import type { AudiobookExportProgress } from "@/core/voice/types";
 
 interface WorkspaceTopBarProps {
   doc: Document | null;
@@ -48,10 +52,54 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
   const navigate = useNavigate();
   const { workbenchCollapsed, toggleWorkbench, setCommandPaletteOpen, mobileLibraryOpen, setMobileLibraryOpen } =
     useWorkspace();
+  // The Versions trigger button is `hidden sm:flex` — controlled state gives the
+  // mobile overflow menu a second way in without duplicating the sheet.
+  const [versionsOpen, setVersionsOpen] = useState(false);
+
+  // SPEC-M5 FR-6.9: whole document → .mp3 with chapter marks. Desktop only —
+  // it runs on the local Piper voices in the main process. Ported from the
+  // /editor page stub, which was the only place this UI existed (UX-v1 P3).
+  const [audiobookProgress, setAudiobookProgress] = useState<AudiobookExportProgress | null>(null);
+
+  useEffect(() => {
+    if (!isDesktop() || !window.electronAPI?.voice?.onAudiobookProgress) return;
+    return window.electronAPI.voice.onAudiobookProgress(setAudiobookProgress);
+  }, []);
+
+  const handleAudiobookExport = async () => {
+    const title = doc?.title || t("editor.untitled");
+    const chapters = splitChaptersFromHtml(stripSuggestions(currentHtml));
+    if (chapters.length === 0) {
+      toast.error(t("editor.audiobook_empty", "There is no text to turn into an audiobook."));
+      return;
+    }
+
+    setAudiobookProgress({ phase: "synthesizing", currentChapter: 0, totalChapters: chapters.length });
+    try {
+      const result = await window.electronAPI!.voice!.exportAudiobook({
+        chapters,
+        lang: "ur-PK",
+        title,
+      });
+      if (result.cancelled) {
+        toast.info(t("editor.audiobook_cancelled", "Audiobook export was cancelled."));
+        return;
+      }
+      const minutes = Math.round(result.durationMs / 60000);
+      toast.success(formatTranslation(t("toast.editor.audiobook_ready"), {
+        chapters: result.chapterCount,
+        minutes,
+      }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAudiobookProgress(null);
+    }
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(currentText);
-    toast.success(t("editor.copied") || "Copied to clipboard");
+    toast.success(t("editor.copied", "Copied to clipboard"));
   };
 
   const handleDownload = (format: "word" | "pdf" | "html" | "txt") => {
@@ -69,7 +117,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         break;
       }
     }
-    if (format !== "pdf") toast.success(t("editor.exported"));
+    if (format !== "pdf") toast.success(t("editor.exported", "Exported"));
   };
 
   const toggleDirection = () => {
@@ -78,13 +126,14 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
   };
 
   return (
+    <>
     <header className="flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-3 md:px-4 z-20 shrink-0">
       {/* Left: Breadcrumbs & Title */}
       <div className="flex items-center gap-2 min-w-0 flex-1 max-w-xl">
         {/* The workspace has no sidebar (FR-1.4), so this is the only route
             back to the dashboard, the tools and the profile. */}
         <WorkspaceAppMenu />
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 md:hidden" onClick={() => navigate(-1)} aria-label="Go back">
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 md:hidden" onClick={() => navigate(-1)} aria-label={t("common.go_back", "Go back")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         {/* Library drawer toggle — mobile only (FR-8.2) */}
@@ -94,7 +143,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           className="h-8 w-8 shrink-0 md:hidden"
           onClick={() => setMobileLibraryOpen(!mobileLibraryOpen)}
           aria-expanded={mobileLibraryOpen}
-          aria-label={t("nav.library") || "Library"}
+          aria-label={t("nav.library", "Library")}
         >
           <PanelLeft className="h-4 w-4" />
         </Button>
@@ -110,7 +159,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           value={doc?.title ?? ""}
           onChange={(e) => onTitleChange(e.target.value)}
           className="h-8 text-sm md:text-base font-semibold border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-ring px-1.5 min-w-[140px] truncate"
-          placeholder={t("editor.untitled")}
+          placeholder={t("editor.untitled", "Untitled")}
         />
       </div>
 
@@ -118,20 +167,20 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
       <div className="hidden md:flex items-center gap-2">
         {saveStatus === "saving" && (
           <Badge variant="outline" className="gap-1 text-xs border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/5">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            <span>Saving...</span>
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <span>{t("common.saving", "Saving...")}</span>
           </Badge>
         )}
         {saveStatus === "saved" && (
           <Badge variant="outline" className="gap-1 text-xs border-emerald-500/40 text-emerald-600 bg-emerald-500/5">
-            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-            <span>Saved</span>
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            <span>{t("common.saved", "Saved")}</span>
           </Badge>
         )}
         {saveStatus === "error" && (
           <Badge variant="outline" className="gap-1 text-xs border-destructive/40 text-destructive bg-destructive/5">
-            <AlertCircle className="h-3 w-3" />
-            <span>Save error</span>
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span>{t("common.save_error", "Save error")}</span>
           </Badge>
         )}
       </div>
@@ -146,9 +195,9 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground hidden sm:flex"
         >
           <Search className="h-3.5 w-3.5" />
-          <span>Search</span>
+          <span>{t("common.search", "Search")}</span>
           <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-xs font-medium text-muted-foreground opacity-100">
-            <span className="text-xs">⌘</span>K
+            {t("common.cmd_k", "⌘K")}
           </kbd>
         </Button>
 
@@ -158,12 +207,15 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
             side={direction === "rtl" ? "left" : "right"}
             onRestoreVersion={onRestoreVersion}
             onCreateSnapshot={onCreateSnapshot}
+            open={versionsOpen}
+            onOpenChange={setVersionsOpen}
           />
         )}
 
-        {/* Copy */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex" aria-label="Copy text" onClick={handleCopy}>
-          <Copy className="h-3.5 w-3.5" />
+        {/* Copy — h-4 glyph to match this bar's other icon-only h-8 w-8 buttons
+            (back arrow, library toggle, language toggle, overflow menu). */}
+        <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex" aria-label={t("editor.copy_text", "Copy text")} onClick={handleCopy}>
+          <Copy className="h-4 w-4" />
         </Button>
 
         {/* Export dropdown */}
@@ -171,26 +223,36 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 px-2 hidden sm:flex">
               <Download className="h-3.5 w-3.5" />
-              <ChevronDown className="h-3 w-3 opacity-60" />
+              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => handleDownload("word")} className="cursor-pointer gap-2">
               <FileType className="h-4 w-4" />
-              {t("editor.download_word") || "Word (.docx)"}
+              {t("editor.download_word", "Word (.docx)")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDownload("pdf")} className="cursor-pointer gap-2">
               <File className="h-4 w-4" />
-              {t("editor.download_pdf") || "PDF"}
+              {t("editor.download_pdf", "PDF")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDownload("html")} className="cursor-pointer gap-2">
               <FileCode className="h-4 w-4" />
-              {t("editor.download_html") || "HTML"}
+              {t("editor.download_html", "HTML")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDownload("txt")} className="cursor-pointer gap-2">
               <FileText className="h-4 w-4" />
-              {t("editor.download_txt") || "Text (.txt)"}
+              {t("editor.download_txt", "Text (.txt)")}
             </DropdownMenuItem>
+            {isDesktop() && (
+              <DropdownMenuItem
+                onClick={handleAudiobookExport}
+                disabled={audiobookProgress !== null}
+                className="cursor-pointer gap-2"
+              >
+                <AudioLines className="h-4 w-4" />
+                {t("editor.download_audiobook", "آڈیو بک (.mp3)")}
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -198,7 +260,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         <DesktopAccountMenu />
 
         {/* Language / RTL toggle */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-xs" aria-label="Switch Language / RTL" onClick={toggleDirection}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-xs" aria-label={t("common.switch_language", "Switch Language / RTL")} onClick={toggleDirection}>
           <Languages className="h-4 w-4" />
         </Button>
 
@@ -208,10 +270,11 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           size="sm"
           onClick={toggleWorkbench}
           className="h-8 text-xs gap-1.5 px-2.5"
-          title="Toggle Workbench"
+          title={t("workbench.toggle", "Toggle Workbench")}
+          aria-label={t("workbench.toggle", "Toggle Workbench")}
         >
           <PanelRight className="h-4 w-4" />
-          <span className="hidden md:inline">Workbench</span>
+          <span className="hidden md:inline">{t("workbench.title", "Workbench")}</span>
         </Button>
 
         {/* App Version Badge */}
@@ -223,31 +286,73 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         <div className="sm:hidden">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More options">
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t("common.more_options", "More options")}>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => setCommandPaletteOpen(true)} className="gap-2">
-                <Search className="h-4 w-4" /> Search (⌘K)
+                <Search className="h-4 w-4" /> {t("common.search", "Search")} {t("common.cmd_k_hint", "(⌘K)")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCopy} className="gap-2">
-                <Copy className="h-4 w-4" /> Copy Text
+                <Copy className="h-4 w-4" /> {t("editor.copy", "Copy Text")}
               </DropdownMenuItem>
+              {doc?.id && (
+                <DropdownMenuItem onClick={() => setVersionsOpen(true)} className="gap-2">
+                  <History className="h-4 w-4" /> {t("library.versions", "Versions")}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleDownload("word")} className="gap-2">
-                <FileType className="h-4 w-4" /> Download Word
+                <FileType className="h-4 w-4" /> {t("editor.download_word_action", "Download Word")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleDownload("pdf")} className="gap-2">
-                <File className="h-4 w-4" /> Download PDF
+                <File className="h-4 w-4" /> {t("editor.download_pdf_action", "Download PDF")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleDownload("html")} className="gap-2">
-                <FileCode className="h-4 w-4" /> Download HTML
+                <FileCode className="h-4 w-4" /> {t("editor.download_html_action", "Download HTML")}
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDownload("txt")} className="gap-2">
+                <FileText className="h-4 w-4" /> {t("editor.download_txt_action", "Download Text")}
+              </DropdownMenuItem>
+              {isDesktop() && (
+                <DropdownMenuItem
+                  onClick={handleAudiobookExport}
+                  disabled={audiobookProgress !== null}
+                  className="gap-2"
+                >
+                  <AudioLines className="h-4 w-4" /> {t("editor.download_audiobook", "آڈیو بک (.mp3)")}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
     </header>
+
+    {/* FR-6.9: a book-length export runs for minutes, so it says where it is
+        and offers a way out. */}
+    {audiobookProgress && (
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-muted text-xs shrink-0">
+        <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+        <span className="flex-1 truncate">
+          {audiobookProgress.phase === "synthesizing"
+            ? `${t("editor.audiobook_synthesizing", "آواز بنائی جا رہی ہے")} — ${audiobookProgress.currentChapter ?? 0}/${audiobookProgress.totalChapters ?? 0}${audiobookProgress.chapterTitle ? `: ${audiobookProgress.chapterTitle}` : ""}`
+            : audiobookProgress.phase === "encoding"
+            ? `${t("editor.audiobook_encoding", "MP3 میں تبدیل ہو رہا ہے")} — ${Math.round((audiobookProgress.encodeFraction ?? 0) * 100)}%`
+            : t("editor.audiobook_writing", "فائل محفوظ ہو رہی ہے")}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 gap-1 text-xs"
+          onClick={() => window.electronAPI?.voice?.cancelAudiobook?.()}
+        >
+          <X className="h-3 w-3" />
+          {t("common.cancel")}
+        </Button>
+      </div>
+    )}
+    </>
   );
 };

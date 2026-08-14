@@ -2,6 +2,7 @@ import React from "react";
 import { Loader2, X, Timer } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { ChunkedRunProgress } from "@/lib/tasks/chunkOrchestrator";
 
 interface ChunkProgressBarProps {
@@ -18,13 +19,13 @@ interface ChunkProgressBarProps {
  * 30-requests-per-minute limit instead of failing partway with a 429.
  */
 export const ChunkProgressBar: React.FC<ChunkProgressBarProps> = ({ progress, onCancel }) => {
+  const { t } = useLanguage();
   const settled = progress.done + progress.failed;
   const percent = progress.total > 0 ? Math.round((settled / progress.total) * 100) : 0;
 
   return (
     <div
       className="border-t border-border bg-card px-3 py-2 space-y-1.5 text-xs"
-      dir="rtl"
       role="status"
       aria-live="polite"
     >
@@ -32,27 +33,27 @@ export const ChunkProgressBar: React.FC<ChunkProgressBarProps> = ({ progress, on
         <span className="flex items-center gap-1.5 font-medium text-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
           <span>
-            {progress.current} از {progress.total} حصے
+            {t("library.parts_of", "{current} of {total} parts").replace("{current}", String(progress.current)).replace("{total}", String(progress.total))}
           </span>
           {progress.throttled && (
             <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
-              <Timer className="h-3 w-3" />
-              سرور کی حد کے سبب وقفہ
+              <Timer className="h-3.5 w-3.5" />
+              {t("library.throttled", "Paused due to server rate limit")}
             </span>
           )}
         </span>
 
         <span className="flex items-center gap-2">
-          <span className="text-muted-foreground">{progress.tokensSpent} ٹوکن خرچ</span>
+          <span className="text-muted-foreground">{t("library.tokens_spent", "{count} tokens spent").replace("{count}", String(progress.tokensSpent))}</span>
           <Button
             size="sm"
             variant="ghost"
             className="h-6 px-2 text-xs gap-1"
             onClick={onCancel}
-            aria-label="یہ کام منسوخ کریں"
+            aria-label={t("library.cancel_task", "Cancel this task")}
           >
-            <X className="h-3 w-3" />
-            منسوخ
+            <X className="h-3.5 w-3.5" />
+            {t("common.cancel", "Cancel")}
           </Button>
         </span>
       </div>
@@ -61,8 +62,8 @@ export const ChunkProgressBar: React.FC<ChunkProgressBarProps> = ({ progress, on
 
       {(progress.failed > 0 || progress.skipped > 0) && (
         <p className="text-xs text-muted-foreground">
-          {progress.failed > 0 && <span>{progress.failed} حصے ناکام۔ </span>}
-          {progress.skipped > 0 && <span>{progress.skipped} بلاک (جدول/تصاویر) محفوظ رکھے گئے۔</span>}
+          {progress.failed > 0 && <span>{t("library.parts_failed", "{count} parts failed").replace("{count}", String(progress.failed))} </span>}
+          {progress.skipped > 0 && <span>{t("library.parts_skipped", "{count} blocks (tables/images) kept").replace("{count}", String(progress.skipped))}</span>}
         </p>
       )}
     </div>

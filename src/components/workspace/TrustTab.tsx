@@ -1,16 +1,24 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { ShieldCheck, Cpu, Coins, CheckCircle, BarChart3, Info } from "lucide-react";
+import { ShieldCheck, Cpu, Coins, CheckCircle, BarChart3, Info, RotateCcw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { taskRunService } from "@/core/workspace/taskRunService";
 import { SourceCardList } from "./SourceCardList";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { TaskRun } from "@/core/workspace/types";
 
 export const TrustTab: React.FC = () => {
-  const { activeDocumentId } = useWorkspace();
+  const { t } = useLanguage();
+  const { activeDocumentId, runDocumentTask } = useWorkspace();
   const [runs, setRuns] = useState<TaskRun[]>([]);
+  // A dismissed toast leaves no trace and no way to try again — the failed
+  // run's own `error` (already persisted by runTask.ts/chunkOrchestrator.ts
+  // on every failure) is the durable record; this only tracks which row is
+  // mid-retry so its button can show a spinner and stay disabled.
+  const [retryingSlug, setRetryingSlug] = useState<string | null>(null);
   /**
    * `null` means "no run has reported a confidence yet" — it is never a number
    * until the data says so. A default like 0.92 would print an invented
@@ -43,54 +51,89 @@ export const TrustTab: React.FC = () => {
     fetchAuditData();
   }, [fetchAuditData]);
 
+  // Re-runs the same task over the whole document — the runner only ever
+  // takes a task slug (SPEC-M3), so a run that originally targeted a
+  // selection is retried at document scope, not replayed byte-for-byte. The
+  // button says so rather than implying an exact re-run.
+  const handleRetry = useCallback(
+    async (taskSlug: string) => {
+      if (!runDocumentTask) {
+        toast.error(t("library.retry_no_editor", "Open the document in the Canvas first."));
+        return;
+      }
+      setRetryingSlug(taskSlug);
+      try {
+        const outcome = await runDocumentTask(taskSlug);
+        if (outcome.ok) {
+          toast.success(t("library.retry_succeeded", "Retried successfully."));
+        } else {
+          toast.error(outcome.reason || t("library.retry_failed_again", "The retry failed again."));
+        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : t("library.retry_failed_again", "The retry failed again."));
+      } finally {
+        setRetryingSlug(null);
+        fetchAuditData();
+      }
+    },
+    [runDocumentTask, t, fetchAuditData],
+  );
+
   const totalTokensSpent = runs.reduce((acc, r) => acc + (r.tokens_spent || 0), 0);
   const confidencePercent = lowestConfidence === null ? null : Math.round(lowestConfidence * 100);
   const models = Array.from(new Set(runs.map((r) => r.model).filter(Boolean)));
 
+  // Same thresholds and classes as TaskRunCard's `band` — one confidence chip
+  // vocabulary across the app, not two.
+  const confidenceBand =
+    confidencePercent === null
+      ? null
+      : confidencePercent >= 70
+        ? { label: t("library.confidence_high", "High confidence"), cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" }
+        : confidencePercent >= 40
+          ? { label: t("library.confidence_medium", "Medium confidence"), cls: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20" }
+          : { label: t("library.confidence_low", "Low confidence — check"), cls: "bg-red-500/10 text-red-600 border-red-500/20" };
+
   return (
-    <div className="flex flex-col h-full bg-background p-3 space-y-3" dir="rtl">
+    <div className="flex flex-col h-full bg-background p-3 space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-border">
         <div className="flex items-center gap-1.5 font-semibold text-xs text-primary">
           <ShieldCheck className="h-4 w-4" />
-          <span>اعتماد و تصدیق (Trust UI & Audit)</span>
+          <span>{t("library.trust_title", "Trust & Verification (Trust UI & Audit)")}</span>
         </div>
         <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border">
-          {runs.length} رن
+          {t("library.runs_count", "{count} runs").replace("{count}", String(runs.length))}
         </Badge>
       </div>
 
       <ScrollArea className="flex-1 pe-2">
         <div className="space-y-3">
-          {/* Confidence — shown only when a run actually reported one (FR-4.4) */}
+          {/* Confidence — shown only when a run actually reported one (FR-4.4).
+              Same emerald/amber/red chip TaskRunCard uses for a single run's
+              confidence — a bare progress bar here was the one place this
+              headline number didn't get that treatment. */}
           <div className="p-3 rounded-lg border border-border bg-card space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold flex items-center gap-1 text-foreground">
                 <BarChart3 className="h-3.5 w-3.5 text-primary" />
-                کم ترین علمی اعتماد (Confidence)
+                {t("library.lowest_confidence", "Lowest scholarly confidence")}
               </span>
-              {confidencePercent === null ? (
-                <span className="text-xs font-medium text-muted-foreground">دستیاب نہیں</span>
+              {confidenceBand === null ? (
+                <span className="text-xs font-medium text-muted-foreground">{t("library.not_available", "Not available")}</span>
               ) : (
-                <span
-                  className={`text-xs font-bold ${
-                    confidencePercent >= 70
-                      ? "text-emerald-600"
-                      : confidencePercent >= 40
-                        ? "text-amber-700 dark:text-amber-400"
-                        : "text-red-600"
-                  }`}
-                >
-                  {confidencePercent}%
-                </span>
+                <Badge variant="outline" className={`text-xs shrink-0 ${confidenceBand.cls}`}>
+                  {t("library.confidence_badge", "{label} ({percent}%)")
+                    .replace("{label}", confidenceBand.label)
+                    .replace("{percent}", String(confidencePercent))}
+                </Badge>
               )}
             </div>
-            {confidencePercent !== null && <Progress value={confidencePercent} className="h-2" />}
             <p className="text-xs text-muted-foreground flex items-center gap-1 pt-1">
-              <Info className="h-3 w-3 shrink-0 text-blue-500" />
+              <Info className="h-3.5 w-3.5 shrink-0 text-blue-500" />
               {confidencePercent === null
-                ? "اعتماد کا عدد صرف حوالہ جات والے کاموں پر آتا ہے؛ املا یا حرکات پر کوئی عدد نہیں دکھایا جاتا۔"
-                : "کفایت گیٹ 70% سے زائد اعتماد پر خودکار منظوری دیتا ہے۔ ایک سے زائد رن پر کم ترین عدد دکھایا جاتا ہے۔"}
+                ? t("library.confidence_hint_na", "Confidence is only reported on citation tasks; spelling and harakat tasks show no number.")
+                : t("library.confidence_hint_value", "The kifayat gate auto-approves at above 70% confidence. The lowest number across runs is shown.")}
             </p>
           </div>
 
@@ -98,17 +141,17 @@ export const TrustTab: React.FC = () => {
           <div className="p-3 rounded-lg border border-border bg-card space-y-2 text-xs">
             <div className="font-semibold text-foreground flex items-center gap-1.5">
               <Cpu className="h-3.5 w-3.5 text-primary" />
-              <span>مصنوعی ذہانت ماڈل کا لاگ</span>
+              <span>{t("library.model_log", "AI model log")}</span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/50">
               <div className="bg-muted p-2 rounded">
-                <span className="text-muted-foreground block">استعمال شدہ ماڈل</span>
+                <span className="text-muted-foreground block">{t("library.models_used", "Models used")}</span>
                 <span className="font-medium text-foreground">
-                  {models.length > 0 ? models.join("، ") : "ابھی کوئی رن نہیں"}
+                  {models.length > 0 ? models.join("، ") : t("library.no_runs_yet", "No runs yet")}
                 </span>
               </div>
               <div className="bg-muted p-2 rounded">
-                <span className="text-muted-foreground block">اس دستاویز پر کل رن</span>
+                <span className="text-muted-foreground block">{t("library.total_runs_on_doc", "Total runs on this document")}</span>
                 <span className="font-medium text-foreground">{runs.length}</span>
               </div>
             </div>
@@ -119,22 +162,49 @@ export const TrustTab: React.FC = () => {
             <div className="flex items-center justify-between font-semibold">
               <span className="flex items-center gap-1.5 text-foreground">
                 <Coins className="h-3.5 w-3.5 text-amber-500" />
-                <span>ٹوکنز کا کل آڈٹ</span>
+                <span>{t("library.token_audit", "Total token audit")}</span>
               </span>
-              <span className="text-primary font-bold">{totalTokensSpent} ٹوکنز</span>
+              <span className="text-primary font-bold">{t("library.token_plural", "{count} tokens").replace("{count}", String(totalTokensSpent))}</span>
             </div>
             <div className="space-y-1 pt-1 border-t border-border/50 text-xs">
               {runs.length === 0 ? (
-                <p className="text-muted-foreground py-1">
-                  اس دستاویز پر ابھی کوئی AI رن نہیں ہوا۔
+                <p className="text-muted-foreground py-1 flex items-center gap-1">
+                  <Info className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                  {t("library.no_runs_on_doc", "No AI runs have happened on this document yet.")}
                 </p>
               ) : (
                 runs.slice(0, 5).map((r) => (
-                  <div key={r.id} className="flex justify-between text-muted-foreground">
-                    <span className="truncate max-w-[150px]">{r.task_slug}</span>
-                    <span>
-                      {r.status === "failed" ? "ناکام" : `${r.tokens_spent || 0} ٹوکنز`}
-                    </span>
+                  <div key={r.id} className="space-y-0.5">
+                    <div className="flex justify-between items-center gap-2 text-muted-foreground">
+                      <span className="truncate max-w-[120px]">{r.task_slug}</span>
+                      {r.status === "failed" ? (
+                        <span className="flex items-center gap-1 shrink-0">
+                          <span className="text-red-600 dark:text-red-400 font-medium">{t("library.failed", "Failed")}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-5 px-1.5 text-xs gap-1"
+                            disabled={retryingSlug === r.task_slug}
+                            onClick={() => handleRetry(r.task_slug)}
+                            aria-label={t("library.retry_run_aria", "Retry {task} on the whole document").replace("{task}", r.task_slug)}
+                          >
+                            {retryingSlug === r.task_slug ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <RotateCcw className="h-3 w-3" />
+                            )}
+                            {t("library.retry", "Retry")}
+                          </Button>
+                        </span>
+                      ) : (
+                        <span>{t("library.token_plural", "{count} tokens").replace("{count}", String(r.tokens_spent || 0))}</span>
+                      )}
+                    </div>
+                    {r.status === "failed" && r.error && (
+                      <p className="text-red-600/80 dark:text-red-400/80 text-xs leading-snug ps-0.5" dir="auto">
+                        {r.error}
+                      </p>
+                    )}
                   </div>
                 ))
               )}
@@ -146,7 +216,7 @@ export const TrustTab: React.FC = () => {
             <div className="p-3 rounded-lg border border-border bg-card space-y-2 text-xs">
               <div className="font-semibold text-foreground flex items-center gap-1.5">
                 <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                <span>حوالہ جات کے مآخذ</span>
+                <span>{t("library.citation_sources", "Citation sources")}</span>
               </div>
               <div className="space-y-3 pt-1 border-t border-border/50">
                 {runs
@@ -158,8 +228,8 @@ export const TrustTab: React.FC = () => {
                         <span className="font-medium text-foreground">{r.task_slug}</span>
                         <span>
                           {typeof r.confidence === "number"
-                            ? `اعتماد ${Math.round(r.confidence * 100)}%`
-                            : "اعتماد درج نہیں"}
+                            ? t("library.confidence_of", "Confidence {percent}%").replace("{percent}", String(Math.round(r.confidence * 100)))
+                            : t("library.confidence_not_recorded", "Confidence not recorded")}
                         </span>
                       </div>
                       <SourceCardList sources={r.sources ?? []} />
@@ -173,10 +243,10 @@ export const TrustTab: React.FC = () => {
           <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 text-xs space-y-1">
             <div className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
               <CheckCircle className="h-3.5 w-3.5" />
-              <span>علمی غیر جانبداری اور آڈٹ کی ضمانت</span>
+              <span>{t("library.audit_guarantee", "Scholarly neutrality and audit guarantee")}</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              تمام رن کی لاگز دیتابیس میں محفوظ ہوتی ہیں۔ صارف کسی بھی وقت AI کے فراہم کردہ نتیجے کو رد یا قبول کر سکتا ہے۔
+              {t("library.audit_guarantee_desc", "All run logs are stored in the database. Users can reject or accept any AI-provided result at any time.")}
             </p>
           </div>
         </div>

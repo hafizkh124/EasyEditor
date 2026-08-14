@@ -7,7 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-import { Mic, BookOpen, Image, Volume2, Clock, CalendarClock, AlertTriangle, MessageCircle } from "lucide-react";
+import { Mic, BookOpen, Image, Volume2, Clock, CalendarClock, AlertTriangle, MessageCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { getRecentActivity, type ActivityEntry } from "@/lib/activityLog";
 import { handleSupabaseError } from "@/lib/errors";
@@ -43,7 +43,7 @@ const Dashboard = () => {
   useSeo({ title: "Dashboard — Al-Ulama Easy Editor", description: "Your Al-Ulama Easy Editor home: recent activity, usage limits and shortcuts to every tool.", path: "/dashboard", noindex: true });
 
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, direction } = useLanguage();
   const { subscription } = useSubscription();
   const { isAdmin } = useApproval();
   const [displayName, setDisplayName] = useState("");
@@ -87,14 +87,17 @@ const Dashboard = () => {
       })
     : null;
   const renewalMessage = encodeURIComponent(
-    t("dashboard.renewal_whatsapp_template") ||
-      "Assalam-o-Alaikum, I would like to renew my subscription.",
+    t("dashboard.renewal_whatsapp_template", "Assalam-o-Alaikum, I would like to renew my subscription."),
   );
 
   const formatTime = (ts: number) => {
     const d = new Date(ts);
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   };
+
+  const dashboardCapabilities = availableCapabilities("dashboard-grid");
+  const workspaceCapability = dashboardCapabilities.find((c) => c.id === "workspace");
+  const toolCards = dashboardCapabilities.filter((c) => c.id !== "workspace");
 
   return (
     <AppLayout>
@@ -129,18 +132,18 @@ const Dashboard = () => {
                 <div className="space-y-0.5 min-w-0">
                   <p className="text-sm font-medium">
                     {lifecycle.status === "expired"
-                      ? t("dashboard.subscription_expired") || "Your subscription has expired"
+                      ? t("dashboard.subscription_expired", "Your subscription has expired")
                       : lifecycle.status === "expiring_soon"
-                      ? (t("dashboard.expiring_soon") || "Subscription expires in {n} day(s)").replace(
+                      ? (t("dashboard.expiring_soon", "Subscription expires in {n} day(s)")).replace(
                           "{n}",
                           String(lifecycle.daysRemaining ?? 0),
                         )
-                      : t("dashboard.subscription_active") || "Subscription Active"}
+                      : t("dashboard.subscription_active", "Subscription Active")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {(t("dashboard.activated_label") || "Activated") + ": " + formatLifecycleDate(lifecycle.activatedAt)}
+                    {(t("dashboard.activated_label", "Activated")) + ": " + formatLifecycleDate(lifecycle.activatedAt)}
                     {" • "}
-                    {(t("dashboard.expires_label") || "Expires") + ": " + formatLifecycleDate(lifecycle.expiresAt)}
+                    {(t("dashboard.expires_label", "Expires")) + ": " + formatLifecycleDate(lifecycle.expiresAt)}
                   </p>
                 </div>
               </div>
@@ -152,7 +155,7 @@ const Dashboard = () => {
                     rel="noopener noreferrer"
                   >
                     <MessageCircle className="h-4 w-4 me-2" />
-                    {t("dashboard.contact_renew") || "Contact Admin to Renew"}
+                    {t("dashboard.contact_renew", "Contact Admin to Renew")}
                   </a>
                 </Button>
               )}
@@ -187,9 +190,35 @@ const Dashboard = () => {
           </Card>
         )}
 
+        {/* Workspace — the single home (UX-v1 P6). Full-width and ahead of the
+            standalone-tool grid, since it reads as primary, not one option
+            among five. Previously the dashboard had no link to it at all. */}
+        {workspaceCapability && (
+          <Link to={workspaceCapability.route!}>
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer bg-primary/5 border-primary/30">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 p-2 shrink-0">
+                  <workspaceCapability.icon className="h-6 w-6 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-lg">{t("dashboard.workspace_title", "Workspace")}</CardTitle>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {t("dashboard.workspace_desc", "Library, writing and research side by side")}
+                  </p>
+                </div>
+                {direction === "rtl" ? (
+                  <ArrowLeft className="h-5 w-5 text-primary shrink-0" />
+                ) : (
+                  <ArrowRight className="h-5 w-5 text-primary shrink-0" />
+                )}
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
         {/* Tools Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {availableCapabilities("dashboard-grid").map((capability) => {
+          {toolCards.map((capability) => {
             const card = DASHBOARD_CARDS[capability.id];
             if (!card) return null;
             const Icon = card.icon;

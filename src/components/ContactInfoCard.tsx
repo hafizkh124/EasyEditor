@@ -64,14 +64,13 @@ const ContactInfoCard = () => {
   const handleSave = async () => {
     if (!user) return;
     if (!whatsapp.trim()) {
-      toast.error(t("onboarding.validation_whatsapp_required") || "WhatsApp number is required.");
+      toast.error(t("onboarding.validation_whatsapp_required", "WhatsApp number is required."));
       return;
     }
     const normalized = normalizeWhatsAppNumber(whatsapp);
     if (!normalized) {
       toast.error(
-        t("onboarding.validation_whatsapp_format") ||
-          "Please enter a valid WhatsApp number with your country code.",
+        t("onboarding.validation_whatsapp_format", "Please enter a valid WhatsApp number with your country code."),
       );
       return;
     }
@@ -89,7 +88,7 @@ const ContactInfoCard = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success(t("profile.contact_saved") || "Contact information saved.");
+      toast.success(t("profile.contact_saved", "Contact information saved."));
     }
   };
 
@@ -108,55 +107,54 @@ const ContactInfoCard = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <MessageCircle className="h-5 w-5 text-primary" />
-          {t("profile.contact_section") || "Contact Information"}
+          {t("profile.contact_section", "Contact Information")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="whatsapp-edit">
-            {t("onboarding.whatsapp_label") || "WhatsApp Number"} <span className="text-destructive">*</span>
+            {t("onboarding.whatsapp_label", "WhatsApp Number")} <span className="text-destructive">*</span>
           </Label>
           <Input
             id="whatsapp-edit"
             type="tel"
             value={whatsapp}
             onChange={(e) => setWhatsapp(e.target.value)}
-            placeholder={t("onboarding.whatsapp_placeholder") || "+92 308 4164816"}
+            placeholder={t("onboarding.whatsapp_placeholder", "+92 308 4164816")}
             dir="ltr"
           />
           <p className="text-xs text-muted-foreground">
-            {t("onboarding.whatsapp_hint") ||
-              "Include your country code, e.g. +92 308 4164816 or +44 7700 900123."}
+            {t("onboarding.whatsapp_hint", "Include your country code, e.g. +92 308 4164816 or +44 7700 900123.")}
           </p>
         </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="country-edit">
-            {t("onboarding.country_label") || "Country / City"}{" "}
+            {t("onboarding.country_label", "Country / City")}{" "}
             <span className="text-xs text-muted-foreground">
-              ({t("onboarding.optional") || "optional"})
+              ({t("onboarding.optional", "optional")})
             </span>
           </Label>
           <Input
             id="country-edit"
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            placeholder={t("onboarding.country_placeholder") || "e.g. Lahore, Pakistan"}
+            placeholder={t("onboarding.country_placeholder", "e.g. Lahore, Pakistan")}
             maxLength={80}
           />
         </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="profession-edit">
-            {t("onboarding.profession_label") || "Profession / Role"}{" "}
+            {t("onboarding.profession_label", "Profession / Role")}{" "}
             <span className="text-xs text-muted-foreground">
-              ({t("onboarding.optional") || "optional"})
+              ({t("onboarding.optional", "optional")})
             </span>
           </Label>
           <Select value={profession} onValueChange={setProfession}>
             <SelectTrigger id="profession-edit">
               <SelectValue
-                placeholder={t("onboarding.profession_placeholder") || "Select your role"}
+                placeholder={t("onboarding.profession_placeholder", "Select your role")}
               />
             </SelectTrigger>
             <SelectContent>
@@ -171,7 +169,7 @@ const ContactInfoCard = () => {
 
         <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
           {saving && <Loader2 className="h-4 w-4 me-2 animate-spin" />}
-          {t("profile.contact_save") || "Save"}
+          {t("profile.contact_save", "Save")}
         </Button>
       </CardContent>
     </Card>

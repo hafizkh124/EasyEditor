@@ -86,7 +86,9 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
               tab layout is icon-only with accessible names (R6/NFR-4) — which
               is exactly why those names must be translated: they are the only
               text a screen reader or a hovering user ever gets. */}
-          <TabsList className={`grid ${GRID_COLS[baseTabs.length + (showTaskTabs ? 2 : 0)]} h-7 bg-muted p-0.5`}>
+          {/* h-11 (44px, min-h-touch) below md, h-7 once a mouse is the input —
+              same split as LibraryPanel's tab strip. Triggers fill via h-full. */}
+          <TabsList className={`grid ${GRID_COLS[baseTabs.length + (showTaskTabs ? 2 : 0)]} h-11 md:h-7 bg-muted p-0.5`}>
             {baseTabs.map(({ capability, value }) => {
               const label = t(capability.labelKey, capability.fallbackLabel);
               const Icon = capability.icon;
@@ -94,7 +96,7 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className="text-xs h-6 py-0 gap-1 px-1"
+                  className="text-xs h-full py-0 gap-1 px-1"
                   title={label}
                   aria-label={label}
                 >
@@ -106,11 +108,11 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
 
             {showTaskTabs && (
               <>
-                <TabsTrigger value="tasks" className="text-xs h-6 py-0 gap-1 px-1" title={t("workbench.tasks", "Tasks")} aria-label={t("workbench.tasks", "Tasks")}>
-                  <ListChecks className="h-3 w-3 shrink-0" />
+                <TabsTrigger value="tasks" className="text-xs h-full py-0 gap-1 px-1" title={t("workbench.tasks", "Tasks")} aria-label={t("workbench.tasks", "Tasks")}>
+                  <ListChecks className="h-3.5 w-3.5 shrink-0" />
                 </TabsTrigger>
-                <TabsTrigger value="trust" className="text-xs h-6 py-0 gap-1 px-1" title={t("workbench.trust", "Trust")} aria-label={t("workbench.trust", "Trust")}>
-                  <ShieldCheck className="h-3 w-3 shrink-0 text-emerald-600" />
+                <TabsTrigger value="trust" className="text-xs h-full py-0 gap-1 px-1" title={t("workbench.trust", "Trust")} aria-label={t("workbench.trust", "Trust")}>
+                  <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
                 </TabsTrigger>
               </>
             )}
@@ -120,7 +122,7 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0 ms-2"
+          className="h-7 w-7 min-h-touch min-w-touch md:h-7 md:w-7 md:min-h-0 md:min-w-0 text-muted-foreground hover:text-foreground shrink-0 ms-2"
           onClick={() => setWorkbenchOpen(false)}
           title={t("workbench.close", "Close Workbench")}
           aria-label={t("workbench.close", "Close Workbench")}

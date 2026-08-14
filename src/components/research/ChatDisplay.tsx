@@ -374,7 +374,7 @@ const ChatDisplay = ({
               onClick={guardedSendQuery}
               disabled={!query.trim() || isQuerying || researchLimitReached}
               size="icon"
-              aria-label={t("research.send") || "Send"}
+              aria-label={t("research.send", "Send")}
               className="shrink-0 h-9 w-9 rounded-xl"
             >
               {isQuerying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

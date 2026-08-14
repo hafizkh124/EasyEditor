@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SolvencyDialogProps {
   open: boolean;
@@ -29,18 +30,19 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
   availableTokens,
   onConfirm,
 }) => {
+  const { t } = useLanguage();
   const isSolvent = availableTokens >= totalCost;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir="rtl">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-semibold">
             <Coins className="h-5 w-5 text-amber-500" />
-            <span>ٹوکن کی لاگت اور رن کی تصدیق</span>
+            <span>{t("library.solvency_title", "Token cost and run confirmation")}</span>
           </DialogTitle>
           <DialogDescription className="text-xs">
-            یہ طویل عمل متعدد اقساط (batches) میں مکمل ہو گا۔
+            {t("library.solvency_desc", "This long process will complete in multiple batches.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -49,35 +51,35 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground flex items-center gap-1">
                 <Layers className="h-3.5 w-3.5 text-primary" />
-                ٹاسک کا نام:
+                {t("library.task_name_label", "Task name:")}
               </span>
               <span className="font-semibold text-foreground">{taskLabel}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">کل اقساط (Batches):</span>
-              <span className="font-medium">{totalChunks} چنکس</span>
+              <span className="text-muted-foreground">{t("library.total_batches", "Total batches:")}</span>
+              <span className="font-medium">{t("library.chunks", "{count} chunks").replace("{count}", String(totalChunks))}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">مطلوبہ ٹوکن لاگت:</span>
-              <span className="font-bold text-amber-700 dark:text-amber-400">{totalCost} ٹوکنز</span>
+              <span className="text-muted-foreground">{t("library.required_cost", "Required token cost:")}</span>
+              <span className="font-bold text-amber-700 dark:text-amber-400">{t("library.tokens", "{count} tokens").replace("{count}", String(totalCost))}</span>
             </div>
             <div className="flex justify-between items-center border-t border-border/50 pt-1.5">
-              <span className="text-muted-foreground">دستیاب ٹوکن بیلنس:</span>
-              <span className="font-medium">{availableTokens} ٹوکنز</span>
+              <span className="text-muted-foreground">{t("library.available_balance", "Available token balance:")}</span>
+              <span className="font-medium">{t("library.tokens", "{count} tokens").replace("{count}", String(availableTokens))}</span>
             </div>
           </div>
 
           {!isSolvent && (
             <div className="p-2.5 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>آپ کے پاس مطلوبہ ٹوکنز موجود نہیں ہیں۔ براہِ کرم پلان اپگریڈ کریں۔</span>
+              <span>{t("library.solvency_insufficient", "You do not have enough tokens. Please upgrade your plan.")}</span>
             </div>
           )}
         </div>
 
         <DialogFooter className="gap-2">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            منسوخ
+            {t("common.cancel", "Cancel")}
           </Button>
           <Button
             size="sm"
@@ -87,7 +89,7 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
               onConfirm();
             }}
           >
-            موافقت و جاری رکھیں
+            {t("library.agree_continue", "Agree & continue")}
           </Button>
         </DialogFooter>
       </DialogContent>

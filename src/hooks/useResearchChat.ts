@@ -349,7 +349,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
     try {
       const data = await loadResearchSession(id, user.id);
       if (!data) {
-        toast.error(t("research.session_not_found") || "Session not found");
+        toast.error(t("research.session_not_found", "Session not found"));
         return;
       }
       sessionIdRef.current = data.id;
@@ -358,7 +358,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
       setCitations(data.citations ?? []);
       setSourcesReadyInfo(null);
     } catch {
-      toast.error(t("research.session_load_failed") || "Failed to load session");
+      toast.error(t("research.session_load_failed", "Failed to load session"));
     }
   };
 
@@ -377,7 +377,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
       }
       setSessionsVersion((v) => v + 1);
     } catch {
-      toast.error(t("research.session_delete_failed") || "Failed to delete session");
+      toast.error(t("research.session_delete_failed", "Failed to delete session"));
     }
   };
 
@@ -386,7 +386,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
     const limitReached = mode === "islamic" ? islamicLimitReached : researchLimitReached;
     if (limitReached) { toast.error(t("research.limit_reached")); return; }
 
-    const continueMsg: ChatMessage = { role: "user", content: t("research.continue_prompt") || "Continue from where you left off. Do not repeat what was already said." };
+    const continueMsg: ChatMessage = { role: "user", content: t("research.continue_prompt", "Continue from where you left off. Do not repeat what was already said.") };
     const prevMessages = [...messages];
     const nextMessages = [...messages, continueMsg];
     setMessages(nextMessages);

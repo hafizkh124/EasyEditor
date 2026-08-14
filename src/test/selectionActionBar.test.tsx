@@ -29,12 +29,12 @@ describe("SelectionActionBar", () => {
     render(<SelectionActionBar selectedText="قال مالك" {...handlers} />);
 
     const titles = [
-      ["حرکات لگائیں", handlers.onAddHarakat],
-      ["حرکات ہٹائیں", handlers.onRemoveHarakat],
-      ["املا کی درستگی", handlers.onSpellCheck],
-      ["تفہیم (Paraphrase)", handlers.onParaphrase],
-      ["خلاصہ", handlers.onSummarize],
-      ["حوالہ جات", handlers.onCitations],
+      ["Add harakat", handlers.onAddHarakat],
+      ["Remove harakat", handlers.onRemoveHarakat],
+      ["Spell check", handlers.onSpellCheck],
+      ["Paraphrase", handlers.onParaphrase],
+      ["Summarize", handlers.onSummarize],
+      ["Citations", handlers.onCitations],
     ] as const;
 
     for (const [title, handler] of titles) {
@@ -47,12 +47,12 @@ describe("SelectionActionBar", () => {
     const handlers = makeHandlers();
     render(<SelectionActionBar selectedText="قال مالك" isBusy {...handlers} />);
 
-    fireEvent.click(screen.getByTitle("خلاصہ"));
+    fireEvent.click(screen.getByTitle("Summarize"));
     expect(handlers.onSummarize).not.toHaveBeenCalled();
   });
 
   it("hides the Workbench button outside a workspace", () => {
     render(<SelectionActionBar selectedText="قال مالك" {...makeHandlers()} />);
-    expect(screen.queryByText("Workbench میں تحقیق کریں")).toBeNull();
+    expect(screen.queryByText("Research in Workbench")).toBeNull();
   });
 });

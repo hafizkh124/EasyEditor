@@ -18,12 +18,14 @@ import {
 } from "@/lib/graph/graphService";
 import { findDuplicateSuggestions, buildMergedAliases } from "@/lib/graph/entityResolve";
 import { EntityMergeSuggestions } from "./EntityMergeSuggestions";
+import { EmptyState } from "./EmptyState";
 import { SolvencyDialog } from "./SolvencyDialog";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { documentService, extractPlainTextFromJSON } from "@/core/workspace/documentService";
 import { toast } from "sonner";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const KIND_ICONS: Record<string, React.ElementType> = {
   person: User,
@@ -33,15 +35,8 @@ const KIND_ICONS: Record<string, React.ElementType> = {
   event: Calendar,
 };
 
-const KIND_LABELS: Record<string, string> = {
-  person: "شخصیت",
-  concept: "مفہوم",
-  book: "کتاب",
-  location: "مقام",
-  event: "واقعہ",
-};
-
 export const KnowledgeGraphTab: React.FC = () => {
+  const { t } = useLanguage();
   const workspace = useOptionalWorkspace();
   const [entities, setEntities] = useState<Entity[]>([]);
   const [search, setSearch] = useState("");
@@ -127,12 +122,20 @@ export const KnowledgeGraphTab: React.FC = () => {
     setEntityDetails(details);
   };
 
+  const kindLabels: Record<string, string> = {
+    person: t("library.kind_person", "Person"),
+    concept: t("library.kind_concept", "Concept"),
+    book: t("library.book_type", "Book"),
+    location: t("library.kind_location", "Location"),
+    event: t("library.kind_event", "Event"),
+  };
+
   return (
-    <div className="flex flex-col h-full bg-background p-2" dir="rtl">
+    <div className="flex flex-col h-full bg-background p-3">
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-border gap-2">
         <div className="flex items-center gap-1.5 font-semibold text-xs text-primary">
           <GitFork className="h-4 w-4" />
-          <span>علمی گراف (Knowledge Graph)</span>
+          <span>{t("library.graph_title", "Knowledge Graph")}</span>
         </div>
 
         <Button
@@ -142,15 +145,15 @@ export const KnowledgeGraphTab: React.FC = () => {
           onClick={handleExtract}
           disabled={extracting}
         >
-          {extracting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-          گراف نکالیں
+          {extracting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          {t("library.extract_graph", "Extract graph")}
         </Button>
       </div>
 
       <div className="relative mb-2">
         <Search className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
         <Input
-          placeholder="ہستیوں اور مفاہیم میں تلاش کریں…"
+          placeholder={t("library.graph_search", "Search entities and concepts…")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-8 text-xs pr-8 pl-2"
@@ -161,23 +164,22 @@ export const KnowledgeGraphTab: React.FC = () => {
         {loading ? (
           <div className="p-4 text-xs text-muted-foreground text-center py-8">
             <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1 text-primary" />
-            گراف لوڈ ہو رہا ہے…
+            {t("library.graph_loading", "Loading graph…")}
           </div>
         ) : entities.length === 0 ? (
-          <div className="p-3 text-xs text-muted-foreground text-center py-8 space-y-2">
-            <GitFork className="h-8 w-8 mx-auto opacity-40 text-primary" />
-            <p className="font-semibold text-foreground text-xs">نالیج گراف ابھی خالی ہے</p>
-            <p className="text-xs">
-              کسی بھی دستاویز سے ہستیاں (شخصیات، کتب، مفاہیم) اور روابط نکالنے کے لیے **"گراف نکالیں"** کا بٹن دباؤ۔
-            </p>
-          </div>
+          <EmptyState
+            compact
+            icon={GitFork}
+            title={t("library.graph_empty", "The knowledge graph is empty")}
+            description={t("library.graph_empty_desc", "Press the «Extract graph» button to extract entities (people, books, concepts) and relations from any document.")}
+          />
         ) : (
           <div className="space-y-1.5">
             <EntityMergeSuggestions suggestions={duplicates} onMerge={handleMerge} />
 
             {entities.map((item) => {
               const Icon = KIND_ICONS[item.kind] || User;
-              const label = KIND_LABELS[item.kind] || item.kind;
+              const label = kindLabels[item.kind] || item.kind;
 
               return (
                 <div
@@ -209,7 +211,7 @@ export const KnowledgeGraphTab: React.FC = () => {
         <SolvencyDialog
           open
           onOpenChange={(open) => !open && setPendingExtract(null)}
-          taskLabel="ہستیوں کا استخراج (Knowledge Graph)"
+          taskLabel={t("library.entity_extract_task", "Entity extraction (Knowledge Graph)")}
           totalChunks={1}
           totalCost={pendingExtract.cost}
           availableTokens={total ?? 0}
@@ -219,7 +221,7 @@ export const KnowledgeGraphTab: React.FC = () => {
 
       {/* Entity Details Dialog */}
       <Dialog open={selectedEntityId !== null} onOpenChange={(open) => !open && setSelectedEntityId(null)}>
-        <DialogContent className="max-w-md" dir="rtl">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base text-primary">
               <BookMarked className="h-5 w-5" />
@@ -231,11 +233,11 @@ export const KnowledgeGraphTab: React.FC = () => {
             <div className="space-y-3 text-xs">
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="text-xs">
-                  {KIND_LABELS[entityDetails.entity.kind] || entityDetails.entity.kind}
+                  {kindLabels[entityDetails.entity.kind] || entityDetails.entity.kind}
                 </Badge>
                 {entityDetails.entity.aliases?.length > 0 && (
                   <span className="text-xs text-muted-foreground">
-                    مترادفات: {entityDetails.entity.aliases.join("، ")}
+                    {t("library.aliases", "Aliases: {aliases}").replace("{aliases}", entityDetails.entity.aliases.join("، "))}
                   </span>
                 )}
               </div>
@@ -247,15 +249,15 @@ export const KnowledgeGraphTab: React.FC = () => {
               )}
 
               <div className="space-y-2 pt-1 border-t">
-                <h4 className="font-semibold text-foreground text-xs">علمی روابط ({entityDetails.outgoingRelations.length + entityDetails.incomingRelations.length})</h4>
+                <h4 className="font-semibold text-foreground text-xs">{t("library.relations", "Scholarly relations ({count})").replace("{count}", String(entityDetails.outgoingRelations.length + entityDetails.incomingRelations.length))}</h4>
 
                 {entityDetails.outgoingRelations.map((r) => (
                   <div key={r.id} className="p-2 bg-accent/30 rounded border text-xs space-y-1">
                     <div className="flex items-center gap-1 text-primary font-medium">
                       <span>{entityDetails.entity.canonical_name}</span>
-                      <ArrowRight className="h-3 w-3 shrink-0" />
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                       <span className="text-muted-foreground font-normal">[{r.relation_type}]</span>
-                      <ArrowRight className="h-3 w-3 shrink-0" />
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                       <span>{r.target_entity?.canonical_name}</span>
                     </div>
                     {r.evidence_quote && (
@@ -271,13 +273,13 @@ export const KnowledgeGraphTab: React.FC = () => {
                 <div className="space-y-1.5 pt-2 border-t">
                   <h4 className="font-semibold text-foreground text-xs flex items-center gap-1 text-primary">
                     <BookMarked className="h-3.5 w-3.5" />
-                    مربوطہ دستاویزات اور کتب ({entityDetails.backlinks.length})
+                    {t("library.backlinks", "Related documents and books ({count})").replace("{count}", String(entityDetails.backlinks.length))}
                   </h4>
                   <div className="space-y-1">
                     {entityDetails.backlinks.map((b) => (
                       <div key={b.id} className="flex items-center gap-2 p-1.5 bg-muted rounded border text-xs">
                         <Badge variant="outline" className="text-xs px-1 py-0">
-                          {b.type === "document" ? "دستاویز" : "کتاب"}
+                          {b.type === "document" ? t("library.doc_type", "Document") : t("library.book_type", "Book")}
                         </Badge>
                         <span className="font-medium text-foreground truncate">{b.title}</span>
                       </div>

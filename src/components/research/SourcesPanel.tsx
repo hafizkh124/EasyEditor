@@ -211,7 +211,7 @@ const SourcesPanel = ({
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>{t("admin.cancel") || "Cancel"}</AlertDialogCancel>
+                  <AlertDialogCancel>{t("admin.cancel", "Cancel")}</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={onDeleteAllSources}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -292,7 +292,7 @@ const SourcesPanel = ({
                       size="icon"
                       className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                       onClick={() => onDeleteSource(source)}
-                      aria-label={t("research.delete_source") || "Delete source"}
+                      aria-label={t("research.delete_source", "Delete source")}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

@@ -1,8 +1,8 @@
-import { useEffect } from "react";
 import { useSeo } from "@/hooks/useSeo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import type { Language } from "@/lib/i18n";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,23 +24,11 @@ const Settings = () => {
   const { user } = useAuth();
   const { t, language, setLanguage, direction } = useLanguage();
 
-  useEffect(() => {
-    if (!user) return;
-    const loadPreferredLanguage = async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("preferred_language")
-        .eq("user_id", user.id)
-        .single();
-      if (error) { handleSupabaseError(error, "load language"); return; }
-      if (data?.preferred_language === "ur" || data?.preferred_language === "en") {
-        setLanguage(data.preferred_language);
-      }
-    };
-    loadPreferredLanguage();
-  }, [user, setLanguage]);
+  // The boot-time application of profiles.preferred_language lives in
+  // FirstRunLanguageGate, so a fresh device speaks the user's language before
+  // the Settings page ever mounts (UX-v1 finding 2.2).
 
-  const handleLanguageChange = async (value: "en" | "ur") => {
+  const handleLanguageChange = async (value: Language) => {
     setLanguage(value);
     if (!user) return;
     const { error } = await supabase
@@ -62,13 +50,14 @@ const Settings = () => {
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="language-select">{t("settings.language")}</Label>
-              <Select value={language} onValueChange={(v) => handleLanguageChange(v as "en" | "ur")}>
+              <Select value={language} onValueChange={(v) => handleLanguageChange(v as Language)}>
                 <SelectTrigger id="language-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="en">English</SelectItem>
                   <SelectItem value="ur">اردو (Urdu)</SelectItem>
+                  <SelectItem value="ar">العربية (Arabic)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

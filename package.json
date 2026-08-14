@@ -14,7 +14,7 @@
     "pack:electron": "npm run check:shamela-helper && vite build --mode desktop && electron-builder --dir",
     "check:shamela-helper": "node scripts/check-shamela-helper.mjs",
     "build:shamela-helper": "node scripts/build-shamela-helper.mjs",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/check-ui-discipline.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "smoke:functions": "node scripts/smoke-edge-functions.mjs",

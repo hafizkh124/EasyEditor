@@ -423,19 +423,19 @@ function BookList({
             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
               {book.author && (
                 <span className="flex items-center gap-1">
-                  <User className="h-3 w-3" />
+                  <User className="h-3.5 w-3.5" />
                   {book.author}
                 </span>
               )}
               {book.category && (
                 <span className="flex items-center gap-1">
-                  <Layers className="h-3 w-3" />
+                  <Layers className="h-3.5 w-3.5" />
                   {book.category}
                 </span>
               )}
               {book.deathYear != null && book.deathYear < 99999 && (
                 <span className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
+                  <Calendar className="h-3.5 w-3.5" />
                   {book.deathYear} {t("shamela.hijri_suffix")}
                 </span>
               )}

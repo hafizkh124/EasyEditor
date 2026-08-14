@@ -257,7 +257,7 @@ const Profile = () => {
         {/* Account Actions (FR-5.1, FR-5.2) */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">{t("profile.account_actions") || "Account"}</CardTitle>
+            <CardTitle className="text-lg">{t("profile.account_actions", "Account")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Button

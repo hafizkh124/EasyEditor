@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { toast } from "sonner";
 import { WorkspaceProvider } from "@/core/workspace/WorkspaceContext";
 import { TrustTab } from "@/components/workspace/TrustTab";
 import { taskRunService } from "@/core/workspace/taskRunService";
@@ -51,7 +52,7 @@ describe("TrustTab confidence reporting (M3 Pillar C)", () => {
     renderTrustTab();
 
     await waitFor(() => {
-      expect(screen.getByText("دستیاب نہیں")).toBeInTheDocument();
+      expect(screen.getByText("Not available")).toBeInTheDocument();
     });
     // A spell-check run must never produce a percentage (FR-4.4).
     expect(screen.queryByText(/%$/)).not.toBeInTheDocument();
@@ -66,9 +67,10 @@ describe("TrustTab confidence reporting (M3 Pillar C)", () => {
     renderTrustTab();
 
     // min = 40%, mean would have been 65% — the weakest source must win (FR-4.3).
-    // JSX splits `{n}%` into two text nodes, hence the textContent matcher.
+    // The confidence chip (UX-v1 P5.1) reads "Medium confidence (40%)", a
+    // single compound text node rather than a bare "40%" — match on contains.
     const hasText = (needle: string) => (_: string, el: Element | null) =>
-      el?.textContent?.trim() === needle;
+      (el?.textContent?.trim() ?? "").includes(needle);
 
     await waitFor(() => {
       expect(screen.getAllByText(hasText("40%")).length).toBeGreaterThan(0);
@@ -124,9 +126,55 @@ describe("TrustTab confidence reporting (M3 Pillar C)", () => {
 
     await waitFor(() => {
       const totals = screen.getAllByText(
-        (_, el) => el?.textContent?.trim() === "20 ٹوکنز",
+        (_, el) => el?.textContent?.trim() === "20 tokens",
       );
       expect(totals.length).toBeGreaterThan(0);
+    });
+  });
+
+  /**
+   * UX-v1 P5 — a failed run used to render a bare "Failed" with no reason and
+   * no way to try again once its toast had dismissed. `error` was already
+   * persisted by runTask.ts/chunkOrchestrator.ts on every failure; this
+   * covers the part that was actually missing — showing it, and retrying.
+   */
+  describe("a failed run", () => {
+    it("shows the persisted failure reason, not just 'Failed'", async () => {
+      vi.spyOn(taskRunService, "listTaskRuns").mockResolvedValue([
+        run({ task_slug: "citations", status: "failed", error: "ٹوکن ناکافی ہیں" }),
+      ]);
+
+      renderTrustTab();
+
+      await waitFor(() => expect(screen.getByText("Failed")).toBeInTheDocument());
+      expect(screen.getByText("ٹوکن ناکافی ہیں")).toBeInTheDocument();
+    });
+
+    it("offers a retry button", async () => {
+      vi.spyOn(taskRunService, "listTaskRuns").mockResolvedValue([
+        run({ task_slug: "citations", status: "failed", error: "Network error" }),
+      ]);
+
+      renderTrustTab();
+
+      await waitFor(() => expect(screen.getByRole("button", { name: /Retry/i })).toBeInTheDocument());
+    });
+
+    it("tells the user to open the Canvas when no editor is mounted to retry against", async () => {
+      vi.spyOn(taskRunService, "listTaskRuns").mockResolvedValue([
+        run({ task_slug: "citations", status: "failed", error: "Network error" }),
+      ]);
+      const toastError = vi.spyOn(toast, "error").mockImplementation(() => "" as any);
+
+      renderTrustTab();
+
+      const retryButton = await screen.findByRole("button", { name: /Retry/i });
+      // WorkspaceProvider in this test has no mounted editor, so
+      // `runDocumentTask` is null — the exact state a stale/reloaded Trust
+      // tab would find itself in.
+      fireEvent.click(retryButton);
+
+      await waitFor(() => expect(toastError).toHaveBeenCalled());
     });
   });
 });

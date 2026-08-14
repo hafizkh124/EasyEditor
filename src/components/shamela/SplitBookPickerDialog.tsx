@@ -116,14 +116,14 @@ export const SplitBookPickerDialog: React.FC<SplitBookPickerDialogProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl p-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-0 text-start">
+        <DialogHeader className="px-4 pt-4 pb-0 text-start">
           <DialogTitle className="text-sm">{t("reader.split_picker.title")}</DialogTitle>
           <DialogDescription className="text-xs">
             {t("reader.split_picker.description")}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-5 pt-3">
+        <div className="px-4 pt-3">
           <div className="relative">
             <Search className="absolute start-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <Input
@@ -136,7 +136,7 @@ export const SplitBookPickerDialog: React.FC<SplitBookPickerDialogProps> = ({
           </div>
         </div>
 
-        <div className="p-5 pt-2">
+        <div className="p-4 pt-2">
           {error && <p className="text-xs text-destructive">{error}</p>}
           {!error && loading && results.length === 0 && (
             <div className="flex items-center justify-center py-8">
@@ -161,7 +161,7 @@ export const SplitBookPickerDialog: React.FC<SplitBookPickerDialogProps> = ({
                       <span className="text-xs font-medium leading-snug line-clamp-2">{row.title}</span>
                       {row.author && (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <User className="h-3 w-3" />
+                          <User className="h-3.5 w-3.5" />
                           {row.author}
                         </span>
                       )}

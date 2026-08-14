@@ -34,6 +34,7 @@ export const WorkspaceAppMenu: React.FC = () => {
   const primary = menuCapabilities.filter((c) => c.group !== "tool");
   const entryFor = (id: string) => primary.find((c) => c.id === id);
   const dashboard = entryFor("dashboard");
+  const settings = entryFor("settings");
   const profile = entryFor("profile");
 
   return (
@@ -47,7 +48,7 @@ export const WorkspaceAppMenu: React.FC = () => {
           title={t("nav.menu", "مینو")}
         >
           <img src="/favicon.webp" alt="Easy Editor" width={22} height={22} className="rounded" />
-          <ChevronDown className="h-3 w-3 opacity-60" />
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
         </Button>
       </DropdownMenuTrigger>
 
@@ -77,6 +78,12 @@ export const WorkspaceAppMenu: React.FC = () => {
         )}
 
         <DropdownMenuSeparator />
+        {settings && (
+          <DropdownMenuItem onClick={() => navigate(settings.route!)} className="cursor-pointer gap-2">
+            <settings.icon className="h-4 w-4 text-muted-foreground" />
+            {t(settings.labelKey, settings.fallbackLabel)}
+          </DropdownMenuItem>
+        )}
         <ThemeToggle variant="menu" />
         {profile && (
           <>

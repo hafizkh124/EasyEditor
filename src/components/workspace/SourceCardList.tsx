@@ -1,7 +1,9 @@
 import React from "react";
-import { ExternalLink, BookMarked } from "lucide-react";
+import { ExternalLink, BookMarked, FileSearch } from "lucide-react";
 import CitationBadge from "@/components/research/CitationBadge";
+import { EmptyState } from "./EmptyState";
 import { domainLabel, groupByDomain } from "@/lib/citations/domains";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { TaskRunSource } from "@/core/workspace/types";
 
 interface SourceCardListProps {
@@ -16,11 +18,14 @@ interface SourceCardListProps {
  * hadith, an ayah, a fatwa and a classical work.
  */
 export const SourceCardList: React.FC<SourceCardListProps> = ({ sources }) => {
+  const { t } = useLanguage();
   if (!sources || sources.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground py-1">
-        اس رن میں کوئی ماخذ برآمد نہیں ہوا۔
-      </p>
+      <EmptyState
+        icon={FileSearch}
+        title={t("library.no_sources_in_run", "No sources were retrieved in this run.")}
+        compact
+      />
     );
   }
 
@@ -31,7 +36,7 @@ export const SourceCardList: React.FC<SourceCardListProps> = ({ sources }) => {
       {Object.entries(groups).map(([domain, items]) => (
         <div key={domain} className="space-y-1">
           <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
-            <BookMarked className="h-3 w-3 shrink-0" />
+            <BookMarked className="h-3.5 w-3.5 shrink-0" />
             <span>{domainLabel(domain)}</span>
             <span className="opacity-60">({items.length})</span>
           </div>
@@ -51,9 +56,9 @@ export const SourceCardList: React.FC<SourceCardListProps> = ({ sources }) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="shrink-0 text-primary hover:underline"
-                    aria-label={`${s.reference} — اصل ماخذ کھولیں`}
+                    aria-label={t("library.open_source", "{reference} — open original source").replace("{reference}", s.reference)}
                   >
-                    <ExternalLink className="h-3 w-3" />
+                    <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}
               </div>

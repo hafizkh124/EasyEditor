@@ -51,6 +51,18 @@ describe("workspace app menu", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/profile"));
   });
 
+  /**
+   * UX-v1 P3 — the workspace has no sidebar and no bottom nav on a phone, so
+   * this menu is the only way out, and Settings (BYOK key, voice engines,
+   * language) used to be missing from it entirely.
+   */
+  it("offers a route to settings", async () => {
+    open();
+    const item = await screen.findByText("ترتیبات");
+    fireEvent.click(item);
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/settings"));
+  });
+
   it("lists every standalone tool on the web, so the workspace is not a dead end", async () => {
     open();
     // `t` mirrors the additive API and returns the explicit fallback.
@@ -91,9 +103,10 @@ describe("workspace app menu", () => {
       }
     });
 
-    it("still offers a way out to the dashboard and the profile", async () => {
+    it("still offers a way out to the dashboard, settings and the profile", async () => {
       open();
       expect(await screen.findByText("ڈیش بورڈ")).toBeInTheDocument();
+      expect(await screen.findByText("ترتیبات")).toBeInTheDocument();
       expect(await screen.findByText("میری پروفائل")).toBeInTheDocument();
     });
   });

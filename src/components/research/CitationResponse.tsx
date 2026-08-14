@@ -99,21 +99,21 @@ const CitationResponse = ({
         <div className="flex flex-wrap items-center gap-3 text-xs pt-2 border-t border-border/50">
           <span className="flex items-center gap-1 text-green-700 dark:text-green-400">
             <CheckCircle2 className="h-3 w-3" />
-            {cited} / {total} {t("research.citations_cited_segments") || "segments cited"}
+            {cited} / {total} {t("research.citations_cited_segments", "segments cited")}
           </span>
           {uncited > 0 && (
             <span className="flex items-center gap-1 text-muted-foreground">
               <BookMarked className="h-3 w-3" />
-              {uncited} {t("research.citations_uncited_segments") || "without reliable citation"}
+              {uncited} {t("research.citations_uncited_segments", "without reliable citation")}
             </span>
           )}
           {rejected > 0 && (
             <span
               className="flex items-center gap-1 text-amber-700 dark:text-amber-400"
-              title={t("research.citations_rejected_tooltip") || "Model picked these but DB verification failed; they were dropped to avoid showing wrong references."}
+              title={t("research.citations_rejected_tooltip", "Model picked these but DB verification failed; they were dropped to avoid showing wrong references.")}
             >
               <AlertTriangle className="h-3 w-3" />
-              {rejected} {t("research.citations_rejected_segments") || "rejected by verifier"}
+              {rejected} {t("research.citations_rejected_segments", "rejected by verifier")}
             </span>
           )}
         </div>

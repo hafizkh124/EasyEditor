@@ -1,11 +1,13 @@
+import { useState, type ReactNode } from "react";
 import { type Editor } from "@tiptap/react";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3,
   List, ListOrdered, Quote, Undo2, Redo2, AlignLeft, AlignCenter, AlignRight,
-  ChevronDown, Maximize2, Minimize2, GitCompare, Check, X,
+  ChevronDown, Maximize2, Minimize2, GitCompare, Check, X, MoreHorizontal,
   Pilcrow, Type, Paintbrush, Table as TableIcon,
 } from "lucide-react";
 import {
@@ -60,14 +62,19 @@ const EditorToolbar = ({
   isFullscreen, onToggleFullscreen, brushActive, onToggleBrush,
   trackMode, onSetTrackMode, aiReview, onToggleAiReview, pendingCount, onAcceptAll, onRejectAll,
 }: EditorToolbarProps) => {
+  // Declared before the `!editor` guard below — hooks must run unconditionally
+  // on every render, and `editor` can flip from null to non-null across renders.
+  const [moreOpen, setMoreOpen] = useState(false);
+
   if (!editor) return null;
 
-  const groups = [
-    [
-      { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), label: "Bold" },
-      { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive("italic"), label: "Italic" },
-      { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: editor.isActive("underline"), label: "Underline" },
-    ],
+  const primaryGroup = [
+    { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), label: "Bold" },
+    { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive("italic"), label: "Italic" },
+    { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: editor.isActive("underline"), label: "Underline" },
+  ];
+
+  const secondaryGroups = [
     [
       { icon: Heading1, action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), active: editor.isActive("heading", { level: 1 }), label: "H1" },
       { icon: Heading2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: editor.isActive("heading", { level: 2 }), label: "H2" },
@@ -85,11 +92,17 @@ const EditorToolbar = ({
     ],
   ];
 
-  return (
-    <div className="flex items-center gap-1 p-2 border-b border-border bg-muted/60 flex-wrap">
-      {groups.map((group, gi) => (
+  // Headings/Lists/Align/font/table/AI/track-changes: everything past the
+  // always-visible core. At 360px with no split, these ~19 controls used to
+  // wrap into ~5 rows above the document (UX-v1 P4 — "the real toolbar
+  // sprawl"). Built once, rendered twice below: inline on desktop
+  // (`hidden sm:flex`) and inside the mobile overflow sheet (`sm:hidden`
+  // trigger) — same components, same props, so nothing here behaves
+  // differently by viewport, only where it's drawn.
+  const secondaryContent: ReactNode = (
+    <>
+      {secondaryGroups.map((group, gi) => (
         <div key={gi} className="flex items-center gap-0.5">
-          {gi > 0 && <Separator orientation="vertical" className="h-6 mx-1" />}
           {group.map((btn) => (
             <Toggle
               key={btn.label}
@@ -253,20 +266,29 @@ const EditorToolbar = ({
       >
         <X className="h-4 w-4" />
       </Button>
+    </>
+  );
+
+  return (
+    <div className="flex items-center gap-1 p-2 border-b border-border bg-muted/60 flex-wrap">
+      {/* Always visible: the highest-frequency controls, kept to one row even
+          at 360px. Everything else lives in `secondaryContent` above. */}
+      <div className="flex items-center gap-0.5">
+        {primaryGroup.map((btn) => (
+          <Toggle
+            key={btn.label}
+            size="sm"
+            pressed={btn.active}
+            onPressedChange={() => btn.action()}
+            aria-label={btn.label}
+            className="h-8 w-8 p-0"
+          >
+            <btn.icon className="h-4 w-4" />
+          </Toggle>
+        ))}
+      </div>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
-
-      {/* Fullscreen toggle */}
-      <Toggle
-        size="sm"
-        pressed={isFullscreen}
-        onPressedChange={onToggleFullscreen}
-        aria-label={isFullscreen ? t("editor.exit_fullscreen") : t("editor.fullscreen")}
-        title={isFullscreen ? t("editor.exit_fullscreen") : t("editor.fullscreen")}
-        className="h-8 w-8 p-0"
-      >
-        {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-      </Toggle>
 
       {/* Undo/Redo */}
       <Toggle
@@ -289,6 +311,54 @@ const EditorToolbar = ({
       >
         <Redo2 className="h-4 w-4" />
       </Toggle>
+
+      <Separator orientation="vertical" className="h-6 mx-1" />
+
+      {/* Fullscreen toggle */}
+      <Toggle
+        size="sm"
+        pressed={isFullscreen}
+        onPressedChange={onToggleFullscreen}
+        aria-label={isFullscreen ? t("editor.exit_fullscreen") : t("editor.fullscreen")}
+        title={isFullscreen ? t("editor.exit_fullscreen") : t("editor.fullscreen")}
+        className="h-8 w-8 p-0"
+      >
+        {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+      </Toggle>
+
+      <Separator orientation="vertical" className="h-6 mx-1 hidden sm:block" />
+
+      {/* Desktop: everything else stays inline, exactly as before. */}
+      <div className="hidden sm:flex sm:items-center sm:gap-1 sm:flex-wrap">
+        {secondaryContent}
+      </div>
+
+      {/* Phone: the same controls move into an overflow sheet instead of
+          wrapping the toolbar into several rows above the document. */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 sm:hidden"
+        aria-label={t("editor.more_formatting", "More formatting")}
+        title={t("editor.more_formatting", "More formatting")}
+        onClick={() => setMoreOpen(true)}
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </Button>
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent
+          side="bottom"
+          dir={isRtl ? "rtl" : "ltr"}
+          className="max-h-[70dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]"
+        >
+          <SheetHeader className="text-start">
+            <SheetTitle className="text-sm">{t("editor.more_formatting", "More formatting")}</SheetTitle>
+          </SheetHeader>
+          <div className="flex items-center gap-1 flex-wrap py-3">
+            {secondaryContent}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

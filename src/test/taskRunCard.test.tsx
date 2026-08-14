@@ -30,25 +30,25 @@ describe("TaskRunCard", () => {
   it("shows no confidence badge when the run reported none", () => {
     render(<TaskRunCard summary={summary()} onUndo={vi.fn()} onDismiss={vi.fn()} />);
     // FR-4.4: a spell-check or harakat run must not display a percentage.
-    expect(screen.queryByText(/اعتماد/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Confidence/)).not.toBeInTheDocument();
   });
 
   it("bands a low confidence as something to check rather than a bare number", () => {
     render(<TaskRunCard summary={summary({ confidence: 0.3 })} onUndo={vi.fn()} onDismiss={vi.fn()} />);
-    expect(screen.getByText(/کم اعتماد — جانچ لیں \(30%\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Low confidence — check \(30%\)/)).toBeInTheDocument();
   });
 
   it("uses the same 70% threshold the retrieval gate uses", () => {
     render(<TaskRunCard summary={summary({ confidence: 0.7 })} onUndo={vi.fn()} onDismiss={vi.fn()} />);
-    expect(screen.getByText(/اعلیٰ اعتماد \(70%\)/)).toBeInTheDocument();
+    expect(screen.getByText(/High confidence \(70%\)/)).toBeInTheDocument();
   });
 
   it("reports skipped blocks so an untouched table is visible, not silent", () => {
     render(
       <TaskRunCard summary={summary({ skipped: 2, failed: 1 })} onUndo={vi.fn()} onDismiss={vi.fn()} />,
     );
-    expect(screen.getByText(/1 حصے ناکام/)).toBeInTheDocument();
-    expect(screen.getByText(/2 بلاک/)).toBeInTheDocument();
+    expect(screen.getByText(/1 parts failed/)).toBeInTheDocument();
+    expect(screen.getByText(/2 blocks/)).toBeInTheDocument();
   });
 
   it("renders retrieved sources and links only what the corpus supplied", () => {
@@ -88,11 +88,11 @@ describe("TaskRunCard", () => {
     const onDismiss = vi.fn();
     render(<TaskRunCard summary={summary()} onUndo={onUndo} onDismiss={onDismiss} />);
 
-    screen.getByRole("button", { name: "اس پورے رن کی تبدیلیاں واپس لیں" }).click();
+    screen.getByRole("button", { name: "Undo all changes from this run" }).click();
     expect(onUndo).toHaveBeenCalledTimes(1);
     expect(onDismiss).not.toHaveBeenCalled();
 
-    screen.getByRole("button", { name: "یہ کارڈ بند کریں" }).click();
+    screen.getByRole("button", { name: "Close this card" }).click();
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
@@ -104,7 +104,7 @@ describe("TaskRunCard", () => {
         onDismiss={vi.fn()}
       />,
     );
-    expect(screen.getByText(/منسوخ/)).toBeInTheDocument();
-    expect(screen.getByText(/5 از 20 مکمل/)).toBeInTheDocument();
+    expect(screen.getByText(/Cancelled/)).toBeInTheDocument();
+    expect(screen.getByText(/5 of 20 complete/)).toBeInTheDocument();
   });
 });
