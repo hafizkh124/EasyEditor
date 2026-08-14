@@ -1435,6 +1435,7 @@ export type Database = {
       translation_projects: {
         Row: {
           created_at: string
+          document_id: string | null
           genre: string
           id: string
           project_id: string | null
@@ -1447,6 +1448,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          document_id?: string | null
           genre?: string
           id?: string
           project_id?: string | null
@@ -1459,6 +1461,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          document_id?: string | null
           genre?: string
           id?: string
           project_id?: string | null
@@ -1470,6 +1473,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "translation_projects_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "translation_projects_project_id_fkey"
             columns: ["project_id"]
