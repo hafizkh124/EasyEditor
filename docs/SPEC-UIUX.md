@@ -1,6 +1,6 @@
 # EasyEditor UI/UX Excellence Plan
 
-**Status:** Approved for build-phase use · **Version:** 1.0.0 · **Date:** 2026-08-11
+**Status:** Approved for build-phase use · **Version:** 1.1.0 · **Date:** 2026-08-11 (§3 re-audited 2026-08-15)
 **Owner:** Product + Engineering · **Author:** Engineering
 **Stack:** React 18 + TS + Vite + Tailwind + shadcn/ui + TipTap + framer-motion
 **Sister docs:** `docs/SPEC-M2.md` (three-pillar shell), `docs/SPEC-M5.9.md` (desktop gates), `docs/STRATEGY-v1.md`
@@ -46,28 +46,33 @@ Keep these open side-by-side during every phase. They are our "what professional
 
 ---
 
-## 3. Current-state findings (audit 2026-08-11)
+## 3. Current-state findings (audit 2026-08-11, re-verified 2026-08-15)
+
+The original audit below drove `docs/SPEC-UIUX.md` §5's phases F1-F8. Commit `51c5256` ("Ship UX-v1 usability recovery program (P0-P7)", 2026-08-14) implemented most of that plan in one pass. The table now carries a **Status** column reflecting the codebase as it stands today, re-checked file-by-file rather than assumed from the commit message — several rows landed only partially, and one (G) still fails the very "Done" bar §5 F3 set for it.
 
 What the codebase already does well (keep):
 
-- Token discipline exists: `--radius`, elevation ladder (`--background` 96% → card 100% → popover 100%), WCAG-AA-commented colors in `src/index.css:9-111`.
-- Mobile font-size guard (16px inputs, `src/index.css:252-259`).
-- Workbench stays mounted so streaming survives; drawers animate via transform (`WorkspaceLayout.tsx:73-84`).
+- Token discipline exists: `--radius`, elevation ladder (`--background` 96% → `--card` 100% → `--popover` 100% → `--sidebar-background` 98%), WCAG-AA-commented colors in `src/index.css:9-54`.
+- Mobile font-size guard (16px inputs, prevents iOS auto-zoom, `src/index.css:250-255`).
+- Workbench stays mounted so streaming survives; drawers animate via transform (`WorkspaceLayout.tsx:176,236`).
 - Fluid type scale exists (`tailwind.config.ts:77-85`).
-- Trust UI deliberately refuses to invent confidence (`TrustTab.tsx:19`).
+- Trust UI deliberately refuses to invent confidence — `null` until a run actually reports one, never a default like 0.92 (`TrustTab.tsx:22-26`).
+- **New since the original audit:** a shared `EmptyState.tsx` component and a `check-ui-discipline.mjs` guard wired into `npm run lint` — both covered under row E and B below.
 
-What makes it feel "not professional yet" — concretely:
+What makes it feel "not professional yet" — concretely, with current status:
 
-| # | Problem | Evidence / location |
-|---|---|---|
-| A | **Two page styles collide** — flat `#f7f7f7` background vs card surfaces with thin borders; elevation reads inconsistently | `--background: 0 0% 96%` + `--border: 0 0% 87%` `src/index.css:11,47` |
-| B | **Font soup in chrome** — Work Sans (Latin) jumps to Noto Naskh Arabic mid-word; Nastaliq used only in editor fonts, but Lora adds a third serif mood; the *sans* stack is the wobblier point | `tailwind.config.ts:117-143`, `src/index.css:84-90` |
-| C | **Icon language inconsistent** — mixed stroke weights/sizes (`h-3.5`, `h-4`, `w-4`); some `text-primary`, some `text-muted-foreground`, some uncolored | e.g. `TrustTab.tsx:55,69` (`h-4` vs `h-3.5`) |
-| D | **Toolbar sprawl** — export (Word/PDF/HTML/TXT) + copy + versioning + direction toggle all crowd one `h-14` bar on mobile | `WorkspaceTopBar.tsx:80-120` |
-| E | **Empty states** — panels/home tabs likely show bare lists; no guided first-run (new scholar has no "here's what to do" moment) | HomeTab, Library tabs |
-| F | **Density drift** — padding uses raw `p-3 space-y-3`, `px-3`, `gap-2` literals across files rather than a shared spacing vocabulary | `TrustTab.tsx:51`, `WorkspaceTopBar.tsx:81` |
-| G | **Mobile three-pillar complexity** — the shell is powerful but the phone experience exposes too many concurrent affordances | drawer toggles + app menu + back + title in one bar (`WorkspaceTopBar.tsx:86-114`) |
-| H | **Motion minimal** — only accordion keyframes; framer-motion is in the bundle but barely used; panels snap | `tailwind.config.ts:86-107` |
+| # | Status | Problem | Current evidence |
+|---|---|---|---|
+| A | ✅ Fixed (unguarded) | **Elevation ladder was inverted** — popover matched at 89%, *below* background, so popovers read as sunken rather than raised | Now `--background` 96% → `--card` 100% → `--popover` matched to card → `--border` 87%, with `--sidebar-background` 98% sitting correctly between background and card (`src/index.css:11,14,25,48,54`). A comment at `:17-24` narrates the fix and the WCAG contrast math behind it. **Residual risk:** nothing checks token *ordering* automatically — a future edit could re-invert this silently. |
+| B | ✅ Fixed & guarded | **Font soup in chrome** — Lora added a third serif mood alongside Work Sans/Naskh | `tailwind.config.ts:117-133` (sans) / `:134-143` (serif) unchanged, but `font-serif` now only appears on document surfaces (`TranslationWorkspace.tsx:405,435`) — zero hits in `src/components/workspace`, `layout`, `shamela`, or `reader`. `scripts/check-ui-discipline.mjs:47` hard-fails `npm run lint` (`package.json:17`) if `font-serif` ever appears in those four chrome directories again — this is a real regression guard, not just convention. |
+| C | 🟡 Partially fixed, unguarded | **Icon language inconsistent** — mixed sizes/colors | `TrustTab.tsx` now follows a real size-per-role convention — headline/button `h-4`, card-label `h-3.5`, inline `h-3` (e.g. `:102,119,133,143,164,172,192,194,218,245`) — and consistent state coloring (`text-primary` / `text-amber-500` / `text-emerald-*` / `text-red-*`, nothing left uncolored). Close to but not identical to §4.2's literal scheme. **`check-ui-discipline.mjs` has no icon-size or icon-color rule at all** — this improvement rests entirely on manual convention, unlike B. |
+| D | 🟡 Partially fixed | **Toolbar sprawl** — export + copy + versioning + direction toggle crowd one bar on mobile | `WorkspaceTopBar.tsx:130-331` — search/copy/export are now `hidden sm:flex` (`:195,217,224`) and fold into a single mobile "More" menu (`:286-329`) duplicating search/copy/versions/all export formats/audiobook. But the language/RTL toggle (`:263-265`) and Workbench toggle (`:268-278`) stay outside the overflow menu, always visible — §5 F3's own line "direction toggle moves into the app menu" (line 137) did not happen. |
+| E | ✅ Fixed & guarded | **Empty states** — bare lists, no guided first-run | `EmptyState.tsx` (new, 41 lines) — shared 3-part pattern (icon/title/description/action) — used by 8 components (`AnnotationList`, `BrowseTab`, `KnowledgeGraphTab`, `LibraryDocumentTree`, `LibrarySourcesTab`, `RecipesTab`, `SearchTab`, `SourceCardList`). `FirstRunHint.tsx` (new, 57 lines) — dismissible 2-step onboarding wired into `HomeTab.tsx`, persisted on dismissal. `src/test/weakEmptyStates.test.tsx` (2/2 passing) is a real regression test: it asserts empty states explain *how* to act, not just *that there's nothing there*. |
+| F | 🟡 Partially fixed, soft-guarded | **Density drift** — raw spacing literals instead of a shared vocabulary | `check-ui-discipline.mjs:24` flags `p-5/7/9/11+` etc. as **soft warnings only** (fails only under `--strict`, which `npm run lint` does not pass), and scans just 4 directories (`workspace`, `layout`, `shamela`, `reader`; `:22`). Currently reports "clean (0 hard, 0 soft)" on that scope; spot-checked `TrustTab.tsx`/`WorkspaceTopBar.tsx` are in-vocabulary today. Real but partial — soft-only, and not app-wide. |
+| G | ❌ Still true — F3's own bar not met | **Mobile three-pillar complexity** — too many concurrent affordances in one bar | At <640px, `WorkspaceTopBar.tsx` still shows ~6 always-visible clusters (app menu `:135`, back arrow `:136-138`, library-drawer toggle `:140-149`, title input `:158-163`, language toggle `:263-265`, Workbench toggle `:268-278`) plus the "More" overflow trigger — not the "≤2 top-bar control clusters" §5 F3 itself set as Done (line 139). |
+| H | 🟡 Partially fixed — a11y gap closed, motion itself unchanged | **Motion minimal** — only accordion keyframes, panels snap | `tailwind.config.ts:86-107` keyframes are untouched by `51c5256` (still only accordion). Framer-motion usage (9 files, 58 occurrences) is entirely in `research/*`, `Pricing.tsx`, `Transcribe.tsx`, `PlanCard.tsx`, `AudioWaveform.tsx` — zero in `workspace` or `layout`, and most of those files predate the recovery commit. Drawers still use plain CSS `transition-transform duration-300` (`WorkspaceLayout.tsx:176,236`), not F4's 150-250ms range; no `page-fade` class exists anywhere; no `motion-safe:`/`motion-reduce:` variants exist. **The one real win:** `src/index.css:259-272` adds a blanket `prefers-reduced-motion: reduce` rule collapsing all animation/transition durations to 0.01ms globally — the accessibility gap is closed, but "panels snap, motion barely used" still accurately describes the workspace shell. |
+
+**Net:** 2/8 fixed and guarded against regression (B, E), 1/8 fixed but unguarded (A), 4/8 partially fixed (C, D, F, H), 1/8 not met against its own stated target (G). All of the above landed in the single commit `51c5256` — nothing here reflects separate follow-up work.
 
 ---
 
@@ -195,6 +200,6 @@ Manual pass on a phone (360px) + desktop (1440px) + Electron:
 ---
 
 ## 8. Follow-ups (log here)
-- [ ] Build the `scripts/check-ui-discipline.mjs` guard (F1 optional; recommendation: include).
+- [x] Build the `scripts/check-ui-discipline.mjs` guard — done in `51c5256`, wired into `npm run lint`. Scope caveat (§3): hard-fails only on `font-serif`-in-chrome and stray `border-2`; the spacing check is soft-only (`--strict` not passed by `lint`) and all three checks cover only 4 of the app's component directories. No icon-size/color rule exists at all (row C).
 - [ ] After sign-off, file an ADR under `docs/adr/` capturing the elevation/type charter so future phases inherit it (pattern precedent exists).
 - [ ] Revisit whether `mawsuah` / P6 additions need reader-affordance work (wait for `docs/STRATEGY-v1.md` P1 report).
