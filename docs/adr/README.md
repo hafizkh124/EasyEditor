@@ -15,6 +15,8 @@ reconstruct rationale without rereading commits.
 | [0007](./0007-shamela-native-read.md) | Reading a local Shamela 4 library (SQLite + Lucene via Shamela's own JRE) | Accepted |
 | [0008](./0008-local-voice-engines.md) | Python-free Local Voice Core (Piper ONNX, Whisper, Segmented Synthesis) | Accepted |
 | [0009](./0009-voice-studio-implementation.md) | Voice Studio Implementation Patterns (CLI spawn, IPC progress, MediaRecorder cloning) | Accepted |
+| [0010](./0010-workspace-is-the-single-home.md) | Workspace Is the Single Home (retiring standalone editor/research/book/translate pages) | Accepted |
+| [0011](./0011-elevation-typography-charter.md) | Elevation & Typography Charter (design tokens + `check-ui-discipline.mjs` enforcement) | Accepted |
 
 ## When to write a new ADR
 

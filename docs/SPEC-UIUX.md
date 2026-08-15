@@ -201,5 +201,5 @@ Manual pass on a phone (360px) + desktop (1440px) + Electron:
 
 ## 8. Follow-ups (log here)
 - [x] Build the `scripts/check-ui-discipline.mjs` guard — done in `51c5256`, wired into `npm run lint`. Scope caveat (§3): hard-fails only on `font-serif`-in-chrome and stray `border-2`; the spacing check is soft-only (`--strict` not passed by `lint`) and all three checks cover only 4 of the app's component directories. No icon-size/color rule exists at all (row C).
-- [ ] After sign-off, file an ADR under `docs/adr/` capturing the elevation/type charter so future phases inherit it (pattern precedent exists).
+- [x] After sign-off, file an ADR under `docs/adr/` capturing the elevation/type charter so future phases inherit it — [ADR-0011](./adr/0011-elevation-typography-charter.md).
 - [ ] Revisit whether `mawsuah` / P6 additions need reader-affordance work (wait for `docs/STRATEGY-v1.md` P1 report).
