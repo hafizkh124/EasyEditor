@@ -1,15 +1,16 @@
 /**
- * Tafsir MCP — renderer service (SPEC-TAFSIR §FR-5.6).
+ * Tafsir MCP — renderer service (SPEC-TAFSIR §FR-5.6, §FR-6 / ADR-0012).
  *
  * One facade for both runtimes:
  *   desktop → window.electronAPI.tafsir (main-process MCP client, §FR-4.3)
- *   web     → no live route yet (§FR-6 lands in Phase 4); methods return a
- *             clear "desktop only" error instead of silently failing.
+ *   web     → the `tafsir-proxy` edge function (remote mode only; local/stdio
+ *             stays desktop-only per the spec's Non-Goals)
  *
- * All network traffic happens in the main process; the renderer never touches
- * the remote endpoint (NFR-2).
+ * The renderer never touches the remote MCP endpoint directly (NFR-2).
  */
 import { isDesktop } from "@/core/backend";
+import { supabase } from "@/integrations/supabase/client";
+
 
 export type TafsirMode = "remote" | "local";
 
