@@ -17,6 +17,7 @@ reconstruct rationale without rereading commits.
 | [0009](./0009-voice-studio-implementation.md) | Voice Studio Implementation Patterns (CLI spawn, IPC progress, MediaRecorder cloning) | Accepted |
 | [0010](./0010-workspace-is-the-single-home.md) | Workspace Is the Single Home (retiring standalone editor/research/book/translate pages) | Accepted |
 | [0011](./0011-elevation-typography-charter.md) | Elevation & Typography Charter (design tokens + `check-ui-discipline.mjs` enforcement) | Accepted |
+| [0012](./0012-tafsir-web-via-edge-function.md) | Tafsir MCP on Web via a Session-less Edge Function | Accepted (decision) |
 
 ## When to write a new ADR
 
