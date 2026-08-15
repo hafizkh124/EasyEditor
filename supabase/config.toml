@@ -45,3 +45,6 @@ verify_jwt = false
 [functions.web-search]
 verify_jwt = false
 
+[functions.tafsir-proxy]
+verify_jwt = false
+
