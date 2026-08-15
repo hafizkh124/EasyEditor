@@ -17,45 +17,47 @@ export function TafsirConnector() {
   const [mode, setMode] = useState<TafsirMode>("remote");
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // Every method in tafsirService routes through the main-process MCP client and
-  // throws "desktop only" without it (§FR-5.6 — the web adapter is still unbuilt).
-  // Rendering the panel anyway gave web users a connect form where every button
-  // threw, which SPEC-M5 FR-2.5 forbids: a feature that cannot work is absent,
-  // not broken. ByokKeyPanel gates itself the same way.
-  if (!hasTafsirNative()) return null;
+  // Local/stdio mode needs the Electron main process (spec Non-Goals); web
+  // reaches the same remote server through the `tafsir-proxy` edge function
+  // (ADR-0012), so the mode selector only appears on desktop.
+  const native = hasTafsirNative();
+  const effectiveMode: TafsirMode = native ? mode : "remote";
 
   return (
     <>
-      <div className="space-y-1">
-        <RadioGroup
-          value={mode}
-          onValueChange={(v) => setMode(v as TafsirMode)}
-          className="flex gap-2 pt-1"
-          dir="rtl"
-        >
-          <ModeRadio
-            checked={mode === "remote"}
-            value="remote"
-            icon={<Globe className="h-4 w-4 text-primary" />}
-            title="آن لائن (پیش فرض)"
-            desc="انٹرنیٹ پر مرکز تفسیر کا ذاتی سرور"
-          />
-          <ModeRadio
-            checked={mode === "local"}
-            value="local"
-            icon={<HardDrive className="h-4 w-4 text-primary" />}
-            title="مقامی"
-            desc="آف لائن SQLite ڈیٹا بیس (Python + uv)"
-          />
-        </RadioGroup>
+      {native && (
+        <div className="space-y-1">
+          <RadioGroup
+            value={mode}
+            onValueChange={(v) => setMode(v as TafsirMode)}
+            className="flex gap-2 pt-1"
+            dir="rtl"
+          >
+            <ModeRadio
+              checked={mode === "remote"}
+              value="remote"
+              icon={<Globe className="h-4 w-4 text-primary" />}
+              title="آن لائن (پیش فرض)"
+              desc="انٹرنیٹ پر مرکز تفسیر کا ذاتی سرور"
+            />
+            <ModeRadio
+              checked={mode === "local"}
+              value="local"
+              icon={<HardDrive className="h-4 w-4 text-primary" />}
+              title="مقامی"
+              desc="آف لائن SQLite ڈیٹا بیس (Python + uv)"
+            />
+          </RadioGroup>
 
-        {mode === "local" && (
-          <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            مقامی موڈ کے لیے Python اور uv درکار ہیں؛ اندراج کا بڑا ڈیٹا بیس تیسرے مرحلے میں ہوگا۔
-          </p>
-        )}
-      </div>
+          {mode === "local" && (
+            <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              مقامی موڈ کے لیے Python اور uv درکار ہیں؛ اندراج کا بڑا ڈیٹا بیس تیسرے مرحلے میں ہوگا۔
+            </p>
+          )}
+        </div>
+      )}
+
 
       <TafsirConnectPanel
         mode={mode}
