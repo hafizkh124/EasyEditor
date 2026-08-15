@@ -59,5 +59,9 @@ electron/shamela/java/build/
 
 # Temp probe scripts & extracted app dumps (agent scratch)
 scratch/
+
+# Shamela bridge's session-pairing secret (tools/shamela-bridge/auth.mjs) —
+# generated per machine on first run, must never be committed.
+tools/shamela-bridge/.bridge-token.json
 probeMaster.*
 

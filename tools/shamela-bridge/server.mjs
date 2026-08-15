@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
 import * as reader from './reader.mjs';
+import { takeRevealOnceToken, isAuthorized } from './auth.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -171,6 +172,14 @@ const server = http.createServer(async (req, res) => {
         };
       }
 
+      // Trust-on-first-use pairing (auth.mjs): revealed to exactly one
+      // request, ever. Every other endpoint then requires it — see auth.mjs
+      // for why /health itself stays open.
+      const pairingToken = takeRevealOnceToken();
+      if (pairingToken) {
+        healthData = { ...healthData, pairingToken };
+      }
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(healthData));
     } catch (err) {
@@ -186,14 +195,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 3b. Session token (auth.mjs): every endpoint below reads the user's
+  // library, so all of them require pairing. /health above stays open —
+  // it is the only route a client can call before it has a token.
+  if (!isAuthorized(req)) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      error: 'Missing or invalid bridge token. If this is a fresh connection, reload the app so it can pair via /health; if pairing was lost, delete .bridge-token.json next to server.mjs and restart the bridge.',
+    }));
+    return;
+  }
+
   // ── Catalogue endpoints (UX-v1 P7) ──────────────────────────────────
   // Browse only — categories, authors, periods, books-by-X, stats. Uses the
   // same low-level `backend.catalog.*` methods the /health endpoint already
   // proves work, rather than replicating the MCP tools' JSON-schema argument
   // shapes; author search goes through the registered-tool layer (Lucene),
-  // the same way /search already does. Deliberately NOT covering
-  // readPage/readToc/pageCount — see shamelaClient.ts for why the reader
-  // stays desktop-only for now.
+  // the same way /search already does.
   if (req.method === 'GET' && url.pathname === '/catalogue/stats') {
     try {
       const { backend } = await getBackendAndServer();

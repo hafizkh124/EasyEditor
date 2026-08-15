@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Globe, RefreshCw, BookOpen, Info } from "lucide-react";
+import { Globe, RefreshCw, BookOpen, Info, HelpCircle } from "lucide-react";
 import { useLocalShamela } from "@/hooks/useLocalShamela";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { ShamelaBridgeGuideModal } from "@/components/mcp/ShamelaBridgeGuideModal";
 
 const DEFAULT_BRIDGE_URL = "http://127.0.0.1:8000";
 
@@ -24,6 +25,7 @@ export function ShamelaBridgeConnectPanel() {
   const { mcpUrl, setMcpUrl, connected, downloadedBooks, catalogBooks, notes, testing, testConnection } =
     useLocalShamela();
   const [urlDraft, setUrlDraft] = useState(mcpUrl || DEFAULT_BRIDGE_URL);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const handleTest = async () => {
     const url = urlDraft.trim() || DEFAULT_BRIDGE_URL;
@@ -39,9 +41,20 @@ export function ShamelaBridgeConnectPanel() {
             <Globe className="h-5 w-5 text-primary" />
             {t("shamela.bridge.title")}
           </CardTitle>
-          <Badge variant={connected ? "default" : "outline"} className="text-xs">
-            {testing ? t("shamela.status.connecting") : connected ? t("shamela.status.active") : t("shamela.status.offline")}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setGuideOpen(true)}
+              className="text-xs gap-1.5 h-8"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              {t("shamela.guide")}
+            </Button>
+            <Badge variant={connected ? "default" : "outline"} className="text-xs">
+              {testing ? t("shamela.status.connecting") : connected ? t("shamela.status.active") : t("shamela.status.offline")}
+            </Badge>
+          </div>
         </div>
         <CardDescription className="text-xs mt-1">{t("shamela.bridge.description")}</CardDescription>
       </CardHeader>
@@ -100,6 +113,8 @@ export function ShamelaBridgeConnectPanel() {
           </div>
         )}
       </CardContent>
+
+      <ShamelaBridgeGuideModal open={guideOpen} onOpenChange={setGuideOpen} />
     </Card>
   );
 }

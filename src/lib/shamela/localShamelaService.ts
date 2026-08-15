@@ -15,6 +15,7 @@
 
 import type { ResourceResult } from "@/lib/editor/citationFormat";
 import { isDesktop } from "@/core/backend";
+import { getBridgeToken } from "@/core/shamela/shamelaClient";
 import { logger } from "@/lib/logger";
 
 const log = logger.child("localShamelaService");
@@ -98,9 +99,13 @@ async function searchViaBridge(query: string, limit: number): Promise<ResourceRe
   const rawUrl = localStorage.getItem("shamela.mcp_url") || "http://127.0.0.1:8000";
   const baseUrl = rawUrl.replace(/\/+$/, "");
 
+  const token = getBridgeToken();
   const res = await fetch(`${baseUrl}/search`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "X-Bridge-Token": token } : {}),
+    },
     body: JSON.stringify({ query, limit }),
   }).catch(() => null);
 

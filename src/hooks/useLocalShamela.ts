@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { isDesktop } from "@/core/backend";
+import { storeBridgeToken } from "@/core/shamela/shamelaClient";
 import { logger } from "@/lib/logger";
 
 const log = logger.child("useLocalShamela");
@@ -102,7 +103,8 @@ export function useLocalShamela() {
       }).catch(() => null);
 
       if (res && res.ok) {
-        const data: ShamelaHealthResult = await res.json();
+        const data: ShamelaHealthResult & { pairingToken?: string } = await res.json();
+        if (typeof data.pairingToken === "string") storeBridgeToken(data.pairingToken);
         setConnectedState(true);
         setDownloadedBooks(data.downloaded_books ?? null);
         setCatalogBooks(data.catalog_books ?? null);
