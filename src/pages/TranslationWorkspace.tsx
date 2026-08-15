@@ -17,6 +17,8 @@ import { lookupTranslationMemory, GENRE_TRANSLATION_PROMPTS, type TranslationMem
 import { collectSseText } from "@/lib/sse";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
 import { logger } from "@/lib/logger";
+import { documentService } from "@/core/workspace/documentService";
+import { htmlToTiptapJSON, translationChunksToHtml } from "@/core/workspace/bookSectionMigration";
 
 const log = logger.child("TranslationWorkspace");
 
@@ -41,24 +43,50 @@ interface Chunk {
   notes?: string | null;
 }
 
+interface TranslationWorkspaceProps {
+  /** The workspace document (`documents` row) this translation content is
+   *  scoped to. There is exactly one `translation_projects` row per document
+   *  (UX-v1 P3.4) — no more independent project switching inside this view. */
+  documentId: string;
+  /** The workspace `projects` row `documentId` belongs to — stamped onto a
+   *  newly-created `translation_projects` shell so it's linked the same way
+   *  the legacy migration links one (see `bookSectionMigration.ts`). */
+  projectId: string;
+  /** Pre-fills the title field when starting translation for the first time,
+   *  so the user isn't asked to name the same thing twice. */
+  documentTitle: string;
+}
+
 /**
  * Always rendered embedded inside the Canvas pillar (CanvasTranslationView),
  * never standalone — the standalone `AppLayout`-wrapped shell was retired in
  * UX-v1 P3, since nothing ever passed `embedded={false}` to reach it.
+ *
+ * UX-v1 P3.4: scoped to a single `documentId` rather than browsing every
+ * `translation_projects` row the user owns. Previously this loaded the
+ * user's entire `translation_projects` list independently of whatever
+ * document the workspace had open, so a document created via the Library's
+ * "New Project" (kind: translation) was invisible here and this view's own
+ * "New Project" created an orphaned `translation_projects` row with no link
+ * back to any workspace document. Now: look up the one row (if any) whose
+ * `document_id` matches, and every chunk save also mirrors the chunks into
+ * `documents.content_json` (via `translationChunksToHtml` + `htmlToTiptapJSON`,
+ * the same conversion the legacy migration uses) so the document stays
+ * consistent with the rest of the workspace — searchable, correct word count —
+ * without waiting for that migration to run.
  */
-export default function TranslationWorkspace() {
+export default function TranslationWorkspace({ documentId, projectId, documentTitle }: TranslationWorkspaceProps) {
   const { session } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [activeChunkIndex, setActiveChunkIndex] = useState<number>(0);
-  const [_loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [newProjectModal, setNewProjectModal] = useState(false);
 
   // New Project Form
-  const [newTitle, setNewTitle] = useState("");
+  const [newTitle, setNewTitle] = useState(documentTitle);
   const [newGenre, setNewGenre] = useState("general");
   const [rawTextImport, setRawTextImport] = useState("");
 
@@ -66,38 +94,39 @@ export default function TranslationWorkspace() {
   const [tmMatches, setTmMatches] = useState<TranslationMemoryMatch[]>([]);
   const [tmLoading, setTmLoading] = useState(false);
 
-  // Load User Projects once. `loadProjects` is redeclared every render (it is a
-  // plain async function, not a useCallback), so depending on it would refetch
-  // on every render.
+  // Look up (at most) one translation_projects row for this document.
+  // Re-runs if the user switches documents without unmounting the Canvas.
   useEffect(() => {
-    loadProjects();
+    loadForDocument();
+    setNewTitle(documentTitle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [documentId]);
 
-  const loadProjects = async () => {
+  const loadForDocument = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("translation_projects")
+      const { data, error } = await (supabase.from("translation_projects") as any)
         .select("*")
-        .order("updated_at", { ascending: false });
+        .eq("document_id", documentId)
+        .maybeSingle();
 
       if (error) throw error;
-      setProjects(data || []);
-      if (data && data.length > 0 && !selectedProject) {
-        selectProject(data[0]);
+      if (data) {
+        await loadChunks(data);
+      } else {
+        setSelectedProject(null);
+        setChunks([]);
       }
     } catch (err) {
-      log.error("loading translation projects failed", { err });
+      log.error("loading translation project for document failed", { err });
       toast.error(translateStored("toast.translation.projects_load_failed"));
     } finally {
       setLoading(false);
     }
   };
 
-  const selectProject = async (proj: Project) => {
+  const loadChunks = async (proj: Project) => {
     setSelectedProject(proj);
-    setLoading(true);
     try {
       const { data, error } = await supabase
         .from("translation_chunks")
@@ -116,8 +145,23 @@ export default function TranslationWorkspace() {
     } catch (err) {
       log.error("opening translation project failed", { err });
       toast.error(translateStored("toast.translation.project_load_failed"));
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  // Mirrors chunks into `documents.content_json` (source as blockquote,
+  // translation as body text — same shape the legacy migration produces) so
+  // the rest of the workspace (search, word count, RichEditor if the user
+  // ever leaves the translation view) sees real content rather than an empty
+  // document. Best-effort: a failure here shouldn't block the chunk save the
+  // user actually asked for.
+  const syncDocumentContent = async (updatedChunks: Chunk[]) => {
+    try {
+      const html = translationChunksToHtml(
+        updatedChunks.map((c) => ({ ...c, translated_text: c.translated_text ?? null }))
+      );
+      await documentService.updateDocument(documentId, { content_json: htmlToTiptapJSON(html) });
+    } catch (err) {
+      log.error("syncing translation chunks to document failed", { err });
     }
   };
 
@@ -128,8 +172,7 @@ export default function TranslationWorkspace() {
     }
     setSaving(true);
     try {
-      const { data: proj, error: pErr } = await supabase
-        .from("translation_projects")
+      const { data: proj, error: pErr } = await (supabase.from("translation_projects") as any)
         .insert({
           user_id: session!.user.id,
           title: newTitle.trim(),
@@ -137,6 +180,8 @@ export default function TranslationWorkspace() {
           target_lang: "ur",
           genre: newGenre,
           status: "in_progress",
+          project_id: projectId,
+          document_id: documentId,
         })
         .select()
         .single();
@@ -156,15 +201,24 @@ export default function TranslationWorkspace() {
         status: "draft",
       }));
 
-      const { error: cErr } = await supabase.from("translation_chunks").insert(chunkRows);
+      const { data: insertedChunks, error: cErr } = await supabase
+        .from("translation_chunks")
+        .insert(chunkRows)
+        .select();
       if (cErr) throw cErr;
 
       toast.success(translateStored("toast.translation.project_created"));
       setNewProjectModal(false);
-      setNewTitle("");
+      setNewTitle(documentTitle);
       setRawTextImport("");
-      await loadProjects();
-      selectProject(proj);
+      setSelectedProject(proj);
+      const loadedChunks = insertedChunks || [];
+      setChunks(loadedChunks);
+      setActiveChunkIndex(0);
+      if (loadedChunks.length > 0) {
+        fetchTm(loadedChunks[0].source_text, proj.target_lang, proj.genre);
+      }
+      await syncDocumentContent(loadedChunks);
     } catch (err) {
       log.error("creating translation project failed", { err });
       toast.error(translateStored("toast.book.project_create_failed"));
@@ -208,7 +262,10 @@ export default function TranslationWorkspace() {
         .eq("id", current.id);
 
       if (error) throw error;
+      const updatedChunks = chunks.map((c, idx) => (idx === activeChunkIndex ? { ...c, status: "completed" } : c));
+      setChunks(updatedChunks);
       toast.success(translateStoredFormat("toast.translation.chunk_saved", { number: current.chunk_index }));
+      await syncDocumentContent(updatedChunks);
     } catch (err) {
       log.error("saving chunk failed", { err });
       toast.error(translateStored("toast.common.save_failed"));
@@ -280,178 +337,163 @@ export default function TranslationWorkspace() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-3">
           <Languages className="h-5 w-5 text-primary" />
-            <div>
-              <h1 className="text-base font-semibold">ترجمہ پروجیکٹس (Translation Workspace)</h1>
-              <p className="text-xs text-muted-foreground">طویل کتب و مقالہ جات کا Translation Memory کے ساتھ ترجمہ</p>
-            </div>
+          <div>
+            <h1 className="text-base font-semibold">{documentTitle || "ترجمہ (Translation)"}</h1>
+            <p className="text-xs text-muted-foreground">Translation Memory کے ساتھ ترجمہ</p>
           </div>
+        </div>
+        {!loading && !selectedProject && (
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => setNewProjectModal(true)}>
               <Plus className="h-4 w-4 ml-1.5" />
-              نیا پروجیکٹ
+              ترجمہ شروع کریں
             </Button>
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Workspace Body */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          {/* Sidebar: Projects & Chunk List. Same reasoning as the Book Studio
-              outline — stacked and height-capped on phones, a column from md up. */}
+      {/* Workspace Body */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* Sidebar: Chunk list for this document's translation project. */}
+        {selectedProject && (
           <div className="w-full md:w-72 max-h-56 md:max-h-none border-b md:border-b-0 md:border-r border-border bg-muted/60 flex flex-col overflow-y-auto shrink-0">
             <div className="p-3 border-b border-border">
-              <Label className="text-xs font-semibold mb-1 block">پروژیکٹس فہرست</Label>
+              <Badge variant="outline" className="text-xs px-1 py-0">{selectedProject.genre}</Badge>{" "}
+              <span className="text-xs text-muted-foreground">{selectedProject.source_lang.toUpperCase()} ➔ {selectedProject.target_lang.toUpperCase()}</span>
+            </div>
+            <div className="p-3 flex-1">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold">ابواب / پاراگراف ({chunks.length})</span>
+              </div>
               <div className="space-y-1">
-                {projects.map((p) => (
+                {chunks.map((c, idx) => (
                   <button
-                    key={p.id}
-                    onClick={() => selectProject(p)}
-                    className={`w-full text-right p-2 rounded-md text-xs transition-colors ${
-                      selectedProject?.id === p.id
-                        ? "bg-primary text-primary-foreground font-medium"
-                        : "hover:bg-accent text-foreground"
+                    key={c.id}
+                    onClick={() => handleChunkChange(idx)}
+                    className={`w-full text-right p-2 rounded border text-xs flex items-center justify-between transition-colors ${
+                      activeChunkIndex === idx
+                        ? "border-primary bg-primary/10 font-medium"
+                        : "border-border hover:bg-muted"
                     }`}
                   >
-                    <div className="truncate font-semibold">{p.title}</div>
-                    <div className="flex items-center gap-1 mt-0.5 opacity-80 text-xs">
-                      <Badge variant="outline" className="text-xs px-1 py-0">{p.genre}</Badge>
-                      <span>{p.source_lang.toUpperCase()} ➔ {p.target_lang.toUpperCase()}</span>
-                    </div>
+                    <span className="truncate flex-1 pl-2">ٹکڑا #{c.chunk_index}: {c.source_text.slice(0, 20)}...</span>
+                    {c.translated_text ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    ) : (
+                      <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
+                    )}
                   </button>
                 ))}
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Chunks Navigation */}
-            {selectedProject && (
-              <div className="p-3 flex-1">
+        {/* Main Editor Panes (Side-by-Side) */}
+        {selectedProject && activeChunk ? (
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+            {/* Left Pane: Source Text */}
+            <div className="flex-1 border-r border-border p-4 flex flex-col overflow-y-auto bg-card">
+              <div className="flex items-center justify-between mb-2">
+                <Badge variant="secondary" className="text-xs">عربی اصل متن (ٹکڑا #{activeChunk.chunk_index})</Badge>
+                <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(activeChunk.source_text)}>
+                  <Copy className="h-3.5 w-3.5 ml-1" /> کاپی
+                </Button>
+              </div>
+              <div
+                dir="rtl"
+                className="flex-1 p-4 rounded-lg border border-border bg-background text-lg leading-relaxed font-serif select-text overflow-y-auto"
+              >
+                {activeChunk.source_text}
+              </div>
+            </div>
+
+            {/* Center Pane: Target Translation Editor */}
+            <div className="flex-1 p-4 flex flex-col overflow-y-auto bg-background">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="default" className="text-xs">اردو ترجمہ</Badge>
+                  <span className="text-xs text-muted-foreground">مزاج: {GENRE_TRANSLATION_PROMPTS[selectedProject.genre]?.label}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Button size="sm" variant="outline" onClick={handleAiTranslateChunk} disabled={translating}>
+                    {translating ? <Loader2 className="h-3.5 w-3.5 animate-spin ml-1" /> : <Sparkles className="h-3.5 w-3.5 ml-1 text-primary" />}
+                    AI ترجمہ
+                  </Button>
+                  <Button size="sm" onClick={handleSaveChunk} disabled={saving}>
+                    <Save className="h-3.5 w-3.5 ml-1" />
+                    محفوظ کریں
+                  </Button>
+                </div>
+              </div>
+
+              <Textarea
+                dir="rtl"
+                value={activeChunk.translated_text || ""}
+                onChange={(e) => handleUpdateTranslationText(e.target.value)}
+                placeholder="یہاں اردو ترجمہ تحریر کریں یا AI ترجمہ بٹن دبائیں..."
+                className="flex-1 min-h-[220px] text-base leading-relaxed p-4 font-serif resize-none"
+              />
+
+              {/* Bottom Translation Memory (TM) Matches Panel */}
+              <div className="mt-4 pt-3 border-t border-border">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold">ابواب / پاراگراف ({chunks.length})</span>
+                  <span className="text-xs font-semibold flex items-center gap-1 text-primary">
+                    <BookmarkCheck className="h-4 w-4" />
+                    Translation Memory (TM) کی تجاویز ({tmMatches.length})
+                  </span>
+                  {tmLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
                 </div>
-                <div className="space-y-1">
-                  {chunks.map((c, idx) => (
-                    <button
-                      key={c.id}
-                      onClick={() => handleChunkChange(idx)}
-                      className={`w-full text-right p-2 rounded border text-xs flex items-center justify-between transition-colors ${
-                        activeChunkIndex === idx
-                          ? "border-primary bg-primary/10 font-medium"
-                          : "border-border hover:bg-muted"
-                      }`}
-                    >
-                      <span className="truncate flex-1 pl-2">ٹکڑا #{c.chunk_index}: {c.source_text.slice(0, 20)}...</span>
-                      {c.translated_text ? (
-                        <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+
+                {tmMatches.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">اس متن کے لیے تاحال سابقہ محفوظ شدہ ترجمہ نہیں ملا۔</p>
+                ) : (
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {tmMatches.map((m, idx) => (
+                      <div key={idx} className="p-2 rounded border border-border bg-card text-xs flex items-center justify-between gap-2">
+                        <div dir="rtl" className="flex-1">
+                          <div className="font-semibold text-foreground">{m.translated_text}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            مطابقت: {(m.match_score * 100).toFixed(0)}% | ذریعہ: {m.source_type}
+                          </div>
+                        </div>
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => applyTmMatch(m)}>
+                          استعمال کریں
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-8 text-center text-muted-foreground">
+            {loading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            ) : (
+              <div>
+                <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-40 text-primary" />
+                <h3 className="text-base font-semibold mb-1">اس دستاویز کے لیے ابھی ترجمہ شروع نہیں ہوا</h3>
+                <p className="text-xs max-w-sm mb-4">عربی اصل متن شامل کریں تاکہ اسے ابواب میں تقسیم کر کے ترجمہ شروع کیا جا سکے۔</p>
+                <Button onClick={() => setNewProjectModal(true)}>ترجمہ شروع کریں</Button>
               </div>
             )}
           </div>
-
-          {/* Main Editor Panes (Side-by-Side) */}
-          {selectedProject && activeChunk ? (
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-              {/* Left Pane: Source Text */}
-              <div className="flex-1 border-r border-border p-4 flex flex-col overflow-y-auto bg-card">
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="secondary" className="text-xs">عربی اصل متن (ٹکڑا #{activeChunk.chunk_index})</Badge>
-                  <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(activeChunk.source_text)}>
-                    <Copy className="h-3.5 w-3.5 ml-1" /> کاپی
-                  </Button>
-                </div>
-                <div
-                  dir="rtl"
-                  className="flex-1 p-4 rounded-lg border border-border bg-background text-lg leading-relaxed font-serif select-text overflow-y-auto"
-                >
-                  {activeChunk.source_text}
-                </div>
-              </div>
-
-              {/* Center Pane: Target Translation Editor */}
-              <div className="flex-1 p-4 flex flex-col overflow-y-auto bg-background">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="default" className="text-xs">اردو ترجمہ</Badge>
-                    <span className="text-xs text-muted-foreground">مزاج: {GENRE_TRANSLATION_PROMPTS[selectedProject.genre]?.label}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Button size="sm" variant="outline" onClick={handleAiTranslateChunk} disabled={translating}>
-                      {translating ? <Loader2 className="h-3.5 w-3.5 animate-spin ml-1" /> : <Sparkles className="h-3.5 w-3.5 ml-1 text-primary" />}
-                      AI ترجمہ
-                    </Button>
-                    <Button size="sm" onClick={handleSaveChunk} disabled={saving}>
-                      <Save className="h-3.5 w-3.5 ml-1" />
-                      محفوظ کریں
-                    </Button>
-                  </div>
-                </div>
-
-                <Textarea
-                  dir="rtl"
-                  value={activeChunk.translated_text || ""}
-                  onChange={(e) => handleUpdateTranslationText(e.target.value)}
-                  placeholder="یہاں اردو ترجمہ تحریر کریں یا AI ترجمہ بٹن دبائیں..."
-                  className="flex-1 min-h-[220px] text-base leading-relaxed p-4 font-serif resize-none"
-                />
-
-                {/* Bottom Translation Memory (TM) Matches Panel */}
-                <div className="mt-4 pt-3 border-t border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold flex items-center gap-1 text-primary">
-                      <BookmarkCheck className="h-4 w-4" />
-                      Translation Memory (TM) کی تجاویز ({tmMatches.length})
-                    </span>
-                    {tmLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-                  </div>
-
-                  {tmMatches.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic">اس متن کے لیے تاحال سابقہ محفوظ شدہ ترجمہ نہیں ملا۔</p>
-                  ) : (
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {tmMatches.map((m, idx) => (
-                        <div key={idx} className="p-2 rounded border border-border bg-card text-xs flex items-center justify-between gap-2">
-                          <div dir="rtl" className="flex-1">
-                            <div className="font-semibold text-foreground">{m.translated_text}</div>
-                            <div className="text-xs text-muted-foreground mt-0.5">
-                              مطابقت: {(m.match_score * 100).toFixed(0)}% | ذریعہ: {m.source_type}
-                            </div>
-                          </div>
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => applyTmMatch(m)}>
-                            استعمال کریں
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center p-8 text-center text-muted-foreground">
-              <div>
-                <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-40 text-primary" />
-                <h3 className="text-base font-semibold mb-1">کوئی پروجیکٹ منتخب نہیں ہوا</h3>
-                <p className="text-xs max-w-sm mb-4">نیا پروجیکٹ بنائیں یا سائیڈ بار سے موجودہ ٹرانسلیشن پروجیکٹ کا انتخاب کریں۔</p>
-                <Button onClick={() => setNewProjectModal(true)}>نیا پروجیکٹ بنائیں</Button>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
+      </div>
 
       {/* New Project Dialog */}
       <Dialog open={newProjectModal} onOpenChange={setNewProjectModal}>
         <DialogContent className="max-w-lg" dir="rtl">
           <DialogHeader>
-            <DialogTitle>نیا ٹرانسلیشن پروجیکٹ بنائیں</DialogTitle>
+            <DialogTitle>اس دستاویز کے لیے ترجمہ شروع کریں</DialogTitle>
             <DialogDescription>کتاب یا مقالے کا اصل عربی متن شامل کریں تاکہ اسے ابواب میں تقسیم کیا جا سکے۔</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>پروجیکٹ کا عنوان</Label>
+              <Label>عنوان</Label>
               <Input
                 placeholder="مثلاً: كتاب التوحيد - ترجمہ و تحقیق"
                 value={newTitle}
@@ -489,7 +531,7 @@ export default function TranslationWorkspace() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setNewProjectModal(false)}>منسوخ</Button>
             <Button onClick={handleCreateProject} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin ml-1" /> : "پروجیکٹ بنائیں"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin ml-1" /> : "شروع کریں"}
             </Button>
           </DialogFooter>
         </DialogContent>

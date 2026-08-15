@@ -1,9 +1,15 @@
 import TranslationWorkspace from "@/pages/TranslationWorkspace";
 
-export function CanvasTranslationView() {
+interface CanvasTranslationViewProps {
+  documentId: string;
+  projectId: string;
+  documentTitle: string;
+}
+
+export function CanvasTranslationView({ documentId, projectId, documentTitle }: CanvasTranslationViewProps) {
   return (
     <div className="h-full w-full overflow-hidden bg-background">
-      <TranslationWorkspace />
+      <TranslationWorkspace documentId={documentId} projectId={projectId} documentTitle={documentTitle} />
     </div>
   );
 }
