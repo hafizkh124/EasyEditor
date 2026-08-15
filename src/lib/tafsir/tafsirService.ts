@@ -79,7 +79,7 @@ export interface TafsirInstallProgress {
 
 function desktopOnlyError(): Error {
   return new Error(
-    "تفسیر (Tafsir MCP) کا یہ مقامی انٹرفیس صرف ڈیسک ٹاپ ورژن میں دستیاب ہے — ویب پر آن لائن رستہ جلد آئے گا۔",
+    "تفسیر (Tafsir MCP) کا یہ حصہ صرف ڈیسک ٹاپ ورژن میں دستیاب ہے (مقامی موڈ)۔",
   );
 }
 
@@ -92,9 +92,37 @@ export function hasTafsirNative(): boolean {
   return api() !== null;
 }
 
+/** Web builds get remote-only Tafsir through the `tafsir-proxy` edge function. */
+export function hasTafsirWeb(): boolean {
+  return api() === null;
+}
+
+/** Available in this runtime at all — used to gate the connector UI. */
+export function hasTafsir(): boolean {
+  return true;
+}
+
+async function proxy<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke("tafsir-proxy", { body });
+  if (error) {
+    const message = (data as { error?: string } | null)?.error ?? error.message;
+    throw new Error(message || "Tafsir سرور تک رسائی ناکام۔");
+  }
+  const payload = data as (T & { error?: string }) | null;
+  if (payload && typeof payload === "object" && "error" in payload && payload.error) {
+    throw new Error(String(payload.error));
+  }
+  if (!payload) throw new Error("Tafsir سرور سے کوئی جواب نہیں ملا۔");
+  return payload;
+}
+
 export async function tafsirPing(mode: TafsirMode = "remote"): Promise<TafsirPingResult> {
   const a = api();
-  if (!a) throw desktopOnlyError();
+  if (!a) {
+    if (mode === "local") throw desktopOnlyError();
+    const r = await proxy<{ ok: boolean; latencyMs: number | null; error?: string }>({ action: "ping" });
+    return { ok: r.ok, mode: "remote", latencyMs: r.latencyMs, error: r.error };
+  }
   return a.ping(mode);
 }
 
@@ -106,31 +134,57 @@ export async function tafsirDetect(): Promise<TafsirDetectResult> {
 
 export async function tafsirDiagnose(): Promise<TafsirDiagnostics> {
   const a = api();
-  if (!a) throw desktopOnlyError();
+  if (!a) {
+    const ping = await tafsirPing("remote").catch(() => ({
+      ok: false,
+      latencyMs: null,
+    } as TafsirPingResult));
+    return {
+      pythonFound: false,
+      pythonVersion: null,
+      uvFound: false,
+      uvVersion: null,
+      dbFound: false,
+      dbPath: null,
+      errors: [],
+      remoteReachable: ping.ok,
+      remoteLatencyMs: ping.latencyMs,
+    };
+  }
   return a.diagnose();
 }
 
 export async function tafsirConnect(mode: TafsirMode): Promise<TafsirConnectResult> {
   const a = api();
-  if (!a) throw desktopOnlyError();
+  if (!a) {
+    if (mode === "local") throw desktopOnlyError();
+    const r = await proxy<{ connected: boolean; server?: string; version?: string; tools: TafsirToolInfo[] }>({
+      action: "connect",
+    });
+    return { mode: "remote", connected: r.connected, server: r.server, version: r.version, tools: r.tools ?? [] };
+  }
   return a.connect(mode);
 }
 
 export async function tafsirDisconnect(): Promise<void> {
   const a = api();
-  if (!a) throw desktopOnlyError();
+  // The web proxy is session-less — there is nothing to tear down.
+  if (!a) return;
   await a.disconnect();
 }
 
 export async function tafsirTools(): Promise<TafsirToolInfo[]> {
   const a = api();
-  if (!a) throw desktopOnlyError();
+  if (!a) {
+    const r = await proxy<{ tools: TafsirToolInfo[] }>({ action: "tools" });
+    return r.tools ?? [];
+  }
   return a.tools();
 }
 
 export async function tafsirCall(tool: string, args?: Record<string, unknown>): Promise<TafsirCallResult> {
   const a = api();
-  if (!a) throw desktopOnlyError();
+  if (!a) return proxy<TafsirCallResult>({ action: "call", tool, args: args ?? {} });
   return a.call(tool, args);
 }
 
@@ -138,6 +192,7 @@ export async function tafsirCall(tool: string, args?: Record<string, unknown>): 
 export async function fetchAyahText(surah: number, ayah: number): Promise<TafsirCallResult> {
   return tafsirCall("fetch_ayah", { surah, ayah });
 }
+
 
 export async function tafsirInstallStatus(): Promise<TafsirInstallStatus> {
   const a = api();
