@@ -60,7 +60,7 @@ export function TafsirConnector() {
 
 
       <TafsirConnectPanel
-        mode={mode}
+        mode={effectiveMode}
         onOpenSearch={() => setSearchOpen(true)}
         onConnectedChange={() => {}}
       />
