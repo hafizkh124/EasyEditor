@@ -9,7 +9,7 @@
  * The renderer never touches the remote MCP endpoint directly (NFR-2).
  */
 import { isDesktop } from "@/core/backend";
-import { supabase } from "@/integrations/supabase/client";
+import { callEdgeFunction } from "@/core/ai/aiAdapter";
 
 
 export type TafsirMode = "remote" | "local";
@@ -103,10 +103,9 @@ export function hasTafsir(): boolean {
 }
 
 async function proxy<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("tafsir-proxy", { body });
+  const { data, error } = await callEdgeFunction("tafsir-proxy", body);
   if (error) {
-    const message = (data as { error?: string } | null)?.error ?? error.message;
-    throw new Error(message || "Tafsir سرور تک رسائی ناکام۔");
+    throw new Error(error.message || "Tafsir سرور تک رسائی ناکام۔");
   }
   const payload = data as (T & { error?: string }) | null;
   if (payload && typeof payload === "object" && "error" in payload && payload.error) {
