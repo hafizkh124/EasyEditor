@@ -73,11 +73,19 @@ export function useEditorContentSync({
   }, [contentRevision, contentJson, editor, onChange, onDocChange]);
 
   useEffect(() => {
-    if (editor) {
-      editor.setOptions({
-        editorProps: { attributes: { class: editorClass, dir: isRtl ? "rtl" : "ltr" } },
-      });
-    }
+    if (!editor) return;
+    const dir = isRtl ? "rtl" : "ltr";
+    editor.setOptions({
+      editorProps: { attributes: { class: editorClass, dir } },
+    });
+    // `setOptions` alone does not reliably reach the live ProseMirror DOM node
+    // for `dir` specifically — the contenteditable root can be left stuck on
+    // whatever `dir` it had at view creation. Since `dir` (not just CSS
+    // `text-align`) is what the browser uses to decide cursor movement,
+    // Home/End, and selection-extension direction, a stuck `dir="ltr"` is
+    // exactly what makes RTL documents feel broken to edit even though the
+    // text visually renders right-aligned. Set it directly as a guarantee.
+    if (editor.view?.dom) editor.view.dom.setAttribute("dir", dir);
   }, [isRtl, editor, editorClass]);
 
   const toggleDirection = useCallback(() => setIsRtl((prev) => !prev), []);

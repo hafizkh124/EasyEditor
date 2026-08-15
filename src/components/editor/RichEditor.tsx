@@ -258,7 +258,10 @@ const RichEditor = ({
         onRejectAll={handleRejectAll}
       />
 
-      <div className={cn(isRtl && "text-right", isFullscreen && "flex-1 overflow-auto")}>
+      <div
+        dir={isRtl ? "rtl" : "ltr"}
+        className={cn(isRtl && "text-right", isFullscreen && "flex-1 overflow-auto")}
+      >
         <EditorContent editor={editor} />
       </div>
 
