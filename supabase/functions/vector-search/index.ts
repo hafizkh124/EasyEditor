@@ -39,6 +39,24 @@ const DOMAIN_SOURCE_TYPE: Record<string, string> = {
   "openiti-index": "classical",
 };
 
+// ── Pseudo-domain expansion ───────────────────────────────────────────────────
+// "hadith-index" and "shamela-index" are UI-facing concept IDs (see
+// src/lib/research/bibliography.ts DOMAIN_LABEL, IslamicResearchPanel.tsx) —
+// they were never written as literal `domain` column values in
+// scholarly_documents, so filtering `domain = 'hadith-index'` against the RPC
+// always matched zero rows. The corpus's actual hadith ingestion batches use
+// several real domain labels (hadith-json, easyquran-hadith, urdu-hadith,
+// tohed-hadith). Expand the pseudo-ID to that real set before filtering.
+//
+// "shamela-index" is deliberately NOT expanded: Shamela has never been
+// ingested into scholarly_documents under any domain. Mapping it to a
+// different corpus (e.g. openiti-index) would return real content mislabeled
+// as Shamela — the same citation-integrity failure this whole audit flagged
+// elsewhere. Leave it matching nothing until Shamela is actually ingested.
+const PSEUDO_DOMAIN_EXPANSION: Record<string, string[]> = {
+  "hadith-index": ["hadith-json", "easyquran-hadith", "urdu-hadith", "tohed-hadith"],
+};
+
 // ── Map a DB row back to IslamicResult ────────────────────────────────────────
 function rowToIslamicResult(row: any): IslamicResult {
   const cite = row.citation_ref ?? {};
@@ -116,9 +134,12 @@ serve(async (req) => {
 
     // ── 3. Filter to Tier B domains that are in scholarly_documents ───────────
     const tierBDomains = ["hadith-index", "tanzil", "hadith-json", "shamela-index", "openiti-index"];
-    const filterDomains = (selectedDomains ?? tierBDomains).filter((d: string) =>
+    const requestedDomains = (selectedDomains ?? tierBDomains).filter((d: string) =>
       tierBDomains.includes(d)
     );
+    // Expand UI pseudo-domain IDs (e.g. "hadith-index") to the real domain
+    // values stored in scholarly_documents — see PSEUDO_DOMAIN_EXPANSION.
+    const filterDomains = requestedDomains.flatMap((d: string) => PSEUDO_DOMAIN_EXPANSION[d] ?? [d]);
 
     // All users get the same retrieval depth. Caller may override via matchCount.
     const topK = matchCount ?? 15;
