@@ -11,6 +11,7 @@ import {
   readShamelaPage,
   readShamelaTocJoined,
   getShamelaPageCount,
+  readShamelaBook,
 } from '../shamela/shamelaNative.js';
 import {
   getCatalogueStats,
@@ -73,6 +74,22 @@ export function registerShamelaHandlers(): void {
 
         case 'pageCount':
           return getShamelaPageCount(String(payload.bookId || ''));
+
+        // One JVM spawn for the whole book (SPEC-M5.9 risk N4) — used by the
+        // web-parity "Import to Workspace" feature, same as the AI-corpus
+        // importer already does. Pages come back sorted by numeric page id,
+        // since Lucene's TermRangeQuery order isn't guaranteed to be reading
+        // order even though it happens to look that way in practice.
+        case 'readBook': {
+          const bookId = String(payload.bookId || '');
+          const pages: Array<{ page: string; text: string; footnotes?: string }> = [];
+          const { pageCount } = await readShamelaBook(bookId, (page) => {
+            pages.push(page);
+            return true;
+          });
+          pages.sort((a, b) => Number.parseInt(a.page, 10) - Number.parseInt(b.page, 10));
+          return { bookId, pageCount, pages };
+        }
 
         // ── Catalogue (master.db) ─────────────────────────────────
         case 'catalogue:stats': {

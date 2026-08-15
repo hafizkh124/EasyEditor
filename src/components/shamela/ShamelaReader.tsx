@@ -11,6 +11,7 @@ import { TocTree } from "./TocTree";
 import { ReaderContent } from "./ReaderContent";
 import { ReaderBottomBar } from "./ReaderBottomBar";
 import { PdfViewerDialog } from "./PdfViewerDialog";
+import { ShamelaImportToWorkspaceDialog } from "./ShamelaImportToWorkspaceDialog";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ShamelaReaderProps {
@@ -41,6 +42,7 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
   const { t } = useLanguage();
   const [tocOpen, setTocOpen] = useState(true);
   const [pdfOpen, setPdfOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   // SPEC-M6 Phase 8: resume on the last-read page when there is no deep-link
   // page target. useReaderState's guard is keyed on bookId+startPage, so this
@@ -118,6 +120,7 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
         onToggleFavorite={readerProgress.toggleFavorite}
         onRequestSplit={onRequestSplit}
         onRequestPdf={() => setPdfOpen(true)}
+        onRequestImport={() => setImportOpen(true)}
       />
 
       <div className="flex-1 min-h-0 flex">
@@ -170,6 +173,17 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
         bookId={bookId}
         title={title}
         author={subtitle}
+      />
+
+      {/* UX-v1 P7 follow-up: whole book or selected chapters → one workspace document. */}
+      <ShamelaImportToWorkspaceDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        bookId={bookId}
+        bookTitle={title}
+        author={subtitle}
+        toc={reader.toc}
+        pageCount={reader.pageCount}
       />
     </div>
   );

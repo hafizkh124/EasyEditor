@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
+import * as reader from './reader.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -409,6 +410,72 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: err.message, results: [] }));
       }
     });
+    return;
+  }
+
+  // ── Reader endpoints (UX-v1 P7 follow-up) ───────────────────────────
+  // Native SQLite + shamela-helper.jar path (see reader.mjs) — deliberately
+  // NOT routed through shamela-mcp's own page tools; see reader.mjs header.
+  if (req.method === 'GET' && url.pathname === '/reader/pageCount') {
+    try {
+      const bookId = url.searchParams.get('bookId');
+      if (!bookId) throw new Error('bookId is required');
+      const count = await reader.getPageCount(bookId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ pageCount: count }));
+    } catch (err) {
+      console.error('[Bridge] reader/pageCount error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message, pageCount: 0 }));
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/reader/page') {
+    try {
+      const bookId = url.searchParams.get('bookId');
+      const pageNumber = Number(url.searchParams.get('pageNumber'));
+      if (!bookId || !Number.isFinite(pageNumber) || pageNumber < 1) {
+        throw new Error('bookId and a positive pageNumber are required');
+      }
+      const page = await reader.readPage(bookId, pageNumber);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(page));
+    } catch (err) {
+      console.error('[Bridge] reader/page error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/reader/book') {
+    try {
+      const bookId = url.searchParams.get('bookId');
+      if (!bookId) throw new Error('bookId is required');
+      const book = await reader.readBook(bookId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(book));
+    } catch (err) {
+      console.error('[Bridge] reader/book error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/reader/toc') {
+    try {
+      const bookId = url.searchParams.get('bookId');
+      if (!bookId) throw new Error('bookId is required');
+      const toc = await reader.readToc(bookId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(toc));
+    } catch (err) {
+      console.error('[Bridge] reader/toc error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message, toc: [] }));
+    }
     return;
   }
 

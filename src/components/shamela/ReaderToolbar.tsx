@@ -10,6 +10,7 @@ import {
   Bookmark,
   Columns2,
   FileText,
+  Download,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,8 @@ interface ReaderToolbarProps {
   onRequestSplit?: () => void;
   /** SPEC-M6 Phase 10: open the in-app PDF viewer for this book. */
   onRequestPdf?: () => void;
+  /** UX-v1 P7 follow-up: open the "Import to Workspace" dialog. */
+  onRequestImport?: () => void;
 }
 
 export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
@@ -63,6 +66,7 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
   onToggleFavorite,
   onRequestSplit,
   onRequestPdf,
+  onRequestImport,
 }) => {
   const { t } = useLanguage();
   const rtl = document.documentElement.dir === "rtl";
@@ -160,6 +164,18 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
             aria-label={t("reader.open_pdf")}
           >
             <FileText className="h-4 w-4" />
+          </Button>
+        )}
+        {onRequestImport && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onRequestImport}
+            title={t("shamela.workspace_import.button", "Workspace میں درآمد کریں")}
+            aria-label={t("shamela.workspace_import.button", "Workspace میں درآمد کریں")}
+          >
+            <Download className="h-4 w-4" />
           </Button>
         )}
       </div>

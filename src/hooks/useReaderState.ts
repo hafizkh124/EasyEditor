@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { getShamelaClient } from "@/core/shamela/shamelaClient";
 
 /**
  * One chapter/heading entry in a Shamela book's table of contents, joined
@@ -46,8 +47,6 @@ interface ReaderState {
   reloadToc: () => void;
 }
 
-const electronAPI = () => window.electronAPI?.shamela;
-
 export function useReaderState(bookId: string | null, initialPage?: number | null): ReaderState {  const [toc, setToc] = useState<TocEntry[]>([]);
   const [tocLoading, setTocLoading] = useState(false);
   const [tocError, setTocError] = useState<string | null>(null);
@@ -70,15 +69,10 @@ export function useReaderState(bookId: string | null, initialPage?: number | nul
 
   const loadToc = useCallback(async () => {
     if (!bookId) return;
-    const api = electronAPI();
-    if (!api) {
-      setTocError("Native Shamela bridge is unavailable.");
-      return;
-    }
     setTocLoading(true);
     setTocError(null);
     try {
-      const entries = await api.readToc(bookId);
+      const entries = await getShamelaClient().readToc(bookId);
       setToc(entries ?? []);
     } catch (err: unknown) {
       setTocError(err instanceof Error ? err.message : "Failed to load the table of contents.");
@@ -100,24 +94,16 @@ export function useReaderState(bookId: string | null, initialPage?: number | nul
     loadToc();
 
     if (!bookId) return;
-    const api = electronAPI();
-    if (api?.pageCount) {
-      api
-        .pageCount(bookId)
-        .then((n) => setPageCount(n))
-        .catch(() => setPageCount(0));
-    }
+    getShamelaClient()
+      .getPageCount(bookId)
+      .then((n) => setPageCount(n))
+      .catch(() => setPageCount(0));
   }, [bookId, loadToc]);
 
   // Load a page, pushing onto the history stack.
   const loadPage = useCallback(
     async (pageNumber: number, recordHistory: boolean) => {
       if (!bookId) return;
-      const api = electronAPI();
-      if (!api) {
-        setPageError("Native Shamela bridge is unavailable.");
-        return;
-      }
       const clamped = Math.max(1, Math.min(pageNumber, pageCount || pageNumber));
       if (recordHistory) {
         const stack = [...historyRef.current.stack.slice(0, historyRef.current.index + 1), clamped];
@@ -129,8 +115,13 @@ export function useReaderState(bookId: string | null, initialPage?: number | nul
       setPageLoading(true);
       setPageError(null);
       try {
-        const result = await api.readPage(bookId, clamped);
-        setPage(result);
+        const result = await getShamelaClient().readPage(bookId, clamped);
+        if (!result) {
+          setPageError("Failed to read the page.");
+          setPage(null);
+        } else {
+          setPage(result);
+        }
       } catch (err: unknown) {
         setPageError(err instanceof Error ? err.message : "Failed to read the page.");
       } finally {

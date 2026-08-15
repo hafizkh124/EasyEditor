@@ -7,18 +7,23 @@
  * (ADR-0006): one interface, two transports, chosen once, so a consumer never
  * branches on runtime itself.
  *
- * Scope, deliberately: catalogue browsing only (categories, authors, periods,
- * books-by-X, stats). The Reader (readPage/readToc/pageCount) is NOT covered
- * here. `shamela-mcp` — the package `tools/shamela-bridge` wraps — addresses
- * pages by an opaque `page_id` documented as distinct from the printed page
- * number, and exposes no page-count equivalent at all; the native Electron
- * reader (`electron/shamela/shamelaNative.ts`, ADR-0007) uses simple
- * sequential numbers via a completely different code path (Shamela's own
- * Java reading engine). Whether the two schemes are compatible cannot be
- * verified without a live installation to test against, and guessing wrong
- * would ship a broken reader rather than an honestly-absent one — so Reader
- * stays desktop-only for now (`useReaderState.ts` is unchanged and already
- * degrades gracefully off-desktop). Revisit once that can be tested for real.
+ * Scope: catalogue browsing (categories, authors, periods, books-by-X,
+ * stats) and the Reader (readPage/readToc/pageCount).
+ *
+ * The Reader methods were web-absent for a while over a real question: does
+ * `shamela-mcp`'s `page_id` address the same page as the native Electron
+ * reader's `pageNumber`? Verified live against a real installation
+ * (2026-08-15) — yes, both are the book's own SQLite `page.id` row; reading
+ * the same (bookId, number) through both paths returns identical text. But
+ * that same test also found `shamela-mcp`'s own SQLite reader (`PageStore`,
+ * sql.js/WASM) silently returns empty/not-found for at least some real,
+ * populated books (verified: a 33,219-row book read as 0 rows through it),
+ * even though the exact same page's text is retrievable via a direct Lucene
+ * lookup with the same numeric id. So the bridge transport's Reader methods
+ * do NOT go through `shamela-mcp`'s page tools — `tools/shamela-bridge/reader.mjs`
+ * ports the native path instead (better-sqlite3 for structure + the same
+ * `shamela-helper.jar` from ADR-0007, spawned from Node instead of Electron's
+ * main process). See that file's header comment for the full finding.
  *
  * `masterDbPath` is deliberately absent from this interface. The desktop
  * transport resolves and caches it once via `detect()`, threading it into the
@@ -68,6 +73,29 @@ export interface CataloguePeriod {
   bookCount: number;
 }
 
+export interface ReaderTocEntry {
+  titleId: string;
+  text: string;
+  page: number;
+  parent: string;
+  /** depth in the title tree; 0 = top level */
+  depth: number;
+}
+
+export interface ReaderPageContent {
+  bookId: string;
+  pageNumber: number;
+  text: string;
+  footnotes?: string;
+}
+
+export interface ReaderBookContent {
+  bookId: string;
+  pageCount: number;
+  /** Sorted by numeric page id (reading order). `page` is that id as a string. */
+  pages: Array<{ page: string; text: string; footnotes?: string }>;
+}
+
 export interface ShamelaClient {
   detect(): Promise<ShamelaDetectResult>;
   catalogueStats(): Promise<CatalogueStats>;
@@ -81,6 +109,17 @@ export interface ShamelaClient {
   booksByAuthor(authorId: number, limit?: number, offset?: number): Promise<CatalogueBook[]>;
   periods(): Promise<CataloguePeriod[]>;
   booksByPeriod(century: number, limit?: number, offset?: number): Promise<CatalogueBook[]>;
+
+  /** Table of contents for one book, flat and page-ordered (depth 0 = top level). */
+  readToc(bookId: string): Promise<ReaderTocEntry[]>;
+  /** One page's HTML body (+ optional footnotes). `pageNumber` is the same
+   *  underlying id on both transports — see this file's header comment. */
+  readPage(bookId: string, pageNumber: number): Promise<ReaderPageContent | null>;
+  /** Total pages in the book, for next/prev bounds. 0 when unavailable. */
+  getPageCount(bookId: string): Promise<number>;
+  /** Whole book in one call (one JVM spawn, not one per page) — for Import
+   *  to Workspace. Large books can take minutes; callers should show progress. */
+  readBook(bookId: string): Promise<ReaderBookContent | null>;
 }
 
 // ─── Desktop transport — Electron IPC, main process → Shamela's own JRE ────
@@ -128,6 +167,24 @@ function createElectronClient(): ShamelaClient {
     booksByAuthor: (authorId, limit, offset) => withMasterDb((p, api) => api.booksByAuthor(p, authorId, limit, offset), []),
     periods: () => withMasterDb((p, api) => api.periods(p), []),
     booksByPeriod: (century, limit, offset) => withMasterDb((p, api) => api.booksByPeriod(p, century, limit, offset), []),
+    // Reader IPC (readPage/readToc/pageCount) doesn't need masterDbPath —
+    // shamelaHandlers.ts's reader cases take bookId directly.
+    async readToc(bookId) {
+      try { return (await window.electronAPI!.shamela.readToc(bookId)) ?? []; }
+      catch { return []; }
+    },
+    async readPage(bookId, pageNumber) {
+      try { return await window.electronAPI!.shamela.readPage(bookId, pageNumber); }
+      catch { return null; }
+    },
+    async getPageCount(bookId) {
+      try { return await window.electronAPI!.shamela.pageCount(bookId); }
+      catch { return 0; }
+    },
+    async readBook(bookId) {
+      try { return await window.electronAPI!.shamela.readBook(bookId); }
+      catch { return null; }
+    },
   };
 }
 
@@ -172,6 +229,14 @@ function createBridgeClient(): ShamelaClient {
     periods: () => bridgeFetch("/catalogue/periods", []),
     booksByPeriod: (century, limit = 100, offset = 0) =>
       bridgeFetch(`/catalogue/books?century=${century}&limit=${limit}&offset=${offset}`, []),
+    readToc: (bookId) => bridgeFetch(`/reader/toc?bookId=${bookId}`, []),
+    readPage: (bookId, pageNumber) =>
+      bridgeFetch(`/reader/page?bookId=${bookId}&pageNumber=${pageNumber}`, null),
+    async getPageCount(bookId) {
+      const r = await bridgeFetch<{ pageCount: number }>(`/reader/pageCount?bookId=${bookId}`, { pageCount: 0 });
+      return r.pageCount ?? 0;
+    },
+    readBook: (bookId) => bridgeFetch(`/reader/book?bookId=${bookId}`, null),
   };
 }
 

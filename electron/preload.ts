@@ -141,6 +141,8 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'readToc', bookId }),
     pageCount: (bookId: string): Promise<number> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'pageCount', bookId }),
+    readBook: (bookId: string): Promise<{ bookId: string; pageCount: number; pages: Array<{ page: string; text: string; footnotes?: string }> }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'readBook', bookId }),
 
     // ── Catalogue (master.db metadata) ────────────────────────────
     catalogueStats: (masterDbPath: string): Promise<{ totalBooks: number; totalAuthors: number; totalCategories: number }> =>
