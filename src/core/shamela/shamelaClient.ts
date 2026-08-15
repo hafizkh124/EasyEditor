@@ -190,14 +190,26 @@ function createElectronClient(): ShamelaClient {
 
 // ─── Web transport — the tools/shamela-bridge HTTP companion ───────────────
 
+const BRIDGE_TOKEN_KEY = "shamela.bridge_token";
+
 function bridgeBaseUrl(): string {
   const raw = localStorage.getItem("shamela.mcp_url") || "http://127.0.0.1:8000";
   return raw.replace(/\/+$/, "");
 }
 
+/**
+ * Session-token pairing (tools/shamela-bridge/auth.mjs): every route but
+ * `/health` requires `X-Bridge-Token`. The bridge hands the token out in a
+ * `/health` response exactly once, ever, on its machine's first-ever run —
+ * `detect()` below is what catches and stores it; every other call attaches
+ * whatever is already stored (nothing, before the first successful pairing).
+ */
 async function bridgeFetch<T>(path: string, empty: T): Promise<T> {
   try {
-    const res = await fetch(`${bridgeBaseUrl()}${path}`);
+    const token = localStorage.getItem(BRIDGE_TOKEN_KEY);
+    const res = await fetch(`${bridgeBaseUrl()}${path}`, {
+      headers: token ? { "X-Bridge-Token": token } : undefined,
+    });
     if (!res.ok) return empty;
     return (await res.json()) as T;
   } catch {
@@ -212,6 +224,7 @@ function createBridgeClient(): ShamelaClient {
         const res = await fetch(`${bridgeBaseUrl()}/health`);
         if (!res.ok) return { available: false, reason: "Local companion did not respond." };
         const data = await res.json();
+        if (typeof data?.pairingToken === "string") storeBridgeToken(data.pairingToken);
         return { available: data?.status === "ok" || data?.status === "degraded" };
       } catch {
         return { available: false, reason: "Local companion is not running." };
@@ -268,4 +281,25 @@ export function isBridgeConnected(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * The bridge's session-pairing token, if `detect()` has ever caught one from
+ * `/health` (see `bridgeFetch` above). Anything on the web transport that
+ * bypasses `bridgeFetch` and calls the bridge directly — today only
+ * `localShamelaService.ts`'s `/search` route — must attach this itself,
+ * since every bridge endpoint but `/health` now requires it.
+ */
+export function getBridgeToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(BRIDGE_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Caches a token caught from a `/health` response. See `getBridgeToken`. */
+export function storeBridgeToken(token: string): void {
+  try { window.localStorage.setItem(BRIDGE_TOKEN_KEY, token); } catch { /* ignore */ }
 }
