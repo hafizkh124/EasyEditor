@@ -58,8 +58,8 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
     );
   }
 
-  if (isTranslationView) {
-    return <CanvasTranslationView />;
+  if (isTranslationView && doc) {
+    return <CanvasTranslationView documentId={doc.id} projectId={doc.project_id} documentTitle={doc.title} />;
   }
 
   // SPEC-M6: Show a welcoming empty state when no document is selected
