@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FolderPlus, BookOpen, Search, Plus, Upload, ChevronLeft, Volume2, Home, FolderTree, Star,
+  FolderPlus, BookOpen, Search, Plus, Upload, ChevronLeft, Volume2, Home, Library as LibraryIcon,
 } from "lucide-react";import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,9 +22,7 @@ import { LibrarySourcesTab } from "./LibrarySourcesTab";
 import { KnowledgeGraphTab } from "./KnowledgeGraphTab";
 import { RecipesTab } from "./RecipesTab";
 import { HomeTab } from "./HomeTab";
-import { BrowseTab } from "./BrowseTab";
-import { SearchTab } from "./SearchTab";
-import { FavoritesTab } from "./FavoritesTab";
+import { ShamelaTab } from "./ShamelaTab";
 import { ShamelaImportDialog } from "@/components/shamela/ShamelaImportDialog";
 import type { Document, ProjectKind } from "@/core/workspace/types";
 import { availableCapabilities } from "@/core/capabilities/registry";
@@ -60,6 +58,7 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
   const { projects, docsMap, allDocs, loading: docsLoading, refresh: refreshAllDocs } = useAllDocuments();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("home");
+  const [shamelaInitialSubTab, setShamelaInitialSubTab] = useState<"browse" | "search" | "favorites">("browse");
 
   // M4 pillars ship independently; each tab exists only when its flag is on.
   // M6 adds Home tab as the first tab.
@@ -72,7 +71,7 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
   // FR-2.5 says absent, not empty. useShamelaAvailability is the one place
   // that later grows a web-bridge branch (P7) once those surfaces are wired.
   const { available: shamelaAvailable, masterDbPath: shamelaMasterDbPath } = useShamelaAvailability();
-  const tabCount = 3 + (shamelaAvailable ? 3 : 0) + (graphEnabled ? 1 : 0) + (recipesEnabled ? 1 : 0);
+  const tabCount = 3 + (shamelaAvailable ? 1 : 0) + (graphEnabled ? 1 : 0) + (recipesEnabled ? 1 : 0);
 
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newProjTitle, setNewProjTitle] = useState("");
@@ -212,21 +211,9 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
             </TabsTrigger>
             <TabsTrigger value="documents" className="text-xs h-full py-0 px-1 truncate">{t("library.tab_docs", "Docs")}</TabsTrigger>
             {shamelaAvailable && (
-              <TabsTrigger value="browse" className="text-xs h-full py-0 px-1 truncate">
-                <FolderTree className="h-3.5 w-3.5 me-1" />
-                {t("library.tab_browse", "Browse")}
-              </TabsTrigger>
-            )}
-            {shamelaAvailable && (
-              <TabsTrigger value="search" className="text-xs h-full py-0 px-1 truncate">
-                <Search className="h-3.5 w-3.5 me-1" />
-                {t("common.search", "Search")}
-              </TabsTrigger>
-            )}
-            {shamelaAvailable && (
-              <TabsTrigger value="favorites" className="text-xs h-full py-0 px-1 truncate">
-                <Star className="h-3.5 w-3.5 me-1" />
-                {t("library.favorites", "Favorites")}
+              <TabsTrigger value="shamela" className="text-xs h-full py-0 px-1 truncate">
+                <LibraryIcon className="h-3.5 w-3.5 me-1" />
+                {t("library.tab_shamela", "Shamela")}
               </TabsTrigger>
             )}
             <TabsTrigger value="sources" className="text-xs h-full py-0 px-1 truncate">{t("library.tab_sources", "Sources")}</TabsTrigger>
@@ -243,7 +230,7 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
           <HomeTab
             // "Search all books" means the Search tab, not the research chat —
             // and only exists once there is a Shamela corpus for it to search.
-            onSearch={shamelaAvailable ? () => setActiveTab("search") : undefined}
+            onSearch={shamelaAvailable ? () => { setShamelaInitialSubTab("search"); setActiveTab("shamela"); } : undefined}
             // Downloads books into the local corpus via IPC, so it needs both a
             // native install and a masterDbPath to browse — not just "available".
             onImport={
@@ -284,25 +271,23 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
         </TabsContent>
 
         {shamelaAvailable && (
-          <TabsContent value="browse" className="flex-1 min-h-0 m-0">
-            <BrowseTab
+          <TabsContent value="shamela" className="flex-1 min-h-0 m-0">
+            <ShamelaTab
               onNavigate={onNavigate}
-              onSelectBook={(bookId) => {
+              initialSubTab={shamelaInitialSubTab}
+              onSelectBrowseBook={(bookId) => {
                 setActiveDocumentId(bookId);
                 navigate(`/workspace/${bookId}`, { replace: true });
               }}
-            />
-          </TabsContent>
-        )}
-
-        {shamelaAvailable && (
-          <TabsContent value="search" className="flex-1 min-h-0 m-0">
-            <SearchTab
-              onNavigate={onNavigate}
-              onSelectResult={(hit) => {
+              onSelectSearchResult={(hit) => {
                 setActiveDocumentId(hit.itemId);
                 const page = hit.pageNumber != null && hit.pageNumber > 1 ? `?page=${hit.pageNumber}` : "";
                 navigate(`/workspace/${hit.itemId}${page}`, { replace: true });
+              }}
+              onSelectFavoriteBook={(bookId) => {
+                onNavigate?.();
+                setActiveDocumentId(bookId);
+                navigate(`/workspace/${bookId}`, { replace: true });
               }}
             />
           </TabsContent>
@@ -311,18 +296,6 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
         <TabsContent value="sources" className="flex-1 min-h-0 m-0">
           <LibrarySourcesTab />
         </TabsContent>
-
-        {shamelaAvailable && (
-          <TabsContent value="favorites" className="flex-1 min-h-0 m-0">
-            <FavoritesTab
-              onSelectBook={(bookId) => {
-                onNavigate?.();
-                setActiveDocumentId(bookId);
-                navigate(`/workspace/${bookId}`, { replace: true });
-              }}
-            />
-          </TabsContent>
-        )}
 
         {graphEnabled && (
           <TabsContent value="graph" className="flex-1 min-h-0 m-0">

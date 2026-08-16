@@ -36,9 +36,6 @@ vi.mock("@/components/workspace/WorkspaceAppMenu", () => ({
 vi.mock("@/components/auth/DesktopAccountMenu", () => ({
   DesktopAccountMenu: () => null,
 }));
-vi.mock("@/components/AppVersionBadge", () => ({
-  default: () => null,
-}));
 
 import { WorkspaceTopBar } from "@/components/workspace/WorkspaceTopBar";
 import type { Document } from "@/core/workspace/types";
