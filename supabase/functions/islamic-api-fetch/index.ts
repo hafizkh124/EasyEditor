@@ -133,34 +133,31 @@ async function fetchDorar(query: string): Promise<IslamicResult[]> {
     const html: string = data?.ahadith?.result ?? "";
     if (!html) return [];
 
-    // Each result item appears wrapped in <div class="hadith-info"> ... </div>
-    // with sibling spans/divs containing الراوي / المحدث / المصدر / الصفحة
-    // أو الرقم / خلاصة حكم المحدث.
+    // Real shape (verified live 2026-08-16):
+    //   <div class="hadith">N -  <text> </div>
+    //   <div class="hadith-info"> <span class="info-subtitle">الراوي:</span> ... </div>
     const items: IslamicResult[] = [];
-    const blockRe = /<div[^>]*class="[^"]*hadith[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/gi;
     const stripTags = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
+    const pairRe =
+      /<div[^>]*class="hadith"[^>]*>([\s\S]*?)<\/div>\s*(?:<[^>]*>\s*)*<div[^>]*class="hadith-info"[^>]*>([\s\S]*?)<\/div>/gi;
+
     let m: RegExpExecArray | null;
-    while ((m = blockRe.exec(html)) !== null && items.length < 5) {
-      const block = m[1];
-      const text = stripTags(block);
-      if (!text || text.length < 20) continue;
+    while ((m = pairRe.exec(html)) !== null && items.length < 5) {
+      const hadithText = stripTags(m[1]).replace(/^\d+\s*-\s*/, "").trim();
+      const info = stripTags(m[2]);
+      if (!hadithText || hadithText.length < 10) continue;
 
       const grab = (label: string): string => {
-        const re = new RegExp(label + "[:\\s]*([^<\\n،,]+)", "i");
-        const mm = text.match(re);
-        return mm?.[1]?.trim() ?? "";
+        const re = new RegExp(label + "\\s*:?\\s*([^:]*?)(?=\\s*(?:الراوي|المحدث|المصدر|الصفحة أو الرقم|الرقم|خلاصة حكم المحدث|التخريج|$))");
+        return info.match(re)?.[1]?.trim() ?? "";
       };
 
-      const rawi      = grab("الراوي");
-      const mohdith   = grab("المحدث");
-      const book      = grab("المصدر") || grab("الكتاب");
-      const number    = grab("الصفحة أو الرقم") || grab("الرقم");
-      const grade     = grab("خلاصة حكم المحدث") || grab("درجة الحديث");
-
-      // The hadith text itself sits before the metadata labels.
-      const hadithText = text.split(/الراوي|المحدث|المصدر|الصفحة/)[0]?.trim() ?? "";
-      if (!hadithText || hadithText.length < 10) continue;
+      const rawi    = grab("الراوي");
+      const mohdith = grab("المحدث");
+      const book    = grab("المصدر") || grab("الكتاب");
+      const number  = grab("الصفحة أو الرقم") || grab("الرقم");
+      const grade   = grab("خلاصة حكم المحدث") || grab("درجة الحديث");
 
       items.push({
         domain: "dorar",
@@ -175,6 +172,7 @@ async function fetchDorar(query: string): Promise<IslamicResult[]> {
         language: "ar",
       });
     }
+
     return items;
   } catch {
     return [];
