@@ -61,10 +61,10 @@ export const StatsBar: React.FC<StatsBarProps> = ({
             key={stat.label}
             className="flex items-center gap-3 rounded-lg border border-border/50 bg-card p-3"
           >
-            <div className={`rounded-md p-2 ${stat.bgColor}`}>
+            <div className={`shrink-0 rounded-md p-2 ${stat.bgColor}`}>
               <stat.icon className={`h-4 w-4 ${stat.color}`} />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               {loading ? (
                 <Skeleton className="h-5 w-12" />
               ) : (
@@ -72,7 +72,7 @@ export const StatsBar: React.FC<StatsBarProps> = ({
                   {stat.value !== null ? stat.value.toLocaleString() : "—"}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground leading-snug line-clamp-2 mt-0.5">
                 {stat.label}
               </p>
             </div>
