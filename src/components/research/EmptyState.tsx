@@ -19,10 +19,6 @@ const SUGGESTIONS: Record<ResearchMode, { icon: typeof Search; labelKey: string;
     { icon: MessageCircle, labelKey: "research.suggestion_general_2", queryKey: "research.suggestion_general_2_query" },
     { icon: Sparkles, labelKey: "research.suggestion_general_3", queryKey: "research.suggestion_general_3_query" },
   ],
-  custom: [
-    { icon: Search, labelKey: "research.suggestion_custom_1", queryKey: "research.suggestion_custom_1_query" },
-    { icon: MessageCircle, labelKey: "research.suggestion_custom_2", queryKey: "research.suggestion_custom_2_query" },
-  ],
 };
 
 const EmptyState = ({ mode, onSuggestionClick, t }: EmptyStateProps) => {
@@ -56,11 +52,7 @@ const EmptyState = ({ mode, onSuggestionClick, t }: EmptyStateProps) => {
         transition={{ delay: 0.2, duration: 0.3 }}
         className="text-sm text-muted-foreground max-w-md mb-8"
       >
-        {mode === "islamic"
-          ? t("research.welcome_islamic_hint")
-          : mode === "general"
-            ? t("research.welcome_general_hint")
-            : t("research.welcome_hint")}
+        {mode === "islamic" ? t("research.welcome_islamic_hint") : t("research.welcome_general_hint")}
       </motion.p>
 
       <motion.div

@@ -5,6 +5,7 @@ import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensRe
 import { expandQueryTerms } from "../_shared/bilingualMap.ts";
 import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
 import { planQuery } from "../_shared/queryPlanner.ts";
+import { personalVectorChannel, personalLexicalChannel } from "../_shared/citationEngine.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 
@@ -513,6 +514,55 @@ serve(async (req) => {
         })()
       );
     }
+
+    // Tier L: the user's own personal library (library_chunks) — books they
+    // uploaded via the Library panel. Reuses citationEngine.ts's existing,
+    // already-correct personal-corpus channels (vector + lexical) rather than
+    // duplicating that retrieval logic; those channels already scope strictly
+    // to `filter_user_id: user.id` in SQL, so a service-role client here is
+    // safe (see migration 20260728000005's fail-closed fix). Runs for every
+    // authenticated query — no domain checklist entry, no opt-in, matching
+    // ADR-0002's "no domain checklist" philosophy: a scholar's own uploaded
+    // books are simply part of what "search everything" means now. This is
+    // what replaced the old, throwaway "Custom Sources" chat mode — uploads
+    // now live permanently in the Library and are searched here automatically
+    // instead of needing a separate mode and a one-off upload each session.
+    fanOutPromises.push(
+      (async (): Promise<IslamicResult[]> => {
+        try {
+          const plan = await queryPlanPromise;
+          const effectivePlan = plan ?? {
+            intent: "topical" as const,
+            scope: { source_types: [], collections: [], surah: null, disciplines: [] },
+            arabic_surface_forms: [],
+            related_concepts: [],
+            semantic_query_ar: query,
+            is_proper_noun: false,
+          };
+          const [vecRows, lexRows] = await Promise.all([
+            personalVectorChannel(supabase, effectivePlan, query, user.id),
+            personalLexicalChannel(supabase, query, user.id),
+          ]);
+          const seen = new Set<string>();
+          const merged: IslamicResult[] = [];
+          for (const row of [...vecRows, ...lexRows]) {
+            if (seen.has(row.match_key)) continue;
+            seen.add(row.match_key);
+            merged.push({
+              domain: row.domain,
+              content: row.content,
+              citation_ref: row.citation_ref,
+              language: (row.language as "ar" | "en" | "ur") ?? "ur",
+            });
+            if (merged.length >= 8) break;
+          }
+          return merged;
+        } catch (e) {
+          console.error("Tier L (personal library) error:", e);
+          return [];
+        }
+      })()
+    );
 
     const settled = await Promise.allSettled(fanOutPromises);
     const allResults: IslamicResult[] = [];

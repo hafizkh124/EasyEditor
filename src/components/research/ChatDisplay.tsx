@@ -2,7 +2,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Send, Loader2, BookOpen, Copy, Sparkles, MessageSquarePlus, RefreshCw, AlertCircle,
+  Send, Loader2, BookOpen, Copy, Sparkles, MessageSquarePlus, RefreshCw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import type { ChatMessage } from "./types";
-import type { Source } from "./types";
 import CitationPanel, { type CitationItem } from "./CitationPanel";
 import SpellingResponse from "./SpellingResponse";
 import CitationResponse from "./CitationResponse";
@@ -22,7 +21,7 @@ import { ScholarlyPromptModal } from "./ScholarlyPromptModal";
 import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
 import { useSubmitGuard } from "@/hooks/useSubmitGuard";
 import type { ResearchAssistMode } from "@/lib/prompts";
-import type { ResearchMode } from "./ResearchModeSwitcher";
+import ResearchModeSwitcher, { type ResearchMode } from "./ResearchModeSwitcher";
 import { editorRoute } from "@/lib/routes";
 import { DocumentBox } from "./chat/DocumentBox";
 import { SourcesReadyIndicator, TypingDots, UserAvatar, AiAvatar } from "./chat/ChatAtoms";
@@ -44,7 +43,6 @@ interface ChatDisplayProps {
   onCopyOutput: () => void;
   onClearChat: () => void;
   onRegenerate: () => void;
-  sources: Source[];
   researchLimitReached: boolean;
   chatEndRef: React.RefObject<HTMLDivElement>;
   t: import("@/lib/i18n").Translator;
@@ -62,7 +60,7 @@ const ISLAMIC_QUERY_MARKERS = /(?:قرآن|قراٰن|قُرآن|حدیث|حدي
 const ChatDisplay = ({
   messages, isQuerying, query, onQueryChange, onSendQuery, isRefining,
   lastAssistantIdx, onRefine, onCopyOutput, onClearChat, onRegenerate,
-  sources, researchLimitReached, chatEndRef: _chatEndRef, t,
+  researchLimitReached, chatEndRef: _chatEndRef, t,
   mode = "general", onModeChange, sourcesReadyInfo, citations = [],
   assistModes = [], onAssistModesChange, onContinue,
 }: ChatDisplayProps) => {
@@ -99,7 +97,6 @@ const ChatDisplay = ({
   }, [lastMsg]);
 
   const showSourcesIndicator = mode === "islamic" && sourcesReadyInfo != null && sourcesReadyInfo.count > 0;
-  const showNoSourcesWarning = mode === "custom" && sources.length === 0;
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
 
   const [islamicHintDismissed, setIslamicHintDismissed] = useState<boolean>(() => {
@@ -109,7 +106,7 @@ const ChatDisplay = ({
     () => query.trim().length >= 3 && ISLAMIC_QUERY_MARKERS.test(query),
     [query],
   );
-  const showIslamicHint = (mode === "general" || mode === "custom") && queryLooksIslamic && !islamicHintDismissed;
+  const showIslamicHint = mode === "general" && queryLooksIslamic && !islamicHintDismissed;
 
   type ListItem =
     | { type: "empty" }
@@ -329,12 +326,6 @@ const ChatDisplay = ({
             <ModeChips modes={assistModes} onModesChange={onAssistModesChange} disabled={isQuerying} t={t} />
           </div>
         )}
-        {showNoSourcesWarning && (
-          <div className="flex items-center gap-2 max-w-3xl mx-auto rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-3 py-2">
-            <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-            <p className="text-xs text-amber-700 dark:text-amber-400">{t("research.no_sources_warning")}</p>
-          </div>
-        )}
         {showIslamicHint && (
           <div className="flex items-center gap-2 max-w-3xl mx-auto rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 px-3 py-2">
             <BookOpen className="h-4 w-4 text-blue-500 shrink-0" />
@@ -388,14 +379,17 @@ const ChatDisplay = ({
               {isQuerying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
-          <div className="px-3 pb-2 flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">{t("research.send_hint")}</p>
+          <div className="px-3 pb-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              {onModeChange && <ResearchModeSwitcher mode={mode} onModeChange={onModeChange} t={t} />}
+              <p className="hidden sm:block text-xs text-muted-foreground truncate">{t("research.send_hint")}</p>
+            </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setIsPromptModalOpen(true)}
-              className="h-6 text-xs px-2 gap-1 rounded-lg text-primary border-primary/30 hover:bg-primary/10 transition-colors"
+              className="h-6 text-xs px-2 gap-1 rounded-lg text-primary border-primary/30 hover:bg-primary/10 transition-colors shrink-0"
             >
               <Sparkles className="h-3 w-3" />
               14 علمی پرامپٹس

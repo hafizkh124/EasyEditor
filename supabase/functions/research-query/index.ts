@@ -27,8 +27,7 @@ const corsHeaders = {
 const SOURCE_CHAR_LIMIT = 20_000;
 
 // Context-aware scraping whitelist. Islamic & General research modes are
-// restricted to these trusted scholarly domains. Custom Sources mode bypasses
-// this gate (the user takes responsibility).
+// restricted to these trusted scholarly domains.
 const SCRAPING_WHITELIST = [
   "alulama.org",
   "magazine.mohaddis.com",
@@ -399,7 +398,6 @@ serve(async (req) => {
       const startTime = Date.now();
 
       // Context-aware scraping: Islamic & General modes are whitelist-only.
-      // Custom mode (or unspecified) bypasses the gate.
       const enforceWhitelist = researchMode === "islamic" || researchMode === "general";
 
       const fetchPromises = sources.map(async (source: any) => {
@@ -507,8 +505,7 @@ serve(async (req) => {
       stream: !isAssistMode,
       // Phase 10.2: explicit cap. Assist (spelling/citations) is JSON-bound
       // and can be larger; normal/streaming chat is conversational so the
-      // 2048-token cap is comfortable for General-tab answers and still
-      // generous for Custom-mode source-grounded answers.
+      // cap is comfortable for General-mode answers.
       max_tokens: isAssistMode ? 4096 : 8192,
       ...(isAssistMode ? { response_format: { type: "json_object" } } : {}),
     });

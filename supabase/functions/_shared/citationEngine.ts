@@ -489,7 +489,7 @@ async function toPersonalCitations(
 }
 
 /** Personal Corpus Vector Channel — pgvector search on library_chunks (FR-2.7, FR-2.8) */
-async function personalVectorChannel(
+export async function personalVectorChannel(
   // deno-lint-ignore no-explicit-any
   supabase: any,
   plan: QueryPlan,
@@ -521,7 +521,7 @@ async function personalVectorChannel(
 }
 
 /** Personal Corpus Lexical Channel — text search on library_chunks (FR-2.7, FR-2.8) */
-async function personalLexicalChannel(
+export async function personalLexicalChannel(
   // deno-lint-ignore no-explicit-any
   supabase: any,
   rawQuery: string,

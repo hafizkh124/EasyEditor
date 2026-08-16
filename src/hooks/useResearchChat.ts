@@ -36,12 +36,10 @@ function mergeCitations(existing: CitationItem[], fetched: CitationItem[]): Cita
 interface UseResearchChatArgs {
   user: User | null;
   session: Session | null;
-  mode: "general" | "islamic" | "custom";
+  mode: "general" | "islamic";
   tier: string;
   sources: Source[];
   strictMode: boolean;
-  islamicDomains: string[];
-  islamicLanguages: string[];
   researchLimitReached: boolean;
   islamicLimitReached: boolean;
   assistModes: ResearchAssistMode[];
@@ -51,7 +49,6 @@ interface UseResearchChatArgs {
 export function useResearchChat(args: UseResearchChatArgs) {
   const {
     user, session, mode, tier, sources, strictMode,
-    islamicDomains, islamicLanguages,
     researchLimitReached, islamicLimitReached, assistModes, refetch,
   } = args;
   const { t } = useLanguage();
@@ -94,7 +91,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         mode: mode === "islamic" ? "islamic" : "general",
         messages: updatedMessages,
         citations: updatedCitations,
-        selectedDomains: mode === "islamic" ? islamicDomains : [],
+        selectedDomains: [],
       });
       if (newId && !sessionIdRef.current) {
         sessionIdRef.current = newId;
@@ -108,7 +105,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
     } catch {
       log.debug("research_sessions table not available yet");
     }
-  }, [userId, mode, islamicDomains]);
+  }, [userId, mode]);
 
   // If the URL has `?session=<id>`, the global SidebarHistory has navigated
   // us into a specific past session — load THAT one instead of the latest.
@@ -216,8 +213,6 @@ export function useResearchChat(args: UseResearchChatArgs) {
       let queryCitations: CitationItem[] = [];
       await streamIslamicQuery({
         query: userContent,
-        selectedDomains: islamicDomains,
-        selectedLanguages: islamicLanguages,
         strictMode,
         chatHistory: prevMessages,
         tier,
@@ -260,7 +255,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         onError: (err) => { toast.error(err); finish(); },
       });
     }
-  }, [mode, citations, islamicDomains, islamicLanguages, strictMode, tier, sources, user, refetch, saveSession, appendAssistantChunk, assistModes, t]);
+  }, [mode, citations, strictMode, tier, sources, user, refetch, saveSession, appendAssistantChunk, assistModes, t]);
 
   const handleSendQuery = async () => {
     if (!query.trim() || !session?.access_token) return;

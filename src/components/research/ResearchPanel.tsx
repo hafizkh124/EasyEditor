@@ -18,17 +18,12 @@ import { useLimitReached } from "@/hooks/useLimitReached";
 import { useCanAfford } from "@/hooks/useTokenBalance";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateStored } from "@/lib/i18n";
-import SourcesPanel from "@/components/research/SourcesPanel";
 import ChatDisplay from "@/components/research/ChatDisplay";
-import ResearchModeSwitcher, { type ResearchMode } from "@/components/research/ResearchModeSwitcher";
-import { useResearchSources } from "@/hooks/useResearchSources";
+import { type ResearchMode } from "@/components/research/ResearchModeSwitcher";
 import { useResearchChat } from "@/hooks/useResearchChat";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { textToHtml } from "@/lib/editor/htmlText";
 import type { ResearchAssistMode } from "@/lib/prompts";
-
-const DEFAULT_ISLAMIC_DOMAINS = ["dorar", "sunnah", "alquran", "quran-com", "tanzil"];
-const DEFAULT_ISLAMIC_LANGUAGES = ["ar", "en"];
 
 function usePersistedState<T>(key: string, initial: T, parse: (raw: string) => T): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(() => {
@@ -71,7 +66,7 @@ export const ResearchPanel = () => {
   const [mode, setMode] = usePersistedState<ResearchMode>(
     "research_mode",
     "islamic",
-    (raw) => (raw === "islamic" || raw === "custom" || raw === "general" ? raw : "islamic"),
+    (raw) => (raw === "islamic" || raw === "general" ? raw : "islamic"),
   );
   const [assistModes, setAssistModes] = usePersistedState<ResearchAssistMode[]>(
     "research_assist_modes",
@@ -82,34 +77,14 @@ export const ResearchPanel = () => {
       return parsed.filter((m): m is ResearchAssistMode => m === "spelling" || m === "citations");
     },
   );
-  const [islamicDomains, setIslamicDomains] = usePersistedState<string[]>(
-    "islamic_domains",
-    DEFAULT_ISLAMIC_DOMAINS,
-    (raw) => JSON.parse(raw) as string[],
-  );
-  const [islamicLanguages, setIslamicLanguages] = usePersistedState<string[]>(
-    "islamic_languages",
-    DEFAULT_ISLAMIC_LANGUAGES,
-    (raw) => JSON.parse(raw) as string[],
-  );
-  const [madhhab, setMadhhab] = usePersistedState<string>(
-    "research_madhhab",
-    "any",
-    (raw) => raw,
-  );
-  const [strictMode, setStrictMode] = useState(true);
 
-  const hookMode: "general" | "islamic" | "custom" = mode;
-  const sourcesApi = useResearchSources(user);
   const chat = useResearchChat({
     user,
     session,
-    mode: hookMode,
+    mode,
     tier,
-    sources: sourcesApi.sources,
-    strictMode: mode === "islamic" ? true : mode === "general" ? false : strictMode,
-    islamicDomains,
-    islamicLanguages,
+    sources: [],
+    strictMode: mode === "islamic",
     researchLimitReached,
     islamicLimitReached,
     assistModes,
@@ -157,8 +132,7 @@ export const ResearchPanel = () => {
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
       <div className="border-b border-border bg-background px-3 py-2">
-        <div className="flex items-center justify-between gap-2 max-w-full">
-          <ResearchModeSwitcher mode={mode} onModeChange={handleModeChange} t={t} />
+        <div className="flex items-center justify-end gap-2 max-w-full">
           {canInsertIntoCanvas && (
             <Button
               variant="outline"
@@ -184,38 +158,6 @@ export const ResearchPanel = () => {
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
-        {mode === "custom" && (
-          <SourcesPanel
-            sources={sourcesApi.sources}
-            urlInput={sourcesApi.urlInput}
-            onUrlInputChange={sourcesApi.setUrlInput}
-            isAddingUrl={sourcesApi.isAddingUrl}
-            isUploading={sourcesApi.isUploading}
-            fileInputRef={sourcesApi.fileInputRef}
-            onAddUrl={sourcesApi.handleAddUrl}
-            onFileUpload={sourcesApi.handleFileUpload}
-            onFileDrop={sourcesApi.processFile}
-            onDeleteSource={sourcesApi.handleDeleteSource}
-            onDeleteAllSources={sourcesApi.handleDeleteAllSources}
-            strictMode={strictMode}
-            onStrictModeChange={setStrictMode}
-            researchQueriesUsed={researchQueriesUsed}
-            researchQueriesLimit={researchQueriesLimit}
-            researchLimitReached={researchLimitReached}
-            showUsageMeter={(subscription?.research_queries_limit ?? 0) > 0}
-            mode={mode}
-            islamicDomains={islamicDomains}
-            onIslamicDomainsChange={setIslamicDomains}
-            islamicLanguages={islamicLanguages}
-            onIslamicLanguagesChange={setIslamicLanguages}
-            islamicQueriesUsed={islamicQueriesUsed}
-            islamicQueriesLimit={islamicQueriesLimit}
-            madhhab={madhhab}
-            onMadhhabChange={setMadhhab}
-            tier={tier}
-            t={t}
-          />
-        )}
         <ChatDisplay
           messages={chat.messages}
           isQuerying={chat.isQuerying}
@@ -228,7 +170,6 @@ export const ResearchPanel = () => {
           onCopyOutput={chat.handleCopyOutput}
           onClearChat={chat.handleNewChat}
           onRegenerate={chat.handleRegenerate}
-          sources={sourcesApi.sources}
           researchLimitReached={activeLimitReached}
           chatEndRef={chat.chatEndRef}
           t={t}
