@@ -112,7 +112,22 @@ async function setCached(
 async function fetchDorar(query: string): Promise<IslamicResult[]> {
   try {
     const url = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`;
-    const res = await fetchWithTimeout(url);
+    // dorar.net sits behind Cloudflare's bot challenge, which a bare fetch()
+    // (no User-Agent, no Accept/Accept-Language) trips every time — Cloudflare
+    // returns HTTP 200 with an HTML "Attention Required" challenge page
+    // instead of JSON, so `res.ok` is true but `res.json()` below throws and
+    // this silently returned [] on every single call. Confirmed live,
+    // 2026-08-16: identical request with real browser-shaped headers gets a
+    // genuine 200 + JSON response. No paid bypass service needed — just
+    // headers a real browser would already send.
+    const res = await fetchWithTimeout(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "ar,en;q=0.9",
+        "Referer": "https://dorar.net/",
+      },
+    });
     if (!res.ok) return [];
     const data = await res.json();
     const html: string = data?.ahadith?.result ?? "";
