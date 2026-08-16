@@ -35,7 +35,16 @@ const corsHeaders = {
 // Sunnah.com (no API key obtained) and Dar-Alifta.org (persistent timeouts)
 // removed. They can be reinstated in `domain-scrape` / `islamic-api-fetch`
 // once upstream recovers or credentials are obtained.
-const TIER_A_DOMAINS = ["dorar", "alquran", "hadith-api", "quran-com", "tanzil"];
+//
+// "hadith-api" and "tanzil" were listed here but never actually reach live
+// data: `islamic-api-fetch/index.ts` only implements dorar/alquran/quran-com
+// — there is no fetchHadithApi or fetchTanzil, so requesting either slug was
+// silently a no-op (confirmed live, 2026-08-16: both return 0 results in
+// ~300ms regardless of query — too fast to be a real network call). Removed
+// rather than left as dead weight. Tanzil's actual content still reaches
+// every query through Tier K (`tanzil` stays in TIER_K_DOMAINS below, backed
+// by the 6,236-row local corpus) — nothing is lost by dropping it here.
+const TIER_A_DOMAINS = ["dorar", "alquran", "quran-com"];
 const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
 const TIER_C_DOMAINS = [
   "islamqa", "islamweb", "islamicurdubooks", "shamilaurdu",
@@ -97,7 +106,7 @@ function buildContextBlock(results: IslamicResult[]): string {
       const num = Number(cite.surah_number) || 0;
       const name = cite.surah_name || SURAH_NAMES[num] || (num ? `Surah ${num}` : "Quran");
       citeLine = `REFERENCE: Quran — ${name} ${num || "?"}:${cite.verse ?? "?"}`;
-    } else if (r.domain === "islamqa" || r.domain === "islamweb" || r.domain === "dar-alifta") {
+    } else if (r.domain === "islamqa" || r.domain === "islamweb" || r.domain === "dar-alifta" || r.domain === "urdufatwa" || cite.fatwa_number !== undefined) {
       const site = cite.url ? new URL(cite.url).hostname : r.domain;
       const parts = [
         `Fatwa (${site})`,
@@ -370,15 +379,24 @@ serve(async (req) => {
       ["tanzil", "alquran", "quran-com"].includes(d),
     );
     const wantsHadith = effectiveDomains.some((d) =>
-      ["dorar", "hadith-api", "hadith-index", "hadith-json", "islamicurdubooks", "shamilaurdu"].includes(d),
+      ["dorar", "hadith-index", "hadith-json", "islamicurdubooks", "shamilaurdu"].includes(d),
     );
-    if (wantsQuran || wantsHadith) {
+    // Same inference for fatwa: selecting any Tier-C fatwa site should also
+    // search the local `source_type = 'fatwa'` rows. urdufatwa alone has
+    // 22,775 of them (fully diacritic-normalized, with grading/discipline
+    // metadata) sitting unused before this — Tier C would live-scrape
+    // urdufatwa.com on every query instead of ever touching its own DB rows.
+    const wantsFatwa = effectiveDomains.some((d) =>
+      ["islamqa", "islamweb", "alulama", "urdufatwa"].includes(d),
+    );
+    if (wantsQuran || wantsHadith || wantsFatwa) {
       fanOutPromises.push(
         (async (): Promise<IslamicResult[]> => {
           try {
             const sourceTypes: string[] = [];
             if (wantsQuran)  sourceTypes.push("quran");
             if (wantsHadith) sourceTypes.push("hadith");
+            if (wantsFatwa)  sourceTypes.push("fatwa");
             if (sourceTypes.length === 0) return [];
 
             // Build expanded term list — bilingual synonyms plus the query
@@ -431,13 +449,15 @@ serve(async (req) => {
               match_score?: number;
             }>;
 
-            // Balanced mix: 6 Quran + 10 Hadith max (Hadith corpus is much
-            // larger so we let it dominate when both are present).
+            // Balanced mix: 6 Quran + 10 Hadith + 6 Fatwa max (Hadith corpus is
+            // much larger so we let it dominate when several types are present).
             const quranRows  = rows.filter((r) => r.source_type === "quran").slice(0, 6);
             const hadithRows = rows.filter((r) => r.source_type === "hadith").slice(0, 10);
-            const mixed = quranRows.length && hadithRows.length
-              ? [...quranRows, ...hadithRows]
-              : rows.slice(0, 16);
+            const fatwaRows  = rows.filter((r) => r.source_type === "fatwa").slice(0, 6);
+            const presentGroups = [quranRows, hadithRows, fatwaRows].filter((g) => g.length > 0);
+            const mixed = presentGroups.length > 1
+              ? presentGroups.flat()
+              : rows.slice(0, 22);
 
             return mixed.map((row): IslamicResult => ({
               domain: row.domain,
