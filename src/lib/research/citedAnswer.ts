@@ -28,9 +28,27 @@ export function stripModelReferences(markdown: string): string {
   return markdown.replace(REFERENCES_HEADING_RE, "").trimEnd();
 }
 
-export function buildReferencesMarkdown(citations: CitationItem[], t: Translator): string {
+/**
+ * Every [N] (or [N, M, ...]) marker in the answer body, deduped and sorted —
+ * the set of RETRIEVED SOURCES indices the model actually leaned on. Only
+ * these get listed: `citations` also holds every source that was merely
+ * offered as context but never cited, and listing all of them would imply
+ * the answer relied on sources it never mentioned.
+ */
+function citedIndices(markdown: string): number[] {
+  const nums = new Set<number>();
+  for (const m of markdown.matchAll(/\[(\d+(?:\s*,\s*\d+)*)\]/g)) {
+    for (const part of m[1].split(",")) nums.add(Number(part.trim()));
+  }
+  return [...nums].sort((a, b) => a - b);
+}
+
+export function buildReferencesMarkdown(markdown: string, citations: CitationItem[], t: Translator): string {
   if (citations.length === 0) return "";
-  const lines = citations.map((c, i) => {
+  const indices = citedIndices(markdown).filter((n) => n >= 1 && n <= citations.length);
+  if (indices.length === 0) return "";
+  const lines = indices.map((n, i) => {
+    const c = citations[n - 1];
     const label = formatCitation(c.domain, c.citation_ref);
     const url = c.url ?? c.citation_ref.url;
     return url ? `${i + 1}. [${label}](${url})` : `${i + 1}. ${label}`;
@@ -41,10 +59,12 @@ export function buildReferencesMarkdown(citations: CitationItem[], t: Translator
 
 /**
  * Full replacement for an Islamic-mode answer's references: strips whatever
- * the model wrote (if anything) and appends the verified list. A no-op for
- * non-Islamic messages, since `citations` is empty for those.
+ * the model wrote (if anything) and appends a list built only from the [N]
+ * markers actually present in the body, resolved against verified data. A
+ * no-op for non-Islamic messages, since `citations` is empty for those.
  */
 export function renderCitedAnswer(markdown: string, citations: CitationItem[], t: Translator): string {
   if (citations.length === 0) return markdown;
-  return stripModelReferences(markdown) + buildReferencesMarkdown(citations, t);
+  const stripped = stripModelReferences(markdown);
+  return stripped + buildReferencesMarkdown(stripped, citations, t);
 }
