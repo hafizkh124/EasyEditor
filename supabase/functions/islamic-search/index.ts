@@ -94,12 +94,18 @@ function buildContextBlock(results: IslamicResult[]): string {
     // the raw braces (and empty fields) verbatim into its References section.
     let citeLine = "";
 
-    if (r.domain === "dorar" || r.domain === "hadith-api" || r.domain === "hadith-index" || r.domain === "hadith-json" || r.domain === "islamicurdubooks" || r.domain === "shamilaurdu") {
+    if (r.domain === "dorar" || r.domain === "hadith-api" || r.domain === "hadith-index" || r.domain === "hadith-json" || r.domain === "islamicurdubooks" || r.domain === "shamilaurdu" || cite.hadith_number !== undefined) {
+      // `cite.hadith_number !== undefined` as a fallback (mirrors the fatwa
+      // branch below): urdu-hadith rows carry real grade + takhreej data —
+      // 19,443 of them, e.g. grade "صحيح" with a full cross-reference chain
+      // ("تفرد بہ ابن ماجہ، تحفة الأشراف: 3815…") — but the domain name
+      // wasn't in this list, so that scholarship never reached the model.
       const book = cite.collection ?? cite.book ?? "Hadith";
       const parts = [
         `${book}${cite.hadith_number ? `, Hadith ${cite.hadith_number}` : ""}`,
         cite.grade ? `Grade: ${cite.grade}` : "",
         cite.rawi ? `Narrator: ${cite.rawi}` : "",
+        cite.takhreej ? `Takhreej: ${cite.takhreej}` : "",
       ].filter(Boolean);
       citeLine = `REFERENCE: ${parts.join(" — ")}`;
     } else if (r.domain === "alquran" || r.domain === "quran-com" || r.domain === "tanzil") {
@@ -126,7 +132,14 @@ function buildContextBlock(results: IslamicResult[]): string {
 
     // Include both Arabic and English content when available
     const content = r.content;
-    return `--- Islamic Source ${i + 1} [${r.domain.toUpperCase()}] ---\n${citeLine}\n${content}`;
+    // Anchor passages (see topic-anchor merge below) are canonical
+    // references for a recognized topic, not something the search actually
+    // found relevant to THIS query — label them so the model doesn't cite
+    // them as if retrieval surfaced them on merit.
+    const sourceTag = cite._is_anchor
+      ? `[${r.domain.toUpperCase()} — CANONICAL TOPIC REFERENCE, not a search match]`
+      : `[${r.domain.toUpperCase()}]`;
+    return `--- Islamic Source ${i + 1} ${sourceTag} ---\n${citeLine}\n${content}`;
   }).join("\n\n");
 }
 
@@ -208,6 +221,11 @@ CITATION RULES:
 - Every factual claim MUST have at least one inline [N] citation.
 - When quoting Arabic text, cite [N] immediately after.
 - Use exact text from sources — do not paraphrase Arabic verses or hadith text.
+- A source marked "CANONICAL TOPIC REFERENCE, not a search match" was added
+  as general background on the topic, not because retrieval found it
+  specifically relevant to this question — you may still cite it as [N], but
+  do not describe it as something the search "found" or "returned" for this
+  query specifically.
 
 FORMATTING:
 - Use Markdown with the emoji headers shown above
@@ -291,10 +309,18 @@ serve(async (req) => {
     );
     void tier; // retained in scope for future telemetry / quota differentiation
 
-    // Plan the query once, up-front. Reused by Tier K (term expansion + scope)
+    // Plan the query — an LLM call, reused by Tier K (term expansion + scope)
     // and, for "how many times…" questions, by the exact-count block below.
     // Never throws — degrades to a keyword-only plan when the model is down.
-    const queryPlan = await planQuery(query, supabase).catch(() => null);
+    //
+    // Deliberately NOT awaited here. Tier A/B/C don't read the plan at all,
+    // and awaiting it before starting the fan-out serialized this LLM call's
+    // latency (typically 1-4s) in front of every other tier's, adding
+    // straight to the user's wait with nothing running concurrently. Tier K
+    // is the only consumer — its own async block below awaits this promise
+    // internally, so the plan call now overlaps with Tier A/B/C instead of
+    // blocking them.
+    const queryPlanPromise = planQuery(query, supabase).catch(() => null);
 
     // --- Fan-out: Tier A (always), Tier B (Pro/Ultra), Tier C (Pro/Ultra), Tier K (keyword) ---
     const tierADomains = effectiveDomains.filter((d) => TIER_A_DOMAINS.includes(d));
@@ -316,7 +342,10 @@ serve(async (req) => {
             apikey: supabaseKey,
           },
           body: JSON.stringify({ query, selectedDomains: tierADomains }),
-          signal: AbortSignal.timeout(12_000),
+          // Was 12s. Live-measured 2026-08-16 (post dead-domain cleanup —
+          // dorar/alquran/quran-com only): worst case ~4s. 6s keeps a real
+          // safety margin without eating into the user's wait for nothing.
+          signal: AbortSignal.timeout(6_000),
         })
           .then((r) => r.ok ? r.json() : { results: [] })
           .then((d) => d.results ?? [])
@@ -340,7 +369,10 @@ serve(async (req) => {
             selectedDomains: tierBDomains,
             tier,
           }),
-          signal: AbortSignal.timeout(20_000),  // embedding + RPC needs more time
+          // Was 20s ("embedding + RPC needs more time"). Live-measured
+          // 2026-08-16 after the IVFFlat fix: full embed+RPC round trip
+          // ~2-2.6s. 8s keeps ~3x margin for embedding-API slowness.
+          signal: AbortSignal.timeout(8_000),
         })
           .then((r) => r.ok ? r.json() : { results: [] })
           .then((d) => d.results ?? [])
@@ -360,7 +392,12 @@ serve(async (req) => {
             apikey: supabaseKey,
           },
           body: JSON.stringify({ query, selectedDomains: tierCDomains }),
-          signal: AbortSignal.timeout(12_000),
+          // Was 12s, which never matched domain-scrape's own internal 25s
+          // per-domain Firecrawl budget — this caller-side timeout always
+          // won first regardless. Live-measured 2026-08-16 (all 11 Tier-C
+          // domains fanned out together): 5.1s and 6.9s on two real runs.
+          // 8s keeps a margin without reintroducing the mismatch at a new size.
+          signal: AbortSignal.timeout(8_000),
         })
           .then((r) => r.ok ? r.json() : { results: [] })
           .then((d) => d.results ?? [])
@@ -398,6 +435,10 @@ serve(async (req) => {
             if (wantsHadith) sourceTypes.push("hadith");
             if (wantsFatwa)  sourceTypes.push("fatwa");
             if (sourceTypes.length === 0) return [];
+
+            // Waits on the plan promise kicked off above — by now it has
+            // been running concurrently with Tier A/B/C, not blocking them.
+            const queryPlan = await queryPlanPromise;
 
             // Build expanded term list — bilingual synonyms plus the query
             // planner's Arabic surface forms. The static map covers ~50 topics;
@@ -584,6 +625,12 @@ serve(async (req) => {
     }
 
     const contextBlock = buildContextBlock(allResults);
+
+    // By now the fan-out (line ~506's Promise.allSettled) has already taken
+    // at least as long as the slowest tier, so this promise — kicked off
+    // concurrently with that fan-out — has almost always already settled;
+    // this await adds no meaningful wait in the common case.
+    const queryPlan = await queryPlanPromise;
 
     // ── Exact-count facts ────────────────────────────────────────────────
     // When the user asks "how many times…", retrieval alone cannot answer —
