@@ -18,6 +18,7 @@ export interface IslamicResult {
     grade?: string;
     rawi?: string;
     mohdith?: string;
+    takhreej?: string;
     surah_number?: number;
     surah_name?: string;
     surah_name_en?: string;
@@ -28,6 +29,10 @@ export interface IslamicResult {
     url?: string;
     volume?: number;
     page?: number;
+    /** Set by islamic-search's topic-anchor merge — this passage was force-
+     *  included as a canonical reference for a recognized topic, not
+     *  returned by the retrieval search itself. See buildContextBlock. */
+    _is_anchor?: boolean;
   };
   language: "ar" | "en" | "ur";
 }
