@@ -19,7 +19,6 @@ import { VersionHistorySheet } from "./VersionHistorySheet";
 import { exportTxt, exportHtml, exportDoc, exportPdf, stripSuggestions } from "@/lib/editor/exporters";
 import { splitChaptersFromHtml } from "@/lib/audiobook/splitChapters";
 import { isDesktop } from "@/utils/environment";
-import AppVersionBadge from "@/components/AppVersionBadge";
 import { WorkspaceAppMenu } from "./WorkspaceAppMenu";
 import { DesktopAccountMenu } from "@/components/auth/DesktopAccountMenu";
 import type { Document, DocumentVersion } from "@/core/workspace/types";
@@ -276,11 +275,6 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           <PanelRight className="h-4 w-4" />
           <span className="hidden md:inline">{t("workbench.title", "Workbench")}</span>
         </Button>
-
-        {/* App Version Badge */}
-        <div className="hidden lg:block ms-1">
-          <AppVersionBadge compact />
-        </div>
 
         {/* Mobile Overflow Menu (360px) */}
         <div className="sm:hidden">

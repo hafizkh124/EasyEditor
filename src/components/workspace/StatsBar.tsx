@@ -55,7 +55,7 @@ export const StatsBar: React.FC<StatsBarProps> = ({
       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
         {t("library.overview", "Overview")}
       </h3>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {stats.map((stat) => (
           <div
             key={stat.label}
