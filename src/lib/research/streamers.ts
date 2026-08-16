@@ -169,6 +169,7 @@ export async function streamIslamicQuery({
 
     type IslamicEvent =
       | { type: "sources_ready"; count?: number; domains?: string[]; citations?: CitationItem[] }
+      | { type: "error"; message?: string }
       | { choices?: Array<{ delta?: { content?: string } }> };
 
     const parseLine = (line: string): boolean => {
@@ -183,6 +184,14 @@ export async function streamIslamicQuery({
         if ("type" in parsed && parsed.type === "sources_ready") {
           onSourcesReady?.(parsed.count ?? 0, parsed.domains ?? [], parsed.citations ?? []);
           return false;
+        }
+        // Sent when the Gemini call fails AFTER sources_ready already went
+        // out — by then the response is committed to text/event-stream, so
+        // this is the only way left to report the failure (see islamic-search's
+        // comment on why sources_ready now precedes the Gemini call).
+        if ("type" in parsed && parsed.type === "error") {
+          onError(parsed.message || "AI service error");
+          return true;
         }
         const content = "choices" in parsed ? parsed.choices?.[0]?.delta?.content : undefined;
         if (content) onDelta(content);

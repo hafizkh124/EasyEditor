@@ -686,106 +686,120 @@ serve(async (req) => {
       }
     }
 
-    // Emit SSE "sources ready" event — client shows indicator before Gemini starts
+    // Emit SSE "sources ready" event — genuinely before Gemini starts this
+    // time. The comment here used to say that while the code below it
+    // awaited callChatCompletions() first — for a ~48-source context block,
+    // that call alone can take 10+ seconds before Gemini emits its first
+    // byte, and the client saw nothing at all until it returned. The fix:
+    // commit to the SSE stream and write sources_ready immediately; the
+    // Gemini call (and its error handling) moves inside the async block
+    // below, after sources_ready has already reached the client. A Gemini
+    // failure past this point can no longer become a fresh JSON error
+    // response (the 200 + text/event-stream headers are already committed),
+    // so it's reported as an in-stream `{"type":"error"}` event instead —
+    // see streamIslamicQuery's onError handling in src/lib/research/streamers.ts.
     const encoder = new TextEncoder();
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
 
-    // Build Gemini messages. The count block (when present) is appended to the
-    // grounding context so the model answers the "how many times" question with
-    // the authoritative figure rather than declining.
-    const messages: any[] = [
-      { role: "system", content: buildSystemPrompt(contextBlock + countBlock, strictMode ?? true, countBlock.length > 0) },
-    ];
-    if (chatHistory && chatHistory.length > 0) {
-      for (const msg of chatHistory) {
-        messages.push({ role: msg.role, content: msg.content });
-      }
-    }
-    messages.push({ role: "user", content: query });
+    const citationSummaries = allResults.map((r) => ({
+      domain:       r.domain,
+      citation_ref: r.citation_ref,
+      url:          r.citation_ref.url ?? undefined,
+    }));
 
-    // Call Gemini direct → Lovable fallback (helper handles auth + URL)
-    const geminiRes = await callChatCompletions({
-      model: "google/gemini-2.5-flash",
-      messages,
-      stream: true,
-      // Phase 10.2: explicit cap so long Islamic answers (full Arabic
-      // quotes + Urdu translations + summaries) don't get cut off at
-      // the gateway's conservative default.
-      max_tokens: 8192,
-    });
-
-    if (!geminiRes.ok) {
-      // Refund tokens — AI call failed
-      await refundTokens(supabase, user.id, tokenCost, "islamic", "Gemini API error");
-
-      const errTxt = await geminiRes.text().catch(() => "");
-      if (geminiRes.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      console.error("Gemini error:", geminiRes.status, errTxt);
-      return new Response(JSON.stringify({ error: "AI service error" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Stream Gemini SSE, prepending sources_ready event
     (async () => {
-      // Build citation summaries (domain + citation_ref + url only, no content)
-      const citationSummaries = allResults.map((r) => ({
-        domain:       r.domain,
-        citation_ref: r.citation_ref,
-        url:          r.citation_ref.url ?? undefined,
-      }));
-
-      // First event: sources ready — count, domains, and citation summaries
-      const sourcesEvent = `data: ${JSON.stringify({
-        type:      "sources_ready",
-        count:     allResults.length,
-        domains:   [...new Set(allResults.map((r) => r.domain))],
-        citations: citationSummaries,
-      })}\n\n`;
-      await writer.write(encoder.encode(sourcesEvent));
-
-      // Proxy Gemini SSE
-      const reader = geminiRes.body!.getReader();
-      let done = false;
-      let streamFailed = false;
       try {
-        while (!done) {
-          const { value, done: streamDone } = await reader.read();
-          done = streamDone;
-          if (value) await writer.write(value);
+        const sourcesEvent = `data: ${JSON.stringify({
+          type:      "sources_ready",
+          count:     allResults.length,
+          domains:   [...new Set(allResults.map((r) => r.domain))],
+          citations: citationSummaries,
+        })}\n\n`;
+        await writer.write(encoder.encode(sourcesEvent));
+
+        // Build Gemini messages. The count block (when present) is appended
+        // to the grounding context so the model answers the "how many
+        // times" question with the authoritative figure rather than
+        // declining.
+        const messages: any[] = [
+          { role: "system", content: buildSystemPrompt(contextBlock + countBlock, strictMode ?? true, countBlock.length > 0) },
+        ];
+        if (chatHistory && chatHistory.length > 0) {
+          for (const msg of chatHistory) {
+            messages.push({ role: msg.role, content: msg.content });
+          }
         }
-      } catch (streamErr) {
-        console.error("[islamic-search] Stream error:", streamErr);
-        streamFailed = true;
-      }
+        messages.push({ role: "user", content: query });
 
-      if (streamFailed) {
-        // Refund tokens — AI stream failed
-        await refundTokens(supabase, user.id, tokenCost, "islamic", "Gemini stream error");
-      } else {
-        // Legacy analytics: update islamic_queries_used (non-blocking, backward compat)
-        supabase
-          .from("subscriptions")
-          .select("islamic_queries_used")
-          .eq("user_id", user.id)
-          .single()
-          .then(({ data: sub }) => {
-            if (sub) {
-              supabase
-                .from("subscriptions")
-                .update({ islamic_queries_used: (sub.islamic_queries_used ?? 0) + 1 })
-                .eq("user_id", user.id)
-                .then(() => {});
-            }
-          });
-      }
+        // Call Gemini direct → Lovable fallback (helper handles auth + URL)
+        const geminiRes = await callChatCompletions({
+          model: "google/gemini-2.5-flash",
+          messages,
+          stream: true,
+          // Phase 10.2: explicit cap so long Islamic answers (full Arabic
+          // quotes + Urdu translations + summaries) don't get cut off at
+          // the gateway's conservative default.
+          max_tokens: 8192,
+        });
 
-      await writer.close();
+        if (!geminiRes.ok) {
+          await refundTokens(supabase, user.id, tokenCost, "islamic", "Gemini API error");
+          const errTxt = await geminiRes.text().catch(() => "");
+          console.error("Gemini error:", geminiRes.status, errTxt);
+          const message = geminiRes.status === 429
+            ? "Rate limit exceeded. Please try again shortly."
+            : "AI service error";
+          await writer.write(encoder.encode(`data: ${JSON.stringify({ type: "error", message })}\n\n`));
+          return;
+        }
+
+        // Proxy Gemini SSE
+        const reader = geminiRes.body!.getReader();
+        let done = false;
+        let streamFailed = false;
+        try {
+          while (!done) {
+            const { value, done: streamDone } = await reader.read();
+            done = streamDone;
+            if (value) await writer.write(value);
+          }
+        } catch (streamErr) {
+          console.error("[islamic-search] Stream error:", streamErr);
+          streamFailed = true;
+        }
+
+        if (streamFailed) {
+          // Refund tokens — AI stream failed
+          await refundTokens(supabase, user.id, tokenCost, "islamic", "Gemini stream error");
+        } else {
+          // Legacy analytics: update islamic_queries_used (non-blocking, backward compat)
+          supabase
+            .from("subscriptions")
+            .select("islamic_queries_used")
+            .eq("user_id", user.id)
+            .single()
+            .then(({ data: sub }) => {
+              if (sub) {
+                supabase
+                  .from("subscriptions")
+                  .update({ islamic_queries_used: (sub.islamic_queries_used ?? 0) + 1 })
+                  .eq("user_id", user.id)
+                  .then(() => {});
+              }
+            });
+        }
+      } catch (e) {
+        console.error("[islamic-search] streaming pipeline error:", e);
+        try {
+          await refundTokens(supabase, user.id, tokenCost, "islamic", "Streaming pipeline error");
+        } catch { /* best-effort */ }
+        try {
+          await writer.write(encoder.encode(`data: ${JSON.stringify({ type: "error", message: "AI service error" })}\n\n`));
+        } catch { /* stream may already be closed */ }
+      } finally {
+        await writer.close();
+      }
     })();
 
     return new Response(readable, {
