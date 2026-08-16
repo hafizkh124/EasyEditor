@@ -14,6 +14,7 @@ import {
   deleteResearchSession,
 } from "@/lib/research/persistence";
 import { callRefineText, isRefineTextAction } from "@/lib/editor/aiActions";
+import { renderCitedAnswer } from "@/lib/research/citedAnswer";
 import { logger } from "@/lib/logger";
 
 const log = logger.child("useResearchChat");
@@ -314,7 +315,10 @@ export function useResearchChat(args: UseResearchChatArgs) {
 
   const handleCopyOutput = () => {
     if (!lastAssistantMessage) return;
-    navigator.clipboard.writeText(lastAssistantMessage.content);
+    // Same rebuild ChatDisplay uses for the on-screen answer — copying the
+    // raw message would hand the user back the model's own (possibly
+    // mismatched) References section instead of the verified one.
+    navigator.clipboard.writeText(renderCitedAnswer(lastAssistantMessage.content, citations, t));
     toast.success(t("research.copied"));
   };
 

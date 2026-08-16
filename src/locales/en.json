@@ -289,6 +289,7 @@
   "research.ask_placeholder_islamic": "Ask about Quran, Hadith, Fiqh… (Arabic, English, Urdu)",
   "research.citations_panel_title": "Session Sources",
   "research.citations_from_domains": "from {n} domain(s)",
+  "research.references_heading": "📚 References",
   "research.export_bibliography": "Export Bibliography",
   "research.bibliography_exported": "Bibliography exported!",
   "islamic.domain_focus": "Domain Focus",

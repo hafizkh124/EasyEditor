@@ -289,6 +289,7 @@
   "research.ask_placeholder_islamic": "اسأل عن القرآن، الحديث، الفقه... (بالعربية، الإنجليزية، الأردية)",
   "research.citations_panel_title": "مصادر الجلسة",
   "research.citations_from_domains": "من {n} نطاق (نطاقات)",
+  "research.references_heading": "📚 المراجع",
   "research.export_bibliography": "تصدير قائمة المراجع",
   "research.bibliography_exported": "تم تصدير قائمة المراجع!",
   "islamic.domain_focus": "مجال التركيز",

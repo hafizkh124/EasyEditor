@@ -169,27 +169,35 @@ Otherwise skip this section entirely — do not write "no evidence" here either.
 (Skip this section if no Quran sources are relevant)
 - Quote the Arabic verse with full diacritics
 - Provide translation immediately after
-- Cite as [Surah Name X:Y]
+- Cite it inline as [N], the RETRIEVED SOURCES index number (see CITATION RULES)
 
 ## 📜 احادیث / Hadith Evidence
 (Skip this section if no Hadith sources are relevant)
 - Quote the hadith text (Arabic if available, then translation)
-- Cite as [Collection Name, Hadith No. X]
+- Cite it inline as [N], the RETRIEVED SOURCES index number (see CITATION RULES)
 - Include narrator and grade if available
 `}
 ## 🧾 خلاصہ / Summary
 A brief 2-3 sentence summary tying the evidence together.
 
-## 📚 حوالہ جات / References
-Numbered list of all sources cited, each as a clean human-readable reference
-(e.g. "Al-Baqarah 2:255" or "Sahih al-Bukhari, Hadith 1"). NEVER output raw
-object/JSON syntax, curly braces, or field names like "surah_number:" — write
-references in plain prose only. If a source's surah name is missing, use the
-surah number ("Surah 18:60"); never leave a name blank or print "".
+Do NOT add a "References" / "حوالہ جات" section yourself, and do not end the
+answer with a numbered source list. The app appends one automatically, built
+directly from the same RETRIEVED SOURCES data you were given — matched to the
+[N] numbers you cited inline. A model-typed references list has repeatedly
+disagreed with the model's own inline citations (e.g. "Hadith 3" in the body
+text vs "Hadith 5251" in the list below it) because both were separately
+hand-written from the same context instead of read from one place. Ending
+your answer after the Summary section avoids that failure entirely.
 
 CITATION RULES:
-- Every factual claim MUST have at least one inline citation in square brackets.
-- When quoting Arabic text, cite immediately after.
+- Cite using ONLY the RETRIEVED SOURCES index number in square brackets — [1],
+  [2], etc. — matching the "--- Islamic Source N ---" numbering above. Do NOT
+  type a book name, hadith number, surah:verse, or any other citation text
+  inside the brackets; the app renders the real, verified reference for that
+  number, so a hand-typed citation can silently drift from the source it is
+  attached to.
+- Every factual claim MUST have at least one inline [N] citation.
+- When quoting Arabic text, cite [N] immediately after.
 - Use exact text from sources — do not paraphrase Arabic verses or hadith text.
 
 FORMATTING:

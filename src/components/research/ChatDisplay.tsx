@@ -26,6 +26,7 @@ import type { ResearchMode } from "./ResearchModeSwitcher";
 import { editorRoute } from "@/lib/routes";
 import { DocumentBox } from "./chat/DocumentBox";
 import { SourcesReadyIndicator, TypingDots, UserAvatar, AiAvatar } from "./chat/ChatAtoms";
+import { renderCitedAnswer } from "@/lib/research/citedAnswer";
 
 const VIRTUALIZE_THRESHOLD = 50;
 
@@ -191,17 +192,21 @@ const ChatDisplay = ({
           </motion.div>
         );
       } else if (isLastAssistant) {
+        // Islamic-mode answers get their References section rebuilt from the
+        // verified `citations` data (see citedAnswer.ts) — a no-op outside
+        // Islamic mode, since `citations` is empty there.
+        const renderedContent = renderCitedAnswer(msg.content, citations, t);
         content = (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex gap-2">
             <AiAvatar />
             <div className="flex-1 min-w-0">
               <DocumentBox
-                content={msg.content}
+                content={renderedContent}
                 isRefining={isRefining}
                 onRefine={onRefine}
                 onCopy={onCopyOutput}
                 onRegenerate={onRegenerate}
-                onOpenInEditor={() => navigate(editorRoute(), { state: { content: msg.content, source: "research" } })}
+                onOpenInEditor={() => navigate(editorRoute(), { state: { content: renderedContent, source: "research" } })}
                 t={t}
               />
               {responseLooksTruncated && !isQuerying && onContinue && (
