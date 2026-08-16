@@ -83,7 +83,7 @@ export async function streamResearchQuery({
   sources: Source[];
   strictMode: boolean;
   chatHistory: ChatMessage[];
-  mode?: "general" | "custom";
+  mode?: "general";
 } & StreamCallbacks): Promise<void> {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/research-query`;
   try {
@@ -133,8 +133,8 @@ export async function streamIslamicQuery({
   onSourcesReady,
 }: {
   query: string;
-  selectedDomains: string[];
-  selectedLanguages: string[];
+  selectedDomains?: string[];
+  selectedLanguages?: string[];
   strictMode: boolean;
   chatHistory: ChatMessage[];
   tier: string;
