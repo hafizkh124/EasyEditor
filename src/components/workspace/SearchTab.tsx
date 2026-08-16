@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "./EmptyState";
 import { libraryItemService } from "@/core/workspace/libraryItemService";
+import { searchShamelaAsChunks } from "@/lib/shamela/localShamelaService";
 import type { ChunkSearchHit } from "@/core/backend/types";
 import { stripHarakat } from "@/utils/arabicUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -14,15 +15,19 @@ interface SearchTabProps {
 }
 
 /**
- * SPEC-M6 Phase 5/6 — Keyword + Root Search over imported books.
+ * SPEC-M6 Phase 5/6 — Keyword + Root Search over the Shamela library.
  *
- * FTS5-backed full-text search across every imported book's chunks. Results
- * show the book title and a snippet around the match; clicking a result opens
- * the reader directly on the page where the keyword was found.
+ * Plain search goes through Shamela's own Lucene index — natively on desktop,
+ * via the local bridge on web (see localShamelaService). It used to search only
+ * books already imported into the workspace, which on web meant a permanently
+ * empty tab: the cloud backend's `searchChunks` is a stub returning nothing.
+ * Sitting inside the Shamela tab, searching Shamela is also what a reader
+ * expects. Results show the book title and a snippet around the match; clicking
+ * one opens the reader on that page.
  *
- * When the "root search" toggle is on and Shamela's S2.db is available, the
- * query is expanded to every morphological form sharing its Arabic root
- * (Phase 6), so كتب also matches مكتوب، الكاتب، بكتابة ….
+ * Root search is the exception and still runs over imported chunks: it needs
+ * Shamela's S2.db morphology tables through the desktop FTS5 path, so كتب also
+ * matches مكتوب، الكاتب، بكتابة … (Phase 6). The toggle is disabled without S2.db.
  */
 export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate }) => {
   const { t } = useLanguage();
@@ -61,7 +66,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
     try {
       const hits = rootMode
         ? await libraryItemService.searchChunksByRoot(s2DbPath, trimmed, 100)
-        : await libraryItemService.searchChunks(trimmed, 100);
+        : await searchShamelaAsChunks(trimmed, 100);
       setResults(hits);
       setSearched(true);
     } catch (err: unknown) {

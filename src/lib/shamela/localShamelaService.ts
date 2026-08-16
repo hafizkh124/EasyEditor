@@ -14,6 +14,7 @@
 // retrieval-augmented one (FR-3.3).
 
 import type { ResourceResult } from "@/lib/editor/citationFormat";
+import type { ChunkSearchHit } from "@/core/backend/types";
 import { isDesktop } from "@/core/backend";
 import { getBridgeToken } from "@/core/shamela/shamelaClient";
 import { logger } from "@/lib/logger";
@@ -80,19 +81,25 @@ function toResourceResults(hits: ShamelaHit[]): ResourceResult[] {
  * risk R15 is that the user sees an empty result instead of that reason.
  */
 async function searchViaNative(query: string, limit: number): Promise<ResourceResult[]> {
+  return toResourceResults(await nativeHits(query, limit));
+}
+
+async function nativeHits(query: string, limit: number): Promise<ShamelaHit[]> {
   const results = await window.electronAPI!.shamela.search(query, limit);
-  return toResourceResults(
-    (results || []).map((r) => ({
-      bookId: r.bookId,
-      bookName: r.bookTitle,
-      page: r.pageNumber,
-      content: r.snippet,
-    })),
-  );
+  return (results || []).map((r) => ({
+    bookId: r.bookId,
+    bookName: r.bookTitle,
+    page: r.pageNumber,
+    content: r.snippet,
+  }));
 }
 
 /** Web route — the HTTP sidecar. Unreachable is not an error, just no hits. */
 async function searchViaBridge(query: string, limit: number): Promise<ResourceResult[]> {
+  return toResourceResults(await bridgeHits(query, limit));
+}
+
+async function bridgeHits(query: string, limit: number): Promise<ShamelaHit[]> {
   const isConnected = localStorage.getItem("shamela.connected") === "1";
   if (!isConnected) return [];
 
@@ -114,16 +121,14 @@ async function searchViaBridge(query: string, limit: number): Promise<ResourceRe
   const data: LocalShamelaSearchResponse = await res.json();
   if (!data.results || !Array.isArray(data.results)) return [];
 
-  return toResourceResults(
-    data.results.map((item) => ({
-      bookId: item.book_id,
-      bookName: item.book_name,
-      authorName: item.author_name,
-      volume: item.volume,
-      page: item.page,
-      content: item.content || item.highlighted || "",
-    })),
-  );
+  return data.results.map((item) => ({
+    bookId: item.book_id,
+    bookName: item.book_name,
+    authorName: item.author_name,
+    volume: item.volume,
+    page: item.page,
+    content: item.content || item.highlighted || "",
+  }));
 }
 
 /**
@@ -156,4 +161,38 @@ export async function searchLocalShamela(query: string, limit = 20): Promise<Res
     log.error("Error querying local bridge", { err });
     return [];
   }
+}
+
+/**
+ * Same two routes, shaped for the Library's Shamela search tab.
+ *
+ * That tab used to call `libraryItemService.searchChunks`, which searches only
+ * books already imported into the workspace — and whose cloud implementation is
+ * a stub returning nothing, so on web the tab could never show a result at all.
+ * Sitting inside the Shamela tab it should search Shamela, which is exactly what
+ * these routes already do for the editor's reference dialog.
+ *
+ * `itemId` carries the Shamela book id so a result opens in the reader the same
+ * way a BrowseTab book does.
+ */
+export async function searchShamelaAsChunks(query: string, limit = 50): Promise<ChunkSearchHit[]> {
+  const hits = isDesktop() && window.electronAPI?.shamela
+    ? await nativeHits(query, limit)
+    : await bridgeHits(query, limit);
+
+  return hits.map((hit, idx) => {
+    const parsedPage = hit.page != null ? parseInt(String(hit.page), 10) : NaN;
+    return {
+      itemId: String(hit.bookId ?? ""),
+      title: cleanText(hit.bookName),
+      sourceRef: {
+        book: cleanText(hit.bookName),
+        ...(hit.authorName ? { scholar: cleanText(hit.authorName) } : {}),
+        ...(hit.volume != null ? { volume: hit.volume } : {}),
+      },
+      pageNumber: Number.isNaN(parsedPage) ? null : parsedPage,
+      content: cleanText(hit.content),
+      rank: idx,
+    };
+  });
 }
