@@ -121,7 +121,7 @@ function setCorsAndPnaHeaders(req, res) {
   }
 
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Access-Control-Request-Private-Network');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Bridge-Token, Access-Control-Request-Private-Network');
   // CRITICAL SECURITY HEADER: Chrome Private Network Access (PNA)
   res.setHeader('Access-Control-Allow-Private-Network', 'true');
 }
