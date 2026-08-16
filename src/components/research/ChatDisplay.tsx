@@ -221,7 +221,13 @@ const ChatDisplay = ({
           </motion.div>
         );
       } else {
-        const isRtl = detectRtl(msg.content);
+        // Older assistant answers need the same per-message References rebuild
+        // as the newest one, otherwise their inline [N] markers point nowhere.
+        const olderContent =
+          msg.role === "assistant"
+            ? renderCitedAnswer(msg.content, msg.sourceCitations ?? [], t)
+            : msg.content;
+        const isRtl = detectRtl(olderContent);
         content = (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
@@ -232,10 +238,11 @@ const ChatDisplay = ({
             <AiAvatar />
             <div className="rounded-2xl rounded-tl-md px-4 py-2.5 max-w-[80%] text-sm bg-muted text-foreground border border-border/50 relative shadow-sm">
               <div dir={isRtl ? "rtl" : "ltr"} className={cn("prose prose-sm dark:prose-invert max-w-none", isRtl && "text-right")}>
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <ReactMarkdown>{olderContent}</ReactMarkdown>
               </div>
               <button
-                onClick={() => copyMessage(msg.content)}
+                onClick={() => copyMessage(olderContent)}
+
                 className="absolute top-1.5 end-1.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring md:opacity-0 md:group-hover:opacity-100"
                 aria-label={t("research.copy")}
                 title={t("research.copy")}
