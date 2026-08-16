@@ -31,9 +31,17 @@ async function timed<T>(fn: () => Promise<T>): Promise<[T, number]> {
 async function probeDorar(): Promise<HealthResult> {
   // Uses the current Dorar endpoint (https://dorar.net/dorar_api.json?skey=…).
   // The old /v1/api/hadith/search path returns 404 as of 2026-05.
+  // Needs browser-shaped headers or Cloudflare returns a 200 + HTML
+  // challenge page instead of JSON — see fetchDorar in islamic-api-fetch.
   try {
     const [res, ms] = await timed(() =>
       fetch(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(PROBE_QUERY_AR)}`, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept": "application/json, text/plain, */*",
+          "Accept-Language": "ar,en;q=0.9",
+          "Referer": "https://dorar.net/",
+        },
         signal: AbortSignal.timeout(8_000),
       }),
     );
