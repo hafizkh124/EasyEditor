@@ -209,6 +209,11 @@ export function useResearchChat(args: UseResearchChatArgs) {
 
     if (mode === "islamic") {
       let finalCitations: CitationItem[] = citations;
+      // This query's own sources, in islamic-search's numbering order — kept
+      // separate from `finalCitations` (the session-wide merged list) so the
+      // answer's [N] markers can be resolved against the right array. See
+      // ChatMessage.sourceCitations.
+      let queryCitations: CitationItem[] = [];
       await streamIslamicQuery({
         query: userContent,
         selectedDomains: islamicDomains,
@@ -219,6 +224,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         onDelta,
         onSourcesReady: (count, domains, fetched) => {
           setSourcesReadyInfo({ count, domains });
+          queryCitations = fetched;
           const merged = mergeCitations(citations, fetched);
           finalCitations = merged;
           setCitations(merged);
@@ -227,7 +233,14 @@ export function useResearchChat(args: UseResearchChatArgs) {
           finish();
           // Token deduction handled server-side — just refetch wallet balance
           if (user) refetch();
-          setMessages((prev) => { saveSession(prev, finalCitations); return prev; });
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            const next = last?.role === "assistant"
+              ? prev.map((m, i) => (i === prev.length - 1 ? { ...m, sourceCitations: queryCitations } : m))
+              : prev;
+            saveSession(next, finalCitations);
+            return next;
+          });
         },
         onError: (err) => { toast.error(err); finish(); },
       });
@@ -317,8 +330,13 @@ export function useResearchChat(args: UseResearchChatArgs) {
     if (!lastAssistantMessage) return;
     // Same rebuild ChatDisplay uses for the on-screen answer — copying the
     // raw message would hand the user back the model's own (possibly
-    // mismatched) References section instead of the verified one.
-    navigator.clipboard.writeText(renderCitedAnswer(lastAssistantMessage.content, citations, t));
+    // mismatched) References section instead of the verified one. Must use
+    // this message's OWN sourceCitations, not the session-wide `citations`
+    // (which merges every turn's sources and would misnumber a [N] marker
+    // as soon as a second query has run in this session).
+    navigator.clipboard.writeText(
+      renderCitedAnswer(lastAssistantMessage.content, lastAssistantMessage.sourceCitations ?? [], t),
+    );
     toast.success(t("research.copied"));
   };
 

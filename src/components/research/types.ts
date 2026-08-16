@@ -8,6 +8,7 @@ export interface Source {
 }
 
 import type { AssistResult } from "@/lib/research/streamers";
+import type { CitationItem } from "./CitationPanel";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -18,4 +19,13 @@ export interface ChatMessage {
    * inline highlights and offer dual-copy options without a re-query.
    */
   assist?: AssistResult;
+  /**
+   * The exact `sources_ready` citations for THIS message's query, in the same
+   * order islamic-search numbered them (index N-1 == the model's [N] marker).
+   * Deliberately NOT the session's accumulated `citations` list — that list
+   * merges every turn's sources together, so its array index stops matching
+   * a given answer's [N] markers as soon as a second query has run. Missing
+   * on messages saved before this field existed.
+   */
+  sourceCitations?: CitationItem[];
 }

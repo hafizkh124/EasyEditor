@@ -192,10 +192,13 @@ const ChatDisplay = ({
           </motion.div>
         );
       } else if (isLastAssistant) {
-        // Islamic-mode answers get their References section rebuilt from the
-        // verified `citations` data (see citedAnswer.ts) — a no-op outside
-        // Islamic mode, since `citations` is empty there.
-        const renderedContent = renderCitedAnswer(msg.content, citations, t);
+        // Islamic-mode answers get their References section rebuilt from
+        // THIS message's own retrieved sources (see citedAnswer.ts) — never
+        // the session-wide `citations` prop, which accumulates every turn's
+        // sources and would misnumber a [N] marker once a second query has
+        // run. Messages saved before sourceCitations existed fall back to
+        // no rebuild (the original content is shown as-is).
+        const renderedContent = renderCitedAnswer(msg.content, msg.sourceCitations ?? [], t);
         content = (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex gap-2">
             <AiAvatar />
