@@ -9,6 +9,7 @@ import { planDocumentChunks } from "@/lib/editor/docChunker";
 import { runSingleBatchTask } from "@/lib/tasks/runTask";
 import { getTaskBySlug } from "@/lib/tasks/registry";
 import { calculateTaskCost } from "@/lib/tasks/cost";
+import { rebuildCitedRefinement } from "@/lib/editor/citationFormat";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { useChunkedRuns, type PendingChunkedRun } from "./useChunkedRuns";
@@ -184,16 +185,24 @@ export function useEditorAiActions({
         }
 
         if (resultText) {
+          // The citations task returns [N] index markers, not typed-out
+          // references — rebuild the actual reference text from the
+          // verified `runSources` the same response carried, so what lands
+          // in the document can't drift from what was actually retrieved.
+          const finalText = taskSlug === "citations" && runSources.length > 0
+            ? rebuildCitedRefinement(resultText, runSources)
+            : resultText;
+
           if (aiReview && hasSelection) {
-            const tracked = applyAsSuggestion(from, to, resultText);
+            const tracked = applyAsSuggestion(from, to, finalText);
             if (tracked) {
               if (trackMode === "edit") onSetTrackMode("suggest");
               emitChange();
             } else {
-              applyTextResult(resultText, from, to, hasSelection);
+              applyTextResult(finalText, from, to, hasSelection);
             }
           } else {
-            applyTextResult(resultText, from, to, hasSelection);
+            applyTextResult(finalText, from, to, hasSelection);
           }
           toast.success(t("editor.ai_done"));
 

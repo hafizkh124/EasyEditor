@@ -96,3 +96,42 @@ export function formatCitation(cite: CitationRef, sourceUrl?: string | null): st
   const url = sourceUrl ?? cite.url;
   return url ? `${ref} (${url})` : ref;
 }
+
+/**
+ * Rebuilds the "حوالہ جات / Sources" section of a citations-task result from
+ * the model's [N] index markers plus the verified `sources` array the task
+ * run returned — instead of trusting whatever reference text the model
+ * typed. See buildIslamicCitationsPrompt in supabase/functions/refine-text
+ * for the prompt contract this depends on: the model lists only bracketed
+ * source numbers under that heading, never a hand-typed reference.
+ *
+ * Falls back to returning `resultText` unchanged if the heading or any [N]
+ * markers are missing — an older cached result, or a model that ignored the
+ * instruction, still displays rather than silently losing its content.
+ */
+export function rebuildCitedRefinement(
+  resultText: string,
+  sources: Array<{ reference: string; source_url?: string | null }>,
+): string {
+  if (sources.length === 0) return resultText;
+
+  const headingRe = /\n#{1,4}[^\n]*(?:حوالہ جات|Sources|References)[^\n]*\n/i;
+  const match = headingRe.exec(resultText);
+  if (!match) return resultText;
+
+  const before = resultText.slice(0, match.index + match[0].length);
+  const after = resultText.slice(match.index + match[0].length);
+
+  const indices = [...after.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]));
+  if (indices.length === 0) return resultText;
+
+  const lines = indices
+    .filter((n) => n >= 1 && n <= sources.length)
+    .map((n, i) => {
+      const s = sources[n - 1];
+      return s.source_url ? `${i + 1}. [${s.reference}](${s.source_url})` : `${i + 1}. ${s.reference}`;
+    });
+  if (lines.length === 0) return resultText;
+
+  return `${before}${lines.join("\n")}\n`;
+}

@@ -17,14 +17,31 @@ const corsHeaders = {
 };
 
 // ── Build a citations-with-Islamic-sources prompt using retrieved RAG context ──
+//
+// The model is deliberately NOT asked to type out the reference text itself
+// (title, hadith number, narrator, grade). Earlier versions asked it to
+// paraphrase that from the numbered CURATED ISLAMIC SOURCES block below —
+// but a model retyping a citation from context can drift from the source it
+// is attached to (the same failure independently found in islamic-search's
+// answer citations: inline text saying one hadith number, the references
+// list saying another, because both were separately hand-typed from the
+// same context). Here the model only picks WHICH numbered sources are
+// relevant; the client (rebuildCitedRefinement in
+// src/lib/editor/citationFormat.ts) renders each one from the verified
+// `sources` array this function returns alongside `text`, using the exact
+// [N] markers the model wrote as the only thing it's allowed to get wrong
+// harmlessly (an out-of-range or malformed index is just dropped).
 function buildIslamicCitationsPrompt(contextBlock: string): string {
   return `You are an Islamic research assistant. The user has provided a piece of text (transcribed speech, lecture, or notes).
 Your task:
 1. Keep the user's original text COMPLETELY UNCHANGED at the top.
-2. After the original text, append a section titled "حوالہ جات / Sources" containing 3–6 RELEVANT references chosen ONLY from the curated Islamic sources provided below.
-3. NEVER invent, paraphrase, or fabricate a hadith, Quran verse, fatwa, or scholarly citation. If no curated source is relevant, write a brief note that no matching authentic source was found and DO NOT add any citation.
-4. For each citation, include: short title and narrator/scholar/surah info. Include a URL ONLY if one is given for that source below — never construct, guess, or complete a URL yourself. Sources with no URL get no link.
-5. Maintain the original language of the user's text. Section heading may be bilingual.
+2. After the original text, add a line "---" then a heading "## حوالہ جات / Sources".
+3. Under that heading, list ONLY the bracketed numbers — [N] — of the 3–6 MOST RELEVANT sources from CURATED ISLAMIC SOURCES below, one per line, most relevant first. Example:
+[2]
+[5]
+[1]
+4. Do NOT write the source's title, hadith number, narrator, grade, or any other citation text yourself, and do NOT include a URL — the app renders the verified reference for each number you list. A hand-typed citation can silently disagree with the source it names.
+5. If no curated source is relevant, write a brief note in the user's language that no matching authentic source was found, and list no numbers.
 
 Format:
 
@@ -33,10 +50,11 @@ Format:
 ---
 
 ## حوالہ جات / Sources
-1. [Title or hadith/verse reference] — short context.
-2. ...
+[2]
+[5]
+[1]
 
-CURATED ISLAMIC SOURCES (use ONLY these):
+CURATED ISLAMIC SOURCES (numbered — pick ONLY from these numbers):
 ${contextBlock}`;
 }
 

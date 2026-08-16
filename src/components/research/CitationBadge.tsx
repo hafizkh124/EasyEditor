@@ -37,7 +37,7 @@ interface CitationBadgeProps {
   className?: string;
 }
 
-function formatCitation(domain: string, ref: CitationRef): string {
+export function formatCitation(domain: string, ref: CitationRef): string {
   // Hadith
   if (domain === "dorar" || domain === "sunnah" || domain === "hadith-index" ||
       ref.hadith_number !== undefined) {
