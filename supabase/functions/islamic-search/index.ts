@@ -242,6 +242,37 @@ serve(async (req) => {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
+  // ── Stage timing ────────────────────────────────────────────────────
+  // Latency work on this function has repeatedly been done against numbers
+  // that turned out to be measuring the wrong thing — a "15s" figure taken
+  // while two of four retrieval tiers weren't running, and later a ~13s
+  // client-vs-server gap (2026-08-17) that turned out to be hiding in
+  // auth.getUser and the subscriptions lookup below, which used to run
+  // before any timing existed at all. Started at true handler entry (right
+  // after the OPTIONS short-circuit) so nothing before the first byte is
+  // sent can hide from it again.
+  //
+  // Every stage is logged unconditionally (so Supabase's function logs carry
+  // it for any real user request), and additionally returned in the
+  // `sources_ready` event when the caller passes `debugTiming` — the response
+  // shape is otherwise unchanged, so normal clients see nothing new.
+  const reqStart = performance.now();
+  const stages: Array<{ stage: string; startMs: number; endMs: number; ms: number; count?: number; error?: string }> = [];
+  const since = () => Math.round(performance.now() - reqStart);
+
+  /** Records a stage's own window without altering the promise's behaviour. */
+  const timed = async <T>(stage: string, p: Promise<T>, countOf?: (v: T) => number): Promise<T> => {
+    const startMs = since();
+    try {
+      const v = await p;
+      stages.push({ stage, startMs, endMs: since(), ms: since() - startMs, count: countOf?.(v) });
+      return v;
+    } catch (e) {
+      stages.push({ stage: `${stage} (failed)`, startMs, endMs: since(), ms: since() - startMs });
+      throw e;
+    }
+  };
+
   try {
     // --- Auth ---
     const authHeader = req.headers.get("Authorization");
@@ -256,7 +287,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await timed("auth:getUser", supabase.auth.getUser(token));
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -269,43 +300,18 @@ serve(async (req) => {
     }
 
     // --- Subscription tier (for domain access stratification) ---
-    const { data: sub } = await supabase
-      .from("subscriptions")
-      .select("tier, islamic_queries_used, islamic_queries_limit")
-      .eq("user_id", user.id)
-      .single();
+    const { data: sub } = await timed(
+      "db:subscriptionTier",
+      supabase
+        .from("subscriptions")
+        .select("tier, islamic_queries_used, islamic_queries_limit")
+        .eq("user_id", user.id)
+        .single(),
+    );
 
     const tier = sub?.tier ?? "free";
 
     const { query, selectedDomains, chatHistory, strictMode, debugTiming } = await req.json();
-
-    // ── Stage timing ────────────────────────────────────────────────────
-    // Latency work on this function has twice been done against numbers that
-    // turned out to be measuring the wrong thing — most recently a "15s" figure
-    // taken while two of the four retrieval tiers were silently not running at
-    // all. Guessing which stage is slow from the outside is what produced that;
-    // this records it from the inside instead.
-    //
-    // Every stage is logged unconditionally (so Supabase's function logs carry
-    // it for any real user request), and additionally returned in the
-    // `sources_ready` event when the caller passes `debugTiming` — the response
-    // shape is otherwise unchanged, so normal clients see nothing new.
-    const reqStart = performance.now();
-    const stages: Array<{ stage: string; startMs: number; endMs: number; ms: number; count?: number; error?: string }> = [];
-    const since = () => Math.round(performance.now() - reqStart);
-
-    /** Records a stage's own window without altering the promise's behaviour. */
-    const timed = async <T>(stage: string, p: Promise<T>, countOf?: (v: T) => number): Promise<T> => {
-      const startMs = since();
-      try {
-        const v = await p;
-        stages.push({ stage, startMs, endMs: since(), ms: since() - startMs, count: countOf?.(v) });
-        return v;
-      } catch (e) {
-        stages.push({ stage: `${stage} (failed)`, startMs, endMs: since(), ms: since() - startMs });
-        throw e;
-      }
-    };
 
     if (!query) {
       return new Response(JSON.stringify({ error: "Query is required" }), {
@@ -315,9 +321,9 @@ serve(async (req) => {
 
     // Token-based quota check: 40 tokens per Islamic research query
     const tokenCost = calculateCost("islamic", 1);
-    const tokenResult = await checkAndDeductTokens(
-      supabase, user.id, tokenCost, "islamic",
-      `Islamic query: ${query.slice(0, 60)}`,
+    const tokenResult = await timed(
+      "db:checkAndDeductTokens",
+      checkAndDeductTokens(supabase, user.id, tokenCost, "islamic", `Islamic query: ${query.slice(0, 60)}`),
     );
     if (!tokenResult.ok) {
       return insufficientTokensResponse(tokenResult, corsHeaders);
