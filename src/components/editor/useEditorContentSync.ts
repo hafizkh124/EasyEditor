@@ -102,10 +102,13 @@ export function useEditorContentSync({
     editor.commands.setContent(contentJson as Parameters<typeof editor.commands.setContent>[0]);
     const html = editor.getHTML();
     const text = editor.getText();
-    setIsRtl(isRtlText(text));
+    if (!storedDirection && text.trim()) {
+      resolved.current = true;
+      setIsRtl(isRtlText(text));
+    }
     onChange?.(html, text);
     onDocChange?.({ json: editor.getJSON() as Record<string, unknown>, text, html });
-  }, [contentRevision, contentJson, editor, onChange, onDocChange]);
+  }, [contentRevision, contentJson, editor, onChange, onDocChange, storedDirection]);
 
   useEffect(() => {
     if (!editor) return;
@@ -123,7 +126,16 @@ export function useEditorContentSync({
     if (editor.view?.dom) editor.view.dom.setAttribute("dir", dir);
   }, [isRtl, editor, editorClass]);
 
-  const toggleDirection = useCallback(() => setIsRtl((prev) => !prev), []);
+  // An explicit toggle is a decision: it settles the direction for this
+  // document and is handed upward so it can be persisted.
+  const toggleDirection = useCallback(() => {
+    resolved.current = true;
+    setIsRtl((prev) => {
+      const next = !prev;
+      onDirectionChange?.(next ? "rtl" : "ltr");
+      return next;
+    });
+  }, [onDirectionChange]);
 
   return { isRtl, toggleDirection };
 }
