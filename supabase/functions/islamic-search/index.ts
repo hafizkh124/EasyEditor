@@ -299,8 +299,16 @@ serve(async (req) => {
       return rateLimitResponse(corsHeaders);
     }
 
-    // --- Subscription tier (for domain access stratification) ---
-    const { data: sub } = await timed(
+    // `tier` (below) has no effect on this request's behavior today — see the
+    // `void tier` a few lines down — so its fetch has nothing to serialize
+    // behind. Kick it off alongside body-parsing and only join it with
+    // checkAndDeductTokens once we have what that needs (query, tokenCost).
+    // Both `subscriptionTier` and `checkAndDeductTokens` need only
+    // `user.id`, not each other's result, so they run concurrently instead
+    // of the ~1-1.5s of serial DB round-trips this used to cost — caught by
+    // Lovable's live timing read of the auth/subscription/token instrumentation
+    // added just before this (2026-08-17).
+    const subPromise = timed(
       "db:subscriptionTier",
       supabase
         .from("subscriptions")
@@ -308,8 +316,6 @@ serve(async (req) => {
         .eq("user_id", user.id)
         .single(),
     );
-
-    const tier = sub?.tier ?? "free";
 
     const { query, selectedDomains, chatHistory, strictMode, debugTiming } = await req.json();
 
@@ -321,10 +327,16 @@ serve(async (req) => {
 
     // Token-based quota check: 40 tokens per Islamic research query
     const tokenCost = calculateCost("islamic", 1);
-    const tokenResult = await timed(
-      "db:checkAndDeductTokens",
-      checkAndDeductTokens(supabase, user.id, tokenCost, "islamic", `Islamic query: ${query.slice(0, 60)}`),
-    );
+    const [{ data: sub }, tokenResult] = await Promise.all([
+      subPromise,
+      timed(
+        "db:checkAndDeductTokens",
+        checkAndDeductTokens(supabase, user.id, tokenCost, "islamic", `Islamic query: ${query.slice(0, 60)}`),
+      ),
+    ]);
+
+    const tier = sub?.tier ?? "free";
+
     if (!tokenResult.ok) {
       return insufficientTokensResponse(tokenResult, corsHeaders);
     }
@@ -630,14 +642,6 @@ serve(async (req) => {
       })()
     );
 
-    const fanOutStart = since();
-    const settled = await Promise.allSettled(fanOutPromises);
-    stages.push({ stage: "fanOut(all tiers)", startMs: fanOutStart, endMs: since(), ms: since() - fanOutStart });
-    const allResults: IslamicResult[] = [];
-    for (const r of settled) {
-      if (r.status === "fulfilled") allResults.push(...r.value);
-    }
-
     // ── Topic-anchor always-merge ────────────────────────────────────────
     // If the user asked about a recognized topic (charity, prayer, etc.),
     // ALWAYS force-fetch the canonical anchor refs and prepend them. The
@@ -646,11 +650,17 @@ serve(async (req) => {
     // for canonical-anchored topics. Per Phase 7.3 of the locked plan.
     //
     // Anchors are only inserted when they actually exist in scholarly_documents.
+    //
+    // The fetches are built here — alongside the tier fan-out, not after it
+    // — and awaited together below. `lookupTopicAnchors` only needs `query`,
+    // not anything the fan-out returns, so there was never a real reason for
+    // this to run serially after fan-out finished; it previously showed up
+    // as the largest single serial block (1.4-3.0s) sitting entirely after
+    // an already-complete fan-out (caught via Lovable's 2026-08-17 timing
+    // read of this file's own instrumentation).
     const anchors = lookupTopicAnchors(query);
+    const anchorFetches: Promise<IslamicResult[]>[] = [];
     if (anchors) {
-      const anchorsStart = since();
-      const anchorFetches: Promise<IslamicResult[]>[] = [];
-
       if (anchors.quran.length > 0) {
         const wanted = anchors.quran.slice(0, 4);
         const filters = wanted.map(
@@ -709,8 +719,22 @@ serve(async (req) => {
             })
         );
       }
+    }
 
-      const extra = (await Promise.all(anchorFetches)).flat();
+    const fanOutStart = since();
+    const anchorsStart = fanOutStart;
+    const [settled, anchorResultsRaw] = await Promise.all([
+      Promise.allSettled(fanOutPromises),
+      Promise.all(anchorFetches),
+    ]);
+    stages.push({ stage: "fanOut(all tiers)", startMs: fanOutStart, endMs: since(), ms: since() - fanOutStart });
+    const allResults: IslamicResult[] = [];
+    for (const r of settled) {
+      if (r.status === "fulfilled") allResults.push(...r.value);
+    }
+
+    if (anchors) {
+      const extra = anchorResultsRaw.flat();
       stages.push({
         stage: `topicAnchors:fetch(${anchors.quran.length}q+${anchors.hadith.length}h anchors)`,
         startMs: anchorsStart,
