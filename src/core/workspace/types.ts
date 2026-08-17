@@ -30,6 +30,14 @@ export interface Document {
   sort_order: number;
   status: DocumentStatus;
   word_count: number;
+  /**
+   * Explicit writing direction. `null` means undecided — the editor detects it
+   * from the content, which is what every document did before this column
+   * existed. A value is stored only once the direction is actually known (the
+   * author toggled it, or a new document was created from unambiguous text),
+   * so a stored value is a decision and never a guess.
+   */
+  text_direction: "rtl" | "ltr" | null;
   created_at: string;
   updated_at: string;
 }

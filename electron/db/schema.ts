@@ -50,6 +50,10 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
       sort_order INTEGER NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'draft',
       word_count INTEGER NOT NULL DEFAULT 0,
+      -- Explicit writing direction. NULL means undecided: the editor detects
+      -- from content, exactly as it always did. Mirrors the cloud column added
+      -- in 20260817000000_document_text_direction.sql.
+      text_direction TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -244,6 +248,16 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
   // SPEC-M6: Add updated_at column to library_items if missing (ALTER TABLE is idempotent with try-catch)
   try {
     db.exec(`ALTER TABLE library_items ADD COLUMN updated_at TEXT DEFAULT NULL;`);
+  } catch {
+    // Column already exists
+  }
+
+  // Writing direction for desktop databases created before the column existed.
+  // Adding it nullable with no default is what makes this safe on an existing
+  // install: every current row becomes "undecided" and keeps opening exactly as
+  // it does today, so upgrading cannot flip the direction of anyone's work.
+  try {
+    db.exec(`ALTER TABLE documents ADD COLUMN text_direction TEXT DEFAULT NULL;`);
   } catch {
     // Column already exists
   }

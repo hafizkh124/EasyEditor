@@ -3,6 +3,8 @@ import type { Editor } from "@tiptap/react";
 import { isRtlText } from "@/utils/textUtils";
 import type { DocChangePayload } from "./RichEditor";
 
+export type TextDirection = "rtl" | "ltr";
+
 interface ContentSyncArgs {
   editor: Editor | null;
   initialContent?: string | Record<string, unknown>;
@@ -11,6 +13,15 @@ interface ContentSyncArgs {
   editorClass: string;
   onChange?: (html: string, text: string) => void;
   onDocChange?: (payload: DocChangePayload) => void;
+  /**
+   * The document's stored direction. `null`/undefined means undecided, in
+   * which case it is detected from content as before. A stored value always
+   * wins: it is a decision the author made, and re-deriving it from text would
+   * throw that away every time the document is reopened.
+   */
+  direction?: TextDirection | null;
+  /** Fired when the author toggles direction, so it can be persisted. */
+  onDirectionChange?: (direction: TextDirection) => void;
 }
 
 /**
@@ -32,15 +43,26 @@ export function useEditorContentSync({
   editorClass,
   onChange,
   onDocChange,
+  direction,
+  onDirectionChange,
 }: ContentSyncArgs) {
   const initialText = typeof initialContent === "string" ? initialContent : "";
-  const [isRtl, setIsRtl] = useState(() => isRtlText(initialText));
+  const [isRtl, setIsRtl] = useState(() =>
+    direction ? direction === "rtl" : isRtlText(initialText),
+  );
+
+  // A stored direction is authoritative and must also win when the *document*
+  // changes under a reused editor instance — switching from an Urdu document to
+  // an English one has to flip, not inherit.
+  useEffect(() => {
+    if (direction) setIsRtl(direction === "rtl");
+  }, [direction]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || direction) return;
     const text = editor.getText();
     if (text.trim()) setIsRtl(isRtlText(text));
-  }, [editor]);
+  }, [editor, direction]);
 
   useEffect(() => {
     if (!editor || editor.getText().trim()) return;
@@ -52,8 +74,14 @@ export function useEditorContentSync({
           : null;
     if (!next) return;
     editor.commands.setContent(next as Parameters<typeof editor.commands.setContent>[0]);
-    setIsRtl(isRtlText(editor.getText()));
-  }, [initialContent, contentJson, editor]);
+    // Detection has to happen *after* the content lands, and only while the
+    // direction is still undecided. Previously this was the sole place a
+    // direction was ever derived, and it ran behind an "editor is empty" guard
+    // — so whatever it concluded on the first load was permanent, and a
+    // document whose text arrived late (or into an editor that already held the
+    // previous document) kept an direction that its own content contradicted.
+    if (!direction) setIsRtl(isRtlText(editor.getText()));
+  }, [initialContent, contentJson, editor, direction]);
 
   // Seeded with the revision present on the first render, so mounting never
   // counts as a restore — only a later change does.
@@ -88,7 +116,16 @@ export function useEditorContentSync({
     if (editor.view?.dom) editor.view.dom.setAttribute("dir", dir);
   }, [isRtl, editor, editorClass]);
 
-  const toggleDirection = useCallback(() => setIsRtl((prev) => !prev), []);
+  // An explicit toggle is the strongest signal there is about a document's
+  // direction, so it is reported upward to be stored — that is what stops the
+  // next open from re-deriving (and possibly contradicting) the author's choice.
+  const toggleDirection = useCallback(() => {
+    setIsRtl((prev) => {
+      const next = !prev;
+      onDirectionChange?.(next ? "rtl" : "ltr");
+      return next;
+    });
+  }, [onDirectionChange]);
 
   return { isRtl, toggleDirection };
 }
