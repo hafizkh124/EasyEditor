@@ -31,13 +31,16 @@ export interface Document {
   status: DocumentStatus;
   word_count: number;
   /**
-   * Explicit writing direction. `null` means undecided — the editor detects it
-   * from the content, which is what every document did before this column
-   * existed. A value is stored only once the direction is actually known (the
-   * author toggled it, or a new document was created from unambiguous text),
-   * so a stored value is a decision and never a guess.
+   * Explicit writing direction. `null`/undefined means undecided — the editor
+   * detects it from the content, which is what every document did before this
+   * column existed. A value is stored only once the direction is actually
+   * known (the author pressed the RTL/LTR button), so a stored value is always
+   * a decision and never a guess.
+   *
+   * Optional rather than required: rows read back from before the migration,
+   * and any code building a Document literal, must stay valid without it.
    */
-  text_direction: "rtl" | "ltr" | null;
+  text_direction?: "rtl" | "ltr" | null;
   created_at: string;
   updated_at: string;
 }

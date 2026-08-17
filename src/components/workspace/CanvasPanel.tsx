@@ -114,11 +114,15 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
           initialContent={initialContent}
           contentJson={restoredContent ?? doc?.content_json}
           contentRevision={contentRevision}
+          textDirection={doc?.text_direction ?? null}
+          // Routed up to `useDocument.updateDirection` rather than calling the
+          // service straight from here: that keeps the in-memory `doc` in step
+          // with the row, so a direct service call cannot leave the editor
+          // reading a stale direction for the rest of the session.
+          onTextDirectionChange={onDirectionChange}
           placeholder={t("editor.placeholder", "شروعات کے لیے کچھ لکھیں یا ریسرچ ورک بینچ سے مواد لائیں...")}
           onChange={onEditorChange}
           onDocChange={onDocChange}
-          direction={doc?.text_direction ?? null}
-          onDirectionChange={onDirectionChange}
           pendingInsertHtml={pendingCanvasInsertion}
           onInsertHandled={clearPendingCanvasInsertion}
           selectionBar={({ selectedText, isBusy, actions }) => (

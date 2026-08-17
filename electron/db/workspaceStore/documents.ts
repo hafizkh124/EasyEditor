@@ -126,9 +126,9 @@ export function updateDocument(
   const contentJson = updates.content_json ?? doc.content_json;
   const status = updates.status ?? doc.status;
   const sortOrder = updates.sort_order ?? doc.sort_order;
-  // `??` rather than a truthiness check: null is a legitimate value here
+  // An explicit `undefined` check, not `??`: null is a legitimate value here
   // ("undecided"), so only an absent key means "leave as-is".
-  const textDirection = updates.text_direction !== undefined ? updates.text_direction : doc.text_direction;
+  const textDirection = updates.text_direction !== undefined ? updates.text_direction : (doc.text_direction ?? null);
   const plainText = updates.content_json ? extractPlainTextFromJSON(contentJson) : doc.plain_text;
   const wordCount = updates.content_json ? countWords(plainText) : doc.word_count;
 
@@ -136,7 +136,7 @@ export function updateDocument(
     UPDATE documents
     SET title = ?, content_json = ?, plain_text = ?, status = ?, sort_order = ?, word_count = ?, text_direction = ?, updated_at = ?
     WHERE id = ?
-  `).run(title, JSON.stringify(contentJson), plainText, status, sortOrder, wordCount, textDirection ?? null, now, id);
+  `).run(title, JSON.stringify(contentJson), plainText, status, sortOrder, wordCount, textDirection, now, id);
 
   return { ...doc, title, content_json: contentJson, plain_text: plainText, status, sort_order: sortOrder, word_count: wordCount, text_direction: textDirection, updated_at: now };
 }
