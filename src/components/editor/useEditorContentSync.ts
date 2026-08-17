@@ -3,12 +3,18 @@ import type { Editor } from "@tiptap/react";
 import { isRtlText } from "@/utils/textUtils";
 import type { DocChangePayload } from "./RichEditor";
 
+export type StoredTextDirection = "rtl" | "ltr" | null | undefined;
+
 interface ContentSyncArgs {
   editor: Editor | null;
   initialContent?: string | Record<string, unknown>;
   contentJson?: Record<string, unknown>;
   contentRevision?: number;
   editorClass: string;
+  /** Persisted direction for this document; null/undefined = not decided yet. */
+  storedDirection?: StoredTextDirection;
+  /** Called when the user deliberately flips direction, so it can be saved. */
+  onDirectionChange?: (dir: "rtl" | "ltr") => void;
   onChange?: (html: string, text: string) => void;
   onDocChange?: (payload: DocChangePayload) => void;
 }
@@ -17,11 +23,13 @@ interface ContentSyncArgs {
  * Getting externally-supplied content into the editor without ever clobbering
  * the user's typing, plus the text direction that content implies.
  *
- * Split out of `RichEditor` for the 300-line limit (SPEC-M3 NFR-1); the three
- * rules it encodes are unchanged:
- *  1. direction is read from what the editor actually holds, not from a prop;
- *  2. late-arriving content is adopted only while the editor is still empty;
- *  3. a version restore (`contentRevision` bump) overwrites deliberately, and
+ * Split out of `RichEditor` for the 300-line limit (SPEC-M3 NFR-1); the rules
+ * it encodes:
+ *  1. a persisted direction always wins — it is a decision, not a guess;
+ *  2. otherwise direction is detected from what the editor actually holds, and
+ *     re-detected when the content arrives late or the document changes;
+ *  3. late-arriving content is adopted only while the editor is still empty;
+ *  4. a version restore (`contentRevision` bump) overwrites deliberately, and
  *     must emit the change by hand because `setContent` fires no `onUpdate`.
  */
 export function useEditorContentSync({
@@ -30,17 +38,37 @@ export function useEditorContentSync({
   contentJson,
   contentRevision,
   editorClass,
+  storedDirection,
+  onDirectionChange,
   onChange,
   onDocChange,
 }: ContentSyncArgs) {
   const initialText = typeof initialContent === "string" ? initialContent : "";
-  const [isRtl, setIsRtl] = useState(() => isRtlText(initialText));
+  const [isRtl, setIsRtl] = useState(() =>
+    storedDirection ? storedDirection === "rtl" : isRtlText(initialText),
+  );
+
+  // True once the direction for the currently-open document is settled, either
+  // from a stored value or from real content. Until then detection keeps
+  // re-running, so a guess made against an empty editor is never permanent.
+  const resolved = useRef<boolean>(Boolean(storedDirection));
 
   useEffect(() => {
-    if (!editor) return;
+    if (storedDirection) {
+      resolved.current = true;
+      setIsRtl(storedDirection === "rtl");
+    } else {
+      resolved.current = false;
+    }
+  }, [storedDirection]);
+
+  useEffect(() => {
+    if (!editor || resolved.current) return;
     const text = editor.getText();
-    if (text.trim()) setIsRtl(isRtlText(text));
-  }, [editor]);
+    if (!text.trim()) return;
+    resolved.current = true;
+    setIsRtl(isRtlText(text));
+  }, [editor, contentJson, initialContent, contentRevision]);
 
   useEffect(() => {
     if (!editor || editor.getText().trim()) return;
@@ -52,8 +80,15 @@ export function useEditorContentSync({
           : null;
     if (!next) return;
     editor.commands.setContent(next as Parameters<typeof editor.commands.setContent>[0]);
-    setIsRtl(isRtlText(editor.getText()));
+    if (!resolved.current) {
+      const text = editor.getText();
+      if (text.trim()) {
+        resolved.current = true;
+        setIsRtl(isRtlText(text));
+      }
+    }
   }, [initialContent, contentJson, editor]);
+
 
   // Seeded with the revision present on the first render, so mounting never
   // counts as a restore — only a later change does.
