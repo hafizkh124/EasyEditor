@@ -30,6 +30,12 @@ export interface Document {
   sort_order: number;
   status: DocumentStatus;
   word_count: number;
+  /**
+   * Persisted reading direction. `null`/undefined means "not decided yet" —
+   * the editor detects direction from the content. A stored value is always a
+   * deliberate choice (the user pressed the RTL/LTR button), never a guess.
+   */
+  text_direction?: "rtl" | "ltr" | null;
   created_at: string;
   updated_at: string;
 }

@@ -50,6 +50,8 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
       sort_order INTEGER NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'draft',
       word_count INTEGER NOT NULL DEFAULT 0,
+      -- NULL = direction not decided yet (detected from content at open time).
+      text_direction TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -244,6 +246,14 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
   // SPEC-M6: Add updated_at column to library_items if missing (ALTER TABLE is idempotent with try-catch)
   try {
     db.exec(`ALTER TABLE library_items ADD COLUMN updated_at TEXT DEFAULT NULL;`);
+  } catch {
+    // Column already exists
+  }
+
+  // Upgrade path for local databases created before text_direction existed.
+  // NULL default means every existing document keeps its current behaviour.
+  try {
+    db.exec(`ALTER TABLE documents ADD COLUMN text_direction TEXT DEFAULT NULL;`);
   } catch {
     // Column already exists
   }
