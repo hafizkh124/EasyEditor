@@ -12,7 +12,7 @@ import { useTrackChanges, type TrackMode } from "./useTrackChanges";
 import { useFormatBrush } from "./useFormatBrush";
 import { useSelectionOverlay } from "./useSelectionOverlay";
 import { useIncompleteRun } from "./useIncompleteRun";
-import { useEditorContentSync, useFullscreen, type TextDirection } from "./useEditorContentSync";
+import { useEditorContentSync, useFullscreen } from "./useEditorContentSync";
 import { useEditorInserts } from "./useEditorInserts";
 import { useAnnotations } from "./useAnnotations";
 import EditorToolbar from "./EditorToolbar";
@@ -59,10 +59,10 @@ interface RichEditorProps {
    */
   pendingInsertHtml?: string | null;
   onInsertHandled?: () => void;
-  /** The document's stored writing direction; null/undefined = detect it. */
-  direction?: TextDirection | null;
-  /** Fired when the author toggles direction, so the caller can persist it. */
-  onDirectionChange?: (direction: TextDirection) => void;
+  /** Persisted direction for this document; null/undefined = not decided yet. */
+  textDirection?: "rtl" | "ltr" | null;
+  /** Fired when the user flips direction, so the caller can persist it. */
+  onTextDirectionChange?: (dir: "rtl" | "ltr") => void;
 }
 
 /**
@@ -90,8 +90,8 @@ const RichEditor = ({
   selectionBar,
   pendingInsertHtml,
   onInsertHandled,
-  direction,
-  onDirectionChange,
+  textDirection,
+  onTextDirectionChange,
 }: RichEditorProps) => {
   const { session } = useAuth();
   const { t } = useLanguage();
@@ -154,10 +154,10 @@ const RichEditor = ({
     contentJson,
     contentRevision,
     editorClass: EDITOR_CLASS,
+    storedDirection: textDirection,
+    onDirectionChange: onTextDirectionChange,
     onChange,
     onDocChange,
-    direction,
-    onDirectionChange,
   });
 
   const { isFullscreen, toggleFullscreen } = useFullscreen();
