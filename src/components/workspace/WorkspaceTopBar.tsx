@@ -18,7 +18,7 @@ import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { VersionHistorySheet } from "./VersionHistorySheet";
 import { exportTxt, exportHtml, exportDoc, exportPdf, stripSuggestions } from "@/lib/editor/exporters";
 import { splitChaptersFromHtml } from "@/lib/audiobook/splitChapters";
-import { isDesktop } from "@/utils/environment";
+import { isDesktop, modifierKeyLabel } from "@/utils/environment";
 import { WorkspaceAppMenu } from "./WorkspaceAppMenu";
 import { DesktopAccountMenu } from "@/components/auth/DesktopAccountMenu";
 import type { Document, DocumentVersion } from "@/core/workspace/types";
@@ -196,7 +196,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           <Search className="h-3.5 w-3.5" />
           <span>{t("common.search", "Search")}</span>
           <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-xs font-medium text-muted-foreground opacity-100">
-            {t("common.cmd_k", "⌘K")}
+            {`${modifierKeyLabel()}K`}
           </kbd>
         </Button>
 
@@ -286,7 +286,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => setCommandPaletteOpen(true)} className="gap-2">
-                <Search className="h-4 w-4" /> {t("common.search", "Search")} {t("common.cmd_k_hint", "(⌘K)")}
+                <Search className="h-4 w-4" /> {t("common.search", "Search")} {`(${modifierKeyLabel()}K)`}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCopy} className="gap-2">
                 <Copy className="h-4 w-4" /> {t("editor.copy", "Copy Text")}

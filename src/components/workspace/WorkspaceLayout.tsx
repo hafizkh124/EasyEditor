@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ResizablePanelGroup,
@@ -14,6 +14,7 @@ import { CanvasPanel } from "./CanvasPanel";
 import { WorkbenchPanel } from "./WorkbenchPanel";
 import { CommandPalette } from "./CommandPalette";
 import { useDocument } from "@/core/workspace/useDocument";
+import { countWords } from "@/core/workspace/documentService";
 import type { DocChangePayload } from "@/components/editor/RichEditor";
 
 import { useAllDocuments } from "@/core/workspace/useAllDocuments";
@@ -112,6 +113,14 @@ export const WorkspaceLayout: React.FC = () => {
     setCurrentText(text);
   };
 
+  // Counted from what the editor holds right now rather than the row's saved
+  // `word_count`, which only advances when a save lands. Null while no document
+  // is open so the tree falls back to each row's stored value.
+  const liveWordCount = useMemo(
+    () => (activeDocumentId && currentText ? countWords(currentText) : null),
+    [activeDocumentId, currentText],
+  );
+
   const handleCloseReader = () => {
     setActiveDocumentId(null);
     navigate("/workspace", { replace: true });
@@ -181,6 +190,7 @@ export const WorkspaceLayout: React.FC = () => {
             <LibraryPanel
               forceExpanded={isMobile}
               onNavigate={isMobile ? () => setMobileLibraryOpen(false) : undefined}
+              activeDocumentWordCount={liveWordCount}
             />
           </ResizablePanel>
 

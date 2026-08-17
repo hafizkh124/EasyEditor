@@ -6,6 +6,7 @@ import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { isWorkbenchTab } from "@/core/workspace/usePanelState";
 import { documentService } from "@/core/workspace/documentService";
 import { htmlToTiptapJSON } from "@/core/workspace/bookSectionMigration";
+import { markdownToHtml, deriveTitleFromText, looksLikeHtml, htmlToPlainText } from "@/lib/editor/htmlText";
 import { useSeo } from "@/hooks/useSeo";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateStored } from "@/lib/i18n";
@@ -62,10 +63,23 @@ const WorkspacePage: React.FC = () => {
             handoffSource === "transcribe" ? "editor.from_transcribe" :
             handoffSource === "extract" ? "editor.from_extract" :
             "editor.untitled";
+          // Handoff arrives in three formats depending on who sent it:
+          // ExtractPanel sends HTML, the research panel sends markdown, and
+          // OCR/Transcribe/Translate send plain text. Only the non-HTML ones
+          // need converting — before this, markdown went straight into the HTML
+          // parser and its `**bold**` and `## heading` markers survived as
+          // literal characters in the document.
+          const handoffHtml = looksLikeHtml(handoffContent)
+            ? handoffContent
+            : markdownToHtml(handoffContent);
+          // Name the document after what it actually contains; the generic
+          // "From Research" style label is only the fallback, since a workspace
+          // full of identically-named documents is unnavigable.
+          const derivedTitle = deriveTitleFromText(htmlToPlainText(handoffHtml));
           const created = await documentService.createDocument(
             proj.id,
-            t(titleKey as import("@/lib/i18n").TranslationKey) || "Untitled Document",
-            htmlToTiptapJSON(handoffContent),
+            derivedTitle || t(titleKey as import("@/lib/i18n").TranslationKey) || "Untitled Document",
+            htmlToTiptapJSON(handoffHtml),
           );
           navigate(`/workspace/${created.id}${panelQuery}`, { replace: true });
           return;

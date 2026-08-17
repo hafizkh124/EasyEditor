@@ -1521,8 +1521,6 @@
   "library.citations_full": "الاستشهادات",
   "library.title": "المكتبة",
   "common.app_name": "Easy Editor",
-  "common.cmd_k": "⌘K",
-  "common.cmd_k_hint": "(⌘K)",
   "library.confidence_badge": "{label} ({percent}%)",
   "home.firstrun.title": "مرحبًا بك في إيزي إيديتور",
   "home.firstrun.step1": "افتح أو استورد كتابًا من المكتبة لبدء القراءة",

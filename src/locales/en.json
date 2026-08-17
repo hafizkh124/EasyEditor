@@ -1521,8 +1521,6 @@
   "library.citations_full": "Citations",
   "library.title": "Library",
   "common.app_name": "Easy Editor",
-  "common.cmd_k": "⌘K",
-  "common.cmd_k_hint": "(⌘K)",
   "library.confidence_badge": "{label} ({percent}%)",
   "home.firstrun.title": "Welcome to Easy Editor",
   "home.firstrun.step1": "Open or import a book from the Library to start reading",

@@ -24,11 +24,17 @@ interface LibraryDocumentTreeProps {
   onSelectDocument: (doc: Document, projectKind?: ProjectKind) => void;
   onCreateDocument: (projectId: string) => void;
   onCreateProject: () => void;
+  /**
+   * Live word count for the document currently open in the Canvas. `word_count`
+   * on the row is only written when a save lands, so without this the count the
+   * author is watching stays frozen while they type.
+   */
+  activeDocumentWordCount?: number | null;
 }
 
 export const LibraryDocumentTree: React.FC<LibraryDocumentTreeProps> = ({
   projects, docsMap, activeDocumentId, loading, searchQuery, searchResults,
-  onSelectDocument, onCreateDocument, onCreateProject,
+  onSelectDocument, onCreateDocument, onCreateProject, activeDocumentWordCount,
 }) => {
   const { t } = useLanguage();
   // Search spans every project and names the project each hit came from — the
@@ -52,8 +58,11 @@ export const LibraryDocumentTree: React.FC<LibraryDocumentTreeProps> = ({
                 activeDocumentId === d.id ? "bg-sidebar-accent font-medium text-primary" : "text-sidebar-foreground"
               }`}
             >
-              <p className="text-xs font-semibold truncate">{d.title}</p>
-              <p className="text-xs text-muted-foreground truncate">{d.projectName}</p>
+              {/* dir="auto" per title, not per panel: in the RTL sidebar an
+                  English name would otherwise be clipped from its start, so a
+                  truncated "Untitled Document" read as "…ocument". */}
+              <p dir="auto" className="text-xs font-semibold truncate">{d.title}</p>
+              <p dir="auto" className="text-xs text-muted-foreground truncate">{d.projectName}</p>
             </button>
           ))
         )}
@@ -91,7 +100,7 @@ export const LibraryDocumentTree: React.FC<LibraryDocumentTreeProps> = ({
             <div className="flex items-center justify-between px-2 py-1.5 rounded-md bg-sidebar-accent/30 text-sidebar-foreground">
               <div className="flex items-center gap-2 min-w-0">
                 <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span className="text-xs font-semibold truncate">{p.title}</span>
+                <span dir="auto" className="text-xs font-semibold truncate">{p.title}</span>
               </div>
               <Button
                 variant="ghost"
@@ -127,8 +136,13 @@ export const LibraryDocumentTree: React.FC<LibraryDocumentTreeProps> = ({
                           : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                       }`}
                     >
-                      <span className="truncate">{doc.title}</span>
-                      <span className="text-xs text-muted-foreground shrink-0 ms-1">{t("library.word_count_short", "{count}w").replace("{count}", String(doc.word_count))}</span>
+                      <span dir="auto" className="truncate">{doc.title}</span>
+                      <span className="text-xs text-muted-foreground shrink-0 ms-1">
+                        {t("library.word_count_short", "{count}w").replace(
+                          "{count}",
+                          String(isActive && activeDocumentWordCount != null ? activeDocumentWordCount : doc.word_count),
+                        )}
+                      </span>
                     </button>
                   );
                 })

@@ -1521,8 +1521,6 @@
   "library.citations_full": "حوالہ جات",
   "library.title": "لائبریری",
   "common.app_name": "Easy Editor",
-  "common.cmd_k": "⌘K",
-  "common.cmd_k_hint": "(⌘K)",
   "library.confidence_badge": "{label} ({percent}%)",
   "home.firstrun.title": "ایزی ایڈیٹر میں خوش آمدید",
   "home.firstrun.step1": "پڑھنا شروع کرنے کے لیے لائبریری سے کتاب کھولیں یا درآمد کریں",
