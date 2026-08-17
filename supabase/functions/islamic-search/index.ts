@@ -277,7 +277,35 @@ serve(async (req) => {
 
     const tier = sub?.tier ?? "free";
 
-    const { query, selectedDomains, chatHistory, strictMode } = await req.json();
+    const { query, selectedDomains, chatHistory, strictMode, debugTiming } = await req.json();
+
+    // ── Stage timing ────────────────────────────────────────────────────
+    // Latency work on this function has twice been done against numbers that
+    // turned out to be measuring the wrong thing — most recently a "15s" figure
+    // taken while two of the four retrieval tiers were silently not running at
+    // all. Guessing which stage is slow from the outside is what produced that;
+    // this records it from the inside instead.
+    //
+    // Every stage is logged unconditionally (so Supabase's function logs carry
+    // it for any real user request), and additionally returned in the
+    // `sources_ready` event when the caller passes `debugTiming` — the response
+    // shape is otherwise unchanged, so normal clients see nothing new.
+    const reqStart = performance.now();
+    const stages: Array<{ stage: string; startMs: number; endMs: number; ms: number; count?: number }> = [];
+    const since = () => Math.round(performance.now() - reqStart);
+
+    /** Records a stage's own window without altering the promise's behaviour. */
+    const timed = async <T>(stage: string, p: Promise<T>, countOf?: (v: T) => number): Promise<T> => {
+      const startMs = since();
+      try {
+        const v = await p;
+        stages.push({ stage, startMs, endMs: since(), ms: since() - startMs, count: countOf?.(v) });
+        return v;
+      } catch (e) {
+        stages.push({ stage: `${stage} (failed)`, startMs, endMs: since(), ms: since() - startMs });
+        throw e;
+      }
+    };
 
     if (!query) {
       return new Response(JSON.stringify({ error: "Query is required" }), {
@@ -321,7 +349,7 @@ serve(async (req) => {
     // is the only consumer — its own async block below awaits this promise
     // internally, so the plan call now overlaps with Tier A/B/C instead of
     // blocking them.
-    const queryPlanPromise = planQuery(query, supabase).catch(() => null);
+    const queryPlanPromise = timed("planQuery", planQuery(query, supabase).catch(() => null));
 
     // --- Fan-out: Tier A (always), Tier B (Pro/Ultra), Tier C (Pro/Ultra), Tier K (keyword) ---
     const tierADomains = effectiveDomains.filter((d) => TIER_A_DOMAINS.includes(d));
@@ -331,10 +359,19 @@ serve(async (req) => {
 
     const fanOutPromises: Promise<IslamicResult[]>[] = [];
 
+    /**
+     * Adds a retrieval branch and records its own start/end window. Every tier
+     * goes through here so the log shows which one the user is actually waiting
+     * on — they run concurrently, so total elapsed time alone cannot tell you.
+     */
+    const pushTimed = (stage: string, p: Promise<IslamicResult[]>) => {
+      fanOutPromises.push(timed(stage, p, (v) => v.length));
+    };
+
     // Tier A: call islamic-api-fetch
     if (tierADomains.length > 0) {
       const apiFetchUrl = `${supabaseUrl}/functions/v1/islamic-api-fetch`;
-      fanOutPromises.push(
+      pushTimed("tierA:islamic-api-fetch",
         fetch(apiFetchUrl, {
           method: "POST",
           headers: {
@@ -357,7 +394,7 @@ serve(async (req) => {
     // Tier B: call vector-search (available to all — requires scholarly_documents populated)
     if (tierBDomains.length > 0) {
       const vectorUrl = `${supabaseUrl}/functions/v1/vector-search`;
-      fanOutPromises.push(
+      pushTimed("tierB:vector-search",
         fetch(vectorUrl, {
           method: "POST",
           headers: {
@@ -384,7 +421,7 @@ serve(async (req) => {
     // Tier C: call domain-scrape (live fatwa scraping — available to all)
     if (tierCDomains.length > 0) {
       const scrapeUrl = `${supabaseUrl}/functions/v1/domain-scrape`;
-      fanOutPromises.push(
+      pushTimed("tierC:domain-scrape",
         fetch(scrapeUrl, {
           method: "POST",
           headers: {
@@ -428,7 +465,7 @@ serve(async (req) => {
       ["islamqa", "islamweb", "alulama", "urdufatwa"].includes(d),
     );
     if (wantsQuran || wantsHadith || wantsFatwa) {
-      fanOutPromises.push(
+      pushTimed("tierK:local-keyword",
         (async (): Promise<IslamicResult[]> => {
           try {
             const sourceTypes: string[] = [];
@@ -527,7 +564,7 @@ serve(async (req) => {
     // what replaced the old, throwaway "Custom Sources" chat mode — uploads
     // now live permanently in the Library and are searched here automatically
     // instead of needing a separate mode and a one-off upload each session.
-    fanOutPromises.push(
+    pushTimed("tierL:personal-library",
       (async (): Promise<IslamicResult[]> => {
         try {
           const plan = await queryPlanPromise;
@@ -564,7 +601,9 @@ serve(async (req) => {
       })()
     );
 
+    const fanOutStart = since();
     const settled = await Promise.allSettled(fanOutPromises);
+    stages.push({ stage: "fanOut(all tiers)", startMs: fanOutStart, endMs: since(), ms: since() - fanOutStart });
     const allResults: IslamicResult[] = [];
     for (const r of settled) {
       if (r.status === "fulfilled") allResults.push(...r.value);
@@ -758,6 +797,16 @@ serve(async (req) => {
       url:          r.citation_ref.url ?? undefined,
     }));
 
+    // Everything above is what the user waits through before a single byte is
+    // sent, so this is the number that matters — logged for every request.
+    stages.push({ stage: "→ sources_ready (user sees first output)", startMs: 0, endMs: since(), ms: since() });
+    console.log("[islamic-search] timing", JSON.stringify({
+      query: query.slice(0, 60),
+      totalToSourcesReadyMs: since(),
+      sources: allResults.length,
+      stages: [...stages].sort((a, b) => b.ms - a.ms),
+    }));
+
     (async () => {
       try {
         const sourcesEvent = `data: ${JSON.stringify({
@@ -765,6 +814,9 @@ serve(async (req) => {
           count:     allResults.length,
           domains:   [...new Set(allResults.map((r) => r.domain))],
           citations: citationSummaries,
+          // Present only when asked for, so the normal response shape is
+          // untouched for real clients.
+          ...(debugTiming ? { timing: { totalMs: since(), stages } } : {}),
         })}\n\n`;
         await writer.write(encoder.encode(sourcesEvent));
 
