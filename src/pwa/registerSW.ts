@@ -54,14 +54,60 @@ export function setupPWAUpdates() {
       // No-op — we don't promise full offline support.
     },
     onRegisteredSW(_swUrl, registration) {
-      // Check for updates every hour while the app is open.
-      if (registration) {
-        setInterval(() => {
-          registration.update().catch(() => {
-            /* network errors are fine */
-          });
-        }, 60 * 60 * 1000);
-      }
+      if (!registration) return;
+
+      // An hourly check was the only trigger besides a cold page load, so a tab
+      // that was already open when a deploy landed could serve the old bundle
+      // for up to an hour with no prompt. That is not just a stale UI: the
+      // precached chunks keep running while `/app-version.json` (not precached)
+      // reports the new build, so the app looks deployed while behaving like
+      // the previous version — which has repeatedly made a live deploy look
+      // like a failed one.
+      //
+      // The fix is only about *noticing* sooner. Activation stays manual (see
+      // `registerType: "prompt"` in vite.config.ts) so a reload can never
+      // interrupt work in progress.
+      const MIN_INTERVAL_MS = 30_000;
+      const POLL_MS = 60_000;
+      let lastCheck = 0;
+      let timer: ReturnType<typeof setInterval> | undefined;
+
+      const check = () => {
+        // The SW script is small and usually answers 304, but a burst of
+        // focus/visibility events should still not turn into a burst of
+        // requests.
+        const now = Date.now();
+        if (now - lastCheck < MIN_INTERVAL_MS) return;
+        lastCheck = now;
+        registration.update().catch(() => {
+          /* offline or transient — the next trigger retries */
+        });
+      };
+
+      const startPolling = () => {
+        if (timer === undefined) timer = setInterval(check, POLL_MS);
+      };
+      const stopPolling = () => {
+        if (timer !== undefined) {
+          clearInterval(timer);
+          timer = undefined;
+        }
+      };
+
+      // Only poll while the tab is actually being looked at — a background tab
+      // polling forever is pure waste, and it will check the moment it is
+      // brought back anyway.
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          check();
+          startPolling();
+        } else {
+          stopPolling();
+        }
+      });
+      window.addEventListener("focus", check);
+
+      if (document.visibilityState === "visible") startPolling();
     },
   });
 }

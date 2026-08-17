@@ -31,6 +31,10 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "~shared": path.resolve(__dirname, "./shared"),
+      // `virtual:pwa-register` is synthesised by vite-plugin-pwa, which this
+      // config does not load — without an alias any test that reaches
+      // src/pwa/registerSW.ts fails to resolve the import at transform time.
+      "virtual:pwa-register": path.resolve(__dirname, "./src/test/stubs/pwaRegisterStub.ts"),
     },
   },
 });
