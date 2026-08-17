@@ -22,7 +22,7 @@ import ChatDisplay from "@/components/research/ChatDisplay";
 import { type ResearchMode } from "@/components/research/ResearchModeSwitcher";
 import { useResearchChat } from "@/hooks/useResearchChat";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
-import { textToHtml } from "@/lib/editor/htmlText";
+import { markdownToHtml } from "@/lib/editor/htmlText";
 import type { ResearchAssistMode } from "@/lib/prompts";
 
 function usePersistedState<T>(key: string, initial: T, parse: (raw: string) => T): [T, (v: T) => void] {
@@ -125,7 +125,7 @@ export const ResearchPanel = () => {
 
   const handleInsertIntoCanvas = () => {
     if (!workspaceCtx || !lastAnswer?.content?.trim()) return;
-    workspaceCtx.insertIntoCanvas(textToHtml(lastAnswer.content));
+    workspaceCtx.insertIntoCanvas(markdownToHtml(lastAnswer.content));
     toast.success(t("research.inserted_into_canvas") || translateStored("toast.canvas.inserted"));
   };
 

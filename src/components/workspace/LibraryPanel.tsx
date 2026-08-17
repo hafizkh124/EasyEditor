@@ -33,6 +33,8 @@ interface LibraryPanelProps {
   forceExpanded?: boolean;
   /** Called after the user opens something, so a drawer can close itself. */
   onNavigate?: () => void;
+  /** Live word count of the open document — see LibraryDocumentTree. */
+  activeDocumentWordCount?: number | null;
 }
 
 // Spelled out because Tailwind only ships classes it can see in the source —
@@ -46,7 +48,7 @@ const TAB_GRID: Record<number, string> = {
   8: "grid-cols-8",
 };
 
-export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = false, onNavigate }) => {
+export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = false, onNavigate, activeDocumentWordCount }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   // Only the ingest tools that exist on this runtime (OCR is web-only; the two
@@ -259,6 +261,7 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
                 projects={projects}
                 docsMap={docsMap}
                 activeDocumentId={activeDocumentId}
+                activeDocumentWordCount={activeDocumentWordCount}
                 loading={docsLoading}
                 searchQuery={searchQuery}
                 searchResults={searchResults}

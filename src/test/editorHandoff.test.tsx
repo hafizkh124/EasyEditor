@@ -66,10 +66,41 @@ describe("editor handoff", () => {
 
     const [projectId, title, content] = createDocument.mock.calls[0];
     expect(projectId).toBe("proj-1");
-    // Titled after where it came from, not left as "Untitled".
-    expect(title).toBe("editor.from_transcribe");
+    // Named after what it says, not "Untitled" and not the source label — a
+    // workspace of identical "From Transcribe" documents cannot be navigated.
+    expect(title).toBe("transcribed text");
     // The handed-over text must actually be in the new document.
     expect(JSON.stringify(content)).toContain("transcribed text");
+  });
+
+  it("falls back to the source label when the content has no usable first line", async () => {
+    renderAt({ content: "   \n\n  ", source: "transcribe" });
+
+    await waitFor(() => expect(createDocument).toHaveBeenCalled());
+    expect(createDocument.mock.calls[0][1]).toBe("editor.from_transcribe");
+  });
+
+  it("converts markdown handoffs instead of leaving the markers as text", async () => {
+    renderAt({ content: "## عنوان\n\n**زور** دیا", source: "research" });
+
+    await waitFor(() => expect(createDocument).toHaveBeenCalled());
+
+    const [, title, content] = createDocument.mock.calls[0];
+    const json = JSON.stringify(content);
+    expect(title).toBe("عنوان");
+    // The markers themselves must be gone, having become real nodes.
+    expect(json).not.toContain("##");
+    expect(json).not.toContain("**");
+    expect(json).toContain("زور");
+  });
+
+  it("passes HTML handoffs through without escaping them", async () => {
+    renderAt({ content: "<p>پہلے سے HTML</p>", source: "extract" });
+
+    await waitFor(() => expect(createDocument).toHaveBeenCalled());
+    // ExtractPanel already sends HTML; running markdown conversion over it
+    // would escape the tags into visible &lt;p&gt; text.
+    expect(JSON.stringify(createDocument.mock.calls[0][2])).not.toContain("&lt;p&gt;");
   });
 
   it("never reuses a blank document when content was handed over", async () => {

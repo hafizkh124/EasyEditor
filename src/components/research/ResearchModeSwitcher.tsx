@@ -38,7 +38,7 @@ const ResearchModeSwitcher = ({ mode, onModeChange, t }: ResearchModeSwitcherPro
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={t("research.mode_label")}
-        className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted/70 transition-colors"
+        className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
       >
         <active.icon className="h-3.5 w-3.5 text-primary" />
         <span className="whitespace-nowrap">{t(active.labelKey as import("@/lib/i18n").TranslationKey)}</span>

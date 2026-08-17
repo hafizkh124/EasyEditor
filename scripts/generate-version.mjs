@@ -18,18 +18,44 @@ try {
   console.warn('[generate-version] Could not read package.json version:', err.message);
 }
 
-let commit = 'unknown';
-try {
-  commit = execSync('git rev-parse --short HEAD', { cwd: rootDir, encoding: 'utf8' }).trim();
-} catch (err) {
-  console.warn('[generate-version] Could not get git commit hash:', err.message);
+// Hosted builds frequently have no usable git repo — the source arrives as an
+// archive, or as a shallow clone with `.git` stripped, so `git rev-parse` fails
+// and both fields silently became "unknown". That is not cosmetic: the commit
+// hash is how a deploy is verified as actually live, and without it a stale
+// bundle is indistinguishable from a fresh one. Every major host exposes the
+// SHA as an environment variable, so fall back to those before giving up.
+const env = process.env;
+
+function fromGit(args) {
+  try {
+    return execSync(`git ${args}`, { cwd: rootDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null;
+  } catch {
+    return null;
+  }
 }
 
-let branch = 'unknown';
-try {
-  branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: rootDir, encoding: 'utf8' }).trim();
-} catch (err) {
-  console.warn('[generate-version] Could not get git branch:', err.message);
+const envCommit =
+  env.VERCEL_GIT_COMMIT_SHA ||     // Vercel
+  env.CF_PAGES_COMMIT_SHA ||       // Cloudflare Pages
+  env.COMMIT_REF ||                // Netlify
+  env.GITHUB_SHA ||                // GitHub Actions
+  env.CI_COMMIT_SHA ||             // GitLab CI
+  env.SOURCE_VERSION ||            // Heroku
+  null;
+
+const envBranch =
+  env.VERCEL_GIT_COMMIT_REF ||
+  env.CF_PAGES_BRANCH ||
+  env.BRANCH ||                    // Netlify
+  env.GITHUB_REF_NAME ||
+  env.CI_COMMIT_REF_NAME ||
+  null;
+
+const commit = (fromGit('rev-parse --short HEAD') || (envCommit ? envCommit.slice(0, 7) : null) || 'unknown');
+const branch = (fromGit('rev-parse --abbrev-ref HEAD') || envBranch || 'unknown');
+
+if (commit === 'unknown') {
+  console.warn('[generate-version] No git repo and no CI commit env var — deploy verification by commit hash will not work.');
 }
 
 const versionInfo = {
