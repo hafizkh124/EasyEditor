@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SelectionActionBar } from "./SelectionActionBar";
 import { CanvasTranslationView } from "./CanvasTranslationView";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
+import { documentService } from "@/core/workspace/documentService";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { hasSeenWorkspaceHint, dismissWorkspaceHint } from "@/lib/onboarding";
 import type { Document } from "@/core/workspace/types";
@@ -43,6 +44,16 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
   useEffect(() => {
     if (doc) dismissWorkspaceHint();
   }, [doc]);
+
+  // Persisting the direction is fire-and-forget: if it fails the document is
+  // untouched and simply stays "not decided yet" — the editor keeps detecting.
+  const persistDirection = React.useCallback(
+    (dir: "rtl" | "ltr") => {
+      if (!doc) return;
+      void documentService.updateDocument(doc.id, { text_direction: dir }).catch(() => undefined);
+    },
+    [doc],
+  );
 
   const dismissHint = () => {
     dismissWorkspaceHint();
@@ -111,6 +122,8 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
           initialContent={initialContent}
           contentJson={restoredContent ?? doc?.content_json}
           contentRevision={contentRevision}
+          textDirection={doc?.text_direction ?? null}
+          onTextDirectionChange={persistDirection}
           placeholder={t("editor.placeholder", "شروعات کے لیے کچھ لکھیں یا ریسرچ ورک بینچ سے مواد لائیں...")}
           onChange={onEditorChange}
           onDocChange={onDocChange}

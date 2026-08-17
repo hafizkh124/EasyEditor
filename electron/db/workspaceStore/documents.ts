@@ -61,6 +61,7 @@ function mapDocumentRow(r: any): Document {
     sort_order: r.sort_order,
     status: r.status as DocumentStatus,
     word_count: r.word_count,
+    text_direction: (r.text_direction as 'rtl' | 'ltr' | null) ?? null,
     created_at: r.created_at,
     updated_at: r.updated_at,
   };
@@ -112,7 +113,7 @@ export function createDocument(
 export function updateDocument(
   db: SqliteDatabase,
   id: string,
-  updates: Partial<Pick<Document, 'title' | 'content_json' | 'status' | 'sort_order'>>,
+  updates: Partial<Pick<Document, 'title' | 'content_json' | 'status' | 'sort_order' | 'text_direction'>>,
 ): Document {
   const doc = getDocument(db, id);
   if (!doc) throw new Error(`Document ${id} not found`);
@@ -122,16 +123,17 @@ export function updateDocument(
   const contentJson = updates.content_json ?? doc.content_json;
   const status = updates.status ?? doc.status;
   const sortOrder = updates.sort_order ?? doc.sort_order;
+  const textDirection = updates.text_direction !== undefined ? updates.text_direction : (doc.text_direction ?? null);
   const plainText = updates.content_json ? extractPlainTextFromJSON(contentJson) : doc.plain_text;
   const wordCount = updates.content_json ? countWords(plainText) : doc.word_count;
 
   db.prepare(`
     UPDATE documents
-    SET title = ?, content_json = ?, plain_text = ?, status = ?, sort_order = ?, word_count = ?, updated_at = ?
+    SET title = ?, content_json = ?, plain_text = ?, status = ?, sort_order = ?, word_count = ?, text_direction = ?, updated_at = ?
     WHERE id = ?
-  `).run(title, JSON.stringify(contentJson), plainText, status, sortOrder, wordCount, now, id);
+  `).run(title, JSON.stringify(contentJson), plainText, status, sortOrder, wordCount, textDirection, now, id);
 
-  return { ...doc, title, content_json: contentJson, plain_text: plainText, status, sort_order: sortOrder, word_count: wordCount, updated_at: now };
+  return { ...doc, title, content_json: contentJson, plain_text: plainText, status, sort_order: sortOrder, word_count: wordCount, text_direction: textDirection, updated_at: now };
 }
 
 export function deleteDocument(db: SqliteDatabase, id: string): void {
