@@ -91,6 +91,7 @@ export const WorkspaceLayout: React.FC = () => {
     versions,
     updateTitle: syncDocTitle,
     updateContent: syncDocContent,
+    updateDirection: syncDocDirection,
     createSnapshot,
   } = useDocument(activeDocumentId ?? undefined);
 
@@ -227,6 +228,7 @@ export const WorkspaceLayout: React.FC = () => {
                 docLoading={docLoading}
                 contentRevision={contentRevision}
                 restoredContent={restoredContent}
+                onDirectionChange={syncDocDirection}
                 onEditorChange={handleEditorChange}
                 onDocChange={handleDocChange}
               />

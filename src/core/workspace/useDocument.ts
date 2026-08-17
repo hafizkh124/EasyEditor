@@ -202,6 +202,22 @@ export function useDocument(documentId?: string) {
     }
   };
 
+  /**
+   * Store an explicit direction immediately rather than through the debounced
+   * autosave: it is a single small field, and the whole point is that it
+   * survives a reload that may happen right after the toggle.
+   */
+  const updateDirection = useCallback(async (direction: "rtl" | "ltr") => {
+    if (!documentId || docRef.current?.text_direction === direction) return;
+    try {
+      const updated = await documentService.updateDocument(documentId, { text_direction: direction });
+      setDoc(updated);
+      docRef.current = updated;
+    } catch (err) {
+      log.error("Could not save text direction", { err });
+    }
+  }, [documentId]);
+
   return {
     doc,
     loading,
@@ -210,6 +226,7 @@ export function useDocument(documentId?: string) {
     versions,
     updateTitle,
     updateContent,
+    updateDirection,
     createSnapshot,
     flushSave,
     reload: () => documentId && loadDocument(documentId),

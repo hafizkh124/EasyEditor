@@ -18,6 +18,8 @@ interface CanvasPanelProps {
   initialContent?: string;
   onEditorChange?: (html: string, text: string) => void;
   onDocChange?: (payload: DocChangePayload) => void;
+  /** Persist an explicit direction the author chose for this document. */
+  onDirectionChange?: (direction: "rtl" | "ltr") => void;
 }
 
 export const CanvasPanel: React.FC<CanvasPanelProps> = ({
@@ -28,6 +30,7 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
   initialContent,
   onEditorChange,
   onDocChange,
+  onDirectionChange,
 }) => {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
@@ -114,6 +117,8 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
           placeholder={t("editor.placeholder", "شروعات کے لیے کچھ لکھیں یا ریسرچ ورک بینچ سے مواد لائیں...")}
           onChange={onEditorChange}
           onDocChange={onDocChange}
+          direction={doc?.text_direction ?? null}
+          onDirectionChange={onDirectionChange}
           pendingInsertHtml={pendingCanvasInsertion}
           onInsertHandled={clearPendingCanvasInsertion}
           selectionBar={({ selectedText, isBusy, actions }) => (
