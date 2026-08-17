@@ -291,7 +291,7 @@ serve(async (req) => {
     // `sources_ready` event when the caller passes `debugTiming` — the response
     // shape is otherwise unchanged, so normal clients see nothing new.
     const reqStart = performance.now();
-    const stages: Array<{ stage: string; startMs: number; endMs: number; ms: number; count?: number }> = [];
+    const stages: Array<{ stage: string; startMs: number; endMs: number; ms: number; count?: number; error?: string }> = [];
     const since = () => Math.round(performance.now() - reqStart);
 
     /** Records a stage's own window without altering the promise's behaviour. */
@@ -498,7 +498,22 @@ serve(async (req) => {
             // matches `content`, which picks up English-side hits the
             // content_ar-only scoped search would miss.
             const planCollections = queryPlan?.scope.collections ?? [];
-            const { data, error } = planCollections.length > 0
+            const usingScoped = planCollections.length > 0;
+
+            // A live measurement (2026-08-17) found Tier K taking 8.8s alone —
+            // more than every other tier combined — while returning 0 rows, on
+            // a query that should have real hadith/quran matches. That is
+            // exactly the shape of the R2پ regression this project already hit
+            // once (a correlated-subquery pattern that defeats the trigram
+            // index for some term/source_type combinations but not others; see
+            // 20260816000000_fix_search_smart_index_usage.sql). The RPC's own
+            // `error` was only ever logged server-side via console.error,
+            // invisible to whoever is trying to diagnose a *slow, empty*
+            // result rather than a thrown exception — so it is recorded as its
+            // own stage here, with the row count and any error message, to
+            // tell a real timeout apart from a genuinely fast empty search.
+            const rpcStart = since();
+            const { data, error } = usingScoped
               ? await supabase.rpc("search_documents_scoped", {
                   p_patterns:     terms,
                   p_source_types: sourceTypes,
@@ -511,6 +526,14 @@ serve(async (req) => {
                   p_source_types: sourceTypes,
                   p_match_limit:  30,
                 });
+            stages.push({
+              stage: `tierK:rpc(${usingScoped ? "search_documents_scoped" : "search_documents_smart"}, ${sourceTypes.join("+")}, ${terms.length} terms)`,
+              startMs: rpcStart,
+              endMs: since(),
+              ms: since() - rpcStart,
+              count: data?.length ?? 0,
+              error: error ? `${error.code ?? ""} ${error.message ?? String(error)}`.trim() : undefined,
+            });
 
             if (error) {
               console.error("Tier K smart-search error:", error);
@@ -619,6 +642,7 @@ serve(async (req) => {
     // Anchors are only inserted when they actually exist in scholarly_documents.
     const anchors = lookupTopicAnchors(query);
     if (anchors) {
+      const anchorsStart = since();
       const anchorFetches: Promise<IslamicResult[]>[] = [];
 
       if (anchors.quran.length > 0) {
@@ -681,6 +705,13 @@ serve(async (req) => {
       }
 
       const extra = (await Promise.all(anchorFetches)).flat();
+      stages.push({
+        stage: `topicAnchors:fetch(${anchors.quran.length}q+${anchors.hadith.length}h anchors)`,
+        startMs: anchorsStart,
+        endMs: since(),
+        ms: since() - anchorsStart,
+        count: extra.length,
+      });
 
       // Dedupe against what fan-out already returned.
       const seenKeys = new Set(
@@ -713,7 +744,15 @@ serve(async (req) => {
       }
     }
 
+    const contextBlockStart = since();
     const contextBlock = buildContextBlock(allResults);
+    stages.push({
+      stage: "buildContextBlock",
+      startMs: contextBlockStart,
+      endMs: since(),
+      ms: since() - contextBlockStart,
+      count: allResults.length,
+    });
 
     // By now the fan-out (line ~506's Promise.allSettled) has already taken
     // at least as long as the slowest tier, so this promise — kicked off
@@ -740,6 +779,7 @@ serve(async (req) => {
     // statistic", so count facts are only trusted from a real plan.
     let countBlock = "";
     if (queryPlan?.intent === "count" && !queryPlan.degraded && queryPlan.arabic_surface_forms.length > 0) {
+      const countStart = since();
       try {
         const { data: countRows, error: countErr } = await supabase.rpc("count_term_occurrences", {
           p_patterns:                 queryPlan.arabic_surface_forms,
@@ -747,6 +787,14 @@ serve(async (req) => {
           p_collections:              queryPlan.scope.collections.length > 0 ? queryPlan.scope.collections : null,
           p_surah:                    queryPlan.scope.surah,
           p_exclude_definite_article: queryPlan.is_proper_noun,
+        });
+        stages.push({
+          stage: "countBlock:rpc(count_term_occurrences)",
+          startMs: countStart,
+          endMs: since(),
+          ms: since() - countStart,
+          count: Array.isArray(countRows) ? countRows.length : 0,
+          error: countErr ? `${countErr.code ?? ""} ${countErr.message ?? String(countErr)}`.trim() : undefined,
         });
         if (!countErr && Array.isArray(countRows) && countRows.length > 0) {
           const total = countRows.reduce((s: number, r: any) => s + (Number(r.occurrences) || 0), 0);
