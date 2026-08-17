@@ -128,17 +128,19 @@ export const ByokKeyPanel: React.FC = () => {
         <div className="space-y-2">
           <label className="text-sm font-medium">نئی Gemini Key درج کریں:</label>
           <div className="relative">
+            {/* `ps-10` follows the reveal button's `start-3`; `text-left` stays
+                physical on purpose — an API key is always LTR. */}
             <Input
               type={showKey ? 'text' : 'password'}
               placeholder="AIzaSy..."
               value={keyInput}
               onChange={(e) => setKeyInput(e.target.value)}
-              className="pl-10 text-left font-mono"
+              className="ps-10 text-left font-mono"
             />
             <button
               type="button"
               onClick={() => setShowKey(!showKey)}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>

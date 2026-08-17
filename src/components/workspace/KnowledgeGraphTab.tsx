@@ -151,12 +151,14 @@ export const KnowledgeGraphTab: React.FC = () => {
       </div>
 
       <div className="relative mb-2">
-        <Search className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+        {/* Logical, not physical: in the RTL shell a `right-2.5` icon sat on
+            the opposite side from the text it belongs to. */}
+        <Search className="absolute end-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
         <Input
           placeholder={t("library.graph_search", "Search entities and concepts…")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-8 text-xs pr-8 pl-2"
+          className="h-8 text-xs pe-8 ps-2"
         />
       </div>
 

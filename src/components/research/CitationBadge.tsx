@@ -111,7 +111,9 @@ const CitationBadge = ({ domain, citationRef, className }: CitationBadgeProps) =
         className
       )}
     >
-      {label}
+      {/* An isolated LTR run ("Al-Baqarah · 2:173 · Juz 2") sitting in RTL
+          chrome: <bdi> keeps it from reordering against its surroundings. */}
+      <bdi>{label}</bdi>
       {citationRef.url && <ExternalLink className="h-2.5 w-2.5 shrink-0" />}
     </span>
   );

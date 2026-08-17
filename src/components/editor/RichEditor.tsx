@@ -61,8 +61,18 @@ interface RichEditorProps {
   onInsertHandled?: () => void;
 }
 
+/**
+ * The document surface, deliberately not sized like the chrome around it.
+ *
+ * This was `prose-sm` — the same 14px the toolbars and side panels use — so the
+ * text being written read as densely as a menu label. Urdu and Arabic need more
+ * room than Latin at equal point size (taller ascenders/descenders, and
+ * Nastaliq's steep baseline especially), which is why the size and line-height
+ * step up here rather than inheriting the UI scale. `editor-surface` carries
+ * the script-aware line-height; see index.css.
+ */
 const EDITOR_CLASS =
-  "prose prose-sm dark:prose-invert max-w-none min-h-[400px] focus:outline-none px-6 py-5 leading-relaxed";
+  "prose prose-base dark:prose-invert max-w-none min-h-[400px] focus:outline-none px-6 py-5 editor-surface";
 
 const RichEditor = ({
   initialContent,
