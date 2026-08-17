@@ -128,7 +128,7 @@ export const cloudDocuments: DocumentBackend = {
 
   async updateDocument(
     id: string,
-    updates: Partial<Pick<Document, "title" | "content_json" | "status" | "sort_order">>,
+    updates: Partial<Pick<Document, "title" | "content_json" | "status" | "sort_order" | "text_direction">>,
   ): Promise<Document> {
     const payload: Record<string, unknown> = { ...updates };
 

@@ -77,7 +77,7 @@ export interface DocumentBackend {
   ): Promise<Document>;
   updateDocument(
     id: string,
-    updates: Partial<Pick<Document, "title" | "content_json" | "status" | "sort_order">>,
+    updates: Partial<Pick<Document, "title" | "content_json" | "status" | "sort_order" | "text_direction">>,
   ): Promise<Document>;
   deleteDocument(id: string): Promise<void>;
 

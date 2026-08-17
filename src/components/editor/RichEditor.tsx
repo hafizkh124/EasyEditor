@@ -59,6 +59,10 @@ interface RichEditorProps {
    */
   pendingInsertHtml?: string | null;
   onInsertHandled?: () => void;
+  /** Persisted direction for this document; null/undefined = not decided yet. */
+  textDirection?: "rtl" | "ltr" | null;
+  /** Fired when the user flips direction, so the caller can persist it. */
+  onTextDirectionChange?: (dir: "rtl" | "ltr") => void;
 }
 
 /**
@@ -86,6 +90,8 @@ const RichEditor = ({
   selectionBar,
   pendingInsertHtml,
   onInsertHandled,
+  textDirection,
+  onTextDirectionChange,
 }: RichEditorProps) => {
   const { session } = useAuth();
   const { t } = useLanguage();
@@ -148,6 +154,8 @@ const RichEditor = ({
     contentJson,
     contentRevision,
     editorClass: EDITOR_CLASS,
+    storedDirection: textDirection,
+    onDirectionChange: onTextDirectionChange,
     onChange,
     onDocChange,
   });
