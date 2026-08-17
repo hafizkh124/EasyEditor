@@ -73,7 +73,20 @@ export const DocumentBox = ({
           isRtl && "text-right",
         )}
       >
-        <ReactMarkdown>{content}</ReactMarkdown>
+        {/* Answers are Urdu prose carrying LTR runs — citation labels like
+            "Al-Baqarah · 2:173 · Juz 2", hadith numbers, URLs. Inside an RTL
+            block those runs reorder around their separators and trailing
+            punctuation drifts to the wrong end. `dir="auto"` per block lets
+            each list item and paragraph resolve from its own first strong
+            character instead of inheriting the container's direction. */}
+        <ReactMarkdown
+          components={{
+            li: ({ node: _node, ...props }) => <li dir="auto" {...props} />,
+            p: ({ node: _node, ...props }) => <p dir="auto" {...props} />,
+          }}
+        >
+          {content}
+        </ReactMarkdown>
       </div>
 
       <div className="flex items-center justify-between gap-2 p-2.5 border-t border-border flex-wrap">

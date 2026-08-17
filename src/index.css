@@ -240,6 +240,17 @@ All colors MUST be HSL.
     @apply mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8;
   }
 
+  /* The writing surface's line-height, which has to vary by script rather than
+     be one number. Latin at 1.75 is comfortable; the same value on Urdu or
+     Arabic crowds the descenders, and Nastaliq — whose baseline slopes down
+     across each ligature — collides outright. `dir` is what the editor already
+     sets from the document's own text (see useEditorContentSync), so the RTL
+     rule keys off that instead of needing a second source of truth. */
+  .editor-surface { line-height: 1.75; }
+  .editor-surface[dir="rtl"] { line-height: 2.1; }
+  .editor-surface .font-nastaliq,
+  .editor-surface.font-nastaliq { line-height: 2.6; }
+
   /* Editor font-family utilities (applied via TipTap FontFamily extension) */
   .font-nastaliq { font-family: "Noto Nastaliq Urdu", serif; }
   .font-naskh    { font-family: "Noto Naskh Arabic", "Amiri", serif; }
