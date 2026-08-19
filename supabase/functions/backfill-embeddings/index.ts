@@ -32,6 +32,33 @@ interface RowToEmbed {
   content_ar:   string | null;
 }
 
+// ── Rows deliberately kept OUT of the embedding corpus ───────────────────────
+// These are ingested for lookup but must never enter the vector space:
+//
+//   islamicurdubooks-wbw  - per-word Urdu glosses. A list of word meanings makes
+//                           a semantically mushy vector that crowds real hadith
+//                           results out of top-k.
+//   fath-al-rabbani       - a topical re-arrangement of Musnad Ahmad, which is
+//                           already in the corpus at 27,647 rows. Embedding it
+//                           spends quota to add near-duplicates of text we have.
+//
+// CRITICAL: apply this to the row SELECT *and* to countRemaining(). Filtering
+// only the select leaves `remaining` permanently above zero, so `done` never
+// goes true and the orchestrator spins forever on zero-row batches.
+const SKIP_DOMAIN     = "islamicurdubooks-wbw";
+const SKIP_COLLECTION = "fath-al-rabbani";
+
+// deno-lint-ignore no-explicit-any
+function excludeNonEmbeddable(q: any) {
+  // `domain` is NOT NULL, so neq is safe. `citation_ref->>'collection'` is NULL
+  // for rijal / tafsir / wbw / misc and for much of the older corpus -- a plain
+  // neq there would evaluate to NULL and silently drop every one of those rows
+  // from the backfill. isdistinct is the NULL-safe form (SQL: IS DISTINCT FROM).
+  return q
+    .neq("domain", SKIP_DOMAIN)
+    .filter("citation_ref->>collection", "isdistinct", SKIP_COLLECTION);
+}
+
 /** Count rows with NULL embedding. Filters by sourceType when provided so the
  *  orchestrator's per-domain progress is accurate. Returns `{remaining, error}`
  *  with `error` set if the count itself failed (we then never signal done). */
@@ -41,10 +68,12 @@ async function countRemaining(
   sourceType: string | null,
 ): Promise<{ remaining: number | null; error: Error | null }> {
   try {
-    let q = supabase
-      .from("scholarly_documents")
-      .select("id", { count: "exact", head: true })
-      .is("embedding", null);
+    let q = excludeNonEmbeddable(
+      supabase
+        .from("scholarly_documents")
+        .select("id", { count: "exact", head: true })
+        .is("embedding", null),
+    );
     if (sourceType) q = q.eq("source_type", sourceType);
     const { count, error } = await q;
     if (error) return { remaining: null, error };
@@ -126,11 +155,12 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
 
     // ── Pick rows that still need an embedding ────────────────────────────
-    let query = supabase
-      .from("scholarly_documents")
-      .select("id, content, content_ar")
-      .is("embedding", null)
-      .limit(batchSize);
+    let query = excludeNonEmbeddable(
+      supabase
+        .from("scholarly_documents")
+        .select("id, content, content_ar")
+        .is("embedding", null),
+    ).limit(batchSize);
     if (sourceType) query = query.eq("source_type", sourceType);
 
     const { data: rows, error: selErr } = await query;

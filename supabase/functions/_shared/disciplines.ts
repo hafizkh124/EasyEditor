@@ -40,9 +40,9 @@ export const DISCIPLINE_LABELS_UR: Record<Discipline, string> = {
 export const DISCIPLINE_DOMAINS: Record<Discipline, string[]> = {
   fiqh:   ["shamela", "openiti"],
   fatwa:  ["shamela", "openiti", "islamqa-cache"],
-  tafsir: ["qul-tafsir", "shamela", "openiti"],
-  lughat: ["shamela", "openiti"],
-  rijal:  ["shamela", "openiti"],
+  tafsir: ["qul-tafsir", "shamela", "openiti", "islamicurdubooks-tafsir"],
+  lughat: ["shamela", "openiti", "islamicurdubooks-lexicon"],
+  rijal:  ["shamela", "openiti", "islamicurdubooks-rijal"],
   nahw:   ["shamela", "openiti"],
 };
 

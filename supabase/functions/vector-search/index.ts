@@ -54,7 +54,13 @@ const DOMAIN_SOURCE_TYPE: Record<string, string> = {
 // as Shamela — the same citation-integrity failure this whole audit flagged
 // elsewhere. Leave it matching nothing until Shamela is actually ingested.
 const PSEUDO_DOMAIN_EXPANSION: Record<string, string[]> = {
-  "hadith-index": ["hadith-json", "easyquran-hadith", "urdu-hadith", "tohed-hadith"],
+  "hadith-index": [
+    "hadith-json",
+    "easyquran-hadith",
+    "urdu-hadith",
+    "tohed-hadith",
+    "islamicurdubooks-hadith"
+  ],
 };
 
 // ── Map a DB row back to IslamicResult ────────────────────────────────────────
