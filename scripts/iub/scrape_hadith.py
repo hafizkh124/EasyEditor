@@ -213,8 +213,26 @@ def scrape_collection(path: str, bookid: int, info: dict, max_workers: int = 4):
     print(f"   ✅ Finished {book_title}: {scraped_count:,}/{total:,} rows written to {csv_file}\n", flush=True)
     return scraped_count
 
+# fath-al-rabbani is a topical re-arrangement of Musnad Ahmad, which is already
+# in the corpus at 27,647 rows. It was scraped and loaded before that was caught,
+# and the decision was to keep what landed but exclude it from the vector space
+# (see SKIP_COLLECTION in supabase/functions/backfill-embeddings). Fetching its
+# remaining ~1,587 rows would spend budget on content that is redundant by that
+# same decision and will never be embedded -- so it is skipped by default.
+# Set IUB_INCLUDE_FATH=1 to pull it to completion anyway.
+SKIP_UNLESS_ASKED = {"fath-al-rabbani"}
+
+
 def main():
-    target_books = [k for k, v in IUB_REGISTRY.items() if v["is_new"]]
+    include_fath = os.environ.get("IUB_INCLUDE_FATH") == "1"
+    target_books = [
+        k for k, v in IUB_REGISTRY.items()
+        if v["is_new"] and (include_fath or v["slug"] not in SKIP_UNLESS_ASKED)
+    ]
+    skipped = [v["slug"] for v in IUB_REGISTRY.values()
+               if v["is_new"] and not include_fath and v["slug"] in SKIP_UNLESS_ASKED]
+    if skipped:
+        print(f"Skipping (set IUB_INCLUDE_FATH=1 to include): {', '.join(skipped)}", flush=True)
     print(f"=== Starting Ingestion Wave for {len(target_books)} Missing Hadith Books ===\n", flush=True)
     
     total_scraped = 0
