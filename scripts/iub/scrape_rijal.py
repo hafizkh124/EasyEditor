@@ -24,7 +24,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 OUT_FILE = os.path.join("data", "iub", "rijal.csv")
-ID_CACHE_FILE = os.path.join("data", "iub_rijal_ids.json")
+ID_CACHE_FILE = os.path.join("data", "iub_rijal_ids_v2.json")
 os.makedirs(os.path.dirname(OUT_FILE), exist_ok=True)
 
 ARABIC_LETTERS = [
@@ -32,7 +32,16 @@ ARABIC_LETTERS = [
     'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'و', 'ه', 'ي'
 ]
 
-def discover_narrator_ids() -> list:
+def discover_narrator_ids(max_pages_per_letter: int = 60) -> list:
+    """Walk every letter index page-by-page until a page returns no narrators.
+
+    The index is paginated at 100 rows per page via ?q={letter}&q2=&page={n},
+    and the paginator is WINDOWED -- on page 4 it advertises links [1,2,3,5],
+    never the last page. So the page count cannot be read off page 1; the only
+    reliable stop condition is a page that yields zero rawyids. The original
+    version fetched page 1 only and therefore discovered 2,466 narrators
+    instead of the full set.
+    """
     if os.path.exists(ID_CACHE_FILE):
         try:
             with open(ID_CACHE_FILE, "r", encoding="utf-8") as f:
@@ -43,27 +52,41 @@ def discover_narrator_ids() -> list:
         except Exception:
             pass
 
-    print("🔍 Discovering narrator IDs from alphabet index pages...", flush=True)
+    print("Discovering narrator IDs across all letters and pages...", flush=True)
+    import urllib.parse
     all_ids = set()
 
     for letter in ARABIC_LETTERS:
-        # URL encode letter
-        import urllib.parse
         q_enc = urllib.parse.quote(letter)
-        url = f"https://islamicurdubooks.com/hadith/hadith_narrators.php?q={q_enc}"
-        html, _, _ = fetch_page(url, "rijal_index", f"letter_{letter}")
-        if html:
-            matches = re.findall(r'href=[\'"][^\'"]*rawyid=(\d+)[\'"]', html)
-            for m in matches:
-                all_ids.add(int(m))
-        print(f"   Letter '{letter}': {len(matches)} narrators found (Total unique: {len(all_ids):,})", flush=True)
-        time.sleep(0.2)
+        letter_ids = set()
+        page = 1
+        while page <= max_pages_per_letter:
+            url = (f"https://islamicurdubooks.com/hadith/hadith_narrators.php"
+                   f"?q={q_enc}&q2=&page={page}")
+            html, _, err = fetch_page(url, "rijal_index", f"letter_{letter}_p{page}")
+            if not html:
+                print(f"   Letter '{letter}' page {page}: fetch failed ({err})", flush=True)
+                break
 
-    sorted_ids = sorted(list(all_ids))
+            found = {int(m) for m in re.findall(r'rawyid=(\d+)', html)}
+            if not found:
+                break
+            letter_ids |= found
+            page += 1
+
+        if page > max_pages_per_letter:
+            print(f"   WARNING letter '{letter}' hit the {max_pages_per_letter}-page cap "
+                  f"- raise max_pages_per_letter and re-run", flush=True)
+
+        all_ids |= letter_ids
+        print(f"   Letter '{letter}': {len(letter_ids):,} narrators over {page - 1} page(s) "
+              f"(total unique: {len(all_ids):,})", flush=True)
+
+    sorted_ids = sorted(all_ids)
     with open(ID_CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(sorted_ids, f, indent=2)
 
-    print(f"✅ Discovered {len(sorted_ids):,} total unique narrator IDs!\n", flush=True)
+    print(f"Discovered {len(sorted_ids):,} unique narrator IDs.\n", flush=True)
     return sorted_ids
 
 def parse_narrator_page(rawyid: int) -> dict | None:
@@ -76,19 +99,10 @@ def parse_narrator_page(rawyid: int) -> dict | None:
     title_m = re.search(r'<title>([^<]+)</title>', html)
     raw_title = clean_html(title_m.group(1)) if title_m else f"راوی {rawyid}"
     
-    # Extract name
-    name_ar = ""
-    name_m = re.search(r'class="[^"]*fontarabic fs7[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
-    if not name_m:
-        name_m = re.search(r'class="[^"]*btn1[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
-    if name_m:
-        name_ar = clean_html(name_m.group(1))
-    if not name_ar:
-        name_ar = raw_title.replace("رواۃ الحدیث:", "").strip()
-
     # Tables with details
     tables = re.findall(r'<table[^>]*>(.*?)</table>', html, re.DOTALL)
     details = []
+    labels = {}
     ibn_hajar_rank = ""
     dhahabi_rank = ""
     tabaqa = ""
@@ -101,6 +115,7 @@ def parse_narrator_page(rawyid: int) -> dict | None:
             v = clean_html(td2)
             if k and v:
                 details.append(f"{k}: {v}")
+                labels[k] = v
                 if "ابن حجر" in k:
                     ibn_hajar_rank = v
                 elif "الذهبي" in k or "ذہبی" in k:
@@ -109,6 +124,24 @@ def parse_narrator_page(rawyid: int) -> dict | None:
                     tabaqa = v
                 elif "البلد" in k or "شہر" in k or "وطن" in k:
                     city = v
+
+    # Name -- derived from the details table, NOT from a CSS class. The previous
+    # selector matched div.btn1.fontarabic.fs7, which is the site's navigation
+    # button ("رواة الحدیث"); it is identical on every page, so all 4,292 rows
+    # came out with the same wrong name_ar (and the same wrong title/content).
+    # The real name sits in the value cell beside the "اسم الراوي" label.
+    def _label(*keys):
+        for want in keys:
+            for lk, lv in labels.items():
+                if want in lk:
+                    return lv
+        return ""
+
+    shuhra_ar = _label("اسم الشهرة")
+    name_ar = _label("اسم الراوي") or shuhra_ar
+    if not name_ar:
+        # <title> reads "NAME کا تفصیلی جائزہ"
+        name_ar = raw_title.split("کا تفصیلی جائزہ")[0].strip().rstrip(",").strip()
 
     # Narrative content
     content_div = re.search(r'class="[^"]*card-body[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
@@ -122,6 +155,7 @@ def parse_narrator_page(rawyid: int) -> dict | None:
         "discipline": "rijal",
         "rawy_id": rawyid,
         "name_ar": name_ar,
+        "shuhra_ar": shuhra_ar,
         "ibn_hajar_rank": ibn_hajar_rank,
         "dhahabi_rank": dhahabi_rank,
         "tabaqa": tabaqa,
