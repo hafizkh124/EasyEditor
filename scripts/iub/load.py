@@ -32,6 +32,11 @@ if not SECRET:
     sys.exit(1)
 
 def post_batch(rows: list, mode: str = "insert", retries: int = 3) -> dict:
+    # ingest-batch (supabase/functions/ingest-batch/index.ts) replies with
+    # {"ok": N, "duplicates": N, "errors": N} -- "ok" is the inserted count.
+    # This loader was reading res.get("inserted"), which is never a key in
+    # that response, so it silently reported 0/0 for every batch regardless
+    # of what actually happened server-side.
     url = f"{SUPABASE_URL}/functions/v1/ingest-batch"
     payload = json.dumps({"mode": mode, "rows": rows}).encode("utf-8")
     
@@ -48,8 +53,8 @@ def post_batch(rows: list, mode: str = "insert", retries: int = 3) -> dict:
             if attempt < retries - 1:
                 time.sleep(2.0 + attempt * 2.0)
             else:
-                return {"error": str(e), "inserted": 0, "duplicates": 0}
-    return {"error": "Failed", "inserted": 0, "duplicates": 0}
+                return {"error": str(e), "ok": 0, "duplicates": 0}
+    return {"error": "Failed", "ok": 0, "duplicates": 0}
 
 def load_csv(csv_path: str, batch_size: int = 100, mode: str = "insert", start_offset: int = 0):
     if not os.path.exists(csv_path):
@@ -96,7 +101,7 @@ def load_csv(csv_path: str, batch_size: int = 100, mode: str = "insert", start_o
             if len(rows_buffer) >= batch_size:
                 res = post_batch(rows_buffer, mode=mode)
                 total_processed += len(rows_buffer)
-                total_inserted += res.get("inserted", 0)
+                total_inserted += res.get("ok", 0)
                 total_duplicates += res.get("duplicates", 0)
                 
                 elapsed = max(1.0, time.time() - t0)
@@ -109,7 +114,7 @@ def load_csv(csv_path: str, batch_size: int = 100, mode: str = "insert", start_o
         if rows_buffer:
             res = post_batch(rows_buffer, mode=mode)
             total_processed += len(rows_buffer)
-            total_inserted += res.get("inserted", 0)
+            total_inserted += res.get("ok", 0)
             total_duplicates += res.get("duplicates", 0)
 
     elapsed_total = round(time.time() - t0, 1)
