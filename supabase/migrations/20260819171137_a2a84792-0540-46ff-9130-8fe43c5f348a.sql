@@ -1,0 +1,1 @@
+DELETE FROM public.scholarly_documents WHERE domain = 'islamicurdubooks-rijal';
