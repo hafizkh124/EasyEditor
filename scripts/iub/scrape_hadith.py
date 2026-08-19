@@ -57,15 +57,30 @@ def parse_hadith_page(html: str, path: str, bookid: int, hno: int, slug: str, bo
 
     url = f"https://islamicurdubooks.com/{path}/hadith-.php?bookid={bookid}&hadith_number={hno}"
 
+    # The site is inconsistent about quoting class="..." vs class='...' --
+    # confirmed on cached pages: the id="tashkeel_..._with" wrapper for Arabic
+    # matn uses double quotes, but the div.hadith_urdu translation wrapper uses
+    # SINGLE quotes ("<div class='fonturdu fs2 hadith_urdu right'>"). A
+    # double-quote-only regex silently matches zero Urdu translations on every
+    # page -- content_ur was empty for all ~39k hadith rows scraped so far,
+    # even though content_ar came through fine via the (double-quoted)
+    # tashkeel_with wrapper. Every extraction below now accepts either quote
+    # character.
+    def _class_matches(class_name):
+        return re.findall(
+            r'class=["\']' + r'[^"\']*' + re.escape(class_name) + r'[^"\']*["\'][^>]*>(.*?)</div>',
+            html, re.DOTALL,
+        )
+
     # 1. Arabic Matn (with tashkeel)
     ar_matches = re.findall(r'id="tashkeel_[^"]+_with"[^>]*>(.*?)</div>', html, re.DOTALL)
     if not ar_matches:
-        ar_matches = re.findall(r'class="[^"]*hadith_arabic[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
-    
+        ar_matches = _class_matches("hadith_arabic")
+
     content_ar = clean_html(" ".join(ar_matches)) if ar_matches else ""
 
     # 2. Urdu Translation
-    ur_matches = re.findall(r'class="[^"]*hadith_urdu[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
+    ur_matches = _class_matches("hadith_urdu")
     content_ur = clean_html(" ".join(ur_matches)) if ur_matches else ""
 
     if not content_ur and not content_ar:
