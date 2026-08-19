@@ -227,10 +227,17 @@ async function semanticChannel(
     if (!embedding) return [];
 
     // Domain filter mirrors the source_type scope. The RPC filters on domain,
-    // not source_type, so map across.
+    // not source_type, so map across to all real ingested Hadith domains.
+    const HADITH_DOMAINS = [
+      "hadith-json",
+      "easyquran-hadith",
+      "urdu-hadith",
+      "tohed-hadith",
+      "islamicurdubooks-hadith"
+    ];
     const domains: string[] = [];
     if (scope.source_types.includes("quran")) domains.push("tanzil");
-    if (scope.source_types.includes("hadith")) domains.push("hadith-json");
+    if (scope.source_types.includes("hadith")) domains.push(...HADITH_DOMAINS);
 
     const { data, error } = await supabase.rpc("match_scholarly_documents", {
       query_embedding: embedding,
