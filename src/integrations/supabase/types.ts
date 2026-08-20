@@ -1775,6 +1775,20 @@ export type Database = {
         Args: { payload: Json }
         Returns: Json
       }
+      scholarly_documents_lookup_by_citation: {
+        Args: { payload: Json }
+        Returns: {
+          ar_fingerprint: string
+          citation_ref: Json
+          collection: string
+          content_ar: string
+          domain: string
+          hadith_number: string
+          id: string
+          passage_key: string
+          source_url: string
+        }[]
+      }
       scholarly_documents_stats: {
         Args: never
         Returns: {
@@ -1782,6 +1796,13 @@ export type Database = {
           embedded: number
           source_type: string
           total: number
+        }[]
+      }
+      scholarly_documents_update_citation: {
+        Args: { payload: Json }
+        Returns: {
+          passage_key: string
+          updated: boolean
         }[]
       }
       search_classical_scoped: {
