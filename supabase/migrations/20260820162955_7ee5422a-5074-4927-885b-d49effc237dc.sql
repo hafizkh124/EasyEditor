@@ -1,0 +1,13 @@
+-- Bulk ingestion (ingest-batch) was failing with 57014 "canceling statement due
+-- to statement timeout". PostgREST applies per-role settings for the role it
+-- switches into; service_role had none, so it inherited the authenticator
+-- login role's statement_timeout of 8s (anon = 3s, authenticated = 8s are set
+-- explicitly). scholarly_documents_check_batch runs as a SINGLE statement that
+-- loops over up to 500 rows doing several indexed EXISTS lookups each, and the
+-- companion bulk INSERT writes up to 500 rows at once -- both routinely exceed
+-- 8s even though every lookup path is indexed.
+--
+-- service_role is not reachable from the browser (the key never leaves the
+-- edge-function runtime), so a long timeout here does not widen any
+-- user-facing surface; anon/authenticated keep their short limits.
+ALTER ROLE service_role SET statement_timeout = '120s';
