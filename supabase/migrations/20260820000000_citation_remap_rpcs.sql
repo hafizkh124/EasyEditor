@@ -77,7 +77,15 @@ AS $$
     sd.citation_ref
   FROM jsonb_to_recordset(payload) AS p(collection text, hadith_number text)
   LEFT JOIN LATERAL (
-    SELECT sd2.id, sd2.passage_key, sd2.domain, sd2.ar_fingerprint,
+    SELECT sd2.id, sd2.passage_key, sd2.domain,
+           -- ar_fingerprint is NOT a stored column: it exists only as the
+           -- functional expression behind scholarly_documents_ar_fingerprint_idx.
+           -- Computed inline with the identical expression so the index stays
+           -- usable and the value matches scripts/iub/ar_normalize.py's port.
+           CASE
+             WHEN sd2.content_ar IS NOT NULL AND sd2.content_ar <> ''
+             THEN md5(public.normalize_arabic_text(COALESCE(sd2.content_ar, '')))
+           END AS ar_fingerprint,
            sd2.content_ar, sd2.source_url, sd2.citation_ref
     FROM public.scholarly_documents sd2
     WHERE sd2.citation_ref->>'collection' = p.collection
@@ -92,6 +100,7 @@ COMMENT ON FUNCTION public.scholarly_documents_lookup_by_citation(jsonb) IS
 
 -- service_role only: called from ingest-batch, which is already gated by
 -- INGEST_SHARED_SECRET.
+REVOKE ALL ON FUNCTION public.scholarly_documents_lookup_by_citation(jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.scholarly_documents_lookup_by_citation(jsonb) TO service_role;
 
 
@@ -155,4 +164,5 @@ $$;
 COMMENT ON FUNCTION public.scholarly_documents_update_citation(jsonb) IS
   'Phase E apply step: patches citation_ref with IUB deep-link fields (iub_url/iub_bookid/iub_path/iub_hadith_number/iub_verified_at) and sets source_url to the new IUB url, archiving the prior source_url into citation_ref.original_source_url exactly once. Called from ingest-batch mode=update-citation, gated by the same x-ingest-secret check.';
 
+REVOKE ALL ON FUNCTION public.scholarly_documents_update_citation(jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.scholarly_documents_update_citation(jsonb) TO service_role;
