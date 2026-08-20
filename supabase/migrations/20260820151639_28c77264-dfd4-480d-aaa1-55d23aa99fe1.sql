@@ -1,0 +1,1 @@
+DELETE FROM public.scholarly_documents WHERE domain = 'islamicurdubooks-misc' AND citation_ref->>'discipline' = 'dua';
