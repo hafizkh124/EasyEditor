@@ -44,13 +44,73 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    for (const row of rows) {
-      if (!row.domain || !row.source_type || !row.content) {
-        return new Response(
-          JSON.stringify({ error: "Each row needs domain, source_type, content" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+
+    // Row shape depends on mode: "check"/"insert" rows are full scholarly_documents
+    // candidates (domain/source_type/content required), but "update-citation" rows
+    // are {passage_key, source_url, citation_ref_patch} -- a different shape
+    // entirely. This validation used to run unconditionally before the mode
+    // branch below, so an update-citation payload always 400'd here before Part
+    // E's citation-remap step could ever reach its own code path.
+    if (mode === "update-citation") {
+      for (const row of rows) {
+        if (!row.passage_key || !row.source_url || !row.citation_ref_patch) {
+          return new Response(
+            JSON.stringify({ error: "Each update-citation row needs passage_key, source_url, citation_ref_patch" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
+    } else if (mode === "lookup-citation") {
+      for (const row of rows) {
+        if (!row.collection || !row.hadith_number) {
+          return new Response(
+            JSON.stringify({ error: "Each lookup-citation row needs collection, hadith_number" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    } else {
+      for (const row of rows) {
+        if (!row.domain || !row.source_type || !row.content) {
+          return new Response(
+            JSON.stringify({ error: "Each row needs domain, source_type, content" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
+    // mode: "update-citation" — Phase E apply step. Patches citation_ref with
+    // verified IUB deep-link fields and archives the prior source_url, via
+    // scholarly_documents_update_citation (20260820000000_citation_remap_rpcs.sql).
+    // Guarded by the same x-ingest-secret check as every other mode.
+    if (mode === "update-citation") {
+      const { data, error } = await supabase.rpc("scholarly_documents_update_citation", {
+        payload: rows,
+      });
+      if (error) throw error;
+      const updated = (data ?? []).filter((r: { updated: boolean }) => r.updated).length;
+      return new Response(
+        JSON.stringify({ processed: rows.length, updated, results: data }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // mode: "lookup-citation" — Phase E alignment-probe read. For each
+    // {collection, hadith_number}, returns the EXISTING row's own domain and
+    // ar_fingerprint via scholarly_documents_lookup_by_citation (scoped exact
+    // lookup, not a corpus-wide fingerprint search -- see that function's
+    // comment in 20260820000000_citation_remap_rpcs.sql for why the
+    // corpus-wide version this replaced gave meaningless results).
+    if (mode === "lookup-citation") {
+      const { data, error } = await supabase.rpc("scholarly_documents_lookup_by_citation", {
+        payload: rows,
+      });
+      if (error) throw error;
+      return new Response(
+        JSON.stringify({ checked: rows.length, results: data }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // mode: "check" — read-only pre-flight for bulk-load scripts. Reports,
