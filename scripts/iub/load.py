@@ -100,6 +100,15 @@ def load_csv(csv_path: str, batch_size: int = 100, mode: str = "insert", start_o
 
             if len(rows_buffer) >= batch_size:
                 res = post_batch(rows_buffer, mode=mode)
+                # A batch that errors after all retries (network fault, or a
+                # non-23505 server error) silently contributed 0/0 here with no
+                # trace of what happened -- total_processed kept climbing as if
+                # the batch had been handled, while the rows themselves were
+                # never persisted. Surface it so a failed batch is visible and
+                # its row range is known, instead of vanishing into "Processed"
+                # counts that look like real progress.
+                if res.get("error"):
+                    print(f"   ⚠️  BATCH FAILED (rows {total_processed:,}-{total_processed+len(rows_buffer):,}): {res['error']}", flush=True)
                 total_processed += len(rows_buffer)
                 total_inserted += res.get("ok", 0)
                 total_duplicates += res.get("duplicates", 0)
@@ -113,6 +122,8 @@ def load_csv(csv_path: str, batch_size: int = 100, mode: str = "insert", start_o
         # Remaining buffer
         if rows_buffer:
             res = post_batch(rows_buffer, mode=mode)
+            if res.get("error"):
+                print(f"   ⚠️  BATCH FAILED (final {len(rows_buffer)} rows): {res['error']}", flush=True)
             total_processed += len(rows_buffer)
             total_inserted += res.get("ok", 0)
             total_duplicates += res.get("duplicates", 0)
