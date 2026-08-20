@@ -6,6 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Rows per database statement. Callers still POST up to 500 rows per request
+// (that cap is unchanged), but the work is split into this many rows per
+// statement so no single statement runs long enough to hit statement_timeout
+// and return 57014, which previously failed the entire batch.
+const CHUNK = 100;
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
