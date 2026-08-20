@@ -119,13 +119,25 @@ Deno.serve(async (req) => {
     // domain) WITHOUT inserting anything. See scholarly_documents_check_batch
     // (20260724220000_ar_fingerprint_and_check_batch.sql) and
     // scripts/supabase_bulk_load.py --check-only.
+    //
+    // Sub-chunked: the RPC is ONE statement that loops over every row it is
+    // given, doing several indexed EXISTS lookups each. At 500 rows that
+    // single statement routinely ran past the session statement_timeout and
+    // came back as 57014, failing the whole batch. Splitting into CHUNK-sized
+    // RPC calls keeps each statement short, so a slow patch of rows can no
+    // longer take the entire batch down. (service_role's timeout was also
+    // raised from the inherited 8s to 120s -- belt and braces.)
     if (mode === "check") {
-      const { data, error } = await supabase.rpc("scholarly_documents_check_batch", {
-        payload: rows,
-      });
-      if (error) throw error;
+      const results: unknown[] = [];
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const { data, error } = await supabase.rpc("scholarly_documents_check_batch", {
+          payload: rows.slice(i, i + CHUNK),
+        });
+        if (error) throw error;
+        results.push(...(data ?? []));
+      }
       return new Response(
-        JSON.stringify({ checked: rows.length, results: data }),
+        JSON.stringify({ checked: rows.length, results }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -137,31 +149,53 @@ Deno.serve(async (req) => {
     // exact-content hash). A naive bulk INSERT would abort the entire batch on
     // the first conflict, so we use a two-tier approach:
     //
-    //   1. Try one bulk INSERT — fast path when no duplicates exist.
+    //   1. Try one bulk INSERT per CHUNK — fast path when no duplicates exist.
     //   2. On conflict (23505), fall back to per-row INSERT so good rows still
     //      land and we get accurate inserted / duplicate counts.
+    //
+    // The insert is chunked for the same reason as the check RPC above: a
+    // single 500-row INSERT against a table carrying ~19 indexes (including
+    // an ivfflat vector index) was another 57014 source.
     let inserted = 0;
     let duplicates = 0;
     let otherErrors = 0;
 
-    const bulk = await supabase.from("scholarly_documents").insert(rows);
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK);
+      const bulk = await supabase.from("scholarly_documents").insert(chunk);
 
-    if (!bulk.error) {
-      inserted = rows.length;
-    } else if (bulk.error.code === "23505") {
-      // Per-row fallback to skip only the duplicates
-      for (const row of rows) {
-        const r = await supabase.from("scholarly_documents").insert([row]);
-        if (!r.error) inserted++;
-        else if (r.error.code === "23505") duplicates++;
-        else {
-          otherErrors++;
-          console.error("Row insert error:", r.error.message);
+      if (!bulk.error) {
+        inserted += chunk.length;
+      } else if (bulk.error.code === "23505") {
+        // Per-row fallback to skip only the duplicates
+        for (const row of chunk) {
+          const r = await supabase.from("scholarly_documents").insert([row]);
+          if (!r.error) inserted++;
+          else if (r.error.code === "23505") duplicates++;
+          else {
+            otherErrors++;
+            console.error("Row insert error:", r.error.message);
+          }
         }
+      } else if (bulk.error.code === "57014") {
+        // Statement timeout on the chunk: retry row-by-row rather than
+        // failing the whole request, so a single slow row cannot discard
+        // the other 99.
+        console.error(`Chunk at ${i} timed out; retrying row-by-row`);
+        for (const row of chunk) {
+          const r = await supabase.from("scholarly_documents").insert([row]);
+          if (!r.error) inserted++;
+          else if (r.error.code === "23505") duplicates++;
+          else {
+            otherErrors++;
+            console.error("Row insert error:", r.error.message);
+          }
+        }
+      } else {
+        throw bulk.error;
       }
-    } else {
-      throw bulk.error;
     }
+
 
     return new Response(
       JSON.stringify({ ok: inserted, duplicates, errors: otherErrors }),
