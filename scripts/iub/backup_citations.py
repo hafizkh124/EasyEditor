@@ -34,7 +34,7 @@ if not SECRET:
     sys.exit("ERROR: INGEST_SHARED_SECRET is not set. Export it before running.")
 
 INDEX_DIR = os.path.join("data", "iub_index")
-LOOKUP_BATCH = 500
+LOOKUP_BATCH = 200  # 500-row batches measured ~9s server-side, over the RPC default timeout; see 20260820010000_lookup_by_citation_timeout_fix.sql
 
 
 def lookup_full_rows(pairs):

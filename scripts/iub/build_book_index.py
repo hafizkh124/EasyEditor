@@ -48,7 +48,7 @@ if not SECRET:
 INDEX_DIR = os.path.join("data", "iub_index")
 os.makedirs(INDEX_DIR, exist_ok=True)
 
-LOOKUP_BATCH = 500
+LOOKUP_BATCH = 200  # 500-row batches measured ~9s server-side, over the RPC default timeout; see 20260820010000_lookup_by_citation_timeout_fix.sql
 
 RE_TASHKEEL = re.compile(r'id="tashkeel_[^"]+_with"[^>]*>(.*?)</div>', re.DOTALL)
 RE_ARABIC = re.compile(r'class=["\'][^"\']*hadith_arabic[^"\']*["\'][^>]*>(.*?)</div>', re.DOTALL)
