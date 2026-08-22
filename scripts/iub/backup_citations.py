@@ -3,9 +3,9 @@ backup_citations.py - Phase E step 1.4: backup every row about to be updated,
 before apply_citation_urls.py writes anything.
 
 Reads every data/iub_index/{slug}_matches.json (produced by
-build_book_index.py), resolves each MATCH / MATCH_OFFSET(k) row to the actual
-DB row it targets, and dumps id/passage_key/citation_ref/source_url for all
-of them to data/citation_backup_{timestamp}.csv plus a generated
+build_book_index.py), resolves each MATCH row's own db_hadith_number to the
+actual DB row it targets, and dumps id/passage_key/citation_ref/source_url
+for all of them to data/citation_backup_{timestamp}.csv plus a generated
 data/citation_rollback_{timestamp}.sql that restores exactly those columns by
 id if the apply step needs to be undone.
 
@@ -38,22 +38,35 @@ LOOKUP_BATCH = 200  # 500-row batches measured ~9s server-side, over the RPC def
 
 
 def lookup_full_rows(pairs):
-    """pairs: list of (collection, hadith_number:int) -> list of full row dicts."""
+    """pairs: list of (collection, hadith_number:int) -> list of full row dicts.
+
+    Retries each chunk on failure -- a dropped chunk here silently means those
+    rows never make it into the backup CSV, and apply_citation_urls.py's
+    backup-completeness check (rows_backed_up >= 99% of planned writes) exists
+    specifically to catch that, but retrying first means it doesn't have to."""
     out = []
     for i in range(0, len(pairs), LOOKUP_BATCH):
         chunk = pairs[i:i + LOOKUP_BATCH]
         rows = [{"collection": c, "hadith_number": str(n)} for c, n in chunk]
         payload = json.dumps({"mode": "lookup-citation", "rows": rows}).encode("utf-8")
-        req = urllib.request.Request(
-            f"{SUPABASE_URL}/functions/v1/ingest-batch",
-            data=payload,
-            headers={"x-ingest-secret": SECRET, "Content-Type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=90) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except Exception as e:
-            print(f"   lookup batch failed at {i}: {e}", flush=True)
+        data = None
+        for attempt in range(4):
+            req = urllib.request.Request(
+                f"{SUPABASE_URL}/functions/v1/ingest-batch",
+                data=payload,
+                headers={"x-ingest-secret": SECRET, "Content-Type": "application/json"},
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=90) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                break
+            except Exception as e:
+                if attempt < 3:
+                    print(f"   lookup batch retry {attempt+1}/3 at {i}: {e}", flush=True)
+                    time.sleep(3 + attempt * 3)
+                else:
+                    print(f"   lookup batch FAILED after retries at {i}: {e}", flush=True)
+        if data is None:
             continue
         out.extend(data.get("results", []))
         print(f"   resolved {min(i+LOOKUP_BATCH, len(pairs)):,}/{len(pairs):,}", flush=True)
@@ -61,20 +74,20 @@ def lookup_full_rows(pairs):
 
 
 def collect_targets():
-    """Returns {(slug, db_hadith_number): iub_hadith_number} for every row
-    that will actually be updated, across all *_matches.json files."""
+    """Returns {(db_collection, db_hadith_number): iub_hadith_number} for
+    every row that will actually be updated, across all *_matches.json files.
+    Keyed on db_collection (the corpus's real citation_ref.collection value),
+    NOT the IUB registry slug -- they differ for most of the 25 target books;
+    see registry.py's module docstring."""
     targets = {}
     for path in sorted(glob.glob(os.path.join(INDEX_DIR, "*_matches.json"))):
         data = json.load(open(path, encoding="utf-8"))
-        slug = data["slug"]
+        db_collection = data["db_collection"]
         for n_str, m in data["matches"].items():
-            n = int(n_str)
-            result = m["result"]
-            if result == "MATCH":
-                targets[(slug, n)] = n
-            elif result.startswith("MATCH_OFFSET"):
-                db_n = m["db_hadith_number"]
-                targets[(slug, db_n)] = n
+            if m["result"] == "MATCH":
+                n = int(n_str)
+                db_n = int(m["db_hadith_number"])
+                targets[(db_collection, db_n)] = n
     return targets
 
 
@@ -82,12 +95,12 @@ def main():
     targets = collect_targets()
     if not targets:
         sys.exit(
-            "No MATCH/MATCH_OFFSET rows found in data/iub_index/*_matches.json.\n"
+            "No MATCH rows found in data/iub_index/*_matches.json.\n"
             "Run probe_alignment.py then build_book_index.py first."
         )
 
     print(f"=== Resolving {len(targets):,} rows to back up ===", flush=True)
-    pairs = [(slug, n) for (slug, n) in targets]
+    pairs = list(targets.keys())
     rows = lookup_full_rows(pairs)
 
     ts = time.strftime("%Y%m%d_%H%M%S")

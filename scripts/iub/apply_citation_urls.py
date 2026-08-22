@@ -2,17 +2,21 @@
 apply_citation_urls.py - Phase E step 1.5 (the actual write).
 
 Flags:
-  --dry-run   (default) Print the per-book MATCH / MATCH_OFFSET / NO_MATCH /
-              SKIPPED table and a small sample of what would be sent. Writes
-              nothing, calls no backup.
+  --dry-run   (default) Print the per-book MATCH / NO_MATCH / SKIPPED table
+              and a small sample of what would be sent. Writes nothing,
+              calls no backup.
   --book SLUG Restrict to one collection's *_matches.json.
   --apply     Run backup_citations.py fresh (so "the current run's backup"
               always exists and is never stale relative to what's about to be
               written -- the plan's stated safety requirement), then send the
               update-citation batches for real.
 
-Only MATCH and MATCH_OFFSET(k) rows are ever written. NO_MATCH rows are left
-completely untouched -- no fallback, no guessing.
+Only MATCH rows are ever written. NO_MATCH rows are left completely
+untouched -- no fallback, no guessing. Each MATCH row carries its own
+db_hadith_number (build_book_index.py's citation_lookup-based whole-collection
+search finds the true DB row per hadith, which can differ from the IUB number
+by any local amount -- there is no book-wide constant offset; see
+citation_lookup.py's module docstring).
 """
 
 import os
@@ -40,21 +44,34 @@ UPDATE_BATCH = 500
 
 
 def lookup_full_rows(pairs):
+    """Retries each chunk on failure -- a dropped chunk here means those rows'
+    passage_key never resolves, so build_plan() would count them SKIPPED
+    (excluded from the write) instead of actually writing them, purely
+    because of a transient network/server hiccup rather than a real problem
+    with the row."""
     out = []
     for i in range(0, len(pairs), LOOKUP_BATCH):
         chunk = pairs[i:i + LOOKUP_BATCH]
         rows = [{"collection": c, "hadith_number": str(n)} for c, n in chunk]
         payload = json.dumps({"mode": "lookup-citation", "rows": rows}).encode("utf-8")
-        req = urllib.request.Request(
-            f"{SUPABASE_URL}/functions/v1/ingest-batch",
-            data=payload,
-            headers={"x-ingest-secret": SECRET, "Content-Type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=90) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except Exception as e:
-            print(f"   lookup batch failed at {i}: {e}", flush=True)
+        data = None
+        for attempt in range(4):
+            req = urllib.request.Request(
+                f"{SUPABASE_URL}/functions/v1/ingest-batch",
+                data=payload,
+                headers={"x-ingest-secret": SECRET, "Content-Type": "application/json"},
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=90) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                break
+            except Exception as e:
+                if attempt < 3:
+                    print(f"   lookup batch retry {attempt+1}/3 at {i}: {e}", flush=True)
+                    time.sleep(3 + attempt * 3)
+                else:
+                    print(f"   lookup batch FAILED after retries at {i}: {e}", flush=True)
+        if data is None:
             continue
         out.extend(data.get("results", []))
     return out
@@ -65,7 +82,7 @@ def iub_url_for(path, bookid, hadith_number):
 
 
 def build_plan(book_filter=None):
-    """Returns {slug: {"MATCH": n, "MATCH_OFFSET": n, "NO_MATCH": n, "SKIPPED": n,
+    """Returns {slug: {"MATCH": n, "NO_MATCH": n, "SKIPPED": n,
     "updates": [ {passage_key, source_url, citation_ref_patch} ]}}"""
     plan = {}
     files = sorted(glob.glob(os.path.join(INDEX_DIR, "*_matches.json")))
@@ -75,20 +92,23 @@ def build_plan(book_filter=None):
     for path in files:
         data = json.load(open(path, encoding="utf-8"))
         slug = data["slug"]
+        db_collection = data["db_collection"]
         if book_filter and slug != book_filter:
             continue
 
         book_path, bookid = data["path"], data["bookid"]
-        counts = {"MATCH": 0, "MATCH_OFFSET": 0, "NO_MATCH": 0, "SKIPPED": 0}
+        counts = {"MATCH": 0, "NO_MATCH": 0, "SKIPPED": 0}
 
-        # Resolve passage_key for every DB row we'd actually write to.
+        # Resolve passage_key for every DB row we'd actually write to. Keyed
+        # on db_collection -- the corpus's real citation_ref.collection value,
+        # not the IUB registry slug (they differ for most of these 25 books;
+        # see registry.py's module docstring). db_hadith_number is the actual
+        # DB row found by build_book_index.py's whole-collection search --
+        # it can differ from the IUB hadith_number by any local amount.
         target_pairs = []
         for n_str, m in data["matches"].items():
-            n = int(n_str)
             if m["result"] == "MATCH":
-                target_pairs.append((slug, n))
-            elif m["result"].startswith("MATCH_OFFSET"):
-                target_pairs.append((slug, m["db_hadith_number"]))
+                target_pairs.append((db_collection, int(m["db_hadith_number"])))
 
         resolved = {}
         if target_pairs:
@@ -99,19 +119,13 @@ def build_plan(book_filter=None):
         updates = []
         for n_str, m in data["matches"].items():
             n = int(n_str)
-            result = m["result"]
-            if result == "NO_MATCH":
+            if m["result"] != "MATCH":
                 counts["NO_MATCH"] += 1
                 continue
+            counts["MATCH"] += 1
+            db_n = int(m["db_hadith_number"])
 
-            if result == "MATCH":
-                db_n = n
-                counts["MATCH"] += 1
-            else:
-                db_n = m["db_hadith_number"]
-                counts["MATCH_OFFSET"] += 1
-
-            row = resolved.get((slug, db_n))
+            row = resolved.get((db_collection, db_n))
             if not row or not row.get("passage_key"):
                 counts["SKIPPED"] += 1
                 continue
@@ -135,19 +149,18 @@ def build_plan(book_filter=None):
 
 
 def print_table(plan):
-    print(f"\n{'book':30} {'MATCH':>8} {'MATCH_OFFSET':>13} {'NO_MATCH':>9} {'SKIPPED':>8} {'to_write':>9}")
-    print("-" * 82)
-    total = {"MATCH": 0, "MATCH_OFFSET": 0, "NO_MATCH": 0, "SKIPPED": 0, "to_write": 0}
+    print(f"\n{'book':30} {'MATCH':>8} {'NO_MATCH':>9} {'SKIPPED':>8} {'to_write':>9}")
+    print("-" * 70)
+    total = {"MATCH": 0, "NO_MATCH": 0, "SKIPPED": 0, "to_write": 0}
     for slug, c in plan.items():
         to_write = len(c["updates"])
-        print(f"{slug:30} {c['MATCH']:8,} {c['MATCH_OFFSET']:13,} {c['NO_MATCH']:9,} {c['SKIPPED']:8,} {to_write:9,}")
+        print(f"{slug:30} {c['MATCH']:8,} {c['NO_MATCH']:9,} {c['SKIPPED']:8,} {to_write:9,}")
         total["MATCH"] += c["MATCH"]
-        total["MATCH_OFFSET"] += c["MATCH_OFFSET"]
         total["NO_MATCH"] += c["NO_MATCH"]
         total["SKIPPED"] += c["SKIPPED"]
         total["to_write"] += to_write
-    print("-" * 82)
-    print(f"{'TOTAL':30} {total['MATCH']:8,} {total['MATCH_OFFSET']:13,} {total['NO_MATCH']:9,} {total['SKIPPED']:8,} {total['to_write']:9,}")
+    print("-" * 70)
+    print(f"{'TOTAL':30} {total['MATCH']:8,} {total['NO_MATCH']:9,} {total['SKIPPED']:8,} {total['to_write']:9,}")
     return total
 
 
@@ -157,19 +170,27 @@ def send_updates(updates):
     for i in range(0, len(updates), UPDATE_BATCH):
         chunk = updates[i:i + UPDATE_BATCH]
         payload = json.dumps({"mode": "update-citation", "rows": chunk}).encode("utf-8")
-        req = urllib.request.Request(
-            f"{SUPABASE_URL}/functions/v1/ingest-batch",
-            data=payload,
-            headers={"x-ingest-secret": SECRET, "Content-Type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=90) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                ok += data.get("updated", 0)
-        except Exception as e:
-            print(f"   update batch failed at {i}: {e}", flush=True)
+        data = None
+        for attempt in range(4):
+            req = urllib.request.Request(
+                f"{SUPABASE_URL}/functions/v1/ingest-batch",
+                data=payload,
+                headers={"x-ingest-secret": SECRET, "Content-Type": "application/json"},
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=90) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                break
+            except Exception as e:
+                if attempt < 3:
+                    print(f"   update batch retry {attempt+1}/3 at {i}: {e}", flush=True)
+                    time.sleep(3 + attempt * 3)
+                else:
+                    print(f"   update batch FAILED after retries at {i}: {e}", flush=True)
+        if data is None:
             failed += len(chunk)
             continue
+        ok += data.get("updated", 0)
         print(f"   updated {min(i+UPDATE_BATCH, len(updates)):,}/{len(updates):,} "
               f"(running total ok={ok:,})", flush=True)
     return ok, failed
