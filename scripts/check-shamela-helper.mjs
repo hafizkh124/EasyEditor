@@ -13,7 +13,7 @@
  * back. Run before packaging (build:electron / pack:electron).
  */
 import { existsSync, readFileSync, copyFileSync, mkdirSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { hashJavaSource } from "./lib/javaSourceHash.mjs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -41,7 +41,7 @@ if (!existsSync(HASH_FILE)) {
 }
 
 const recorded = readFileSync(HASH_FILE, "utf8").trim();
-const actual = createHash("sha256").update(readFileSync(JAVA_SRC)).digest("hex");
+const actual = hashJavaSource(JAVA_SRC);
 
 if (recorded !== actual) {
   fail(

@@ -15,7 +15,7 @@
 
 import { execFileSync, execSync } from 'node:child_process';
 import { mkdirSync, existsSync, rmSync, copyFileSync, readFileSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { hashJavaSource } from './lib/javaSourceHash.mjs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -136,7 +136,7 @@ function main() {
   // ordinary build needs no JDK (SPEC-M5 R26) — which means an edited
   // ShamelaHelper.java with a stale jar beside it would silently ship the old
   // helper. scripts/check-shamela-helper.mjs compares this back.
-  const sourceHash = createHash('sha256').update(readFileSync(JAVA_SRC)).digest('hex');
+  const sourceHash = hashJavaSource(JAVA_SRC);
   writeFileSync(SOURCE_HASH_FILE, `${sourceHash}\n`);
 
   // Copy to resources/bin for electron-builder packaging

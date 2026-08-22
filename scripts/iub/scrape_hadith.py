@@ -72,15 +72,49 @@ def parse_hadith_page(html: str, path: str, bookid: int, hno: int, slug: str, bo
             html, re.DOTALL,
         )
 
+    # A page for hadith N that opens a new bab often ALSO carries a preceding
+    # epigraph block (a quoted Quran verse introducing the chapter), wrapped in
+    # its own tashkeel_..._with / hadith_urdu divs exactly like the real hadith
+    # -- labelled "حدیث نمبر: QN" instead of "حدیث نمبر: N". A plain findall()
+    # over every such wrapper on the page concatenates the epigraph's text
+    # (and its own Urdu translation) onto the front of the actual hadith,
+    # corrupting content_ar/content for every hadith that opens a bab. Found
+    # live on Sahih Bukhari #1 (the very first hadith in the corpus) via
+    # Phase E's alignment probe: the DB's own content_ar was clean, but this
+    # scraper's raw extraction included the "Q1" epigraph prepended to it.
+    #
+    # Fix: pair each wrapper with the "حدیث نمبر:" label immediately before
+    # it, and keep only the block whose label is the PLAIN hadith number --
+    # never a "Q"-prefixed one, which is always the epigraph.
+    def _label_scoped(class_or_id_pattern):
+        pat = re.compile(
+            r'<span class="fontcalibri fs1 hno_color bold">([^<]+)</span>.*?'
+            + class_or_id_pattern + r'[^>]*>(.*?)</div>',
+            re.DOTALL,
+        )
+        pairs = pat.findall(html)
+        target = str(hno)
+        exact = [content for label, content in pairs if label.strip() == target]
+        if exact:
+            return exact
+        # No labelled match at all (older/simpler page layout without the
+        # حدیث نمبر spans) -- fall back to every wrapper on the page, same as
+        # the pre-fix behaviour, rather than silently returning nothing.
+        return [content for _, content in pairs] if pairs else None
+
     # 1. Arabic Matn (with tashkeel)
-    ar_matches = re.findall(r'id="tashkeel_[^"]+_with"[^>]*>(.*?)</div>', html, re.DOTALL)
+    ar_matches = _label_scoped(r'id="tashkeel_[^"]+_with"')
+    if ar_matches is None:
+        ar_matches = re.findall(r'id="tashkeel_[^"]+_with"[^>]*>(.*?)</div>', html, re.DOTALL)
     if not ar_matches:
         ar_matches = _class_matches("hadith_arabic")
 
     content_ar = clean_html(" ".join(ar_matches)) if ar_matches else ""
 
-    # 2. Urdu Translation
-    ur_matches = _class_matches("hadith_urdu")
+    # 2. Urdu Translation -- same epigraph-scoping issue, same fix.
+    ur_matches = _label_scoped(r'class=["\'][^"\']*hadith_urdu[^"\']*["\']')
+    if ur_matches is None:
+        ur_matches = _class_matches("hadith_urdu")
     content_ur = clean_html(" ".join(ur_matches)) if ur_matches else ""
 
     if not content_ur and not content_ar:

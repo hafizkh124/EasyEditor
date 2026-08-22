@@ -50,3 +50,51 @@ def normalize_arabic_text(t):
 
 def ar_fingerprint(t):
     return hashlib.md5(normalize_arabic_text(t).encode('utf-8')).hexdigest()
+
+
+# ── Fuzzy content matching for Phase E alignment (NOT the DB-parity fingerprint) ──
+#
+# ar_fingerprint (above) demands byte-for-byte equality after normalization --
+# correct for the ar_fingerprint GENERATED COLUMN's own purpose (exact-content
+# dedup), wrong for comparing IUB's scrape against hadith-json/tohed-hadith/etc.
+# Confirmed live on Sahih Bukhari #1, #10, #50, #100 (2026-08-21): those rows
+# are independently digitized from IUB, not derived from it, so isnad
+# punctuation drifts unpredictably row to row -- "قال:" here, "قال : " there,
+# "قال" with no colon at all elsewhere -- even though the underlying hadith
+# text is identical. Exact fingerprint matching returns 0% for a book that
+# should align perfectly by every other signal.
+#
+# This mirrors supabase/functions/_shared/citationEngine.ts's takhrijTokens /
+# takhrijHadith, written to solve the exact same problem (cross-collection
+# hadith takhrij) for the same reason: word-set overlap tolerant of
+# punctuation/whitespace noise, intolerant of genuinely different content.
+# Keep the common-word list in sync with TAKHRIJ_COMMON_WORDS there.
+_COMMON_WORDS = {
+    "قال", "قالت", "قالوا", "رسول", "الله", "النبي", "عليه", "وسلم", "صلي",
+    "حدثنا", "حدثني", "اخبرنا", "اخبرني", "سمعت", "روي", "عنه", "عنها",
+    "رضي", "بن", "ابن", "ابي", "عبد", "كان", "كانت", "الذي", "التي", "علي",
+    "الي", "من", "في", "عن", "انه", "انها", "هذا", "هذه", "ذلك",
+}
+
+_RE_TOKEN_SPLIT = re.compile(r'[\s،.:؛()«»"\'\-]+')
+
+
+def content_tokens(t):
+    """Normalized, boilerplate-stripped word set for overlap comparison."""
+    norm = normalize_arabic_text(t)
+    return {
+        w for w in _RE_TOKEN_SPLIT.split(norm)
+        if len(w) > 3 and w not in _COMMON_WORDS
+    }
+
+
+def content_overlap_ratio(text_a, text_b):
+    """Content-word overlap, normalized by the SMALLER side (so an abridged
+    narration still matches its fuller version) -- same formula as
+    citationEngine.ts's takhrijHadith. Returns 0.0 if either side has fewer
+    than 3 content words (too little to judge rather than a guess)."""
+    ta, tb = content_tokens(text_a), content_tokens(text_b)
+    if len(ta) < 3 or len(tb) < 3:
+        return 0.0
+    shared = len(ta & tb)
+    return shared / min(len(ta), len(tb))
