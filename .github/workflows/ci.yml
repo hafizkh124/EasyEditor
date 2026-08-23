@@ -19,9 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Must stay >=22: the dependency tree has moved past Node 20 —
+      # better-sqlite3@13 (a native module), @supabase/supabase-js@2.111,
+      # pdfjs-dist@5.7 and electron@43 all declare engines.node >=22.
+      # release.yml already runs 22; leaving this on 20 made every job here
+      # fail while the same commit passed locally on 22.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
