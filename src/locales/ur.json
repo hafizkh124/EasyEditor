@@ -1525,5 +1525,14 @@
   "home.firstrun.title": "ایزی ایڈیٹر میں خوش آمدید",
   "home.firstrun.step1": "پڑھنا شروع کرنے کے لیے لائبریری سے کتاب کھولیں یا درآمد کریں",
   "home.firstrun.step2": "ایجٹر میں متن منتخب کر کے ایڈیٹر میں متن منتخب کر کے پیرافریز اور حوالہ جات جیسے AI کام چلائیں",
-  "home.firstrun.dismiss": "بند کریں"
+  "home.firstrun.dismiss": "بند کریں",
+  "research.sources_all": "تمام مآخذ",
+  "research.sources_unit": "مآخذ",
+  "research.sources_label": "مآخذ منتخب کریں",
+  "research.sources_heading": "کن مآخذ میں تلاش کریں؟",
+  "research.sources_reset": "سب",
+  "research.sources_group_all": "سب منتخب",
+  "research.sources_group_none": "سب ہٹائیں",
+  "research.sources_hint_all": "ابھی ہر دستیاب مأخذ میں تلاش ہو رہی ہے۔",
+  "research.sources_hint_some": "صرف منتخب مآخذ میں تلاش ہوگی۔ آپ کی اپنی لائبریری ہمیشہ شامل رہتی ہے۔"
 }

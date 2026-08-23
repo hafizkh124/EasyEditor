@@ -24,6 +24,7 @@ import { useResearchChat } from "@/hooks/useResearchChat";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { markdownToHtml } from "@/lib/editor/htmlText";
 import type { ResearchAssistMode } from "@/lib/prompts";
+import { sanitizeSelection } from "@/lib/research/sources";
 
 function usePersistedState<T>(key: string, initial: T, parse: (raw: string) => T): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(() => {
@@ -78,12 +79,23 @@ export const ResearchPanel = () => {
     },
   );
 
+  // Islamic-mode source narrowing. Empty = every source, which is the default
+  // and what ADR-0002 wanted; the picker only exists to opt OUT of some.
+  // Sanitised on read so a stale id from an older build cannot reach the
+  // backend (where an unknown domain is silently dropped from the fan-out).
+  const [selectedDomains, setSelectedDomains] = usePersistedState<string[]>(
+    "research_selected_domains",
+    [],
+    (raw) => sanitizeSelection(JSON.parse(raw) as unknown),
+  );
+
   const chat = useResearchChat({
     user,
     session,
     mode,
     tier,
     sources: [],
+    selectedDomains,
     strictMode: mode === "islamic",
     researchLimitReached,
     islamicLimitReached,
@@ -179,6 +191,8 @@ export const ResearchPanel = () => {
           citations={chat.citations}
           assistModes={assistModes}
           onAssistModesChange={setAssistModes}
+          selectedDomains={selectedDomains}
+          onSelectedDomainsChange={setSelectedDomains}
           onContinue={chat.handleContinue}
         />
       </div>

@@ -1525,5 +1525,14 @@
   "home.firstrun.title": "مرحبًا بك في إيزي إيديتور",
   "home.firstrun.step1": "افتح أو استورد كتابًا من المكتبة لبدء القراءة",
   "home.firstrun.step2": "حدد النص في المحرر لتشغيل مهام الذكاء الاصطناعي مثل إعادة الصياغة والاقتباسات",
-  "home.firstrun.dismiss": "إغلاق"
+  "home.firstrun.dismiss": "إغلاق",
+  "research.sources_all": "جميع المصادر",
+  "research.sources_unit": "مصادر",
+  "research.sources_label": "اختيار المصادر",
+  "research.sources_heading": "في أي المصادر نبحث؟",
+  "research.sources_reset": "الكل",
+  "research.sources_group_all": "تحديد الكل",
+  "research.sources_group_none": "إلغاء الكل",
+  "research.sources_hint_all": "يجري البحث حاليًا في كل مصدر متاح.",
+  "research.sources_hint_some": "سيتم البحث في المصادر المحددة فقط. مكتبتك الخاصة مشمولة دائمًا."
 }

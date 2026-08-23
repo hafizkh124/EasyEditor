@@ -23,6 +23,7 @@ import { embedQuery } from "./embed.ts";
 import { planQuery, describeScope, type QueryPlan } from "./queryPlanner.ts";
 import { reciprocalRankFusion, buildMatchKey } from "./rankFusion.ts";
 import { normalizeHamzaAndAlif } from "./arabicRoot.ts";
+import { resolveCollectionSlugs, scopeHasArabicMatn } from "./collections.ts";
 // Tier-2 classical corpus lexical channel is scoped by discipline; see disciplines.ts.
 
 export interface EngineCitation {
@@ -144,10 +145,15 @@ async function smartFallback(
     }
     let rows = data ?? [];
     if (scope.collections.length > 0) {
+      // `scope.collections` holds canonical book IDs; the rows carry whatever
+      // string the ingestion pipeline wrote. Compare against the resolved set
+      // (see collections.ts) — comparing IDs directly silently dropped every
+      // row of a book stored under a variant slug, e.g. mishkat_almasabih.
+      const wanted = new Set(resolveCollectionSlugs(scope.collections));
       // deno-lint-ignore no-explicit-any
       rows = rows.filter((r: any) => {
         const c = r?.citation_ref?.collection ?? r?.citation_ref?.book;
-        return c && scope.collections.includes(c);
+        return c && wanted.has(c);
       });
     }
     if (scope.surah != null) {
@@ -176,11 +182,20 @@ async function lexicalChannel(
   const patterns = [...plan.arabic_surface_forms, ...plan.related_concepts.slice(0, 3)];
   if (patterns.length === 0) return [];
 
+  // search_documents_scoped filters on `content_ar IS NOT NULL`. When every
+  // book in scope is one of the tohed-hadith-only titles (Ibn Hibban, Darqutni,
+  // Musnad Ishaq, ...), no row of theirs has Arabic matn stored, so the scoped
+  // RPC must return zero — and its 8s statement timeout would be spent proving
+  // it. Go straight to the smart search, which also matches the Urdu `content`.
+  if (!scopeHasArabicMatn(scope.collections)) {
+    return await smartFallback(supabase, patterns, scope);
+  }
+
   try {
     const { data, error } = await supabase.rpc("search_documents_scoped", {
       p_patterns: patterns,
       p_source_types: scope.source_types.length > 0 ? scope.source_types : null,
-      p_collections: scope.collections.length > 0 ? scope.collections : null,
+      p_collections: scope.collections.length > 0 ? resolveCollectionSlugs(scope.collections) : null,
       p_surah: scope.surah,
       p_limit: LEXICAL_LIMIT,
     });
@@ -256,10 +271,11 @@ async function semanticChannel(
     // scoped to specific books ("in Sahih Bukhari"), enforce it here — an
     // out-of-scope semantic hit is worse than one fewer result.
     if (scope.collections.length > 0) {
+      const wanted = new Set(resolveCollectionSlugs(scope.collections));
       // deno-lint-ignore no-explicit-any
       rows = rows.filter((r: any) => {
         const c = r?.citation_ref?.collection ?? r?.citation_ref?.book;
-        return c && scope.collections.includes(c);
+        return c && wanted.has(c);
       });
     }
     // deno-lint-ignore no-explicit-any
@@ -316,7 +332,7 @@ async function countChannel(
     const { data, error } = await supabase.rpc("count_term_occurrences", {
       p_patterns: plan.arabic_surface_forms,
       p_source_types: scope.source_types.length > 0 ? scope.source_types : null,
-      p_collections: scope.collections.length > 0 ? scope.collections : null,
+      p_collections: scope.collections.length > 0 ? resolveCollectionSlugs(scope.collections) : null,
       p_surah: scope.surah,
       p_exclude_definite_article: plan.is_proper_noun,
     });

@@ -25,36 +25,7 @@ import {
   detectDisciplines,
   describeDisciplines,
 } from "./disciplines.ts";
-
-/** Collection slugs as stored in citation_ref->>'collection'. Source of truth:
- *  scripts/hadith_json_to_csv.py COLLECTION_META. The planner may only pick
- *  from this list; anything else it invents is dropped. */
-export const COLLECTION_SLUGS = [
-  "bukhari", "muslim", "tirmidhi", "abudawud", "ibnmajah", "nasai",
-  "malik", "darimi", "ahmed", "nawawi40", "qudsi", "riyadussalihin",
-  "bulughalmaram", "adab", "shahih-al-jami", "mishkat", "hisn-alhisar",
-] as const;
-
-/** Human labels used when describing the active scope back to the user. */
-export const COLLECTION_LABELS: Record<string, string> = {
-  bukhari: "صحیح بخاری",
-  muslim: "صحیح مسلم",
-  tirmidhi: "جامع ترمذی",
-  abudawud: "سنن ابو داؤد",
-  ibnmajah: "سنن ابن ماجہ",
-  nasai: "سنن نسائی",
-  malik: "موطأ امام مالک",
-  darimi: "سنن دارمی",
-  ahmed: "مسند احمد",
-  nawawi40: "اربعین نووی",
-  qudsi: "احادیث قدسیہ",
-  riyadussalihin: "ریاض الصالحین",
-  bulughalmaram: "بلوغ المرام",
-  adab: "الأدب المفرد",
-  "shahih-al-jami": "صحیح الجامع",
-  mishkat: "مشکاۃ المصابیح",
-  "hisn-alhisar": "حصن المسلم",
-};
+import { BOOK_IDS, bookLabel, booksPromptList, detectBooks } from "./collections.ts";
 
 export type QueryIntent = "topical" | "count" | "reference" | "phrase";
 
@@ -83,7 +54,7 @@ export interface QueryPlan {
   degraded?: boolean;
 }
 
-const PLANNER_SYSTEM_PROMPT = `You plan retrieval over a corpus of the Qur'an (Tanzil, all 6236 ayat) and Hadith (17 collections). The user writes in Urdu, Arabic, or English. Return ONLY a JSON object.
+const PLANNER_SYSTEM_PROMPT = `You plan retrieval over a corpus of the Qur'an (Tanzil, all 6236 ayat) and Hadith (${BOOK_IDS.length} collections). The user writes in Urdu, Arabic, or English. Return ONLY a JSON object.
 
 Decide:
 
@@ -95,9 +66,11 @@ Decide:
 
 2. "scope":
    - "source_types": subset of ["quran","hadith"]. If the user says only آیات/verses → ["quran"]. Only احادیث/hadith → ["hadith"]. Both or unclear → both.
-   - "collections": slugs ONLY from this list, [] if unrestricted:
-     bukhari, muslim, tirmidhi, abudawud, ibnmajah, nasai, malik, darimi, ahmed, nawawi40, qudsi, riyadussalihin, bulughalmaram, adab, shahih-al-jami, mishkat, hisn-alhisar
-     ("صحیح بخاری" → ["bukhari"], "صحیح مسلم" → ["muslim"])
+   - "collections": canonical book IDs ONLY from this list, [] if unrestricted.
+     Use the ID on the left of the dash; the Urdu name on the right is what the
+     user will have typed. Match generously — "بخاری", "صحیح بخاری" and
+     "Bukhari" are all bukhari — but never invent an ID that is not listed:
+     ${booksPromptList()}
    - "surah": surah number if the user named one, else null.
    - "disciplines": subset of ["fiqh","fatwa","tafsir","lughat","rijal","nahw"], [] unless the question is clearly about the classical literature of that discipline. Use "fiqh" for فقہی مسائل / اقوالِ مذاہب, "fatwa" for فتاویٰ, "tafsir" for تفسیرِ آیت / اقوالِ مفسرین, "lughat" for لغوی معنیٰ / مادہ, "rijal" for راوی کا حال / جرح و تعدیل, "nahw" for نحو و صرف / اعراب. This is ADDITIVE — it does not replace the Quran/Hadith scope.
 
@@ -127,16 +100,16 @@ function heuristicIntent(query: string): QueryIntent {
 
 /** Heuristic scope detection — used when the model is unavailable. */
 function heuristicScope(query: string): QueryPlan["scope"] {
-  const collections: string[] = [];
-  if (/بخاری|بخاري|bukhari/i.test(query)) collections.push("bukhari");
-  if (/مسلم|muslim/i.test(query)) collections.push("muslim");
-  if (/ترمذی|ترمذي|tirmidhi/i.test(query)) collections.push("tirmidhi");
-  if (/ابو\s*دا[وؤ]?د|abu\s*da[wu]+d/i.test(query)) collections.push("abudawud");
-  if (/ابن\s*ماجہ|ابن\s*ماجه|ibn\s*majah/i.test(query)) collections.push("ibnmajah");
-  if (/نسائی|نسائي|nasai/i.test(query)) collections.push("nasai");
+  // Book detection is delegated to the registry (collections.ts) rather than a
+  // hand-written regex per book: the regex only ever covered the six Sihah
+  // Sittah titles, so the fallback path silently ignored every other book in
+  // the corpus. detectBooks() matches whole tokens of a book's Urdu/Arabic
+  // title and aliases, which also fixes the substring bug the old
+  // /مسلم|muslim/ test had (it scoped "مسلمان" queries to صحیح مسلم).
+  const collections = detectBooks(query);
 
   const wantsQuran = /قرآن|قراٰن|قرأن|آیات|آیت|آية|آيات|سورۃ|سورہ|سورة|quran|qur'?an|verse|ayah|surah/i.test(query);
-  const wantsHadith = /حدیث|احادیث|حديث|أحاديث|بخاری|مسلم|hadith|hadis|narration/i.test(query)
+  const wantsHadith = /حدیث|احادیث|حديث|أحاديث|hadith|hadis|narration/i.test(query)
     || collections.length > 0;
 
   const source_types: Array<"quran" | "hadith"> =
@@ -203,7 +176,7 @@ export function coercePlan(raw: unknown, query: string): QueryPlan {
 
   const collections = Array.isArray(o.scope?.collections)
     ? o.scope.collections.filter((c: unknown) =>
-        typeof c === "string" && (COLLECTION_SLUGS as readonly string[]).includes(c))
+        typeof c === "string" && BOOK_IDS.includes(c))
     : [];
 
   const surahRaw = Number(o.scope?.surah);
@@ -332,7 +305,7 @@ export async function planQuery(
 export function describeScope(plan: QueryPlan): string {
   const parts: string[] = [];
   if (plan.scope.collections.length > 0) {
-    parts.push(plan.scope.collections.map((c) => COLLECTION_LABELS[c] ?? c).join("، "));
+    parts.push(plan.scope.collections.map(bookLabel).join("، "));
   } else {
     if (plan.scope.source_types.includes("quran")) parts.push("قرآن");
     if (plan.scope.source_types.includes("hadith")) parts.push("حدیث");

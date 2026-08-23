@@ -1525,5 +1525,14 @@
   "home.firstrun.title": "Welcome to Easy Editor",
   "home.firstrun.step1": "Open or import a book from the Library to start reading",
   "home.firstrun.step2": "Select text in the editor to run AI tasks like paraphrase and citations",
-  "home.firstrun.dismiss": "Dismiss"
+  "home.firstrun.dismiss": "Dismiss",
+  "research.sources_all": "All sources",
+  "research.sources_unit": "sources",
+  "research.sources_label": "Choose sources",
+  "research.sources_heading": "Which sources should be searched?",
+  "research.sources_reset": "All",
+  "research.sources_group_all": "Select all",
+  "research.sources_group_none": "Clear",
+  "research.sources_hint_all": "Every available source is being searched.",
+  "research.sources_hint_some": "Only the selected sources will be searched. Your own library is always included."
 }
