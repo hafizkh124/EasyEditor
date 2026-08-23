@@ -60,6 +60,10 @@ which ADR-0013 already declined to do for `shamela-index` on the same
 grounds — extended here to keep both source-selection surfaces honest by the
 same rule.
 
+> **Correction (2026-08-23, same day):** decision 3 was wrong about fatwa, and
+> `classical-fatwa` has since been added. See the "Correction" section at the
+> end of this ADR.
+
 ## Rationale
 
 - **Fix reachability before adding a control.** A toggle for a channel that
@@ -97,12 +101,53 @@ same rule.
   carry `citation_ref.discipline` tags after all, fiqh/fatwa/nahw could be
   added to the picker without further backend changes.
 
+## Correction (2026-08-23, same day) — fatwa was wrongly excluded
+
+Decision 3 above claimed fatwa had no ingested rows. **That was wrong, and the
+error came from trusting a mapping instead of the corpus.** Investigating
+Corpus Atlas finding #5 the same day turned up two bugs in
+`DISCIPLINE_DOMAINS`:
+
+1. **`urdufatwa` was missing from `fatwa` entirely.**
+   `scripts/scrapers/ingest_fatwa.py` writes 22,775 rows there, tagged
+   `citation_ref.discipline = "fatwa"` — the largest fatwa corpus in the
+   project. Because the mapping never listed the domain, it never entered
+   `filter_domains`, so no semantic query could reach it. Reading the mapping
+   and concluding "fatwa has no rows" inverted cause and effect: the corpus
+   was there, the mapping was broken.
+2. **`openiti` is not a domain.** The corpus stores `openiti-index` (confirmed
+   by `vector-search`'s `TIER_B_DOMAINS` and the Atlas domain census), so
+   every discipline's `openiti` entry matched zero rows — including the ones
+   this ADR had just shipped.
+
+A separate finding, from a live probe of `backfill-embeddings` on the same
+day: **the Atlas's "urdufatwa: 0 embedded" is stale.** `remaining_total` is 0
+for every `source_type` and for the table as a whole, so the corpus is fully
+embedded. Finding #5 needed no embedding backfill and no API quota at all —
+only the two mapping fixes above. Both are now corrected, `classical-fatwa` is
+in `TIER_D_DOMAINS` and the picker, and
+`src/test/researchSources.test.ts` pins both facts so neither can regress.
+
+The generalisable lesson, and the second time this exact shape has bitten this
+project (see ADR-0013's slug mismatches): **an empty-looking corpus is more
+often a stale mapping than an empty corpus.** Check the data before concluding
+a source is absent.
+
 ## Follow-ups
 
 - Confirm live whether `openiti-index` rows carry any `citation_ref.discipline`
   value at all (a `GROUP BY citation_ref->>'discipline'` on that domain would
-  settle it) before deciding whether fiqh/fatwa/nahw are worth ingesting via
-  `scripts/classical_to_csv.py`.
+  settle it) before deciding whether fiqh/nahw are worth ingesting via
+  `scripts/classical_to_csv.py`. They remain the only two disciplines still
+  excluded from the picker.
+- **Cross-tier duplication is unaddressed.** `islamic-search` merges every
+  tier's rows into `allResults` with no dedup (only topic anchors are deduped,
+  on a quran/hadith-shaped key that is empty for fatwa and classical rows). A
+  fatwa ruling can now surface from both Tier K (lexical) and Tier D
+  (semantic) in one answer. This predates Tier D — Tier B and Tier K can
+  already both return the same hadith — and fixing it properly needs a stable
+  identity on `IslamicResult`, which it does not currently carry. Worth its own
+  change rather than a patch here.
 - `islamicurdubooks-misc` (66 rows, hadith-terminology/duas) tags
   `discipline: "hadith_term"` / `"dua"` — neither is in `DISCIPLINE_SLUGS`, so
   those rows are unreachable by any discipline-scoped path. Out of scope here;

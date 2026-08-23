@@ -56,30 +56,38 @@ const TIER_C_DOMAINS = [
 
 const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 
-// Tier D: the Tier-2 classical corpus (rijal/tafsir/lughat), scoped by
+// Tier D: the Tier-2 classical corpus (rijal/tafsir/lughat/fatwa), scoped by
 // citation_ref->>'discipline' rather than by domain — see collections.ts's
 // arabicMatn split for the parallel pattern. These pseudo-ids exist only in
 // the UI/API contract; the retrieval layer maps each to its discipline via
 // classicalChannel in _shared/citationEngine.ts.
 //
-// Confirmed 2026-08-20 (Corpus Atlas): three findings apply here.
+// Confirmed 2026-08-20 (Corpus Atlas) and 2026-08-23 (live probe):
 //   1. Before this Tier existed, rijal (19,616 rows) / tafsir (6,208 rows) /
 //      lughat corpora were reachable from NO chat surface at all — not even
 //      implicitly. classicalChannel is used only by Editor/refine-text's
 //      findCitations(), which islamic-search never calls.
-//   2. fiqh/fatwa/nahw are deliberately NOT offered: their only domains are
-//      `shamela` (never ingested — 0 rows) and `openiti` (ingested, but as a
-//      general prose corpus with no discipline tag). Offering a pseudo-domain
-//      that can only return zero rows would repeat the shamela-index mistake
-//      already avoided in src/lib/research/sources.ts.
-//   3. rijal and tafsir have no content_ar at all — the lexical RPC
+//   2. rijal and tafsir have no content_ar at all — the lexical RPC
 //      (search_classical_scoped) can never find them, only the semantic half
 //      of classicalChannel can. See that function's comments.
-const TIER_D_DOMAINS = ["classical-rijal", "classical-tafsir", "classical-lughat"];
+//   3. `classical-fatwa` was added on 2026-08-23, correcting this comment's
+//      own earlier claim that fatwa had no ingested rows. That claim was read
+//      off DISCIPLINE_DOMAINS, which was itself missing `urdufatwa` — 22,775
+//      rows tagged citation_ref.discipline = "fatwa", fully embedded. The
+//      corpus was there the whole time; only the mapping was wrong.
+//
+// fiqh and nahw are still NOT offered: their only domains are `shamela`
+// (never ingested — 0 rows) and `openiti-index` (ingested, but as general
+// classical prose whose discipline tagging is unverified). Offering a
+// pseudo-domain that can only return zero rows would repeat the shamela-index
+// mistake already avoided in src/lib/research/sources.ts. Both become one-line
+// additions here the day their rows carry a discipline.
+const TIER_D_DOMAINS = ["classical-rijal", "classical-tafsir", "classical-lughat", "classical-fatwa"];
 const TIER_D_DISCIPLINE: Record<string, string> = {
   "classical-rijal": "rijal",
   "classical-tafsir": "tafsir",
   "classical-lughat": "lughat",
+  "classical-fatwa": "fatwa",
 };
 
 const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS, ...TIER_D_DOMAINS];

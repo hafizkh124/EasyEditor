@@ -35,6 +35,12 @@ export function brokeredPreviewStorage() {
     new Promise((resolve) => {
       const requestId = newId();
       let done = false;
+      // `let`, not `const`: `finish` below closes over `timer` but is defined
+      // before the setTimeout that assigns it. Hoisting the assignment up to
+      // the declaration to satisfy prefer-const would put `finish`'s
+      // clearTimeout in the temporal dead zone if a message ever arrived
+      // between addEventListener and the assignment.
+      // eslint-disable-next-line prefer-const
       let timer: ReturnType<typeof setTimeout>;
       const finish = (r: { ok: boolean; value?: string | null } | null) => {
         if (done) return;

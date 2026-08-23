@@ -36,14 +36,31 @@ export const DISCIPLINE_LABELS_UR: Record<Discipline, string> = {
 /** scholarly_documents.domain values each discipline can live in. Used to
  *  build the filter_domains argument for match_scholarly_documents (the
  *  semantic channel filters on domain, not on citation_ref->>'discipline').
- *  Keep in sync with the domains the loaders write. */
+ *  Keep in sync with the domains the loaders write.
+ *
+ *  A name in here that no loader actually writes is invisible: it simply
+ *  matches no rows, and the discipline looks empty rather than broken. Two
+ *  such names were found and fixed on 2026-08-23:
+ *
+ *    - `urdufatwa` was missing from `fatwa` entirely, even though
+ *      scripts/scrapers/ingest_fatwa.py writes 22,775 rows there with
+ *      citation_ref.discipline = "fatwa" — the largest fatwa corpus we have,
+ *      fully embedded, and unreachable by every semantic path because of this
+ *      one omission.
+ *    - `openiti` is not a domain. The corpus stores `openiti-index` (see
+ *      vector-search's TIER_B_DOMAINS and the Corpus Atlas domain census), so
+ *      every discipline's openiti entry matched zero rows.
+ *
+ *  `shamela` is knowingly aspirational — Shamela has never been ingested (0
+ *  rows). It is kept so the mapping is right the day it is, and costs nothing
+ *  because filter_domains on an absent domain simply matches nothing. */
 export const DISCIPLINE_DOMAINS: Record<Discipline, string[]> = {
-  fiqh:   ["shamela", "openiti"],
-  fatwa:  ["shamela", "openiti", "islamqa-cache"],
-  tafsir: ["qul-tafsir", "shamela", "openiti", "islamicurdubooks-tafsir"],
-  lughat: ["shamela", "openiti", "islamicurdubooks-lexicon"],
-  rijal:  ["shamela", "openiti", "islamicurdubooks-rijal"],
-  nahw:   ["shamela", "openiti"],
+  fiqh:   ["shamela", "openiti-index"],
+  fatwa:  ["shamela", "openiti-index", "islamqa-cache", "urdufatwa"],
+  tafsir: ["qul-tafsir", "shamela", "openiti-index", "islamicurdubooks-tafsir"],
+  lughat: ["shamela", "openiti-index", "islamicurdubooks-lexicon"],
+  rijal:  ["shamela", "openiti-index", "islamicurdubooks-rijal"],
+  nahw:   ["shamela", "openiti-index"],
 };
 
 /** Conservative Urdu/Arabic/English keyword patterns per discipline, used ONLY

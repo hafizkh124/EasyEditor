@@ -76,14 +76,33 @@ describe("classical discipline pseudo-domains", () => {
     }
   });
 
-  it("does not offer fiqh, fatwa, or nahw — no domain of theirs has ingested rows", () => {
-    // shamela (their only unique domain) has never been ingested; openiti is
-    // ingested but as untagged general prose. Offering them would repeat the
-    // exact shamela-index mistake this file already documents avoiding.
+  it("does not offer fiqh or nahw — no domain of theirs has ingested rows", () => {
+    // shamela has never been ingested; openiti-index is ingested but as
+    // untagged general prose. Offering them would repeat the exact
+    // shamela-index mistake this file already documents avoiding.
     const offered = new Set(Object.values(backendDisciplineMap()));
     expect(offered.has("fiqh")).toBe(false);
-    expect(offered.has("fatwa")).toBe(false);
     expect(offered.has("nahw")).toBe(false);
+  });
+
+  it("does offer fatwa — urdufatwa is a real, populated, embedded corpus", async () => {
+    // Regression guard for the Atlas finding #5 bug: fatwa was excluded on
+    // 2026-08-23 because DISCIPLINE_DOMAINS listed only shamela/openiti/
+    // islamqa-cache for it, hiding the 22,775-row urdufatwa corpus that
+    // ingest_fatwa.py writes with citation_ref.discipline = "fatwa".
+    const { DISCIPLINE_DOMAINS } = await import("../../supabase/functions/_shared/disciplines");
+    expect(new Set(Object.values(backendDisciplineMap())).has("fatwa")).toBe(true);
+    expect(DISCIPLINE_DOMAINS.fatwa).toContain("urdufatwa");
+  });
+
+  it("maps every discipline only to domains a loader really writes", async () => {
+    // `openiti` was listed for all six disciplines but is not a domain — the
+    // corpus stores `openiti-index`. A name no loader writes is invisible:
+    // it matches no rows, so the discipline looks empty rather than broken.
+    const { DISCIPLINE_DOMAINS } = await import("../../supabase/functions/_shared/disciplines");
+    for (const [discipline, domains] of Object.entries(DISCIPLINE_DOMAINS)) {
+      expect(domains, `${discipline} still maps to the non-existent "openiti"`).not.toContain("openiti");
+    }
   });
 });
 

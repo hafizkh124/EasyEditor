@@ -169,6 +169,56 @@ describe("classicalChannel", () => {
   });
 });
 
+const fatwaRow = {
+  id: "f1",
+  domain: "urdufatwa",
+  source_type: "fatwa",
+  content: "سوال: ... جواب: ...",
+  content_ar: "",
+  citation_ref: { discipline: "fatwa", fatwa_number: "1234", scholar: "مفتی صاحب" },
+  language: "ur",
+  passage_key: "fatwa:urdufatwa:1234",
+};
+
+describe("urdufatwa reachability (Corpus Atlas finding #5)", () => {
+  it("queries the urdufatwa domain when the fatwa discipline is in scope", async () => {
+    // The bug: DISCIPLINE_DOMAINS.fatwa listed only shamela / openiti /
+    // islamqa-cache, so the 22,775-row urdufatwa corpus — fully embedded —
+    // was never in filter_domains and no semantic query could ever reach it.
+    const fake = makeFakeSupabase({
+      search_classical_scoped: () => [],   // urdufatwa's content_ar is empty
+      match_scholarly_documents: () => [fatwaRow],
+    });
+    const plan = planFor("اس مسئلے پر فتویٰ کیا ہے؟");
+
+    const rows = await classicalChannel(fake.client, plan, {
+      source_types: [], collections: [], surah: null, disciplines: ["fatwa"],
+    });
+
+    const call = fake.rpcCalls.find((c) => c.fn === "match_scholarly_documents");
+    expect(call!.args.filter_domains).toContain("urdufatwa");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].domain).toBe("urdufatwa");
+  });
+
+  it("finds fatwa rulings semantically even though they have no content_ar", async () => {
+    // ingest_fatwa.py writes content_ar: "" — so search_classical_scoped
+    // (content_ar-only) can never return a ruling. Before the semantic half
+    // existed, a topical fatwa question got nothing back.
+    const fake = makeFakeSupabase({
+      search_classical_scoped: () => [],
+      match_scholarly_documents: () => [fatwaRow],
+    });
+    const plan = planFor("زکوٰۃ کے بارے میں فتاویٰ");
+
+    const rows = await classicalChannel(fake.client, plan, {
+      source_types: [], collections: [], surah: null, disciplines: ["fatwa"],
+    });
+
+    expect(rows.map((r) => r.match_key)).toEqual(["fatwa:urdufatwa:1234"]);
+  });
+});
+
 describe("findCitations reaches the classical corpus end to end", () => {
   it("queries both classical RPCs for a rijal-marked question with no explicit scope", async () => {
     const fake = makeFakeSupabase({

@@ -18,15 +18,24 @@
  * the comment there). Offering a checkbox that can only ever return zero
  * results would be a worse lie than not offering it.
  *
- * The "classical" group (`classical-rijal` / `classical-tafsir` /
- * `classical-lughat`) is the explicit entry point Corpus Atlas finding #4
- * asked for: before islamic-search's Tier D existed, these three disciplines
- * — 19,616 narrator-biography rows, 6,208 tafsir rows, and the Quran lexicon —
- * were reachable from no chat surface at all, not even implicitly. Only three
- * of the six disciplines in `_shared/disciplines.ts` are offered: fiqh/
- * fatwa/nahw live only in `shamela` (never ingested, 0 rows) or `openiti`
- * (ingested, but as untagged general prose) and would be the same broken
- * promise `shamela-index` above was excluded to avoid.
+ * The "classical" group is the explicit entry point Corpus Atlas finding #4
+ * asked for: before islamic-search's Tier D existed, these disciplines —
+ * 19,616 narrator-biography rows, 6,208 tafsir rows, the Quran lexicon, and
+ * 22,775 fatwa rulings — were reachable from no chat surface at all, not even
+ * implicitly.
+ *
+ * `classical-fatwa` joined them on 2026-08-23 (Atlas finding #5). It was left
+ * out a day earlier on the belief that fatwa had no ingested rows — a belief
+ * read off `DISCIPLINE_DOMAINS`, which was itself missing `urdufatwa`. The
+ * rulings were in the corpus and fully embedded the whole time; only the
+ * mapping was wrong. Worth remembering as a pattern: an empty-looking
+ * discipline is more often a stale mapping than an empty corpus.
+ *
+ * Still not offered, for the same reason `shamela-index` above is not: fiqh
+ * and nahw live only in `shamela` (never ingested, 0 rows) and
+ * `openiti-index` (ingested, but as general classical prose whose discipline
+ * tagging is unverified), so a checkbox for either could only ever return
+ * nothing.
  */
 
 export type SourceGroupId = "corpus" | "classical" | "api" | "web";
@@ -62,6 +71,7 @@ export const RESEARCH_SOURCES: ResearchSource[] = [
   { id: "classical-rijal", ur: "اسماء الرجال", note: "راویوں کے حالات و تراجم — جرح و تعدیل", group: "classical" },
   { id: "classical-tafsir", ur: "تفسیر ابن کثیر", note: "آیت بہ آیت تفسیر", group: "classical" },
   { id: "classical-lughat", ur: "لغتِ قرآن", note: "الفاظ کے لغوی معانی و مادہ", group: "classical" },
+  { id: "classical-fatwa", ur: "فتاویٰ (موضوعاتی)", note: "22,775 اردو فتاویٰ — مفہوم کی بنیاد پر تلاش", group: "classical" },
 
   // Tier A — third-party APIs.
   { id: "dorar", ur: "دُرر السنیہ", note: "احادیث اور اُن کے درجات", group: "api" },
