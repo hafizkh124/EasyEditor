@@ -67,6 +67,18 @@ Deno.serve(async (req) => {
           );
         }
       }
+    } else if (mode === "update-content") {
+      for (const row of rows) {
+        // citation_ref_patch is optional here (unlike update-citation): a
+        // caller may be fixing only the text. A blank content is rejected
+        // rather than treated as "clear the field" — see the RPC's own guard.
+        if (!row.passage_key || typeof row.content !== "string" || row.content.trim() === "") {
+          return new Response(
+            JSON.stringify({ error: "Each update-content row needs passage_key and a non-empty content" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
     } else if (mode === "lookup-citation") {
       for (const row of rows) {
         if (!row.collection || !row.hadith_number) {
@@ -99,6 +111,32 @@ Deno.serve(async (req) => {
       const updated = (data ?? []).filter((r: { updated: boolean }) => r.updated).length;
       return new Response(
         JSON.stringify({ processed: rows.length, updated, results: data }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // mode: "update-content" — in-place content fix via
+    // scholarly_documents_update_content (20260823200000_update_content_rpc.sql).
+    // Separate from update-citation because that RPC can only reach
+    // citation_ref and source_url: when a scraper extracted the wrong TEXT
+    // (rijal rows were missing their per-book narration counts entirely), the
+    // column that has to change is `content`, which is also the only field the
+    // model ever reads. Chunked for the same statement_timeout reason as
+    // "check" below. Guarded by the same x-ingest-secret check as every mode.
+    if (mode === "update-content") {
+      const results: unknown[] = [];
+      let updated = 0;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const { data, error } = await supabase.rpc("scholarly_documents_update_content", {
+          payload: rows.slice(i, i + CHUNK),
+        });
+        if (error) throw error;
+        const chunkResults = (data ?? []) as { updated: boolean }[];
+        updated += chunkResults.filter((r) => r.updated).length;
+        results.push(...chunkResults);
+      }
+      return new Response(
+        JSON.stringify({ processed: rows.length, updated, results }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

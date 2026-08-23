@@ -89,6 +89,59 @@ def discover_narrator_ids(max_pages_per_letter: int = 60) -> list:
     print(f"Discovered {len(sorted_ids):,} unique narrator IDs.\n", flush=True)
     return sorted_ids
 
+# Per-book narration counts, e.g.
+#   <a class='... book-link' href='hadith_by_one_narrator.php?rid=3792&bookid=24'
+#      target='_blank'>مسند احمد <span class='book-count'>(438)</span></a>
+#
+# This is the "کی روایت کردہ احادیث" strip at the bottom of every narrator
+# page, and it answers the single most common question asked about a narrator:
+# how many hadith did he transmit, and in which collections. The original
+# scraper only read <td>label</td><td>value</td> pairs, so it captured the
+# جرح و تعدیل verdicts and nothing else -- leaving the model to correctly but
+# uselessly answer "the count is not in the provided sources" while the number
+# sat on the very page the citation linked to.
+#
+# `bookid` is IslamicUrduBooks' own book id -- the same id keyed in
+# scripts/iub/registry.py -- so the counts can be tied back to canonical books
+# later without re-scraping.
+RE_NARRATION = re.compile(
+    r"<a[^>]*class='[^']*book-link[^']*'[^>]*href='hadith_by_one_narrator\.php\?rid=\d+&bookid=(\d+)'[^>]*>"
+    r"(.*?)<span class='book-count'>\((\d+)\)</span>\s*</a>",
+    re.DOTALL,
+)
+
+
+def extract_narrations(html: str) -> tuple[list, int]:
+    """-> ([{bookid, book_ar, count}, ...], total). Empty for a narrator whose
+    page carries no strip (real: some narrators have no indexed narrations)."""
+    out = []
+    for bookid, name_html, count in RE_NARRATION.findall(html or ""):
+        name = clean_html(name_html)
+        if not name:
+            continue
+        try:
+            n = int(count)
+        except ValueError:
+            continue
+        out.append({"bookid": int(bookid), "book_ar": name, "count": n})
+    return out, sum(item["count"] for item in out)
+
+
+def format_narrations_ur(narrations: list, total: int) -> str:
+    """The block appended to `content`. Written as plain labelled lines rather
+    than JSON because `content` is what goes into the model's context verbatim
+    -- see buildContextBlock in islamic-search, which renders citation_ref only
+    as a one-line REFERENCE and would never surface a structured field."""
+    if not narrations:
+        return ""
+    lines = [f"{item['book_ar']}: {item['count']}" for item in narrations]
+    return (
+        "\n\nروایت کردہ احادیث (کتب کے اعتبار سے):\n"
+        + "\n".join(lines)
+        + f"\n\nکل روایات: {total} (کتب: {len(narrations)})"
+    )
+
+
 def parse_narrator_page(rawyid: int) -> dict | None:
     url = f"https://islamicurdubooks.com/hadith/rawy-details.php?rawyid={rawyid}"
     html, is_missing, _ = fetch_page(url, "rijal", f"rawy_{rawyid}")
@@ -125,6 +178,8 @@ def parse_narrator_page(rawyid: int) -> dict | None:
                 elif "البلد" in k or "شہر" in k or "وطن" in k:
                     city = v
 
+    narrations, narration_total = extract_narrations(html)
+
     # Name -- derived from the details table, NOT from a CSS class. The previous
     # selector matched div.btn1.fontarabic.fs7, which is the site's navigation
     # button ("رواة الحدیث"); it is identical on every page, so all 4,292 rows
@@ -150,6 +205,7 @@ def parse_narrator_page(rawyid: int) -> dict | None:
     full_content = f"راوی: {name_ar}\n\n" + "\n".join(details)
     if body_text and len(body_text) > len(full_content):
         full_content += f"\n\nتفصیل:\n{body_text}"
+    full_content += format_narrations_ur(narrations, narration_total)
 
     citation_ref = {
         "discipline": "rijal",
@@ -160,6 +216,12 @@ def parse_narrator_page(rawyid: int) -> dict | None:
         "dhahabi_rank": dhahabi_rank,
         "tabaqa": tabaqa,
         "city": city,
+        # Structured alongside the prose in `content`: the text is what the
+        # model reads, this is what a future UI or aggregate query can use
+        # without re-parsing Urdu.
+        "narrations": narrations,
+        "narration_total": narration_total,
+        "narration_books": len(narrations),
         "source": "islamicurdubooks.com",
         "url": url
     }
