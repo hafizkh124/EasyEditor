@@ -78,17 +78,30 @@ def collect_targets():
     every row that will actually be updated, across all *_matches.json files.
     Keyed on db_collection (the corpus's real citation_ref.collection value),
     NOT the IUB registry slug -- they differ for most of the 25 target books;
-    see registry.py's module docstring."""
-    targets = {}
+    see registry.py's module docstring.
+
+    Multiple IUB hadith_numbers can land on the same db_hadith_number
+    (confirmed live 2026-08-23: 37,055 raw MATCH rows resolve to only
+    ~33,080 distinct DB targets -- almost always a genuine repeated
+    narration, e.g. Bukhari's mukarrarat). Only one citation can be written
+    per DB row, so this picks the HIGHEST-ratio match as canonical --
+    apply_citation_urls.py's build_plan() must use the exact same rule, or
+    the two scripts would back up a different row than the one actually
+    written."""
+    best = {}  # (db_collection, db_hadith_number) -> (iub_hadith_number, ratio)
     for path in sorted(glob.glob(os.path.join(INDEX_DIR, "*_matches.json"))):
         data = json.load(open(path, encoding="utf-8"))
         db_collection = data["db_collection"]
         for n_str, m in data["matches"].items():
-            if m["result"] == "MATCH":
-                n = int(n_str)
-                db_n = int(m["db_hadith_number"])
-                targets[(db_collection, db_n)] = n
-    return targets
+            if m["result"] != "MATCH":
+                continue
+            n = int(n_str)
+            db_n = int(m["db_hadith_number"])
+            ratio = m.get("ratio", 0.0)
+            key = (db_collection, db_n)
+            if key not in best or ratio > best[key][1]:
+                best[key] = (n, ratio)
+    return {key: n for key, (n, ratio) in best.items()}
 
 
 def main():

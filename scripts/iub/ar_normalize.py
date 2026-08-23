@@ -78,23 +78,58 @@ _COMMON_WORDS = {
 
 _RE_TOKEN_SPLIT = re.compile(r'[\s،.:؛()«»"\'\-]+')
 
+# Urdu-vs-Arabic letterform variants, folded ONLY for fuzzy matching (never
+# for normalize_arabic_text/ar_fingerprint above -- that must stay
+# byte-parity with the SQL generated column). Confirmed live 2026-08-22:
+# easyquran-hadith's content_ar is typed with Urdu keyboard letterforms
+# (heh goal ہ, farsi yeh ی, keheh ک) while IUB's is standard Arabic (ه ي ك)
+# -- same hadith, e.g. "اللہ" vs "الله", scored 0.29 overlap instead of the
+# real ~0.77 because the two spellings share zero raw characters at those
+# positions. Without this fold, every hadith in that domain (confirmed:
+# musannaf-ibn-abi-shaybah, sunan-al-kubra-bayhaqi, both 0.0% match rate)
+# looks completely unmatched no matter how identical the actual text is.
+_RE_URDU_HEH = re.compile('[ہھ]')  # heh goal + do-chashmi heh -> ه
+_RE_URDU_YEH = re.compile('[یے]')  # farsi yeh + barree yeh -> ي
+_RE_URDU_KAF = re.compile('ک')     # keheh -> ك
+
 
 def content_tokens(t):
     """Normalized, boilerplate-stripped word set for overlap comparison."""
     norm = normalize_arabic_text(t)
+    norm = _RE_URDU_HEH.sub('ه', norm)
+    norm = _RE_URDU_YEH.sub('ي', norm)
+    norm = _RE_URDU_KAF.sub('ك', norm)
     return {
         w for w in _RE_TOKEN_SPLIT.split(norm)
         if len(w) > 3 and w not in _COMMON_WORDS
     }
 
 
-def content_overlap_ratio(text_a, text_b):
-    """Content-word overlap, normalized by the SMALLER side (so an abridged
-    narration still matches its fuller version) -- same formula as
-    citationEngine.ts's takhrijHadith. Returns 0.0 if either side has fewer
-    than 3 content words (too little to judge rather than a guess)."""
-    ta, tb = content_tokens(text_a), content_tokens(text_b)
+def token_overlap_ratio(ta, tb):
+    """Same formula as content_overlap_ratio, but takes PRE-COMPUTED token
+    sets. Use this (with content_tokens() called ONCE per text up front,
+    outside any search loop) whenever one text gets compared against many
+    candidates -- e.g. best_match_expanding searching a whole collection.
+    Calling content_overlap_ratio(raw_text_a, raw_text_b) inside such a loop
+    re-tokenizes both sides from scratch on every single comparison; for a
+    full-book index search (thousands of hadith, each checked against up to
+    a whole collection of thousands of candidates) that redundant regex
+    tokenization is millions of wasted calls and was the direct cause of the
+    indexer silently hanging for over an hour past its DB fetch completing
+    (confirmed live 2026-08-22 on Sahih Bukhari)."""
     if len(ta) < 3 or len(tb) < 3:
         return 0.0
     shared = len(ta & tb)
     return shared / min(len(ta), len(tb))
+
+
+def content_overlap_ratio(text_a, text_b):
+    """Content-word overlap, normalized by the SMALLER side (so an abridged
+    narration still matches its fuller version) -- same formula as
+    citationEngine.ts's takhrijHadith. Returns 0.0 if either side has fewer
+    than 3 content words (too little to judge rather than a guess).
+
+    Convenience wrapper for one-off comparisons. Prefer token_overlap_ratio
+    with pre-computed content_tokens() when comparing one text against many
+    candidates -- see its docstring."""
+    return token_overlap_ratio(content_tokens(text_a), content_tokens(text_b))

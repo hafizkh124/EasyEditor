@@ -47,10 +47,10 @@ import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from scripts.iub.registry import IUB_REGISTRY
-from scripts.iub.ar_normalize import content_overlap_ratio
+from scripts.iub.ar_normalize import content_tokens, token_overlap_ratio
 from scripts.iub.client import fetch_page
 from scripts.iub.scrape_hadith import clean_html
-from scripts.iub.citation_lookup import fetch_full_collection, best_match_expanding
+from scripts.iub.citation_lookup import fetch_full_collection, tokenize_collection, best_match_expanding
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -123,13 +123,19 @@ def probe_book(key, info):
         db_collection, total + UPPER_BOUND_MARGIN,
         progress_label=f"{slug}: fetching {db_collection}",
     )
+    # Tokenize once per collection entry and once per sample -- see
+    # best_match_expanding's docstring: re-tokenizing raw text inside the
+    # search loop redundantly re-runs the same regex work on every
+    # candidate checked.
+    collection_tokens = tokenize_collection(collection_texts, content_tokens)
 
     # 3. For each sample, search the whole collection for its best match.
     per_sample = {}
     matched_domain = None
     match_count = 0
     for hno, text in iub_text.items():
-        ratio, db_n = best_match_expanding(hno, text, collection_texts, content_overlap_ratio, OVERLAP_THRESHOLD)
+        query_tokens = content_tokens(text)
+        ratio, db_n = best_match_expanding(hno, query_tokens, collection_tokens, token_overlap_ratio, OVERLAP_THRESHOLD)
         is_match = ratio >= OVERLAP_THRESHOLD
         if is_match:
             match_count += 1

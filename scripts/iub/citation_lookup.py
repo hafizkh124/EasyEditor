@@ -84,12 +84,30 @@ def fetch_full_collection(db_collection, upper_bound, progress_label=""):
     return out
 
 
-def best_match_expanding(hno, text, collection_texts, content_overlap_ratio, threshold, radii=(50, 500)):
-    """Search collection_texts for the best content-overlap match to `text`,
-    trying successively wider radii around `hno` before falling back to a
-    full scan. This keeps the common case (small or zero drift) fast while
-    still catching the rare large jumps (+308 was observed) that a fixed
-    window would silently miss. Returns (best_ratio, best_hadith_number_str).
+def tokenize_collection(collection_texts, content_tokens):
+    """{hadith_number_str: (domain, content_ar)} -> {hadith_number_str: (domain, token_set)}.
+    Call ONCE per collection, right after fetch_full_collection(), and reuse
+    the result across every hadith_number's search -- see
+    best_match_expanding's docstring for why this matters."""
+    return {n: (domain, content_tokens(text)) for n, (domain, text) in collection_texts.items()}
+
+
+def best_match_expanding(hno, query_tokens, collection_tokens, token_overlap_ratio, threshold, radii=(50, 500)):
+    """Search collection_tokens for the best content-overlap match to
+    query_tokens, trying successively wider radii around `hno` before
+    falling back to a full scan. This keeps the common case (small or zero
+    drift) fast while still catching the rare large jumps (+308 was
+    observed) that a fixed window would silently miss.
+
+    Both query_tokens and collection_tokens must already be tokenized (see
+    tokenize_collection() and ar_normalize.content_tokens()) -- passing raw
+    text and re-tokenizing inside this loop re-runs the same regex
+    tokenization on the same strings potentially thousands of times per
+    hadith_number searched. That redundant work was confirmed live
+    (2026-08-22) to hang a full-book index build for over an hour past its
+    DB fetch completing, on Sahih Bukhari alone.
+
+    Returns (best_ratio, best_hadith_number_str).
     """
     best_ratio, best_n = 0.0, None
     tried = set()
@@ -100,18 +118,18 @@ def best_match_expanding(hno, text, collection_texts, content_overlap_ratio, thr
             if n_str in tried:
                 continue
             tried.add(n_str)
-            entry = collection_texts.get(n_str)
+            entry = collection_tokens.get(n_str)
             if entry:
-                r = content_overlap_ratio(text, entry[1])
+                r = token_overlap_ratio(query_tokens, entry[1])
                 if r > best_ratio:
                     best_ratio, best_n = r, n_str
         if best_ratio >= threshold:
             return best_ratio, best_n
 
-    for n_str, entry in collection_texts.items():
+    for n_str, entry in collection_tokens.items():
         if n_str in tried:
             continue
-        r = content_overlap_ratio(text, entry[1])
+        r = token_overlap_ratio(query_tokens, entry[1])
         if r > best_ratio:
             best_ratio, best_n = r, n_str
     return best_ratio, best_n
