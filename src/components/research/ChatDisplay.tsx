@@ -22,6 +22,7 @@ import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
 import { useSubmitGuard } from "@/hooks/useSubmitGuard";
 import type { ResearchAssistMode } from "@/lib/prompts";
 import ResearchModeSwitcher, { type ResearchMode } from "./ResearchModeSwitcher";
+import SourcePicker from "./SourcePicker";
 import { editorRoute } from "@/lib/routes";
 import { DocumentBox } from "./chat/DocumentBox";
 import { SourcesReadyIndicator, TypingDots, UserAvatar, AiAvatar } from "./chat/ChatAtoms";
@@ -52,6 +53,9 @@ interface ChatDisplayProps {
   citations?: CitationItem[];
   assistModes?: ResearchAssistMode[];
   onAssistModesChange?: (modes: ResearchAssistMode[]) => void;
+  /** Islamic-mode source narrowing; empty means every source. */
+  selectedDomains?: string[];
+  onSelectedDomainsChange?: (next: string[]) => void;
   onContinue?: () => void;
 }
 
@@ -62,7 +66,8 @@ const ChatDisplay = ({
   lastAssistantIdx, onRefine, onCopyOutput, onClearChat, onRegenerate,
   researchLimitReached, chatEndRef: _chatEndRef, t,
   mode = "general", onModeChange, sourcesReadyInfo, citations = [],
-  assistModes = [], onAssistModesChange, onContinue,
+  assistModes = [], onAssistModesChange,
+  selectedDomains = [], onSelectedDomainsChange, onContinue,
 }: ChatDisplayProps) => {
   const navigate = useNavigate();
   const isRtlQuery = detectRtl(query);
@@ -389,7 +394,15 @@ const ChatDisplay = ({
           <div className="px-3 pb-2 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               {onModeChange && <ResearchModeSwitcher mode={mode} onModeChange={onModeChange} t={t} />}
-              <p className="hidden sm:block text-xs text-muted-foreground truncate">{t("research.send_hint")}</p>
+              {mode === "islamic" && onSelectedDomainsChange && (
+                <SourcePicker
+                  selected={selectedDomains}
+                  onSelectedChange={onSelectedDomainsChange}
+                  disabled={isQuerying}
+                  t={t}
+                />
+              )}
+              <p className="hidden md:block text-xs text-muted-foreground truncate">{t("research.send_hint")}</p>
             </div>
             <Button
               type="button"

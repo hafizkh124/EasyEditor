@@ -10,8 +10,8 @@ import {
   coercePlan,
   fallbackPlan,
   describeScope,
-  COLLECTION_SLUGS,
 } from "../queryPlanner.ts";
+import { BOOK_IDS } from "../collections.ts";
 
 // ── fallbackPlan: the "model is down" path ──────────────────────────────────
 
@@ -181,17 +181,23 @@ Deno.test("describeScope falls back to source types when unscoped", () => {
   assertEquals(describeScope(plan), "قرآن • حدیث");
 });
 
-Deno.test("every COLLECTION_SLUG has a display label", () => {
-  // Guards against adding a slug to the planner prompt without a UI label,
-  // which would surface a raw slug like "shahih-al-jami" to the user.
-  for (const slug of COLLECTION_SLUGS) {
+Deno.test("every corpus book has a display label", () => {
+  // Guards against adding a book to the registry (and so to the planner
+  // prompt) without an Urdu label, which would surface a raw id like
+  // "shahih-al-jami" to the user.
+  //
+  // The registry's other invariants — unique ids, no slug claimed by two
+  // books, name-matching disambiguation — are covered by
+  // src/test/collectionRegistry.test.ts, which runs in CI (`npm test`);
+  // these Deno tests are not wired into any pipeline.
+  for (const id of BOOK_IDS) {
     const plan = coercePlan({
       intent: "topical",
-      scope: { source_types: ["hadith"], collections: [slug], surah: null },
+      scope: { source_types: ["hadith"], collections: [id], surah: null },
       arabic_surface_forms: ["نية"],
       semantic_query_ar: "النية",
     }, "نیت");
     const label = describeScope(plan);
-    assert(label !== slug, `slug ${slug} has no display label`);
+    assert(label !== id, `book ${id} has no display label`);
   }
 });

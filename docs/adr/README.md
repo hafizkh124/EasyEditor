@@ -18,6 +18,7 @@ reconstruct rationale without rereading commits.
 | [0010](./0010-workspace-is-the-single-home.md) | Workspace Is the Single Home (retiring standalone editor/research/book/translate pages) | Accepted |
 | [0011](./0011-elevation-typography-charter.md) | Elevation & Typography Charter (design tokens + `check-ui-discipline.mjs` enforcement) | Accepted |
 | [0012](./0012-tafsir-web-via-edge-function.md) | Tafsir MCP on Web via a Session-less Edge Function | Accepted (decision) |
+| [0013](./0013-source-picker-and-collection-registry.md) | Opt-in source picker + canonical book registry for scoping (supersedes part of 0002) | Accepted |
 
 ## When to write a new ADR
 

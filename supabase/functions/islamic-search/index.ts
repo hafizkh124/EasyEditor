@@ -5,6 +5,7 @@ import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensRe
 import { expandQueryTerms } from "../_shared/bilingualMap.ts";
 import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
 import { planQuery } from "../_shared/queryPlanner.ts";
+import { resolveCollectionSlugs, scopeHasArabicMatn } from "../_shared/collections.ts";
 import { personalVectorChannel, personalLexicalChannel } from "../_shared/citationEngine.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
@@ -516,7 +517,16 @@ serve(async (req) => {
             // matches `content`, which picks up English-side hits the
             // content_ar-only scoped search would miss.
             const planCollections = queryPlan?.scope.collections ?? [];
-            const usingScoped = planCollections.length > 0;
+            // `planCollections` holds canonical book IDs (collections.ts);
+            // the RPC compares against citation_ref->>'collection', so the IDs
+            // have to be expanded to every string the book is stored under.
+            const scopedSlugs = resolveCollectionSlugs(planCollections);
+            // ...and the scoped RPC only searches content_ar. A scope made up
+            // entirely of the tohed-hadith-only books has no Arabic matn
+            // anywhere, so scoping there guarantees 0 rows — fall back to the
+            // smart search (which matches the Urdu `content` too) and enforce
+            // the book scope in TypeScript instead.
+            const usingScoped = planCollections.length > 0 && scopeHasArabicMatn(planCollections);
 
             // A live measurement (2026-08-17) found Tier K taking 8.8s alone —
             // more than every other tier combined — while returning 0 rows, on
@@ -535,7 +545,7 @@ serve(async (req) => {
               ? await supabase.rpc("search_documents_scoped", {
                   p_patterns:     terms,
                   p_source_types: sourceTypes,
-                  p_collections:  planCollections,
+                  p_collections:  scopedSlugs,
                   p_surah:        queryPlan?.scope.surah ?? null,
                   p_limit:        30,
                 })
@@ -558,7 +568,7 @@ serve(async (req) => {
               return [];
             }
 
-            const rows = (data ?? []) as Array<{
+            const allRows = (data ?? []) as Array<{
               domain: string;
               source_type: string;
               content: string;
@@ -568,6 +578,17 @@ serve(async (req) => {
               source_url?: string;
               match_score?: number;
             }>;
+
+            // The smart RPC has no collection parameter, so when the user named
+            // books it is enforced here — otherwise "صرف ابن حبان میں" would
+            // quietly widen back out to the whole corpus.
+            const wanted = new Set(scopedSlugs);
+            const rows = (!usingScoped && wanted.size > 0)
+              ? allRows.filter((r) => {
+                  const c = r.citation_ref?.collection ?? r.citation_ref?.book;
+                  return typeof c === "string" && wanted.has(c);
+                })
+              : allRows;
 
             // Balanced mix: 6 Quran + 10 Hadith + 6 Fatwa max (Hadith corpus is
             // much larger so we let it dominate when several types are present).
@@ -814,7 +835,7 @@ serve(async (req) => {
         const { data: countRows, error: countErr } = await supabase.rpc("count_term_occurrences", {
           p_patterns:                 queryPlan.arabic_surface_forms,
           p_source_types:             queryPlan.scope.source_types.length > 0 ? queryPlan.scope.source_types : null,
-          p_collections:              queryPlan.scope.collections.length > 0 ? queryPlan.scope.collections : null,
+          p_collections:              queryPlan.scope.collections.length > 0 ? resolveCollectionSlugs(queryPlan.scope.collections) : null,
           p_surah:                    queryPlan.scope.surah,
           p_exclude_definite_article: queryPlan.is_proper_noun,
         });

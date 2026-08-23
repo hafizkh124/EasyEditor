@@ -6,6 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import type { ChatMessage, Source } from "@/components/research/types";
 import type { CitationItem } from "@/components/research/CitationPanel";
 import { streamResearchQuery, streamIslamicQuery, assistResearchQuery } from "@/lib/research/streamers";
+import { toSelectedDomains } from "@/lib/research/sources";
 import type { ResearchAssistMode } from "@/lib/prompts";
 import {
   upsertResearchSession,
@@ -39,6 +40,10 @@ interface UseResearchChatArgs {
   mode: "general" | "islamic";
   tier: string;
   sources: Source[];
+  /** Islamic-mode source narrowing. EMPTY = every source (the default) —
+   *  `toSelectedDomains` is what turns that into the `undefined` the backend
+   *  reads as ALL_DOMAINS. Sending `[]` straight through would search nothing. */
+  selectedDomains: string[];
   strictMode: boolean;
   researchLimitReached: boolean;
   islamicLimitReached: boolean;
@@ -48,7 +53,7 @@ interface UseResearchChatArgs {
 
 export function useResearchChat(args: UseResearchChatArgs) {
   const {
-    user, session, mode, tier, sources, strictMode,
+    user, session, mode, tier, sources, selectedDomains, strictMode,
     researchLimitReached, islamicLimitReached, assistModes, refetch,
   } = args;
   const { t } = useLanguage();
@@ -91,7 +96,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         mode: mode === "islamic" ? "islamic" : "general",
         messages: updatedMessages,
         citations: updatedCitations,
-        selectedDomains: [],
+        selectedDomains,
       });
       if (newId && !sessionIdRef.current) {
         sessionIdRef.current = newId;
@@ -105,7 +110,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
     } catch {
       log.debug("research_sessions table not available yet");
     }
-  }, [userId, mode]);
+  }, [userId, mode, selectedDomains]);
 
   // If the URL has `?session=<id>`, the global SidebarHistory has navigated
   // us into a specific past session — load THAT one instead of the latest.
@@ -213,6 +218,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
       let queryCitations: CitationItem[] = [];
       await streamIslamicQuery({
         query: userContent,
+        selectedDomains: toSelectedDomains(selectedDomains),
         strictMode,
         chatHistory: prevMessages,
         tier,
@@ -255,7 +261,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         onError: (err) => { toast.error(err); finish(); },
       });
     }
-  }, [mode, citations, strictMode, tier, sources, user, refetch, saveSession, appendAssistantChunk, assistModes, t]);
+  }, [mode, citations, strictMode, tier, sources, selectedDomains, user, refetch, saveSession, appendAssistantChunk, assistModes, t]);
 
   const handleSendQuery = async () => {
     if (!query.trim() || !session?.access_token) return;
