@@ -24,6 +24,7 @@ import { planQuery, describeScope, type QueryPlan } from "./queryPlanner.ts";
 import { reciprocalRankFusion, buildMatchKey } from "./rankFusion.ts";
 import { normalizeHamzaAndAlif } from "./arabicRoot.ts";
 import { resolveCollectionSlugs, scopeHasArabicMatn } from "./collections.ts";
+import { disciplineDomains } from "./disciplines.ts";
 // Tier-2 classical corpus lexical channel is scoped by discipline; see disciplines.ts.
 
 export interface EngineCitation {
@@ -286,27 +287,22 @@ async function semanticChannel(
   }
 }
 
-/** Tier-2 classical corpus channel — diacritic-tolerant lexical search over
- *  content_ar, scoped by discipline (fiqh/fatwa/tafsir/lughat/rijal/nahw).
- *  Runs ONLY when the plan requested disciplines, so pure Quran/Hadith queries
- *  are unaffected. Lexical-only for now: the semantic (pgvector) part waits on
- *  the classical embedding backfill AND on match_scholarly_documents returning
- *  passage_key, so dedup stays consistent with the lexical rows. Until the
- *  corpus is ingested this simply returns nothing. Never throws. */
-async function classicalChannel(
+/** Lexical half of the Tier-2 classical channel — diacritic-tolerant search
+ *  over content_ar, scoped by discipline. `search_classical_scoped` filters on
+ *  `content_ar IS NOT NULL`, which excludes rijal and tafsir entirely: both
+ *  are ingested with content_ar deliberately empty (rijal — short Arabic names
+ *  collide in the dedup index; tafsir — the embedding falls back to `content`)
+ *  and are searchable only through classicalSemanticChannel below. Never throws. */
+async function classicalLexicalChannel(
   // deno-lint-ignore no-explicit-any
   supabase: any,
-  plan: QueryPlan,
-  scope: QueryPlan["scope"],
+  patterns: string[],
+  disciplines: string[],
 ): Promise<Array<EngineCitation & { match_key: string }>> {
-  if (!scope.disciplines || scope.disciplines.length === 0) return [];
-  const patterns = [...plan.arabic_surface_forms, ...plan.related_concepts.slice(0, 3)];
-  if (patterns.length === 0) return [];
-
   try {
     const { data, error } = await supabase.rpc("search_classical_scoped", {
       p_patterns: patterns,
-      p_disciplines: scope.disciplines,
+      p_disciplines: disciplines,
       p_limit: LEXICAL_LIMIT,
     });
     if (error) {
@@ -316,9 +312,80 @@ async function classicalChannel(
     // deno-lint-ignore no-explicit-any
     return (data ?? []).map(toCitation).filter(Boolean) as any[];
   } catch (e) {
-    console.error("[citationEngine] classical channel threw:", e);
+    console.error("[citationEngine] classical lexical channel threw:", e);
     return [];
   }
+}
+
+/** Semantic half of the Tier-2 classical channel. `match_scholarly_documents`
+ *  has no discipline parameter, only `filter_domains`, so the requested
+ *  disciplines are expanded to their domains via DISCIPLINE_DOMAINS and the
+ *  results are then filtered back down to citation_ref.discipline — a domain
+ *  filter alone would be too coarse the day a domain starts carrying more
+ *  than one discipline. This is what actually makes rijal/tafsir/lughat
+ *  reachable: all three are embedded (off their Urdu text), just never off
+ *  content_ar. Never throws. */
+async function classicalSemanticChannel(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  plan: QueryPlan,
+  disciplines: string[],
+): Promise<Array<EngineCitation & { match_key: string }>> {
+  const domains = disciplineDomains(disciplines);
+  if (domains.length === 0) return [];
+  try {
+    const embedding = await embedQuery(plan.semantic_query_ar);
+    if (!embedding) return [];
+    const { data, error } = await supabase.rpc("match_scholarly_documents", {
+      query_embedding: embedding,
+      match_threshold: 0.35,
+      match_count: SEMANTIC_LIMIT,
+      filter_domains: domains,
+      filter_language: null,
+    });
+    if (error) {
+      console.error("[citationEngine] classical match_scholarly_documents error:", error);
+      return [];
+    }
+    const wanted = new Set(disciplines);
+    // deno-lint-ignore no-explicit-any
+    const rows = (data ?? []).filter((r: any) => wanted.has(r?.citation_ref?.discipline));
+    // deno-lint-ignore no-explicit-any
+    return rows.map(toCitation).filter(Boolean) as any[];
+  } catch (e) {
+    console.error("[citationEngine] classical semantic channel threw:", e);
+    return [];
+  }
+}
+
+/** Tier-2 classical corpus channel — fiqh/fatwa/tafsir/lughat/rijal/nahw.
+ *  Runs ONLY when the plan requested disciplines, so pure Quran/Hadith queries
+ *  are unaffected. Combines the lexical and semantic halves above (see each
+ *  for why both are needed) and de-dupes by match_key — a discipline whose
+ *  domain someday carries content_ar could otherwise surface from both. */
+export async function classicalChannel(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  plan: QueryPlan,
+  scope: QueryPlan["scope"],
+): Promise<Array<EngineCitation & { match_key: string }>> {
+  if (!scope.disciplines || scope.disciplines.length === 0) return [];
+  const patterns = [...plan.arabic_surface_forms, ...plan.related_concepts.slice(0, 3)];
+  if (patterns.length === 0) return [];
+
+  const [lexical, semantic] = await Promise.all([
+    classicalLexicalChannel(supabase, patterns, scope.disciplines),
+    classicalSemanticChannel(supabase, plan, scope.disciplines),
+  ]);
+
+  const seen = new Set<string>();
+  const merged: Array<EngineCitation & { match_key: string }> = [];
+  for (const c of [...lexical, ...semantic]) {
+    if (seen.has(c.match_key)) continue;
+    seen.add(c.match_key);
+    merged.push(c);
+  }
+  return merged;
 }
 
 /** Exact occurrence counting for "how many times…" questions. */

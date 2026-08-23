@@ -17,7 +17,7 @@ import {
 function backendDomains(): string[] {
   const src = readFileSync("supabase/functions/islamic-search/index.ts", "utf8");
   const ids: string[] = [];
-  for (const tier of ["TIER_A_DOMAINS", "TIER_B_DOMAINS", "TIER_C_DOMAINS", "TIER_K_DOMAINS"]) {
+  for (const tier of ["TIER_A_DOMAINS", "TIER_B_DOMAINS", "TIER_C_DOMAINS", "TIER_K_DOMAINS", "TIER_D_DOMAINS"]) {
     const match = new RegExp(`const ${tier} = \\[([^\\]]*)\\]`, "s").exec(src);
     expect(match, `${tier} not found in islamic-search/index.ts`).not.toBeNull();
     ids.push(...[...match![1].matchAll(/"([^"]+)"/g)].map((m) => m[1]));
@@ -52,6 +52,38 @@ describe("research source catalogue", () => {
     for (const group of SOURCE_GROUPS) {
       expect(RESEARCH_SOURCES.some((s) => s.group === group.id), `${group.id} is empty`).toBe(true);
     }
+  });
+});
+
+describe("classical discipline pseudo-domains", () => {
+  function backendDisciplineMap(): Record<string, string> {
+    const src = readFileSync("supabase/functions/islamic-search/index.ts", "utf8");
+    const match = /const TIER_D_DISCIPLINE: Record<string, string> = \{([^}]*)\}/s.exec(src);
+    expect(match, "TIER_D_DISCIPLINE not found in islamic-search/index.ts").not.toBeNull();
+    const map: Record<string, string> = {};
+    for (const m of match![1].matchAll(/"([^"]+)":\s*"([^"]+)"/g)) map[m[1]] = m[2];
+    return map;
+  }
+
+  it("maps every classical- id the picker offers to a real discipline slug", async () => {
+    const { DISCIPLINE_SLUGS } = await import("../../supabase/functions/_shared/disciplines");
+    const map = backendDisciplineMap();
+    const classicalIds = RESEARCH_SOURCES.filter((s) => s.group === "classical").map((s) => s.id);
+    expect(classicalIds.length).toBeGreaterThan(0);
+    for (const id of classicalIds) {
+      expect(map[id], `"${id}" has no entry in TIER_D_DISCIPLINE`).toBeDefined();
+      expect(DISCIPLINE_SLUGS as readonly string[]).toContain(map[id]);
+    }
+  });
+
+  it("does not offer fiqh, fatwa, or nahw — no domain of theirs has ingested rows", () => {
+    // shamela (their only unique domain) has never been ingested; openiti is
+    // ingested but as untagged general prose. Offering them would repeat the
+    // exact shamela-index mistake this file already documents avoiding.
+    const offered = new Set(Object.values(backendDisciplineMap()));
+    expect(offered.has("fiqh")).toBe(false);
+    expect(offered.has("fatwa")).toBe(false);
+    expect(offered.has("nahw")).toBe(false);
   });
 });
 

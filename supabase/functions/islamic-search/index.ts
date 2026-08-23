@@ -6,7 +6,7 @@ import { expandQueryTerms } from "../_shared/bilingualMap.ts";
 import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
 import { planQuery } from "../_shared/queryPlanner.ts";
 import { resolveCollectionSlugs, scopeHasArabicMatn } from "../_shared/collections.ts";
-import { personalVectorChannel, personalLexicalChannel } from "../_shared/citationEngine.ts";
+import { personalVectorChannel, personalLexicalChannel, classicalChannel } from "../_shared/citationEngine.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 
@@ -55,7 +55,34 @@ const TIER_C_DOMAINS = [
 ];
 
 const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
-const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS];
+
+// Tier D: the Tier-2 classical corpus (rijal/tafsir/lughat), scoped by
+// citation_ref->>'discipline' rather than by domain — see collections.ts's
+// arabicMatn split for the parallel pattern. These pseudo-ids exist only in
+// the UI/API contract; the retrieval layer maps each to its discipline via
+// classicalChannel in _shared/citationEngine.ts.
+//
+// Confirmed 2026-08-20 (Corpus Atlas): three findings apply here.
+//   1. Before this Tier existed, rijal (19,616 rows) / tafsir (6,208 rows) /
+//      lughat corpora were reachable from NO chat surface at all — not even
+//      implicitly. classicalChannel is used only by Editor/refine-text's
+//      findCitations(), which islamic-search never calls.
+//   2. fiqh/fatwa/nahw are deliberately NOT offered: their only domains are
+//      `shamela` (never ingested — 0 rows) and `openiti` (ingested, but as a
+//      general prose corpus with no discipline tag). Offering a pseudo-domain
+//      that can only return zero rows would repeat the shamela-index mistake
+//      already avoided in src/lib/research/sources.ts.
+//   3. rijal and tafsir have no content_ar at all — the lexical RPC
+//      (search_classical_scoped) can never find them, only the semantic half
+//      of classicalChannel can. See that function's comments.
+const TIER_D_DOMAINS = ["classical-rijal", "classical-tafsir", "classical-lughat"];
+const TIER_D_DISCIPLINE: Record<string, string> = {
+  "classical-rijal": "rijal",
+  "classical-tafsir": "tafsir",
+  "classical-lughat": "lughat",
+};
+
+const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS, ...TIER_D_DOMAINS];
 
 // Surah names by number — used to fill a clean reference when a retrieved row
 // (typically a Tier-A API result) has an empty surah_name. The local tanzil
@@ -613,6 +640,57 @@ serve(async (req) => {
         })()
       );
     }
+
+    // Tier D: Tier-2 classical corpus (rijal/tafsir/lughat) — see
+    // TIER_D_DOMAINS above for why only these three disciplines are offered.
+    //
+    // Two ways in, both required:
+    //   - IMPLICIT: the query planner detected a discipline from the question
+    //     itself ("راوی کا حال" → rijal). This is what makes the corpus
+    //     reachable at all for the first time — previously classicalChannel
+    //     was wired only into findCitations() (Editor/refine-text), which
+    //     islamic-search never called.
+    //   - EXPLICIT: the user narrowed the source picker to a classical-*
+    //     pseudo-domain. Checked against the RAW `selectedDomains` from the
+    //     request, not `effectiveDomains` — the latter defaults to every
+    //     domain (including these three) when nothing was narrowed, which
+    //     would make this indistinguishable from "always run", spending an
+    //     embedding call on every single query regardless of topic.
+    //
+    // Skipped entirely when neither applies, so a plain Quran/Hadith question
+    // never pays for the extra RPC + embedding round trip.
+    const explicitClassicalIds = Array.isArray(selectedDomains)
+      ? selectedDomains.filter((d: string) => TIER_D_DOMAINS.includes(d))
+      : [];
+    pushTimed("tierD:classical",
+      (async (): Promise<IslamicResult[]> => {
+        try {
+          const plan = await queryPlanPromise;
+          const autoDisciplines = plan?.scope.disciplines ?? [];
+          const explicitDisciplines = explicitClassicalIds
+            .map((d) => TIER_D_DISCIPLINE[d])
+            .filter((d): d is string => Boolean(d));
+          const disciplines = [...new Set([...autoDisciplines, ...explicitDisciplines])];
+          if (disciplines.length === 0 || !plan) return [];
+
+          const rows = await classicalChannel(supabase, plan, {
+            source_types: [],
+            collections: [],
+            surah: null,
+            disciplines,
+          });
+          return rows.slice(0, 10).map((row): IslamicResult => ({
+            domain: row.domain,
+            content: row.content,
+            citation_ref: row.citation_ref ?? {},
+            language: (row.language as "ar" | "en" | "ur") ?? "ur",
+          }));
+        } catch (e) {
+          console.error("Tier D (classical) error:", e);
+          return [];
+        }
+      })()
+    );
 
     // Tier L: the user's own personal library (library_chunks) — books they
     // uploaded via the Library panel. Reuses citationEngine.ts's existing,

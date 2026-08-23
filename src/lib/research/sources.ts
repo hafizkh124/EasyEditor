@@ -17,9 +17,19 @@
  * `vector-search`'s PSEUDO_DOMAIN_EXPANSION maps it to nothing on purpose (see
  * the comment there). Offering a checkbox that can only ever return zero
  * results would be a worse lie than not offering it.
+ *
+ * The "classical" group (`classical-rijal` / `classical-tafsir` /
+ * `classical-lughat`) is the explicit entry point Corpus Atlas finding #4
+ * asked for: before islamic-search's Tier D existed, these three disciplines
+ * — 19,616 narrator-biography rows, 6,208 tafsir rows, and the Quran lexicon —
+ * were reachable from no chat surface at all, not even implicitly. Only three
+ * of the six disciplines in `_shared/disciplines.ts` are offered: fiqh/
+ * fatwa/nahw live only in `shamela` (never ingested, 0 rows) or `openiti`
+ * (ingested, but as untagged general prose) and would be the same broken
+ * promise `shamela-index` above was excluded to avoid.
  */
 
-export type SourceGroupId = "corpus" | "api" | "web";
+export type SourceGroupId = "corpus" | "classical" | "api" | "web";
 
 export interface ResearchSource {
   /** Domain id sent to islamic-search. Must exist in its ALL_DOMAINS. */
@@ -33,6 +43,7 @@ export interface ResearchSource {
 
 export const SOURCE_GROUPS: Array<{ id: SourceGroupId; ur: string; note: string }> = [
   { id: "corpus", ur: "مقامی کارپس", note: "ہمارے اپنے ڈیٹابیس میں محفوظ، تصدیق شدہ متون" },
+  { id: "classical", ur: "کلاسیکی موضوعات", note: "رجال، تفسیر اور لغت — عام قرآن و حدیث تلاش سے الگ" },
   { id: "api", ur: "براہِ راست API", note: "بیرونی خدمات سے فوری استفسار" },
   { id: "web", ur: "ویب سائٹس", note: "سوال کے وقت لائیو پڑھی جانے والی سائٹس" },
 ];
@@ -43,6 +54,14 @@ export const RESEARCH_SOURCES: ResearchSource[] = [
   { id: "hadith-index", ur: "حدیث کارپس — معنوی تلاش", note: "بخاری، مسلم، مسند احمد، مصنف ابن ابی شیبہ سمیت ~350,000 احادیث، مفہوم کی بنیاد پر", group: "corpus" },
   { id: "hadith-json", ur: "حدیث کارپس — لفظی تلاش", note: "انہی احادیث میں الفاظ و اصطلاحات کی براہِ راست تلاش", group: "corpus" },
   { id: "openiti-index", ur: "OpenITI — کلاسیکی عربی", note: "کلاسیکی عربی نثر کا ذخیرہ", group: "corpus" },
+
+  // Tier D — the Tier-2 classical corpus, scoped by discipline rather than
+  // by domain. Auto-detected from the question ("راوی کا حال" → رجال) even
+  // when nothing here is checked; checking one explicitly also forces that
+  // discipline's search to run on a question that doesn't name it directly.
+  { id: "classical-rijal", ur: "اسماء الرجال", note: "راویوں کے حالات و تراجم — جرح و تعدیل", group: "classical" },
+  { id: "classical-tafsir", ur: "تفسیر ابن کثیر", note: "آیت بہ آیت تفسیر", group: "classical" },
+  { id: "classical-lughat", ur: "لغتِ قرآن", note: "الفاظ کے لغوی معانی و مادہ", group: "classical" },
 
   // Tier A — third-party APIs.
   { id: "dorar", ur: "دُرر السنیہ", note: "احادیث اور اُن کے درجات", group: "api" },

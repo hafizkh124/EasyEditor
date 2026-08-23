@@ -19,6 +19,7 @@ reconstruct rationale without rereading commits.
 | [0011](./0011-elevation-typography-charter.md) | Elevation & Typography Charter (design tokens + `check-ui-discipline.mjs` enforcement) | Accepted |
 | [0012](./0012-tafsir-web-via-edge-function.md) | Tafsir MCP on Web via a Session-less Edge Function | Accepted (decision) |
 | [0013](./0013-source-picker-and-collection-registry.md) | Opt-in source picker + canonical book registry for scoping (supersedes part of 0002) | Accepted |
+| [0014](./0014-classical-discipline-entry-point.md) | Explicit entry point for rijal/tafsir/lughat, plus fixing why they were unreachable at all | Accepted |
 
 ## When to write a new ADR
 
