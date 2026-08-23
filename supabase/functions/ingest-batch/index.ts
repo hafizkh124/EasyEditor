@@ -79,6 +79,16 @@ Deno.serve(async (req) => {
           );
         }
       }
+    } else if (mode === "delete-by-scope") {
+      // A single scope spec, not a list of rows -- but reuses the {rows,
+      // mode} envelope (as one-element array) rather than a new top-level
+      // field, so this mode needs no new branch in the request parsing above.
+      if (rows.length !== 1 || !rows[0].domain || !Array.isArray(rows[0].collections) || rows[0].collections.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "delete-by-scope needs exactly one row: { domain, collections: [non-empty] }" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     } else if (mode === "lookup-citation") {
       for (const row of rows) {
         if (!row.collection || !row.hadith_number) {
@@ -137,6 +147,28 @@ Deno.serve(async (req) => {
       }
       return new Response(
         JSON.stringify({ processed: rows.length, updated, results }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // mode: "delete-by-scope" — scoped DELETE via
+    // scholarly_documents_delete_by_scope (20260823210000_delete_by_scope_rpc.sql).
+    // Built for retiring tohed-hadith rows once a domain carrying real Arabic
+    // matn supersedes them (2026-08-23 IUB Arabic-gap backfill). NOT chunked
+    // like the other modes -- it is one DELETE statement scoped by
+    // (domain, collection[]), not a list of individual rows, so there is
+    // nothing to chunk. Guarded by the same x-ingest-secret check as every
+    // mode; the RPC itself refuses an empty collections array so this can
+    // never be turned into "delete an entire domain" by a missing argument.
+    if (mode === "delete-by-scope") {
+      const { domain, collections } = rows[0];
+      const { data, error } = await supabase.rpc("scholarly_documents_delete_by_scope", {
+        p_domain: domain,
+        p_collections: collections,
+      });
+      if (error) throw error;
+      return new Response(
+        JSON.stringify({ deleted: (data ?? []).length, results: data }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
