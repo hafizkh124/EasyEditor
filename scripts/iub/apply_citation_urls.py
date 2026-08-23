@@ -97,19 +97,43 @@ def build_plan(book_filter=None):
             continue
 
         book_path, bookid = data["path"], data["bookid"]
-        counts = {"MATCH": 0, "NO_MATCH": 0, "SKIPPED": 0}
+        counts = {"MATCH": 0, "NO_MATCH": 0, "DUPLICATE": 0, "SKIPPED": 0}
+
+        # Multiple IUB hadith_numbers can land on the SAME db_hadith_number
+        # as their best match -- confirmed live (2026-08-23): summing raw
+        # MATCH rows across all 11 books gives 37,055, but only ~33,080
+        # distinct (db_collection, db_hadith_number) targets exist. This is
+        # almost always a genuine repeated narration (e.g. Bukhari's
+        # mukarrarat -- the same hadith text cited verbatim across several
+        # chapters), not a bug in the matching itself. Only ONE citation can
+        # ever be written to a given DB row, so pick the HIGHEST-ratio match
+        # as the canonical one per row -- an earlier version of this
+        # function appended one update per IUB hadith_number unconditionally,
+        # which would have sent multiple conflicting updates for the same
+        # passage_key in a single apply run, with whichever happened to
+        # process last (an accident of dict iteration order, not a
+        # deliberate choice) silently overwriting the rest.
+        best_by_db_n = {}
+        for n_str, m in data["matches"].items():
+            if m["result"] != "MATCH":
+                counts["NO_MATCH"] += 1
+                continue
+            counts["MATCH"] += 1
+            db_n = int(m["db_hadith_number"])
+            n = int(n_str)
+            ratio = m.get("ratio", 0.0)
+            if db_n not in best_by_db_n or ratio > best_by_db_n[db_n][1]:
+                if db_n in best_by_db_n:
+                    counts["DUPLICATE"] += 1
+                best_by_db_n[db_n] = (n, ratio)
+            else:
+                counts["DUPLICATE"] += 1
 
         # Resolve passage_key for every DB row we'd actually write to. Keyed
         # on db_collection -- the corpus's real citation_ref.collection value,
         # not the IUB registry slug (they differ for most of these 25 books;
-        # see registry.py's module docstring). db_hadith_number is the actual
-        # DB row found by build_book_index.py's whole-collection search --
-        # it can differ from the IUB hadith_number by any local amount.
-        target_pairs = []
-        for n_str, m in data["matches"].items():
-            if m["result"] == "MATCH":
-                target_pairs.append((db_collection, int(m["db_hadith_number"])))
-
+        # see registry.py's module docstring).
+        target_pairs = [(db_collection, db_n) for db_n in best_by_db_n]
         resolved = {}
         if target_pairs:
             rows = lookup_full_rows(target_pairs)
@@ -117,14 +141,7 @@ def build_plan(book_filter=None):
                 resolved[(r["collection"], int(r["hadith_number"]))] = r
 
         updates = []
-        for n_str, m in data["matches"].items():
-            n = int(n_str)
-            if m["result"] != "MATCH":
-                counts["NO_MATCH"] += 1
-                continue
-            counts["MATCH"] += 1
-            db_n = int(m["db_hadith_number"])
-
+        for db_n, (n, ratio) in best_by_db_n.items():
             row = resolved.get((db_collection, db_n))
             if not row or not row.get("passage_key"):
                 counts["SKIPPED"] += 1
@@ -149,18 +166,19 @@ def build_plan(book_filter=None):
 
 
 def print_table(plan):
-    print(f"\n{'book':30} {'MATCH':>8} {'NO_MATCH':>9} {'SKIPPED':>8} {'to_write':>9}")
-    print("-" * 70)
-    total = {"MATCH": 0, "NO_MATCH": 0, "SKIPPED": 0, "to_write": 0}
+    print(f"\n{'book':30} {'MATCH':>8} {'NO_MATCH':>9} {'DUPLICATE':>10} {'SKIPPED':>8} {'to_write':>9}")
+    print("-" * 82)
+    total = {"MATCH": 0, "NO_MATCH": 0, "DUPLICATE": 0, "SKIPPED": 0, "to_write": 0}
     for slug, c in plan.items():
         to_write = len(c["updates"])
-        print(f"{slug:30} {c['MATCH']:8,} {c['NO_MATCH']:9,} {c['SKIPPED']:8,} {to_write:9,}")
+        print(f"{slug:30} {c['MATCH']:8,} {c['NO_MATCH']:9,} {c['DUPLICATE']:10,} {c['SKIPPED']:8,} {to_write:9,}")
         total["MATCH"] += c["MATCH"]
         total["NO_MATCH"] += c["NO_MATCH"]
+        total["DUPLICATE"] += c["DUPLICATE"]
         total["SKIPPED"] += c["SKIPPED"]
         total["to_write"] += to_write
-    print("-" * 70)
-    print(f"{'TOTAL':30} {total['MATCH']:8,} {total['NO_MATCH']:9,} {total['SKIPPED']:8,} {total['to_write']:9,}")
+    print("-" * 82)
+    print(f"{'TOTAL':30} {total['MATCH']:8,} {total['NO_MATCH']:9,} {total['DUPLICATE']:10,} {total['SKIPPED']:8,} {total['to_write']:9,}")
     return total
 
 

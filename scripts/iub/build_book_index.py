@@ -38,13 +38,14 @@ import os
 import re
 import sys
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from scripts.iub.registry import IUB_REGISTRY
-from scripts.iub.ar_normalize import content_overlap_ratio
-from scripts.iub.client import fetch_page
+from scripts.iub.ar_normalize import content_tokens, token_overlap_ratio
+from scripts.iub.client import fetch_page, MAX_WORKERS
 from scripts.iub.scrape_hadith import clean_html
-from scripts.iub.citation_lookup import fetch_full_collection, best_match_expanding
+from scripts.iub.citation_lookup import fetch_full_collection, tokenize_collection, best_match_expanding
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -77,6 +78,16 @@ def extract_arabic(html, hno):
     return clean_html(" ".join(matches)) if matches else ""
 
 
+def _fetch_one(path, bookid, slug, n):
+    url = f"https://islamicurdubooks.com/{path}/hadith-.php?bookid={bookid}&hadith_number={n}"
+    html, is_missing, err = fetch_page(url, module=f"bookidx_{slug}", key=str(n))
+    if html and not is_missing:
+        ar = extract_arabic(html, n)
+        if ar:
+            return n, ar
+    return n, None
+
+
 def scrape_book_texts(path, bookid, slug, total):
     out_file = os.path.join(INDEX_DIR, f"{slug}.json")
     if os.path.exists(out_file):
@@ -86,16 +97,23 @@ def scrape_book_texts(path, bookid, slug, total):
             print(f"   Loaded existing index ({len(existing):,} entries), skipping scrape.", flush=True)
             return existing
 
+    # client.py's throttle divides its per-request delay by MAX_WORKERS,
+    # i.e. it is a shared budget meant to be filled by MAX_WORKERS concurrent
+    # callers (see client.py's module docstring) -- calling it from a single
+    # thread, as an earlier version of this function did, meant every request
+    # paid a full network round-trip with none of the intended parallelism
+    # (confirmed live: ~0.5 req/s instead of the ~5 req/s aggregate budget).
     texts = {}
-    for n in range(1, total + 1):
-        url = f"https://islamicurdubooks.com/{path}/hadith-.php?bookid={bookid}&hadith_number={n}"
-        html, is_missing, err = fetch_page(url, module=f"bookidx_{slug}", key=str(n))
-        if html and not is_missing:
-            ar = extract_arabic(html, n)
+    done = 0
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = [pool.submit(_fetch_one, path, bookid, slug, n) for n in range(1, total + 1)]
+        for fut in as_completed(futures):
+            n, ar = fut.result()
             if ar:
                 texts[str(n)] = ar
-        if n % 500 == 0:
-            print(f"   scraped {n:,}/{total:,}", flush=True)
+            done += 1
+            if done % 500 == 0:
+                print(f"   scraped {done:,}/{total:,}", flush=True)
 
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(texts, f, ensure_ascii=False)
@@ -133,12 +151,21 @@ def main():
             db_collection, total + UPPER_BOUND_MARGIN,
             progress_label=f"{slug}: fetching {db_collection}",
         )
+        # Tokenize once per collection entry and once per IUB hadith -- see
+        # best_match_expanding's docstring: doing this inside the search loop
+        # instead re-tokenizes the same text on every candidate checked,
+        # which for a full book (thousands of hadith x up to a whole
+        # collection of candidates each) hung the indexer for over an hour
+        # past its DB fetch completing (confirmed live 2026-08-22, Bukhari).
+        collection_tokens = tokenize_collection(collection_texts, content_tokens)
 
         matches = {}
         m_count = nm_count = 0
+        done = 0
         for n_str, iub_text in iub_texts.items():
             n = int(n_str)
-            ratio, db_n = best_match_expanding(n, iub_text, collection_texts, content_overlap_ratio, OVERLAP_THRESHOLD)
+            query_tokens = content_tokens(iub_text)
+            ratio, db_n = best_match_expanding(n, query_tokens, collection_tokens, token_overlap_ratio, OVERLAP_THRESHOLD)
             if ratio >= OVERLAP_THRESHOLD:
                 matches[n_str] = {
                     "result": "MATCH",
@@ -149,6 +176,9 @@ def main():
                 m_count += 1
             else:
                 matches[n_str] = {"result": "NO_MATCH", "ratio": round(ratio, 3)}
+            done += 1
+            if done % 1000 == 0:
+                print(f"   matched {done:,}/{len(iub_texts):,}", flush=True)
                 nm_count += 1
 
         out_file = os.path.join(INDEX_DIR, f"{slug}_matches.json")
