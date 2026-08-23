@@ -102,14 +102,25 @@ export const CORPUS_BOOKS: CorpusBook[] = [
   { id: "nawawi40", ur: "اربعین نووی", ar: "الأربعون النووية",
     slugs: ["nawawi40"], domains: ["hadith-json"], arabicMatn: true,
     aliases: ["اربعین", "الأربعون", "نووی", "النووية", "nawawi"] },
+  // Live-confirmed 2026-08-23 (SELECT collection, count(*) FROM
+  // scholarly_documents WHERE domain='hadith-json' GROUP BY collection):
+  // hadith-json actually stores this as "qudsi40" / "The Forty Hadith Qudsi",
+  // never bare "qudsi" -- the original slug matched zero rows.
   { id: "qudsi", ur: "احادیث قدسیہ", ar: "الأحاديث القدسية",
-    slugs: ["qudsi"], domains: ["hadith-json"], arabicMatn: true,
+    slugs: ["qudsi", "qudsi40", "The Forty Hadith Qudsi"], domains: ["hadith-json"], arabicMatn: true,
     aliases: ["قدسی", "قدسیہ", "القدسية", "qudsi"] },
+  // Live-confirmed 2026-08-23: hadith-json stores this under TWO real strings
+  // ("riyad_assalihin", 1,896 rows; "Riyad as-Salihin", 589 rows) -- the
+  // original single guessed slug "riyadussalihin" matched neither.
   { id: "riyadussalihin", ur: "ریاض الصالحین", ar: "رياض الصالحين",
-    slugs: ["riyadussalihin"], domains: ["hadith-json"], arabicMatn: true,
+    slugs: ["riyadussalihin", "riyad_assalihin", "Riyad as-Salihin"], domains: ["hadith-json"], arabicMatn: true,
     aliases: ["الصالحین", "الصالحين", "riyad us salihin", "riyadussalihin"] },
+  // Live-confirmed 2026-08-23: hadith-json also stores this under
+  // "bulugh_almaram" (1,767 rows) and "Bulugh al-Maram" (400 rows) -- neither
+  // matched the original two slugs, leaving 2,167 hadith-json rows
+  // unreachable (separate from the islamicurdubooks-hadith IUB copy below).
   { id: "bulughalmaram", ur: "بلوغ المرام", ar: "بلوغ المرام",
-    slugs: ["bulughalmaram", "bulugh-al-maram"],
+    slugs: ["bulughalmaram", "bulugh-al-maram", "bulugh_almaram", "Bulugh al-Maram"],
     domains: ["hadith-json", "islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["بلوغ", "المرام", "bulugh"] },
   // Live-confirmed: hadith-json stores الأدب المفرد as "aladab_almufrad".
@@ -121,8 +132,13 @@ export const CORPUS_BOOKS: CorpusBook[] = [
     aliases: ["صحیح الجامع", "صحيح الجامع", "sahih al jami"] },
   // Live-confirmed: hadith-json stores مشکاۃ as "mishkat_almasabih";
   // tohed-hadith carries a second copy under "mishkat-al-masabih".
+  // Live-confirmed 2026-08-23: hadith-json ALSO stores 800 rows under the
+  // capitalized "Mishkat al-Masabih" (space-separated, no underscore/hyphen)
+  // alongside the already-known "mishkat_almasabih" (4,428 rows) -- a third
+  // real variant the original two-slug list (plus the always-dead "mishkat")
+  // didn't cover.
   { id: "mishkat", ur: "مشکاۃ المصابیح", ar: "مشكاة المصابيح",
-    slugs: ["mishkat", "mishkat_almasabih", "mishkat-al-masabih"],
+    slugs: ["mishkat", "mishkat_almasabih", "mishkat-al-masabih", "Mishkat al-Masabih"],
     domains: ["hadith-json", "tohed-hadith"], arabicMatn: true,
     aliases: ["مشکاۃ", "مشکوۃ", "مشكاة", "المصابیح", "المصابيح", "mishkat"] },
   { id: "hisn-alhisar", ur: "حصن المسلم", ar: "حصن المسلم",
