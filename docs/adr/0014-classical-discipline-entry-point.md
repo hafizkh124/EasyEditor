@@ -140,14 +140,15 @@ a source is absent.
   settle it) before deciding whether fiqh/nahw are worth ingesting via
   `scripts/classical_to_csv.py`. They remain the only two disciplines still
   excluded from the picker.
-- **Cross-tier duplication is unaddressed.** `islamic-search` merges every
-  tier's rows into `allResults` with no dedup (only topic anchors are deduped,
-  on a quran/hadith-shaped key that is empty for fatwa and classical rows). A
-  fatwa ruling can now surface from both Tier K (lexical) and Tier D
-  (semantic) in one answer. This predates Tier D — Tier B and Tier K can
-  already both return the same hadith — and fixing it properly needs a stable
-  identity on `IslamicResult`, which it does not currently carry. Worth its own
-  change rather than a patch here.
+- ~~**Cross-tier duplication is unaddressed.**~~ **Done, 2026-08-23.**
+  `_shared/resultIdentity.ts` now gives every result a stable cross-tier
+  identity and `islamic-search` de-dupes `allResults` with it. The topic-anchor
+  merge was moved onto the same identity, fixing its own weaker key (which read
+  `book` but ignored `collection`, so an anchor could be re-inserted beside the
+  identical corpus row fan-out had already found). The function returns `null`
+  for rows it cannot identify and those are always kept — a de-duplicator that
+  guesses deletes real results, and the old anchor key's `":|:"` for every
+  fatwa row is exactly that failure mode.
 - `islamicurdubooks-misc` (66 rows, hadith-terminology/duas) tags
   `discipline: "hadith_term"` / `"dua"` — neither is in `DISCIPLINE_SLUGS`, so
   those rows are unreachable by any discipline-scoped path. Out of scope here;
