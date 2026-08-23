@@ -10,22 +10,28 @@ rows in data/citation_backup_20260823_141244.csv) — but only the database can
 confirm them, and a slug that matches nothing fails SILENTLY: the user asks for
 one book, the scope filter matches zero rows, and the answer comes back empty.
 
-This prints, for every slug in the registry, the live row count and how many of
-those rows have Arabic matn, so both halves of the table can be re-checked:
+Uses `ingest-batch`'s `lookup-citation` mode (the same INGEST_SHARED_SECRET
+already used throughout Phase E) rather than SUPABASE_SERVICE_ROLE_KEY, since
+the service key on file is rotated/401 and the anon key is RLS-blocked on
+scholarly_documents (returns 0 rows either way, indistinguishable from a
+genuinely bad slug). That RPC is an EXACT (collection, hadith_number) lookup,
+not a count -- so this checks existence, not row totals: for each slug, it
+tries a spread of hadith_number values (not just "1", since IUB-derived
+collections can start at an offset) and reports the first one that resolves,
+with whether that row has content_ar.
 
-    SUPABASE_SERVICE_ROLE_KEY=... python scripts/verify_collection_slugs.py
+    python scripts/verify_collection_slugs.py
 
-Add --list-unknown to also print collection strings that exist in the corpus but
-are in no book's slug list (i.e. books a user still cannot scope to).
+Add --list-unknown to also fetch a handful of (collection, hadith_number)
+pairs for known dead slugs' neighboring domains, as a sanity spot-check.
 
-Read-only: it issues HEAD/count queries and never writes.
+Read-only: it only ever calls lookup-citation, which never writes.
 """
 
 import os
 import re
 import sys
 import json
-import urllib.parse
 import urllib.request
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -33,12 +39,11 @@ if hasattr(sys.stdout, "reconfigure"):
 
 REGISTRY_TS = os.path.join("supabase", "functions", "_shared", "collections.ts")
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://vdfdqtzndsrrlutbprtk.supabase.co")
-SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+SECRET = os.environ.get("INGEST_SHARED_SECRET", "")
 
-# Domains whose rows carry a `collection` — the same allowlist as
-# scholarly_documents_lookup_by_citation and PSEUDO_DOMAIN_EXPANSION.
-HADITH_DOMAINS = ["hadith-json", "urdu-hadith", "tohed-hadith", "easyquran-hadith",
-                  "islamicurdubooks-hadith"]
+# Spread of hadith_numbers to probe per slug -- covers both 1-based
+# collections and IUB-derived ones that can start at a local offset.
+PROBE_NUMBERS = [1, 2, 3, 5, 10, 50, 100, 200, 500]
 
 
 def parse_registry(path):
@@ -60,79 +65,73 @@ def parse_registry(path):
     return books
 
 
-def _get(path, params, extra_headers=None):
-    url = f"{SUPABASE_URL}/rest/v1/{path}?{urllib.parse.urlencode(params)}"
-    headers = {"apikey": SERVICE_KEY, "Authorization": f"Bearer {SERVICE_KEY}"}
-    headers.update(extra_headers or {})
-    req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=90) as resp:
-        return resp
+def lookup_batch(pairs):
+    """pairs: list of (collection, hadith_number) -> {(collection, hadith_number): row}"""
+    if not pairs:
+        return {}
+    rows = [{"collection": c, "hadith_number": str(n)} for c, n in pairs]
+    payload = json.dumps({"mode": "lookup-citation", "rows": rows}).encode("utf-8")
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/functions/v1/ingest-batch",
+        data=payload,
+        headers={"x-ingest-secret": SECRET, "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    out = {}
+    for r in data.get("results", []):
+        if r.get("id"):
+            out[(r["collection"], r["hadith_number"])] = r
+    return out
 
 
-def count_rows(slug, arabic_only=False):
-    params = {"citation_ref->>collection": f"eq.{slug}", "select": "id", "limit": "1"}
-    if arabic_only:
-        params["content_ar"] = "not.is.null"
-    try:
-        resp = _get("scholarly_documents", params, {"Prefer": "count=exact"})
-        rng = resp.headers.get("Content-Range") or ""
-        return int(rng.split("/")[1]) if "/" in rng else 0
-    except Exception as exc:                                    # noqa: BLE001
-        print(f"  ! query failed for {slug}: {exc}")
-        return -1
+def probe_slug(slug):
+    """Returns (found: bool, hadith_number_that_matched, has_content_ar) for one slug."""
+    pairs = [(slug, n) for n in PROBE_NUMBERS]
+    resolved = lookup_batch(pairs)
+    for n in PROBE_NUMBERS:
+        row = resolved.get((slug, str(n)))
+        if row:
+            return True, n, bool(row.get("content_ar"))
+    return False, None, False
 
 
 def main():
-    if not SERVICE_KEY:
-        print("SUPABASE_SERVICE_ROLE_KEY is not set — this script needs it: the "
-              "anon key is blocked by RLS on scholarly_documents and would "
-              "report 0 rows for every slug, which looks exactly like a bad slug.")
+    if not SECRET:
+        print("INGEST_SHARED_SECRET is not set. Export it (from .env) before running:")
+        print('  export INGEST_SHARED_SECRET=$(grep "^INGEST_SHARED_SECRET=" .env | cut -d= -f2- | sed \'s/^"//;s/"$//\')')
         return 1
 
     books = parse_registry(REGISTRY_TS)
     print(f"Registry: {len(books)} books, {sum(len(slugs) for _, slugs, _ in books)} slugs\n")
 
-    dead, live_slugs = [], set()
+    dead = []
     for book_id, slugs, arabic_matn in books:
-        parts, total = [], 0
+        parts, any_live, any_ar = [], False, False
         for slug in slugs:
-            n = count_rows(slug)
-            total += max(n, 0)
-            if n > 0:
-                live_slugs.add(slug)
-                ar = count_rows(slug, arabic_only=True)
-                parts.append(f"{slug}={n:,} (ar {ar:,})")
+            found, n, has_ar = probe_slug(slug)
+            if found:
+                any_live = True
+                any_ar = any_ar or has_ar
+                parts.append(f"{slug}=live@#{n}{' (ar)' if has_ar else ' (no ar)'}")
             else:
-                parts.append(f"{slug}=0")
+                parts.append(f"{slug}=NOT FOUND in {PROBE_NUMBERS}")
                 dead.append((book_id, slug))
-        flag = "" if total else "   <-- NO ROWS FOR THIS BOOK AT ALL"
+        flag = "" if any_live else "   <-- NO SLUG RESOLVED FOR THIS BOOK AT ALL"
         print(f"{book_id:32s} {'  '.join(parts)}{flag}")
-        if total and arabic_matn and all(count_rows(s, arabic_only=True) == 0 for s in slugs):
-            print(f"{'':32s} !! arabicMatn:true but no row has content_ar")
+        if any_live and arabic_matn and not any_ar:
+            print(f"{'':32s} !! arabicMatn:true but no probed row has content_ar")
 
     print()
     if dead:
-        print(f"{len(dead)} slug(s) matched zero rows (harmless if a sibling slug "
-              f"covers the book, wrong if the book has none):")
+        print(f"{len(dead)} slug(s) had no match at any probed hadith_number "
+              f"(harmless if a sibling slug covers the book; also possible the "
+              f"book's true numbering falls entirely outside {PROBE_NUMBERS} -- "
+              f"widen the probe list for those before concluding the slug is dead):")
         for book_id, slug in dead:
             print(f"  {book_id}: {slug}")
     else:
-        print("Every slug in the registry matches at least one live row.")
-
-    if "--list-unknown" in sys.argv:
-        print("\nCollection strings in the corpus that no book claims:")
-        try:
-            resp = _get("scholarly_documents",
-                        {"select": "citation_ref->collection", "domain": f"in.({','.join(HADITH_DOMAINS)})",
-                         "limit": "100000"})
-            seen = {row.get("collection") for row in json.loads(resp.read().decode())}
-            unknown = sorted(c for c in seen if c and c not in live_slugs)
-            for c in unknown:
-                print(f"  {c}")
-            if not unknown:
-                print("  (none — every collection in the corpus is reachable)")
-        except Exception as exc:                                # noqa: BLE001
-            print(f"  ! could not enumerate collections: {exc}")
+        print("Every slug in the registry resolved at least one probed hadith_number.")
 
     return 1 if dead else 0
 
