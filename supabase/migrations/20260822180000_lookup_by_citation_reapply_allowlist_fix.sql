@@ -23,13 +23,22 @@
 --
 -- This migration is identical to 20260820020000's function body (the
 -- allowlist fix), applied on top of the current (2026-08-20171004) inline
--- ar_fingerprint computation so both fixes are live together. The two
--- partial indexes from 20260820020000 are recreated IF NOT EXISTS in case a
--- future schema pull ever drops them too -- cheap insurance, no-op if they
--- already exist.
+-- ar_fingerprint computation so both fixes are live together.
+--
+-- The two partial indexes below were originally written here as UNIQUE
+-- (matching 20260820020000's assumption). That failed live: tohed-hadith
+-- and easyquran-hadith both have genuine duplicate (collection,
+-- hadith_number) pairs -- confirmed via pg_indexes on 2026-08-23, the
+-- indexes that actually exist are non-unique, named *_idx (not *_uidx) as
+-- written below, created directly after the UNIQUE attempt failed. A third,
+-- broader index (scholarly_documents_collection_hno_idx, no domain filter)
+-- was also added at the same time, covering every domain uniformly. All
+-- three are declared here, matching live exactly, so a fresh-DB replay of
+-- this migration reproduces the real schema instead of erroring on
+-- CREATE UNIQUE INDEX against real duplicate data.
 -- ================================================================
 
-CREATE UNIQUE INDEX IF NOT EXISTS scholarly_documents_tohed_hadith_uidx
+CREATE INDEX IF NOT EXISTS scholarly_documents_tohed_hadith_idx
   ON public.scholarly_documents (
     (citation_ref->>'collection'),
     (citation_ref->>'hadith_number')
@@ -38,13 +47,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS scholarly_documents_tohed_hadith_uidx
     AND citation_ref->>'collection' IS NOT NULL
     AND citation_ref->>'hadith_number' IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS scholarly_documents_easyquran_hadith_uidx
+CREATE INDEX IF NOT EXISTS scholarly_documents_easyquran_hadith_idx
   ON public.scholarly_documents (
     (citation_ref->>'collection'),
     (citation_ref->>'hadith_number')
   )
   WHERE domain = 'easyquran-hadith'
     AND citation_ref->>'collection' IS NOT NULL
+    AND citation_ref->>'hadith_number' IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS scholarly_documents_collection_hno_idx
+  ON public.scholarly_documents (
+    (citation_ref->>'collection'),
+    (citation_ref->>'hadith_number')
+  )
+  WHERE citation_ref->>'collection' IS NOT NULL
     AND citation_ref->>'hadith_number' IS NOT NULL;
 
 CREATE OR REPLACE FUNCTION public.scholarly_documents_lookup_by_citation(payload jsonb)
