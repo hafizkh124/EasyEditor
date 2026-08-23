@@ -1775,6 +1775,14 @@ export type Database = {
         Args: { payload: Json }
         Returns: Json
       }
+      scholarly_documents_delete_by_scope: {
+        Args: { p_collections: string[]; p_domain: string }
+        Returns: {
+          id: string
+          passage_key: string
+          source_url: string
+        }[]
+      }
       scholarly_documents_lookup_by_citation: {
         Args: { payload: Json }
         Returns: {
