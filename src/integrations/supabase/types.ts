@@ -1805,6 +1805,13 @@ export type Database = {
           updated: boolean
         }[]
       }
+      scholarly_documents_update_content: {
+        Args: { payload: Json }
+        Returns: {
+          passage_key: string
+          updated: boolean
+        }[]
+      }
       search_classical_scoped: {
         Args: {
           p_disciplines?: string[]
