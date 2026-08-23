@@ -6,6 +6,7 @@ import { expandQueryTerms } from "../_shared/bilingualMap.ts";
 import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
 import { planQuery } from "../_shared/queryPlanner.ts";
 import { resolveCollectionSlugs, scopeHasArabicMatn } from "../_shared/collections.ts";
+import { resultIdentity, dedupeResults } from "../_shared/resultIdentity.ts";
 import { personalVectorChannel, personalLexicalChannel, classicalChannel } from "../_shared/citationEngine.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
@@ -835,9 +836,28 @@ serve(async (req) => {
       Promise.all(anchorFetches),
     ]);
     stages.push({ stage: "fanOut(all tiers)", startMs: fanOutStart, endMs: since(), ms: since() - fanOutStart });
-    const allResults: IslamicResult[] = [];
+    const rawResults: IslamicResult[] = [];
     for (const r of settled) {
-      if (r.status === "fulfilled") allResults.push(...r.value);
+      if (r.status === "fulfilled") rawResults.push(...r.value);
+    }
+
+    // Collapse the same passage returned by more than one tier. Tier B
+    // (pgvector) and Tier K (lexical) read the same table, as do Tier D and
+    // Tier K for fatwa rows — without this, a single hadith could occupy two
+    // or three of the answer's source slots. First occurrence wins, so the
+    // fan-out's tier order still decides which copy the model sees.
+    const dedupeStart = since();
+    const allResults = dedupeResults(rawResults);
+    if (allResults.length !== rawResults.length) {
+      // Only recorded when it actually removed something, so the timing log
+      // stays a list of things that happened rather than a list of no-ops.
+      stages.push({
+        stage: `dedupe(cross-tier): ${rawResults.length} -> ${allResults.length}`,
+        startMs: dedupeStart,
+        endMs: since(),
+        ms: since() - dedupeStart,
+        count: allResults.length,
+      });
     }
 
     if (anchors) {
@@ -850,19 +870,23 @@ serve(async (req) => {
         count: extra.length,
       });
 
-      // Dedupe against what fan-out already returned.
+      // Dedupe anchors against what fan-out already returned, using the same
+      // identity as above rather than the weaker ad-hoc key this used to
+      // build. That old key ignored `collection` (reading only `book`), so an
+      // anchor could be re-inserted alongside the identical corpus row that
+      // fan-out had already found — the very duplication anchors are supposed
+      // to avoid.
       const seenKeys = new Set(
-        allResults.map((r) => {
-          const c = r.citation_ref ?? {};
-          return `${c.surah_number ?? ""}:${c.verse ?? ""}|${c.book ?? ""}:${c.hadith_number ?? ""}`;
-        }),
+        allResults.map(resultIdentity).filter((k): k is string => k !== null),
       );
       // Prepend in reverse so the FIRST anchor in the array ends up first
       // in the final results list.
       for (let i = extra.length - 1; i >= 0; i--) {
         const e = extra[i];
-        const c = e.citation_ref ?? {};
-        const k = `${c.surah_number ?? ""}:${c.verse ?? ""}|${c.book ?? ""}:${c.hadith_number ?? ""}`;
+        const k = resultIdentity(e);
+        // An anchor with no usable identity is still worth showing — it was
+        // deliberately curated for this topic.
+        if (k === null) { allResults.unshift(e); continue; }
         if (!seenKeys.has(k)) {
           seenKeys.add(k);
           allResults.unshift(e);
