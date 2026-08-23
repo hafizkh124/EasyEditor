@@ -145,13 +145,15 @@ Deno.serve(async (req) => {
     if (subErr) return json({ error: "Could not renew subscription", detail: subErr.message }, 500);
 
     // Reset monthly token balance
-    await admin.rpc("credit_tokens", {
-      p_user_id: userId,
-      p_amount: 1, // placeholder — real reset below
-      p_source: "monthly",
-      p_action_type: "monthly_reset",
-      p_detail: "Renewal monthly token reset",
-    }).then(() => {/* no-op */}).catch(() => {/* tolerate */});
+    try {
+      await admin.rpc("credit_tokens", {
+        p_user_id: userId,
+        p_amount: 1, // placeholder — real reset below
+        p_source: "monthly",
+        p_action_type: "monthly_reset",
+        p_detail: "Renewal monthly token reset",
+      });
+    } catch { /* tolerate */ }
     // Direct wallet refresh (idempotent)
     await admin.from("token_wallets").update({
       monthly_balance: ((): number => {
