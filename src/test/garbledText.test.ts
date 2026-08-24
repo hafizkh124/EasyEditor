@@ -89,3 +89,30 @@ describe('isGarbledText — refuses to judge without signal', () => {
     expect(isGarbledText('1234567890 ... 4567 —— 8901 ;; 2345 :: 6789 ,, 1122')).toBe(false);
   });
 });
+
+// A first pass at auditing the live corpus used a cruder SQL heuristic
+// (ASCII-only a-zA-Z0-9 counted as "letters") and flagged these — real rows
+// from bulugh_almaram, malik, mishkat_almasabih, nawawi40, qudsi40 and
+// riyad_assalihin, captured 2026-08-24. They are ordinary English hadith
+// translations; the SQL version mistook quotation marks, parentheses, the
+// (\u{FDFA}) glyph and footnote markers for corpus damage. The actual
+// filter here does not: it requires a high share of one-character *tokens*
+// (mojibake's real fingerprint — see REAL_GARBLED_1/2 above), which none of
+// this ordinary prose has no matter how heavy its punctuation. Kept as a
+// permanent regression: this is exactly the kind of text a looser threshold
+// could start hiding.
+describe('isGarbledText — real hadith rows a cruder audit query flagged', () => {
+  const SAMPLES = [
+    "Narrated Anas (RA):\n\nAllah's Messenger (\u{FDFA}) prayed and an orphan and I prayed behind him and Umm Sulaim (RA) was behind us.\n\n.",
+    'Narrated \'Umar (RA):\n\nHe said, "O people! We pass (in our recitation) verses to be prostrated at, so whoever prostrates has done the right thing, and there is no sin upon the one who does not prostrate."\n\n.\n\nIt also contains the words: \'Allah the Most High has not made the prostration (of recitation',
+    'Malik related to me that Ibn Shihab informed him that a man\nconfessed that he had committed adultery in the time of the Messenger\nof Allah, may Allah bless him and grant him peace, and he testified\nagainst himself four times, so the Messenger of Allah, may Allah bless\nhim and grant him peace, gave t',
+    '‘Assal told how, when a Jew said to his friend, “Let us go to this prophet,” his friend said to him, “Don’t say ‘prophet’, for if he heard you he would be greatly pleased.” 1  They went to God’s messenger and asked him about nine clear signs.',
+    'Ibn Mas\'ud said that a man was mentioned in the Prophet’s presence, and he was told that he continued sleeping till morning, never having got up to pray. He said, “That is a man in whose ear (or, in whose ears) the devil has urinated.” \n\n(Bukhari and Muslim.)',
+    'On the authority of Uqbah ibn Amir (may Allah be pleased with him), who said:\n\nI heard the messenger of Allah (\u{FDFA}) say:\nYour Lord delights at a shepherd who, on the peak of a mountain crag, gives the call to prayer and prays.',
+    'Mu\'awiyah bin Al-Hakam (May Allah be pleased with him) reported:\n\nI said: "O Messenger of Allah, I have recently emerged from ignorance and Allah has favoured me with Islam. There are still some men among us who visit the soothsayers"',
+  ];
+
+  it.each(SAMPLES)('keeps: %s', (sample) => {
+    expect(isGarbledText(sample)).toBe(false);
+  });
+});
