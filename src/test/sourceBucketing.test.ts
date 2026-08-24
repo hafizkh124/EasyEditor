@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { sourceTypeOf } from '../components/editor/useResourceSearch';
 import type { ResourceResult } from '../lib/editor/citationFormat';

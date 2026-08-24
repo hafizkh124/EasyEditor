@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { scanChromeDirs } from "../../scripts/check-ui-discipline.mjs";
 
 /**

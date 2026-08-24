@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { initializeDatabaseSchema } from '../../electron/db/schema.js';

@@ -12,14 +12,21 @@
 //      ai_verification_status='manual_review')
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
+// The auto-approval decision, the tier prices and the receiver allowlist now
+// live in one tested module shared with verify-renewal-receipt. They used to be
+// duplicated verbatim in both files with nothing checking that the copies
+// agreed. See src/test/receiptDecision.test.ts.
+import {
+  decideActivation,
+  TIER_PRICES_PKR,
+  type PaidTier,
+} from "../_shared/receiptDecision.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-type PaidTier = "basic" | "pro" | "ultra";
 
 const TIER_LIMITS: Record<PaidTier, {
   transcription_limit: number;
@@ -33,31 +40,11 @@ const TIER_LIMITS: Record<PaidTier, {
   ultra: { transcription_limit: 36_000, tts_character_limit: 500_000, ocr_pages_limit: 2_000, research_queries_limit: 500, islamic_queries_limit: 500 },
 };
 
-const TIER_PRICES_PKR: Record<PaidTier, number> = {
-  basic: 1_400,
-  pro:   5_400,
-  ultra: 8_400,
-};
-
 const TIER_TOKENS: Record<PaidTier, number> = {
   basic: 5_000,
   pro:   25_000,
   ultra: 50_000,
 };
-
-// Receiver accounts that should appear on a valid receipt.
-const VALID_RECEIVERS = [
-  "Al-Ulama",
-  "Ulama Centre",
-  "Hafiz Khizar Hayat",
-  "PK04NBPA1997004243449556",
-  "00420745",
-  "03084164816",
-  "0308 4164816",
-  "0308-4164816",
-];
-
-const CONFIDENCE_THRESHOLD = 90;
 
 interface VerifyRequest {
   planId: PaidTier;
@@ -157,22 +144,21 @@ Deno.serve(async (req) => {
   }
 
   // ── 7. Decide: auto-approve vs manual review
-  const amountMatches = ai.amount !== null && Math.abs(ai.amount - expectedPkr) <= Math.max(50, expectedPkr * 0.02);
-  const receiverMatches = ai.receiver !== null && VALID_RECEIVERS.some((r) =>
-    ai.receiver!.toLowerCase().includes(r.toLowerCase()) ||
-    r.toLowerCase().includes(ai.receiver!.toLowerCase()),
-  );
-  const passes = ai.confidence >= CONFIDENCE_THRESHOLD && amountMatches && receiverMatches && !ai.tampered;
+  const decision = decideActivation(ai, planId);
 
   const aiDetails = {
     extracted: { amount: ai.amount, receiver: ai.receiver, txnId: ai.txnId, date: ai.date },
     expected: { amount_pkr: expectedPkr, plan: planId },
-    checks: { amount_matches: amountMatches, receiver_matches: receiverMatches, tampered: ai.tampered },
+    checks: decision.checks,
+    // Why the decision went the way it did, in machine-readable form — an admin
+    // reviewing a flagged receipt should not have to re-derive it from the
+    // individual checks.
+    failed_checks: decision.failed,
     confidence: ai.confidence,
     reasons: ai.reasons,
   };
 
-  if (passes) {
+  if (decision.action === "auto_approve") {
     return await autoApprove(admin, userId, planId, cleanRef, storagePath, ai.confidence, aiDetails);
   }
 

@@ -5,28 +5,20 @@
 // approved write extends expires_at rather than starting fresh.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
+// Shared with verify-receipt — the decision, the prices and the receiver
+// allowlist were duplicated verbatim across both files with nothing checking
+// that the copies agreed. See src/test/receiptDecision.test.ts.
+import {
+  decideActivation,
+  TIER_PRICES_PKR,
+  type PaidTier,
+} from "../_shared/receiptDecision.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-type PaidTier = "basic" | "pro" | "ultra";
-
-const TIER_PRICES_PKR: Record<PaidTier, number> = {
-  basic: 1_400,
-  pro:   5_400,
-  ultra: 8_400,
-};
-
-const VALID_RECEIVERS = [
-  "Al-Ulama", "Ulama Centre", "Hafiz Khizar Hayat",
-  "PK04NBPA1997004243449556", "00420745",
-  "03084164816", "0308 4164816", "0308-4164816",
-];
-
-const CONFIDENCE_THRESHOLD = 90;
 
 interface AIResult {
   confidence: number;
@@ -106,22 +98,18 @@ Deno.serve(async (req) => {
   const ai = await verifyWithAI(base64, mime, expectedPkr);
   if (!ai) return json({ error: "AI verification temporarily unavailable" }, 503);
 
-  const amountMatches = ai.amount !== null && Math.abs(ai.amount - expectedPkr) <= Math.max(50, expectedPkr * 0.02);
-  const receiverMatches = ai.receiver !== null && VALID_RECEIVERS.some((r) =>
-    ai.receiver!.toLowerCase().includes(r.toLowerCase()) ||
-    r.toLowerCase().includes(ai.receiver!.toLowerCase()),
-  );
-  const passes = ai.confidence >= CONFIDENCE_THRESHOLD && amountMatches && receiverMatches && !ai.tampered;
+  const decision = decideActivation(ai, tier);
 
   const aiDetails = {
     extracted: { amount: ai.amount, receiver: ai.receiver, txnId: ai.txnId, date: ai.date },
     expected: { amount_pkr: expectedPkr, plan: tier, kind: "renewal" },
-    checks: { amount_matches: amountMatches, receiver_matches: receiverMatches, tampered: ai.tampered },
+    checks: decision.checks,
+    failed_checks: decision.failed,
     confidence: ai.confidence,
     reasons: ai.reasons,
   };
 
-  if (passes) {
+  if (decision.action === "auto_approve") {
     const now = new Date();
     const currentExpiry = sub?.expires_at ? new Date(sub.expires_at as string) : now;
     const base = currentExpiry.getTime() > now.getTime() ? currentExpiry : now;

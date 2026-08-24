@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { extractPlainTextFromJSON, countWords } from "../core/workspace/documentService";
 

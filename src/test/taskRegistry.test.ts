@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { BUILTIN_TASKS, TASK_REGISTRY, getTaskBySlug, getTasksForSurface } from "@/lib/tasks/registry";
 import { calculateTaskCost, checkSolvency } from "@/lib/tasks/cost";

@@ -16,6 +16,44 @@ export default defineConfig({
     // failure. A genuinely hung test still fails here, just 25s later.
     testTimeout: 30_000,
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    // jsdom costs roughly 30s of construction per worker and most of this suite
+    // never touches the DOM, so pure-logic files opt out with a
+    // `// @vitest-environment node` docblock. jsdom stays the default because it
+    // is the safe one: a new component test that forgets the annotation works,
+    // whereas the inverse would fail confusingly. src/test/setup.ts guards its
+    // window patching so it survives both environments.
+    coverage: {
+      provider: "v8",
+      reporter: ["text-summary", "json-summary", "html"],
+      reportsDirectory: "./coverage",
+      // Measure the code we actually own. Without `all`, v8 reports only files
+      // some test already imported, which flatters the number by exactly the
+      // amount we care about.
+      all: true,
+      include: [
+        "src/**/*.{ts,tsx}",
+        "electron/**/*.ts",
+        "shared/**/*.ts",
+        "supabase/functions/**/*.ts",
+      ],
+      exclude: [
+        "src/components/ui/**",        // 36 vendored shadcn primitives
+        "src/locales/**",
+        "src/test/**",
+        "**/__tests__/**",
+        "**/*.d.ts",
+        "**/mirror/**",                // generated copy of shared/
+        "src/main.tsx",
+        "src/vite-env.d.ts",
+      ],
+      // Per-path floors, not one global percentage: a single global number
+      // would be satisfied by the 200+ component files and would say nothing
+      // about the paths that move money or gate security. Raise these only
+      // after the suite already clears the new value.
+      thresholds: {
+        "electron/lib/urlAllowlist.ts": { lines: 100, functions: 100, branches: 100 },
+      },
+    },
     // vite.config.ts supplies these via `define`, but this config is separate and
     // does not inherit it. Without them `createClient()` throws at import time, so
     // every test file that transitively reaches the Supabase client fails to load

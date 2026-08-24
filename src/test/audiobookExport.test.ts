@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const synthesizeLocalTts = vi.fn<(text: string, lang: string, voiceId?: string) => Promise<Buffer>>();

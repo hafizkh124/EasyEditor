@@ -1,3 +1,4 @@
+// @vitest-environment node
 import en from "@/locales/en.json";
 import ur from "@/locales/ur.json";
 import ar from "@/locales/ar.json";

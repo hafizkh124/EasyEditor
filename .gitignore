@@ -76,3 +76,6 @@ scratch/
 tools/shamela-bridge/.bridge-token.json
 probeMaster.*
 
+
+# Vitest coverage output (npm run test:coverage) — regenerated, never committed.
+coverage/
