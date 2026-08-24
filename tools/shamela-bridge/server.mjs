@@ -128,8 +128,19 @@ function setCorsAndPnaHeaders(req, res) {
 
 const server = http.createServer(async (req, res) => {
   // 1. SECURITY CHECK: Exact Host Header Verification (DNS Rebinding Protection)
+  //
+  // Built from PORT rather than a hardcoded 8000: the port is configurable
+  // (see PORT above, and start-bridge honours it), but this check used to
+  // compare against ':8000' literally — so anyone whose 8000 was already
+  // taken and who set PORT=8001 got a 403 on every single request, with an
+  // "Invalid Host Header" message that points nowhere near the real cause.
+  // The bare host forms stay for the port-80 case.
   const host = req.headers.host || '';
-  const validHost = host === '127.0.0.1:8000' || host === 'localhost:8000' || host === '127.0.0.1' || host === 'localhost';
+  const validHost =
+    host === `127.0.0.1:${PORT}` ||
+    host === `localhost:${PORT}` ||
+    host === '127.0.0.1' ||
+    host === 'localhost';
   if (!validHost) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Forbidden: Invalid Host Header' }));
