@@ -828,6 +828,7 @@
   "editor.filter_hadith": "الحديث",
   "editor.filter_tafsir": "التفسير",
   "editor.filter_shamela": "المكتبة الشاملة",
+  "editor.filter_other": "أخرى",
   "editor.source_unavailable": "غير مفعّل",
   "editor.tafsir_source_label": "مصدر التفسير",
   "editor.tafsir_source_default": "كل المصادر",

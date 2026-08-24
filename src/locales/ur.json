@@ -828,6 +828,7 @@
   "editor.filter_hadith": "حدیث",
   "editor.filter_tafsir": "تفسیر",
   "editor.filter_shamela": "مکتبہ شاملہ",
+  "editor.filter_other": "دیگر",
   "editor.source_unavailable": "غیر فعال",
   "editor.tafsir_source_label": "تفسیر کا ماخذ",
   "editor.tafsir_source_default": "تمام مصادر",

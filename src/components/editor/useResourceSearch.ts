@@ -9,8 +9,9 @@ import {
   type TafsirRow,
 } from "@/lib/tafsir/parseTafsir";
 import { useTafsirAvailability } from "@/hooks/useTafsirAvailability";
+import { isGarbledText } from "@/lib/editor/garbledText";
 
-export type SourceFilter = "all" | "quran" | "hadith" | "tafsir" | "shamela";
+export type SourceFilter = "all" | "quran" | "hadith" | "tafsir" | "shamela" | "other";
 
 /** All Tafsir MCP content ships under this license (SPEC-TAFSIR §FR-7) —
  *  every row minted below carries it, matching what the old TafsirSearchDialog
@@ -116,7 +117,22 @@ export function sourceTypeOf(r: ResourceResult): SourceFilter {
   if (r.source_type === "tafsir") return "tafsir";
   if (r.match_key?.startsWith("shamela-") || r.reason?.includes("مکتبہ شاملہ")) return "shamela";
   if (r.match_key?.startsWith("tafsir-")) return "tafsir";
-  return r.source_type === "quran" || r.citation_ref?.surah_number != null ? "quran" : "hadith";
+  if (r.source_type === "quran" || r.citation_ref?.surah_number != null) return "quran";
+
+  // Hadith must be *evidenced*, never assumed. This used to be the catch-all
+  // `: "hadith"` arm, which meant every row the checks above did not claim was
+  // labelled Hadith — so a tajweed primer, a fiqh page, a lughat entry or a
+  // fatwa all displayed under the Hadith chip. Mislabelling a source's genre
+  // in a scholarly tool is worse than admitting it is uncategorised, so
+  // anything without a hadith signal now falls to "other".
+  const cite = r.citation_ref;
+  const looksLikeHadith =
+    r.source_type === "hadith" ||
+    cite?.collection != null ||
+    cite?.hadith_number != null ||
+    cite?.grade != null ||
+    cite?.rawi != null;
+  return looksLikeHadith ? "hadith" : "other";
 }
 
 /**
@@ -214,7 +230,15 @@ export function useResourceSearch(t: import("@/lib/i18n").Translator) {
 
   // `?? []` mints a fresh array on every render while there is no response,
   // which made both memos below recompute every time.
-  const results = useMemo(() => response?.results ?? [], [response]);
+  // Rows whose text was destroyed by a broken PDF font mapping are dropped
+  // here rather than shown: they arrive carrying a real-looking citation
+  // ("Tajweedi-Qaida, p. 1487") attached to unreadable output, and one click
+  // inserts that into the user's document as a sourced blockquote. The guard
+  // is heavily biased toward keeping rows — see `isGarbledText`.
+  const results = useMemo(
+    () => (response?.results ?? []).filter((r) => !isGarbledText(r.content)),
+    [response],
+  );
 
   const visibleResults = useMemo(
     () => (filter === "all" ? results : results.filter((r) => sourceTypeOf(r) === filter)),
@@ -227,6 +251,7 @@ export function useResourceSearch(t: import("@/lib/i18n").Translator) {
       hadith: results.filter((r) => sourceTypeOf(r) === "hadith").length,
       tafsir: results.filter((r) => sourceTypeOf(r) === "tafsir").length,
       shamela: results.filter((r) => sourceTypeOf(r) === "shamela").length,
+      other: results.filter((r) => sourceTypeOf(r) === "other").length,
     }),
     [results],
   );
