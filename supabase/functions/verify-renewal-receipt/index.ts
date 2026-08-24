@@ -138,17 +138,21 @@ export async function handle(req: Request): Promise<Response> {
     }).eq("user_id", userId);
     if (subErr) return json({ error: "Could not renew subscription", detail: subErr.message }, 500);
 
-    // Reset monthly token balance
-    try {
-      await admin.rpc("credit_tokens", {
-        p_user_id: userId,
-        p_amount: 1, // placeholder — real reset below
-        p_source: "monthly",
-        p_action_type: "monthly_reset",
-        p_detail: "Renewal monthly token reset",
-      });
-    } catch { /* tolerate */ }
-    // Direct wallet refresh (idempotent)
+    // Reset the monthly token balance to the tier's full allocation.
+    //
+    // This used to open with a call to the credit_tokens RPC using
+    // `p_amount: 1` and a comment admitting it was "placeholder — real reset
+    // below". credit_tokens is ADDITIVE (monthly_balance = monthly_balance +
+    // p_amount — see supabase/migrations/20260522100000_token_system.sql), so
+    // that call did three things, none of them useful: bumped the balance by 1
+    // token that the very next statement immediately overwrote; spent a DB
+    // round-trip on a value nobody reads; and inserted a token_transactions row
+    // claiming a "monthly_reset" of amount 1 -- check-subscription-expiry
+    // treats that table as the authoritative usage/credit ledger, so every
+    // renewal was quietly writing a false entry into it. Removed rather than
+    // corrected: the direct update below is a full reset to the tier's
+    // allocation, which credit_tokens' additive semantics cannot express in
+    // one call anyway.
     await admin.from("token_wallets").update({
       monthly_balance: ((): number => {
         const map: Record<PaidTier, number> = { basic: 5_000, pro: 25_000, ultra: 50_000 };

@@ -164,7 +164,15 @@ describe("storagePath ownership", () => {
 
 describe("replay protection", () => {
   it("rejects a reference already on a subscription", async () => {
-    const client = arrange({ tables: { subscriptions: [{ user_id: "someone" }], admin_payments: [] } });
+    // The fake now applies `.eq()` for real (see fakeSupabase.ts), so the row
+    // must actually carry the reference being checked — an unfiltered fake
+    // would have let a row with no payment_reference at all pass as a match.
+    const client = arrange({
+      tables: {
+        subscriptions: [{ user_id: "someone", payment_reference: "TXN-99887766" }],
+        admin_payments: [],
+      },
+    });
     const res = await post(validBody());
 
     expect(res.status).toBe(409);
@@ -173,7 +181,9 @@ describe("replay protection", () => {
   });
 
   it("rejects a reference already in the payment log", async () => {
-    const client = arrange({ tables: { subscriptions: [], admin_payments: [{ id: 1 }] } });
+    const client = arrange({
+      tables: { subscriptions: [], admin_payments: [{ id: 1, payment_reference: "TXN-99887766" }] },
+    });
     const res = await post(validBody());
 
     expect(res.status).toBe(409);
@@ -183,7 +193,12 @@ describe("replay protection", () => {
   it("checks for a replay before spending anything on the receipt", async () => {
     // Downloading and running vision on a receipt we are going to reject anyway
     // costs money on every retry, so ordering here is a real property.
-    const client = arrange({ tables: { subscriptions: [{ user_id: "someone" }], admin_payments: [] } });
+    const client = arrange({
+      tables: {
+        subscriptions: [{ user_id: "someone", payment_reference: "TXN-99887766" }],
+        admin_payments: [],
+      },
+    });
     await post(validBody());
     expect(client.storageDownloads).toEqual([]);
   });

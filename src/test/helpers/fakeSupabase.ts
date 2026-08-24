@@ -20,6 +20,20 @@
 //     Returning `undefined` would make production code take a nullish branch it
 //     would never take against a real database, and the test would be proving
 //     something false.
+//  3. **`.eq()` genuinely filters; every other filter method is recorded but
+//     not applied.** This was not the original design — a first version
+//     ignored all filters and just returned whatever rows a test configured
+//     for the table, which passed every test written against it right up until
+//     verify-renewal-receipt's tests, where the *same* `subscriptions` table is
+//     read twice in one request (once for "does this user have an active
+//     plan", once for "has this payment_reference been used before") and an
+//     unfiltered read made the first row satisfy both — a seeded active
+//     subscription was silently misread as a duplicate payment. `.eq()` is the
+//     one method the code under test actually depends on to tell rows apart,
+//     so it is the one implemented for real; a fake matcher for `.or()`'s
+//     partial-index expressions or a `.gte()` range would be more likely to
+//     hide a bug than reveal one. Tests must scope `tables` narrowly enough
+//     that the unfiltered methods not mattering is safe.
 
 export interface FakeError {
   message: string;
@@ -88,6 +102,9 @@ class FakeBuilder implements PromiseLike<Result> {
   private options: unknown = undefined;
   private columns: string | undefined;
   private readonly filters: Array<{ column: string; value: unknown }> = [];
+  // Populated only by real `.eq()` calls — see the comment on `eq()` for why
+  // this is tracked separately from `filters`.
+  private readonly equalityFilters: Array<{ column: string; value: unknown }> = [];
   private singleRow = false;
 
   constructor(
@@ -123,18 +140,30 @@ class FakeBuilder implements PromiseLike<Result> {
     return this;
   }
 
+  /**
+   * A real `.eq()` narrows which rows a `select()` resolves to — see
+   * `resolve()`. This is the one filter method interpreted for real, because
+   * it is the only one the code under test (verify-receipt,
+   * verify-renewal-receipt, citationVerifier) actually relies on to
+   * distinguish rows: a replay check that finds a row regardless of whether
+   * its `payment_reference` matches is not testing the replay check.
+   */
   eq(column: string, value: unknown): this {
     this.filters.push({ column, value });
+    this.equalityFilters.push({ column, value });
     return this;
   }
-  // Filters this fake accepts but does not interpret. They are recorded via
-  // `eq` semantics only; nothing under test branches on them yet.
-  neq(column: string, value: unknown): this { return this.eq(column, value); }
-  in(column: string, value: unknown): this { return this.eq(column, value); }
-  or(expr: string): this { return this.eq("__or", expr); }
-  ilike(column: string, value: unknown): this { return this.eq(column, value); }
-  gte(column: string, value: unknown): this { return this.eq(column, value); }
-  lte(column: string, value: unknown): this { return this.eq(column, value); }
+  // Recorded for test assertions and for the query shape, but NOT applied when
+  // resolving a select — a fake matcher for a partial-index `.or()` expression
+  // or a `.gte()` range would be more likely to hide a bug than reveal one, so
+  // tests that depend on this filtering must scope `tables` narrowly enough
+  // that it doesn't matter which of these actually ran.
+  neq(column: string, value: unknown): this { this.filters.push({ column, value }); return this; }
+  in(column: string, value: unknown): this { this.filters.push({ column, value }); return this; }
+  or(expr: string): this { this.filters.push({ column: "__or", value: expr }); return this; }
+  ilike(column: string, value: unknown): this { this.filters.push({ column, value }); return this; }
+  gte(column: string, value: unknown): this { this.filters.push({ column, value }); return this; }
+  lte(column: string, value: unknown): this { this.filters.push({ column, value }); return this; }
   order(): this { return this; }
   limit(): this { return this; }
   single(): this { this.singleRow = true; return this; }
@@ -145,7 +174,14 @@ class FakeBuilder implements PromiseLike<Result> {
       this.client.reads.push({ table: this.table, columns: this.columns, filters: this.filters });
       const error = this.config.selectErrors?.[this.table];
       if (error) return { data: null, error };
-      const rows = this.config.tables?.[this.table] ?? [];
+      const allRows = this.config.tables?.[this.table] ?? [];
+      const rows = this.equalityFilters.length
+        ? allRows.filter((row) =>
+            this.equalityFilters.every(
+              ({ column, value }) => (row as Record<string, unknown> | null)?.[column] === value,
+            ),
+          )
+        : allRows;
       return { data: this.singleRow ? (rows[0] ?? null) : rows, error: null };
     }
 

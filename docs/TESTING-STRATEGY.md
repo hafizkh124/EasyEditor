@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 + P1 shipped & deployed 2026-08-24; P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 shipped & deployed 2026-08-24 (3 rounds); P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
 §1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
 P1 have landed. Everything from §3 onward that is not marked ✅ is still a
@@ -12,10 +12,10 @@ proposal.
 
 | Measure | Baseline | Now |
 |---|---|---|
-| Test files executed by `npm test` | 96 | **105** |
-| Tests | 771 passed, 11 skipped | **1088 passed, 11 skipped, 0 failing** |
-| Wall-clock (`npm test`) | 179.9 s | ~136 s (with 317 more tests) |
-| Coverage number | **did not exist** | **29.65 % lines** (baseline was 25.45 %) |
+| Test files executed by `npm test` | 96 | **106** |
+| Tests | 771 passed, 11 skipped | **1117 passed, 11 skipped, 0 failing** |
+| Wall-clock (`npm test`) | 179.9 s | ~142 s (with 346 more tests) |
+| Coverage number | **did not exist** | **30.01 % lines** (baseline was 25.45 %) |
 | E2E tests | 0 | 0 *(P3)* |
 | Edge-function handlers reachable from a test | 0 of 29 | **29 of 29** |
 | Deno tests run by no pipeline | 3 files | **0** — ported into the vitest suite |
@@ -60,12 +60,9 @@ Two things that only surfaced because the tests were written:
 > smoke probe posts `{}` and only reaches the pre-existing "Query is required"
 > branch.
 
-> **Round 2 deployed 2026-08-24** (`dea6fb7`). `research-query` — the only
-> function bundling `citationVerifier.ts` — redeployed and booting;
-> `npm run smoke:functions` 29/29. No migrations. The apostrophe fix's *behaviour*
-> is covered by unit tests, not yet observed against the live corpus: confirming
-> it needs a research query that returns a Qur'an citation, and the bug was
-> intermittent precisely because which apostrophe the model emits varies per run.
+> **Round 2 deployed 2026-08-24** (`dea6fb7`), smoke-verified 29/29. Round 3
+> (`verify-renewal-receipt` handler tests + one bug fix, below) is pushed and
+> awaiting deploy.
 
 ### What P1 turned up
 
@@ -487,7 +484,46 @@ backlog rather than declaring the coverage number good enough: each of those was
 invisible to review and to the smoke script, and each was in a path where
 failure is silent by construction.
 
-Next, in order: the remaining subscription functions (`verify-renewal-receipt`
-now shares its decision with `verify-receipt` but has none of its handler tests),
-then `citationCandidates` and `segmentClaims`, then the Electron IPC and
-migration-runner work in P2.
+**Round 3, same day:** `verify-renewal-receipt` handler tests (29 tests),
+mirroring `verifyReceiptActivation.test.ts` but for what is genuinely different
+about renewal — the "existing tier required" gate, and the expiry math that
+extends from `max(currentExpiry, now)` rather than always from now, so a lapsed
+renewal does not inherit a stale past date. Also found and fixed:
+
+6. **Dead placeholder code was corrupting the token audit trail on every
+   renewal.** The token-reset block opened with a call to the `credit_tokens`
+   RPC using `p_amount: 1` and a comment admitting it was "placeholder — real
+   reset below". `credit_tokens` is ADDITIVE
+   (`monthly_balance = monthly_balance + p_amount`), so that call bumped the
+   balance by one token that the very next statement immediately overwrote, and
+   inserted a `token_transactions` row claiming a `"monthly_reset"` of amount 1
+   — a false entry into the table `check-subscription-expiry` treats as the
+   authoritative usage/credit ledger. Removed; the direct `token_wallets`
+   update below it is a full reset to the tier's allocation regardless.
+
+7. **The fake `createClient` itself had a bug, found while writing round 3.**
+   `.eq()` was recorded but never actually applied when resolving a `select()`
+   — every configured row for a table came back regardless of the filter. This
+   was invisible in rounds 1–2 because no test read the *same* table twice with
+   different filters in one request. `verify-renewal-receipt` does exactly
+   that: the "does this user have an active plan" lookup and the "has this
+   payment_reference been used" replay check both read `subscriptions`, and an
+   unfiltered fake let the seeded active-subscription row satisfy both — a
+   legitimate renewal request was read back as a duplicate payment. Fixed by
+   tracking real `.eq()` calls separately and filtering on them; every other
+   filter method (`.or()`, `.gte()`, …) stays recorded-but-not-applied, since a
+   fake matcher for a partial-index expression would be more likely to hide a
+   bug than reveal one. This required updating three existing test files' row
+   fixtures to include the fields their `.eq()` calls actually filter on
+   (`payment_reference`, `user_id`, `source_type`) — they had been passing
+   because the filter was a no-op, not because they proved what they claimed.
+
+All three fixes in round 3 were verified with mutation testing before commit —
+6 deliberate mutations (60-day expiry, stale-date extension, no renewal_count
+increment, no existing-tier check, wrong tier's token amount, and reverting the
+`.eq()` fix itself) were run against the full fake-dependent suite; all 6 were
+caught.
+
+Next, in order: `check-subscription-expiry`, `reset-monthly-quotas`,
+`process-email-queue`, `citationCandidates`, `segmentClaims`, then the Electron
+IPC and migration-runner work in P2.
