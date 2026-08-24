@@ -1,9 +1,10 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 implemented, P1–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 implemented, P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
-§1 records the baseline as measured on 2026-08-24 and what it is now that P0 has
-landed. Everything from §3 onward that is not marked ✅ is still a proposal.
+§1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
+P1 have landed. Everything from §3 onward that is not marked ✅ is still a
+proposal.
 
 ---
 
@@ -11,18 +12,18 @@ landed. Everything from §3 onward that is not marked ✅ is still a proposal.
 
 | Measure | Baseline | Now |
 |---|---|---|
-| Test files executed by `npm test` | 96 | **101** |
-| Tests | 771 passed, 11 skipped | **902 passed, 11 skipped, 0 failing** |
-| Wall-clock (`npm test`) | 179.9 s | **94.6 s** (−47 %) |
-| Coverage number | **did not exist** | **25.45 % lines** — first recorded baseline |
-| Source modules (`src/`, `supabase/functions/`, `shared/`, `electron/`) | 516 | 517 |
+| Test files executed by `npm test` | 96 | **103** |
+| Tests | 771 passed, 11 skipped | **1006 passed, 11 skipped, 0 failing** |
+| Wall-clock (`npm test`) | 179.9 s | **99.7 s** (−45 %, with 235 more tests) |
+| Coverage number | **did not exist** | **28.9 % lines** (baseline was 25.45 %) |
 | E2E tests | 0 | 0 *(P3)* |
-| Edge-function handlers reachable from a test | 0 of 29 | 0 of 29 *(P1)* |
+| Edge-function handlers reachable from a test | 0 of 29 | **29 of 29** |
 | Deno tests run by no pipeline | 3 files | **0** — ported into the vitest suite |
 
-The 131 new tests are not spread thinly: they are 38 on the `shell.openExternal`
-allowlist, 52 on the receipt auto-approval decision, and 41 that already existed
-but had never been executed.
+The 235 new tests are not spread thinly. They are 38 on the `shell.openExternal`
+allowlist, 52 on the receipt auto-approval decision, 89 on the HTTP contract of
+all 29 edge functions, 15 on verify-receipt's request gate, and 41 that already
+existed but had never been executed.
 
 Two things that read as coverage but are not:
 
@@ -50,6 +51,28 @@ Two things that only surfaced because the tests were written:
    saving would be "a fraction" of the reported 622 s. Measured directly, one
    trivial test file took **37.5 s under jsdom and 1.37 s under node**. The
    environment split cut the whole suite by 47 %.
+
+### What P1 turned up
+
+3. **`vector-search` answered every failure with `200 {results: []}`** —
+   identical to a successful search that matched nothing. A malformed body, a
+   `match_scholarly_documents` RPC error and an embedder outage were all
+   indistinguishable from an empty corpus, to the caller and to anyone reading
+   logs. Body parsing now happens outside the blanket `try` and returns 400
+   (which the function already did for a missing `query` — the only reason a
+   broken body escaped it was that `req.json()` threw first). The three genuine
+   degradation paths still return 200, because the research UI treats this
+   channel as best-effort and must keep rendering its other sources, but they
+   now carry `degraded: true` and a `reason`. Given that a silent
+   `vector-search` domain bug has already cost this project a debugging round,
+   the distinction is worth making explicit.
+4. **`verify-receipt` had never been typechecked.** Pulling it into `tsconfig`
+   surfaced `admin: ReturnType<typeof createClient>`, which instantiates the
+   schema generics as `never` and makes every `.update({…})` argument
+   unassignable. Not a runtime bug, but it means the file's types were
+   decorative. Fixed locally with an honest `SupabaseClient<any>` alias; the
+   same pattern appears in ~10 other functions and should be converted as those
+   gain tests.
 
 The existing suite is genuinely good where it exists: retrieval, citation
 identity, dedup, i18n key coverage, UI discipline, RTL/direction, PWA update
@@ -98,12 +121,24 @@ I/O around it — replay check, storage download, the DB writes — plus
 `check-subscription-expiry`, `reset-monthly-quotas`, `process-email-queue`, and
 the client-side subscription modules. Those need the §5.1 seam first.
 
-### G2 — No edge-function handler is callable from a test
+### G2 — No edge-function handler is callable from a test ✅ *closed*
 
-28 of 29 functions wrap their entire logic in an anonymous `serve(async (req) => …)`.
-There is no seam. Request validation, auth rejection, error mapping, and CORS
-headers are therefore only ever exercised by the smoke script's "did it return a
-sane status" check.
+28 of 29 functions wrapped their entire logic in an anonymous
+`serve(async (req) => …)`. There was no seam, so request validation, auth
+rejection, error mapping and CORS headers were only ever exercised by the smoke
+script's "did it return a sane status" check.
+
+**Done:** every function now exports `handle(req)` and calls `serve(handle)`
+separately. The transform was mechanical and each file's diff is exactly the
+same size (+10/−2), which is the evidence that only the wrapper moved.
+
+Making the modules importable took three supporting pieces, since they are
+written for Deno: a `deno-specifiers` plugin in `vitest.config.ts` that strips
+`npm:` / `esm.sh` prefixes and pinned versions and resolves the bare package;
+`src/test/helpers/denoShim.ts` for `globalThis.Deno`; and stubs for the two
+specifiers with no npm counterpart (`std/http/server.ts`,
+`@lovable.dev/email-js`). `src/types/deno-edge.d.ts` carries the compile-time
+half of the same mapping.
 
 ### G3 — The `_shared/` modules that matter most are the untested ones
 
@@ -388,8 +423,8 @@ the gate gets disabled within a month.
 | P0 | Install coverage provider, record baseline (25.45 %), gate CI on it | G6 | ✅ done |
 | P0 | Extract `decideActivation`; 52 tests; **fixed a live auto-approval hole** | G1 | ✅ done |
 | P0 | jsdom → node environment split (promoted from P2 after measuring) | G7 | ✅ done |
-| P1 | Export `handle(req)` from all 29 functions | G2 | half day (mechanical) |
-| P1 | 4-case HTTP contract test per function (400 / 401 / CORS on OPTIONS / CORS on error) | G2 | 1–2 days |
+| P1 | Export `handle(req)` from all 29 functions | G2 | ✅ done |
+| P1 | HTTP contract test across all 29 (CORS preflight, malformed body, empty body) + verify-receipt's request gate | G2 | ✅ done — **found the vector-search finding** |
 | P1 | `citationVerifier` rejection-path tests | G3 | half day |
 | P1 | `verify-renewal-receipt`, `check-subscription-expiry`, `reset-monthly-quotas` | G1 | 1 day |
 | P2 | Electron IPC + migration-runner tests against temp SQLite | G4 | 1–2 days |
@@ -398,7 +433,10 @@ the gate gets disabled within a month.
 | P3 | Replace the four grep-tests made redundant by P1 | G8 | 2 h |
 | P3 | Per-path coverage thresholds, ratchet | G6 | 1 h |
 
-P0 is done. What remains is P1 — the `handle(req)` seam and the HTTP contract
-tests it unlocks — which is the largest single step still outstanding, because
-it converts four brittle source-text tests into real ones and gives the other 27
-functions their first behavioural coverage.
+P0 and the seam half of P1 are done. The highest-value work left is a fake for
+`createClient`: it is the one dependency standing between the current tests and
+everything past the auth wall — the replay check on `payment_reference`,
+`storagePath` ownership, and `autoApprove`'s writes to tier, expiry and token
+allocation. `src/test/verifyReceiptHandler.test.ts` lists those gaps explicitly
+at the bottom of the file rather than leaving them implied. The same fake
+unblocks `citationVerifier` and the remaining subscription functions.

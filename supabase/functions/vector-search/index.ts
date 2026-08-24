@@ -90,30 +90,44 @@ function rowToIslamicResult(row: any): IslamicResult {
   };
 }
 
-serve(async (req) => {
+/**
+ * Exported so the request logic is reachable from a test. Everything below
+ * used to live inside an anonymous `serve(async (req) => …)`, which left the
+ * HTTP layer — validation, auth rejection, error mapping, CORS on error
+ * responses — verifiable only by the post-deploy smoke script.
+ */
+export async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Parsed OUTSIDE the blanket try below. A malformed or empty body used to be
+  // swallowed by that catch and answered with `200 {results: []}` — identical to
+  // a successful search that matched nothing — so a caller sending a broken
+  // request saw "no results" and had no way to tell. The function already
+  // returns 400 for a missing `query`; this makes an unparseable body agree.
+  let body: {
+    query?: string;
+    selectedDomains?: string[];
+    tier?: string;
+    matchCount?: number;
+  };
   try {
-    const {
-      query,
-      selectedDomains,
-      tier,
-      matchCount,
-    }: {
-      query: string;
-      selectedDomains: string[];
-      tier: string;
-      matchCount?: number;
-    } = await req.json();
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
-    if (!query) {
-      return new Response(JSON.stringify({ error: "Query is required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const { query, selectedDomains, tier, matchCount } = body ?? {};
+  if (!query) {
+    return new Response(JSON.stringify({ error: "Query is required" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
+  try {
     const supabaseUrl  = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase     = createClient(supabaseUrl, supabaseKey);
@@ -134,7 +148,9 @@ serve(async (req) => {
     // ── 2. Embed via the canonical embedder (embed.ts) ────────────────────────
     const embedding = await embedQuery(embedInput);
     if (!embedding) {
-      return new Response(JSON.stringify({ results: [] }), {
+      // Third degradation path, same treatment: an embedder outage is not an
+      // empty corpus, and the caller should be able to tell them apart.
+      return new Response(JSON.stringify({ results: [], degraded: true, reason: "embedding_failed" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -163,7 +179,11 @@ serve(async (req) => {
 
     if (error) {
       console.error("match_scholarly_documents RPC error:", error);
-      return new Response(JSON.stringify({ results: [] }), {
+      // Deliberately still 200: the research UI treats this channel as
+      // best-effort and must keep rendering its other sources. But `degraded`
+      // makes the difference between "the corpus had nothing" and "retrieval
+      // broke" visible to the caller, which an empty 200 alone never was.
+      return new Response(JSON.stringify({ results: [], degraded: true, reason: "rpc_error" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -176,8 +196,12 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("vector-search error:", e);
-    return new Response(JSON.stringify({ results: [] }), {
+    // Same reasoning as the RPC branch: degrade rather than fail the whole
+    // research query, but say so rather than impersonating an empty result.
+    return new Response(JSON.stringify({ results: [], degraded: true, reason: "internal_error" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}
+
+serve(handle);

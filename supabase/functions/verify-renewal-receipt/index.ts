@@ -30,7 +30,13 @@ interface AIResult {
   reasons: string[];
 }
 
-Deno.serve(async (req) => {
+/**
+ * Exported so the request logic is reachable from a test. Everything below
+ * used to live inside an anonymous `serve(async (req) => …)`, which left the
+ * HTTP layer — validation, auth rejection, error mapping, CORS on error
+ * responses — verifiable only by the post-deploy smoke script.
+ */
+export async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -184,7 +190,9 @@ Deno.serve(async (req) => {
   }).eq("user_id", userId);
 
   return json({ success: true, autoApproved: false, confidence: ai.confidence, reasons: ai.reasons });
-});
+}
+
+Deno.serve(handle);
 
 async function verifyWithAI(base64: string, mime: string, expectedPkr: number): Promise<AIResult | null> {
   const systemPrompt = `You are a payment receipt verifier for an Islamic-research SaaS in Pakistan.

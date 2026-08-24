@@ -1,9 +1,61 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
+/**
+ * Lets a Supabase Edge Function's `index.ts` be imported by a test.
+ *
+ * Those files are written for Deno, so they import `npm:zod@^3.25.76`,
+ * `https://esm.sh/@supabase/supabase-js@2`, and friends — specifiers Node and
+ * Vite cannot resolve. Rather than maintaining an alias entry per version
+ * string (there are nine distinct ones, and they drift), this strips the
+ * `npm:` / esm.sh prefix and the pinned version and resolves the bare package
+ * from node_modules, where the same libraries are already installed.
+ *
+ * `https://deno.land/std@…/http/server.ts` has no npm equivalent and maps to a
+ * local stub instead — see src/test/stubs/denoStdServer.ts.
+ */
+function denoSpecifiers(): Plugin {
+  const STD_SERVER = /^https:\/\/deno\.land\/std@[\d.]+\/http\/server\.ts$/;
+  // `npm:@scope/name@version/sub` → `@scope/name/sub`; `npm:name@version` → `name`.
+  const VERSIONED = /^(@[^/]+\/[^@/]+|[^@/][^@/]*)@[^/]*(\/.*)?$/;
+
+  // Packages the Supabase platform resolves at deploy time that have no npm
+  // counterpart installed here, so they cannot be resolved — only stubbed.
+  const STUBS: Record<string, string> = {
+    "@lovable.dev/email-js": "./src/test/stubs/lovableEmailJs.ts",
+  };
+
+  return {
+    name: "deno-specifiers",
+    enforce: "pre",
+    async resolveId(source, importer, options) {
+      if (STD_SERVER.test(source)) {
+        return path.resolve(__dirname, "./src/test/stubs/denoStdServer.ts");
+      }
+
+      let bare: string | null = null;
+      if (source.startsWith("npm:")) bare = source.slice("npm:".length);
+      else if (source.startsWith("https://esm.sh/")) bare = source.slice("https://esm.sh/".length);
+      if (!bare) return null;
+
+      const stripped = bare.replace(VERSIONED, "$1$2");
+      if (STUBS[stripped]) return path.resolve(__dirname, STUBS[stripped]);
+
+      const resolved = await this.resolve(stripped, importer, { ...options, skipSelf: true });
+      if (resolved) return resolved;
+      // Surface the real problem rather than a confusing "failed to resolve" on
+      // the original URL — the fix is almost always `npm i` of the bare name.
+      throw new Error(
+        `deno-specifiers: could not resolve "${source}" as "${stripped}". ` +
+          `Install it, or add a stub under src/test/stubs/.`,
+      );
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), denoSpecifiers()],
   test: {
     environment: "jsdom",
     globals: true,

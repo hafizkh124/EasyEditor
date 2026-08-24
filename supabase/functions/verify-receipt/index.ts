@@ -10,7 +10,7 @@
 //       allocate tokens, log admin_payments, notify user)
 //   6. Otherwise → flag for manual review (upgrade_requested=true,
 //      ai_verification_status='manual_review')
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 // The auto-approval decision, the tier prices and the receiver allowlist now
 // live in one tested module shared with verify-renewal-receipt. They used to be
@@ -62,7 +62,13 @@ interface AIResult {
   reasons: string[];
 }
 
-Deno.serve(async (req) => {
+/**
+ * Exported so the request logic is reachable from a test. Everything below
+ * used to live inside an anonymous `serve(async (req) => …)`, which left the
+ * HTTP layer — validation, auth rejection, error mapping, CORS on error
+ * responses — verifiable only by the post-deploy smoke script.
+ */
+export async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
@@ -180,10 +186,26 @@ Deno.serve(async (req) => {
     confidence: ai.confidence,
     reasons: ai.reasons,
   });
-});
+}
+
+Deno.serve(handle);
+
+/**
+ * The service-role client, typed loosely on purpose.
+ *
+ * `ReturnType<typeof createClient>` — the shape used here before this file was
+ * ever typechecked, and still used in ~10 other edge functions — instantiates
+ * the schema generics as `never`, so every `.from(…).update({…})` argument
+ * becomes unassignable. There are no generated Database types in this project,
+ * so `any` is the honest schema: it says "unchecked", instead of claiming a
+ * contract that does not exist. Worth revisiting together with the other
+ * occurrences once those functions gain tests and enter tsconfig too.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AdminClient = SupabaseClient<any>;
 
 async function autoApprove(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   userId: string,
   planId: PaidTier,
   referenceNo: string,

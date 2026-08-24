@@ -182,7 +182,13 @@ async function scrapeDomain(
   }
 }
 
-serve(async (req) => {
+/**
+ * Exported so the request logic is reachable from a test. Everything below
+ * used to live inside an anonymous `serve(async (req) => …)`, which left the
+ * HTTP layer — validation, auth rejection, error mapping, CORS on error
+ * responses — verifiable only by the post-deploy smoke script.
+ */
+export async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
@@ -228,4 +234,6 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
-});
+}
+
+serve(handle);
