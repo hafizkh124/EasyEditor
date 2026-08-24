@@ -54,7 +54,8 @@ function parseJwtClaims(token: string): Record<string, unknown> | null {
 
 // Move a message to the dead letter queue and log the reason.
 async function moveToDlq(
-  supabase: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any -- generated Database types are not available in edge functions
+  supabase: any,
   queue: string,
   msg: { msg_id: number; message: Record<string, unknown> },
   reason: string
@@ -162,12 +163,12 @@ export async function handle(req: Request): Promise<Response> {
     const messageIds = Array.from(
       new Set(
         messages
-          .map((msg) =>
+          .map((msg: { message?: Record<string, unknown> } | null) =>
             msg?.message?.message_id && typeof msg.message.message_id === 'string'
               ? msg.message.message_id
               : null
           )
-          .filter((id): id is string => Boolean(id))
+          .filter((id: string | null): id is string => Boolean(id))
       )
     )
     const failedAttemptsByMessageId = new Map<string, number>()
