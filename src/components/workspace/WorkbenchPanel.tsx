@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResearchPanel } from "@/components/research/ResearchPanel";
 import { TranslatePanel } from "@/components/translate/TranslatePanel";
-import { ExtractPanel } from "@/components/extract/ExtractPanel";
 import { TasksTab } from "./TasksTab";
 import { TrustTab } from "./TrustTab";
 import { AiReaderPanel } from "@/components/reader/AiReaderPanel";
@@ -21,15 +20,13 @@ const GRID_COLS: Record<number, string> = {
 };
 
 /**
- * Translate and Extract are the same paid edge functions as their standalone
- * pages, so on desktop the tabs go with them. The remaining tabs simply
- * redistribute across the grid.
+ * Translate is a paid cloud edge function, so on desktop the tab goes with it.
+ * The remaining tabs simply redistribute across the grid.
  */
 const TAB_VALUE_BY_CAPABILITY: Partial<Record<CapabilityId, WorkbenchTab>> = {
   "wb.aiReader": "aiReader",
   "wb.research": "research",
   "wb.translate": "translate",
-  "wb.extract": "extract",
   "wb.notes": "notes",
 };
 
@@ -145,11 +142,6 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
         {isCapabilityAvailable("wb.translate") && (
           <div className={`h-full ${workbenchTab === "translate" ? "block" : "hidden"}`}>
             <TranslatePanel />
-          </div>
-        )}
-        {isCapabilityAvailable("wb.extract") && (
-          <div className={`h-full ${workbenchTab === "extract" ? "block" : "hidden"}`}>
-            <ExtractPanel />
           </div>
         )}
         <div className={`h-full ${workbenchTab === "notes" ? "block" : "hidden"}`}>
