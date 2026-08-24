@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
-import AppVersionBadge from "@/components/AppVersionBadge";
 import ModeBadge from "@/components/ModeBadge";
 import { DesktopAccountMenu } from "@/components/auth/DesktopAccountMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -96,7 +95,6 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {/* Desktop Top Bar */}
         <div className="hidden md:flex h-14 items-center justify-between border-b border-border px-6 bg-background/95 backdrop-blur-sm sticky top-0 z-30">
           <div className="flex items-center gap-2">
-            <AppVersionBadge compact />
             <ModeBadge />
           </div>
           <div className="flex items-center gap-2">

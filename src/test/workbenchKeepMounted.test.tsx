@@ -15,7 +15,7 @@ import { WorkbenchPanel } from "@/components/workspace/WorkbenchPanel";
  * `WorkbenchPanel` were rewritten to unmount its children.
  */
 
-const mountCounts = { research: 0, translate: 0, extract: 0 };
+const mountCounts = { research: 0, translate: 0 };
 
 /**
  * Counts MOUNTS, not renders. Incrementing in the function body would climb on
@@ -33,7 +33,6 @@ function makeStub(key: keyof typeof mountCounts) {
 
 vi.mock("@/components/research/ResearchPanel", () => ({ ResearchPanel: makeStub("research") }));
 vi.mock("@/components/translate/TranslatePanel", () => ({ TranslatePanel: makeStub("translate") }));
-vi.mock("@/components/extract/ExtractPanel", () => ({ ExtractPanel: makeStub("extract") }));
 
 function renderWorkbench() {
   return render(
@@ -49,14 +48,12 @@ describe("Workbench keep-mounted (FR-4.3 / FR-1.5)", () => {
   it("mounts every tab's panel at once, not just the active one", () => {
     mountCounts.research = 0;
     mountCounts.translate = 0;
-    mountCounts.extract = 0;
 
     renderWorkbench();
 
-    // All three exist in the DOM even though only one tab is selected.
+    // Both exist in the DOM even though only one tab is selected.
     expect(screen.getByTestId("research-panel")).toBeInTheDocument();
     expect(screen.getByTestId("translate-panel")).toBeInTheDocument();
-    expect(screen.getByTestId("extract-panel")).toBeInTheDocument();
   });
 
   it("hides inactive tabs with CSS instead of unmounting them", () => {
@@ -74,7 +71,6 @@ describe("Workbench keep-mounted (FR-4.3 / FR-1.5)", () => {
   it("does not remount any panel when the Workbench is switched or closed", () => {
     mountCounts.research = 0;
     mountCounts.translate = 0;
-    mountCounts.extract = 0;
 
     renderWorkbench();
     const afterFirstRender = { ...mountCounts };
@@ -91,6 +87,5 @@ describe("Workbench keep-mounted (FR-4.3 / FR-1.5)", () => {
     expect(screen.getByTestId("research-panel")).toBeInTheDocument();
     expect(mountCounts.research).toBe(afterFirstRender.research);
     expect(mountCounts.translate).toBe(afterFirstRender.translate);
-    expect(mountCounts.extract).toBe(afterFirstRender.extract);
   });
 });

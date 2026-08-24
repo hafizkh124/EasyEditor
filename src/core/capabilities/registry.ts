@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  BookOpen, Languages, Layers, LayoutDashboard, Mic, ScanText, Search,
+  BookOpen, Languages, LayoutDashboard, Mic, ScanText, Search,
   Settings as SettingsIcon, Shield, Sparkles, StickyNote, User, Volume2,
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
@@ -46,10 +46,10 @@ export type Surface =
   | "workbench-tab";
 
 export type CapabilityId =
-  | "workspace" | "transcribe" | "ocr" | "speak" | "extract" | "translate"
+  | "workspace" | "transcribe" | "ocr" | "speak" | "translate"
   | "research" | "settings" | "dashboard" | "profile" | "admin"
   | "voice.cloning" | "tokens.meter"
-  | "wb.aiReader" | "wb.research" | "wb.translate" | "wb.extract" | "wb.notes";
+  | "wb.aiReader" | "wb.research" | "wb.translate" | "wb.notes";
 
 export interface Capability {
   id: CapabilityId;
@@ -103,12 +103,6 @@ export const CAPABILITIES: readonly Capability[] = [
     icon: ScanText,
     runtimes: { web: ALWAYS, desktop: { on: "never", reason: "OCR runs on a paid cloud edge function with no local counterpart." } },
     surfaces: ["sidebar", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
-  },
-  {
-    id: "extract", route: "/extract", labelKey: "nav.extract", fallbackLabel: "استخراج",
-    icon: Layers,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Extract runs on the extract-translations edge function." } },
-    surfaces: ["sidebar", "workspace-menu", "command-palette"], group: "tool",
   },
   {
     id: "translate", route: "/translate", labelKey: "nav.translate", fallbackLabel: "ترجمہ",
@@ -172,12 +166,6 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "wb.translate", route: null, labelKey: "nav.translate", fallbackLabel: "Translate",
     icon: Languages,
     runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Translation runs on a cloud edge function." } },
-    surfaces: ["workbench-tab"],
-  },
-  {
-    id: "wb.extract", route: null, labelKey: "nav.extract", fallbackLabel: "Extract",
-    icon: Layers,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Extract runs on the extract-translations edge function." } },
     surfaces: ["workbench-tab"],
   },
   {

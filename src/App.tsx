@@ -170,7 +170,7 @@ const App = () => (
                       itself lives on: CanvasPanel renders it embedded when a
                       translation project is open. Book Studio had no such
                       second life and was deleted with its components. */}
-                  <Route path="/extract" element={<CapabilityRoute id="extract"><Navigate to="/workspace?panel=extract" replace /></CapabilityRoute>} />
+                  <Route path="/extract" element={<Navigate to="/workspace" replace />} />
                   {/* allowGuest: the desktop sidebar links here, and Settings is where the
                       desktop-local panels live (BYOK key, voice engines). Settings.tsx already
                       guards every cloud call with `if (!user) return`. */}
