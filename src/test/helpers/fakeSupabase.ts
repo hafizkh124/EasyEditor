@@ -20,20 +20,24 @@
 //     Returning `undefined` would make production code take a nullish branch it
 //     would never take against a real database, and the test would be proving
 //     something false.
-//  3. **`.eq()` genuinely filters; every other filter method is recorded but
-//     not applied.** This was not the original design — a first version
-//     ignored all filters and just returned whatever rows a test configured
-//     for the table, which passed every test written against it right up until
-//     verify-renewal-receipt's tests, where the *same* `subscriptions` table is
-//     read twice in one request (once for "does this user have an active
-//     plan", once for "has this payment_reference been used before") and an
-//     unfiltered read made the first row satisfy both — a seeded active
-//     subscription was silently misread as a duplicate payment. `.eq()` is the
-//     one method the code under test actually depends on to tell rows apart,
-//     so it is the one implemented for real; a fake matcher for `.or()`'s
-//     partial-index expressions or a `.gte()` range would be more likely to
-//     hide a bug than reveal one. Tests must scope `tables` narrowly enough
-//     that the unfiltered methods not mattering is safe.
+//  3. **`.eq()`, `.neq()`, and the ordering comparisons genuinely filter;
+//     `.in()`, `.or()`, `.ilike()` are recorded but not applied.** This was
+//     not the original design — a first version ignored every filter and just
+//     returned whatever rows a test configured for the table, which passed
+//     every test written against it right up until verify-renewal-receipt's
+//     tests, where the *same* `subscriptions` table is read twice in one
+//     request (once for "does this user have an active plan", once for "has
+//     this payment_reference been used before") and an unfiltered read made
+//     the first row satisfy both — a seeded active subscription was silently
+//     misread as a duplicate payment. Equality and ordering comparisons are
+//     what the code under test actually relies on to tell rows apart for a
+//     decision that matters — including check-subscription-expiry's own
+//     documented claim of idempotency for already-downgraded users, which is
+//     not a property a no-op filter can prove. `.in()`'s array membership and
+//     `.or()`'s free-form expressions stay unimplemented because a fake
+//     matcher for either would be more likely to hide a bug than reveal one.
+//     Tests must scope `tables` narrowly enough that those specific methods
+//     not filtering is safe.
 
 export interface FakeError {
   message: string;
@@ -69,8 +73,17 @@ export interface FakeSupabaseConfig {
   selectErrors?: Record<string, FakeError>;
   /** Force a write to a table to fail. Keyed by table name. */
   writeErrors?: Record<string, FakeError>;
-  /** Results for `.rpc(name, args)`. Defaults to `{ data: [], error: null }`. */
-  rpc?: Record<string, { data?: unknown; error?: FakeError }>;
+  /**
+   * Results for `.rpc(name, args)`. Defaults to `{ data: [], error: null }`.
+   * A function form receives the call's `args` — needed when one RPC name is
+   * called more than once with different arguments in the same request, e.g.
+   * process-email-queue calls `read_email_batch` once per queue and expects a
+   * different batch back each time.
+   */
+  rpc?: Record<
+    string,
+    { data?: unknown; error?: FakeError } | ((args: unknown) => { data?: unknown; error?: FakeError })
+  >;
   /** What `storage.from(bucket).download(path)` resolves with. */
   storageDownload?: { data?: Blob | null; error?: FakeError };
 }
@@ -90,6 +103,18 @@ export interface FakeClient {
 }
 
 type Result = { data: unknown; error: FakeError | null };
+type MatchOp = "eq" | "neq" | "lt" | "lte" | "gt" | "gte";
+
+const MATCHERS: Record<MatchOp, (rowValue: unknown, value: unknown) => boolean> = {
+  eq: (a, b) => a === b,
+  neq: (a, b) => a !== b,
+  // ISO date strings compare correctly with `<`; so do numbers. Nothing under
+  // test filters on any other type.
+  lt: (a, b) => (a as never) < (b as never),
+  lte: (a, b) => (a as never) <= (b as never),
+  gt: (a, b) => (a as never) > (b as never),
+  gte: (a, b) => (a as never) >= (b as never),
+};
 
 /**
  * Postgrest's builder is chainable and thenable — `await client.from(t).update(x).eq(c,v)`
@@ -102,9 +127,9 @@ class FakeBuilder implements PromiseLike<Result> {
   private options: unknown = undefined;
   private columns: string | undefined;
   private readonly filters: Array<{ column: string; value: unknown }> = [];
-  // Populated only by real `.eq()` calls — see the comment on `eq()` for why
-  // this is tracked separately from `filters`.
-  private readonly equalityFilters: Array<{ column: string; value: unknown }> = [];
+  // Populated only by the filter methods listed as "applied for real" on
+  // `matchers` below — see that comment for which ones and why.
+  private readonly matchers: Array<{ column: string; value: unknown; op: MatchOp }> = [];
   private singleRow = false;
 
   constructor(
@@ -141,29 +166,36 @@ class FakeBuilder implements PromiseLike<Result> {
   }
 
   /**
-   * A real `.eq()` narrows which rows a `select()` resolves to — see
-   * `resolve()`. This is the one filter method interpreted for real, because
-   * it is the only one the code under test (verify-receipt,
-   * verify-renewal-receipt, citationVerifier) actually relies on to
-   * distinguish rows: a replay check that finds a row regardless of whether
-   * its `payment_reference` matches is not testing the replay check.
+   * `.eq()`, `.neq()`, and the ordering comparisons narrow which rows a
+   * `select()` resolves to — see `resolve()`. These are the filter methods
+   * interpreted for real, because they are what the code under test relies on
+   * to distinguish rows for a decision that matters: verify-receipt's replay
+   * check needs `payment_reference` to actually match; check-subscription-expiry
+   * needs `expires_at < now` and `tier != free` to actually exclude rows, since
+   * its own docstring claims idempotency for already-downgraded users and that
+   * is not a property a no-op filter can prove.
    */
-  eq(column: string, value: unknown): this {
+  eq(column: string, value: unknown): this { return this.match("eq", column, value); }
+  neq(column: string, value: unknown): this { return this.match("neq", column, value); }
+  lt(column: string, value: unknown): this { return this.match("lt", column, value); }
+  lte(column: string, value: unknown): this { return this.match("lte", column, value); }
+  gt(column: string, value: unknown): this { return this.match("gt", column, value); }
+  gte(column: string, value: unknown): this { return this.match("gte", column, value); }
+
+  private match(op: MatchOp, column: string, value: unknown): this {
     this.filters.push({ column, value });
-    this.equalityFilters.push({ column, value });
+    this.matchers.push({ column, value, op });
     return this;
   }
+
   // Recorded for test assertions and for the query shape, but NOT applied when
   // resolving a select — a fake matcher for a partial-index `.or()` expression
-  // or a `.gte()` range would be more likely to hide a bug than reveal one, so
-  // tests that depend on this filtering must scope `tables` narrowly enough
-  // that it doesn't matter which of these actually ran.
-  neq(column: string, value: unknown): this { this.filters.push({ column, value }); return this; }
+  // or an `.in()` array would be more likely to hide a bug than reveal one, so
+  // tests that depend on these must scope `tables` narrowly enough that it
+  // doesn't matter which of these actually ran.
   in(column: string, value: unknown): this { this.filters.push({ column, value }); return this; }
   or(expr: string): this { this.filters.push({ column: "__or", value: expr }); return this; }
   ilike(column: string, value: unknown): this { this.filters.push({ column, value }); return this; }
-  gte(column: string, value: unknown): this { this.filters.push({ column, value }); return this; }
-  lte(column: string, value: unknown): this { this.filters.push({ column, value }); return this; }
   order(): this { return this; }
   limit(): this { return this; }
   single(): this { this.singleRow = true; return this; }
@@ -175,10 +207,10 @@ class FakeBuilder implements PromiseLike<Result> {
       const error = this.config.selectErrors?.[this.table];
       if (error) return { data: null, error };
       const allRows = this.config.tables?.[this.table] ?? [];
-      const rows = this.equalityFilters.length
+      const rows = this.matchers.length
         ? allRows.filter((row) =>
-            this.equalityFilters.every(
-              ({ column, value }) => (row as Record<string, unknown> | null)?.[column] === value,
+            this.matchers.every(({ column, value, op }) =>
+              MATCHERS[op]((row as Record<string, unknown> | null)?.[column], value),
             ),
           )
         : allRows;
@@ -217,7 +249,8 @@ export function createFakeClient(config: FakeSupabaseConfig = {}): FakeClient {
 
     rpc(name: string, args?: unknown) {
       client.rpcCalls.push({ name, args });
-      const result = config.rpc?.[name];
+      const configured = config.rpc?.[name];
+      const result = typeof configured === "function" ? configured(args) : configured;
       return Promise.resolve({ data: result?.data ?? [], error: result?.error ?? null });
     },
 

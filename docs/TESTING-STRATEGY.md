@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 + P1 shipped & deployed 2026-08-24 (3 rounds); P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 shipped & deployed 2026-08-24 (3 rounds); round 4 pushed; P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
 §1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
 P1 have landed. Everything from §3 onward that is not marked ✅ is still a
@@ -12,10 +12,10 @@ proposal.
 
 | Measure | Baseline | Now |
 |---|---|---|
-| Test files executed by `npm test` | 96 | **106** |
-| Tests | 771 passed, 11 skipped | **1117 passed, 11 skipped, 0 failing** |
-| Wall-clock (`npm test`) | 179.9 s | ~142 s (with 346 more tests) |
-| Coverage number | **did not exist** | **30.01 % lines** (baseline was 25.45 %) |
+| Test files executed by `npm test` | 96 | **109** |
+| Tests | 771 passed, 11 skipped | **1170 passed, 11 skipped, 0 failing** |
+| Wall-clock (`npm test`) | 179.9 s | ~107 s (with 399 more tests) |
+| Coverage number | **did not exist** | **30.82 % lines** (baseline was 25.45 %) |
 | E2E tests | 0 | 0 *(P3)* |
 | Edge-function handlers reachable from a test | 0 of 29 | **29 of 29** |
 | Deno tests run by no pipeline | 3 files | **0** — ported into the vitest suite |
@@ -126,7 +126,7 @@ will not start.
 
 ## 3. Gaps, ranked by risk
 
-### G1 — The money path has no tests at all ✅ *closed for verify-receipt*
+### G1 — The money path has no tests at all ✅ *closed*
 
 `verify-receipt` (344 LOC), `verify-renewal-receipt` (255), `check-subscription-expiry`
 (184), `reset-monthly-quotas` (103), `process-email-queue` (363) — none are
@@ -154,9 +154,13 @@ credits no wallet. Those 40 were checked against six deliberate mutations
 allocation, un-reset counters, removed receiver guard) and **all six were
 caught** — the tests bite rather than merely pass.
 
-**Still open:** `check-subscription-expiry`, `reset-monthly-quotas`,
-`process-email-queue`, and the client-side subscription modules
-(`subscriptionLifecycle`, `planTiers`, `tierUpgrade`, `referral`).
+**Round 4 closed the rest:** `check-subscription-expiry` (21 tests, including
+its own idempotency and admin-exemption claims proven for real rather than by
+fixture construction), `reset-monthly-quotas` (11 tests), `process-email-queue`
+(21 tests — retry/DLQ/rate-limit/dedup logic). **Still open:** the client-side
+subscription modules (`subscriptionLifecycle`, `planTiers`, `tierUpgrade`,
+`referral`) — none of them are edge functions, so they need component/hook
+tests rather than the handler pattern used here.
 
 ### G2 — No edge-function handler is callable from a test ✅ *closed*
 
@@ -468,7 +472,8 @@ the gate gets disabled within a month.
 | P1 | Fake for `createClient` (`src/test/helpers/fakeSupabase.ts`) | G1/G3 | ✅ done |
 | P1 | verify-receipt past the auth wall — replay, ownership, activation writes | G1 | ✅ done — 40 tests, 6/6 mutations caught |
 | P1 | `citationVerifier` rejection-path tests | G3 | ✅ done — **found the apostrophe bug** |
-| P1 | `verify-renewal-receipt`, `check-subscription-expiry`, `reset-monthly-quotas` | G1 | 1 day |
+| P1 | `verify-renewal-receipt` handler tests | G1 | ✅ done |
+| P1 | `check-subscription-expiry`, `reset-monthly-quotas`, `process-email-queue` | G1 | ✅ done — **found a bug in the test fixture itself, caught by its own first run** |
 | P2 | Electron IPC + migration-runner tests against temp SQLite | G4 | 1–2 days |
 | P2 | SSE/streaming reassembly + abort tests | — | half day |
 | P3 | Playwright `_electron` launch smoke in `release.yml` | E2E | 1 day |
@@ -524,6 +529,61 @@ increment, no existing-tier check, wrong tier's token amount, and reverting the
 `.eq()` fix itself) were run against the full fake-dependent suite; all 6 were
 caught.
 
-Next, in order: `check-subscription-expiry`, `reset-monthly-quotas`,
-`process-email-queue`, `citationCandidates`, `segmentClaims`, then the Electron
-IPC and migration-runner work in P2.
+**Round 4, same day:** `reset-monthly-quotas` (11 tests), `check-subscription-expiry`
+(21 tests), `process-email-queue` (21 tests) — the three remaining functions in
+G1's original list. No production bugs this round, but two things worth
+recording:
+
+8. **The fake needed to grow up before `check-subscription-expiry` could be
+   tested honestly.** Its own docstring claims two properties — idempotency for
+   already-free users, and admin exemption — that only a real database query
+   can prove or disprove. The fake's `.eq()`-only filtering (round 3) could not
+   express `.lt("expires_at", now)` or `.neq("tier", "free")`, and `.lt()`
+   did not even exist as a method — calling it would have thrown. Generalized
+   `fakeSupabase.ts` to a small operator-tagged matcher list
+   (`eq`/`neq`/`lt`/`lte`/`gt`/`gte`, all genuinely applied) while keeping
+   `.in()`/`.or()`/`.ilike()` recorded-but-inert, for the same reason as
+   before: a fake matcher for those would be more likely to hide a bug than
+   reveal one. Also extended the `.rpc()` mock to accept a function of `args`,
+   since `process-email-queue` calls `read_email_batch` twice with different
+   `queue_name` in one request and needs a different batch back each time.
+
+9. **A bug in the *test*, not the code — and it would have shipped as 21 green
+   tests proving nothing.** `process-email-queue.test.ts`'s message-fixture
+   helper spread `...over` *after* setting a merged `message` field; since
+   `over` itself often carried its own `message` key, that spread silently
+   clobbered the whole merged object down to just what the test passed —
+   dropping `queued_at` in the process. Every customized message then fell
+   back to the batch row's `enqueued_at`, over an hour stale against the fixed
+   test clock, so it read as TTL-expired and got diverted to the DLQ before
+   ever reaching the code path most of these tests meant to exercise. Caught
+   immediately because the *first* run showed the wrong `stopped` reasons and
+   wrong `processed` counts rather than passing — but it is the sharpest
+   reminder yet that a fixture bug fails exactly like a passing test until
+   something forces the mismatch into view, which is the whole argument for
+   mutation-testing every new suite before it ships rather than trusting a
+   green run.
+
+Also: importing `process-email-queue/index.ts` from a test for the first time
+put it in front of `tsc` for the first time, which surfaced two more
+first-contact issues (same pattern as `verify-receipt`'s `ReturnType<typeof
+createClient>` in round 1): the file uses `String.prototype.replaceAll`
+(ES2021), one version past `tsconfig.app.json`'s `lib: ["ES2020", …]` — fixed
+by adding `"ES2021"` to `lib` project-wide, verified against the rest of the
+codebase (`grep -rl '\.replaceAll('`) to confirm nothing else needed it and
+nothing could regress from a lib addition. And the ambient `declare module
+"npm:@lovable.dev/*" { const value: any; export = value; }` from round 1 (added
+for `mcp/index.ts`) does not actually support the *named* imports this package
+uses (`import { sendLovableEmail } from …`) — `export =` only satisfies a
+default-style import, even under `esModuleInterop`. Replaced with the bodyless
+`declare module "npm:@lovable.dev/*";` form, which is the idiom that does
+support arbitrary named imports.
+
+All of round 4 was mutation-tested before commit: 8 deliberate mutations across
+the three functions (bonus-rate drift, RPC-failure no longer stopping the run,
+admin exemption removed, `topup_balance` no longer preserved, idempotency guard
+removed, `MAX_RETRIES` raised, 429 no longer stopping the batch, duplicate-send
+guard removed). All 8 caught.
+
+Next, in order: `citationCandidates`, `segmentClaims`, then the Electron IPC and
+migration-runner work in P2.
