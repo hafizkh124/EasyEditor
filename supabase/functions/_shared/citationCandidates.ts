@@ -46,7 +46,8 @@ interface RetrievalContext {
  *  routinely tripped the DB-wide statement_timeout (57014) because the OR of
  *  ~10 tsquery predicates would fall back to a full heap scan. */
 async function ftsCorpus(
-  supabase: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any -- generated Database types are not available in edge functions
+  supabase: any,
   terms: string[],
   sourceType: "quran" | "hadith",
   limit: number,

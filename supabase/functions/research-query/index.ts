@@ -11,6 +11,7 @@ import {
   CITATIONS_CONSTRAINED_PROMPT,
   COMBINED_SYSTEM_PROMPT,
   pickPromptKey,
+  type ResearchAssistMode,
 } from "../_shared/researchPrompts.ts";
 import { fetchAndExtractStorageFile } from "../_shared/fileText.ts";
 import { segmentClaims } from "../_shared/segmentClaims.ts";
@@ -485,7 +486,7 @@ export async function handle(req: Request): Promise<Response> {
 
     let systemPrompt: string;
     if (promptKey === "spelling") systemPrompt = SPELLING_SYSTEM_PROMPT;
-    else if (promptKey === "citations") systemPrompt = CITATIONS_SYSTEM_PROMPT;
+    // "citations" is handled earlier (constrained path) and returns before here.
     else if (promptKey === "combined") systemPrompt = COMBINED_SYSTEM_PROMPT;
     else {
       systemPrompt = NORMAL_SYSTEM_PROMPT
