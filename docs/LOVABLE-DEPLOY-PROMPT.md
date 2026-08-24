@@ -1,82 +1,55 @@
-# Lovable deploy prompt — commit 48113a9
+# Lovable deploy prompt
 
-Copy the block below into Lovable. Everything above and below it is notes for
-you, not for Lovable.
+Copy the block below into Lovable. Everything outside it is notes for you.
 
-**What this is:** `main` was updated with two commits (`35ee104`, `48113a9`)
-that touch all 29 edge functions. There are **no database migrations** — do not
-let Lovable create any.
+**Current round — commit `dea6fb7`.** One shared edge-function file changed
+(`_shared/citationVerifier.ts`), consumed by `research-query`. **No migrations.**
+
+> Note: Lovable's own commits `67af7a2` and `9020336` are already in `main` and
+> were verified — all 29 `handle` exports survived, and its edits were the same
+> `ReturnType<typeof createClient>` → `any` fix applied to `citationCandidates`
+> and `process-email-queue`. Nothing to undo.
 
 ---
 
 ```
-The GitHub repo's `main` branch has been updated (latest commit 48113a9).
-Please sync and redeploy the Supabase Edge Functions.
+The GitHub repo's `main` branch has been updated (latest commit dea6fb7).
+Please sync and redeploy the affected Supabase Edge Functions.
 
 ## What to do
 
 1. Pull the latest `main`.
-2. Redeploy ALL Supabase Edge Functions. 29 function files changed.
+2. Redeploy `research-query`, and any other function that bundles
+   `supabase/functions/_shared/citationVerifier.ts`. Redeploying everything is
+   also fine.
 3. Do NOT create, run, or generate any database migration. This change set
-   contains zero schema changes, and none are needed.
+   contains zero schema changes.
+4. Do NOT refactor the exported `handle(req)` pattern back into an inline
+   `Deno.serve(async (req) => { ... })`. It is exported on purpose so tests can
+   call it.
 
-## Important: a new shared file must ship with the deploy
+## What changed and why it matters
 
-`supabase/functions/_shared/receiptDecision.ts` is NEW.
+`supabase/functions/_shared/citationVerifier.ts` — a bug fix in the reference
+parser.
 
-`verify-receipt` and `verify-renewal-receipt` both import it:
+The parser matched the Qur'an with the character class `qur['']?an`. That class
+held three copies of the plain ASCII apostrophe U+0027, so the curly/typographic
+variants it was clearly meant to accept were not matched. The effect: when a
+model wrote "Qur'an 2:267" using a typographic apostrophe — which is the form
+models normally produce — the reference failed to parse, the citation could not
+be confirmed against `scholarly_documents`, and a REAL, verifiable verse was
+silently dropped from the answer as "unverifiable".
 
-    import { decideActivation, TIER_PRICES_PKR, type PaidTier }
-      from "../_shared/receiptDecision.ts";
+The class now accepts all of: U+0027 ' , U+2018 ' , U+2019 ' , U+02BC , U+02BE ,
+U+02BF , U+0060 ` , plus the academic transliteration "Qurʾān".
 
-If that file is not included in the deployed bundle, both functions will fail
-to boot with an import error. Please confirm it is present after deploying.
-
-## Do not "clean up" the new handler pattern
-
-Every function now looks like this, and it is intentional:
-
-    export async function handle(req: Request): Promise<Response> { ... }
-
-    Deno.serve(handle);   // or: serve(handle);
-
-The handler is exported on purpose so it can be called from tests. Please do
-NOT refactor it back into an inline `Deno.serve(async (req) => { ... })`. 26 of
-the 29 functions changed ONLY in this way — the request logic inside is
-byte-for-byte unchanged.
-
-## The 3 functions with real behaviour changes
-
-Everything else is the wrapper change above. These three also changed:
-
-1. `vector-search` — it used to return `200 {results: []}` for EVERY failure,
-   which was indistinguishable from a successful search that matched nothing.
-   Now:
-   - a malformed/unparseable JSON body returns `400 {error: "Invalid JSON body"}`
-     (it already returned 400 for a missing `query`);
-   - the three genuine degradation paths still return `200`, but now include
-     `degraded: true` and a `reason` field ("rpc_error", "embedding_failed",
-     "internal_error"). The `results` array is still there and still first, so
-     existing callers keep working.
-
-2. `verify-receipt` and 3. `verify-renewal-receipt` — the auto-approval
-   decision moved into the shared `receiptDecision.ts` (it was previously
-   duplicated verbatim in both files). One deliberate behaviour change: the
-   receiver check now requires the AI-extracted receiver to be at least 6
-   characters before it will match as a fragment of a known account. Previously
-   an unreadable receiver field of "" or "0" matched a real account, because ""
-   is a substring of everything and "0" is a substring of "00420745" — so a
-   receipt with the right amount and high confidence but an unreadable payee
-   could be auto-approved. Such receipts now go to manual review instead. The
-   response also gains a `failed_checks` array in
-   `ai_verification_details`, listing why a receipt was not auto-approved.
+This is a pure widening of what parses. No citation that verified before will
+stop verifying; some that were wrongly rejected will now be accepted.
 
 ## After deploying, please confirm
 
-- All 29 functions report as deployed and booting (no import errors).
-- `_shared/receiptDecision.ts` is present in the deployment.
-- `verify-receipt` and `verify-renewal-receipt` respond to an OPTIONS
-  preflight with `Access-Control-Allow-Origin` (i.e. they booted).
+- `research-query` boots with no import error and answers an OPTIONS preflight.
 - No migration was created or run.
 ```
 
@@ -84,17 +57,26 @@ Everything else is the wrapper change above. These three also changed:
 
 ## After Lovable reports success
 
-Run the repo's own post-deploy check from this machine:
-
 ```bash
 npm run smoke:functions
 ```
 
-It probes every function for "deployed, boots, answers CORS preflight" and exits
-non-zero on any failure. `smoke-edge-functions.yml` also runs it automatically
-on push to `main`, so GitHub Actions will report independently.
+Then the one check the smoke script cannot do — because it needs a real user
+JWT and a real corpus — is the actual point of this fix:
 
-Then verify the one user-visible change by hand: run a normal research query and
-confirm results still appear (that exercises `vector-search` through
-`islamic-search`). Status codes are the only place an existing client could
-break.
+**Run a research query that returns a Qur'an citation, and confirm the citation
+appears with its Arabic text and reference.** Before this fix, a model that
+happened to write the reference with a curly apostrophe would have had that
+citation dropped. If you want to see the difference, the same query run a few
+times is enough — the apostrophe the model picks varies between runs, which is
+exactly why the bug was intermittent and hard to notice.
+
+---
+
+## Previous round — commit `eee8fe9` (already deployed and verified)
+
+28 of 29 functions redeployed; `mcp` was held back by platform policy and picks
+up its change on the next publish (wrapper-only diff, so the live version
+behaves identically). `npm run smoke:functions` reported 29/29. Kept here
+because the two risks it called out — a missed new `_shared/` file, and Lovable
+"tidying" the exported `handle()` — apply to every future round.
