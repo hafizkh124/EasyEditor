@@ -12,6 +12,12 @@ interface SourcePickerProps {
   /** Selected domain ids. EMPTY means "everything" — see the note below. */
   selected: string[];
   onSelectedChange: (next: string[]) => void;
+  /** Corpus Atlas finding #7: restrict cited sources to rows that carry real
+   *  Arabic matn (`content_ar`), not merely the corpus's declared reading
+   *  language. Lives here rather than as a separate control because it is the
+   *  same kind of narrowing as the source list, not a different feature. */
+  requireArabicMatn: boolean;
+  onRequireArabicMatnChange: (next: boolean) => void;
   disabled?: boolean;
   t: import("@/lib/i18n").Translator;
 }
@@ -35,7 +41,9 @@ interface SourcePickerProps {
  * all. `toSelectedDomains()` in lib/research/sources.ts is the only place
  * allowed to make that translation.
  */
-const SourcePicker = ({ selected, onSelectedChange, disabled = false, t }: SourcePickerProps) => {
+const SourcePicker = ({
+  selected, onSelectedChange, requireArabicMatn, onRequireArabicMatnChange, disabled = false, t,
+}: SourcePickerProps) => {
   const [open, setOpen] = useState(false);
 
   const isAll = selected.length === 0;
@@ -60,6 +68,7 @@ const SourcePicker = ({ selected, onSelectedChange, disabled = false, t }: Sourc
     onSelectedChange(next.length === ALL_SOURCE_IDS.length ? [] : next);
   };
 
+  const narrowed = !isAll || requireArabicMatn;
   const label = isAll
     ? t("research.sources_all")
     : `${selected.length} ${t("research.sources_unit")}`;
@@ -75,9 +84,9 @@ const SourcePicker = ({ selected, onSelectedChange, disabled = false, t }: Sourc
         aria-label={t("research.sources_label")}
         className={cn(
           "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-          isAll
-            ? "border-border bg-muted text-foreground hover:bg-accent"
-            : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15",
+          narrowed
+            ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
+            : "border-border bg-muted text-foreground hover:bg-accent",
         )}
       >
         <Library className="h-3.5 w-3.5 shrink-0" />
@@ -98,10 +107,10 @@ const SourcePicker = ({ selected, onSelectedChange, disabled = false, t }: Sourc
               <span className="text-xs font-medium text-foreground">
                 {t("research.sources_heading")}
               </span>
-              {!isAll && (
+              {narrowed && (
                 <button
                   type="button"
-                  onClick={() => onSelectedChange([])}
+                  onClick={() => { onSelectedChange([]); onRequireArabicMatnChange(false); }}
                   className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                 >
                   <RotateCcw className="h-3 w-3" />
@@ -109,6 +118,23 @@ const SourcePicker = ({ selected, onSelectedChange, disabled = false, t }: Sourc
                 </button>
               )}
             </div>
+
+            <label className="flex cursor-pointer items-start gap-2 border-b border-border px-3 py-2 hover:bg-muted transition-colors">
+              <input
+                type="checkbox"
+                checked={requireArabicMatn}
+                onChange={(e) => onRequireArabicMatnChange(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-primary"
+              />
+              <span className="min-w-0">
+                <span className="block text-xs font-medium text-foreground">
+                  {t("research.arabic_matn_only")}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {t("research.arabic_matn_only_note")}
+                </span>
+              </span>
+            </label>
 
             <div className="max-h-80 overflow-y-auto p-1">
               {SOURCE_GROUPS.map((group) => {

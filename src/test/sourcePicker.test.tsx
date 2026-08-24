@@ -18,13 +18,26 @@ const t = ((key: string, fallback?: string) =>
   (en as Record<string, string>)[key] ?? fallback ?? key) as unknown as
   import("@/lib/i18n").Translator;
 
-function setup(selected: string[] = []) {
+function setup(selected: string[] = [], requireArabicMatn = false) {
   const onSelectedChange = vi.fn();
-  render(<SourcePicker selected={selected} onSelectedChange={onSelectedChange} t={t} />);
-  return { onSelectedChange };
+  const onRequireArabicMatnChange = vi.fn();
+  render(
+    <SourcePicker
+      selected={selected}
+      onSelectedChange={onSelectedChange}
+      requireArabicMatn={requireArabicMatn}
+      onRequireArabicMatnChange={onRequireArabicMatnChange}
+      t={t}
+    />,
+  );
+  return { onSelectedChange, onRequireArabicMatnChange };
 }
 
 const openPopover = () => fireEvent.click(screen.getByRole("button", { name: en["research.sources_label"] }));
+
+// The popover's first checkbox is the Arabic-matn-only toggle, not a source —
+// tests that index into "the source checkboxes" need it excluded.
+const getSourceCheckboxes = () => screen.getAllByRole("checkbox").slice(1) as HTMLInputElement[];
 
 describe("SourcePicker", () => {
   it("reads as 'All sources' and shows everything checked by default", () => {
@@ -32,7 +45,7 @@ describe("SourcePicker", () => {
     expect(screen.getByText(en["research.sources_all"])).toBeInTheDocument();
 
     openPopover();
-    const boxes = screen.getAllByRole("checkbox") as HTMLInputElement[];
+    const boxes = getSourceCheckboxes();
     expect(boxes).toHaveLength(RESEARCH_SOURCES.length);
     expect(boxes.every((b) => b.checked)).toBe(true);
   });
@@ -41,7 +54,7 @@ describe("SourcePicker", () => {
     const { onSelectedChange } = setup([]);
     openPopover();
 
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    fireEvent.click(getSourceCheckboxes()[0]);
 
     const next = onSelectedChange.mock.calls[0][0] as string[];
     expect(next).toHaveLength(ALL_SOURCE_IDS.length - 1);
@@ -56,7 +69,7 @@ describe("SourcePicker", () => {
     const { onSelectedChange } = setup(oneMissing);
     openPopover();
 
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    fireEvent.click(getSourceCheckboxes()[0]);
     expect(onSelectedChange).toHaveBeenCalledWith([]);
   });
 
@@ -84,6 +97,33 @@ describe("SourcePicker", () => {
 
   it("hides the reset control when nothing is narrowed", () => {
     setup([]);
+    openPopover();
+    expect(screen.queryByRole("button", { name: en["research.sources_reset"] })).not.toBeInTheDocument();
+  });
+});
+
+describe("SourcePicker Arabic-matn-only toggle (Corpus Atlas finding #7)", () => {
+  it("toggles requireArabicMatn independently of the source selection", () => {
+    const { onRequireArabicMatnChange } = setup([]);
+    openPopover();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(en["research.arabic_matn_only"]) }));
+    expect(onRequireArabicMatnChange).toHaveBeenCalledWith(true);
+  });
+
+  it("shows the reset control when only the Arabic filter is on, sources otherwise untouched", () => {
+    // Narrowing is not just "fewer sources" — turning on Arabic-only with
+    // every source still selected is itself a narrowing the reset must undo.
+    const { onSelectedChange, onRequireArabicMatnChange } = setup([], true);
+    openPopover();
+
+    fireEvent.click(screen.getByRole("button", { name: en["research.sources_reset"] }));
+    expect(onSelectedChange).toHaveBeenCalledWith([]);
+    expect(onRequireArabicMatnChange).toHaveBeenCalledWith(false);
+  });
+
+  it("keeps the reset control hidden when neither axis is narrowed", () => {
+    setup([], false);
     openPopover();
     expect(screen.queryByRole("button", { name: en["research.sources_reset"] })).not.toBeInTheDocument();
   });

@@ -56,6 +56,9 @@ interface ChatDisplayProps {
   /** Islamic-mode source narrowing; empty means every source. */
   selectedDomains?: string[];
   onSelectedDomainsChange?: (next: string[]) => void;
+  /** Corpus Atlas finding #7 — restrict citations to rows with real Arabic matn. */
+  requireArabicMatn?: boolean;
+  onRequireArabicMatnChange?: (next: boolean) => void;
   onContinue?: () => void;
 }
 
@@ -67,7 +70,8 @@ const ChatDisplay = ({
   researchLimitReached, chatEndRef: _chatEndRef, t,
   mode = "general", onModeChange, sourcesReadyInfo, citations = [],
   assistModes = [], onAssistModesChange,
-  selectedDomains = [], onSelectedDomainsChange, onContinue,
+  selectedDomains = [], onSelectedDomainsChange,
+  requireArabicMatn = false, onRequireArabicMatnChange, onContinue,
 }: ChatDisplayProps) => {
   const navigate = useNavigate();
   const isRtlQuery = detectRtl(query);
@@ -398,6 +402,8 @@ const ChatDisplay = ({
                 <SourcePicker
                   selected={selectedDomains}
                   onSelectedChange={onSelectedDomainsChange}
+                  requireArabicMatn={requireArabicMatn}
+                  onRequireArabicMatnChange={onRequireArabicMatnChange ?? (() => {})}
                   disabled={isQuerying}
                   t={t}
                 />

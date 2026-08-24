@@ -1545,5 +1545,7 @@
   "research.sources_group_all": "سب منتخب",
   "research.sources_group_none": "سب ہٹائیں",
   "research.sources_hint_all": "ابھی ہر دستیاب مأخذ میں تلاش ہو رہی ہے۔",
-  "research.sources_hint_some": "صرف منتخب مآخذ میں تلاش ہوگی۔ آپ کی اپنی لائبریری ہمیشہ شامل رہتی ہے۔"
+  "research.sources_hint_some": "صرف منتخب مآخذ میں تلاش ہوگی۔ آپ کی اپنی لائبریری ہمیشہ شامل رہتی ہے۔",
+  "research.arabic_matn_only": "صرف عربی متن والے مآخذ",
+  "research.arabic_matn_only_note": "صرف وہ حوالے دیں جن میں حقیقی عربی الفاظ موجود ہوں، محض اردو ترجمہ نہیں۔"
 }

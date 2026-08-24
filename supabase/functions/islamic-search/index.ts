@@ -369,7 +369,7 @@ serve(async (req) => {
         .single(),
     );
 
-    const { query, selectedDomains, chatHistory, strictMode, debugTiming } = await req.json();
+    const { query, selectedDomains, chatHistory, strictMode, debugTiming, requireArabicMatn } = await req.json();
 
     if (!query) {
       return new Response(JSON.stringify({ error: "Query is required" }), {
@@ -656,6 +656,7 @@ serve(async (req) => {
               content: row.content,
               citation_ref: row.citation_ref ?? {},
               language: (row.language as "ar" | "en" | "ur") ?? "ar",
+              has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
             }));
           } catch (e) {
             console.error("Tier K error:", e);
@@ -709,6 +710,7 @@ serve(async (req) => {
             content: row.content,
             citation_ref: row.citation_ref ?? {},
             language: (row.language as "ar" | "en" | "ur") ?? "ur",
+            has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
           }));
         } catch (e) {
           console.error("Tier D (classical) error:", e);
@@ -736,6 +738,9 @@ serve(async (req) => {
             content: row.content,
             citation_ref: row.citation_ref ?? {},
             language: (row.language as "ar" | "en" | "ur") ?? "ur",
+            // A per-word Urdu gloss, never the ayah's own Arabic wording —
+            // must never satisfy an Arabic-matn-only filter.
+            has_matn: false,
           }));
         } catch (e) {
           console.error("Tier W (word-by-word) error:", e);
@@ -782,6 +787,7 @@ serve(async (req) => {
               content: row.content,
               citation_ref: row.citation_ref,
               language: (row.language as "ar" | "en" | "ur") ?? "ur",
+              has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
             });
             if (merged.length >= 8) break;
           }
@@ -831,6 +837,7 @@ serve(async (req) => {
                 content: row.content,
                 citation_ref: { ...(row.citation_ref ?? {}), _is_anchor: true },
                 language: row.language ?? "ar",
+                has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
               }));
             })
         );
@@ -866,6 +873,7 @@ serve(async (req) => {
                 content: row.content,
                 citation_ref: { ...(row.citation_ref ?? {}), _is_anchor: true },
                 language: row.language ?? "ar",
+                has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
               }));
             })
         );
@@ -890,7 +898,7 @@ serve(async (req) => {
     // or three of the answer's source slots. First occurrence wins, so the
     // fan-out's tier order still decides which copy the model sees.
     const dedupeStart = since();
-    const allResults = dedupeResults(rawResults);
+    let allResults = dedupeResults(rawResults);
     if (allResults.length !== rawResults.length) {
       // Only recorded when it actually removed something, so the timing log
       // stays a list of things that happened rather than a list of no-ops.
@@ -934,6 +942,28 @@ serve(async (req) => {
           seenKeys.add(k);
           allResults.unshift(e);
         }
+      }
+    }
+
+    // Corpus Atlas finding #7: the corpus's own `language` column can't back
+    // an "Arabic only" filter (it records the corpus's declared READING
+    // language, not what's in the row — 11 of 14 domains are tagged `ur`,
+    // including the fully-Arabic easyquran-hadith). `has_matn`, set by every
+    // tier above from its own row's `content_ar`, is the real per-row signal.
+    // Applied AFTER the anchor merge so a curated topic reference is held to
+    // the same rule as a retrieved one — a scholar who asked for Arabic-only
+    // should not have a non-Arabic anchor slipped in underneath it.
+    if (requireArabicMatn === true) {
+      const before = allResults.length;
+      allResults = allResults.filter((r) => r.has_matn === true);
+      if (allResults.length !== before) {
+        stages.push({
+          stage: `filter(arabic-matn-only): ${before} -> ${allResults.length}`,
+          startMs: dedupeStart,
+          endMs: since(),
+          ms: 0,
+          count: allResults.length,
+        });
       }
     }
 
