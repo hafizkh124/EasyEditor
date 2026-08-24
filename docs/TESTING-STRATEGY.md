@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 + P1 shipped & deployed 2026-08-24 (3 rounds); round 4 pushed; P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 shipped 2026-08-24 across 5 rounds (3 deployed, 2 test-only); P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
 §1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
 P1 have landed. Everything from §3 onward that is not marked ✅ is still a
@@ -12,10 +12,10 @@ proposal.
 
 | Measure | Baseline | Now |
 |---|---|---|
-| Test files executed by `npm test` | 96 | **109** |
-| Tests | 771 passed, 11 skipped | **1170 passed, 11 skipped, 0 failing** |
-| Wall-clock (`npm test`) | 179.9 s | ~107 s (with 399 more tests) |
-| Coverage number | **did not exist** | **30.82 % lines** (baseline was 25.45 %) |
+| Test files executed by `npm test` | 96 | **111** |
+| Tests | 771 passed, 11 skipped | **1212 passed, 11 skipped, 0 failing** |
+| Wall-clock (`npm test`) | 179.9 s | ~130 s (with 441 more tests) |
+| Coverage number | **did not exist** | **31.25 % lines** (baseline was 25.45 %) |
 | E2E tests | 0 | 0 *(P3)* |
 | Edge-function handlers reachable from a test | 0 of 29 | **29 of 29** |
 | Deno tests run by no pipeline | 3 files | **0** — ported into the vitest suite |
@@ -181,7 +181,7 @@ specifiers with no npm counterpart (`std/http/server.ts`,
 `@lovable.dev/email-js`). `src/types/deno-edge.d.ts` carries the compile-time
 half of the same mapping.
 
-### G3 — The `_shared/` modules that matter most are the untested ones ◐ *`citationVerifier` closed*
+### G3 — The `_shared/` modules that matter most are the untested ones ✅ *closed — see §G3 done below*
 
 `citationVerifier.ts` — the safety net that drops hallucinated citations before
 the client renders them — had no test, in a project where citation integrity has
@@ -472,6 +472,7 @@ the gate gets disabled within a month.
 | P1 | Fake for `createClient` (`src/test/helpers/fakeSupabase.ts`) | G1/G3 | ✅ done |
 | P1 | verify-receipt past the auth wall — replay, ownership, activation writes | G1 | ✅ done — 40 tests, 6/6 mutations caught |
 | P1 | `citationVerifier` rejection-path tests | G3 | ✅ done — **found the apostrophe bug** |
+| P1 | `citationCandidates`, `segmentClaims` | G3 | ✅ done |
 | P1 | `verify-renewal-receipt` handler tests | G1 | ✅ done |
 | P1 | `check-subscription-expiry`, `reset-monthly-quotas`, `process-email-queue` | G1 | ✅ done — **found a bug in the test fixture itself, caught by its own first run** |
 | P2 | Electron IPC + migration-runner tests against temp SQLite | G4 | 1–2 days |
@@ -585,5 +586,68 @@ admin exemption removed, `topup_balance` no longer preserved, idempotency guard
 removed, `MAX_RETRIES` raised, 429 no longer stopping the batch, duplicate-send
 guard removed). All 8 caught.
 
-Next, in order: `citationCandidates`, `segmentClaims`, then the Electron IPC and
-migration-runner work in P2.
+**Round 5, same day:** `citationCandidates` (18 tests) and `segmentClaims` (22
+tests) — the last two untested `_shared/` modules from G3's original list.
+
+`citationCandidates.ts` is the retrieval half of the citation pipeline: for one
+claim it fans out to FTS, topic-anchor lookup, vector search, and a live-API
+call, then dedupes and buckets the results before the LLM ever sees them.
+`lookupTopicAnchors` and `planQuery` were mocked (a large static keyword table
+and an AI-gateway call respectively — separate concerns from this module's own
+orchestration); `expandQueryTerms` was left real since it is pure and already
+covered elsewhere. Confirmed for real, not by construction: topic anchors
+outrank FTS for the same `match_key` (the higher-authority source wins the
+dedup), a row missing the fields a citation needs is dropped rather than
+producing a broken candidate, and a vector hit outranks an API-only hit when
+`maxQuran`/`maxHadith` forces a choice — API results are the weakest evidence,
+being outside `scholarly_documents` entirely.
+
+`segmentClaims.ts` re-exports `shared/text/chunk.ts`'s sentence segmenter
+(SPEC-M5 FR-1.5/FR-3.4) and adds one function of its own, `detectScript`.
+`segmentText` runs once per claim ahead of every citation lookup, so a
+boundary bug either merges two claims into one lookup (losing a citation) or
+fragments one claim past what any lookup can match — and its character-offset
+contract (`[start, end)` must slice the original input back to the segment's
+own text) is exactly what lets a caller re-insert a citation at the right
+place. Tested the offset round-trip directly rather than trusting it by
+construction, plus the two size-based edge behaviours: short fragments merging
+backward into an existing segment (never forward, and never when there is no
+prior segment to merge into — a short *first* fragment survives standalone),
+and the 30-segment cap folding the tail into one final segment rather than
+silently dropping it.
+
+Two things surfaced while getting the mutation-testing pass clean, neither a
+production bug:
+
+10. **`segmentClaims.ts` re-exports from the *mirror* copy, not the file two
+    of my first mutations edited.** `shared/text/chunk.ts` is the canonical
+    source, but the edge-function side imports
+    `supabase/functions/_shared/mirror/text/chunk.ts` — a build-time-synced
+    duplicate, because Deno's deploy bundle can only see `supabase/functions/`.
+    Mutating the canonical file alone was a silent no-op for these tests; both
+    mutations "survived" on the first pass for that reason, not because the
+    tests were weak. Retargeted the mutation script at the mirror and both
+    were then caught.
+11. **A stray `git checkout` during that debugging left a real, if narrow, gap
+    exposed.** Restoring `shared/text/chunk.ts` after a manual mutation
+    re-materialized it with CRLF line endings (Windows `core.autocrlf=true`),
+    while its mirror is LF — which `documentChunks.test.ts` exists
+    specifically to catch (see [[easyeditor-crlf-ci-hash-mismatch]]). It did:
+    the very next full-suite run failed there. Not a new bug — the guard did
+    its job — but a reminder that debugging mutation tests by hand on this
+    machine can leave the tree in a state the suite correctly rejects.
+
+All of round 5 mutation-tested (8/8 caught, after the mirror-file retarget).
+
+Next: the client-side subscription modules and Electron IPC/migration-runner
+work in P2.
+
+## G3 — done
+
+Every `_shared/` module named in the original audit now has tests:
+`citationVerifier` (round 2), `citationCandidates` and `segmentClaims` (round
+5). `aiGateway.ts`, `rateLimit.ts`, `arabicRoot.ts`, `researchPrompts.ts`, and
+`stopwords.ts` were not on that list and remain open, but none of them carry
+the citation-integrity risk the five above did — this was the corpus-grounding
+half of the pipeline, and it is now covered end to end: retrieval
+(`citationCandidates`) through verification (`citationVerifier`).
