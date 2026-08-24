@@ -39,13 +39,35 @@ export interface VerifiedCitation extends RawLlmCitation {
 function parseReference(ref: string): { surah?: number; verse?: number; book?: string; number?: string } {
   if (!ref) return {};
   // Quran X:Y
-  const quranMatch = ref.match(/(?:qur[''']?an|قرآن|القرآن)[^0-9]*?(\d{1,3})\s*[:\.؛]\s*(\d{1,3})/i);
+  //
+  // The apostrophe class below must keep all of its variants:
+  //   U+0027 '  U+2018 '  U+2019 '  U+02BC ʼ  U+02BE ʾ  U+02BF ʿ  U+0060 `
+  //
+  // It previously read [''] — three copies of U+0027 — so the curly forms it
+  // was plainly meant to accept had been flattened to straight quotes, most
+  // likely by an editor normalising smart quotes. The consequence was a silent
+  // false negative in the most damaging direction: a model writing
+  // "Qur'an 2:267" with a typographic apostrophe (the form models actually
+  // produce) had a REAL citation rejected as unverifiable and dropped from the
+  // answer, with nothing in the response saying so.
+  //
+  // These are literal characters, so the same flattening could happen again.
+  // The guard against that is not the syntax, it is the regression test:
+  // src/test/citationVerifier.test.ts asserts each variant parses, so a
+  // re-flattening fails CI instead of silently losing citations.
+  //
+  // The [aā] also accepts the academic transliteration "Qurʾān".
+  const quranMatch = ref.match(
+    /(?:qur['‘’ʼʾʿ`]?[aā]n|قرآن|القرآن)[^0-9]*?(\d{1,3})\s*[:.؛]\s*(\d{1,3})/i,
+  );
   if (quranMatch) {
     return { surah: parseInt(quranMatch[1], 10), verse: parseInt(quranMatch[2], 10) };
   }
   // Plain "2:267" anywhere
   const plain = ref.match(/(\b\d{1,3})\s*:\s*(\d{1,3}\b)/);
-  if (plain && /quran|qur'an|surah|سورة|آية/i.test(ref)) {
+  // Same apostrophe problem as above: this guard's "qur'an" carried only the
+  // straight form, so a curly-apostrophe reference failed the fallback too.
+  if (plain && /qur['‘’ʼʾʿ`]?[aā]n|surah|سورة|آية/i.test(ref)) {
     return { surah: parseInt(plain[1], 10), verse: parseInt(plain[2], 10) };
   }
   // Hadith — book + number
