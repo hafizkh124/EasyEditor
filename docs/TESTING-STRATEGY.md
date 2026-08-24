@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 + P1 shipped 2026-08-24 across 5 rounds (3 deployed, 2 test-only); P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 shipped 2026-08-24 across 5 rounds; P2 started (round 6, Electron IPC); P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
 §1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
 P1 have landed. Everything from §3 onward that is not marked ✅ is still a
@@ -12,10 +12,10 @@ proposal.
 
 | Measure | Baseline | Now |
 |---|---|---|
-| Test files executed by `npm test` | 96 | **111** |
-| Tests | 771 passed, 11 skipped | **1212 passed, 11 skipped, 0 failing** |
-| Wall-clock (`npm test`) | 179.9 s | ~130 s (with 441 more tests) |
-| Coverage number | **did not exist** | **31.25 % lines** (baseline was 25.45 %) |
+| Test files executed by `npm test` | 96 | **116** |
+| Tests | 771 passed, 11 skipped | **1320 passed, 11 skipped, 0 failing** |
+| Wall-clock (`npm test`) | 179.9 s | ~83 s (with 549 more tests) |
+| Coverage number | **did not exist** | **32.01 % lines** (baseline was 25.45 %) |
 | E2E tests | 0 | 0 *(P3)* |
 | Edge-function handlers reachable from a test | 0 of 29 | **29 of 29** |
 | Deno tests run by no pipeline | 3 files | **0** — ported into the vitest suite |
@@ -193,7 +193,7 @@ model wrote. Writing them found the apostrophe bug in §1. Still untested:
 `aiGateway.ts`, `rateLimit.ts`, `citationCandidates.ts`, `segmentClaims.ts`,
 `arabicRoot.ts`, `researchPrompts.ts`, `stopwords.ts`.
 
-### G4 — Electron's security boundary is untested ◐ *`urlAllowlist` closed; IPC and db/ still open*
+### G4 — Electron's security boundary is untested ✅ *see the round-6 section below for what's closed and what's left*
 
 `electron/lib/urlAllowlist.ts` decides what `shell.openExternal` will open. It is
 a security control with no test — **now covered** by 38 adversarial cases
@@ -475,7 +475,8 @@ the gate gets disabled within a month.
 | P1 | `citationCandidates`, `segmentClaims` | G3 | ✅ done |
 | P1 | `verify-renewal-receipt` handler tests | G1 | ✅ done |
 | P1 | `check-subscription-expiry`, `reset-monthly-quotas`, `process-email-queue` | G1 | ✅ done — **found a bug in the test fixture itself, caught by its own first run** |
-| P2 | Electron IPC + migration-runner tests against temp SQLite | G4 | 1–2 days |
+| P2 | Electron IPC (`registry`, `systemHandlers`, `workspaceHandlers`, `aiHandlers`) | G4 | ✅ done — **found the untested prototype-pollution guard** |
+| P2 | `shamelaHandlers`, `tafsirHandlers`, `voiceHandlers`, migration-runner tests against temp SQLite | G4 | 1 day |
 | P2 | SSE/streaming reassembly + abort tests | — | half day |
 | P3 | Playwright `_electron` launch smoke in `release.yml` | E2E | 1 day |
 | P3 | Replace the four grep-tests made redundant by P1 | G8 | 2 h |
@@ -639,8 +640,72 @@ production bug:
 
 All of round 5 mutation-tested (8/8 caught, after the mirror-file retarget).
 
-Next: the client-side subscription modules and Electron IPC/migration-runner
-work in P2.
+**Round 6, same day — the first P2 work: Electron IPC.** `electron/ipc/*.ts`
+had zero tests; `require('electron')` under plain Node resolves to the path of
+the `electron.exe` binary, not the real API, so nothing that imports `electron`
+could be imported by a test at all without a fake for it. Added
+`src/test/helpers/electronMock.ts` (captures `ipcMain.handle()` registrations
+by channel, so a test can invoke a handler directly with a fake IPC event) and
+scoped this round to the pieces with real security or routing risk rather than
+the full six-file surface:
+
+- `registry.ts`'s `isAllowedIpcChannel` (50 tests) — the channel allowlist
+  every IPC surface in the app depends on.
+- `systemHandlers.ts` (12 tests) — `system:open-external`'s reuse of
+  `isAllowedExternalUrl` (already proven correct in isolation by
+  `urlAllowlist.test.ts`; this proves the IPC wiring around it doesn't add a
+  bypass, e.g. forgetting the runtime type check on a value that crossed the
+  IPC boundary as `unknown`).
+- `workspaceHandlers.ts` (18 tests) — the highest-priority find of this round.
+  Its own comment states the exact attack it defends against: `service[name]`
+  alone would reach `Object.prototype` members (`constructor`, `toString`,
+  `__proto__`, …) for any method name a compromised or buggy renderer sends
+  over `workspace:invoke`. This is the closest thing in the codebase to a
+  prototype-pollution guard and had no test. Exported the previously-private
+  `ALLOWED_WORKSPACE_METHODS` (mirroring P1's `handle` exports) so a test can
+  check it against `WorkspaceDbService`'s real prototype — the source
+  comment's own "keep this list in sync" promise was otherwise unenforced.
+- `redactKeyFromLog` (7 tests, standalone) and `aiHandlers.ts`'s `AI_INVOKE`
+  dispatch (21 tests) — the `edge-function` compatibility mode's routing
+  (`library-ingest` → local DB, `refine-text` → local Gemini with the right
+  prompt, `graph-extract` → an explicit refusal, unknown names → a named
+  refusal) and, more importantly, that a leaked Gemini key is redacted before
+  an error reaches the renderer or a log. `redactKeyFromLog` was left real
+  (not mocked) inside the `aiHandlers.test.ts` integration specifically to
+  prove the *wiring* calls it, not just that the function works alone.
+
+No production bugs found this round — both allowlists were already correctly
+constructed — but two first-contact issues surfaced from pulling `electron/`
+into the TS program for the first time (same class as `verify-receipt`'s
+`ReturnType<typeof createClient>` in round 1 and `process-email-queue`'s
+`.replaceAll` in round 4): `electron/db/migrations/runner.ts` had an unused
+`path` import (dead code, harmless, fixed), and my own test fixture for a
+"real-looking" Gemini key was the wrong length twice in a row — 31 characters
+instead of 33 the first time, 32 instead of 33 the second — silently making
+the redaction assertions pass or fail for the wrong reason until a length
+guard was added to the fixture itself, which caught its own mistake before
+the real assertions even ran.
+
+All of round 6 mutation-tested (7/7 caught): the channel allowlist accepting
+anything, `open-external` skipping its allowlist check, `workspace:invoke`'s
+prototype-pollution guard disabled, `constructor` added to that allowlist,
+`refine-text` no longer requiring valid input, the error-redaction call
+removed from `aiHandlers.ts`'s catch block, and `redactKeyFromLog`'s pattern
+match disabled.
+
+## G4 — Electron's security boundary ✅ *closed for the IPC layer*
+
+`electron/lib/urlAllowlist.ts` (P0) and now `electron/ipc/registry.ts`,
+`systemHandlers.ts`, `workspaceHandlers.ts`, and the `AI_INVOKE` dispatch (P2
+round 6) are tested. **Still open:** `electron/ipc/shamelaHandlers.ts`,
+`tafsirHandlers.ts`, `voiceHandlers.ts` — large, native-process- and
+file-heavy dispatchers, but `switch`-based rather than the `service[name]`
+pattern `workspaceHandlers.ts` had to guard against, so they carry the lower
+end of this category's risk. `electron/db/*` (schema, migration runner,
+vectorSearch) remains untested; `electron/preload.ts` remains untested.
+
+Next: the client-side subscription modules, then the remaining Electron IPC
+handlers and the migration runner.
 
 ## G3 — done
 
