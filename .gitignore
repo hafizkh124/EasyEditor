@@ -16,6 +16,15 @@ release
 dist-ssr
 *.local
 
+# The bare `dist` rule above matches a directory named `dist` at ANY depth, so
+# it also swallowed the *vendored* shamela-mcp build — which is source we ship,
+# not build output we regenerate. Without it committed, the Lovable production
+# build cannot package the local bridge zip and the download button silently
+# never appears. Re-included deliberately; the directory has to be un-ignored
+# before the file can be, since git will not descend into an excluded directory.
+!tools/shamela-bridge/vendor/shamela-mcp/dist/
+!tools/shamela-bridge/vendor/shamela-mcp/dist/index.js
+
 # Environment variables - NEVER commit these
 .env
 .env.local

@@ -21,7 +21,7 @@
  * Run via `prebuild`, alongside `generate-version.mjs` (same pattern: compute
  * something, write it into `public/`, which is gitignored there).
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createZip } from "./lib/zip.mjs";
@@ -39,11 +39,6 @@ function fail(message) {
   process.exit(1);
 }
 
-function skip(message) {
-  console.warn(`[package-shamela-bridge] SKIPPED — ${message}`);
-  process.exit(0);
-}
-
 // ── Preconditions ───────────────────────────────────────────────────────
 for (const required of [
   join(BRIDGE_DIR, "server.mjs"),
@@ -57,18 +52,19 @@ for (const required of [
 if (!existsSync(JAR_SRC)) {
   fail(`shamela-helper.jar missing at ${JAR_SRC}. Run: npm run build:shamela-helper`);
 }
-// The vendored shamela-mcp build is not present in every checkout (the repo's
-// generic `dist` ignore rule keeps `vendor/shamela-mcp/dist/` out of git), so a
-// missing vendor tree must NOT break the web build — the download panel already
-// hides itself when the artefact metadata is absent. Only the local bridge zip
-// is skipped; nothing else in the app depends on it.
+// Every one of these is committed to the repo (see the deliberate `.gitignore`
+// re-include for `vendor/shamela-mcp/dist/`, which the generic `dist` rule
+// would otherwise swallow). So a missing file here is not an ordinary
+// "not vendored yet" state — it means the checkout is incomplete or someone
+// removed tracked source, and the build genuinely should stop. Failing loudly
+// is what surfaced this in the first place; degrading to a warning would ship
+// a production build whose download button silently never appears.
 for (const vendorFile of ["dist/index.js", "LICENSE", "manifest.json", "helper/shamela-helper.jar"]) {
   if (!existsSync(join(VENDOR_DIR, vendorFile))) {
-    skip(
+    fail(
       `shamela-mcp is not vendored (missing ${vendorFile} under ${VENDOR_DIR}).\n` +
-        `  The bridge zip will not be produced in this build. Copy the redistributable MIT build there to include it.`,
+        `  This file is tracked in git — restore it with: git checkout -- tools/shamela-bridge/vendor/`,
     );
-
   }
 }
 
