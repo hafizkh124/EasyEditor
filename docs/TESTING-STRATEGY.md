@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 + P1 + the `createClient` fake shipped 2026-08-24; P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 shipped & deployed 2026-08-24; P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
 §1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
 P1 have landed. Everything from §3 onward that is not marked ✅ is still a
@@ -59,6 +59,13 @@ Two things that only surfaced because the tests were written:
 > `vector-search` happy path, which needs an authenticated research query — the
 > smoke probe posts `{}` and only reaches the pre-existing "Query is required"
 > branch.
+
+> **Round 2 deployed 2026-08-24** (`dea6fb7`). `research-query` — the only
+> function bundling `citationVerifier.ts` — redeployed and booting;
+> `npm run smoke:functions` 29/29. No migrations. The apostrophe fix's *behaviour*
+> is covered by unit tests, not yet observed against the live corpus: confirming
+> it needs a research query that returns a Qur'an citation, and the bug was
+> intermittent precisely because which apostrophe the model emits varies per run.
 
 ### What P1 turned up
 
