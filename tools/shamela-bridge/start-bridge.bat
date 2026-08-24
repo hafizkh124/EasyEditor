@@ -17,6 +17,22 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+rem The book reader uses node:sqlite (DatabaseSync), unflagged from Node 22.13.
+node -e "const [maj,min]=process.versions.node.split('.').map(Number);process.exit(maj>22||(maj===22&&min>=13)?0:1)"
+if %errorlevel% neq 0 (
+    echo [ERROR] Node.js is too old for this bridge ^(need 22.13 or newer^).
+    echo.
+    echo Your version:
+    node -v
+    echo.
+    echo Please install a newer Node.js from:
+    echo     https://nodejs.org/
+    echo Then run this file again.
+    echo.
+    pause
+    exit /b 1
+)
+
 echo Starting local HTTP bridge on http://127.0.0.1:8000 ...
 echo Please keep this window open while using local search in Al-Ulama Editor.
 echo.

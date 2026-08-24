@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import {
   CheckCircle, XCircle, RefreshCw, HardDrive,
-  Database, Shield, FileText, Copy, Search, Download, X,
+  Database, Shield, FileText, Copy, Download, X,
 } from "lucide-react";
 import {
   tafsirConnect,
@@ -15,6 +15,7 @@ import {
   tafsirInstallStart,
   tafsirInstallCancel,
   onTafsirInstallProgress,
+  hasTafsirNative,
 } from "@/lib/tafsir/tafsirService";
 import type { TafsirMode, TafsirDiagnostics, TafsirConnectResult } from "@/lib/tafsir/tafsirService";
 import { TafsirGuideModal } from "./TafsirGuideModal";
@@ -33,11 +34,10 @@ interface InstallState {
 
 interface TafsirConnectPanelProps {
   mode: TafsirMode;
-  onOpenSearch: () => void;
   onConnectedChange: (connected: boolean) => void;
 }
 
-export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: TafsirConnectPanelProps) {
+export function TafsirConnectPanel({ mode, onConnectedChange }: TafsirConnectPanelProps) {
   const [state, setState] = useState<ConnectState>("idle");
   const [diag, setDiag] = useState<TafsirDiagnostics | null>(null);
   const [connectInfo, setConnectInfo] = useState<TafsirConnectResult | null>(null);
@@ -164,6 +164,8 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
     ok ? <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
         : <XCircle className="h-4 w-4 text-red-500 shrink-0" />;
 
+  const native = hasTafsirNative();
+
   // Local mode: gate the connect button until the toolchain AND the DB exist.
   const toolchainOk = diag ? diag.pythonFound && diag.uvFound : false;
   const needsDb = mode === "local" && diag !== null && toolchainOk && !diag.dbFound;
@@ -247,9 +249,6 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
 
           {state === "connected" && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs" onClick={onOpenSearch}>
-                <Search className="h-3.5 w-3.5" /> قرآن اور تفسیر تلاش کریں
-              </Button>
               <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={handleDisconnect}>
                 منقطع
               </Button>
@@ -266,26 +265,35 @@ export function TafsirConnectPanel({ mode, onOpenSearch, onConnectedChange }: Ta
                   <Copy className="h-3 w-3" /> رپورٹ کاپی کریں
                 </Button>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className={native ? "grid grid-cols-2 gap-2" : "space-y-2"}>
                 <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
                   {statusIcon(diag.remoteReachable)}
                   <span>آن لائن سرور</span>
                   {diag.remoteLatencyMs != null && <code className="mr-auto text-xs">{diag.remoteLatencyMs}ms</code>}
                 </div>
-                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
-                  {statusIcon(diag.pythonFound)}
-                  <span>Python</span>
-                  {diag.pythonVersion && <code className="mr-auto text-xs">{diag.pythonVersion}</code>}
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
-                  {statusIcon(diag.uvFound)}
-                  <span>uv/uvx</span>
-                  {diag.uvVersion && <code className="mr-auto text-xs">{diag.uvVersion}</code>}
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
-                  {statusIcon(diag.dbFound)}
-                  <span>مقامی DB</span>
-                </div>
+                {/* Python/uv/local-DB only ever apply to the desktop "local" mode
+                    (§Non-Goals: no local/stdio path on web) — tafsirDiagnose()
+                    hardcodes them false on web, so showing these on web renders
+                    three permanent red ✗ marks for requirements that do not
+                    apply there. */}
+                {native && (
+                  <>
+                    <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
+                      {statusIcon(diag.pythonFound)}
+                      <span>Python</span>
+                      {diag.pythonVersion && <code className="mr-auto text-xs">{diag.pythonVersion}</code>}
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
+                      {statusIcon(diag.uvFound)}
+                      <span>uv/uvx</span>
+                      {diag.uvVersion && <code className="mr-auto text-xs">{diag.uvVersion}</code>}
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded border border-border/60 text-xs">
+                      {statusIcon(diag.dbFound)}
+                      <span>مقامی DB</span>
+                    </div>
+                  </>
+                )}
               </div>
               {diag.errors.length > 0 && (
                 <div className="p-2.5 rounded border border-red-500/30 bg-red-500/5 space-y-1">

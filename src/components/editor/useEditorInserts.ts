@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef } from "react";
 import type { Editor } from "@tiptap/react";
 import { isRtlText } from "@/utils/textUtils";
 import { escapeHtml } from "@/lib/editor/htmlText";
-import { registerExternalInsertHandler } from "@/lib/editor/insertBus";
 
 interface EditorInsertsArgs {
   editor: Editor | null;
@@ -65,17 +64,6 @@ export function useEditorInserts({
     emitChange();
     onInsertHandled?.();
   }, [editor, pendingInsertHtml, emitChange, onInsertHandled]);
-
-  // SPEC-TAFSIR §FR-5.3: while an editor is mounted it exposes itself to the
-  // external insert bus so dialogs on other routes (e.g. Tafsir search) can
-  // insert at the cursor. Registration is scoped to this editor's lifetime.
-  useEffect(() => {
-    if (!editor) return;
-    return registerExternalInsertHandler((html) => {
-      editor.chain().focus().insertContent(html).run();
-      emitChange();
-    });
-  }, [editor, emitChange]);
 
   return { handleSetFont, handleInsertResource };
 }

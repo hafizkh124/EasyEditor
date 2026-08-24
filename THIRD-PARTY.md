@@ -10,6 +10,7 @@ Al-Ulama Easy Editor relies on several open source components. We extend our gra
 | **better-sqlite3** | MIT | Local SQLite database binding |
 | **sqlite-vec** | Apache-2.0 / MIT | Local vector search extension |
 | **Lucene (via Shamela)** | Apache-2.0 | Full-text search engine for Shamela library |
+| **shamela-mcp** (Hamoud Alhoqbani) | MIT | Local Shamela 4 catalogue/search backend, vendored into the downloadable web bridge (`tools/shamela-bridge/vendor/shamela-mcp`) |
 | **Piper TTS** | MIT | Offline local Text-To-Speech engine |
 | **Whisper (whisper.cpp, via @kutalia/whisper-node-addon)** | MIT | Offline Speech-To-Text engine |
 | **msedge-tts** | MIT | Online Text-To-Speech engine (consent-gated) |

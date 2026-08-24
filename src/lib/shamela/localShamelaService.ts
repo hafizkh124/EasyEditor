@@ -62,7 +62,7 @@ function toResourceResults(hits: ShamelaHit[]): ResourceResult[] {
 
     return {
       content: cleanText(hit.content),
-      source_type: "hadith",
+      source_type: "shamela",
       reason: bookName ? `مکتبہ شاملہ (آف لائن) — ${bookName}` : "مکتبہ شاملہ (آف لائن)",
       citation_ref: {
         book: bookName || undefined,

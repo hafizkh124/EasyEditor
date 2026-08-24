@@ -73,7 +73,7 @@ export function ShamelaGuideModal({ open, onOpenChange }: ShamelaGuideModalProps
               </span>
               تشخیصی چیک لسٹ کا جائزہ لیں
             </div>
-            <p className="text-xs text-memory-foreground leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               کنکشن کے بعد تشخیصی چیک لسٹ ظاہر ہوگی جس میں Java Runtime، Lucene JARs، master.db اور Store Index کی موجودگی چیک کی جائے گی۔ تمام اشیاء سبز ہونی چاہئیں۔
             </p>
           </div>

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { TafsirConnectPanel } from "@/components/tafsir/TafsirConnectPanel";
-import { TafsirSearchDialog } from "@/components/tafsir/TafsirSearchDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import { Globe, HardDrive, AlertTriangle } from "lucide-react";
@@ -15,7 +14,6 @@ import { hasTafsirNative, type TafsirMode } from "@/lib/tafsir/tafsirService";
  */
 export function TafsirConnector() {
   const [mode, setMode] = useState<TafsirMode>("remote");
-  const [searchOpen, setSearchOpen] = useState(false);
 
   // Local/stdio mode needs the Electron main process (spec Non-Goals); web
   // reaches the same remote server through the `tafsir-proxy` edge function
@@ -61,11 +59,8 @@ export function TafsirConnector() {
 
       <TafsirConnectPanel
         mode={effectiveMode}
-        onOpenSearch={() => setSearchOpen(true)}
         onConnectedChange={() => {}}
       />
-
-      <TafsirSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </>
   );
 }

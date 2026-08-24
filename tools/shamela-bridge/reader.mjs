@@ -61,12 +61,22 @@ function detectShamelaPath() {
   return null;
 }
 
+/**
+ * Two layouts have to work: the packaged bridge, where the jar sits in `lib/`
+ * beside this file (scripts/package-shamela-bridge.mjs), and a dev checkout,
+ * where it lives at its source of truth in electron/shamela/java/. Probe both
+ * rather than assuming the repo is reachable — outside a checkout it is not.
+ */
+const HELPER_JAR_CANDIDATES = [
+  path.join(__dirname, 'lib', 'shamela-helper.jar'),
+  path.join(__dirname, '..', '..', 'electron', 'shamela', 'java', 'shamela-helper.jar'),
+];
+
 function getHelperJarPath() {
-  const jar = path.join(__dirname, '..', '..', 'electron', 'shamela', 'java', 'shamela-helper.jar');
-  if (!fs.existsSync(jar)) {
-    throw new Error(`shamela-helper.jar نہیں ملا: ${jar}`);
+  for (const jar of HELPER_JAR_CANDIDATES) {
+    if (fs.existsSync(jar)) return jar;
   }
-  return jar;
+  throw new Error(`shamela-helper.jar نہیں ملا: ${HELPER_JAR_CANDIDATES.join(', ')}`);
 }
 
 function buildClasspath(luceneDir, helperJar) {
@@ -169,11 +179,25 @@ function getBookDbPath(libraryPath, bookId) {
   return path.join(libraryPath, 'database', 'book', group, `${bookId}.db`);
 }
 
+/**
+ * `better-sqlite3` is a native module resolved from this repo's node_modules
+ * — absent from the standalone packaged bridge (scripts/package-shamela-bridge.mjs
+ * ships no node_modules at all). `node:sqlite`'s DatabaseSync exposes the same
+ * .prepare().get()/.all() / .close() surface this module actually uses (the
+ * only API surface below), and is unflagged from Node 22.13, which
+ * start-bridge.bat/.sh already require (see the version check there). Prefer
+ * it; fall back to better-sqlite3 for a dev checkout on an older Node.
+ */
 async function openBookDb(libraryPath, bookId) {
   const dbPath = getBookDbPath(libraryPath, bookId);
   if (!fs.existsSync(dbPath)) return null;
-  const Database = (await import('better-sqlite3')).default;
-  return new Database(dbPath, { readonly: true });
+  try {
+    const { DatabaseSync } = await import('node:sqlite');
+    return new DatabaseSync(dbPath, { readOnly: true });
+  } catch {
+    const Database = (await import('better-sqlite3')).default;
+    return new Database(dbPath, { readonly: true });
+  }
 }
 
 export function isReaderAvailable() {
