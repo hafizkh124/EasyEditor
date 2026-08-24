@@ -2,26 +2,19 @@
 
 Copy the block below into Lovable. Everything outside it is notes for you.
 
-**Current round — commit `dea6fb7`.** One shared edge-function file changed
-(`_shared/citationVerifier.ts`), consumed by `research-query`. **No migrations.**
-
-> Note: Lovable's own commits `67af7a2` and `9020336` are already in `main` and
-> were verified — all 29 `handle` exports survived, and its edits were the same
-> `ReturnType<typeof createClient>` → `any` fix applied to `citationCandidates`
-> and `process-email-queue`. Nothing to undo.
+**Current round — commit `02cd0e1`.** One edge function file changed
+(`verify-renewal-receipt/index.ts`). **No migrations.**
 
 ---
 
 ```
-The GitHub repo's `main` branch has been updated (latest commit dea6fb7).
-Please sync and redeploy the affected Supabase Edge Functions.
+The GitHub repo's `main` branch has been updated (latest commit 02cd0e1).
+Please sync and redeploy the affected Supabase Edge Function.
 
 ## What to do
 
 1. Pull the latest `main`.
-2. Redeploy `research-query`, and any other function that bundles
-   `supabase/functions/_shared/citationVerifier.ts`. Redeploying everything is
-   also fine.
+2. Redeploy `verify-renewal-receipt`.
 3. Do NOT create, run, or generate any database migration. This change set
    contains zero schema changes.
 4. Do NOT refactor the exported `handle(req)` pattern back into an inline
@@ -30,26 +23,32 @@ Please sync and redeploy the affected Supabase Edge Functions.
 
 ## What changed and why it matters
 
-`supabase/functions/_shared/citationVerifier.ts` — a bug fix in the reference
-parser.
+`verify-renewal-receipt/index.ts` — removed 9 lines of dead code from the
+token-reset step of a successful renewal. It used to open with:
 
-The parser matched the Qur'an with the character class `qur['']?an`. That class
-held three copies of the plain ASCII apostrophe U+0027, so the curly/typographic
-variants it was clearly meant to accept were not matched. The effect: when a
-model wrote "Qur'an 2:267" using a typographic apostrophe — which is the form
-models normally produce — the reference failed to parse, the citation could not
-be confirmed against `scholarly_documents`, and a REAL, verifiable verse was
-silently dropped from the answer as "unverifiable".
+    await admin.rpc("credit_tokens", {
+      p_user_id: userId,
+      p_amount: 1, // placeholder — real reset below
+      ...
+    });
 
-The class now accepts all of: U+0027 ' , U+2018 ' , U+2019 ' , U+02BC , U+02BE ,
-U+02BF , U+0060 ` , plus the academic transliteration "Qurʾān".
+`credit_tokens` is ADDITIVE — it does `monthly_balance = monthly_balance + p_amount`,
+not a set. So this call added 1 token to whatever the user's balance happened to
+be at that moment, which the very next line then overwrote anyway with a full
+reset to the tier's allocation. The only lasting effect was a row written into
+`token_transactions` claiming a "monthly_reset" of amount 1 on every renewal —
+a false entry in the table other code (`check-subscription-expiry`) treats as
+the authoritative token ledger.
 
-This is a pure widening of what parses. No citation that verified before will
-stop verifying; some that were wrongly rejected will now be accepted.
+Net effect for users: NONE. The final token balance after a renewal is
+unchanged — it was always set correctly by the line immediately after the one
+that was removed. This is purely an audit-trail correctness fix: renewals will
+stop writing a misleading "+1" line into `token_transactions`.
 
 ## After deploying, please confirm
 
-- `research-query` boots with no import error and answers an OPTIONS preflight.
+- `verify-renewal-receipt` boots with no import error and answers an OPTIONS
+  preflight.
 - No migration was created or run.
 ```
 
@@ -61,22 +60,24 @@ stop verifying; some that were wrongly rejected will now be accepted.
 npm run smoke:functions
 ```
 
-Then the one check the smoke script cannot do — because it needs a real user
-JWT and a real corpus — is the actual point of this fix:
-
-**Run a research query that returns a Qur'an citation, and confirm the citation
-appears with its Arabic text and reference.** Before this fix, a model that
-happened to write the reference with a curly apostrophe would have had that
-citation dropped. If you want to see the difference, the same query run a few
-times is enough — the apostrophe the model picks varies between runs, which is
-exactly why the bug was intermittent and hard to notice.
+There is no live-behaviour difference to go looking for this round — the fix
+only removes a redundant write, it does not change what a renewal grants a
+user. If you want to confirm the audit trail directly: after a real renewal
+goes through, query `token_transactions` for that user and confirm there is no
+`action_type: 'monthly_reset', amount: 1` row for it.
 
 ---
 
-## Previous round — commit `eee8fe9` (already deployed and verified)
+## Earlier rounds (deployed and verified)
 
-28 of 29 functions redeployed; `mcp` was held back by platform policy and picks
-up its change on the next publish (wrapper-only diff, so the live version
-behaves identically). `npm run smoke:functions` reported 29/29. Kept here
-because the two risks it called out — a missed new `_shared/` file, and Lovable
-"tidying" the exported `handle()` — apply to every future round.
+- **Round 1** (`eee8fe9`): all 29 functions given an exported `handle(req)`;
+  `vector-search` stopped returning `200 {results: []}` for every failure.
+  28/29 redeployed, `mcp` picked up on next publish (wrapper-only diff).
+  `npm run smoke:functions` 29/29.
+- **Round 2** (`dea6fb7`): `citationVerifier`'s apostrophe-class fix (was
+  silently dropping real Qur'an citations). `research-query` redeployed.
+  29/29.
+
+The two risks called out in round 1 apply to every future round: a missed new
+`_shared/` file, and Lovable "tidying" the exported `handle()` back into an
+inline `Deno.serve`. Both have held so far.
