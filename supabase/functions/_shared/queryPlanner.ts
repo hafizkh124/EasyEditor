@@ -35,6 +35,12 @@ export interface QueryPlan {
     source_types: Array<"quran" | "hadith">;
     collections: string[];
     surah: number | null;
+    /** Ayah number within `surah`. Only ever set when `surah` is too -- a
+     *  verse without its surah identifies nothing. The prompt has always
+     *  promised to parse "البقرہ 255" as a "reference" intent, but until
+     *  2026-08-24 there was nowhere to put the 255, so the ayah half was
+     *  silently dropped. The word-by-word Quran lookup needs both halves. */
+    verse: number | null;
     /** Tier-2 classical disciplines to also search (fiqh/fatwa/tafsir/lughat/
      *  rijal/nahw). Empty for pure Quran/Hadith questions — additive dimension,
      *  it never removes the Quran/Hadith channels. */
@@ -72,6 +78,7 @@ Decide:
      "Bukhari" are all bukhari — but never invent an ID that is not listed:
      ${booksPromptList()}
    - "surah": surah number if the user named one, else null.
+   - "verse": ayah number within that surah if the user named one ("البقرہ 255" → surah 2, verse 255), else null. Never set verse without surah.
    - "disciplines": subset of ["fiqh","fatwa","tafsir","lughat","rijal","nahw"], [] unless the question is clearly about the classical literature of that discipline. Use "fiqh" for فقہی مسائل / اقوالِ مذاہب, "fatwa" for فتاویٰ, "tafsir" for تفسیرِ آیت / اقوالِ مفسرین, "lughat" for لغوی معنیٰ / مادہ, "rijal" for راوی کا حال / جرح و تعدیل, "nahw" for نحو و صرف / اعراب. This is ADDITIVE — it does not replace the Quran/Hadith scope.
 
 3. "arabic_surface_forms" — THE MOST IMPORTANT FIELD. The actual Arabic words as they appear in scripture. Think about the triliteral root and give the real inflected forms, WITHOUT the definite article ال and WITHOUT proclitic prefixes (و ف ب ل ك) — the search layer adds those itself.
@@ -88,7 +95,7 @@ Decide:
 6. "is_proper_noun" — true only when the counted/searched term is a person or place NAME (موسى, ابراهيم, مكة). false for ordinary nouns (قتال, نية, صلاة).
 
 Output shape:
-{"intent":"...","scope":{"source_types":[...],"collections":[...],"surah":null,"disciplines":[]},"arabic_surface_forms":[...],"related_concepts":[...],"semantic_query_ar":"...","is_proper_noun":false}`;
+{"intent":"...","scope":{"source_types":[...],"collections":[...],"surah":null,"verse":null,"disciplines":[]},"arabic_surface_forms":[...],"related_concepts":[...],"semantic_query_ar":"...","is_proper_noun":false}`;
 
 /** Heuristic intent detection — used when the model is unavailable. */
 function heuristicIntent(query: string): QueryIntent {
@@ -117,7 +124,7 @@ function heuristicScope(query: string): QueryPlan["scope"] {
     : wantsHadith && !wantsQuran ? ["hadith"]
     : ["quran", "hadith"];
 
-  return { source_types, collections, surah: null, disciplines: detectDisciplines(query) };
+  return { source_types, collections, surah: null, verse: null, disciplines: detectDisciplines(query) };
 }
 
 /** Keep only Arabic-script tokens — the lexical channel searches content_ar,
@@ -182,6 +189,15 @@ export function coercePlan(raw: unknown, query: string): QueryPlan {
   const surahRaw = Number(o.scope?.surah);
   const surah = Number.isInteger(surahRaw) && surahRaw >= 1 && surahRaw <= 114 ? surahRaw : null;
 
+  // 286 is Al-Baqarah's ayah count, the longest surah -- a cheap upper bound
+  // that rejects a hallucinated 9999 without needing a per-surah table. A
+  // verse is dropped unless its surah survived validation too: "ayah 255" with
+  // no surah points at 114 different ayat, so it is not a reference at all.
+  const verseRaw = Number(o.scope?.verse);
+  const verse = surah !== null && Number.isInteger(verseRaw) && verseRaw >= 1 && verseRaw <= 286
+    ? verseRaw
+    : null;
+
   // Disciplines: model-picked wins; otherwise keep whatever the keyword
   // heuristic detected (same safety-net pattern as collections).
   const modelDisciplines = coerceDisciplines(o.scope?.disciplines);
@@ -202,6 +218,7 @@ export function coercePlan(raw: unknown, query: string): QueryPlan {
       // heuristic found (the model sometimes omits an explicitly named book).
       collections: collections.length > 0 ? collections : fb.scope.collections,
       surah: surah ?? fb.scope.surah,
+      verse: verse ?? fb.scope.verse,
       disciplines,
     },
     arabic_surface_forms: forms.length > 0 ? forms.slice(0, 8) : fb.arabic_surface_forms,

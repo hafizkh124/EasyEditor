@@ -133,6 +133,47 @@ describe("book name detection", () => {
   });
 });
 
+describe("query planner ayah references", () => {
+  it("keeps a verse the model returned alongside its surah", () => {
+    const plan = coercePlan({
+      intent: "reference",
+      scope: { source_types: ["quran"], collections: [], surah: 2, verse: 255, disciplines: [] },
+      arabic_surface_forms: ["الكرسي"],
+      semantic_query_ar: "آية الكرسي",
+    }, "البقرہ 255");
+    expect(plan.scope.surah).toBe(2);
+    expect(plan.scope.verse).toBe(255);
+  });
+
+  it("drops a verse that arrives without a surah", () => {
+    // "ayah 255" with no surah points at 114 different verses — it is not a
+    // reference at all, and the word-by-word lookup must not act on it.
+    const plan = coercePlan({
+      intent: "reference",
+      scope: { source_types: ["quran"], collections: [], surah: null, verse: 255, disciplines: [] },
+      arabic_surface_forms: ["نية"],
+      semantic_query_ar: "النية",
+    }, "آیت 255");
+    expect(plan.scope.verse).toBeNull();
+  });
+
+  it("rejects an out-of-range or hallucinated verse", () => {
+    for (const verse of [0, -3, 9999, "abc"]) {
+      const plan = coercePlan({
+        intent: "reference",
+        scope: { source_types: ["quran"], collections: [], surah: 2, verse, disciplines: [] },
+        arabic_surface_forms: ["نية"],
+        semantic_query_ar: "النية",
+      }, "البقرہ");
+      expect(plan.scope.verse, `verse ${verse} should have been rejected`).toBeNull();
+    }
+  });
+
+  it("defaults verse to null on the model-less fallback plan", () => {
+    expect(fallbackPlan("نیت سے متعلق آیات").scope.verse).toBeNull();
+  });
+});
+
 describe("query planner scoping", () => {
   it("keeps a valid canonical id and drops an invented one", () => {
     const plan = coercePlan({

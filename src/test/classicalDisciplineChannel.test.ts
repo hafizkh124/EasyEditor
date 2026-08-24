@@ -83,7 +83,7 @@ describe("classicalChannel", () => {
     const plan = planFor("نیت سے متعلق آیات");
 
     const rows = await classicalChannel(fake.client, plan, {
-      source_types: [], collections: [], surah: null, disciplines: [],
+      source_types: [], collections: [], surah: null, verse: null, disciplines: [],
     });
 
     expect(rows).toEqual([]);
@@ -98,7 +98,7 @@ describe("classicalChannel", () => {
     const plan = planFor("راوی کا حال بیان کریں");
 
     const rows = await classicalChannel(fake.client, plan, {
-      source_types: [], collections: [], surah: null, disciplines: ["rijal"],
+      source_types: [], collections: [], surah: null, verse: null, disciplines: ["rijal"],
     });
 
     expect(rows).toHaveLength(1);
@@ -114,7 +114,7 @@ describe("classicalChannel", () => {
     const plan = planFor("راوی کا حال");
 
     await classicalChannel(fake.client, plan, {
-      source_types: [], collections: [], surah: null, disciplines: ["rijal"],
+      source_types: [], collections: [], surah: null, verse: null, disciplines: ["rijal"],
     });
 
     const call = fake.rpcCalls.find((c) => c.fn === "match_scholarly_documents");
@@ -133,7 +133,7 @@ describe("classicalChannel", () => {
     const plan = planFor("راوی کا حال");
 
     const rows = await classicalChannel(fake.client, plan, {
-      source_types: [], collections: [], surah: null, disciplines: ["rijal"],
+      source_types: [], collections: [], surah: null, verse: null, disciplines: ["rijal"],
     });
 
     expect(rows).toHaveLength(1);
@@ -149,7 +149,7 @@ describe("classicalChannel", () => {
     const plan = planFor("راوی کا حال");
 
     const rows = await classicalChannel(fake.client, plan, {
-      source_types: [], collections: [], surah: null, disciplines: ["rijal"],
+      source_types: [], collections: [], surah: null, verse: null, disciplines: ["rijal"],
     });
 
     expect(rows).toHaveLength(1);
@@ -164,7 +164,7 @@ describe("classicalChannel", () => {
     const plan = planFor("راوی کا حال");
 
     await expect(classicalChannel(fake.client, plan, {
-      source_types: [], collections: [], surah: null, disciplines: ["rijal"],
+      source_types: [], collections: [], surah: null, verse: null, disciplines: ["rijal"],
     })).resolves.toEqual([]);
   });
 });
@@ -192,7 +192,7 @@ describe("urdufatwa reachability (Corpus Atlas finding #5)", () => {
     const plan = planFor("اس مسئلے پر فتویٰ کیا ہے؟");
 
     const rows = await classicalChannel(fake.client, plan, {
-      source_types: [], collections: [], surah: null, disciplines: ["fatwa"],
+      source_types: [], collections: [], surah: null, verse: null, disciplines: ["fatwa"],
     });
 
     const call = fake.rpcCalls.find((c) => c.fn === "match_scholarly_documents");
@@ -212,7 +212,7 @@ describe("urdufatwa reachability (Corpus Atlas finding #5)", () => {
     const plan = planFor("زکوٰۃ کے بارے میں فتاویٰ");
 
     const rows = await classicalChannel(fake.client, plan, {
-      source_types: [], collections: [], surah: null, disciplines: ["fatwa"],
+      source_types: [], collections: [], surah: null, verse: null, disciplines: ["fatwa"],
     });
 
     expect(rows.map((r) => r.match_key)).toEqual(["fatwa:urdufatwa:1234"]);

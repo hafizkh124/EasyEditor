@@ -658,6 +658,7 @@ export async function findCitations(input: FindCitationsInput): Promise<Citation
     source_types: input.scopeOverride?.source_types ?? plan.scope.source_types,
     collections: input.scopeOverride?.collections ?? plan.scope.collections,
     surah: plan.scope.surah,
+    verse: plan.scope.verse,
     disciplines: input.scopeOverride?.disciplines ?? plan.scope.disciplines,
   };
 
