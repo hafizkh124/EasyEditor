@@ -111,6 +111,7 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
     { value: "hadith", label: t("editor.filter_hadith"), count: counts.hadith },
     { value: "tafsir", label: t("editor.filter_tafsir"), count: counts.tafsir },
     { value: "shamela", label: t("editor.filter_shamela"), count: counts.shamela },
+    { value: "other", label: t("editor.filter_other"), count: counts.other },
   ];
 
   return (

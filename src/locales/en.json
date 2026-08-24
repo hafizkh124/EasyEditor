@@ -829,6 +829,7 @@
   "editor.filter_hadith": "Hadith",
   "editor.filter_tafsir": "Tafsir",
   "editor.filter_shamela": "Shamela",
+  "editor.filter_other": "Other",
   "editor.source_unavailable": "unavailable",
   "editor.tafsir_source_label": "Tafsir source",
   "editor.tafsir_source_default": "All sources",
