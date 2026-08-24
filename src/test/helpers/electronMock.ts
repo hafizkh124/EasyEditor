@@ -30,11 +30,16 @@ export interface ElectronMock {
     handlers: Map<string, IpcHandler>;
   };
   shell: { openExternal: ReturnType<typeof vi.fn> };
-  app: { getVersion: ReturnType<typeof vi.fn> };
+  app: {
+    getVersion: ReturnType<typeof vi.fn>;
+    /** Defaults to throwing — tests that need a real path override this per file. */
+    getPath: ReturnType<typeof vi.fn>;
+  };
   BrowserWindow: {
     getFocusedWindow: ReturnType<typeof vi.fn>;
     fromWebContents: ReturnType<typeof vi.fn>;
   };
+  dialog: { showSaveDialog: ReturnType<typeof vi.fn> };
   /** Convenience: invoke a registered handler with a fake IPC event. */
   invoke: (channel: string, ...args: unknown[]) => unknown;
 }
@@ -50,10 +55,20 @@ export function createElectronMock(): ElectronMock {
       },
     },
     shell: { openExternal: vi.fn(async () => undefined) },
-    app: { getVersion: vi.fn(() => "0.0.0-test") },
+    app: {
+      getVersion: vi.fn(() => "0.0.0-test"),
+      getPath: vi.fn((key: string) => {
+        throw new Error(`electronMock: app.getPath("${key}") has no default — set it in the test file`);
+      }),
+    },
     BrowserWindow: {
       getFocusedWindow: vi.fn(() => null),
       fromWebContents: vi.fn(() => null),
+    },
+    dialog: {
+      showSaveDialog: vi.fn(
+        async (): Promise<{ canceled: boolean; filePath?: string }> => ({ canceled: true, filePath: undefined }),
+      ),
     },
     invoke: (channel, ...args) => {
       const fn = handlers.get(channel);

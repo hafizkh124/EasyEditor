@@ -1,7 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { ALLOWED_IPC_CHANNELS } from './registry.js';
 import { estimateImport } from '../shamela/estimate.js';
-import { importShamelaBooks, filterAlreadyImported } from '../shamela/import.js';
 import { getWorkspaceDbService } from './workspaceHandlers.js';
 import {
   detectShamelaInstallation,

@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 + P1 shipped 2026-08-24 across 5 rounds; P2 in progress (rounds 6-7); P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 shipped 2026-08-24 across 5 rounds; P2 in progress (rounds 6-8); P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
 §1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
 P1 have landed. Everything from §3 onward that is not marked ✅ is still a
@@ -12,10 +12,10 @@ proposal.
 
 | Measure | Baseline | Now |
 |---|---|---|
-| Test files executed by `npm test` | 96 | **117** |
-| Tests | 771 passed, 11 skipped | **1333 passed, 11 skipped, 0 failing** |
+| Test files executed by `npm test` | 96 | **120** |
+| Tests | 771 passed, 11 skipped | **1407 passed, 11 skipped, 0 failing** |
 | Wall-clock (`npm test`) | 179.9 s | ~90–160 s (fixtures share the machine with everything else running) |
-| Coverage number | **did not exist** | **32.12 % lines** (baseline was 25.45 %) |
+| Coverage number | **did not exist** | **32.9 % lines** (baseline was 25.45 %) |
 | E2E tests | 0 | 0 *(P3)* |
 | Edge-function handlers reachable from a test | 0 of 29 | **29 of 29** |
 | Deno tests run by no pipeline | 3 files | **0** — ported into the vitest suite |
@@ -477,7 +477,7 @@ the gate gets disabled within a month.
 | P1 | `check-subscription-expiry`, `reset-monthly-quotas`, `process-email-queue` | G1 | ✅ done — **found a bug in the test fixture itself, caught by its own first run** |
 | P2 | Electron IPC (`registry`, `systemHandlers`, `workspaceHandlers`, `aiHandlers`) | G4 | ✅ done — **found the untested prototype-pollution guard** |
 | P2 | Migration runner tests against temp SQLite files | G4 | ✅ done — 3 mutation-survivors, all test-design fixes, no production bug |
-| P2 | `shamelaHandlers`, `tafsirHandlers`, `voiceHandlers` | G4 | half day |
+| P2 | `shamelaHandlers`, `tafsirHandlers`, `voiceHandlers` | G4 | ✅ done — found 2 dead imports, no production bugs |
 | P2 | SSE/streaming reassembly + abort tests | — | half day |
 | P3 | Playwright `_electron` launch smoke in `release.yml` | E2E | 1 day |
 | P3 | Replace the four grep-tests made redundant by P1 | G8 | 2 h |
@@ -694,19 +694,7 @@ prototype-pollution guard disabled, `constructor` added to that allowlist,
 removed from `aiHandlers.ts`'s catch block, and `redactKeyFromLog`'s pattern
 match disabled.
 
-## G4 — Electron's security boundary ◐ *IPC layer and the migration runner closed*
-
-`electron/lib/urlAllowlist.ts` (P0), `electron/ipc/registry.ts`,
-`systemHandlers.ts`, `workspaceHandlers.ts`, the `AI_INVOKE` dispatch (P2 round
-6), and `electron/db/migrations/runner.ts` (P2 round 7) are tested. **Still
-open:** `electron/ipc/shamelaHandlers.ts`, `tafsirHandlers.ts`,
-`voiceHandlers.ts` — large, native-process- and file-heavy dispatchers, but
-`switch`-based rather than the `service[name]` pattern `workspaceHandlers.ts`
-had to guard against, so they carry the lower end of this category's risk.
-`electron/db/schema.ts`, `open.ts`, `vectorSearch.ts`, and the individual
-`workspaceStore/*.ts` modules already have partial coverage from
-pre-existing tests (`readerState.test.ts` and others use the real schema
-against `:memory:`); `electron/preload.ts` remains untested.
+## G4 — Electron's security boundary ✅ *see the round-8 section below — IPC layer and migration runner both closed*
 
 **Round 7, same day: the migration runner.** `electron/db/migrations/runner.ts`
 is what SPEC-M5 risk R14 is about — a pre-migration backup and versioned,
@@ -763,8 +751,72 @@ All of round 7 mutation-tested (4/4 caught, after the three fixes above):
 the backup step removed, the version stamp no longer written, the idempotent
 safety net removed, and the migration no longer transaction-wrapped.
 
-Next: the client-side subscription modules, then the remaining Electron IPC
-handlers (`shamelaHandlers`, `tafsirHandlers`, `voiceHandlers`).
+**Round 8, next day (2026-08-25): the remaining three IPC handlers.**
+`tafsirHandlers.ts` (22 tests), `voiceHandlers.ts` (30), `shamelaHandlers.ts`
+(22) — closing out G4's Electron IPC list entirely. All three are
+`switch`-based (not `workspaceHandlers.ts`'s `service[name]` pattern), so the
+risk here was state-machine correctness and a couple of genuine security
+boundaries rather than prototype pollution:
+
+- **tafsir**: Principle 5 — "never let `uvx tafsir-mcp` silently download
+  ~214 MB" — a local connect must refuse outright when the database isn't
+  present, not trigger the download itself. The install flow's module-level
+  state (`installState`/`installAbort`) was tested for the properties that
+  are easy to get subtly wrong: a second `install:start` while one is already
+  running returns the existing state rather than restarting it, a cancel
+  reports `idle` (not `error`), and a genuine failure reports `error` with
+  the real message and *rethrows* — the state machine has to get the
+  distinction between "the user stopped this" and "this broke" right.
+- **voice**: FR-6.6's online-consent gate (edge-tts must never be reached
+  without explicit `onlineConsent === true`, and an online failure has to
+  fall back to local Piper rather than leaving the user with silence — and
+  report why, so a fallback result is never mistaken for online quality) and
+  `VOICE_SAVE_CLONE_SAMPLE`'s path-traversal defense, a renderer-supplied
+  filename written to disk behind two independent guards. Also: per-window
+  audiobook-export cancellation, keyed by `event.sender.id` and stored in
+  module-level state shared across every call — the same class of
+  easy-to-leak-between-windows risk as tafsir's install flow.
+- **shamela**: the single-in-flight-import guard (SPEC-M5.9 FR-2) and
+  `readBook`'s numeric page re-sort — Lucene's `TermRangeQuery` order is not
+  guaranteed to be reading order, so a lexicographic sort would put page
+  `"10"` before page `"2"`.
+
+No production bugs in the IPC logic itself, but two more first-contact
+typecheck issues from pulling these files into the TS program for the first
+time: `shamelaHandlers.ts` had two genuinely dead imports
+(`importShamelaBooks`, `filterAlreadyImported` — both are only ever called
+through the `service` object from `getWorkspaceDbService()`, never via the
+direct import), and several of this round's own mock functions needed
+explicit return-type annotations rather than relying on inference from their
+first call site — the same class of issue as round 6's `aiHandlers.test.ts`,
+now familiar enough to fix quickly rather than re-diagnose from scratch.
+
+One mutation was deliberately left off the list rather than forced to pass:
+`voiceHandlers.ts`'s path-traversal defense has TWO independent guards
+(character-allowlist + a resolved-path prefix check), and no test can catch
+the second one being deleted — every input that passes guard 1 (an
+allowlisted character set with no `/` or `\`, plus rejecting anything
+starting with `.`) provably cannot make `targetPath` escape `clonesDir`, so
+guard 2 never has anything left to catch. This is legitimate
+defense-in-depth against a *future* weakening of guard 1, not something
+today's inputs can exercise — recorded in a comment in
+`voiceHandlers.test.ts` so a future "why didn't this survive get caught"
+investigation doesn't have to rediscover it.
+
+All of round 8 mutation-tested (8/8 caught, with the one documented
+exception above).
+
+## G4 — Electron IPC layer: done. Migration runner: done.
+
+Everything in `electron/ipc/*.ts` now has tests: `registry.ts`,
+`systemHandlers.ts`, `workspaceHandlers.ts`, `aiHandlers.ts` (round 6),
+`tafsirHandlers.ts`, `voiceHandlers.ts`, `shamelaHandlers.ts` (round 8), plus
+`electron/db/migrations/runner.ts` (round 7). **Still open:**
+`electron/preload.ts`; the rest of `electron/db/*` beyond what pre-existing
+tests already cover through `workspaceStore/*.ts`; no E2E on the packaged
+build.
+
+Next: the client-side subscription modules, then whatever is left in P3.
 
 ## G3 — done
 
