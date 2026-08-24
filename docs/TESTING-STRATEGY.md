@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 + P1 shipped & deployed 2026-08-24, P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 + the `createClient` fake shipped 2026-08-24; P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
 §1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
 P1 have landed. Everything from §3 onward that is not marked ✅ is still a
@@ -12,10 +12,10 @@ proposal.
 
 | Measure | Baseline | Now |
 |---|---|---|
-| Test files executed by `npm test` | 96 | **103** |
-| Tests | 771 passed, 11 skipped | **1006 passed, 11 skipped, 0 failing** |
-| Wall-clock (`npm test`) | 179.9 s | **99.7 s** (−45 %, with 235 more tests) |
-| Coverage number | **did not exist** | **28.9 % lines** (baseline was 25.45 %) |
+| Test files executed by `npm test` | 96 | **105** |
+| Tests | 771 passed, 11 skipped | **1088 passed, 11 skipped, 0 failing** |
+| Wall-clock (`npm test`) | 179.9 s | ~136 s (with 317 more tests) |
+| Coverage number | **did not exist** | **29.65 % lines** (baseline was 25.45 %) |
 | E2E tests | 0 | 0 *(P3)* |
 | Edge-function handlers reachable from a test | 0 of 29 | **29 of 29** |
 | Deno tests run by no pipeline | 3 files | **0** — ported into the vitest suite |
@@ -74,6 +74,20 @@ Two things that only surfaced because the tests were written:
    now carry `degraded: true` and a `reason`. Given that a silent
    `vector-search` domain bug has already cost this project a debugging round,
    the distinction is worth making explicit.
+5. **A typographic apostrophe was silently discarding real citations.**
+   `citationVerifier`'s reference parser matched `qur['']?an` — a class holding
+   three copies of U+0027, meaning the curly variants it was plainly meant to
+   accept had been flattened to straight quotes, most likely by an editor
+   normalising smart quotes. So `Qur'an 2:267` with a typographic apostrophe —
+   the form language models actually emit — failed to parse, and a **real,
+   verifiable verse was rejected as unverifiable and dropped from the answer**,
+   with nothing in the response saying so. This is the same failure mode as the
+   citation/reference-list mismatch fixed earlier in the project, arriving by a
+   different route. The class now carries all seven variants plus the academic
+   transliteration `Qurʾān`. They are literal characters, so the same flattening
+   could recur — the guard is the regression test, which asserts each variant
+   parses and fails CI if the class is narrowed again. (Verified: re-flattening
+   the class breaks 7 tests.)
 4. **`verify-receipt` had never been typechecked.** Pulling it into `tsconfig`
    surfaced `admin: ReturnType<typeof createClient>`, which instantiates the
    schema generics as `never` and makes every `.update({…})` argument
@@ -108,7 +122,7 @@ will not start.
 
 ## 3. Gaps, ranked by risk
 
-### G1 — The money path has no tests at all ◐ *(the decision is now tested; the handler I/O is not)*
+### G1 — The money path has no tests at all ✅ *closed for verify-receipt*
 
 `verify-receipt` (344 LOC), `verify-renewal-receipt` (255), `check-subscription-expiry`
 (184), `reset-monthly-quotas` (103), `process-email-queue` (363) — none are
@@ -122,12 +136,23 @@ Blast radius: wrong tier granted, replay of a `payment_reference`, tokens
 allocated twice, or a paying user silently downgraded. All of these are
 user-visible, hard to detect, and awkward to reverse.
 
-**Done:** the decision itself is now `_shared/receiptDecision.ts` — pure, shared
-by both receipt functions instead of duplicated, and covered by 52 tests. Writing
-them exposed the short-fragment hole described in §1. **Still open:** the handler
-I/O around it — replay check, storage download, the DB writes — plus
-`check-subscription-expiry`, `reset-monthly-quotas`, `process-email-queue`, and
-the client-side subscription modules. Those need the §5.1 seam first.
+**Done:** the decision is now `_shared/receiptDecision.ts` — pure, shared by both
+receipt functions instead of duplicated, covered by 52 tests, and writing them
+exposed the short-fragment hole described in §1.
+
+**Also done:** `src/test/helpers/fakeSupabase.ts` fakes `createClient`, which
+unblocked everything past the auth wall. `verifyReceiptActivation.test.ts` (40
+tests) now covers the replay check, `storagePath` ownership, the storage-download
+failure, and every write `autoApprove` issues — tier, 30-day expiry, usage-counter
+reset, token allocation, the payment log, and that a failed subscription write
+credits no wallet. Those 40 were checked against six deliberate mutations
+(60-day expiry, disabled replay check, removed ownership check, wrong token
+allocation, un-reset counters, removed receiver guard) and **all six were
+caught** — the tests bite rather than merely pass.
+
+**Still open:** `check-subscription-expiry`, `reset-monthly-quotas`,
+`process-email-queue`, and the client-side subscription modules
+(`subscriptionLifecycle`, `planTiers`, `tierUpgrade`, `referral`).
 
 ### G2 — No edge-function handler is callable from a test ✅ *closed*
 
@@ -148,14 +173,17 @@ specifiers with no npm counterpart (`std/http/server.ts`,
 `@lovable.dev/email-js`). `src/types/deno-edge.d.ts` carries the compile-time
 half of the same mapping.
 
-### G3 — The `_shared/` modules that matter most are the untested ones
+### G3 — The `_shared/` modules that matter most are the untested ones ◐ *`citationVerifier` closed*
 
 `citationVerifier.ts` — the safety net that drops hallucinated citations before
-the client renders them — has no test. Nor do `aiGateway.ts`, `rateLimit.ts`,
-`citationCandidates.ts`, `segmentClaims.ts`, `arabicRoot.ts`, `researchPrompts.ts`,
-`stopwords.ts`. Given that citation integrity has already been a shipped bug
-class in this project, the verifier is the single highest-value unit-test target
-in the repo.
+the client renders them — had no test, in a project where citation integrity has
+already been a shipped bug class.
+
+**Done:** 42 tests, mostly negative (nothing unverifiable survives), plus the
+positive guarantee that the stored matn and `source_url` override whatever the
+model wrote. Writing them found the apostrophe bug in §1. Still untested:
+`aiGateway.ts`, `rateLimit.ts`, `citationCandidates.ts`, `segmentClaims.ts`,
+`arabicRoot.ts`, `researchPrompts.ts`, `stopwords.ts`.
 
 ### G4 — Electron's security boundary is untested ◐ *`urlAllowlist` closed; IPC and db/ still open*
 
@@ -433,7 +461,9 @@ the gate gets disabled within a month.
 | P0 | jsdom → node environment split (promoted from P2 after measuring) | G7 | ✅ done |
 | P1 | Export `handle(req)` from all 29 functions | G2 | ✅ done |
 | P1 | HTTP contract test across all 29 (CORS preflight, malformed body, empty body) + verify-receipt's request gate | G2 | ✅ done — **found the vector-search finding** |
-| P1 | `citationVerifier` rejection-path tests | G3 | half day |
+| P1 | Fake for `createClient` (`src/test/helpers/fakeSupabase.ts`) | G1/G3 | ✅ done |
+| P1 | verify-receipt past the auth wall — replay, ownership, activation writes | G1 | ✅ done — 40 tests, 6/6 mutations caught |
+| P1 | `citationVerifier` rejection-path tests | G3 | ✅ done — **found the apostrophe bug** |
 | P1 | `verify-renewal-receipt`, `check-subscription-expiry`, `reset-monthly-quotas` | G1 | 1 day |
 | P2 | Electron IPC + migration-runner tests against temp SQLite | G4 | 1–2 days |
 | P2 | SSE/streaming reassembly + abort tests | — | half day |
@@ -441,10 +471,16 @@ the gate gets disabled within a month.
 | P3 | Replace the four grep-tests made redundant by P1 | G8 | 2 h |
 | P3 | Per-path coverage thresholds, ratchet | G6 | 1 h |
 
-P0 and the seam half of P1 are done. The highest-value work left is a fake for
-`createClient`: it is the one dependency standing between the current tests and
-everything past the auth wall — the replay check on `payment_reference`,
-`storagePath` ownership, and `autoApprove`'s writes to tier, expiry and token
-allocation. `src/test/verifyReceiptHandler.test.ts` lists those gaps explicitly
-at the bottom of the file rather than leaving them implied. The same fake
-unblocks `citationVerifier` and the remaining subscription functions.
+P0 and P1 are done, including the `createClient` fake that was the blocker.
+
+Three of the four bugs found so far were found *by writing the test*, not by
+reading the code — the receiver short-fragment hole, `vector-search`'s silent
+200, and the apostrophe class. That is the argument for continuing down the
+backlog rather than declaring the coverage number good enough: each of those was
+invisible to review and to the smoke script, and each was in a path where
+failure is silent by construction.
+
+Next, in order: the remaining subscription functions (`verify-renewal-receipt`
+now shares its decision with `verify-receipt` but has none of its handler tests),
+then `citationCandidates` and `segmentClaims`, then the Electron IPC and
+migration-runner work in P2.
