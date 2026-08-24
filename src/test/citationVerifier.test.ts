@@ -19,7 +19,11 @@ import {
 } from "../../supabase/functions/_shared/citationVerifier.ts";
 
 /** A row as `scholarly_documents` stores it. */
+// `source_type` matters now that the fake applies `.eq()` for real (see
+// fakeSupabase.ts) — verifyQuran/verifyHadith both filter on it before their
+// `.or(...)` expression, which the fake does not interpret.
 const quranRow = (over: Record<string, unknown> = {}) => ({
+  source_type: "quran",
   content: "And spend of the good things which ye have earned",
   content_ar: "أَنفِقُوا مِن طَيِّبَاتِ مَا كَسَبْتُمْ",
   citation_ref: { surah_number: 2, verse: 267, surah_name: "Al-Baqarah" },
@@ -29,6 +33,7 @@ const quranRow = (over: Record<string, unknown> = {}) => ({
 });
 
 const hadithRow = (over: Record<string, unknown> = {}) => ({
+  source_type: "hadith",
   content: "Charity does not decrease wealth",
   content_ar: "مَا نَقَصَتْ صَدَقَةٌ مِنْ مَالٍ",
   citation_ref: { book: "sahih-muslim", collection: "Sahih Muslim", hadith_number: "2588", grade: "sahih" },
