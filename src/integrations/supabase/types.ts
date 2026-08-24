@@ -1741,6 +1741,7 @@ export type Database = {
         Returns: {
           citation_ref: Json
           content: string
+          content_ar: string
           domain: string
           id: string
           language: string
