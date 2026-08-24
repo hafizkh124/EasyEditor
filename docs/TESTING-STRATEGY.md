@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 + P1 shipped 2026-08-24 across 5 rounds; P2 started (round 6, Electron IPC); P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 shipped 2026-08-24 across 5 rounds; P2 in progress (rounds 6-7); P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
 §1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
 P1 have landed. Everything from §3 onward that is not marked ✅ is still a
@@ -12,10 +12,10 @@ proposal.
 
 | Measure | Baseline | Now |
 |---|---|---|
-| Test files executed by `npm test` | 96 | **116** |
-| Tests | 771 passed, 11 skipped | **1320 passed, 11 skipped, 0 failing** |
-| Wall-clock (`npm test`) | 179.9 s | ~83 s (with 549 more tests) |
-| Coverage number | **did not exist** | **32.01 % lines** (baseline was 25.45 %) |
+| Test files executed by `npm test` | 96 | **117** |
+| Tests | 771 passed, 11 skipped | **1333 passed, 11 skipped, 0 failing** |
+| Wall-clock (`npm test`) | 179.9 s | ~90–160 s (fixtures share the machine with everything else running) |
+| Coverage number | **did not exist** | **32.12 % lines** (baseline was 25.45 %) |
 | E2E tests | 0 | 0 *(P3)* |
 | Edge-function handlers reachable from a test | 0 of 29 | **29 of 29** |
 | Deno tests run by no pipeline | 3 files | **0** — ported into the vitest suite |
@@ -476,7 +476,8 @@ the gate gets disabled within a month.
 | P1 | `verify-renewal-receipt` handler tests | G1 | ✅ done |
 | P1 | `check-subscription-expiry`, `reset-monthly-quotas`, `process-email-queue` | G1 | ✅ done — **found a bug in the test fixture itself, caught by its own first run** |
 | P2 | Electron IPC (`registry`, `systemHandlers`, `workspaceHandlers`, `aiHandlers`) | G4 | ✅ done — **found the untested prototype-pollution guard** |
-| P2 | `shamelaHandlers`, `tafsirHandlers`, `voiceHandlers`, migration-runner tests against temp SQLite | G4 | 1 day |
+| P2 | Migration runner tests against temp SQLite files | G4 | ✅ done — 3 mutation-survivors, all test-design fixes, no production bug |
+| P2 | `shamelaHandlers`, `tafsirHandlers`, `voiceHandlers` | G4 | half day |
 | P2 | SSE/streaming reassembly + abort tests | — | half day |
 | P3 | Playwright `_electron` launch smoke in `release.yml` | E2E | 1 day |
 | P3 | Replace the four grep-tests made redundant by P1 | G8 | 2 h |
@@ -693,19 +694,77 @@ prototype-pollution guard disabled, `constructor` added to that allowlist,
 removed from `aiHandlers.ts`'s catch block, and `redactKeyFromLog`'s pattern
 match disabled.
 
-## G4 — Electron's security boundary ✅ *closed for the IPC layer*
+## G4 — Electron's security boundary ◐ *IPC layer and the migration runner closed*
 
-`electron/lib/urlAllowlist.ts` (P0) and now `electron/ipc/registry.ts`,
-`systemHandlers.ts`, `workspaceHandlers.ts`, and the `AI_INVOKE` dispatch (P2
-round 6) are tested. **Still open:** `electron/ipc/shamelaHandlers.ts`,
-`tafsirHandlers.ts`, `voiceHandlers.ts` — large, native-process- and
-file-heavy dispatchers, but `switch`-based rather than the `service[name]`
-pattern `workspaceHandlers.ts` had to guard against, so they carry the lower
-end of this category's risk. `electron/db/*` (schema, migration runner,
-vectorSearch) remains untested; `electron/preload.ts` remains untested.
+`electron/lib/urlAllowlist.ts` (P0), `electron/ipc/registry.ts`,
+`systemHandlers.ts`, `workspaceHandlers.ts`, the `AI_INVOKE` dispatch (P2 round
+6), and `electron/db/migrations/runner.ts` (P2 round 7) are tested. **Still
+open:** `electron/ipc/shamelaHandlers.ts`, `tafsirHandlers.ts`,
+`voiceHandlers.ts` — large, native-process- and file-heavy dispatchers, but
+`switch`-based rather than the `service[name]` pattern `workspaceHandlers.ts`
+had to guard against, so they carry the lower end of this category's risk.
+`electron/db/schema.ts`, `open.ts`, `vectorSearch.ts`, and the individual
+`workspaceStore/*.ts` modules already have partial coverage from
+pre-existing tests (`readerState.test.ts` and others use the real schema
+against `:memory:`); `electron/preload.ts` remains untested.
+
+**Round 7, same day: the migration runner.** `electron/db/migrations/runner.ts`
+is what SPEC-M5 risk R14 is about — a pre-migration backup and versioned,
+transactional schema migrations for every user's local database. It only
+type-imports from `open.ts` (`import type { SqliteDatabase }`, erased at
+compile time), so unlike the IPC handlers this needed no `electron` mock at
+all — 13 tests run against real temporary SQLite files (not `:memory:` or a
+fake: the whole point is filesystem behaviour — `fs.existsSync`,
+better-sqlite3's own `.backup()` rather than a raw file copy, which the
+source's own comment explains is necessary because WAL mode means a plain
+`fs.copyFileSync` of the main file alone can silently miss committed data
+still sitting in the `-wal` file).
+
+Three mutations survived the first pass here, and each exposed a real flaw in
+the test rather than in the code:
+
+12. **A redundant safety net in `schema.ts` masked a mutation in `runner.ts`.**
+    Removing `runner.ts`'s own `setVersionStmt.run(...)` call didn't fail any
+    test, because `schema.ts`'s `initializeDatabaseSchema` has its own
+    fallback (`if (!getMeta.get('schema_version')) setMeta.run(...,'1')`) —
+    and the only real migration today (v1) happens to call
+    `initializeDatabaseSchema` from inside its `up()`. The redundancy is real
+    and harmless for v1, but it meant the test couldn't tell "runner.ts wrote
+    the version" from "schema.ts's fallback wrote it instead," which matters
+    for whatever v2 turns out to be, if it doesn't itself touch `corpus_meta`.
+    Fixed by stubbing `initializeDatabaseSchema` to a no-op for one test,
+    isolating runner.ts's own responsibility.
+13. **An idempotency test recreated the exact table it was supposed to be
+    checking for.** It dropped `corpus_meta`, then manually re-created
+    `corpus_meta` itself, then asserted `corpus_meta` exists — trivially true
+    whether or not the safety-net call under test ever ran. Fixed by dropping
+    a table the test does NOT itself recreate (`projects`) and confirming only
+    the safety net's own second call brings it back.
+14. **The rollback test's failure point couldn't distinguish "wrapped in a
+    transaction" from "not."** Throwing at the very start of a migration's
+    `up()` means `setVersionStmt.run()` is never reached either way — that
+    line is simply sequential code after the throw, with or without
+    `db.transaction()` around it. Proving the transaction boundary is real
+    needed a migration that does some observable DDL work and THEN throws:
+    the mock now creates a marker table before throwing, and the test checks
+    that table is gone afterward — which is only true if better-sqlite3
+    actually rolled the whole callback back, since SQLite auto-commits each
+    statement when there is no ambient transaction.
+
+None of these were bugs in `runner.ts` — all three were fixed test-side. Given
+this is the third round in a row where a mutation survived because of a test
+design flaw rather than a missing case (round 5's mirror-file mistake, round
+6's fixture length, now this), the mutation-testing pass is reliably finding
+something worth fixing nearly every time it runs — which is the argument for
+keeping it as a standing step before any new suite ships, not a one-off gut
+check.
+
+All of round 7 mutation-tested (4/4 caught, after the three fixes above):
+the backup step removed, the version stamp no longer written, the idempotent
+safety net removed, and the migration no longer transaction-wrapped.
 
 Next: the client-side subscription modules, then the remaining Electron IPC
-handlers and the migration runner.
+handlers (`shamelaHandlers`, `tafsirHandlers`, `voiceHandlers`).
 
 ## G3 — done
 
