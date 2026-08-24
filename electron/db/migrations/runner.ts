@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import type { SqliteDatabase } from '../open.js';
 import { initializeDatabaseSchema } from '../schema.js';
 import { logger } from "../../lib/logger.js";

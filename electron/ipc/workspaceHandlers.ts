@@ -13,7 +13,10 @@ let dbService: WorkspaceDbService | null = null;
  * managed to send an arbitrary string over this channel. Keep this list in
  * sync with WorkspaceDbService's public methods.
  */
-const ALLOWED_WORKSPACE_METHODS = new Set<string>([
+// Exported so a test can check the allowlist against WorkspaceDbService's
+// real prototype — the "keep this list in sync" comment above is otherwise an
+// unenforced promise.
+export const ALLOWED_WORKSPACE_METHODS = new Set<string>([
   'getCurrentUserId',
   'listProjects', 'createProject', 'getProject',
   'listDocuments', 'getDocument', 'findBlankDocument',
