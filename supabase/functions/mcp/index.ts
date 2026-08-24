@@ -185,4 +185,13 @@ var mcp_default = defineMcp({
 
 // lovable-mcp-supabase-entry.ts
 import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@0.20.0/stacks/supabase";
-Deno.serve(createSupabaseHandler(mcp_default, { functionName: "mcp" }));
+
+/**
+ * Exported for symmetry with the other 28 functions, so a test can reach the
+ * handler without starting a server. Unlike them this one was never an inline
+ * arrow — the handler is built by the Lovable MCP stack, so there is no request
+ * logic of ours to test here beyond that it is constructed at all.
+ */
+export const handle = createSupabaseHandler(mcp_default, { functionName: "mcp" });
+
+Deno.serve(handle);

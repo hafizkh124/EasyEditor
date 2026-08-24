@@ -9,7 +9,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-Deno.serve(async (req) => {
+/**
+ * Exported so the request logic is reachable from a test. Everything below
+ * used to live inside an anonymous `serve(async (req) => …)`, which left the
+ * HTTP layer — validation, auth rejection, error mapping, CORS on error
+ * responses — verifiable only by the post-deploy smoke script.
+ */
+export async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -152,4 +158,6 @@ Rules:
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
-});
+}
+
+Deno.serve(handle);
