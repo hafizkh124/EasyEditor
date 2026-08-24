@@ -18,7 +18,7 @@
 // keyword detector here is only the safety net when the model is unavailable.
 
 export const DISCIPLINE_SLUGS = [
-  "fiqh", "fatwa", "tafsir", "lughat", "rijal", "nahw",
+  "fiqh", "fatwa", "tafsir", "lughat", "rijal", "nahw", "hadith_term",
 ] as const;
 
 export type Discipline = (typeof DISCIPLINE_SLUGS)[number];
@@ -31,6 +31,12 @@ export const DISCIPLINE_LABELS_UR: Record<Discipline, string> = {
   lughat: "لغت",
   rijal:  "رجال",
   nahw:   "نحو و صرف",
+  // Slug is "hadith_term", not the more idiomatic "mustalah", because it has
+  // to equal the value ingest wrote into citation_ref->>'discipline' --
+  // classicalSemanticChannel post-filters on exactly that string. Renaming the
+  // slug would mean rewriting 66 rows to gain nothing a user ever sees; the
+  // Urdu label below is what actually reaches the scope line.
+  hadith_term: "اصطلاحاتِ حدیث",
 };
 
 /** scholarly_documents.domain values each discipline can live in. Used to
@@ -61,6 +67,13 @@ export const DISCIPLINE_DOMAINS: Record<Discipline, string[]> = {
   lughat: ["shamela", "openiti-index", "islamicurdubooks-lexicon"],
   rijal:  ["shamela", "openiti-index", "islamicurdubooks-rijal"],
   nahw:   ["shamela", "openiti-index"],
+  // 66 rows: the اصطلاحاتِ حدیث taxonomy (13 categories -- types of hadith by
+  // acceptance, by narrator count, by chain interruption, ...). Deliberately
+  // excluded from ranked search by the Corpus Atlas's reasoning (definitions
+  // would crowd out real hadith in top-k), and reachable here only because
+  // the discipline channel fires ONLY when the query is explicitly about
+  // terminology -- see DISCIPLINE_MARKERS.hadith_term below.
+  hadith_term: ["islamicurdubooks-misc"],
 };
 
 /** Conservative Urdu/Arabic/English keyword patterns per discipline, used ONLY
@@ -76,6 +89,11 @@ const DISCIPLINE_MARKERS: Record<Discipline, RegExp> = {
   // Bare "صرف" is an everyday word ("only/spending"), so require the more
   // specific forms (علم النحو / النحو / الصرف / إعراب / ترکیب نحوی).
   nahw:   /علم\s*النحو|النحو|الصرف|إعراب|اعرابِ|ترکیب\s*نحوی|\bnahw\b|\bi'?rab\b/i,
+  // Names of the terminology itself, never words that merely appear near a
+  // hadith. Bare "حدیث" is excluded deliberately — it is in almost every query
+  // this app sees, and matching it would attach a definitions corpus to every
+  // ordinary hadith question.
+  hadith_term: /اصطلاح|اصطلاحات|مصطلح|علوم\s*الحدیث|اصول\s*حدیث|حدیث\s*کی\s*اقسام|متواتر|آحاد|مرفوع|موقوف|مقطوع|معلق|مرسل|مدلس|\bmustalah\b/i,
 };
 
 /** Detect disciplines named/implied in a free-text query (fallback path). */

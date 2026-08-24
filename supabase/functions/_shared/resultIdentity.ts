@@ -15,6 +15,9 @@
  *  IslamicResult from islamic-api-fetch satisfies it without an import (that
  *  module also calls serve() at load). */
 export interface IdentifiableResult {
+  /** scholarly_documents.domain, when the caller has it. Only consulted to
+   *  separate content KINDS that share a locus — see the wbw case below. */
+  domain?: string;
   citation_ref?: {
     book?: string;
     collection?: string;
@@ -49,11 +52,20 @@ export function resultIdentity(r: IdentifiableResult): string | null {
   const c = r.citation_ref ?? {};
 
   // Quran: surah + ayah is a complete, corpus-independent identity.
+  //
+  // ...except that surah+ayah names a LOCUS, not a passage, and two different
+  // KINDS of content can sit at the same locus. The word-by-word gloss of
+  // 2:255 carries surah_number 2 / verse 255 exactly like the ayah's own text
+  // does, so keying both as `quran:2:255` would make the de-duplicator delete
+  // one of them — silently answering a "لفظی ترجمہ" question with the plain
+  // ayah, or vice versa. They are complementary, never duplicates, so the
+  // gloss gets its own namespace.
   if (c.surah_number != null && c.verse != null) {
     const surah = Number(c.surah_number);
     const verse = Number(c.verse);
     if (Number.isFinite(surah) && Number.isFinite(verse)) {
-      return `quran:${surah}:${verse}`;
+      const kind = r.domain === "islamicurdubooks-wbw" ? "wbw" : "quran";
+      return `${kind}:${surah}:${verse}`;
     }
   }
 

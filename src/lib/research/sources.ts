@@ -72,6 +72,7 @@ export const RESEARCH_SOURCES: ResearchSource[] = [
   { id: "classical-tafsir", ur: "تفسیر ابن کثیر", note: "آیت بہ آیت تفسیر", group: "classical" },
   { id: "classical-lughat", ur: "لغتِ قرآن", note: "الفاظ کے لغوی معانی و مادہ", group: "classical" },
   { id: "classical-fatwa", ur: "فتاویٰ (موضوعاتی)", note: "22,775 اردو فتاویٰ — مفہوم کی بنیاد پر تلاش", group: "classical" },
+  { id: "classical-mustalah", ur: "اصطلاحاتِ حدیث", note: "علوم الحدیث کی 66 اصطلاحات — متواتر، آحاد، مرسل، مدلس وغیرہ", group: "classical" },
 
   // Tier A — third-party APIs.
   { id: "dorar", ur: "دُرر السنیہ", note: "احادیث اور اُن کے درجات", group: "api" },

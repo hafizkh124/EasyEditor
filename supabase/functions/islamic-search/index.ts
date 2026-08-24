@@ -7,6 +7,7 @@ import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
 import { planQuery } from "../_shared/queryPlanner.ts";
 import { resolveCollectionSlugs, scopeHasArabicMatn } from "../_shared/collections.ts";
 import { resultIdentity, dedupeResults } from "../_shared/resultIdentity.ts";
+import { wordByWordChannel } from "../_shared/wordByWord.ts";
 import { personalVectorChannel, personalLexicalChannel, classicalChannel } from "../_shared/citationEngine.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
@@ -83,12 +84,18 @@ const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 // pseudo-domain that can only return zero rows would repeat the shamela-index
 // mistake already avoided in src/lib/research/sources.ts. Both become one-line
 // additions here the day their rows carry a discipline.
-const TIER_D_DOMAINS = ["classical-rijal", "classical-tafsir", "classical-lughat", "classical-fatwa"];
+const TIER_D_DOMAINS = ["classical-rijal", "classical-tafsir", "classical-lughat", "classical-fatwa", "classical-mustalah"];
 const TIER_D_DISCIPLINE: Record<string, string> = {
   "classical-rijal": "rijal",
   "classical-tafsir": "tafsir",
   "classical-lughat": "lughat",
   "classical-fatwa": "fatwa",
+  // Corpus Atlas finding #6: the اصطلاحاتِ حدیث taxonomy (66 rows) was
+  // reachable by NOTHING -- not a single mention anywhere in the edge
+  // functions. It is deliberately kept out of ranked search (definitions
+  // would crowd real hadith out of top-k), so a discipline channel that fires
+  // only on explicit terminology questions is exactly the right shape for it.
+  "classical-mustalah": "hadith_term",
 };
 
 const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS, ...TIER_D_DOMAINS];
@@ -146,6 +153,14 @@ function buildContextBlock(results: IslamicResult[]): string {
         cite.takhreej ? `Takhreej: ${cite.takhreej}` : "",
       ].filter(Boolean);
       citeLine = `REFERENCE: ${parts.join(" — ")}`;
+    } else if (r.domain === "islamicurdubooks-wbw") {
+      // Labelled explicitly as a gloss, not as the ayah: the content is a list
+      // of per-word meanings, and a model handed it under a bare "Quran —
+      // Al-Baqarah 2:255" reference could quote the word list as if it were
+      // the verse's translation.
+      const num = Number(cite.surah_number) || 0;
+      const name = cite.surah_name || SURAH_NAMES[num] || (num ? `Surah ${num}` : "Quran");
+      citeLine = `REFERENCE: لفظی ترجمہ (word-by-word gloss) — ${name} ${num || "?"}:${cite.verse ?? "?"}`;
     } else if (r.domain === "alquran" || r.domain === "quran-com" || r.domain === "tanzil") {
       const num = Number(cite.surah_number) || 0;
       const name = cite.surah_name || SURAH_NAMES[num] || (num ? `Surah ${num}` : "Quran");
@@ -686,6 +701,7 @@ serve(async (req) => {
             source_types: [],
             collections: [],
             surah: null,
+            verse: null,
             disciplines,
           });
           return rows.slice(0, 10).map((row): IslamicResult => ({
@@ -696,6 +712,33 @@ serve(async (req) => {
           }));
         } catch (e) {
           console.error("Tier D (classical) error:", e);
+          return [];
+        }
+      })()
+    );
+
+    // Tier W: word-by-word Quran gloss (لفظی ترجمہ), Corpus Atlas finding #6.
+    // A keyed fetch, not a search — see _shared/wordByWord.ts for why this
+    // corpus must never enter ranked search. Fires only when the query asks
+    // for a per-word gloss AND the planner resolved a complete surah+ayah, so
+    // an ordinary Quran question costs nothing. No source-picker entry: with
+    // no ayah named there is nothing for a checkbox to do, and offering one
+    // would imply a browsable corpus that this is not.
+    pushTimed("tierW:word-by-word",
+      (async (): Promise<IslamicResult[]> => {
+        try {
+          const plan = await queryPlanPromise;
+          const rows = await wordByWordChannel(
+            supabase, query, plan?.scope.surah ?? null, plan?.scope.verse ?? null,
+          );
+          return rows.map((row): IslamicResult => ({
+            domain: row.domain,
+            content: row.content,
+            citation_ref: row.citation_ref ?? {},
+            language: (row.language as "ar" | "en" | "ur") ?? "ur",
+          }));
+        } catch (e) {
+          console.error("Tier W (word-by-word) error:", e);
           return [];
         }
       })()
@@ -719,7 +762,7 @@ serve(async (req) => {
           const plan = await queryPlanPromise;
           const effectivePlan = plan ?? {
             intent: "topical" as const,
-            scope: { source_types: [], collections: [], surah: null, disciplines: [] },
+            scope: { source_types: [], collections: [], surah: null, verse: null, disciplines: [] },
             arabic_surface_forms: [],
             related_concepts: [],
             semantic_query_ar: query,
