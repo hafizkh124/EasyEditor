@@ -128,12 +128,20 @@ async function tryGeminiTts(
   return { ok: false, error: "Exhausted retries" };
 }
 
+/** Set once Cloud TTS returns a permission error (API disabled / key blocked).
+ *  That state never self-heals within an isolate's lifetime, so we stop paying
+ *  the extra round-trip and go straight to the Lovable AI fallback. */
+let cloudTtsDisabled = false;
+
 /** Fallback: Google Cloud Text-to-Speech REST API → returns LINEAR16 WAV bytes */
 async function tryGoogleCloudTts(
   text: string,
   personaId: string,
   apiKey: string
 ): Promise<{ ok: true; wavBytes: Uint8Array } | { ok: false; error: string }> {
+  if (cloudTtsDisabled) {
+    return { ok: false, error: "Cloud TTS skipped (API disabled for this Google project)" };
+  }
   const voice = getCloudTtsVoice(personaId);
   const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
   const body = {
@@ -152,9 +160,15 @@ async function tryGoogleCloudTts(
 
     if (!resp.ok) {
       const errText = await resp.text();
-      console.error(`[TTS] Cloud TTS error ${resp.status}:`, errText.slice(0, 300));
+      if (resp.status === 403 || resp.status === 401) {
+        cloudTtsDisabled = true;
+        console.warn(`[TTS] Cloud TTS disabled for this project (${resp.status}); skipping it from now on.`);
+      } else {
+        console.error(`[TTS] Cloud TTS error ${resp.status}:`, errText.slice(0, 300));
+      }
       return { ok: false, error: `Cloud TTS error ${resp.status}: ${errText.slice(0, 200)}` };
     }
+
 
     const data = await resp.json();
     if (!data.audioContent) {
