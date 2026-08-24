@@ -1,15 +1,24 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Globe, RefreshCw, BookOpen, Info, HelpCircle } from "lucide-react";
+import { Globe, RefreshCw, BookOpen, Info, HelpCircle, Download, ExternalLink } from "lucide-react";
 import { useLocalShamela } from "@/hooks/useLocalShamela";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ShamelaBridgeGuideModal } from "@/components/mcp/ShamelaBridgeGuideModal";
 
 const DEFAULT_BRIDGE_URL = "http://127.0.0.1:8000";
+const DESKTOP_RELEASES_URL = "https://github.com/hafizkh124/EasyEditor/releases";
+
+// Bounded auto-poll after the user downloads the bridge: check every 3s so
+// the badge can flip to Active on its own once start-bridge.bat is running,
+// without ever becoming a permanent interval (useLocalShamela's own mount
+// probe deliberately stays one-shot — see its comment on the loop risk).
+// Capped at 2 minutes; stops immediately on connect or unmount.
+const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_ATTEMPTS = 40;
 
 /**
  * Web counterpart to `ShamelaConnectPanel` (UX-v1 P7 follow-up). The desktop
@@ -26,12 +35,51 @@ export function ShamelaBridgeConnectPanel() {
     useLocalShamela();
   const [urlDraft, setUrlDraft] = useState(mcpUrl || DEFAULT_BRIDGE_URL);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [zipBytes, setZipBytes] = useState<number | null>(null);
+  const [polling, setPolling] = useState(false);
+  const pollAttempts = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/downloads/shamela-bridge.json")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((meta: { bytes?: number } | null) => {
+        if (!cancelled && meta?.bytes) setZipBytes(meta.bytes);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // Armed only after the user clicks the download button — not on every
+  // mount — and torn down the moment it either connects or hits the cap.
+  useEffect(() => {
+    if (!polling || connected) {
+      setPolling(false);
+      return;
+    }
+    const id = window.setInterval(() => {
+      pollAttempts.current += 1;
+      if (pollAttempts.current >= POLL_MAX_ATTEMPTS) {
+        setPolling(false);
+        return;
+      }
+      testConnection().catch(() => {});
+    }, POLL_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [polling, connected, testConnection]);
 
   const handleTest = async () => {
     const url = urlDraft.trim() || DEFAULT_BRIDGE_URL;
     setMcpUrl(url);
     await testConnection(url);
   };
+
+  const handleDownload = () => {
+    pollAttempts.current = 0;
+    setPolling(true);
+  };
+
+  const zipSizeLabel = zipBytes ? `${(zipBytes / (1024 * 1024)).toFixed(1)} MB` : null;
 
   return (
     <Card dir="rtl" className="border-border">
@@ -60,6 +108,33 @@ export function ShamelaBridgeConnectPanel() {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {!connected && (
+          <div className="space-y-2">
+            <Label className="text-xs">{t("shamela.bridge.get_bridge")}</Label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button asChild size="sm" className="flex-1 gap-1.5" onClick={handleDownload}>
+                <a href="/downloads/shamela-bridge.zip" download>
+                  <Download className="h-3.5 w-3.5" />
+                  {t("shamela.bridge.download_zip")}
+                  {zipSizeLabel ? ` (${zipSizeLabel})` : ""}
+                </a>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="flex-1 gap-1.5">
+                <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  {t("shamela.bridge.download_desktop")}
+                </a>
+              </Button>
+            </div>
+            {polling && (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                {t("shamela.bridge.waiting_for_bridge")}
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="space-y-1.5">
           <Label className="text-xs">{t("shamela.bridge.url_label")}</Label>
           <div className="flex gap-2">
@@ -110,6 +185,7 @@ export function ShamelaBridgeConnectPanel() {
             </p>
             <p>1. {t("shamela.bridge.setup_step1")}</p>
             <p>2. {t("shamela.bridge.setup_step2")}</p>
+            <p>3. {t("shamela.bridge.setup_step3")}</p>
           </div>
         )}
       </CardContent>

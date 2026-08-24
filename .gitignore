@@ -50,6 +50,8 @@ stats.html
 # tracked copy only ever produces phantom diffs carrying the last builder's
 # commit hash.
 public/app-version.json
+public/downloads/shamela-bridge.zip
+public/downloads/shamela-bridge.json
 
 # Built by scripts/build-shamela-helper.mjs. The jar itself IS committed
 # (SPEC-M5 R26 — an ordinary build must not need a JDK); only the staging copy

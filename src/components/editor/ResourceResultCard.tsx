@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isRtlText } from "@/utils/textUtils";
 import { formatCitation, type ResourceResult } from "@/lib/editor/citationFormat";
+import { sourceTypeOf } from "./useResourceSearch";
+import { SOURCE_CHIP_STYLE } from "./sourceColors";
 
 interface ResourceResultCardProps {
   result: ResourceResult;
@@ -13,12 +15,19 @@ interface ResourceResultCardProps {
 /** One retrieved passage, with the citation it will carry into the document. */
 export const ResourceResultCard = ({ result, onInsert, t }: ResourceResultCardProps) => {
   const rtl = isRtlText(result.content);
+  const source = sourceTypeOf(result);
+  const badgeStyle = SOURCE_CHIP_STYLE[source];
 
   return (
     <div className="rounded-lg border border-border bg-muted/60 p-3 group">
+      {badgeStyle && (
+        <span className={cn("inline-block rounded-full border px-2 py-0.5 text-xs font-medium leading-none", badgeStyle)}>
+          {t(`editor.filter_${source}` as import("@/lib/i18n").TranslationKey)}
+        </span>
+      )}
       <p
         dir={rtl ? "rtl" : "ltr"}
-        className={cn("text-sm leading-relaxed line-clamp-4", rtl && "text-right")}
+        className={cn("text-sm leading-relaxed line-clamp-4 mt-1.5", rtl && "text-right")}
       >
         {result.content}
       </p>

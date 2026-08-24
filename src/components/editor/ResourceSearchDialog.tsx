@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Search, Loader2, BookOpen, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -6,12 +7,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { isRtlText } from "@/utils/textUtils";
+import { isDesktop } from "@/core/backend";
 import { formatCitation, type ResourceResult } from "@/lib/editor/citationFormat";
 import { useResourceSearch, type SourceFilter } from "./useResourceSearch";
+import { SOURCE_CHIP_STYLE } from "./sourceColors";
 import { ResourceCountCard } from "./ResourceCountCard";
 import { ResourceResultCard } from "./ResourceResultCard";
+import { useShamelaAvailability } from "@/hooks/useShamelaAvailability";
+import { tafsirCall } from "@/lib/tafsir/tafsirService";
+import { parseTafsirSources, type TafsirSourceOption } from "@/lib/tafsir/parseTafsir";
+import { TafsirGuideModal } from "@/components/tafsir/TafsirGuideModal";
+import { ShamelaGuideModal } from "@/components/mcp/ShamelaGuideModal";
+import { ShamelaBridgeGuideModal } from "@/components/mcp/ShamelaBridgeGuideModal";
 
 interface ResourceSearchDialogProps {
   open: boolean;
@@ -25,11 +35,31 @@ interface ResourceSearchDialogProps {
   t: import("@/lib/i18n").Translator;
 }
 
+/** Sources with their own "not set up" guide, reachable from a disabled chip.
+ *  Quran/Hadith are always-on cloud sources and never render disabled. */
+const GUIDED_SOURCES: ReadonlySet<SourceFilter> = new Set(["tafsir", "shamela"]);
+
 const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }: ResourceSearchDialogProps) => {
   const {
     query, setQuery, runSearch, isSearching, searched,
     response, results, visibleResults, counts, filter, setFilter,
+    tafsirAvailable, tafsirSource, setTafsirSource,
   } = useResourceSearch(t);
+  const shamelaAvailability = useShamelaAvailability();
+  const [tafsirSources, setTafsirSources] = useState<TafsirSourceOption[]>([]);
+  const [guideFor, setGuideFor] = useState<"tafsir" | "shamela" | null>(null);
+
+  const ensureTafsirSources = async () => {
+    if (tafsirSources.length > 0) return;
+    try {
+      const res = await tafsirCall("list_tafsir_sources", {});
+      setTafsirSources(parseTafsirSources({ text: res.text, structured: res.structured }));
+    } catch {
+      // Leave the dropdown at "all sources" — a missing source list narrows
+      // convenience, not correctness (search_in_tafsir without `source` still
+      // searches every source).
+    }
+  };
 
   const insertOne = (r: ResourceResult) => {
     onInsert(r.content, formatCitation(r.citation_ref, r.source_url));
@@ -70,7 +100,21 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
   const arabicTerms = response?.plan_summary?.arabic_terms ?? [];
   const scopeLabel = response?.plan_summary?.scope_label ?? "";
 
+  const availability: Partial<Record<SourceFilter, boolean>> = {
+    tafsir: tafsirAvailable,
+    shamela: shamelaAvailability.available,
+  };
+
+  const chips: Array<{ value: SourceFilter; label: string; count: number }> = [
+    { value: "all", label: t("editor.filter_all"), count: results.length },
+    { value: "quran", label: t("editor.filter_quran"), count: counts.quran },
+    { value: "hadith", label: t("editor.filter_hadith"), count: counts.hadith },
+    { value: "tafsir", label: t("editor.filter_tafsir"), count: counts.tafsir },
+    { value: "shamela", label: t("editor.filter_shamela"), count: counts.shamela },
+  ];
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
@@ -91,6 +135,23 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
             className={cn(isRtlText(query) && "text-right")}
             placeholder={t("editor.search_placeholder")}
           />
+          {filter === "tafsir" && tafsirAvailable && (
+            <Select
+              value={tafsirSource || "__all__"}
+              onValueChange={(v) => setTafsirSource(v === "__all__" ? "" : v)}
+              onOpenChange={(o) => { if (o) void ensureTafsirSources(); }}
+            >
+              <SelectTrigger className="w-[160px] shrink-0 text-xs">
+                <SelectValue placeholder={t("editor.tafsir_source_label")} />
+              </SelectTrigger>
+              <SelectContent dir="rtl">
+                <SelectItem value="__all__">{t("editor.tafsir_source_default")}</SelectItem>
+                {tafsirSources.map((s) => (
+                  <SelectItem key={s.slug} value={s.slug}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button onClick={runSearch} disabled={isSearching || !query.trim()} className="gap-1.5 shrink-0">
             {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             {t("editor.search_btn")}
@@ -125,30 +186,43 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
             )}
 
             {/* ── Filters + insert all ────────────────────────────────────── */}
-            {results.length > 0 && (
-              <div className="flex items-center justify-between gap-2">
+            {searched && !isSearching && (
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-1 flex-wrap">
-                  {([
-                    ["all", t("editor.filter_all"), results.length],
-                    ["quran", t("editor.filter_quran"), counts.quran],
-                    ["hadith", t("editor.filter_hadith"), counts.hadith],
-                    ["shamela", "مکتبہ شاملہ (آف لائن)", counts.shamela],
-                  ] as const).map(([value, label, n]) =>
-                    n > 0 || value === "all" ? (
+                  {chips.map(({ value, label, count }) => {
+                    const guided = GUIDED_SOURCES.has(value);
+                    const isAvailable = !guided || availability[value];
+
+                    if (guided && !isAvailable) {
+                      return (
+                        <button
+                          key={value}
+                          onClick={() => setGuideFor(value as "tafsir" | "shamela")}
+                          className="rounded-md border border-dashed border-border px-2 py-1 text-xs font-medium text-muted-foreground/70 hover:bg-muted transition-colors"
+                        >
+                          {label} ({t("editor.source_unavailable")})
+                        </button>
+                      );
+                    }
+
+                    if (count === 0 && value !== "all") return null;
+
+                    const colorClass = SOURCE_CHIP_STYLE[value];
+                    return (
                       <button
                         key={value}
-                        onClick={() => setFilter(value as SourceFilter)}
+                        onClick={() => setFilter(value)}
                         className={cn(
-                          "rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                          "rounded-md px-2 py-1 text-xs font-medium transition-colors border border-transparent",
                           filter === value
                             ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:bg-muted",
+                            : colorClass || "text-muted-foreground hover:bg-muted",
                         )}
                       >
-                        {label} ({n})
+                        {label} ({count})
                       </button>
-                    ) : null,
-                  )}
+                    );
+                  })}
                 </div>
                 {visibleResults.length > 1 && (
                   <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={insertAll}>
@@ -170,6 +244,14 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
         </ScrollArea>
       </DialogContent>
     </Dialog>
+
+    <TafsirGuideModal open={guideFor === "tafsir"} onOpenChange={(o) => !o && setGuideFor(null)} />
+    {isDesktop() ? (
+      <ShamelaGuideModal open={guideFor === "shamela"} onOpenChange={(o) => !o && setGuideFor(null)} />
+    ) : (
+      <ShamelaBridgeGuideModal open={guideFor === "shamela"} onOpenChange={(o) => !o && setGuideFor(null)} />
+    )}
+    </>
   );
 };
 

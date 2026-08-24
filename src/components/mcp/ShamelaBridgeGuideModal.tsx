@@ -58,20 +58,20 @@ export function ShamelaBridgeGuideModal({ open, onOpenChange }: ShamelaBridgeGui
           <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/60">
             <div className="flex items-center gap-2 font-bold text-primary text-base">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">۲</span>
-              مرحلہ ۲: Bridge چلائیں
+              مرحلہ ۲: Local Bridge ڈاؤن لوڈ اور ان زپ کریں
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              پروجیکٹ کے <code className="px-1 py-0.5 rounded bg-background border border-border text-xs ltr">tools/shamela-bridge</code> فولڈر میں جا کر <code className="px-1 py-0.5 rounded bg-background border border-border text-xs ltr">start-bridge.bat</code> (ونڈوز) یا <code className="px-1 py-0.5 rounded bg-background border border-border text-xs ltr">start-bridge.sh</code> (Mac/Linux) پر ڈبل کلک کریں۔ ایک ٹرمینل ونڈو کھلے گی — اسے کھلا رہنے دیں، یہی مقامی Bridge سرور ہے۔
+              Settings کے "Shamela 4 — Local Bridge" کارڈ میں "لوکل برج ڈاؤن لوڈ کریں" بٹن دبائیں۔ ڈاؤن لوڈ شدہ زپ فائل کو کہیں بھی (مثلاً Desktop پر) ان زپ کر لیں — کسی خاص فولڈر کی ضرورت نہیں۔
             </p>
           </div>
 
           <div className="space-y-2 rounded-lg border border-border p-4 bg-muted/60">
             <div className="flex items-center gap-2 font-bold text-primary text-base">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">۳</span>
-              مرحلہ ۳: Settings میں "کنکشن جانچیں" دبائیں
+              مرحلہ ۳: Bridge چلائیں
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Bridge چلتے ہی، Settings کے "Shamela 4 — Local Bridge" کارڈ میں "کنکشن جانچیں" بٹن دبائیں۔ پہلی بار کنیکٹ ہونے پر ایپ خودکار طور پر ایک محفوظ رابطہ (pairing) قائم کر لے گی — دوبارہ کچھ کرنے کی ضرورت نہیں۔
+              ان زپ شدہ فولڈر میں <code className="px-1 py-0.5 rounded bg-background border border-border text-xs ltr">start-bridge.bat</code> (ونڈوز) یا <code className="px-1 py-0.5 rounded bg-background border border-border text-xs ltr">start-bridge.sh</code> (Mac/Linux) پر ڈبل کلک کریں۔ ایک ٹرمینل ونڈو کھلے گی — اسے کھلا رہنے دیں، یہی مقامی Bridge سرور ہے۔ Settings کا صفحہ کھلا ہو تو ایپ خود بخود Bridge کو ڈھونڈ کر جوڑ لے گی — کچھ اور دبانے کی ضرورت نہیں؛ چاہیں تو "کنکشن جانچیں" دبا کر فوری تصدیق بھی کر سکتے ہیں۔
             </p>
           </div>
 
@@ -91,9 +91,13 @@ export function ShamelaBridgeGuideModal({ open, onOpenChange }: ShamelaBridgeGui
               سیکیورٹی اور پرائیویسی
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Bridge صرف آپ کے اپنے کمپیوٹر (127.0.0.1) پر سنتا ہے — انٹرنیٹ پر کہیں دستیاب نہیں۔ پہلی کامیاب کنکشن پر ایک خفیہ کوڈ (token) خودکار طور پر بن اور محفوظ ہو جاتا ہے، تاکہ صرف آپ کا اپنا براؤزر ہی اس سے بات کر سکے — کوئی اور مقامی پروگرام نہیں۔ کسی بھی وقت رابطہ دوبارہ قائم کرنا ہو تو <code className="px-1 py-0.5 rounded bg-background border border-border text-xs ltr">tools/shamela-bridge/.bridge-token.json</code> فائل حذف کر کے Bridge دوبارہ چلائیں۔
+              Bridge صرف آپ کے اپنے کمپیوٹر (127.0.0.1) پر سنتا ہے — انٹرنیٹ پر کہیں دستیاب نہیں۔ پہلی کامیاب کنکشن پر ایک خفیہ کوڈ (token) خودکار طور پر بن اور محفوظ ہو جاتا ہے، تاکہ صرف آپ کا اپنا براؤزر ہی اس سے بات کر سکے — کوئی اور مقامی پروگرام نہیں۔ کسی بھی وقت رابطہ دوبارہ قائم کرنا ہو تو ان زپ شدہ فولڈر میں <code className="px-1 py-0.5 rounded bg-background border border-border text-xs ltr">.bridge-token.json</code> فائل حذف کر کے Bridge دوبارہ چلائیں۔
             </p>
           </div>
+
+          <p className="text-xs text-muted-foreground/80 leading-relaxed">
+            Bridge میں شاملہ کیٹلاگ اور تلاش کے لیے <span className="ltr inline-block">shamela-mcp</span> (© Hamoud Alhoqbani، MIT license) شامل ہے۔
+          </p>
         </div>
 
         <div className="flex justify-end pt-4 border-t border-border">

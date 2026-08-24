@@ -24,12 +24,46 @@ function parseJson(text: string): unknown {
   try { return JSON.parse(trimmed); } catch { return undefined; }
 }
 
-/** Pull a JSON object/array out of a text block if it is one. */
+/** A non-null object with at least one key, or a non-empty array. */
+function isUsableObject(value: unknown): boolean {
+  if (value === null || typeof value !== "object") return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return Object.keys(value).length > 0;
+}
+
+/**
+ * Pull a JSON object/array out of a call result. `structured` is preferred,
+ * but only when it actually carries something — a server that wraps its
+ * payload as `structuredContent: {}` while the real JSON sits in `text`
+ * would otherwise make every parser fail even though parseable data was
+ * right there.
+ */
 function bestObject(raw: RawCall): unknown {
-  if (raw.structured !== undefined) return raw.structured;
+  if (isUsableObject(raw.structured)) return raw.structured;
   const parsed = parseJson(raw.text);
   if (Array.isArray(parsed) && typeof parsed[0] === "object") return parsed;
   if (parsed && typeof parsed === "object") return parsed;
+  return raw.structured;
+}
+
+/** True when `text` parses as JSON at all — used to decide whether falling
+ *  back to it as plain prose is safe, or would leak raw JSON to the user. */
+function looksLikeJson(text: string): boolean {
+  return parseJson(text) !== undefined;
+}
+
+/** Unwrap a bare array, or the first array-valued property of a wrapper
+ *  object (`{results: […]}`, `{items: […]}`, `{data: […]}`) — servers are
+ *  not required to return a top-level array, and a wrapper should not read
+ *  as "no results". */
+function asArray(value: unknown): unknown[] | undefined {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object") {
+    for (const key of ["results", "items", "data"]) {
+      const v = (value as Record<string, unknown>)[key];
+      if (Array.isArray(v)) return v;
+    }
+  }
   return undefined;
 }
 
@@ -38,7 +72,10 @@ export function parseAyah(raw: RawCall): TafsirRow {
   const obj = bestObject(raw) as { text?: string; surah?: number; ayah?: number } | undefined;
   let reference = "";
   if (obj?.surah != null && obj?.ayah != null) reference = `سورہ ${obj.surah}:${obj.ayah}`;
-  const text = obj?.text?.trim() || raw.text.trim();
+  // Only degrade to the raw text when it is NOT itself JSON — otherwise a
+  // shape mismatch (parseable JSON with no `.text` field) would surface raw
+  // JSON as the ayah's text, insertable into the document as-is.
+  const text = obj?.text?.trim() || (looksLikeJson(raw.text) ? "" : raw.text.trim());
   return { text, reference, source: "القرآن الكريم" };
 }
 
@@ -48,44 +85,55 @@ export function parseTafsirList(raw: RawCall): TafsirRow[] {
   const list = obj?.tafsirs;
   if (!Array.isArray(list)) return [];
   return list
-    .map((t, i) => ({
-      text: (t.text ?? "").trim(),
-      reference: "",
-      source: t.attribution ?? t.source,
-      _i: i,
-    }))
-    .filter((r) => r.text)
-    .map(({ text, reference, source }) => ({ text, reference, source }));
+    .map((t) => ({ text: (t.text ?? "").trim(), reference: "", source: t.attribution ?? t.source }))
+    .filter((r) => r.text);
 }
 
-/** search_quran_text → array of { surah, ayah, text, snippet }. */
+/** search_quran_text → array of { surah, ayah, text, snippet }, or a wrapper around one. */
 export function parseQuranSearch(raw: RawCall): TafsirRow[] {
-  const arr = bestObject(raw);
-  if (Array.isArray(arr)) {
-    return (arr as Array<{ surah?: number; ayah?: number; text?: string }>)
-      .map((r) => ({
-        text: (r.text ?? "").trim(),
-        reference: r.surah && r.ayah ? `سورہ ${r.surah}:${r.ayah}` : "",
-        source: undefined,
-      }))
-      .filter((r) => r.text);
-  }
-  return [];
+  const arr = asArray(bestObject(raw));
+  if (!arr) return [];
+  return (arr as Array<{ surah?: number; ayah?: number; text?: string }>)
+    .map((r) => ({
+      text: (r.text ?? "").trim(),
+      reference: r.surah && r.ayah ? `سورہ ${r.surah}:${r.ayah}` : "",
+      source: undefined,
+    }))
+    .filter((r) => r.text);
 }
 
-/** search_in_tafsir → array of { ... , text/snippet }. */
+/** search_in_tafsir → array of { ... , text/snippet }, or a wrapper around one. */
 export function parseTafsirSearch(raw: RawCall): TafsirRow[] {
-  const obj = bestObject(raw);
-  if (Array.isArray(obj)) {
-    return (obj as Array<{ text?: string; snippet?: string; source?: string; attribution?: string }>)
-      .map((r) => ({
-        text: (r.text ?? r.snippet ?? "").trim(),
-        reference: "",
-        source: r.attribution ?? r.source,
-      }))
-      .filter((r) => r.text);
-  }
-  return [];
+  const arr = asArray(bestObject(raw));
+  if (!arr) return [];
+  return (arr as Array<{ text?: string; snippet?: string; source?: string; attribution?: string }>)
+    .map((r) => ({
+      text: (r.text ?? r.snippet ?? "").trim(),
+      reference: "",
+      source: r.attribution ?? r.source,
+    }))
+    .filter((r) => r.text);
+}
+
+export interface TafsirSourceOption {
+  slug: string;
+  label: string;
+}
+
+/**
+ * list_tafsir_sources → array of { slug, attribution|name }, or a wrapper
+ * around one. Previously each caller re-implemented this with a raw
+ * `JSON.parse(res.text)` that ignored `res.structured` entirely and left a
+ * silently-empty dropdown on any parse failure (a bare `catch { log }`) — routed
+ * through `bestObject`/`asArray` here instead, so it gets the same
+ * structured-content preference and wrapper-unwrapping every other parser does.
+ */
+export function parseTafsirSources(raw: RawCall): TafsirSourceOption[] {
+  const arr = asArray(bestObject(raw));
+  if (!arr) return [];
+  return (arr as Array<{ slug?: string; attribution?: string; name?: string }>)
+    .map((it) => ({ slug: String(it.slug ?? ""), label: String(it.attribution ?? it.name ?? it.slug ?? "") }))
+    .filter((s) => s.slug);
 }
 
 /** Fallback: split the raw text into paragraph rows when parsing finds nothing. */
