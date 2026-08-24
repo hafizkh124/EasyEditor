@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 + P1 implemented, P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 shipped & deployed 2026-08-24, P2–P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
 §1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
 P1 have landed. Everything from §3 onward that is not marked ✅ is still a
@@ -51,6 +51,14 @@ Two things that only surfaced because the tests were written:
    saving would be "a fraction" of the reported 622 s. Measured directly, one
    trivial test file took **37.5 s under jsdom and 1.37 s under node**. The
    environment split cut the whole suite by 47 %.
+
+> **Deployed 2026-08-24** (commit `eee8fe9` on `main`). 28 of 29 edge functions
+> redeployed; `mcp` was held back by platform policy and picks up the change on
+> the next publish — its diff was wrapper-only, so the live version behaves
+> identically. `npm run smoke:functions` reports 29/29. Still unverified: the
+> `vector-search` happy path, which needs an authenticated research query — the
+> smoke probe posts `{}` and only reaches the pre-existing "Query is required"
+> branch.
 
 ### What P1 turned up
 
