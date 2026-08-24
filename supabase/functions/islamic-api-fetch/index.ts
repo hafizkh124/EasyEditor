@@ -35,6 +35,24 @@ export interface IslamicResult {
     _is_anchor?: boolean;
   };
   language: "ar" | "en" | "ur";
+  /**
+   * True when this passage is known to carry real Arabic matn (scripture or
+   * hadith wording), not merely Urdu prose that happens to contain Arabic
+   * names or terms. Corpus Atlas finding #7 — the corpus's own `language`
+   * column records the corpus's declared READING language and cannot back an
+   * "Arabic only" filter (11 of 14 domains are tagged `ur`, including the
+   * fully-Arabic easyquran-hadith). The only trustworthy signal is
+   * `content_ar IS NOT NULL` per row, which is what every tier below sets
+   * this from.
+   *
+   * `undefined` (not `false`) means "this tier never checked" — Tier C
+   * (live-scraped web pages) has no reliable per-row signal and deliberately
+   * leaves this unset rather than guess. islamic-search's Arabic-only filter
+   * treats unset the same as false (excluded), which is the conservative
+   * choice: a scholar who asked for Arabic-only sources should get fewer,
+   * verified ones, not a source of unknown language.
+   */
+  has_matn?: boolean;
 }
 
 // ── Arabic normalizer (mirrors src/utils/arabicUtils.ts) ─────────────────────
@@ -175,6 +193,7 @@ async function fetchDorar(query: string): Promise<IslamicResult[]> {
           mohdith:       mohdith || undefined,
         },
         language: "ar",
+        has_matn: true, // scraped straight from dorar.net's own Arabic hadith text
       });
     }
 
@@ -202,16 +221,21 @@ async function fetchAlQuran(query: string): Promise<IslamicResult[]> {
     const seen = new Set<string>();
     const results: IslamicResult[] = [];
 
-    for (const item of [...arData.slice(0, 4), ...enData.slice(0, 3)]) {
+    // Arabic-edition hits pushed first, so a dually-matched ayah keeps its
+    // Arabic text: `has_matn` distinguishes them from the English-only tail
+    // below (an ayah the Arabic search missed but the English one found,
+    // where `item.text` is English and there is no Arabic in `content` at
+    // all — Corpus Atlas finding #7 needs that told apart, not assumed).
+    const push = (item: any, hasArabic: boolean) => {
       const key = `${item.surah?.number}:${item.numberInSurah}`;
-      if (seen.has(key)) continue;
+      if (seen.has(key)) return;
       seen.add(key);
       const enMatch = enData.find((e: any) =>
         e.surah?.number === item.surah?.number && e.numberInSurah === item.numberInSurah
       );
       results.push({
         domain: "alquran",
-        content: `${item.text ?? ""}${enMatch ? `\n\n${enMatch.text}` : ""}`,
+        content: `${item.text ?? ""}${hasArabic && enMatch ? `\n\n${enMatch.text}` : ""}`,
         citation_ref: {
           surah_number:  item.surah?.number,
           surah_name:    item.surah?.name,
@@ -220,8 +244,12 @@ async function fetchAlQuran(query: string): Promise<IslamicResult[]> {
           juz:           item.juz,
         },
         language: "ar",
+        has_matn: hasArabic,
       });
-    }
+    };
+
+    for (const item of arData.slice(0, 4)) push(item, true);
+    for (const item of enData.slice(0, 3)) push(item, false);
     return results;
   } catch {
     return [];
@@ -252,6 +280,7 @@ async function fetchQuranCom(query: string): Promise<IslamicResult[]> {
         url:          `https://quran.com/${item.verse_key}`,
       },
       language: "ar",
+      has_matn: true, // item.text is the Arabic ayah from Quran.com's search endpoint
     }));
   } catch {
     return [];

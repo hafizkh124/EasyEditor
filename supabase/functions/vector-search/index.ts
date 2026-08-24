@@ -86,6 +86,7 @@ function rowToIslamicResult(row: any): IslamicResult {
       page:          cite.page != null ? Number(cite.page) : undefined,
     },
     language: (row.language as "ar" | "en" | "ur") ?? "ar",
+    has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
   };
 }
 

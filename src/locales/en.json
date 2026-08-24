@@ -1545,5 +1545,7 @@
   "research.sources_group_all": "Select all",
   "research.sources_group_none": "Clear",
   "research.sources_hint_all": "Every available source is being searched.",
-  "research.sources_hint_some": "Only the selected sources will be searched. Your own library is always included."
+  "research.sources_hint_some": "Only the selected sources will be searched. Your own library is always included.",
+  "research.arabic_matn_only": "Arabic matn only",
+  "research.arabic_matn_only_note": "Only cite passages that carry real Arabic wording, not merely an Urdu translation."
 }

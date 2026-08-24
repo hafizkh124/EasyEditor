@@ -1545,5 +1545,7 @@
   "research.sources_group_all": "تحديد الكل",
   "research.sources_group_none": "إلغاء الكل",
   "research.sources_hint_all": "يجري البحث حاليًا في كل مصدر متاح.",
-  "research.sources_hint_some": "سيتم البحث في المصادر المحددة فقط. مكتبتك الخاصة مشمولة دائمًا."
+  "research.sources_hint_some": "سيتم البحث في المصادر المحددة فقط. مكتبتك الخاصة مشمولة دائمًا.",
+  "research.arabic_matn_only": "المصادر ذات المتن العربي فقط",
+  "research.arabic_matn_only_note": "الاستشهاد فقط بالمقاطع التي تحمل نصًا عربيًا حقيقيًا، وليس مجرد ترجمة أردية."
 }

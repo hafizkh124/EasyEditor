@@ -44,6 +44,9 @@ interface UseResearchChatArgs {
    *  `toSelectedDomains` is what turns that into the `undefined` the backend
    *  reads as ALL_DOMAINS. Sending `[]` straight through would search nothing. */
   selectedDomains: string[];
+  /** Corpus Atlas finding #7 — restrict citations to rows with real Arabic
+   *  matn (content_ar), not the corpus's declared reading language. */
+  requireArabicMatn: boolean;
   strictMode: boolean;
   researchLimitReached: boolean;
   islamicLimitReached: boolean;
@@ -53,7 +56,7 @@ interface UseResearchChatArgs {
 
 export function useResearchChat(args: UseResearchChatArgs) {
   const {
-    user, session, mode, tier, sources, selectedDomains, strictMode,
+    user, session, mode, tier, sources, selectedDomains, requireArabicMatn, strictMode,
     researchLimitReached, islamicLimitReached, assistModes, refetch,
   } = args;
   const { t } = useLanguage();
@@ -219,6 +222,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
       await streamIslamicQuery({
         query: userContent,
         selectedDomains: toSelectedDomains(selectedDomains),
+        requireArabicMatn,
         strictMode,
         chatHistory: prevMessages,
         tier,
@@ -261,7 +265,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         onError: (err) => { toast.error(err); finish(); },
       });
     }
-  }, [mode, citations, strictMode, tier, sources, selectedDomains, user, refetch, saveSession, appendAssistantChunk, assistModes, t]);
+  }, [mode, citations, strictMode, tier, sources, selectedDomains, requireArabicMatn, user, refetch, saveSession, appendAssistantChunk, assistModes, t]);
 
   const handleSendQuery = async () => {
     if (!query.trim() || !session?.access_token) return;

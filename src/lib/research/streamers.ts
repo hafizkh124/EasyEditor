@@ -124,6 +124,7 @@ export async function streamIslamicQuery({
   query,
   selectedDomains,
   selectedLanguages,
+  requireArabicMatn,
   strictMode,
   chatHistory,
   tier,
@@ -135,6 +136,9 @@ export async function streamIslamicQuery({
   query: string;
   selectedDomains?: string[];
   selectedLanguages?: string[];
+  /** Corpus Atlas finding #7 — restrict citations to rows with real Arabic
+   *  matn (content_ar), not the corpus's declared reading language. */
+  requireArabicMatn?: boolean;
   strictMode: boolean;
   chatHistory: ChatMessage[];
   tier: string;
@@ -151,7 +155,7 @@ export async function streamIslamicQuery({
     const resp = await fetch(url, {
       method: "POST",
       headers: getAuthHeaders(accessToken),
-      body: JSON.stringify({ query, selectedDomains, selectedLanguages, strictMode, chatHistory, tier }),
+      body: JSON.stringify({ query, selectedDomains, selectedLanguages, requireArabicMatn, strictMode, chatHistory, tier }),
     });
 
     if (!resp.ok) {

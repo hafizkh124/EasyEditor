@@ -89,6 +89,15 @@ export const ResearchPanel = () => {
     (raw) => sanitizeSelection(JSON.parse(raw) as unknown),
   );
 
+  // Corpus Atlas finding #7 — restrict citations to rows with real Arabic
+  // matn. A query-time modifier, not part of session identity, so it lives
+  // in localStorage like the source selection rather than the DB session row.
+  const [requireArabicMatn, setRequireArabicMatn] = usePersistedState<boolean>(
+    "research_require_arabic_matn",
+    false,
+    (raw) => raw === "true",
+  );
+
   const chat = useResearchChat({
     user,
     session,
@@ -96,6 +105,7 @@ export const ResearchPanel = () => {
     tier,
     sources: [],
     selectedDomains,
+    requireArabicMatn,
     strictMode: mode === "islamic",
     researchLimitReached,
     islamicLimitReached,
@@ -193,6 +203,8 @@ export const ResearchPanel = () => {
           onAssistModesChange={setAssistModes}
           selectedDomains={selectedDomains}
           onSelectedDomainsChange={setSelectedDomains}
+          requireArabicMatn={requireArabicMatn}
+          onRequireArabicMatnChange={setRequireArabicMatn}
           onContinue={chat.handleContinue}
         />
       </div>
