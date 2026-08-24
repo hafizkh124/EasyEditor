@@ -19,7 +19,9 @@
 -- retune anything here; this migration's only job is the added column.
 -- ================================================================
 
-CREATE OR REPLACE FUNCTION public.match_scholarly_documents(
+DROP FUNCTION IF EXISTS public.match_scholarly_documents(vector, double precision, integer, text[], text);
+
+CREATE FUNCTION public.match_scholarly_documents(
   query_embedding vector,
   match_threshold double precision,
   match_count integer,
