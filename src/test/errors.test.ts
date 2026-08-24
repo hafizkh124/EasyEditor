@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock sonner so toast.error is a spy, not a real DOM call

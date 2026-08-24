@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { normalizeArabicForSearch } from '../../shared/text/arabicSearch.js';
 import { normalizeArabic } from '../utils/arabicUtils.js';

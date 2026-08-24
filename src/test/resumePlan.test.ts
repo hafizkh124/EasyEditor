@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { buildBatchPlan, canResumeRun } from "@/lib/tasks/resumePlan";
 import type { TextBatch } from "@/lib/editor/docChunker";

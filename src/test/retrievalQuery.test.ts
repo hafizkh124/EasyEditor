@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { buildRetrievalQuery, perSourceBudget } from "../../supabase/functions/_shared/retrievalQuery";
 

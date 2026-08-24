@@ -16,7 +16,7 @@ export default tseslint.config(
   // 2026-08-23) gets silently overwritten on the next sync and the CI lint
   // gate goes red again with no code change on this side to point at. Ignored
   // here instead of hand-editing a file neither side can keep in sync.
-  { ignores: ["dist", "dist-electron", "release", "supabase/functions/**", "tools/**", "scripts/**", "src/integrations/supabase/previewAuthStorage.ts"] },
+  { ignores: ["dist", "dist-electron", "release", "coverage", "supabase/functions/**", "tools/**", "scripts/**", "src/integrations/supabase/previewAuthStorage.ts"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

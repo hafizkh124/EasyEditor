@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach } from "vitest";
 import { rowToDefinition, type CustomTaskRow } from "@/lib/tasks/customTasks";
 import {

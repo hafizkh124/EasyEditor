@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the chunker so we can fabricate chunk arrays without Web Audio.

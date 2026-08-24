@@ -1,3 +1,4 @@
+// @vitest-environment node
 import ts from "typescript";
 import { readSource, relativeSourcePath, sourceFiles } from "./sourceScan";
 

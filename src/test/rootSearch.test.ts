@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
