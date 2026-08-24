@@ -165,42 +165,56 @@ export const CORPUS_BOOKS: CorpusBook[] = [
     slugs: ["tahawi-shareef"], domains: ["easyquran-hadith"], arabicMatn: true,
     aliases: ["طحاوی", "طحاوي", "الطحاوي", "tahawi"] },
 
-  // ── tohed-hadith only: NO Arabic matn stored anywhere in the corpus ───────
-  // These 12 are reachable through their Urdu translation only. Marked
-  // arabicMatn:false so callers route them to search_documents_smart (which
-  // matches `content`) instead of the content_ar-only scoped RPC.
+  // ── formerly tohed-hadith-only, re-sourced from IUB 2026-08-24 ────────────
+  // These 11 had NO Arabic matn anywhere in the corpus (Corpus Atlas finding
+  // #2) until this date: tohed.com's own export never carried it, confirmed
+  // by scanning all 74,946 rows of data/tohed_hadiths.csv (0 with content_ar,
+  // 0 with a recoverable matn in `content`). Re-scraped from
+  // islamicurdubooks.com instead — full tashkeel matn, hukm, takhreej, and a
+  // complete isnad chain on every book, live-verified before scraping.
+  // 30,931 rows loaded under domain islamicurdubooks-hadith, 30,838 (99.7%)
+  // with content_ar, all embedded. The superseded tohed-hadith rows for these
+  // 11 books (33,446 of them) were then deleted -- the IUB copy is strictly
+  // better (has everything tohed's did, plus matn/hukm/takhreej/isnad it
+  // never did) and keeping both would only invite duplicate citations.
+  //
+  // Two of the eleven were re-slugged along the way: IUB's own registry
+  // (scripts/iub/registry.py) stores "sunan-darqutni" / "sahih-ibn-khuzaimah"
+  // where tohed used bare "darqutni" / "ibn-khuzaimah" -- ground-truthed
+  // against the actual scraped CSVs (data/iub/*.csv), not assumed. The old
+  // tohed slugs are dead now that those rows are gone; not carried forward.
   { id: "ibn-khuzaimah", ur: "صحیح ابن خزیمہ", ar: "صحيح ابن خزيمة",
-    slugs: ["ibn-khuzaimah"], domains: ["tohed-hadith"], arabicMatn: false,
+    slugs: ["sahih-ibn-khuzaimah"], domains: ["islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["خزیمہ", "خزيمة", "khuzaimah"] },
   { id: "sahih-ibn-hibban", ur: "صحیح ابن حبان", ar: "صحيح ابن حبان",
-    slugs: ["sahih-ibn-hibban"], domains: ["tohed-hadith"], arabicMatn: false,
+    slugs: ["sahih-ibn-hibban"], domains: ["islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["حبان", "hibban"] },
   { id: "darqutni", ur: "سنن دارقطنی", ar: "سنن الدارقطني",
-    slugs: ["darqutni"], domains: ["tohed-hadith"], arabicMatn: false,
+    slugs: ["sunan-darqutni"], domains: ["islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["دارقطنی", "الدارقطني", "دارقطني", "darqutni"] },
   { id: "silsilah-sahihah", ur: "سلسلہ احادیث صحیحہ", ar: "سلسلة الأحاديث الصحيحة",
-    slugs: ["silsilah-sahihah"], domains: ["tohed-hadith"], arabicMatn: false,
+    slugs: ["silsilah-sahihah"], domains: ["islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["الصحيحة", "سلسلہ صحیحہ", "silsilah sahihah"] },
   { id: "muntaqa-ibn-al-jarud", ur: "المنتقیٰ لابن الجارود", ar: "المنتقى لابن الجارود",
-    slugs: ["muntaqa-ibn-al-jarud"], domains: ["tohed-hadith"], arabicMatn: false,
+    slugs: ["muntaqa-ibn-al-jarud"], domains: ["islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["المنتقی", "المنتقى", "الجارود", "muntaqa"] },
   { id: "sunan-saeed-bin-mansur", ur: "سنن سعید بن منصور", ar: "سنن سعيد بن منصور",
-    slugs: ["sunan-saeed-bin-mansur"], domains: ["tohed-hadith"], arabicMatn: false,
+    slugs: ["sunan-saeed-bin-mansur"], domains: ["islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["منصور", "سعید", "سعيد"] },
   { id: "lulu-wal-marjan", ur: "اللؤلؤ والمرجان", ar: "اللؤلؤ والمرجان",
-    slugs: ["lulu-wal-marjan"], domains: ["tohed-hadith"], arabicMatn: false,
+    slugs: ["lulu-wal-marjan"], domains: ["islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["اللؤلؤ", "والمرجان", "المرجان"] },
   { id: "sahifa-hammam", ur: "صحیفہ ہمام بن منبہ", ar: "صحيفة همام بن منبه",
-    slugs: ["sahifa-hammam"], domains: ["tohed-hadith"], arabicMatn: false,
+    slugs: ["sahifa-hammam"], domains: ["islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["صحیفہ", "صحيفة", "ہمام", "همام"] },
   { id: "musnad-shafii", ur: "مسند امام شافعی", ar: "مسند الإمام الشافعي",
-    slugs: ["musnad-shafii"], domains: ["tohed-hadith"], arabicMatn: false,
+    slugs: ["musnad-shafii"], domains: ["islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["شافعی", "الشافعي", "شافعي", "shafii"] },
   { id: "musnad-humaydi", ur: "مسند الحمیدی", ar: "مسند الحميدي",
-    slugs: ["musnad-humaydi"], domains: ["tohed-hadith"], arabicMatn: false,
+    slugs: ["musnad-humaydi"], domains: ["islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["الحمیدی", "الحميدي", "humaydi"] },
   { id: "musnad-ishaq", ur: "مسند اسحاق بن راہویہ", ar: "مسند إسحاق بن راهويه",
-    slugs: ["musnad-ishaq"], domains: ["tohed-hadith"], arabicMatn: false,
+    slugs: ["musnad-ishaq"], domains: ["islamicurdubooks-hadith"], arabicMatn: true,
     aliases: ["اسحاق", "إسحاق", "راہویہ", "راهويه", "ishaq"] },
   // Present in tohed WITHOUT Arabic and in IUB WITH Arabic — the IUB copy is
   // what makes an Arabic-term search on this book work, hence arabicMatn:true.

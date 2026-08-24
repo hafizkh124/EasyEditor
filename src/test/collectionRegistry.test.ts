@@ -62,15 +62,25 @@ describe("corpus book registry", () => {
   });
 
   it("knows which books have no Arabic matn anywhere in the corpus", () => {
-    // tohed-hadith-only books: search_documents_scoped filters on
-    // content_ar IS NOT NULL, so an Arabic-only search over these must be
-    // skipped rather than run and timed out.
-    expect(scopeHasArabicMatn(["sahih-ibn-hibban"])).toBe(false);
-    expect(scopeHasArabicMatn(["darqutni", "musnad-ishaq"])).toBe(false);
-    // Mixed scope still has something Arabic to find.
-    expect(scopeHasArabicMatn(["sahih-ibn-hibban", "bukhari"])).toBe(true);
+    // search_documents_scoped filters on content_ar IS NOT NULL, so a scope
+    // made entirely of arabicMatn:false books must skip it rather than run
+    // and time out. As of 2026-08-24 (the tohed-hadith Arabic-gap backfill:
+    // sahih-ibn-hibban, darqutni and 9 others re-sourced from IUB with full
+    // matn) every book in the registry has arabicMatn:true, so there is no
+    // real id to assert the false branch against — verified here instead of
+    // hardcoded against a book that might flip back, so this doesn't rot into
+    // a test that keeps "passing" against a fact that stopped being true.
+    const falseBooks = CORPUS_BOOKS.filter((b) => !b.arabicMatn).map((b) => b.id);
+    expect(scopeHasArabicMatn(falseBooks)).toBe(falseBooks.length > 0 ? false : true);
+    if (falseBooks.length > 0) {
+      // Mixed scope still has something Arabic to find.
+      expect(scopeHasArabicMatn([falseBooks[0], "bukhari"])).toBe(true);
+    }
     // Empty scope means "everything", which certainly includes Arabic.
     expect(scopeHasArabicMatn([])).toBe(true);
+    // An id the registry has never heard of fails open (assumed to have
+    // Arabic) rather than silently skipping a search over unknown content.
+    expect(scopeHasArabicMatn(["some-book-not-in-the-registry"])).toBe(true);
   });
 
   it("lists every book in the planner prompt", () => {
