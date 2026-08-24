@@ -112,13 +112,15 @@ export function ShamelaBridgeConnectPanel() {
           <div className="space-y-2">
             <Label className="text-xs">{t("shamela.bridge.get_bridge")}</Label>
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button asChild size="sm" className="flex-1 gap-1.5" onClick={handleDownload}>
-                <a href="/downloads/shamela-bridge.zip" download>
-                  <Download className="h-3.5 w-3.5" />
-                  {t("shamela.bridge.download_zip")}
-                  {zipSizeLabel ? ` (${zipSizeLabel})` : ""}
-                </a>
-              </Button>
+              {zipSizeLabel && (
+                <Button asChild size="sm" className="flex-1 gap-1.5" onClick={handleDownload}>
+                  <a href="/downloads/shamela-bridge.zip" download>
+                    <Download className="h-3.5 w-3.5" />
+                    {t("shamela.bridge.download_zip")}
+                    {` (${zipSizeLabel})`}
+                  </a>
+                </Button>
+              )}
               <Button asChild variant="outline" size="sm" className="flex-1 gap-1.5">
                 <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-3.5 w-3.5" />
