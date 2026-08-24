@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 + P1 shipped 2026-08-24 across 5 rounds; P2 in progress (rounds 6-8); P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 shipped 2026-08-24 across 5 rounds; P2 complete (rounds 6-9, 2026-08-24/25); P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
 §1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
 P1 have landed. Everything from §3 onward that is not marked ✅ is still a
@@ -12,10 +12,10 @@ proposal.
 
 | Measure | Baseline | Now |
 |---|---|---|
-| Test files executed by `npm test` | 96 | **120** |
-| Tests | 771 passed, 11 skipped | **1407 passed, 11 skipped, 0 failing** |
+| Test files executed by `npm test` | 96 | **124** |
+| Tests | 771 passed, 11 skipped | **1471 passed, 11 skipped, 0 failing** |
 | Wall-clock (`npm test`) | 179.9 s | ~90–160 s (fixtures share the machine with everything else running) |
-| Coverage number | **did not exist** | **32.9 % lines** (baseline was 25.45 %) |
+| Coverage number | **did not exist** | **33.17 % lines** (baseline was 25.45 %) |
 | E2E tests | 0 | 0 *(P3)* |
 | Edge-function handlers reachable from a test | 0 of 29 | **29 of 29** |
 | Deno tests run by no pipeline | 3 files | **0** — ported into the vitest suite |
@@ -816,7 +816,51 @@ Everything in `electron/ipc/*.ts` now has tests: `registry.ts`,
 tests already cover through `workspaceStore/*.ts`; no E2E on the packaged
 build.
 
-Next: the client-side subscription modules, then whatever is left in P3.
+**Round 9 (2026-08-25): the client-side subscription modules — P2 done.**
+`subscriptionLifecycle.ts` (15 tests), `planTiers.ts` (16), `tierUpgrade.ts`
+(16), `referral.ts` (17). These are not edge functions, so they used the
+component/hook testing pattern rather than the handler pattern: plain
+function calls, fake timers for date-boundary precision, the existing
+`fakeSupabase.ts` for the one function that touches a database
+(`applyPendingReferral`).
+
+`subscriptionLifecycle.ts` is the client-side twin of
+`check-subscription-expiry`'s server logic — what decides whether the UI
+shows "active", nags with "expiring soon", or blocks a feature as "expired".
+Tested the exact day-boundary (7 vs 8 days remaining), the exempt-account
+short-circuit, and that `Math.ceil` rounding a partial day up can put a
+subscription with 7 days and 1 hour left back on the "active" side of the
+threshold — documented as the correct, if slightly surprising, consequence
+of comparing rounded days rather than raw remaining time, not a bug.
+
+`referral.ts`'s `applyPendingReferral` needed one addition to the shared
+fake: `.is()` didn't exist on `fakeSupabase.ts` (same gap `.lt()` was in
+round 4 — nobody had called it yet), and this function's own idempotency
+guarantee ("won't overwrite an existing `referred_by`") is expressed as
+`.is("referred_by", null)`, so proving that guarantee for real needed the
+method implemented, not stubbed. Added as a genuine filter (matching
+Postgrest's IS NULL semantics, including treating an absent field as NULL)
+alongside the existing `eq`/`neq`/ordering comparisons.
+
+No production bugs this round. All of round 9 mutation-tested (8/8 caught):
+the expiring-soon threshold widened, the exempt-account check removed, the
+expired-instant boundary shifted by one, a price silently drifting from its
+mirror field, a feature suffix silently dropped, the upgrade ladder skipping
+a step, the self-referral guard removed, and the idempotency filter removed.
+
+## P2 — done
+
+Electron IPC (`registry`, `systemHandlers`, `workspaceHandlers`,
+`aiHandlers`, `tafsirHandlers`, `voiceHandlers`, `shamelaHandlers`), the
+migration runner, and the client-side subscription modules are all tested.
+Suite: 96 files/771 tests → 124/1471, coverage 0 → 33.17%, across 9 rounds in
+28 hours, with 8 production bugs found (7 by writing tests, 1 the other way
+around — the mutation-testing pass itself catching a test fixture) and zero
+regressions introduced along the way.
+
+Still open, all P3-scope: `electron/preload.ts`; `_shared/` modules outside
+the citation-integrity set (`rateLimit.ts`, `researchPrompts.ts`,
+`arabicRoot.ts`, `stopwords.ts`); no E2E on the packaged desktop build.
 
 ## G3 — done
 

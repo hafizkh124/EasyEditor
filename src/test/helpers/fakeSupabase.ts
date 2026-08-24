@@ -20,8 +20,8 @@
 //     Returning `undefined` would make production code take a nullish branch it
 //     would never take against a real database, and the test would be proving
 //     something false.
-//  3. **`.eq()`, `.neq()`, and the ordering comparisons genuinely filter;
-//     `.in()`, `.or()`, `.ilike()` are recorded but not applied.** This was
+//  3. **`.eq()`, `.neq()`, `.is()`, and the ordering comparisons genuinely
+//     filter; `.in()`, `.or()`, `.ilike()` are recorded but not applied.** This was
 //     not the original design — a first version ignored every filter and just
 //     returned whatever rows a test configured for the table, which passed
 //     every test written against it right up until verify-renewal-receipt's
@@ -103,7 +103,7 @@ export interface FakeClient {
 }
 
 type Result = { data: unknown; error: FakeError | null };
-type MatchOp = "eq" | "neq" | "lt" | "lte" | "gt" | "gte";
+type MatchOp = "eq" | "neq" | "lt" | "lte" | "gt" | "gte" | "is";
 
 const MATCHERS: Record<MatchOp, (rowValue: unknown, value: unknown) => boolean> = {
   eq: (a, b) => a === b,
@@ -114,6 +114,13 @@ const MATCHERS: Record<MatchOp, (rowValue: unknown, value: unknown) => boolean> 
   lte: (a, b) => (a as never) <= (b as never),
   gt: (a, b) => (a as never) > (b as never),
   gte: (a, b) => (a as never) >= (b as never),
+  // Postgrest's `.is(col, null)` is IS NULL, which also catches a column
+  // that is simply absent from the row object (JS `undefined`) — a fake row
+  // built by omitting a field is meant to behave like a real NULL column,
+  // not like a type error. `.is(col, true/false)` still needs strict
+  // equality, since Postgres booleans have no such "absent means true"
+  // reading.
+  is: (a, b) => (b === null ? a === null || a === undefined : a === b),
 };
 
 /**
@@ -181,6 +188,7 @@ class FakeBuilder implements PromiseLike<Result> {
   lte(column: string, value: unknown): this { return this.match("lte", column, value); }
   gt(column: string, value: unknown): this { return this.match("gt", column, value); }
   gte(column: string, value: unknown): this { return this.match("gte", column, value); }
+  is(column: string, value: unknown): this { return this.match("is", column, value); }
 
   private match(op: MatchOp, column: string, value: unknown): this {
     this.filters.push({ column, value });
