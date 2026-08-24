@@ -39,6 +39,11 @@ function fail(message) {
   process.exit(1);
 }
 
+function skip(message) {
+  console.warn(`[package-shamela-bridge] SKIPPED — ${message}`);
+  process.exit(0);
+}
+
 // ── Preconditions ───────────────────────────────────────────────────────
 for (const required of [
   join(BRIDGE_DIR, "server.mjs"),
@@ -52,12 +57,18 @@ for (const required of [
 if (!existsSync(JAR_SRC)) {
   fail(`shamela-helper.jar missing at ${JAR_SRC}. Run: npm run build:shamela-helper`);
 }
+// The vendored shamela-mcp build is not present in every checkout (the repo's
+// generic `dist` ignore rule keeps `vendor/shamela-mcp/dist/` out of git), so a
+// missing vendor tree must NOT break the web build — the download panel already
+// hides itself when the artefact metadata is absent. Only the local bridge zip
+// is skipped; nothing else in the app depends on it.
 for (const vendorFile of ["dist/index.js", "LICENSE", "manifest.json", "helper/shamela-helper.jar"]) {
   if (!existsSync(join(VENDOR_DIR, vendorFile))) {
-    fail(
+    skip(
       `shamela-mcp is not vendored (missing ${vendorFile} under ${VENDOR_DIR}).\n` +
-        `  Copy the redistributable MIT build there — see docs/adr for the packaging decision.`,
+        `  The bridge zip will not be produced in this build. Copy the redistributable MIT build there to include it.`,
     );
+
   }
 }
 
