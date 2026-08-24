@@ -49,11 +49,13 @@ declare module "https://deno.land/std@*/http/server.ts" {
  * the fact that we have no type information for them, and narrowing it would be
  * inventing a contract we have not verified.
  */
-declare module "npm:@lovable.dev/*" {
-  const value: any;
-  export = value;
-}
-declare module "npm:@modelcontextprotocol/*" {
-  const value: any;
-  export = value;
-}
+// A bodyless ambient module declaration — rather than `const x: any; export =
+// x;` — is the form that actually supports the NAMED imports these packages
+// use (`import { sendLovableEmail } from "npm:@lovable.dev/email-js"`,
+// `import { defineTool } from "npm:@lovable.dev/mcp-js@0.20.0"`, …): `export =`
+// only satisfies a default-style import even under esModuleInterop, so a
+// named destructure against it fails to typecheck. The bodyless form tells TS
+// "this module exists, every export is implicitly any," which is what these
+// wildcards need.
+declare module "npm:@lovable.dev/*";
+declare module "npm:@modelcontextprotocol/*";
