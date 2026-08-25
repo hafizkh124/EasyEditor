@@ -1,3 +1,13 @@
+# Source files are read directly (imported as ESM, hashed, transformed by
+# esbuild/Vitest) on whatever OS checks them out. `core.autocrlf=true` is the
+# default on Windows dev machines and on GitHub's windows-latest runners, so
+# without this, files with a `#!/usr/bin/env node` shebang (scripts/*.mjs)
+# check out with CRLF and fail to parse when imported as a module — Node's
+# shebang stripping only special-cases the CLI entry point, not `import`ed
+# files — while Linux/macOS CI keeps LF and never sees the bug. Forcing LF
+# everywhere keeps every platform checking out the exact same bytes.
+* text=auto eol=lf
+
 # Vendored third-party build output must round-trip byte-for-byte on every
 # platform. `core.autocrlf` is on by default on Windows, so without `-text`
 # git rewrites LF→CRLF on checkout here while Ubuntu CI keeps LF — meaning the
