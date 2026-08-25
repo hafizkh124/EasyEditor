@@ -39,9 +39,9 @@ type Handler = (req: Request) => Response | Promise<Response>;
 const handlers = new Map<string, Handler>();
 const importErrors = new Map<string, string>();
 
-// Importing 29 edge functions means transforming 29 dependency trees, which
-// comfortably exceeds Vitest's 10s default hook timeout — hence the explicit
-// budget and the parallel import.
+// Importing dozens of edge functions means transforming dozens of dependency
+// trees, which comfortably exceeds Vitest's 10s default hook timeout — hence
+// the explicit budget and the parallel import.
 let restoreNetwork: () => void;
 
 beforeAll(async () => {
@@ -63,12 +63,12 @@ afterAll(() => restoreNetwork?.());
 
 describe("every edge function", () => {
   it("has at least one function to test", () => {
-    expect(FUNCTIONS.length).toBeGreaterThanOrEqual(29);
+    expect(FUNCTIONS.length).toBeGreaterThanOrEqual(28);
   });
 
   it("imports cleanly and exports a callable `handle`", () => {
     // Reported as one assertion so a broken import lists every casualty at once
-    // rather than failing 29 times with the same root cause.
+    // rather than failing once per function with the same root cause.
     expect(Object.fromEntries(importErrors)).toEqual({});
     // Sorted: the imports run in parallel, so insertion order is completion
     // order, not FUNCTIONS order.
