@@ -49,10 +49,12 @@ jobs:
       - name: Test
         run: npm test
 
+      # --publish never: without this, electron-builder implicitly publishes
+      # (creates/updates a GitHub release) the moment it sees a tag ref, once
+      # per matrix OS — racing itself into duplicate/partial draft releases.
+      # The create-release job below is the single, deliberate publish step.
       - name: Build & package
-        run: npm run build:electron
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build:electron -- --publish never
 
       # TESTING-STRATEGY.md §5.5/§10 (P3): proves the build electron-builder
       # just packaged actually launches, before it becomes a release artifact.
@@ -96,6 +98,8 @@ jobs:
 
       - name: Create release
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
             easyeditor-linux/*
