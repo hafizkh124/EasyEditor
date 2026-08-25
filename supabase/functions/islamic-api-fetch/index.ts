@@ -1,5 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+/**
+ * `ReturnType<typeof createClient>` (used below before this fix) instantiates
+ * the schema generics as `never` — the same first-contact typecheck issue
+ * documented for verify-receipt (TESTING-STRATEGY.md P1 round 1). `any` is
+ * the honest schema here: this project has no generated Database type to
+ * pass, so claiming one would be a false contract, not a stricter one.
+ */
+type AnyClient = SupabaseClient<any>;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +35,15 @@ export interface IslamicResult {
     juz?: number;
     fatwa_number?: string;
     scholar?: string;
+    /** Set by citationEngine.ts's personal-library channel (Tier L) — the
+     *  library item's own title, since a private upload has no `book`/
+     *  `collection` slug to fall back to. */
+    title?: string;
+    /** Not currently set by any channel; declared so islamic-search's
+     *  citation-line builder can reference it defensively without a type
+     *  error, the same way it already does for every other tier-specific
+     *  field here. */
+    author?: string;
     url?: string;
     volume?: number;
     page?: number;
@@ -93,7 +111,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 async function getCached(
-  supabase: ReturnType<typeof createClient>,
+  supabase: AnyClient,
   cacheKey: string
 ): Promise<IslamicResult[] | null> {
   const { data } = await supabase
@@ -113,7 +131,7 @@ async function getCached(
 }
 
 async function setCached(
-  supabase: ReturnType<typeof createClient>,
+  supabase: AnyClient,
   cacheKey: string,
   domain: string,
   results: IslamicResult[]

@@ -31,14 +31,6 @@ function normalizeArabic(text: string): string {
     .trim();
 }
 
-// ── Tier B domain → source_type mapping ──────────────────────────────────────
-const DOMAIN_SOURCE_TYPE: Record<string, string> = {
-  "hadith-index":  "hadith",
-  "tanzil":        "quran",
-  "shamela-index": "classical",
-  "openiti-index": "classical",
-};
-
 // ── Pseudo-domain expansion ───────────────────────────────────────────────────
 // "hadith-index" and "shamela-index" are UI-facing concept IDs (see
 // src/lib/research/bibliography.ts DOMAIN_LABEL, IslamicResearchPanel.tsx) —
@@ -64,7 +56,9 @@ const PSEUDO_DOMAIN_EXPANSION: Record<string, string[]> = {
 };
 
 // ── Map a DB row back to IslamicResult ────────────────────────────────────────
-function rowToIslamicResult(row: any): IslamicResult {
+// Exported so arabicMatnFilter.test.ts can call the real function instead of
+// asserting on source text — see TESTING-STRATEGY.md §6.
+export function rowToIslamicResult(row: any): IslamicResult {
   const cite = row.citation_ref ?? {};
   return {
     domain: row.domain,

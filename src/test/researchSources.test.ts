@@ -1,5 +1,4 @@
 // @vitest-environment node
-import { readFileSync } from "node:fs";
 import {
   RESEARCH_SOURCES,
   SOURCE_GROUPS,
@@ -12,18 +11,37 @@ import {
  * The picker's ids ARE the wire contract with islamic-search: the function
  * filters the incoming list against its own ALL_DOMAINS and silently drops
  * anything else, so a typo here costs the user a whole source with no error
- * anywhere. islamic-search/index.ts cannot be imported (it calls serve() at
- * module load), so the tier lists are read out of the source instead.
+ * anywhere. The tier lists used to be read out of islamic-search's source text
+ * by regex, because `handle` wasn't exported yet and importing the module ran
+ * `serve()` at load time; now that P1's G2 work exported `handle` (and the
+ * vitest deno-specifiers plugin stubs `serve` itself), the tier constants can
+ * be exported and imported for real — see TESTING-STRATEGY.md §6.
+ *
+ * Loaded with a dynamic `import()` inside `beforeAll`, not a static top-level
+ * import: islamic-search/index.ts is Deno source outside tsconfig.app.json's
+ * `include` roots (`src`, `shared`), and a static import here would pull its
+ * whole dependency graph into `npm run typecheck:app`, which never type-checks
+ * `supabase/functions/**` and fails on it. Every other test file that reaches
+ * into `supabase/functions/` (e.g. edgeFunctionContract.test.ts, which already
+ * dynamically imports all 29) uses the same dynamic-import pattern for this
+ * reason.
  */
+let islamicSearchTiers: {
+  TIER_A_DOMAINS: string[];
+  TIER_B_DOMAINS: string[];
+  TIER_C_DOMAINS: string[];
+  TIER_K_DOMAINS: string[];
+  TIER_D_DOMAINS: string[];
+  TIER_D_DISCIPLINE: Record<string, string>;
+};
+
+beforeAll(async () => {
+  islamicSearchTiers = await import("../../supabase/functions/islamic-search/index.ts");
+});
+
 function backendDomains(): string[] {
-  const src = readFileSync("supabase/functions/islamic-search/index.ts", "utf8");
-  const ids: string[] = [];
-  for (const tier of ["TIER_A_DOMAINS", "TIER_B_DOMAINS", "TIER_C_DOMAINS", "TIER_K_DOMAINS", "TIER_D_DOMAINS"]) {
-    const match = new RegExp(`const ${tier} = \\[([^\\]]*)\\]`, "s").exec(src);
-    expect(match, `${tier} not found in islamic-search/index.ts`).not.toBeNull();
-    ids.push(...[...match![1].matchAll(/"([^"]+)"/g)].map((m) => m[1]));
-  }
-  return ids;
+  const { TIER_A_DOMAINS, TIER_B_DOMAINS, TIER_C_DOMAINS, TIER_K_DOMAINS, TIER_D_DOMAINS } = islamicSearchTiers;
+  return [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS, ...TIER_D_DOMAINS];
 }
 
 describe("research source catalogue", () => {
@@ -58,12 +76,7 @@ describe("research source catalogue", () => {
 
 describe("classical discipline pseudo-domains", () => {
   function backendDisciplineMap(): Record<string, string> {
-    const src = readFileSync("supabase/functions/islamic-search/index.ts", "utf8");
-    const match = /const TIER_D_DISCIPLINE: Record<string, string> = \{([^}]*)\}/s.exec(src);
-    expect(match, "TIER_D_DISCIPLINE not found in islamic-search/index.ts").not.toBeNull();
-    const map: Record<string, string> = {};
-    for (const m of match![1].matchAll(/"([^"]+)":\s*"([^"]+)"/g)) map[m[1]] = m[2];
-    return map;
+    return islamicSearchTiers.TIER_D_DISCIPLINE;
   }
 
   it("maps every classical- id the picker offers to a real discipline slug", async () => {

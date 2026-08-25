@@ -67,6 +67,13 @@ export interface FakeSupabaseConfig {
   /** Claims returned by `auth.getClaims()`. `null` makes the call fail as unauthenticated. */
   claims?: Record<string, unknown> | null;
   authError?: FakeError;
+  /**
+   * User returned by `auth.getUser(token)` — the older, still-current auth
+   * check some functions use instead of `getClaims()` (e.g. islamic-search).
+   * `null` or omitted makes the call fail as unauthenticated.
+   */
+  user?: Record<string, unknown> | null;
+  getUserError?: FakeError;
   /** Rows a `.select()` on a given table resolves with. Defaults to `[]`. */
   tables?: Record<string, unknown[]>;
   /** Force a `.select()` on a table to fail. */
@@ -91,7 +98,10 @@ export interface FakeSupabaseConfig {
 export interface FakeClient {
   from(table: string): FakeBuilder;
   rpc(name: string, args?: unknown): Promise<{ data: unknown; error: FakeError | null }>;
-  auth: { getClaims(token?: string): Promise<{ data: unknown; error: FakeError | null }> };
+  auth: {
+    getClaims(token?: string): Promise<{ data: unknown; error: FakeError | null }>;
+    getUser(token?: string): Promise<{ data: { user: unknown }; error: FakeError | null }>;
+  };
   storage: { from(bucket: string): { download(path: string): Promise<unknown> } };
   /** Every mutation, in the order the function issued it. */
   writes: RecordedWrite[];
@@ -271,6 +281,10 @@ export function createFakeClient(config: FakeSupabaseConfig = {}): FakeClient {
           return Promise.resolve({ data: null, error: null });
         }
         return Promise.resolve({ data: { claims: config.claims }, error: null });
+      },
+      getUser() {
+        if (config.getUserError) return Promise.resolve({ data: { user: null }, error: config.getUserError });
+        return Promise.resolve({ data: { user: config.user ?? null }, error: null });
       },
     },
 
