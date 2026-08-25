@@ -39,9 +39,6 @@ verify_jwt = false
 [functions.resource-search]
 verify_jwt = false
 
-[functions.extract-translations]
-verify_jwt = false
-
 [functions.web-search]
 verify_jwt = false
 

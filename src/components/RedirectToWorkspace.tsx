@@ -5,7 +5,7 @@ import { Navigate, useLocation, useParams } from "react-router-dom";
  * (UX-v1 P3) purely so bookmarks keep working. A bare `<Navigate>` declared in
  * the route table cannot see the incoming location, so it would silently drop
  * `location.state` — exactly the handoff content Research/OCR/Transcribe/
- * Extract send through it (see editorHandoff.test.tsx). This reads both the
+ * Translate send through it (see editorHandoff.test.tsx). This reads both the
  * param and the state and carries them across.
  */
 export const RedirectToWorkspace: React.FC = () => {

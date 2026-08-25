@@ -152,8 +152,8 @@ export const CAPABILITIES: readonly Capability[] = [
     surfaces: [],
   },
 
-  // Workbench tabs. Translate and Extract are the same cloud edge functions as
-  // their standalone pages, so they disappear on desktop for the same reason.
+  // Workbench tabs. Translate is the same cloud edge function as its
+  // standalone page, so it disappears on desktop for the same reason.
   {
     id: "wb.aiReader", route: null, labelKey: "workbench.ai_reader", fallbackLabel: "AI Reader",
     icon: Sparkles, runtimes: { web: ALWAYS, desktop: ALWAYS }, surfaces: ["workbench-tab"],

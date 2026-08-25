@@ -3,7 +3,7 @@ import { render, waitFor } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 
 /**
- * Research / OCR / Transcribe / Extract / Translate all hand a finished result
+ * Research / OCR / Transcribe / Translate all hand a finished result
  * to the editor as router state. When the editor became the workspace, the new
  * `/workspace` page never read that state — it resolved a *blank* document
  * instead — so every one of those handoffs silently dropped the user's content.
@@ -95,10 +95,10 @@ describe("editor handoff", () => {
   });
 
   it("passes HTML handoffs through without escaping them", async () => {
-    renderAt({ content: "<p>پہلے سے HTML</p>", source: "extract" });
+    renderAt({ content: "<p>پہلے سے HTML</p>", source: "manual" });
 
     await waitFor(() => expect(createDocument).toHaveBeenCalled());
-    // ExtractPanel already sends HTML; running markdown conversion over it
+    // Some panels already send HTML; running markdown conversion over it
     // would escape the tags into visible &lt;p&gt; text.
     expect(JSON.stringify(createDocument.mock.calls[0][2])).not.toContain("&lt;p&gt;");
   });
