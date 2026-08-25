@@ -1,6 +1,7 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import fs from "node:fs";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
@@ -39,6 +40,27 @@ export default defineConfig(({ mode }) => {
     "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(resolved.VITE_SUPABASE_PROJECT_ID),
   };
 
+  // Root package.json has "type": "module", so without this, rollup emits
+  // main.js/preload.js as ESM (`import`/`export`). Electron's *sandboxed*
+  // preload loader (webPreferences.sandbox: true, set in electron/main.ts)
+  // cannot execute ESM at all — it throws "Cannot use import statement
+  // outside a module" and silently drops the preload script, which is why
+  // window.electronAPI ends up undefined in a packaged build: every feature
+  // that goes through it (workspace DB, desktop OAuth, voice, Shamela, …)
+  // fails as if running outside Electron, while the renderer itself loads
+  // fine and looks like nothing is wrong. Forcing CJS output plus a
+  // dist-electron/package.json override (write-cjs-package-json below) is
+  // the fix — confirmed by loading the compiled preload.js directly with
+  // this override absent (throws) and present (window.electronAPI exposed).
+  const writeCjsPackageJson: Plugin = {
+    name: "write-cjs-package-json",
+    closeBundle() {
+      const outDir = path.resolve(__dirname, "dist-electron");
+      fs.mkdirSync(outDir, { recursive: true });
+      fs.writeFileSync(path.join(outDir, "package.json"), JSON.stringify({ type: "commonjs" }) + "\n");
+    },
+  };
+
   const electronViteConfig = {
     define: electronDefine,
     resolve: {
@@ -47,7 +69,21 @@ export default defineConfig(({ mode }) => {
         "~shared": path.resolve(__dirname, "./shared"),
       },
     },
+    plugins: [writeCjsPackageJson],
     build: {
+      // vite-plugin-electron reads the project's own package.json "type"
+      // field to decide `build.lib.formats` for every entry it builds
+      // ("es" here, since the root package.json says "type": "module") —
+      // rollupOptions.output.format is not consulted for a lib-mode build,
+      // so overriding it there (as a first attempt at this fix did) had no
+      // effect. `lib.formats` is the option that actually wins.
+      // Cast: vite-plugin-electron merges this into its own generated
+      // `lib.entry` at runtime, but Vite's own `LibraryOptions` type demands
+      // `entry` up front — supplying a real one here would just overwrite
+      // the entry vite-plugin-electron already resolved.
+      lib: {
+        formats: ["cjs"],
+      } as import("vite").LibraryOptions,
       rollupOptions: {
         // Native and native-adjacent packages must stay out of the bundle:
         // better-sqlite3 and the whisper addon load .node binaries by path at
