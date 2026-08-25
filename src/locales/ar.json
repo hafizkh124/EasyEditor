@@ -1198,6 +1198,7 @@
   "shamela.bridge.get_bridge": "احصل على الجسر",
   "shamela.bridge.download_zip": "تنزيل الجسر المحلي",
   "shamela.bridge.download_desktop": "التطبيق المكتبي الكامل (موصى به)",
+  "shamela.bridge.smartscreen_note": "قد يظهر تحذير \"ناشر غير معروف\" من Windows أثناء التثبيت — هذا متوقع (التطبيق غير موقّع رقميًا بعد). اضغط \"More info\" ثم \"Run anyway\".",
   "shamela.bridge.waiting_for_bridge": "بانتظار تشغيل الجسر…",
   "shamela.books_for_category": "الكتب — {category}",
   "shamela.select_category": "الكتب — اختر تصنيفًا",

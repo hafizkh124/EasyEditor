@@ -1198,6 +1198,7 @@
   "shamela.bridge.get_bridge": "Get the bridge",
   "shamela.bridge.download_zip": "Download local bridge",
   "shamela.bridge.download_desktop": "Full desktop app (recommended)",
+  "shamela.bridge.smartscreen_note": "Windows may show an \"Unknown publisher\" warning during install — this is expected (the app isn't code-signed yet). Click \"More info\", then \"Run anyway\".",
   "shamela.bridge.waiting_for_bridge": "Waiting for the bridge to start…",
   "shamela.books_for_category": "Books — {category}",
   "shamela.select_category": "Books — select a category",

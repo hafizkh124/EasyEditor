@@ -128,6 +128,10 @@ export function ShamelaBridgeConnectPanel() {
                 </a>
               </Button>
             </div>
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+              {t("shamela.bridge.smartscreen_note")}
+            </p>
             {polling && (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <RefreshCw className="h-3 w-3 animate-spin" />
