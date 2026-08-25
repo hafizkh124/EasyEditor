@@ -10,6 +10,9 @@ import { terminateLocalSync } from './tafsir/mcpClient.js';
 import { registerVoiceHandlers } from './ipc/voiceHandlers.js';
 import { isAllowedExternalUrl } from './lib/urlAllowlist.js';
 import { ALLOWED_IPC_CHANNELS } from './ipc/registry.js';
+import { logger } from './lib/logger.js';
+
+const log = logger.child('main');
 
 function openExternalSafely(rawUrl: string): void {
   const parsed = isAllowedExternalUrl(rawUrl);
@@ -132,6 +135,14 @@ function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false,
     },
+  });
+
+  // A failed preload script leaves `window.electronAPI` undefined with no
+  // other signal — every desktop-only feature (workspace DB, desktop OAuth,
+  // voice, Shamela) then fails at its own call site with a generic error,
+  // and nothing points back here. Surface it loudly instead.
+  mainWindow.webContents.on('preload-error', (_event, preloadPath, error) => {
+    log.error('preload script failed to load', { preloadPath, message: error.message, stack: error.stack });
   });
 
   // Security: CSP Header injection (SPEC-M5 FR-2.2/NFR-11).

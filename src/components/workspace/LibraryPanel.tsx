@@ -16,8 +16,11 @@ import { useAllDocuments } from "@/core/workspace/useAllDocuments";
 import { documentService } from "@/core/workspace/documentService";
 import { stripHarakat } from "@/utils/arabicUtils";
 import { useShamelaAvailability } from "@/hooks/useShamelaAvailability";
+import { logger } from "@/lib/logger";
 import { LibraryDocumentTree } from "./LibraryDocumentTree";
 import { LibraryNewProjectDialog } from "./LibraryNewProjectDialog";
+
+const log = logger.child("LibraryPanel");
 import { LibrarySourcesTab } from "./LibrarySourcesTab";
 import { KnowledgeGraphTab } from "./KnowledgeGraphTab";
 import { RecipesTab } from "./RecipesTab";
@@ -112,7 +115,8 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
       setNewProjectOpen(false);
       setNewProjTitle("");
       refreshAllDocs();
-    } catch {
+    } catch (err) {
+      log.error("createProject failed", { err });
       toast.error(t("library.create_error", "Failed to create project"));
     } finally {
       setCreatingProj(false);
@@ -124,7 +128,8 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
       const d = await documentService.createDocument(projectId, t("editor.untitled", "Untitled Document"));
       refreshAllDocs();
       handleSelectDocument(d);
-    } catch {
+    } catch (err) {
+      log.error("createDocument failed", { err });
       toast.error(t("library.doc_create_error", "Failed to create document"));
     }
   };
