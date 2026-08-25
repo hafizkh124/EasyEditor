@@ -21,6 +21,7 @@
     "smoke:functions": "node scripts/smoke-edge-functions.mjs",
     "smoke:functions:json": "node scripts/smoke-edge-functions.mjs --json",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "release:patch": "npm version patch && npm run build",
     "release:minor": "npm version minor && npm run build",
     "release:major": "npm version major && npm run build",
@@ -175,6 +176,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.0",

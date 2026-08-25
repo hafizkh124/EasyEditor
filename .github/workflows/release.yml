@@ -54,6 +54,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # TESTING-STRATEGY.md §5.5/§10 (P3): proves the build electron-builder
+      # just packaged actually launches, before it becomes a release artifact.
+      # `build:electron` leaves `dist/` and `dist-electron/` in place (it packages
+      # FROM them; it does not consume them), which is what this test launches.
+      - name: Install Xvfb (Linux only — Electron needs a display server here; macOS/Windows runners already have one)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Packaged app smoke test (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:e2e
+
+      - name: Packaged app smoke test
+        if: runner.os != 'Linux'
+        run: npm run test:e2e
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

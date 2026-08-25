@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Date:** 2026-08-24 · **Status:** P0 + P1 shipped 2026-08-24 across 5 rounds; P2 complete (rounds 6-9, 2026-08-24/25); P3 proposed · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
+**Date:** 2026-08-24 · **Status:** P0 + P1 shipped 2026-08-24 across 5 rounds; P2 complete (rounds 6-9, 2026-08-24/25); P3 complete (round 10, 2026-08-25) · **Related:** [SMOKE-TESTS.md](./SMOKE-TESTS.md), [QA-M5.md](./QA-M5.md)
 
 §1 records the baseline as measured on 2026-08-24 and what it is now that P0 and
 P1 have landed. Everything from §3 onward that is not marked ✅ is still a
@@ -479,9 +479,9 @@ the gate gets disabled within a month.
 | P2 | Migration runner tests against temp SQLite files | G4 | ✅ done — 3 mutation-survivors, all test-design fixes, no production bug |
 | P2 | `shamelaHandlers`, `tafsirHandlers`, `voiceHandlers` | G4 | ✅ done — found 2 dead imports, no production bugs |
 | P2 | SSE/streaming reassembly + abort tests | — | half day |
-| P3 | Playwright `_electron` launch smoke in `release.yml` | E2E | 1 day |
-| P3 | Replace the four grep-tests made redundant by P1 | G8 | 2 h |
-| P3 | Per-path coverage thresholds, ratchet | G6 | 1 h |
+| P3 | Playwright `_electron` launch smoke in `release.yml` | E2E | ✅ done |
+| P3 | Replace the four grep-tests made redundant by P1 | G8 | ✅ done — **found a live token-refund bug** |
+| P3 | Per-path coverage thresholds, ratchet | G6 | ✅ done |
 
 P0 and P1 are done, including the `createClient` fake that was the blocker.
 
@@ -871,3 +871,116 @@ Every `_shared/` module named in the original audit now has tests:
 the citation-integrity risk the five above did — this was the corpus-grounding
 half of the pipeline, and it is now covered end to end: retrieval
 (`citationCandidates`) through verification (`citationVerifier`).
+
+**Round 10 (2026-08-25): P3 — closing the backlog's last three items.**
+
+*Per-path coverage thresholds (G6).* §9's proposed numbers (90/85 for the two
+receipt functions, 85 lines for `citationVerifier`, 80/70 for `src/core` and
+`src/lib`) were aspirational, written before anyone measured what the suite
+actually cleared. Measured for real: verify-receipt 99.24%/82.61%
+(lines/branches), verify-renewal-receipt 97.52%/77.14%, citationVerifier
+98.29%/70%, `src/core` 39.59%/27.32% (lines/functions), `src/lib`
+50.72%/59.81%. Set the thresholds a few points under each of those — the
+ratchet principle from §9 itself: never gate on a number the suite cannot
+already meet, or CI disables the gate within a month. `src/core`/`src/lib` in
+particular are nowhere near §9's original 80/70 guess; the floor now locks in
+today's real coverage instead of gating on a fiction.
+
+*The four grep-tests (G8).* `arabicMatnFilter`, `deleteByScope`,
+`researchSources`, and `rijalNarrations` all predated P1's `handle(req)`
+exports and read source text with `readFileSync` instead of calling code — §6
+flagged them for revisiting once that landed. `deleteByScope` and
+`rijalNarrations`'s ingest-batch assertions now call `handle()` for real
+against `fakeSupabase` (the "not chunked" claim, for instance, is now "exactly
+one RPC call" measured on a live mock, not a grep for the string `CHUNK`).
+`researchSources` now imports islamic-search's tier-domain constants directly
+(newly exported for this) instead of regexing them out of the file.
+`arabicMatnFilter` converts its Tier A (islamic-api-fetch, mocking the three
+external APIs' real response shapes) and Tier B (vector-search's
+`rowToIslamicResult`, also newly exported) checks to real calls; the Tier
+K/D/W/L and topic-anchor assertions stay source-text on purpose — they sit
+inside one 1200-line handler behind an auth wall, a rate limiter, a
+token-guard deduction, and six tiers' worth of RPC/fetch dependencies, and
+faking all of that to observe one boolean literal per tier would hide bugs
+behind a wall of mocks more than it would catch them. Each new behavioral
+assertion was mutation-tested before commit (3/3 caught: Dorar's `has_matn`
+flipped, ingest-batch's chunking loop widened to one giant chunk, and
+delete-by-scope's single RPC call split into a per-collection loop).
+
+15. **A live bug in the token-refund safety net, found by first-contact
+    typechecking, not by writing a test.** `researchSources.test.ts`'s new
+    literal-path import of `islamic-search/index.ts` was the first time
+    anything pulled that file into `tsc -p tsconfig.app.json` by name (the
+    only prior import was `edgeFunctionContract.test.ts`'s dynamic
+    `import(\`.../${name}/index.ts\`)`, whose non-literal specifier TypeScript
+    cannot resolve statically, so it never actually type-checks the target —
+    the same reason this pattern was safe for 28 other functions and silent
+    for these four). `tsc` refused to compile: the crash-path refund in
+    `handle()`'s outer `catch` read `tokenCost` and `user`, both declared with
+    `const` *inside* the `try` block — block-scoped out of the sibling `catch`
+    entirely. At runtime, `typeof tokenCost !== "undefined"` there threw a
+    ReferenceError every time (a name with no binding in any enclosing scope
+    throws on `typeof`, unlike an undeclared global), which the refund's own
+    `catch (_) { /* ignore refund errors in crash path */ }` silently
+    swallowed — so a token deducted just before *any* unhandled error in this
+    handler was never refunded, on every request, since the code was written.
+    Fixed by hoisting `capturedUser`/`capturedTokenCost` mirrors to function
+    scope, set once each value is known good. Regression test in
+    `islamicSearchTokenRefund.test.ts` forces a realistic post-deduction crash
+    (`deduct_tokens` returning a malformed JSON string, which
+    `checkAndDeductTokens` does not guard `JSON.parse` against) and asserts
+    `credit_tokens` fires with the right user/amount; mutation-tested by
+    reverting to the original `typeof tokenCost` condition and confirming the
+    test fails. `fakeSupabase.ts` gained `auth.getUser()` support (the older
+    auth check islamic-search uses, alongside the existing `getClaims()`) to
+    make the test possible at all.
+
+The same first-contact pass surfaced the now-familiar class of pre-existing,
+never-checked issues across the four files (same pattern as `verify-receipt`'s
+`ReturnType<typeof createClient>` in round 1 and `process-email-queue`'s
+`.replaceAll` in round 4) — none of them bugs, all fixed at the source rather
+than typed around: `ingest-batch`'s catch block narrowed `err: unknown` before
+reading `.message`; `islamic-api-fetch` got the same `SupabaseClient<any>`
+alias verify-receipt already established, plus two real-but-undeclared
+`citation_ref` fields (`title`, genuinely set by the personal-library channel;
+`author`, referenced defensively but never actually set by anything);
+`islamic-search` lost one dead function (`stripArabicDiacritics`, superseded
+by a Postgres RPC and a separate `domain-scrape` function, per its own
+now-stale comment) and one dead variable (`tierKDomains` — Tier K uses a
+richer `wantsQuran`/`wantsHadith`/`wantsFatwa` inference instead, documented
+in the block right below where the unused variable sat); and its `timed()`
+helper's parameter type was tightened from `Promise<T>` to `PromiseLike<T>`
+to accept Postgrest query builders directly, which are thenable but not real
+`Promise` instances.
+
+*Packaged-app smoke test (E2E).* Added `@playwright/test`, `playwright.config.ts`,
+and `e2e/electronLaunch.spec.ts` — launches the real Electron process against
+`dist-electron/main.js` (the same output `electron-builder` packages, not a
+full per-OS installer), waits for the first window, and asserts the renderer
+actually mounted (a non-empty `<body>`, and the window's title synced to
+`document.title` rather than staying on the `BrowserWindow` constructor's
+initial string) plus a clean main-process stderr. `npm run test:e2e` runs it.
+Wired into `release.yml` right after `build:electron` (which already produces
+`dist/`+`dist-electron/` before handing off to `electron-builder`) and before
+the artifact upload, with `xvfb-run` on the Linux leg only — GitHub's
+macOS/Windows runners already have a display session, Linux does not.
+Mutation-tested locally: a `main.js` that throws synchronously on import
+timed the test out at 60s (a crashed process never produces a first window —
+Playwright cannot distinguish "still starting" from "never going to start"
+faster than its own timeout, which is why a build that cannot start still
+gets caught, just not instantly).
+
+## P3 — done
+
+All three backlog items closed: per-path coverage thresholds now reflect
+measured reality rather than a guess, the four grep-tests read real code where
+that was tractable (documented exceptions where it wasn't), and the packaged
+app has its first-ever launch smoke test in the release pipeline. Suite: 124
+files/1471 tests → 125/1476, coverage 33.17% → 34.07%, one more production bug
+found (the token-refund ReferenceError) — the ninth bug this project's testing
+push has found, and the second (after round 4's `process-email-queue` fixture)
+found by something other than a test actually failing.
+
+Still open, none P3-scope: `electron/preload.ts`; `_shared/` modules outside
+the citation-integrity set (`rateLimit.ts`, `researchPrompts.ts`,
+`arabicRoot.ts`, `stopwords.ts`); SSE/streaming reassembly tests.

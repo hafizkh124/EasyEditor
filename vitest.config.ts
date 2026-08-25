@@ -102,8 +102,24 @@ export default defineConfig({
       // would be satisfied by the 200+ component files and would say nothing
       // about the paths that move money or gate security. Raise these only
       // after the suite already clears the new value.
+      //
+      // TESTING-STRATEGY.md §9 proposed 90/85 for the two receipt functions,
+      // 85 lines for citationVerifier, and 80/70 for src/core and src/lib —
+      // but those were aspirational targets written before this measurement.
+      // A threshold the suite cannot already meet gets the whole gate disabled
+      // within a month (§9's own words), so these are set a few points under
+      // what `npm run test:coverage` actually reports today (2026-08-25:
+      // verify-receipt 99.24/82.61, verify-renewal-receipt 97.52/77.14,
+      // citationVerifier 98.29/70, src/core 39.59/27.32, src/lib 50.72/59.81
+      // lines/branches or lines/functions) — a real floor against regression,
+      // raised only when the suite clears a higher number on its own.
       thresholds: {
         "electron/lib/urlAllowlist.ts": { lines: 100, functions: 100, branches: 100 },
+        "supabase/functions/verify-receipt/**": { lines: 99, functions: 100, branches: 80 },
+        "supabase/functions/verify-renewal-receipt/**": { lines: 97, functions: 100, branches: 75 },
+        "supabase/functions/_shared/citationVerifier.ts": { lines: 98, functions: 100, branches: 65 },
+        "src/core/**": { lines: 39, functions: 27 },
+        "src/lib/**": { lines: 50, functions: 59 },
       },
     },
     // vite.config.ts supplies these via `define`, but this config is separate and

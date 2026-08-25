@@ -12,19 +12,11 @@ import { personalVectorChannel, personalLexicalChannel, classicalChannel } from 
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 
-/** Strip Arabic diacritics/harakat so an "الصدقة" search matches stored
- *  "الصَّدَقَةُ". Mirrors normalizeArabic in vector-search and _shared. */
-// Note: query-time diacritic normalization now lives in the
-// `search_documents_smart` Postgres RPC (migration 20260517000000). This
-// helper is kept only because the Tier-A `domain-scrape` fallback path
-// still uses it for client-side filtering of scraped fatwa snippets.
-function stripArabicDiacritics(text: string): string {
-  return text
-    .replace(/[ً-ٰٟ]/g, "")
-    .replace(/[آأإٱ]/g, "ا")
-    .replace(/ة/g, "ه")
-    .replace(/ى/g, "ي");
-}
+// Query-time diacritic normalization now lives in the `search_documents_smart`
+// Postgres RPC (migration 20260517000000), and Tier C's filtering moved into
+// the separate `domain-scrape` function it calls over HTTP -- this file's own
+// copy of that helper had no remaining caller. Removed (first-contact
+// typechecking, TESTING-STRATEGY.md P3, caught it via `noUnusedLocals`).
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,15 +40,18 @@ const corsHeaders = {
 // rather than left as dead weight. Tanzil's actual content still reaches
 // every query through Tier K (`tanzil` stays in TIER_K_DOMAINS below, backed
 // by the 6,236-row local corpus) — nothing is lost by dropping it here.
-const TIER_A_DOMAINS = ["dorar", "alquran", "quran-com"];
-const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
-const TIER_C_DOMAINS = [
+// Exported so researchSources.test.ts can import the real wire contract
+// instead of regex-parsing this file's source text — see TESTING-STRATEGY.md
+// §6, "revisit once §5.1 lands."
+export const TIER_A_DOMAINS = ["dorar", "alquran", "quran-com"];
+export const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
+export const TIER_C_DOMAINS = [
   "islamqa", "islamweb", "islamicurdubooks", "shamilaurdu",
   "alulama", "magazine-mohaddis", "mohaddis", "urdufatwa",
   "islamfort", "alminasa", "shamela",
 ];
 
-const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
+export const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 
 // Tier D: the Tier-2 classical corpus (rijal/tafsir/lughat/fatwa), scoped by
 // citation_ref->>'discipline' rather than by domain — see collections.ts's
@@ -84,8 +79,8 @@ const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 // pseudo-domain that can only return zero rows would repeat the shamela-index
 // mistake already avoided in src/lib/research/sources.ts. Both become one-line
 // additions here the day their rows carry a discipline.
-const TIER_D_DOMAINS = ["classical-rijal", "classical-tafsir", "classical-lughat", "classical-fatwa", "classical-mustalah"];
-const TIER_D_DISCIPLINE: Record<string, string> = {
+export const TIER_D_DOMAINS = ["classical-rijal", "classical-tafsir", "classical-lughat", "classical-fatwa", "classical-mustalah"];
+export const TIER_D_DISCIPLINE: Record<string, string> = {
   "classical-rijal": "rijal",
   "classical-tafsir": "tafsir",
   "classical-lughat": "lughat",
@@ -300,6 +295,19 @@ export async function handle(req: Request): Promise<Response> {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
+  // Mirrors of `user`/`tokenCost` below, set once both are known-good, so the
+  // crash-path refund in the outer `catch` can see them. `user`/`tokenCost`
+  // themselves are declared with `const` inside the `try` block, which
+  // block-scopes them out of `catch` entirely — first-contact typechecking
+  // (this file had never been imported by name before TESTING-STRATEGY.md
+  // P3) caught `Cannot find name 'tokenCost'`/`'user'` in the catch block.
+  // At runtime `typeof tokenCost !== "undefined"` there threw a ReferenceError
+  // every time, silently swallowed by the refund's own `catch (_) {}` — so a
+  // token deducted just before an unhandled error was never refunded; this
+  // safety net had never once actually fired.
+  let capturedUser: { id: string } | undefined;
+  let capturedTokenCost: number | undefined;
+
   // ── Stage timing ────────────────────────────────────────────────────
   // Latency work on this function has repeatedly been done against numbers
   // that turned out to be measuring the wrong thing — a "15s" figure taken
@@ -319,7 +327,13 @@ export async function handle(req: Request): Promise<Response> {
   const since = () => Math.round(performance.now() - reqStart);
 
   /** Records a stage's own window without altering the promise's behaviour. */
-  const timed = async <T>(stage: string, p: Promise<T>, countOf?: (v: T) => number): Promise<T> => {
+  // `PromiseLike<T>`, not `Promise<T>`: several callers pass a Postgrest
+  // query builder directly (e.g. `.from(...).select(...).single()`), which is
+  // thenable but not a real `Promise` — its own `.then()` stays `PromiseLike`
+  // rather than promoting to `Promise`, so a stricter parameter type here
+  // rejected every one of them at first-contact typechecking (TESTING-STRATEGY.md
+  // P3). `await` and `Promise.all`/`allSettled` accept `PromiseLike` natively.
+  const timed = async <T>(stage: string, p: PromiseLike<T>, countOf?: (v: T) => number): Promise<T> => {
     const startMs = since();
     try {
       const v = await p;
@@ -351,6 +365,7 @@ export async function handle(req: Request): Promise<Response> {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    capturedUser = user;
 
     // --- Rate limit ---
     if (isRateLimited(user.id, 20, 60_000)) {
@@ -385,6 +400,7 @@ export async function handle(req: Request): Promise<Response> {
 
     // Token-based quota check: 40 tokens per Islamic research query
     const tokenCost = calculateCost("islamic", 1);
+    capturedTokenCost = tokenCost;
     const [{ data: sub }, tokenResult] = await Promise.all([
       subPromise,
       timed(
@@ -431,16 +447,20 @@ export async function handle(req: Request): Promise<Response> {
     const tierADomains = effectiveDomains.filter((d) => TIER_A_DOMAINS.includes(d));
     const tierBDomains = effectiveDomains.filter((d) => TIER_B_DOMAINS.includes(d));
     const tierCDomains = effectiveDomains.filter((d) => TIER_C_DOMAINS.includes(d));
-    const tierKDomains = effectiveDomains.filter((d) => TIER_K_DOMAINS.includes(d));
+    // Tier K has its own richer inference below (wantsQuran/wantsHadith/wantsFatwa)
+    // instead of a strict membership check against TIER_K_DOMAINS — see that
+    // block's comment. A `tierKDomains` filtered the same way as the other
+    // three tiers was computed here but never read (noUnusedLocals caught it
+    // at first-contact typechecking, TESTING-STRATEGY.md P3); removed.
 
-    const fanOutPromises: Promise<IslamicResult[]>[] = [];
+    const fanOutPromises: PromiseLike<IslamicResult[]>[] = [];
 
     /**
      * Adds a retrieval branch and records its own start/end window. Every tier
      * goes through here so the log shows which one the user is actually waiting
      * on — they run concurrently, so total elapsed time alone cannot tell you.
      */
-    const pushTimed = (stage: string, p: Promise<IslamicResult[]>) => {
+    const pushTimed = (stage: string, p: PromiseLike<IslamicResult[]>) => {
       fanOutPromises.push(timed(stage, p, (v) => v.length));
     };
 
@@ -822,7 +842,7 @@ export async function handle(req: Request): Promise<Response> {
     // an already-complete fan-out (caught via Lovable's 2026-08-17 timing
     // read of this file's own instrumentation).
     const anchors = lookupTopicAnchors(query);
-    const anchorFetches: Promise<IslamicResult[]>[] = [];
+    const anchorFetches: PromiseLike<IslamicResult[]>[] = [];
     if (anchors) {
       if (anchors.quran.length > 0) {
         const wanted = anchors.quran.slice(0, 4);
@@ -1199,9 +1219,9 @@ export async function handle(req: Request): Promise<Response> {
     console.error("islamic-search error:", e);
     // Best-effort refund if tokens were already deducted
     try {
-      if (typeof tokenCost !== "undefined" && typeof user !== "undefined") {
+      if (capturedTokenCost !== undefined && capturedUser !== undefined) {
         const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-        await refundTokens(supabase, user.id, tokenCost, "islamic", "Unhandled error");
+        await refundTokens(supabase, capturedUser.id, capturedTokenCost, "islamic", "Unhandled error");
       }
     } catch (_) { /* ignore refund errors in crash path */ }
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
