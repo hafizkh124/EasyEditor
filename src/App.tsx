@@ -157,8 +157,8 @@ const App = () => (
                   <Route path="/editor" element={<RedirectToWorkspace />} />
                   <Route path="/editor/:documentId" element={<RedirectToWorkspace />} />
                   <Route path="/ocr/review" element={<ProtectedRoute><ErrorBoundary><OcrReview /></ErrorBoundary></ProtectedRoute>} />
-                  {/* /translate and /extract are retired pages (UX-v1 P3): both mounted
-                      the exact same TranslatePanel/ExtractPanel as their Workbench tab,
+                  {/* /translate is a retired page (UX-v1 P3): it mounted
+                      the exact same TranslatePanel as its Workbench tab,
                       so the standalone page was a second door to the same room. The
                       capability entry (and CapabilityRoute's desktop gate) stays —
                       only the destination changed. */}
@@ -170,7 +170,6 @@ const App = () => (
                       itself lives on: CanvasPanel renders it embedded when a
                       translation project is open. Book Studio had no such
                       second life and was deleted with its components. */}
-                  <Route path="/extract" element={<Navigate to="/workspace" replace />} />
                   {/* allowGuest: the desktop sidebar links here, and Settings is where the
                       desktop-local panels live (BYOK key, voice engines). Settings.tsx already
                       guards every cloud call with `if (!user) return`. */}

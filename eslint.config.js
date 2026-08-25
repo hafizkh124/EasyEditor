@@ -142,10 +142,6 @@ export default tseslint.config(
       "src/lib/translationMemory.ts",
       // ── subscription/billing context, used app-wide for gating ────────────
       "src/contexts/SubscriptionContext.tsx",
-      // ── Extract: FR-1.2's table names this exact call site "کچھ نہ کریں —
-      //    cloud-only، دائرے سے باہر" (extract-translations stays cloud-only
-      //    by explicit decision, not oversight) ──────────────────────────────
-      "src/components/extract/ExtractPanel.tsx",
       // ── Voice cloud storage (ElevenLabs clone-sample upload) — the same
       //    kind of cloud-tier call as core/voice/cloudEngines.ts, just not
       //    yet moved into it ─────────────────────────────────────────────────
