@@ -72,11 +72,45 @@ jobs:
         if: runner.os != 'Linux'
         run: npm run test:e2e
 
+      # electron-builder leaves the unpacked app tree (linux-unpacked/,
+      # win-unpacked/, mac-arm64/) in release/ alongside the installers. That
+      # tree is exactly what the installers already contain, so uploading it
+      # inflated each artifact to 415-853 MB and broke create-release's
+      # `sha256sum *` ("Is a directory"). Take only the top-level files:
+      # installers, their *.blockmap, and the latest*.yml that electron-updater
+      # reads to find a new version — still written under `--publish never`,
+      # since electron-builder gates that on `build.publish` being configured,
+      # not on whether it is uploading.
+      - name: Collect distributables
+        shell: bash
+        run: |
+          mkdir -p dist-release
+          shopt -s nullglob
+          # Deliberately a bash glob loop, not `find -type f`: on the Windows
+          # runner `find` can resolve to System32's FIND.EXE instead of Git
+          # Bash's, and this step has to behave identically on all three OSes.
+          for f in release/*; do
+            [ -f "$f" ] || continue
+            case "${f##*/}" in
+              builder-debug.yml|builder-effective-config.yaml) continue ;;
+            esac
+            cp "$f" dist-release/
+          done
+          ls -l dist-release
+          # A missing latest*.yml breaks auto-update silently: the app keeps
+          # running, finds no feed, and every user stays on their old version
+          # forever. Fail the release instead — the listing above says why.
+          feed=(dist-release/latest*.yml)
+          if [ ${#feed[@]} -eq 0 ]; then
+            echo "::error::No latest*.yml collected — electron-updater would have no update feed."
+            exit 1
+          fi
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: easyeditor-${{ matrix.target }}
-          path: release/
+          path: dist-release/
 
   create-release:
     needs: [release]
@@ -89,12 +123,9 @@ jobs:
 
       - name: Generate checksums
         run: |
-          cd easyeditor-linux
-          sha256sum * > ../checksums-linux.txt
-          cd ../easyeditor-mac
-          sha256sum * > ../checksums-mac.txt
-          cd ../easyeditor-win
-          sha256sum * > ../checksums-win.txt
+          for target in linux mac win; do
+            (cd "easyeditor-$target" && sha256sum -- * > "../checksums-$target.txt")
+          done
 
       - name: Create release
         uses: softprops/action-gh-release@v2
