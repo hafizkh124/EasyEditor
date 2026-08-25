@@ -16,7 +16,7 @@ const log = logger.child("Workspace");
 
 interface WorkspaceHandoffState {
   content?: string;
-  source?: "research" | "ocr" | "transcribe" | "manual" | "extract";
+  source?: "research" | "ocr" | "transcribe" | "manual";
 }
 
 const WorkspacePage: React.FC = () => {
@@ -30,7 +30,7 @@ const WorkspacePage: React.FC = () => {
   const handoffContent = handoff.content;
   const handoffSource = handoff.source;
 
-  // Generalized so /translate and /extract (UX-v1 P3) can redirect here with
+  // Generalized so /translate (UX-v1 P3) can redirect here with
   // their own tab preselected, the same way /research already did.
   const panelParam = searchParams.get("panel");
   const workbenchTabFromUrl = isWorkbenchTab(panelParam) ? panelParam : undefined;
@@ -61,10 +61,9 @@ const WorkspacePage: React.FC = () => {
             handoffSource === "research" ? "editor.from_research" :
             handoffSource === "ocr" ? "editor.from_ocr" :
             handoffSource === "transcribe" ? "editor.from_transcribe" :
-            handoffSource === "extract" ? "editor.from_extract" :
             "editor.untitled";
           // Handoff arrives in three formats depending on who sent it:
-          // ExtractPanel sends HTML, the research panel sends markdown, and
+          // Some panels send HTML, the research panel sends markdown, and
           // OCR/Transcribe/Translate send plain text. Only the non-HTML ones
           // need converting — before this, markdown went straight into the HTML
           // parser and its `**bold**` and `## heading` markers survived as

@@ -4,8 +4,8 @@ import { WorkspaceProvider, useWorkspace } from "@/core/workspace/WorkspaceConte
 import { isWorkbenchTab } from "@/core/workspace/usePanelState";
 
 /**
- * UX-v1 P3 — /translate and /extract were retired as standalone pages and now
- * redirect into `/workspace?panel=translate` / `?panel=extract`, the same
+ * UX-v1 P3 — /translate was retired as a standalone page and now
+ * redirects into `/workspace?panel=translate`, the same
  * pattern /research already used. That only works if the workbench actually
  * opens on the requested tab rather than whatever tab localStorage last
  * remembered — this pins that contract down, generalized past the single
@@ -21,7 +21,7 @@ function Probe() {
 
 describe("isWorkbenchTab", () => {
   it("accepts every real workbench tab", () => {
-    for (const tab of ["aiReader", "research", "translate", "extract", "notes", "tasks", "trust"]) {
+    for (const tab of ["aiReader", "research", "translate", "notes", "tasks", "trust"]) {
       expect(isWorkbenchTab(tab)).toBe(true);
     }
   });
@@ -47,22 +47,22 @@ describe("WorkspaceProvider — opening on a specific tab from the URL", () => {
     expect(probe.dataset.tab).toBe("translate");
   });
 
-  it("opens on extract too — not just the one tab Workspace.tsx used to special-case", () => {
+  it("opens on notes too — not just the one tab Workspace.tsx used to special-case", () => {
     render(
-      <WorkspaceProvider initialWorkbenchTab="extract">
+      <WorkspaceProvider initialWorkbenchTab="notes">
         <Probe />
       </WorkspaceProvider>,
     );
-    expect(screen.getByTestId("probe").dataset.tab).toBe("extract");
+    expect(screen.getByTestId("probe").dataset.tab).toBe("notes");
   });
 
   it("overrides whichever tab was last left open in localStorage", () => {
     localStorage.setItem("workspace.panels", JSON.stringify({ workbenchTab: "notes", workbenchCollapsed: true }));
     render(
-      <WorkspaceProvider initialWorkbenchTab="extract">
+      <WorkspaceProvider initialWorkbenchTab="notes">
         <Probe />
       </WorkspaceProvider>,
     );
-    expect(screen.getByTestId("probe").dataset.tab).toBe("extract");
+    expect(screen.getByTestId("probe").dataset.tab).toBe("notes");
   });
 });
