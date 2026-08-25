@@ -1198,6 +1198,7 @@
   "shamela.bridge.get_bridge": "برج حاصل کریں",
   "shamela.bridge.download_zip": "لوکل برج ڈاؤن لوڈ کریں",
   "shamela.bridge.download_desktop": "مکمل ڈیسک ٹاپ ایپ (تجویز کردہ)",
+  "shamela.bridge.smartscreen_note": "انسٹال کرتے وقت Windows کی طرف سے \"Unknown publisher\" وارننگ آ سکتی ہے — یہ متوقع ہے (ایپ ابھی کوڈ سائن شدہ نہیں)۔ \"More info\" پھر \"Run anyway\" پر کلک کریں۔",
   "shamela.bridge.waiting_for_bridge": "برج شروع ہونے کا انتظار ہو رہا ہے…",
   "shamela.books_for_category": "کتب — {category}",
   "shamela.select_category": "کتب — زمرہ منتخب کریں",
