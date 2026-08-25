@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 
-export type WorkbenchTab = "aiReader" | "research" | "translate" | "extract" | "notes" | "tasks" | "trust";
+export type WorkbenchTab = "aiReader" | "research" | "translate" | "notes" | "tasks" | "trust";
 
 export const WORKBENCH_TABS: readonly WorkbenchTab[] =
-  ["aiReader", "research", "translate", "extract", "notes", "tasks", "trust"];
+  ["aiReader", "research", "translate", "notes", "tasks", "trust"];
 
 export function isWorkbenchTab(value: unknown): value is WorkbenchTab {
   return typeof value === "string" && (WORKBENCH_TABS as readonly string[]).includes(value);
