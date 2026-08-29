@@ -20,6 +20,7 @@ reconstruct rationale without rereading commits.
 | [0012](./0012-tafsir-web-via-edge-function.md) | Tafsir MCP on Web via a Session-less Edge Function | Accepted (decision) |
 | [0013](./0013-source-picker-and-collection-registry.md) | Opt-in source picker + canonical book registry for scoping (supersedes part of 0002) | Accepted |
 | [0014](./0014-classical-discipline-entry-point.md) | Explicit entry point for rijal/tafsir/lughat, plus fixing why they were unreachable at all | Accepted |
+| [0015](./0015-m7-word-inpage-p0-spike.md) | M7 desktop document bridge — P0 spike results and the four constraints they lock onto P1 | Accepted |
 
 ## When to write a new ADR
 
