@@ -219,6 +219,22 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.TAFSIR_INVOKE, { action: 'install:cancel' }),
   },
 
+  docBridge: {
+    // SPEC-M8 Layer 1 / P1 — all actions travel the single allowlisted channel.
+    // P1 exposes tool detection and a host ping; adapter actions land in P2.
+    detectTools: (): Promise<{ powershell: boolean; word: boolean; wordVersion: string | null; windows: boolean; reason?: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'detectTools' }),
+    ping: (): Promise<{ ok: boolean; latencyMs: number | null; error?: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'ping' }),
+    onProgress: (callback: (p: { phase: string; percent: number; detail?: string }) => void): (() => void) => {
+      const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);
+      ipcRenderer.on(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_PROGRESS, listener);
+      return () => {
+        ipcRenderer.removeListener(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_PROGRESS, listener);
+      };
+    },
+  },
+
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

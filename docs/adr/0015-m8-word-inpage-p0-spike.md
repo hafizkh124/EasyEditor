@@ -134,11 +134,17 @@ scripts before they are used as a reference for the real code.**
 - Run Proofs 3 and 4 on a Windows machine with LibreOffice and InPage
   installed; append results here (or a follow-up ADR if InPage forces a
   strategy change).
-- P1: implement constraints 1 and 2 in `electron/host/`; wire the
-  `installFontCheck` verification loop into the font adapter.
-- Apply the three spike-script fixes, or delete `p0-spike/` once P1 lands and
-  fold its proofs into `docs/` as the ADR record (the folder's own README calls
-  this out as the intended end state).
+- ~~P1: implement constraints 1 and 2 in `electron/host/`.~~ **Done,
+  2026-08-29** — `electron/host/process.ts` owns and fingerprint-kills the
+  `WINWORD.EXE` PID (constraint 1); `wordBridge.ps1`'s `installFont` op does
+  the `AddFontResourceW` + `WM_FONTCHANGE` registration and verifies via
+  `installFontCheck` (constraint 2). Live-tested against Word 16.0
+  (`src/test/hostLive.test.ts`). See `docs/SPEC-M8.md` §5 P1.
+- ~~Apply the three spike-script fixes.~~ **Done, 2026-08-29** —
+  `font-install-test.ps1` now does the font APIs, `test-libreoffice.mjs`'s
+  `findSoffice()` returns `null` instead of a false positive, and
+  `p0-spike/README.md` records all six results inline. `p0-spike/` can be
+  deleted once P2 lands (the proofs live here and in SPEC-M8 §1.2).
 - ~~There is still no spec for this document-bridge strand.~~ **Done,
   2026-08-29** — [`docs/SPEC-M8.md`](../SPEC-M8.md) (Draft). ~~It carries §0:
   the "M7" label collides with STRATEGY-v1 §5's desktop/privacy line and needs
