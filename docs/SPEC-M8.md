@@ -1,25 +1,26 @@
 # SPEC-M8 — Agentic Desktop Platform: Driving the Researcher's Own Tools
 
-> **Status:** Draft · **Date:** 2026-08-29 · **Base:** [SPEC-M5.md](./SPEC-M5.md), [SPEC-M5.9.md](./SPEC-M5.9.md), [SPEC-M6.md](./SPEC-M6.md)
->
-> Supersedes the "M7" label used for this line of work in earlier drafts and
-> chat history — see §0.
+> **Status:** Draft · **Date:** 2026-08-29 · **Base:** [SPEC-M5.md](./SPEC-M5.md), [SPEC-M5.9.md](./SPEC-M5.9.md), [SPEC-M6.md](./SPEC-M6.md), [ADR-0006](./adr/0006-workspace-backend-adapter.md), [ADR-0007](./adr/0007-shamela-native-read.md), [ADR-0015](./adr/0015-m8-word-inpage-p0-spike.md)
 
 ---
 
 ## 0. Naming note (read this first)
 
-Earlier drafting of this work (chat history, an early `p0-spike/` commit
-message) called it **"M7."** `STRATEGY-v1.md` §5 already assigns **M7** to
-the desktop/privacy line (local tashkeel, local LLM, local embeddings, local
-OCR — M7.1–M7.5), decided and cross-referenced at §7 (risk #5) and §8
-(decisions #6, #7). That assignment predates this work and is load-bearing
-in an approved strategy document; this line of work was the newcomer, so
-**it is renumbered M8** here. Nothing under the old "M7" name has been
-committed to `main` — only a `p0-spike/` commit on this feature branch,
-which this spec's phases now supersede. Do not create a `SPEC-M7.md`; that
-name is reserved for the desktop/privacy line if and when it gets its own
-spec document.
+Earlier drafting of this work (chat history, the `p0-spike/` commit message,
+and a briefly-existing `docs/SPEC-M7.md`) called it **"M7."**
+`STRATEGY-v1.md` §5 already assigns **M7** to the desktop/privacy line (local
+tashkeel, local LLM, local embeddings, local OCR — M7.1–M7.5), decided and
+cross-referenced at §7 (risk #5) and §8 (decisions #6, #7). That assignment
+predates this work and is load-bearing in an approved strategy document;
+this line of work was the newcomer, so **it is renumbered M8** here. Do not
+create a `SPEC-M7.md`; that name is reserved for the desktop/privacy line if
+and when it gets its own spec document.
+
+`docs/SPEC-M7.md` existed briefly (2026-08-29) as a narrower, evidence-
+grounded draft of the Word/InPage bridge specifically — its concrete
+op-protocol, IPC design, and packaging sections are merged into §3–§5 below,
+and the file itself was removed rather than kept as a second spec
+documenting the same work under two names.
 
 ---
 
@@ -48,37 +49,70 @@ hand-written converter for every pair (which is O(n²) work for n tools).
 A second, load-bearing decision, reached after reviewing what document a
 user's own file actually is: **EasyEditor is not building a Word
 replacement.** The researcher's real document is a `.docx` (or `.rtf`, for
-InPage) file living in their own project folder. The agent edits that file
-*in place* — surgically, preserving whatever it doesn't understand (tracked
-changes, comments, embedded objects) — rather than regenerating it from some
-internal representation on every run. See ADR-0017 for why this rules out a
-Markdown-source-of-truth design that was considered and rejected mid-design.
+InPage) file living in their own project folder. The agent edits that file's
+**OOXML in place** — surgically, preserving whatever it doesn't understand
+(tracked changes, comments, embedded objects) — rather than regenerating it
+from some internal representation on every run. See ADR-0018 for why this
+rules out a Markdown-source-of-truth design that was considered and rejected
+mid-design. "In place" means the file on disk, driven through Word itself —
+not a docx-rendering view inside EasyEditor's own canvas that replaces
+Word's UI (see §2).
+
+### 1.1 What exists already
+
+- **Desktop shell (M5–M6):** Electron app, `contextIsolation: true`, IPC
+  through an explicit channel allowlist (`electron/ipc/registry.ts`); the
+  renderer reaches main only via `electron/preload.ts`.
+- **The "own long-lived helper process" pattern (ADR-0007):**
+  `electron/shamela/` drives Shamela's bundled JRE as a child process, JSON
+  commands in / JSON lines out, never string-interpolating caller input into
+  a command line. This spec's Word host (§3, Layer 1) is the same pattern
+  pointed at PowerShell + COM.
+- **`WorkspaceBackend` adapter (ADR-0006):** all renderer data access goes
+  through `getBackend()`; desktop-only capability is exposed as new IPC
+  actions, not new Supabase calls.
+- **Editor:** TipTap rich editor in `CanvasPanel`; import already accepts
+  PDF/DOCX/TXT as *sources* (SPEC-v2 FR-4.5.1) but has no structured export
+  and no Word/InPage round-trip yet.
+
+### 1.2 What the P0 spike established (2026-08-29, real Windows 11 + Word 16.0)
+
+Full results, rationale, and the constraints they impose are in
+**ADR-0015**. In short:
+
+| Proof | Result |
+|---|---|
+| 1 — Word COM over a long-lived PowerShell/JSON host (open, track changes, RTL page setup, real footnote, save-as) | **PASS** — verified in the output `word/document.xml`/`footnotes.xml` and visually in Word |
+| 2 — Word's own PDF reflow (`Documents.Open` on a `.pdf`) | **PASS, but slow** — ~23 s for a 312-word text PDF, no external converter needed |
+| 3 — LibreOffice detect + headless convert | **UNVERIFIED** — not installed on the test machine |
+| 4 — InPage ↔ RTF round-trip | **UNVERIFIED** — not installed; separately confirmed InPage exposes no COM/CLI/scripting surface, which is why this spec routes through RTF at all |
+| 5 — Per-user font install visible to Word | **PASS, only with the real font APIs** (`AddFontResourceW` + `WM_FONTCHANGE` broadcast) — a file-copy-plus-registry-key approach left the font invisible even to a freshly started Word |
+| 6 — Orphaned `WINWORD.EXE` after an unclean host exit | **FAIL by design** — Word does not exit when its automating process dies; `process.ts` must actively kill it |
+
+The Word core — the load-bearing risk — is proven. §5's phases and §6's
+constraints follow directly from these six results, not from assumption.
 
 ---
 
-## 2. What's possible, and how
+## 2. Non-Goals
 
-| Tool | Route | Status |
-|---|---|---|
-| **Word** | COM (`Word.Application`) — full object model: Styles, PageSetup, Footnotes, TOC, Find, Revisions, Options | Fully possible |
-| **Excel / PowerPoint** | COM — same route | Fully possible |
-| **Reading PDF** | `pdfjs-dist` | Already in the repo (`src/lib/ocr/pdfRenderer.ts`) |
-| **PDF → Word** | Word's own PDF Reflow (`Documents.Open` directly on a `.pdf`) | Possible |
-| **Scanned PDF** | Existing OCR pipeline | Already in the repo (`src/lib/ocr/`) |
-| **Maktaba Shamela** | `master.db` + Shamela's own Lucene/JRE | Already in the repo (`electron/shamela/`) |
-| **LibreOffice** | `soffice --headless --convert-to` | Possible — the universal fallback when Office isn't installed |
-| **InPage** | ⚠️ **No public API found** | See below |
-
-**InPage is the weakest link.** No COM interface, command line, or
-scripting surface was found despite looking; `.inp` is also a closed,
-proprietary binary format with no public specification. But InPage itself
-**imports and exports RTF**, and that is the bridge the whole Urdu
-publishing community already relies on for interop with other tools. Both
-directions of this spec go through RTF, plus a legacy (pre-Unicode) ↔
-Unicode converter so older InPage archives can be brought in. UI automation
-(driving InPage's own menus via keystrokes) is possible in principle but
-fragile — **explicitly out of scope for the first pass**; revisit only if
-RTF proves insufficient (see the P0 spike, §5).
+- Cloud/server-side document conversion — this is desktop-only, all local.
+- **Editing Word or InPage documents *in place* inside EasyEditor's own
+  editor UI** — this spec moves documents *between* tools and edits their
+  OOXML surgically through Word/InPage's own engines; it does not
+  reimplement Word's rendering inside `CanvasPanel` or replace Word's UI.
+- A general-purpose Office automation API for third parties.
+- macOS/Linux Word automation — COM is Windows-only; LibreOffice is the
+  cross-platform, Office-less fallback (§3, §5 P4); macOS gets a narrower
+  Office-AppleScript route later (§5 P9).
+- Lossless InPage conversion — the commitment is to being **explicit about
+  what a conversion drops** (§4), not to dropping nothing.
+- Bulk conversion of large books through Word's PDF reflow — ~23 s for a
+  short document is not viable for a 300-page book; use the OCR/chunked
+  import path for those instead.
+- A desktop model picker / multi-provider BYOK — stays Gemini-only (§7).
+- True background/parallel agent tasks, or an open "Browser" web-search
+  tool — both explicitly rejected, with reasons, in ADR-0019.
 
 ---
 
@@ -90,32 +124,78 @@ The shared foundation every COM and CLI adapter builds on.
 
 | File | Job |
 |---|---|
-| `powershell.ts` | One long-lived PowerShell process; commands/replies as newline-delimited JSON over stdin/stdout — the app never relaunches PowerShell per call |
-| `process.ts` | Timeouts, hang detection, **cleanup of orphaned `WINWORD.EXE`/`soffice.exe` processes** |
+| `powershell.ts` | One long-lived PowerShell process; commands/replies as newline-delimited JSON over stdin/stdout — the app never relaunches PowerShell per call. Reconnects on host crash; per-op timeouts; structured errors. |
+| `process.ts` | Timeouts, hang detection, and **actively owning and killing the `WINWORD.EXE` PID** on host shutdown or crash (constraint 1, §6) — Proof 6 confirmed Word does not exit on its own. A stale-PID sweep runs on host start, covering the case where the whole app was killed. |
 | `detect.ts` | What's installed on this machine, which version — this is what determines the agent's declared capabilities |
+| `wordBridge.ps1` | Shipped as an `extraResources` entry (like `shamela-helper.jar`); resolved from `process.resourcesPath` in a packaged build and from the repo path in dev, with a diagnostic "looked in …" error if missing, mirroring `getHelperJarPath()`. A `scripts/check-doc-bridge.mjs` pre-build check mirrors `check:shamela-helper`. |
 
 **Core safety rule:** model-generated text is **never** concatenated into a
 shell command. Every parameter travels as JSON over stdin, as **data** —
-never as a script fragment. This is where command injection would enter if
-it were going to; it stays closed from the start. See §5's P0 spike and
-`p0-spike/word-bridge.ps1` / `p0-spike/host.mjs` for the pattern this layer
-formalizes.
+never as a script fragment. The host is a fixed `switch ($cmd.op)`; nothing
+reaches `Invoke-Expression`, `cmd /c`, or a shell string — the same rule
+`electron/ipc/registry.ts` already enforces for channel names, extended to
+the PowerShell boundary. This is where command injection would enter if it
+were going to; it stays closed from the start.
 
-### Layer 2 — Adapter registry (`shared/adapters/`)
+#### Op protocol (Layer 1 ↔ Layer 2)
+
+The host speaks the protocol `p0-spike/word-bridge.ps1` already proved.
+Every message is a JSON object with a fixed `op`; arguments are data, never
+interpolated into a script string.
+
+| op | args | reply | proven in spike |
+|---|---|---|---|
+| `ping` | — | `{ok, pong}` | ✓ |
+| `open` | `path` | `{ok, name}` | ✓ |
+| `openPdfReflow` | `path` | `{ok, ms, wordCount}` | ✓ (~23 s) |
+| `setTrackRevisions` | `enabled` | `{ok, enabled}` | ✓ |
+| `setRtlPageSetup` | — | `{ok}` | ✓ |
+| `insertFootnote` | `text` | `{ok, footnoteCount}` | ✓ |
+| `installFontCheck` | `fontName` | `{ok, found, fontCount}` | ✓ |
+| `save` / `saveAs` | (`path`) | `{ok}` | ✓ |
+| `wordPid` | — | `{ok, pid}` | ✓ |
+| `close` / `quit` | — | `{ok}` | ✓ |
+
+New ops for P1+ (designed in the phase that needs them): `exportRtf`,
+`readStructure` (headings/footnotes/tracked-change inventory, for the
+conversion loss report), `applyCitations` (insert a batch of footnotes at
+marked positions, §5 P6), `installFont` (the real `AddFontResourceW` +
+broadcast registration, §6 constraint 2).
+
+#### IPC surface
+
+One new allowlist entry, action-dispatched exactly like `SHAMELA_INVOKE`:
+
+```
+DOC_BRIDGE_INVOKE      'docbridge:invoke'      { action, ... }   renderer → main
+DOC_BRIDGE_PROGRESS    'docbridge:progress'    { ... }           main → renderer (long conversions)
+```
+
+Actions: `detectTools`, `toWord`, `fromWord`, `toInPage`, `fromInPage`,
+`convert` (routes via Layer 3), `installFont`, `cancel`. Typed wrappers are
+added to `preload.ts` alongside the handler, matching the existing
+`shamela.*` shape.
+
+### Layer 2 — Adapter registry (`shared/adapters/` + `electron/adapters/`)
 
 Each tool is one adapter that declares: which formats it can read/write,
 which operations it supports, and whether it's present on this machine.
 Adding a new tool means adding one adapter; nothing else in the system
 changes.
 
-`electron/adapters/`: `word.ts`, `excel.ts`, `powerpoint.ts`,
-`libreoffice.ts`, `pdf.ts`, `inpage.ts`, `shamela.ts` — the last two build on
-existing code rather than starting fresh.
+`electron/adapters/`: `word.ts` (built on Layer 1 — `toWord`/`fromWord`/
+`openPdfReflow`/`readStructure`, plus `installFont` wired to the real font
+APIs), `excel.ts`, `powerpoint.ts`, `libreoffice.ts` (detect + headless
+convert — the Office-less, cross-platform fallback), `pdf.ts`, `inpage.ts`
+(docx ↔ RTF ↔ InPage, since InPage has no API of its own), `shamela.ts` —
+the last builds on existing code rather than starting fresh.
 
 ### Layer 3 — Conversion map (`shared/convert/`)
 
 Format = node, converter = edge, each edge carries a **quality weight**. The
-planner finds the best path:
+planner finds the best path — `InPage → RTF → docx → Word → PDF` falls out
+of the graph automatically, without anyone writing an "InPage to PDF"
+converter by hand:
 
 ```
 InPage ──RTF──→ docx ──Word──→ PDF
@@ -123,15 +203,14 @@ InPage ──RTF──→ docx ──Word──→ PDF
   └────RTF───────┘
 
 PDF (text)    ──Word's PDF Reflow──→ docx
-PDF (scanned) ──existing OCR──→ text ──→ docx
+PDF (scanned) ──existing OCR (STRATEGY-v1 M7.4)──→ text ──→ docx
 Shamela book  ──existing bridge──→ text/docx
 ```
 
 **Honesty is mandatory.** Not every conversion is lossless. The map knows
-each edge's loss profile, and the agent **states up front** what will be
-lost (e.g., page layout on PDF→Word, character styles on Word→InPage). Where
-two paths exist, prefer the higher-quality one (Word beats LibreOffice for
-Office formats).
+each edge's loss profile, and the renderer shows the loss list **before** a
+conversion runs (§4), not after. Where two paths exist, prefer the
+higher-quality one (Word beats LibreOffice for Office formats).
 
 ### Layer 4 — Playbooks (`shared/playbooks/`)
 
@@ -170,7 +249,7 @@ task runs at a time** — an explicit choice to avoid COM automation
 re-entrancy; a second task queues, visibly, in the UI. The user can keep
 reading/scrolling the document meanwhile, just not start a second agent task
 concurrently. (True background/parallel agent tasks are explicitly out of
-scope — see §7.)
+scope — see §7 and ADR-0019.)
 
 `electron/agent/` (loop, dispatch, streaming) + `shared/agent/`
 (`toolSchemas.ts`, `loop.ts`, `grounding.ts`, `systemPrompt.ts`).
@@ -187,7 +266,8 @@ guarantee (see §7 and ADR-0019 for why an open browser tool was rejected).
 
 **Core rule:** the agent never improvises a free-form prompt against the
 underlying model for content generation — it selects and sequences from the
-registry's bounded commands and playbooks.
+registry's bounded commands and playbooks (see ADR-0016 for how this
+squares with "the model never chooses the steps").
 
 #### Security gates (one place, applies to every adapter)
 
@@ -240,7 +320,9 @@ states. In Agent state:
   Shamela… inserting the footnote…") — not decoration, a trust requirement.
   Typing `/` in the chat box opens a quick picker (following the existing
   `CommandPalette.tsx` pattern) to select a playbook or specific tool
-  directly, without writing a long prompt.
+  directly, without writing a long prompt. A convert action (source →
+  target format, loss list, progress bar) is reachable from the `CanvasPanel`
+  toolbar in Document state too — converting doesn't require the agent.
 - **Left — capabilities:** scope chips (`search_corpus`/`search_shamela`/
   `run_playbook`) and an **"Open in Word/InPage"** button.
 - **Bottom:** an **"This machine's capabilities"** strip — what's installed,
@@ -271,8 +353,8 @@ Included in every agent call's system prompt
 is "how to do this task" (a sequence); rules are "what always holds"
 (a standing constraint). Missing file → silently ignored, not required.
 
-**Consistency nudges (P5, lightweight):** when a term or citation changes in
-chapter 1, the agent searches other chapters for the same term via
+**Consistency nudges (lightweight, §5 P9):** when a term or citation changes
+in chapter 1, the agent searches other chapters for the same term via
 `search_corpus` (scoped to the project folder) and **suggests** a review
 there too — never edits automatically. Not a "dependency graph" (prose has
 no function/import relationship) — just a lexical search result, presented
@@ -282,13 +364,15 @@ plainly.
 
 ## 4. Conversion map — loss profile
 
-| Route | What's lost |
-|---|---|
-| InPage → RTF → docx | Character styles beyond bold/italic/underline may not map 1:1; footnotes are not guaranteed to survive (see the P0 checklist) |
-| docx → RTF → InPage | Track changes and comments do not survive (RTF has no equivalent); complex tables may simplify |
-| PDF (text) → docx (Word Reflow) | Page layout/pagination is not preserved; multi-column layouts often flatten |
-| PDF (scanned) → OCR → docx | Original layout is lost entirely; OCR error rate depends on scan quality |
-| docx → PDF (via Word/LibreOffice) | One-way by nature — no loss relative to the docx, but the PDF itself cannot be edited back |
+| From → To | Adapter | Known loss |
+|---|---|---|
+| EasyEditor doc → `.docx` | `word.ts` (or `libreoffice.ts`) | None expected for text + footnotes + RTL |
+| `.docx` → EasyEditor doc | `word.ts` `readStructure` | Word fields, macros, embedded objects |
+| `.pdf` (text layer) → `.docx` | `word.ts` `openPdfReflow` | Exact page layout; slow (~23 s+ per document, confirmed in the P0 spike) |
+| `.pdf` (image only) → text | Existing OCR pipeline (STRATEGY-v1 M7.4) — not this strand | Original layout lost entirely; error rate depends on scan quality |
+| `.docx` → `.rtf` → InPage | `inpage.ts` | Character styles beyond bold/italic/underline may not map; footnotes are not guaranteed to survive — **must verify (Proof 4)** |
+| InPage → `.rtf` → `.docx` | `inpage.ts` | Depends on Unicode vs. legacy Noori (pre-Unicode) encoding; the legacy path needs a mapping step before the RTF is usable — **must verify (Proof 4)** |
+| Any → any, no Office installed | `libreoffice.ts` | Fallback quality generally lower than the native Office route — **must verify (Proof 3)** |
 
 Every lossy step must be **stated to the user before the conversion runs**,
 not discovered afterward.
@@ -297,43 +381,86 @@ not discovered afterward.
 
 ## 5. Phases
 
-| Phase | What ships | Why |
-|---|---|---|
-| **P0 — spike** (~1 week) | Six proofs on a real Windows machine: (1) Word COM from a packaged Electron app; (2) Word's PDF Reflow; (3) LibreOffice detect + convert; (4) InPage ↔ RTF round-trip, in real InPage; (5) a per-user-installed font actually visible in Word; (6) orphaned-process cleanup. Scripts: `p0-spike/` (already committed on this branch). | **The gate.** Any failure changes the architecture now, not after P1 is written. |
-| **P1** | Layer 1 + 2: `electron/host/` + adapter registry + the **Word adapter** (deepest one) + the six security gates | The base everything else stands on, and the template every later adapter follows |
-| **P2** | Layer 3: conversion map + planner + loss disclosure; adapters: LibreOffice, PDF, InPage (RTF) | "Convert this to that" — works from a menu even before the agent exists |
-| **P3** | Layer 5: project folder + `fileBackend` + moving the index to `userData` | Privacy, drive sync, multi-device |
-| **P4** | Layer 4 + 6 + 7: playbooks + agent loop + `@` mentions + `قواعد.md` + task checkpoints + claim verification + the UI shape above + the capabilities page | **"Just ask, the agent knows how"** — the actual goal |
-| **P5** | Excel/PowerPoint adapters, font/template/settings commands, more playbooks, consistency nudges, macOS AppleScript route | Full coverage |
+The document-bridge core (P0–P6) is the evidence-grounded, narrowly-scoped
+slice — Word, InPage, PDF, LibreOffice. The platform-breadth phases (P7–P9)
+build on that core once it's solid.
 
-**Dependency:** P1 is the foundation everything else needs. Security gates
-land **inside P1**, not alongside P4. Overlap with M6 (Library Mode) is low:
-P1–P3 are new layers that can proceed in parallel; P4 touches
-`WorkbenchPanel`, so it's better sequenced after M6.
+| Phase | What ships | Why / gate |
+|---|---|---|
+| **P0 — Spike** | Six proofs on a real Windows machine (`p0-spike/`) | ✅ **Done** for the Word core (proofs 1, 2, 5, 6); **unverified** for LibreOffice (3) and InPage (4) — see §1.2, ADR-0015 |
+| **P1** | Layer 1: `electron/host/powershell.ts` + `process.ts`, promoted from `p0-spike/host.mjs`/`word-bridge.ps1` — reconnect-on-crash, per-op timeouts, structured errors, and `process.ts` owning + killing the `WINWORD.EXE` PID (constraint 1, §6). IPC: `detectTools`, `ping`. | No renderer UX yet; exit criterion is an integration test driving the real host |
+| **P2** | Layer 2: `electron/adapters/word.ts` — `toWord`/`fromWord`/`openPdfReflow`/`readStructure`; `installFont` wired to the real APIs (constraint 2, §6) with the `installFontCheck` verification loop | The deepest adapter, and the template every later one follows |
+| **P3** | Renderer: a convert dialog in `CanvasPanel` — pick source/target, show the Layer 3 loss list, run with a progress bar (conversions are async, §6 constraint 3), open the result. `getBackend()` only; desktop-gated. | "Convert this to that" works from a menu, before the agent exists |
+| **P4** | `electron/adapters/libreoffice.ts` | **Blocked on Proof 3** — run `p0-spike/test-libreoffice.mjs` for real first, and fix its `findSoffice()` false-positive (§6) |
+| **P5** | `electron/adapters/inpage.ts` (docx ↔ RTF ↔ InPage) + the legacy-Noori encoding mapping | **Blocked on Proof 4** — complete `p0-spike/inpage-rtf-checklist.md` on a machine with InPage. If the round-trip mangles Nastaliq text badly, this phase stops and the InPage strategy is re-decided separately, not improvised |
+| **P6** | `applyCitations` op — insert EasyEditor's citation output as real Word footnotes at marked positions, reusing the web citation-integrity gates | "Add citations" can target a `.docx` directly |
+| **P7** | Layer 5: project folder + `fileBackend` + moving the vector index to `userData` | Privacy, drive sync, multi-device (ADR-0018) |
+| **P8** | Layer 4 + 6 + 7: playbooks + agent loop + `@` mentions + `قواعد.md` + task checkpoints + claim verification + the UI shape (§3) + the capabilities page | **"Just ask, the agent knows how"** — the actual goal |
+| **P9** | Excel/PowerPoint adapters, font/template/settings commands, more playbooks, consistency nudges, macOS AppleScript route | Full coverage |
+
+**Dependency:** P1 is the foundation everything from P2 onward needs.
+Security gates land **inside P1/P2**, not alongside P8. Overlap with M6
+(Library Mode) is low: P1–P7 are new layers that can proceed in parallel;
+P8 touches `WorkbenchPanel`, so it's better sequenced after M6.
 
 ---
 
-## 6. Explicit decisions and their ADRs
+## 6. Constraints locked in by the P0 spike (ADR-0015)
 
-| # | Decision | ADR |
-|---|---|---|
-| 1 | The agent chooses *how* to accomplish a stated goal, superseding "the model never chooses the steps" — compensated by tracked-change review + the grounding gate | [0016](./adr/0016-m8-agentic-loop-supersedes-fixed-tasks.md) |
-| 2 | One adapter per tool + a conversion graph, not N² converters; drive the researcher's real tools rather than reimplement them | [0017](./adr/0017-m8-adapter-platform.md) |
-| 3 | `.docx`/`.rtf` in an ordinary project folder is the source of truth, not an internal document model; the vector index never lives in that folder | [0018](./adr/0018-m8-folder-projects-and-sync.md) |
-| 4 | `@` mentions, `قواعد.md`, task-level checkpoints, claim verification — and why a literal multi-agent Planner/Executor/Verifier triad, raw full-book context stuffing, and an open "Browser" tool were all rejected | [0019](./adr/0019-m8-context-rules-and-checkpoints.md) |
-| 5 | P0 spike results and the constraints they impose on P1 | *0015 — reserved, pending real results from a Windows/Word/InPage run (see `p0-spike/README.md`)* |
+1. **`electron/host/process.ts` must own the `WINWORD.EXE` PID and kill it
+   actively.** Proof 6 confirmed Word does not exit when its automating
+   process dies. The host records the PID (the `wordPid` op already returns
+   it) and, on its own crash/shutdown, force-kills it — the default path,
+   not a fallback.
+2. **Font installation must call `AddFontResourceW()` + broadcast
+   `WM_FONTCHANGE`, not just copy the file and write the `HKCU` key.** File
+   copy + registry alone left the font invisible — not just to the running
+   process, but to a freshly-started Word too. Adding the real API call plus
+   a `SendMessageTimeout(HWND_BROADCAST, WM_FONTCHANGE)` broadcast fixed it:
+   **an already-running Word picked it up with no restart needed.** So the
+   font-verification risk does **not** require forcing a Word restart — the
+   adapter does the real registration and verifies via `installFontCheck`,
+   falling back to "please restart Word" only if verification fails.
+3. **Layer 3's PDF→Word path must be async with visible progress.** ~23 s
+   for a short document is foreground-blocking. The reflow path stays
+   (Proof 2 passed), but runs off the UI thread with a progress indicator
+   (`docbridge:progress`); the OCR path remains the fallback for image-only
+   PDFs.
+4. **LibreOffice and InPage are unverified — scope P4/P5 as blocked, not
+   ready work.** Neither the "universal fallback" claim nor the InPage
+   strategy has been exercised against a real install yet.
+
+**Spike-script defects to fix before P1/P2 reference them as ground truth:**
+`p0-spike/font-install-test.ps1` (add `AddFontResourceW` + `WM_FONTCHANGE` —
+as written it always reports failure), `p0-spike/test-libreoffice.mjs`
+(`findSoffice()`'s bare-`'soffice'` fallback reports a false positive on a
+machine with nothing installed — must return `null` instead), and
+`p0-spike/README.md` (record the Proof 6 result inline).
+
+See ADR-0016–0019 for the four architectural decisions this spec makes
+beyond the P0 constraints (agentic loop, adapter platform, project-folder
+source of truth, context/rules — including what was deliberately rejected).
 
 ---
 
 ## 7. Open decisions and explicit non-goals
 
 - **Windows-first.** COM is a Windows technology. macOS gets a separate,
-  less complete route via Office AppleScript (P5). Linux gets LibreOffice +
-  pure file converters only. The app must say this plainly, not behave
+  less complete route via Office AppleScript (§5 P9). Linux gets LibreOffice
+  + pure file converters only. The app must say this plainly, not behave
   differently in silence.
-- **No InPage API** — RTF only. If proof (4) in the P0 spike shows RTF is
-  too lossy, UI automation or dropping InPage support are both separate,
-  bigger decisions — not something to improvise mid-implementation.
+- **Word required, or LibreOffice-first?** Current assumption: if most
+  target users have Word, the Word adapter is primary and LibreOffice is the
+  fallback (P2 before P4). If not, the priority flips. Revisit once Proof 3
+  has actually run.
+- **No InPage API** — RTF only. If Proof 4 shows RTF is too lossy, UI
+  automation or dropping InPage support are both separate, bigger decisions
+  — not something to improvise mid-implementation.
+- **Where the convert action lives** — `CanvasPanel` toolbar, a
+  `LibraryPanel` import/export tab, or both. Undecided; P3 picks one.
+- **Bundled fonts** — this spec ships no Nastaliq fonts (licensing). Does
+  the app point the user at their own licensed file, or integrate with a
+  font the user already has installed? Affects the `install_font` UX.
 - **Not every conversion is lossless** — the agent states what will be lost
   before converting (§4).
 - **Desktop-only BYOK stays Gemini-only.** No model picker in this spec;
@@ -358,35 +485,56 @@ P1–P3 are new layers that can proceed in parallel; P4 touches
   functions stay exactly as they are; every new UI element is gated by
   `isDesktop()`.
 - **Cost.** The agent loop spends far more tokens than a single-shot task;
-  the budget dialog ships with P4, not after.
+  the budget dialog ships with P8, not after.
+
+See ADR-0019 for the full reasoning behind each rejection above.
 
 ---
 
 ## 8. Exit criteria
 
 **Per phase:**
-- **P0:** all six proofs pass on a real Windows machine with Word and InPage
-  installed, with terminal output/checklists attached to the P0 ADR (0015).
-  Any failure is resolved (architecture revised) before P1 starts.
-- **P1:** `word.ts` adapter passes `docs/QA-M8.md` items 1–7 (open, track
-  changes, page setup, footnote, orphan cleanup, global-setting consent,
-  Word-closed-mid-task recovery) on a real machine; `npm run typecheck`,
-  `npm run check:shared`, and the new unit tests (see below) pass; the web
-  build (`npm run build`) is unaffected.
-- **P2:** a conversion between every pair in §4's table succeeds (or is
-  correctly refused with a clear reason) from the menu, without the agent.
-- **P3:** a project folder placed inside a synced drive round-trips across
+- [ ] `npm run typecheck && npm run test && npm run lint && npm run build` pass
+- [ ] `npm run build:electron` succeeds; `wordBridge.ps1` present in the
+  packaged resources
+- [ ] New IPC actions are registered in `electron/ipc/registry.ts` **and**
+  exercised through a typed `preload.ts` wrapper
+- [ ] No renderer code path reaches PowerShell except through Layer 1
+- [ ] RTL/Urdu/Arabic text round-trips correctly in every route the phase
+  adds
+- **P0:** all six proofs run on a real Windows machine with Word and InPage
+  installed, results recorded in ADR-0015. Any failure is resolved
+  (architecture revised) before P1 starts — done for the Word core; P4/P5
+  stay blocked until Proofs 3/4 run for real.
+- **P1:** an integration test drives the real host end-to-end (open, track
+  changes, footnote, save, PID cleanup after a simulated crash).
+- **P2:** `word.ts` passes `docs/QA-M8.md` items 1–7 on a real machine.
+- **P3:** every pair in §4's table converts successfully from the menu (or
+  is refused with a clear reason), without the agent.
+- **P4/P5:** Proofs 3 and 4 have actually run and are recorded (here or in a
+  follow-up ADR); if InPage fails badly, a separate decision is made rather
+  than shipping a silently-lossy adapter.
+- **P6:** a citation inserted via `applyCitations` reopens correctly as a
+  real Word footnote.
+- **P7:** a project folder placed inside a synced drive round-trips across
   two machines; the vector index never appears inside that folder.
-- **P4:** a natural-language instruction spanning `read → propose_edit →
+- **P8:** a natural-language instruction spanning `read → propose_edit →
   insert_footnote → export` completes end-to-end with a Trust-tab
   transcript, and an ungrounded claim is refused rather than footnoted.
-- **P5:** at least one Excel or PowerPoint command and one new playbook ship
+- **P9:** at least one Excel or PowerPoint command and one new playbook ship
   without touching Layer 1/2's shared code.
 
-**Milestone-level:** `docs/QA-M8.md` fully checked off on a real Windows
-machine with Word and InPage; `docs/adr/0015`–`0019` all in `Accepted`
-status; `npm run build` (web) and `npm run pack:electron` both succeed with
-no change to web-app behavior.
+**Milestone-level:**
+- [ ] A scholar can take a `.docx`, add citations as real footnotes from
+  EasyEditor, and reopen it in Word with footnotes, tracked changes, and RTL
+  intact
+- [ ] Every lossy route shows its loss list before running
+- [ ] No orphaned `WINWORD.EXE` after normal use, app quit, or app crash
+- [ ] Proofs 3 and 4 have been run for real, and their results recorded
+- [ ] `docs/adr/0015`–`0019` all in `Accepted` status, with 0015 updated if
+  P1–P9 force any architecture change beyond what it already predicts
+- [ ] `npm run build` (web) and `npm run pack:electron` both succeed with no
+  change to web-app behavior
 
 ---
 
@@ -415,7 +563,8 @@ sessions — no real Word/InPage required:
 - `capabilityDetect.test.ts` — correct fallback and a clear message when
   Word/LibreOffice aren't found.
 - `processLifecycle.test.ts` — timeout, hang detection, orphan cleanup.
-- `fontInstall.test.ts` — correct path and registry entry; a non-font file
+- `fontInstall.test.ts` — correct path, registry entry, **and the real
+  `AddFontResourceW`/`WM_FONTCHANGE` calls** (constraint 2); a non-font file
   is rejected.
 - `fsSink.test.ts` — path traversal (`../`, absolute paths, symlinks) and
   disallowed extensions are rejected.
@@ -445,7 +594,7 @@ installed:
    apps to confirm.
 2. A text PDF → Word (Reflow), and a scanned PDF → OCR → Word.
 3. Install Jameel Noori Nastaleeq (or similar) and confirm it appears in
-   **Word's own font list**.
+   **Word's own font list**, in an already-running Word, without restart.
 4. Style sheet, page setup, TOC, footnotes — all driven by Word's own
    engine.
 5. A supervisor's tracked changes and comments survive the agent's edits.
@@ -453,7 +602,7 @@ installed:
    reverted.
 7. Closing Word mid-task — the app recovers, no orphaned process remains.
 8. A machine without Office — the LibreOffice route works, with a clear
-   message.
+   message (once Proof 3 has run).
 9. A project folder inside `~/Google Drive/`, opened on a second machine.
 10. Open the web app and confirm nothing changed.
 11. Type `@chapter_two` and ask the agent something — the right file opens,

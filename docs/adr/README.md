@@ -20,7 +20,7 @@ reconstruct rationale without rereading commits.
 | [0012](./0012-tafsir-web-via-edge-function.md) | Tafsir MCP on Web via a Session-less Edge Function | Accepted (decision) |
 | [0013](./0013-source-picker-and-collection-registry.md) | Opt-in source picker + canonical book registry for scoping (supersedes part of 0002) | Accepted |
 | [0014](./0014-classical-discipline-entry-point.md) | Explicit entry point for rijal/tafsir/lughat, plus fixing why they were unreachable at all | Accepted |
-| 0015 | *Reserved* — M8 P0 spike results (Word COM, PDF Reflow, LibreOffice, InPage↔RTF, font install, orphan cleanup) on a real Windows machine | Pending — see `p0-spike/README.md` |
+| [0015](./0015-m8-word-inpage-p0-spike.md) | M8 desktop document bridge — P0 spike results and the four constraints they lock onto P1 | Accepted |
 | [0016](./0016-m8-agentic-loop-supersedes-fixed-tasks.md) | Agentic loop supersedes "the model never chooses the steps," compensated by tracked-change review + grounding gate | Accepted |
 | [0017](./0017-m8-adapter-platform.md) | Adapter platform + conversion graph (one adapter per tool, not N² converters) | Accepted |
 | [0018](./0018-m8-folder-projects-and-sync.md) | The project folder (docx/rtf) is the source of truth, not an internal document model | Accepted |
