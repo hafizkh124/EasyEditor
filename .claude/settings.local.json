@@ -59,7 +59,8 @@
       "Bash(sed -E 's/.*\\(public\\\\.\\)?\\([a-z_]+\\)$/\\\\2/I')",
       "Bash(command -v docker)",
       "Bash(ls \"E:/scribe-studio-app/supabase/functions/\" && echo \"---SCRIPTS---\" && ls \"D:/EEData/scripts/\" 2>/dev/null || echo \"D:/EEData/scripts NOT FOUND\")",
-      "PowerShell(npm run typecheck)"
+      "PowerShell(npm run typecheck)",
+      "Bash(mkdir -p /tmp/claude-0/-home-user-EasyEditor/cff35aa8-eea5-59c3-91ad-3a00b5ab2460/scratchpad)"
     ]
   }
 }
