@@ -16,6 +16,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "build:electron": "npm run check:shamela-helper && vite build --mode desktop && electron-builder",
+    "build:appx": "npm run check:shamela-helper && vite build --mode desktop && electron-builder --win appx",
     "pack:electron": "npm run check:shamela-helper && vite build --mode desktop && electron-builder --dir",
     "check:shamela-helper": "node scripts/check-shamela-helper.mjs",
     "build:shamela-helper": "node scripts/build-shamela-helper.mjs",
@@ -72,6 +73,14 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
+    },
+    "appx": {
+      "identityName": "HafizKhizarHayat.EasyEditor",
+      "publisher": "CN=23089916-D5E2-4DD8-84D9-88450996B4D8",
+      "publisherDisplayName": "Hafiz Khizar Hayat",
+      "applicationId": "EasyEditor",
+      "displayName": "Easy Editor",
+      "backgroundColor": "#18181b"
     },
     "mac": {
       "target": [
