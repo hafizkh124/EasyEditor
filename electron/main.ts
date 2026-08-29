@@ -8,6 +8,8 @@ import { registerShamelaHandlers } from './ipc/shamelaHandlers.js';
 import { registerTafsirHandlers } from './ipc/tafsirHandlers.js';
 import { terminateLocalSync } from './tafsir/mcpClient.js';
 import { registerVoiceHandlers } from './ipc/voiceHandlers.js';
+import { registerDocBridgeHandlers } from './ipc/docBridgeHandlers.js';
+import { initDocBridge, shutdownDocBridgeSync } from './host/index.js';
 import { isAllowedExternalUrl } from './lib/urlAllowlist.js';
 import { ALLOWED_IPC_CHANNELS } from './ipc/registry.js';
 import { logger } from './lib/logger.js';
@@ -275,8 +277,15 @@ if (!gotSingleInstanceLock) {
     registerShamelaHandlers();
     registerTafsirHandlers();
     registerVoiceHandlers();
+    registerDocBridgeHandlers();
     createWindow();
     checkForUpdates();
+
+    // M8 Layer 1: clean up a WINWORD.EXE a previous hard-killed run may have
+    // left orphaned (P0 proof 6). Windows-only; a no-op elsewhere.
+    void initDocBridge().catch((err) => {
+      log.warn('doc-bridge startup sweep failed', { message: (err as Error).message });
+    });
 
     // Cold start FROM a deep link (the app was not running when the browser
     // handed the callback over). The renderer is not listening yet, so wait for
@@ -294,10 +303,14 @@ if (!gotSingleInstanceLock) {
   });
 }
 
-// No zombie `uvx tafsir-mcp` / python subprocess left behind (SPEC-TAFSIR §FR-3.3).
-// `before-quit` does not await promises, so this is a synchronous child kill.
+// No zombie subprocesses left behind. `before-quit` does not await promises,
+// so both of these are synchronous child kills:
+//   - `uvx tafsir-mcp` / python sidecar (SPEC-TAFSIR §FR-3.3)
+//   - the PowerShell host AND any WINWORD.EXE it owns (SPEC-M8 §6 constraint 1 /
+//     P0 proof 6 — Word does not exit on its own when its automator dies)
 app.on('before-quit', () => {
   terminateLocalSync();
+  shutdownDocBridgeSync();
 });
 
 app.on('window-all-closed', () => {

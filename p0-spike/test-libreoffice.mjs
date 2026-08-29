@@ -1,6 +1,6 @@
-// test-libreoffice.mjs — M7 P0 spike, proof (3): detect a LibreOffice
+// test-libreoffice.mjs — M7/M8 P0 spike, proof (3): detect a LibreOffice
 // install and run a real headless conversion. This is the "Office نہ ہو
-// تب بھی" fallback path (تہہ ۲، shared/adapters/libreoffice.ts).
+// تب بھی" fallback path (تہہ ۲، electron/adapters/libreoffice.ts).
 //
 // Usage:
 //   node test-libreoffice.mjs <path-to-a-real-.docx-with-urdu-nastaliq-text>
@@ -10,21 +10,39 @@
 //   - --convert-to pdf produces a non-empty PDF
 //   - Urdu/Nastaliq text in the source is visibly correct in the output
 //     (this last check is manual — open the PDF and look)
+//
+// P0 spike RESULT (2026-08-29): UNVERIFIED — the test machine had no
+// LibreOffice installed, so `detect` returned false and the convert step
+// never ran. M8 P4 (the real libreoffice.ts adapter) stays blocked until
+// this proof runs for real on a machine that has LibreOffice.
 
 import { existsSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 
 const CANDIDATE_PATHS = [
   'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
   'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
-  'soffice', // on PATH
+  '/Applications/LibreOffice.app/Contents/MacOS/soffice',
+  '/usr/bin/soffice',
+  '/usr/local/bin/soffice',
 ];
 
+/**
+ * Returns a real, runnable soffice path, or null. The earlier version of
+ * this function returned the bare string 'soffice' as an unconditional
+ * last resort, so `detect` reported found:true on a machine with nothing
+ * installed and then died with ENOENT at spawn time. Now the PATH lookup
+ * is actually resolved before it counts as "found".
+ */
 function findSoffice() {
   for (const candidate of CANDIDATE_PATHS) {
-    if (candidate === 'soffice') return candidate; // let spawn's PATH lookup try it
     if (existsSync(candidate)) return candidate;
+  }
+  // PATH lookup: only counts if `soffice --version` actually launches.
+  const probe = spawnSync('soffice', ['--version'], { timeout: 15_000 });
+  if (!probe.error && (probe.status === 0 || String(probe.stdout || '').toLowerCase().includes('libreoffice'))) {
+    return 'soffice';
   }
   return null;
 }

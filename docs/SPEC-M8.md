@@ -118,16 +118,17 @@ constraints follow directly from these six results, not from assumption.
 
 ## 3. Architecture — platform first, adapters after
 
-### Layer 1 — Process & session (`electron/host/`)
+### Layer 1 — Process & session (`electron/host/`) — **shipped in P1**
 
 The shared foundation every COM and CLI adapter builds on.
 
 | File | Job |
 |---|---|
-| `powershell.ts` | One long-lived PowerShell process; commands/replies as newline-delimited JSON over stdin/stdout — the app never relaunches PowerShell per call. Reconnects on host crash; per-op timeouts; structured errors. |
-| `process.ts` | Timeouts, hang detection, and **actively owning and killing the `WINWORD.EXE` PID** on host shutdown or crash (constraint 1, §6) — Proof 6 confirmed Word does not exit on its own. A stale-PID sweep runs on host start, covering the case where the whole app was killed. |
-| `detect.ts` | What's installed on this machine, which version — this is what determines the agent's declared capabilities |
-| `wordBridge.ps1` | Shipped as an `extraResources` entry (like `shamela-helper.jar`); resolved from `process.resourcesPath` in a packaged build and from the repo path in dev, with a diagnostic "looked in …" error if missing, mirroring `getHelperJarPath()`. A `scripts/check-doc-bridge.mjs` pre-build check mirrors `check:shamela-helper`. |
+| `powershell.ts` | `WordHost`: one long-lived PowerShell process; commands/replies as newline-delimited JSON over stdin/stdout, matched strictly FIFO — the app never relaunches PowerShell per call. Per-op timeouts (`OP_TIMEOUT_MS`), structured `HostError` codes, and an `'exit'` event on host crash that rejects every in-flight request. |
+| `process.ts` | Owns and **actively kills the `WINWORD.EXE` PID** on host crash (`killOwnedWordIfAlive`), app quit (`killOwnedWordSync`, from `before-quit`), and next launch (`sweepStaleOnStartup`, from a persisted record) — Proof 6 confirmed Word does not exit on its own. Every kill is gated on a **PID + start-time fingerprint** so a recycled PID (or the user's own Word) is never touched. |
+| `detectTools.ts` | Whether PowerShell + Word COM work on this machine, and the Word version — determines whether the renderer offers Word conversion at all. |
+| `index.ts` | The facade: owns the single `WordHost`, wires its `'exit'` to the orphan guard, exposes `pingHost` / `detectTools` / `initDocBridge` / `shutdownDocBridge(Sync)`. |
+| `wordBridge.ps1` | Staged into `resources/bin/` by `scripts/check-doc-bridge.mjs` (wired into `build:electron` / `build:appx` / `pack:electron`, mirroring `check:shamela-helper`); `build.extraResources` already ships `resources/bin` → `bin`. Resolved from `process.resourcesPath/bin` when packaged, the repo path in dev, with a diagnostic "looked in …" error if missing. Adds a headless (`Visible = $false`) Word instance and a **before/after PID diff** so the host knows exactly which `WINWORD.EXE` it started (`ownedByUs`); COM attaching to a Word the user already had open is reported as *not* owned. |
 
 **Core safety rule:** model-generated text is **never** concatenated into a
 shell command. Every parameter travels as JSON over stdin, as **data** —
@@ -388,7 +389,7 @@ build on that core once it's solid.
 | Phase | What ships | Why / gate |
 |---|---|---|
 | **P0 — Spike** | Six proofs on a real Windows machine (`p0-spike/`) | ✅ **Done** for the Word core (proofs 1, 2, 5, 6); **unverified** for LibreOffice (3) and InPage (4) — see §1.2, ADR-0015 |
-| **P1** | Layer 1: `electron/host/powershell.ts` + `process.ts`, promoted from `p0-spike/host.mjs`/`word-bridge.ps1` — reconnect-on-crash, per-op timeouts, structured errors, and `process.ts` owning + killing the `WINWORD.EXE` PID (constraint 1, §6). IPC: `detectTools`, `ping`. | No renderer UX yet; exit criterion is an integration test driving the real host |
+| **P1** | ✅ **Done** (2026-08-29). Layer 1: `electron/host/` — `powershell.ts` (`WordHost`), `process.ts` (fingerprinted orphan guard), `detectTools.ts`, `index.ts`, `wordBridge.ps1`. `DOC_BRIDGE_INVOKE`/`DOC_BRIDGE_PROGRESS` on the allowlist; `detectTools` + `ping` actions; `docBridge` preload wrapper; `main.ts` wires `initDocBridge()` (startup sweep) and `shutdownDocBridgeSync()` (`before-quit`). `scripts/check-doc-bridge.mjs` in the build. Three unit files (26 tests) + `src/test/hostLive.test.ts` (`DOC_BRIDGE_LIVE=1`, needs real Word) — **the live test passed against Word 16.0: full docx round-trip, and `host.kill()` orphan → `killOwnedWordIfAlive()` confirmed the WINWORD.EXE gone.** Also fixed the three P0 spike-script defects from ADR-0015. | Exit criterion met: live integration test drives the real host |
 | **P2** | Layer 2: `electron/adapters/word.ts` — `toWord`/`fromWord`/`openPdfReflow`/`readStructure`; `installFont` wired to the real APIs (constraint 2, §6) with the `installFontCheck` verification loop | The deepest adapter, and the template every later one follows |
 | **P3** | Renderer: a convert dialog in `CanvasPanel` — pick source/target, show the Layer 3 loss list, run with a progress bar (conversions are async, §6 constraint 3), open the result. `getBackend()` only; desktop-gated. | "Convert this to that" works from a menu, before the agent exists |
 | **P4** | `electron/adapters/libreoffice.ts` | **Blocked on Proof 3** — run `p0-spike/test-libreoffice.mjs` for real first, and fix its `findSoffice()` false-positive (§6) |
@@ -506,8 +507,9 @@ See ADR-0019 for the full reasoning behind each rejection above.
   installed, results recorded in ADR-0015. Any failure is resolved
   (architecture revised) before P1 starts — done for the Word core; P4/P5
   stay blocked until Proofs 3/4 run for real.
-- **P1:** an integration test drives the real host end-to-end (open, track
-  changes, footnote, save, PID cleanup after a simulated crash).
+- **P1:** ✅ an integration test drives the real host end-to-end (open, track
+  changes, footnote, save, PID cleanup after a simulated crash) —
+  `src/test/hostLive.test.ts`, passed against Word 16.0 on 2026-08-29.
 - **P2:** `word.ts` passes `docs/QA-M8.md` items 1–7 on a real machine.
 - **P3:** every pair in §4's table converts successfully from the menu (or
   is refused with a clear reason), without the agent.
@@ -554,6 +556,12 @@ npm run test:e2e          # packaged app smoke
 New unit tests (`src/test/`, alongside the existing 129), against mocked
 sessions — no real Word/InPage required:
 
+- **P1, shipped:** `hostPowershell.test.ts` (FIFO reply matching, per-op
+  timeout frees the slot, host-crash rejects all pending + emits `'exit'`,
+  refuses off Windows), `hostProcess.test.ts` (the PID + start-time
+  fingerprint — a mismatch discards the record without killing anything;
+  startup sweep), `docBridgeHandlers.test.ts` (allowlist + action dispatch).
+  `hostLive.test.ts` is the gated real-Word integration test.
 - `commandBuilder.test.ts` — **most important**: every parameter travels as
   data; quotes, newlines, `;`, `$(…)`, and Urdu text never get concatenated
   into a command string (direct command-injection guard).
