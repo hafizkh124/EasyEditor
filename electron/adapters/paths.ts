@@ -12,9 +12,15 @@ import fs from 'node:fs';
  * is one edit.
  */
 
-export type DocExt = '.docx' | '.pdf' | '.rtf' | '.html' | '.htm' | '.txt' | '.md';
+export type DocExt =
+  | '.docx' | '.pdf' | '.rtf' | '.html' | '.htm' | '.txt' | '.md'
+  // P9 — Excel / PowerPoint.
+  | '.xlsx' | '.xls' | '.csv' | '.pptx' | '.ppt';
 
-const DEFAULT_ALLOWED: DocExt[] = ['.docx', '.pdf', '.rtf', '.html', '.htm', '.txt', '.md'];
+const DEFAULT_ALLOWED: DocExt[] = [
+  '.docx', '.pdf', '.rtf', '.html', '.htm', '.txt', '.md',
+  '.xlsx', '.xls', '.csv', '.pptx', '.ppt',
+];
 
 /** Directories a generated file must never be written into. */
 const BLOCKED_PREFIXES = [

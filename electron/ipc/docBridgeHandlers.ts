@@ -15,6 +15,9 @@ import path from 'node:path';
 import { ALLOWED_IPC_CHANNELS } from './registry.js';
 import { detectTools, pingHost } from '../host/index.js';
 import * as word from '../adapters/word.js';
+import * as excel from '../adapters/excel.js';
+import * as powerpoint from '../adapters/powerpoint.js';
+import { ALL_ADAPTERS } from '../adapters/registry.js';
 import { planConversion } from '../../shared/convert/planner.js';
 import { buildCitationFootnotes, type FootnoteSource } from '../../shared/convert/citationFootnotes.js';
 import type { DocFormat } from '../../shared/adapters/types.js';
@@ -74,11 +77,41 @@ export function registerDocBridgeHandlers(): void {
         case 'word:installFont':
           return word.installFont(String(payload.fontPath));
 
+        // ── P9: Excel adapter ─────────────────────────────────────────
+        case 'excel:descriptor':
+          return { descriptor: excel.excelDescriptor, availability: excel.available() };
+
+        case 'excel:export':
+          return excel.exportSpreadsheet(
+            String(payload.sourcePath),
+            payload.to as 'xlsx' | 'csv' | 'pdf',
+            String(payload.outputPath),
+          );
+
+        case 'excel:readSheet':
+          return excel.readSheet(String(payload.sourcePath), {
+            sheet: typeof payload.sheet === 'string' ? payload.sheet : undefined,
+          });
+
+        // ── P9: PowerPoint adapter ────────────────────────────────────
+        case 'ppt:descriptor':
+          return { descriptor: powerpoint.powerpointDescriptor, availability: powerpoint.available() };
+
+        case 'ppt:export':
+          return powerpoint.exportPresentation(
+            String(payload.sourcePath),
+            payload.to as 'pptx' | 'pdf',
+            String(payload.outputPath),
+          );
+
+        case 'ppt:readOutline':
+          return powerpoint.readOutline(String(payload.sourcePath));
+
         // ── P3: convert dialog ────────────────────────────────────────
         case 'word:plan': {
           const from = payload.from as DocFormat;
           const to = payload.to as DocFormat;
-          return planConversion({ from, to, adapters: [word.wordDescriptor] });
+          return planConversion({ from, to, adapters: ALL_ADAPTERS });
         }
 
         case 'word:export': {

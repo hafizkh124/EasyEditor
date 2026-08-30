@@ -12,7 +12,10 @@
  */
 
 /** Document formats the bridge knows, as conversion-graph node names. */
-export type DocFormat = 'docx' | 'pdf' | 'rtf' | 'html' | 'txt' | 'md' | 'inpage';
+export type DocFormat =
+  | 'docx' | 'pdf' | 'rtf' | 'html' | 'txt' | 'md' | 'inpage'
+  // P9 — spreadsheet + presentation nodes (Excel / PowerPoint adapters).
+  | 'xlsx' | 'csv' | 'pptx';
 
 /** A single read or write capability an adapter contributes to the graph. */
 export interface FormatEdge {
@@ -34,7 +37,12 @@ export type AdapterOp =
   | 'reflowPdf'
   | 'readStructure'
   | 'installFont'
-  | 'applyCitations';
+  | 'applyCitations'
+  // P9 — Excel / PowerPoint inspection.
+  | 'readSheet'
+  | 'readOutline'
+  | 'exportSpreadsheet'
+  | 'exportPresentation';
 
 /** What an adapter declares about itself (ADR-0017). */
 export interface AdapterDescriptor {
@@ -73,6 +81,35 @@ export interface DocStructure {
   wordCount: number;
   /** 'rtl' | 'ltr' | 'mixed' — the document body's reading order. */
   readingOrder: 'rtl' | 'ltr' | 'mixed';
+}
+
+// ── Excel: a sheet's used range (readSheet) ───────────────────────────────
+
+export interface SheetData {
+  /** Sheet name that was read. */
+  sheet: string;
+  /** All sheet names in the workbook, in tab order. */
+  sheets: string[];
+  /** Row-major cell values of the used range (strings; empty cells are ''). */
+  rows: string[][];
+  /** True when `rows` was capped and the sheet has more data below/right. */
+  truncated: boolean;
+}
+
+// ── PowerPoint: the deck outline (readOutline) ────────────────────────────
+
+export interface SlideOutline {
+  /** 1-based slide number. */
+  index: number;
+  /** The slide's title placeholder text, or '' when it has none. */
+  title: string;
+  /** Body-text lines (bullets), in reading order. */
+  bullets: string[];
+}
+
+export interface DeckStructure {
+  slideCount: number;
+  slides: SlideOutline[];
 }
 
 // ── conversion request/result ─────────────────────────────────────────────

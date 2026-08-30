@@ -222,7 +222,10 @@ const electronAPI = {
   docBridge: {
     // SPEC-M8 — all actions travel the single allowlisted channel.
     // P1: tool detection + host ping. P2: the Word adapter.
-    detectTools: (): Promise<{ powershell: boolean; word: boolean; wordVersion: string | null; windows: boolean; reason?: string }> =>
+    detectTools: (): Promise<{
+      powershell: boolean; word: boolean; wordVersion: string | null; windows: boolean; reason?: string;
+      excel?: boolean; excelVersion?: string | null; powerpoint?: boolean; powerpointVersion?: string | null;
+    }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'detectTools' }),
     ping: (): Promise<{ ok: boolean; latencyMs: number | null; error?: string }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'ping' }),
@@ -273,6 +276,26 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, {
         action: 'word:applyCitations', html, documentText, sources, title, options,
       }),
+
+    // ── P9: Excel adapter ─────────────────────────────────────────────
+    excel: {
+      descriptor: (): Promise<{ descriptor: unknown; availability: { available: boolean; version: string | null; reason?: string } }> =>
+        ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'excel:descriptor' }),
+      exportSpreadsheet: (sourcePath: string, to: 'xlsx' | 'csv' | 'pdf', outputPath: string): Promise<{ outputPath: string; ms: number }> =>
+        ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'excel:export', sourcePath, to, outputPath }),
+      readSheet: (sourcePath: string, sheet?: string): Promise<{ sheet: string; sheets: string[]; rows: string[][]; truncated: boolean }> =>
+        ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'excel:readSheet', sourcePath, sheet }),
+    },
+
+    // ── P9: PowerPoint adapter ────────────────────────────────────────
+    powerpoint: {
+      descriptor: (): Promise<{ descriptor: unknown; availability: { available: boolean; version: string | null; reason?: string } }> =>
+        ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'ppt:descriptor' }),
+      exportPresentation: (sourcePath: string, to: 'pptx' | 'pdf', outputPath: string): Promise<{ outputPath: string; ms: number }> =>
+        ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'ppt:export', sourcePath, to, outputPath }),
+      readOutline: (sourcePath: string): Promise<{ slideCount: number; slides: Array<{ index: number; title: string; bullets: string[] }> }> =>
+        ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'ppt:readOutline', sourcePath }),
+    },
 
     onProgress: (callback: (p: { op: string; phase: string; percent: number }) => void): (() => void) => {
       const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);

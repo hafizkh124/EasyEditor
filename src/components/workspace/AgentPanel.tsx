@@ -55,7 +55,11 @@ export const AgentPanel: React.FC = () => {
 
   useEffect(() => {
     window.electronAPI?.docBridge?.detectTools().then((d) => {
-      setCaps(d.word ? `Word ${d.wordVersion ?? ""}`.trim() : t("agent.caps_no_word", "Word not found on this machine"));
+      if (!d.word) { setCaps(t("agent.caps_no_word", "Word not found on this machine")); return; }
+      const parts = [`Word ${d.wordVersion ?? ""}`.trim()];
+      if (d.excel) parts.push(`Excel ${d.excelVersion ?? ""}`.trim());
+      if (d.powerpoint) parts.push(`PowerPoint ${d.powerpointVersion ?? ""}`.trim());
+      setCaps(parts.join(" · "));
     }).catch(() => setCaps(null));
   }, [t]);
 

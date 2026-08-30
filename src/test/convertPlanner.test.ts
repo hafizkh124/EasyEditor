@@ -88,6 +88,39 @@ describe('planConversion', () => {
   });
 });
 
+describe('planConversion across the P9 adapters', () => {
+  const excel: AdapterDescriptor = {
+    id: 'excel', label: 'Microsoft Excel',
+    reads: [{ format: 'xlsx', quality: 1 }, { format: 'csv', quality: 0.75, lossy: 'CSV loses formulas' }],
+    writes: [{ format: 'xlsx', quality: 1 }, { format: 'pdf', quality: 0.9, lossy: 'static rendering' }, { format: 'csv', quality: 0.6, lossy: 'one sheet only' }],
+    ops: ['exportSpreadsheet', 'readSheet'], platforms: ['win32'],
+  };
+  const ppt: AdapterDescriptor = {
+    id: 'powerpoint', label: 'Microsoft PowerPoint',
+    reads: [{ format: 'pptx', quality: 1 }],
+    writes: [{ format: 'pptx', quality: 1 }, { format: 'pdf', quality: 0.9, lossy: 'animations lost' }],
+    ops: ['exportPresentation', 'readOutline'], platforms: ['win32'],
+  };
+  const all = [word, excel, ppt];
+
+  it('routes xlsx → pdf through Excel with its loss note', () => {
+    const plan = planConversion({ from: 'xlsx', to: 'pdf', adapters: all });
+    expect(plan.ok && plan.steps[0].adapterId).toBe('excel');
+    expect(plan.ok && plan.losses).toEqual(['static rendering']);
+  });
+
+  it('routes xlsx → csv and pptx → pdf', () => {
+    expect(planConversion({ from: 'xlsx', to: 'csv', adapters: all }).ok).toBe(true);
+    expect(planConversion({ from: 'pptx', to: 'pdf', adapters: all }).ok).toBe(true);
+  });
+
+  it('refuses docx → xlsx — no single adapter reads docx and writes xlsx', () => {
+    const plan = planConversion({ from: 'docx', to: 'xlsx', adapters: all });
+    expect(plan.ok).toBe(false);
+    expect(plan.ok === false && plan.reason).toMatch(/one step|convert "docx" to "xlsx"/);
+  });
+});
+
 describe('conversionLosses', () => {
   it('returns the loss array for a valid route', () => {
     expect(conversionLosses({ from: 'docx', to: 'txt', adapters: [word] })).toEqual(['All formatting and footnotes are dropped.']);

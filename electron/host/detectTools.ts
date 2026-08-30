@@ -16,15 +16,15 @@ function psVersion(): string | null {
 }
 
 /**
- * One-shot Word COM probe: create a throwaway Word.Application, read its
- * version, quit it. Nothing lingers — this is not the long-lived host.
+ * One-shot COM probe for an Office app: create a throwaway `<ProgId>.Application`,
+ * read its version, quit it. Nothing lingers — this is not the long-lived host.
  */
-function wordVersion(): { installed: boolean; version: string | null; reason?: string } {
+function comVersion(progId: string): { installed: boolean; version: string | null; reason?: string } {
   const r = spawnSync(
     'powershell',
     [
       '-NoProfile', '-NonInteractive', '-Command',
-      "try { $w = New-Object -ComObject Word.Application; $v = $w.Version; $w.Quit(); " +
+      `try { $w = New-Object -ComObject ${progId}.Application; $v = $w.Version; $w.Quit(); ` +
       "[Console]::Out.WriteLine('OK ' + $v) } " +
       "catch { [Console]::Out.WriteLine('ERR ' + $_.Exception.Message) }",
     ],
@@ -32,7 +32,7 @@ function wordVersion(): { installed: boolean; version: string | null; reason?: s
   );
   const out = (r.stdout || '').trim();
   if (out.startsWith('OK ')) return { installed: true, version: out.slice(3).trim() || null };
-  const reason = out.startsWith('ERR ') ? out.slice(4).trim() : (r.error?.message || 'Word COM not available');
+  const reason = out.startsWith('ERR ') ? out.slice(4).trim() : (r.error?.message || `${progId} COM not available`);
   return { installed: false, version: null, reason };
 }
 
@@ -40,8 +40,25 @@ function wordVersion(): { installed: boolean; version: string | null; reason?: s
  * What document-bridge capabilities this machine actually has. Called by the
  * `detectTools` IPC action; the renderer uses it to decide whether to offer
  * Word conversion at all. Word/COM is Windows-only.
+ *
+ * Memoised: the installed Office set does not change during a session, and
+ * `word.available()` / the agent call this on every operation — three
+ * serial COM probes each time would be a real cost.
  */
+let cached: ToolAvailability | null = null;
+
+/** Clear the memo — for tests, and for a "re-check" affordance later. */
+export function resetToolDetection(): void {
+  cached = null;
+}
+
 export function detectTools(): ToolAvailability {
+  if (cached) return cached;
+  cached = probeTools();
+  return cached;
+}
+
+function probeTools(): ToolAvailability {
   if (process.platform !== 'win32') {
     return {
       powershell: false,
@@ -63,13 +80,22 @@ export function detectTools(): ToolAvailability {
     };
   }
 
-  const word = wordVersion();
-  log.debug('tool detection', { powershell: ps, word: word.installed, wordVersion: word.version });
+  const word = comVersion('Word');
+  const excel = comVersion('Excel');
+  const powerpoint = comVersion('PowerPoint');
+  log.debug('tool detection', {
+    powershell: ps,
+    word: word.installed, excel: excel.installed, powerpoint: powerpoint.installed,
+  });
   return {
     powershell: true,
     windows: true,
     word: word.installed,
     wordVersion: word.version,
+    excel: excel.installed,
+    excelVersion: excel.version,
+    powerpoint: powerpoint.installed,
+    powerpointVersion: powerpoint.version,
     ...(word.installed ? {} : { reason: `Microsoft Word not available: ${word.reason}` }),
   };
 }

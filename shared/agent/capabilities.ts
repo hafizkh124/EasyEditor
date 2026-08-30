@@ -7,6 +7,10 @@ export interface ToolAvailabilityLike {
   word: boolean;
   wordVersion: string | null;
   windows: boolean;
+  excel?: boolean;
+  excelVersion?: string | null;
+  powerpoint?: boolean;
+  powerpointVersion?: string | null;
   libreoffice?: boolean;
   inpage?: boolean;
 }
@@ -15,6 +19,8 @@ export interface ToolAvailabilityLike {
 export function summariseCapabilities(c: ToolAvailabilityLike): string {
   const parts: string[] = [];
   parts.push(c.word ? `Word ${c.wordVersion ?? ''}`.trim() : 'Word: not found');
+  if (c.excel) parts.push(`Excel ${c.excelVersion ?? ''}`.trim());
+  if (c.powerpoint) parts.push(`PowerPoint ${c.powerpointVersion ?? ''}`.trim());
   if (c.libreoffice) parts.push('LibreOffice');
   if (c.inpage) parts.push('InPage');
   if (!c.windows) parts.push('(not Windows — Word automation unavailable)');
