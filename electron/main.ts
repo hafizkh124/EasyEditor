@@ -11,6 +11,7 @@ import { registerVoiceHandlers } from './ipc/voiceHandlers.js';
 import { registerDocBridgeHandlers } from './ipc/docBridgeHandlers.js';
 import { initDocBridge, shutdownDocBridgeSync } from './host/index.js';
 import { registerFsHandlers, terminateFsWatch } from './ipc/fsHandlers.js';
+import { registerAgentHandlers } from './ipc/agentHandlers.js';
 import { isAllowedExternalUrl } from './lib/urlAllowlist.js';
 import { ALLOWED_IPC_CHANNELS } from './ipc/registry.js';
 import { logger } from './lib/logger.js';
@@ -280,6 +281,7 @@ if (!gotSingleInstanceLock) {
     registerVoiceHandlers();
     registerDocBridgeHandlers();
     registerFsHandlers();
+    registerAgentHandlers();
     createWindow();
     checkForUpdates();
 

@@ -48,6 +48,10 @@ export const ALLOWED_IPC_CHANNELS = {
   FS_INVOKE: 'fs:invoke',
   FS_CHANGED: 'fs:changed',
 
+  // Agent — the multi-step tool loop (SPEC-M8 Layer 6, ADR-0016).
+  AGENT_INVOKE: 'agent:invoke',
+  AGENT_PROGRESS: 'agent:progress',
+
   // Voice (M5.5 / M5.6 placeholder channels)
   VOICE_SYNTHESIZE: 'voice:synthesize',
   VOICE_TRANSCRIBE: 'voice:transcribe',

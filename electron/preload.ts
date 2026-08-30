@@ -319,6 +319,35 @@ const electronAPI = {
     },
   },
 
+  agent: {
+    // SPEC-M8 Layer 6 / P8a — the multi-step tool loop (ADR-0016).
+    run: (
+      instruction: string,
+      mode: 'ask' | 'do',
+      projectRoot: string,
+    ): Promise<{
+      id: string;
+      answer: string;
+      stopReason: 'done' | 'step-limit' | 'cancelled' | 'error';
+      steps: number;
+      toolCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown }>;
+      playbook?: string;
+      error?: string;
+    }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'run', instruction, mode, projectRoot }),
+    cancel: (): Promise<{ cancelled: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'cancel' }),
+    status: (): Promise<{ busy: boolean; running: { id: string; startedAt: number } | null }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'status' }),
+    onProgress: (callback: (p: { id: string; step: number; label: string; kind: string; detail?: string }) => void): (() => void) => {
+      const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);
+      ipcRenderer.on(ALLOWED_IPC_CHANNELS.AGENT_PROGRESS, listener);
+      return () => {
+        ipcRenderer.removeListener(ALLOWED_IPC_CHANNELS.AGENT_PROGRESS, listener);
+      };
+    },
+  },
+
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

@@ -235,6 +235,27 @@ export async function applyCitations(
   }
 }
 
+/**
+ * Apply the RTL page setup to an existing chapter file IN PLACE, as a tracked
+ * change (M8 agent `set_page_layout`). The file is opened, edited, and saved
+ * back to the same path — not regenerated.
+ */
+export async function setChapterLayout(chapterPath: string): Promise<{ ms: number }> {
+  const src = assertReadableFile(chapterPath, OPENABLE);
+  const out = assertSafeOutputPath(chapterPath, ['.docx']);
+  const started = Date.now();
+  await runExclusive(async () => {
+    const h = getWordHost();
+    await h.sendOk({ op: 'open', path: src });
+    await refreshOwnedWord();
+    await h.sendOk({ op: 'setTrackRevisions', enabled: true });
+    await h.sendOk({ op: 'setRtlPageSetup' });
+    await h.sendOk({ op: 'saveAs', path: out });
+    await h.sendOk({ op: 'close' });
+  });
+  return { ms: Date.now() - started };
+}
+
 /** Inspect a document's structure — the `.docx` → EasyEditor doc side. */
 export async function readStructure(docxPath: string): Promise<DocStructure> {
   const src = assertReadableFile(docxPath, OPENABLE);

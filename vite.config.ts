@@ -110,6 +110,10 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_LOCAL_VOICE": JSON.stringify(
         env.VITE_LOCAL_VOICE || (isDesktop ? "true" : "false"),
       ),
+      // SPEC-M8 Layer 6 / ADR-0016 — the agentic Agent tab. Off by default
+      // (the agent core ships headless in P8a); an explicit .env value opts
+      // in. Gated in the UI by isDesktop() AND this flag.
+      "import.meta.env.VITE_AGENT_MODE": JSON.stringify(env.VITE_AGENT_MODE || "false"),
     },
     server: {
       host: "::",

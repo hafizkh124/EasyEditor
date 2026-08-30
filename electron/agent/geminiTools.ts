@@ -1,0 +1,91 @@
+/**
+ * M8 Layer 6 — Gemini function-calling for the agent (SPEC-M8 §3).
+ *
+ * `generateWithTools` is the real `ModelFn` the loop runs with. It converts
+ * the closed tool registry to Gemini `functionDeclarations`, sends the running
+ * conversation, and returns either a final text answer or one tool call.
+ *
+ * Non-streaming: the loop already emits its own step-by-step progress, and a
+ * function-call response has nothing useful to stream token by token.
+ */
+import { getDecryptedGeminiKey } from '../ai/keyStore.js';
+import { logger } from '../lib/logger.js';
+import type { AgentMessage, AgentTool, ModelStep, ToolParam } from '../../shared/agent/types.js';
+
+const log = logger.child('agent/gemini');
+
+function paramSchema(p: ToolParam): Record<string, unknown> {
+  const s: Record<string, unknown> = { type: p.type.toUpperCase(), description: p.description };
+  if (p.enum) s.enum = p.enum;
+  if (p.type === 'array' && p.items) s.items = { type: p.items.type.toUpperCase() };
+  return s;
+}
+
+function toFunctionDeclarations(tools: AgentTool[]): unknown[] {
+  return tools.map((t) => ({
+    name: t.name,
+    description: t.description,
+    parameters: {
+      type: 'OBJECT',
+      properties: Object.fromEntries(Object.entries(t.params).map(([k, v]) => [k, paramSchema(v)])),
+      ...(t.required.length ? { required: t.required } : {}),
+    },
+  }));
+}
+
+/** The running conversation → Gemini `contents`. */
+function toContents(messages: AgentMessage[]): unknown[] {
+  return messages.map((m) => {
+    if (m.role === 'user') return { role: 'user', parts: [{ text: m.text }] };
+    if (m.role === 'model') {
+      return m.toolCall
+        ? { role: 'model', parts: [{ functionCall: { name: m.toolCall.name, args: m.toolCall.args } }] }
+        : { role: 'model', parts: [{ text: m.text ?? '' }] };
+    }
+    // tool result
+    return { role: 'user', parts: [{ functionResponse: { name: m.name, response: { result: m.result } } }] };
+  });
+}
+
+export async function generateWithTools(
+  messages: AgentMessage[],
+  tools: AgentTool[],
+  systemPrompt: string,
+): Promise<ModelStep> {
+  const key = await getDecryptedGeminiKey();
+  if (!key) throw new Error('کوئی Gemini key پاس نہیں کی گئی — Settings میں اپنی کلید درج کریں');
+
+  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+  const body = {
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents: toContents(messages),
+    tools: [{ functionDeclarations: toFunctionDeclarations(tools) }],
+    toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+    generationConfig: { temperature: 0.2 },
+  };
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Gemini ${res.status}: ${txt.slice(0, 300)}`);
+  }
+  const data = await res.json() as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string; functionCall?: { name: string; args?: Record<string, unknown> } }> } }>;
+  };
+  const parts = data.candidates?.[0]?.content?.parts ?? [];
+
+  const call = parts.find((p) => p.functionCall)?.functionCall;
+  if (call) {
+    return { kind: 'toolCall', name: call.name, args: call.args ?? {} };
+  }
+  const text = parts.map((p) => p.text).filter(Boolean).join('').trim();
+  if (!text) {
+    log.warn('empty model response', { parts: parts.length });
+    return { kind: 'text', text: '(no response)' };
+  }
+  return { kind: 'text', text };
+}
