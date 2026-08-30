@@ -947,6 +947,7 @@
   "projectfolder.title": "Project folder",
   "projectfolder.open": "Open a folder of .docx chapters",
   "projectfolder.close": "Close folder",
+  "projectfolder.change": "Change folder",
   "projectfolder.refresh": "Refresh",
   "projectfolder.dismiss": "Dismiss",
   "projectfolder.empty": "No .docx or .rtf files in this folder yet.",

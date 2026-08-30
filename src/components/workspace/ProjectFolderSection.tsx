@@ -1,5 +1,5 @@
 import React from "react";
-import { FolderOpen, FolderClosed, FileText, Download, Loader2, RefreshCw, AlertTriangle, X } from "lucide-react";
+import { FolderOpen, FolderClosed, FolderSync, FileText, Download, Loader2, RefreshCw, AlertTriangle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
@@ -39,8 +39,11 @@ export const ProjectFolderSection: React.FC = () => {
         <span className="flex items-center gap-1 shrink-0">
           {pf.folder && (
             <>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => pf.refresh()} aria-label={t("projectfolder.refresh", "Refresh")}>
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => pf.refresh()} disabled={pf.busy} aria-label={t("projectfolder.refresh", "Refresh")}>
                 <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={pf.openFolder} disabled={pf.busy} aria-label={t("projectfolder.change", "Change folder")} title={t("projectfolder.change", "Change folder")}>
+                {pf.busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FolderSync className="h-3.5 w-3.5" />}
               </Button>
               <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={pf.closeFolder} aria-label={t("projectfolder.close", "Close folder")}>
                 <X className="h-3.5 w-3.5" />
