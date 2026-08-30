@@ -39,6 +39,30 @@ const wordMocks = {
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMocks);
 
+const excelMocks = {
+  excelDescriptor: {
+    id: 'excel', label: 'Microsoft Excel', platforms: ['win32'],
+    reads: [{ format: 'xlsx', quality: 1 }], writes: [{ format: 'pdf', quality: 0.9 }, { format: 'csv', quality: 0.6 }],
+    ops: ['exportSpreadsheet', 'readSheet'],
+  },
+  available: vi.fn(() => ({ available: true, version: '16.0' })),
+  exportSpreadsheet: vi.fn(async () => ({ outputPath: 'C:\\out.pdf', ms: 9 })),
+  readSheet: vi.fn(async () => ({ sheet: 'Sheet1', sheets: ['Sheet1'], rows: [['a']], truncated: false })),
+};
+vi.mock('../../electron/adapters/excel.ts', () => excelMocks);
+
+const pptMocks = {
+  powerpointDescriptor: {
+    id: 'powerpoint', label: 'Microsoft PowerPoint', platforms: ['win32'],
+    reads: [{ format: 'pptx', quality: 1 }], writes: [{ format: 'pdf', quality: 0.9 }],
+    ops: ['exportPresentation', 'readOutline'],
+  },
+  available: vi.fn(() => ({ available: true, version: '16.0' })),
+  exportPresentation: vi.fn(async () => ({ outputPath: 'C:\\out.pdf', ms: 8 })),
+  readOutline: vi.fn(async () => ({ slideCount: 2, slides: [{ index: 1, title: 'T', bullets: [] }] })),
+};
+vi.mock('../../electron/adapters/powerpoint.ts', () => pptMocks);
+
 let mod: typeof import('../../electron/ipc/docBridgeHandlers.ts');
 
 beforeAll(async () => {
@@ -117,6 +141,36 @@ describe('P2 Word adapter actions', () => {
   it('word:installFont forwards fontPath', async () => {
     await expect(invoke({ action: 'word:installFont', fontPath: 'C:\\f.ttf' })).resolves.toMatchObject({ verified: true });
     expect(wordMocks.installFont).toHaveBeenCalledWith('C:\\f.ttf');
+  });
+});
+
+describe('P9 Excel / PowerPoint actions', () => {
+  it('excel:descriptor returns the descriptor and availability', async () => {
+    await expect(invoke({ action: 'excel:descriptor' })).resolves.toMatchObject({
+      descriptor: { id: 'excel' }, availability: { available: true },
+    });
+  });
+
+  it('excel:export forwards sourcePath / to / outputPath', async () => {
+    await invoke({ action: 'excel:export', sourcePath: 'C:\\a.xlsx', to: 'pdf', outputPath: 'C:\\a.pdf' });
+    expect(excelMocks.exportSpreadsheet).toHaveBeenCalledWith('C:\\a.xlsx', 'pdf', 'C:\\a.pdf');
+  });
+
+  it('excel:readSheet forwards sourcePath and the optional sheet name', async () => {
+    await invoke({ action: 'excel:readSheet', sourcePath: 'C:\\a.xlsx', sheet: 'Data' });
+    expect(excelMocks.readSheet).toHaveBeenCalledWith('C:\\a.xlsx', { sheet: 'Data' });
+  });
+
+  it('ppt:export and ppt:readOutline forward the source path', async () => {
+    await invoke({ action: 'ppt:export', sourcePath: 'C:\\d.pptx', to: 'pdf', outputPath: 'C:\\d.pdf' });
+    expect(pptMocks.exportPresentation).toHaveBeenCalledWith('C:\\d.pptx', 'pdf', 'C:\\d.pdf');
+    await invoke({ action: 'ppt:readOutline', sourcePath: 'C:\\d.pptx' });
+    expect(pptMocks.readOutline).toHaveBeenCalledWith('C:\\d.pptx');
+  });
+
+  it('word:plan now spans every adapter — xlsx → pdf resolves through Excel', async () => {
+    const plan = await invoke({ action: 'word:plan', from: 'xlsx', to: 'pdf' });
+    expect(plan).toMatchObject({ ok: true });
   });
 });
 

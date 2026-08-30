@@ -41,9 +41,12 @@ const code = text
 for (const banned of [/\bInvoke-Expression\b/i, /\biex\b/i]) {
   if (banned.test(code)) fail(`wordBridge.ps1 uses ${banned} — the host must never eval caller input as script.`);
 }
-// The op loop and the ownership diff must both be present.
+// The op loop and the per-app ownership diffs must all be present (SPEC-M8
+// §6 constraint 1 — Office apps do not exit when their automator dies).
 if (!code.includes('switch ($cmd.op)')) fail('wordBridge.ps1 has no op switch — wrong file?');
-if (!code.includes('ownedWordPid')) fail('wordBridge.ps1 is missing the WINWORD ownership tracking (SPEC-M8 §6 constraint 1).');
+for (const marker of ['ownedWordPid', 'ownedExcelPid', 'ownedPptPid']) {
+  if (!code.includes(marker)) fail(`wordBridge.ps1 is missing ${marker} ownership tracking (SPEC-M8 §6 constraint 1).`);
+}
 
 mkdirSync(dirname(STAGED), { recursive: true });
 copyFileSync(SRC, STAGED);

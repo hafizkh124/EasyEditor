@@ -12,12 +12,14 @@ import { WordHost } from './powershell.js';
 import { detectTools } from './detectTools.js';
 import {
   recordOwnedWord,
+  recordOwnedExcel,
+  recordOwnedPowerpoint,
   clearOwnedWord,
   killOwnedWordIfAlive,
   killOwnedWordSync,
   sweepStaleOnStartup,
 } from './process.js';
-import { HostError, type WordPidReply } from './types.js';
+import { HostError, type OwnedPidReply } from './types.js';
 
 const log = logger.child('host');
 
@@ -69,15 +71,30 @@ export function getWordHost(): WordHost {
  * process.ts can clean it up later. Safe to call repeatedly.
  */
 export async function refreshOwnedWord(): Promise<void> {
+  await refreshOwned({ op: 'wordPid' }, recordOwnedWord);
+}
+
+/** P9 — the Excel / PowerPoint equivalents. */
+export async function refreshOwnedExcel(): Promise<void> {
+  await refreshOwned({ op: 'excelPid' }, recordOwnedExcel);
+}
+export async function refreshOwnedPowerpoint(): Promise<void> {
+  await refreshOwned({ op: 'pptPid' }, recordOwnedPowerpoint);
+}
+
+async function refreshOwned(
+  cmd: { op: 'wordPid' } | { op: 'excelPid' } | { op: 'pptPid' },
+  record: (pid: number) => void,
+): Promise<void> {
   if (!host || !host.isAlive()) return;
   try {
-    const reply = await host.send<WordPidReply>({ op: 'wordPid' });
+    const reply = await host.send<OwnedPidReply>(cmd);
     if (reply.ok && reply.ownedByUs && typeof reply.pid === 'number') {
-      recordOwnedWord(reply.pid);
+      record(reply.pid);
     }
   } catch (err) {
-    // No document open yet, or Word not started — nothing to own.
-    log.debug('refreshOwnedWord: nothing to record', { message: (err as Error).message });
+    // The app was not started, or nothing is open — nothing to own.
+    log.debug('refreshOwned: nothing to record', { op: cmd.op, message: (err as Error).message });
   }
 }
 

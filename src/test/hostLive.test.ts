@@ -13,7 +13,7 @@
 // once the host dies uncleanly.
 // P2: toWord / fromWord / reflowPdf / readStructure / installFont through the
 // adapter, against real Word, producing real files.
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterAll, beforeAll } from 'vitest';
 import type { WordPidReply } from '../../electron/host/types.ts';
 import path from 'node:path';
 import os from 'node:os';
@@ -33,6 +33,7 @@ function winwordAlive(pid: number): boolean {
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'docbridge-live-'));
 const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), 'docbridge-live-p2-'));
+const tmp3 = fs.mkdtempSync(path.join(os.tmpdir(), 'docbridge-live-p9-'));
 
 describe.runIf(LIVE)('doc-bridge live (real Word)', () => {
   afterAll(() => {
@@ -248,6 +249,93 @@ describe.runIf(LIVE)('Word adapter live (P2, real Word)', () => {
         "Remove-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts' -Name 'Liberation Sans (TrueType)' -EA SilentlyContinue; " +
         "Remove-Item $d -Force -EA SilentlyContinue",
       ]);
+    }
+  });
+});
+
+describe.runIf(LIVE)('Excel + PowerPoint adapters live (P9, real Office)', () => {
+  const outPath = (name: string) => path.join(tmp3, name);
+  const xlsx = () => outPath('fixture.xlsx');
+  const pptx = () => outPath('fixture.pptx');
+
+  beforeAll(() => {
+    // Build the fixtures with Office itself — a minimal .xlsx / .pptx cannot
+    // be produced without Excel / PowerPoint, and this suite only runs where
+    // they exist. The builder is written to a UTF-8 .ps1 file rather than
+    // passed via -Command, so paths survive the console codepage. ASCII-only
+    // content (the RTL round-trip is covered by the Word suite).
+    const script = [
+      `$xl = New-Object -ComObject Excel.Application; $xl.Visible=$false; $xl.DisplayAlerts=$false`,
+      `$wb = $xl.Workbooks.Add(); $ws = $wb.ActiveSheet`,
+      `$ws.Cells.Item(1,1)='Chapter'; $ws.Cells.Item(1,2)='Page'; $ws.Cells.Item(2,1)='Intro'; $ws.Cells.Item(2,2)=12`,
+      `$wb.SaveAs('${xlsx()}', 51); $wb.Close($false); $xl.Quit()`,
+      `$pp = New-Object -ComObject PowerPoint.Application`,
+      `$pr = $pp.Presentations.Add(0); $sl = $pr.Slides.Add(1, 1)`,
+      `$sl.Shapes.Title.TextFrame.TextRange.Text='Introduction'`,
+      `$sl.Shapes.Item(2).TextFrame.TextRange.Text="First point" + [char]13 + "Second point"`,
+      `$pr.SaveAs('${pptx()}', 24); $pr.Close(); $pp.Quit()`,
+    ].join('\n');
+    const scriptPath = path.join(tmp3, 'build-fixtures.ps1');
+    fs.writeFileSync(scriptPath, script, 'utf8');
+    const r = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath], { encoding: 'utf8', timeout: 120_000 });
+    if (r.status !== 0 || !fs.existsSync(xlsx()) || !fs.existsSync(pptx())) {
+      throw new Error(`fixture build failed (status ${r.status}): ${r.stderr || r.stdout}`);
+    }
+  }, 130_000);
+
+  afterAll(async () => {
+    const { shutdownDocBridge } = await import('../../electron/host/index.ts');
+    await shutdownDocBridge();
+    fs.rmSync(tmp3, { recursive: true, force: true });
+  });
+
+  it('excel: reads a sheet, and exports xlsx → csv and xlsx → pdf', async () => {
+    const excel = await import('../../electron/adapters/excel.ts');
+
+    const data = await excel.readSheet(xlsx());
+    expect(data.rows[0]).toContain('Chapter');
+    expect(data.rows[1].map(String)).toContain('12');
+
+    const csv = outPath('sheet.csv');
+    await excel.exportSpreadsheet(xlsx(), 'csv', csv);
+    expect(fs.readFileSync(csv, 'utf8')).toContain('Chapter');
+
+    const pdf = outPath('sheet.pdf');
+    await excel.exportSpreadsheet(xlsx(), 'pdf', pdf);
+    expect(fs.readFileSync(pdf).subarray(0, 5).toString()).toBe('%PDF-');
+  });
+
+  it('powerpoint: reads the deck outline and exports pptx → pdf', async () => {
+    const ppt = await import('../../electron/adapters/powerpoint.ts');
+
+    const deck = await ppt.readOutline(pptx());
+    expect(deck.slideCount).toBeGreaterThanOrEqual(1);
+    expect(deck.slides[0].title).toBe('Introduction');
+    expect(deck.slides[0].bullets.join(' ')).toContain('point');
+
+    const pdf = outPath('deck.pdf');
+    await ppt.exportPresentation(pptx(), 'pdf', pdf);
+    expect(fs.readFileSync(pdf).subarray(0, 5).toString()).toBe('%PDF-');
+  });
+
+  it('kills an orphaned EXCEL.EXE / POWERPNT.EXE after an unclean host exit', async () => {
+    const { WordHost } = await import('../../electron/host/powershell.ts');
+    const proc = await import('../../electron/host/process.ts');
+    const { getWordHost } = await import('../../electron/host/index.ts');
+
+    // Drive the shared host so index.ts records ownership.
+    const h = getWordHost();
+    await h.sendOk({ op: 'excelOpen', path: xlsx() });
+    const ep = await h.sendOk<{ ok: true; pid: number; ownedByUs: boolean }>({ op: 'excelPid' });
+    if (ep.ownedByUs) proc.recordOwnedExcel(ep.pid);
+
+    // Kill the host process without {op:'quit'} — Excel will not exit on its own.
+    (h as InstanceType<typeof WordHost>).kill();
+    const res = await proc.killOwnedWordIfAlive();
+    if (ep.ownedByUs) {
+      expect(res.killed).toBe(true);
+      await new Promise((r) => setTimeout(r, 1500));
+      expect(winwordAlive(ep.pid)).toBe(false);
     }
   });
 });

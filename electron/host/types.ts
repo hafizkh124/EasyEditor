@@ -26,7 +26,19 @@ export type HostCommand =
   | { op: 'exportAs'; path: string; format: 'docx' | 'pdf' | 'rtf' | 'html' | 'txt' }
   | { op: 'wordPid' }
   | { op: 'close' }
-  | { op: 'quit' };
+  | { op: 'quit' }
+  // ── P9: Excel ──────────────────────────────────────────────────────────
+  | { op: 'excelOpen'; path: string }
+  | { op: 'excelExport'; path: string; format: 'xlsx' | 'csv' | 'pdf' }
+  | { op: 'excelReadSheet'; sheet?: string; maxRows?: number; maxCols?: number }
+  | { op: 'excelPid' }
+  | { op: 'excelClose' }
+  // ── P9: PowerPoint ────────────────────────────────────────────────────
+  | { op: 'pptOpen'; path: string }
+  | { op: 'pptExport'; path: string; format: 'pptx' | 'pdf' }
+  | { op: 'pptReadOutline' }
+  | { op: 'pptPid' }
+  | { op: 'pptClose' };
 
 export type HostOp = HostCommand['op'];
 
@@ -38,17 +50,19 @@ export interface HostReply {
   [key: string]: unknown;
 }
 
-export interface WordPidReply extends HostReply {
+/**
+ * The reply to any `*Pid` op. `ownedByUs` is true only when this host started
+ * that process; false when COM attached to one the user already had open, in
+ * which case electron/host/process.ts must never kill it.
+ */
+export interface OwnedPidReply extends HostReply {
   ok: true;
-  op: 'wordPid';
-  /** The WINWORD.EXE process id. */
   pid: number;
-  /**
-   * True only when this host is the one that started that WINWORD.EXE.
-   * False when COM attached to a Word the user already had open — in which
-   * case electron/host/process.ts must never kill it.
-   */
   ownedByUs: boolean;
+}
+
+export interface WordPidReply extends OwnedPidReply {
+  op: 'wordPid';
 }
 
 export interface DetectWordReply extends HostReply {
@@ -87,6 +101,36 @@ export interface ApplyCitationsReply extends HostReply {
   footnoteCount: number;
 }
 
+export interface ExcelOpenReply extends HostReply {
+  ok: true;
+  op: 'excelOpen';
+  name: string;
+  sheets: string[];
+}
+
+export interface ExcelReadSheetReply extends HostReply {
+  ok: true;
+  op: 'excelReadSheet';
+  sheet: string;
+  sheets: string[];
+  rows: string[][];
+  truncated: boolean;
+}
+
+export interface PptOpenReply extends HostReply {
+  ok: true;
+  op: 'pptOpen';
+  name: string;
+  slideCount: number;
+}
+
+export interface PptOutlineReply extends HostReply {
+  ok: true;
+  op: 'pptReadOutline';
+  slideCount: number;
+  slides: Array<{ index: number; title: string; bullets: string[] }>;
+}
+
 /** Result of {@link detectTools}. */
 export interface ToolAvailability {
   /** PowerShell itself is reachable (always true on a working Windows box). */
@@ -94,6 +138,12 @@ export interface ToolAvailability {
   /** Word COM automation works. */
   word: boolean;
   wordVersion: string | null;
+  /** Excel COM automation works (P9). */
+  excel?: boolean;
+  excelVersion?: string | null;
+  /** PowerPoint COM automation works (P9). */
+  powerpoint?: boolean;
+  powerpointVersion?: string | null;
   /** Platform is Windows — COM automation is Windows-only. */
   windows: boolean;
   /** A human-readable reason when `word` is false. */
@@ -113,6 +163,13 @@ export const OP_TIMEOUT_MS: Partial<Record<HostOp, number>> & { default: number 
   saveAs: 60_000,
   installFont: 15_000,
   quit: 8_000,
+  // P9 — Office launch + fixed-format export are as slow as Word's.
+  excelOpen: 60_000,
+  excelExport: 120_000,
+  excelReadSheet: 60_000,
+  pptOpen: 60_000,
+  pptExport: 120_000,
+  pptReadOutline: 60_000,
 };
 
 /** Structured error thrown by the host layer, so callers can branch on `code`. */
