@@ -22,7 +22,9 @@ import type {
   HostReply,
   ReadStructureReply,
   InstallFontReply,
+  ApplyCitationsReply,
 } from '../host/types.js';
+import type { CitationFootnote } from '../../shared/convert/citationFootnotes.js';
 import type {
   AdapterDescriptor,
   AdapterAvailability,
@@ -52,7 +54,7 @@ export const wordDescriptor: AdapterDescriptor = {
     { format: 'html', quality: 0.7, lossy: 'Word HTML is verbose; some character styling is simplified.' },
     { format: 'txt', quality: 0.4, lossy: 'All formatting, footnotes, and images are dropped.' },
   ],
-  ops: ['toWord', 'fromWord', 'reflowPdf', 'readStructure', 'installFont'],
+  ops: ['toWord', 'fromWord', 'reflowPdf', 'readStructure', 'installFont', 'applyCitations'],
   platforms: ['win32'],
 };
 
@@ -176,6 +178,61 @@ export async function reflowPdf(
     onProgress?.({ phase: 'done', percent: 100 });
   });
   return { outputPath: out, wordCount, ms: Date.now() - started };
+}
+
+/**
+ * P6 — insert EasyEditor's verified citations as real Word footnotes at each
+ * `[N]` marker in the document. `footnotes` comes from
+ * `buildCitationFootnotes()` (shared), which builds each footnote's text from
+ * the verified sources array — this adapter only places what it is given.
+ * Refuses if nothing would be inserted.
+ */
+export async function applyCitations(
+  input: { sourcePath?: string; html?: string },
+  footnotes: CitationFootnote[],
+  outputPath: string,
+  opts: ToWordOptions & { stripMarkers?: boolean } = {},
+): Promise<{ outputPath: string; applied: number; notFound: string[]; ms: number }> {
+  const clean = footnotes.filter((f) => f && f.marker.trim() && f.text.trim());
+  if (clean.length === 0) throw new Error('applyCitations: no usable footnotes');
+
+  const out = assertSafeOutputPath(outputPath, ['.docx']);
+  let tempHtml: string | null = null;
+  let source: string;
+  if (input.html != null) {
+    tempHtml = path.join(os.tmpdir(), `easyeditor-cite-${Date.now()}.html`);
+    fs.writeFileSync(tempHtml, `<!doctype html><html><head><meta charset="utf-8"></head><body>${input.html}</body></html>`, 'utf8');
+    source = tempHtml;
+  } else if (input.sourcePath) {
+    source = assertReadableFile(input.sourcePath, OPENABLE);
+  } else {
+    throw new Error('applyCitations: provide either `html` or `sourcePath`');
+  }
+
+  const started = Date.now();
+  let applied = 0;
+  let notFound: string[] = [];
+  try {
+    await runExclusive(async () => {
+      const h = getWordHost();
+      await h.sendOk({ op: 'open', path: source });
+      await refreshOwnedWord();
+      if (opts.trackChanges) await h.sendOk({ op: 'setTrackRevisions', enabled: true });
+      if (opts.rtlPageSetup) await h.sendOk({ op: 'setRtlPageSetup' });
+      const r = await h.sendOk<ApplyCitationsReply>({
+        op: 'applyCitations',
+        footnotes: clean.map((f) => ({ marker: f.marker, text: f.text })),
+        stripMarkers: opts.stripMarkers ?? false,
+      });
+      applied = r.applied ?? 0;
+      notFound = r.notFound ?? [];
+      await h.sendOk({ op: 'saveAs', path: out });
+      await h.sendOk({ op: 'close' });
+    });
+    return { outputPath: out, applied, notFound, ms: Date.now() - started };
+  } finally {
+    if (tempHtml) { try { fs.rmSync(tempHtml, { force: true }); } catch { /* ignore */ } }
+  }
 }
 
 /** Inspect a document's structure — the `.docx` → EasyEditor doc side. */

@@ -16,6 +16,7 @@ import { ALLOWED_IPC_CHANNELS } from './registry.js';
 import { detectTools, pingHost } from '../host/index.js';
 import * as word from '../adapters/word.js';
 import { planConversion } from '../../shared/convert/planner.js';
+import { buildCitationFootnotes, type FootnoteSource } from '../../shared/convert/citationFootnotes.js';
 import type { DocFormat } from '../../shared/adapters/types.js';
 
 const EXPORT_TARGETS = {
@@ -106,6 +107,50 @@ export function registerDocBridgeHandlers(): void {
           win?.webContents.send(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_PROGRESS, { op: 'export', phase: 'done', percent: 100 });
 
           return { cancelled: false as const, outputPath: res.outputPath, losses: plan.losses, ms: res.ms };
+        }
+
+        // ── P6: citations → real Word footnotes ───────────────────────
+        case 'word:applyCitations': {
+          const documentText = String(payload.documentText ?? '');
+          const sources = (payload.sources as FootnoteSource[]) ?? [];
+          const { footnotes, unresolved } = buildCitationFootnotes(documentText, sources);
+          if (footnotes.length === 0) {
+            throw new Error(
+              unresolved.length
+                ? `No citation could be resolved (markers with no source: ${unresolved.join(', ')}).`
+                : 'No [N] citation markers were found in the document.',
+            );
+          }
+
+          const suggested = `${sanitizeFilename(String(payload.title ?? 'document'))}.docx`;
+          const { canceled, filePath } = await dialog.showSaveDialog({
+            defaultPath: suggested,
+            filters: [{ name: 'Word Document', extensions: ['docx'] }],
+          });
+          if (canceled || !filePath) return { cancelled: true as const };
+
+          const win = BrowserWindow.fromWebContents(event.sender);
+          win?.webContents.send(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_PROGRESS, { op: 'applyCitations', phase: 'inserting', percent: 30 });
+          const res = await word.applyCitations(
+            { html: String(payload.html ?? '') },
+            footnotes,
+            filePath,
+            {
+              rtlPageSetup: Boolean((payload.options as Record<string, unknown>)?.rtlPageSetup),
+              trackChanges: Boolean((payload.options as Record<string, unknown>)?.trackChanges),
+              stripMarkers: Boolean((payload.options as Record<string, unknown>)?.stripMarkers),
+            },
+          );
+          win?.webContents.send(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_PROGRESS, { op: 'applyCitations', phase: 'done', percent: 100 });
+
+          return {
+            cancelled: false as const,
+            outputPath: res.outputPath,
+            applied: res.applied,
+            notFound: res.notFound,
+            unresolved,
+            ms: res.ms,
+          };
         }
 
         case 'openPath': {

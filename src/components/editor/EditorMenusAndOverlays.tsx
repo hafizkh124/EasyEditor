@@ -15,6 +15,9 @@ import { UnfinishedRunCard } from "@/components/workspace/UnfinishedRunCard";
 import { AnnotationSheet } from "@/components/workspace/AnnotationSheet";
 import type { AnnotationItem } from "@/core/workspace/annotationService";
 import ResourceSearchDialog from "./ResourceSearchDialog";
+import { CitationFootnotesDialog } from "./CitationFootnotesDialog";
+import { isDesktop } from "@/utils/environment";
+import { stripSuggestions } from "@/lib/editor/exporters";
 
 interface EditorMenusAndOverlaysProps {
   editor: Editor | null;
@@ -87,6 +90,13 @@ export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({
   annotations,
   t,
 }) => {
+  const [footnotesOpen, setFootnotesOpen] = React.useState(false);
+  const canFootnoteExport =
+    isDesktop() &&
+    Boolean(typeof window !== "undefined" && window.electronAPI?.docBridge?.applyCitations) &&
+    Boolean(editor) &&
+    (lastRun?.sources.length ?? 0) > 0;
+
   return (
     <>
       {menusEnabled && editor && (
@@ -169,7 +179,23 @@ export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({
       )}
 
       {!chunkProgress && !incompleteRun && lastRun && (
-        <TaskRunCard summary={lastRun} onUndo={undoLastRun} onDismiss={dismissLastRun} />
+        <TaskRunCard
+          summary={lastRun}
+          onUndo={undoLastRun}
+          onDismiss={dismissLastRun}
+          onExportFootnotes={canFootnoteExport ? () => setFootnotesOpen(true) : undefined}
+        />
+      )}
+
+      {canFootnoteExport && editor && lastRun && (
+        <CitationFootnotesDialog
+          open={footnotesOpen}
+          onOpenChange={setFootnotesOpen}
+          html={stripSuggestions(editor.getHTML())}
+          text={editor.getText()}
+          sources={lastRun.sources}
+          title={editor.getText().trim().split("\n")[0]?.slice(0, 60) || t("editor.untitled", "Untitled")}
+        />
       )}
 
       {annotations && (

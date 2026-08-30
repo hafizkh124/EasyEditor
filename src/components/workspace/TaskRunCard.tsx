@@ -1,5 +1,5 @@
 import React from "react";
-import { Undo2, X, ShieldCheck, ExternalLink, AlertTriangle } from "lucide-react";
+import { Undo2, X, ShieldCheck, ExternalLink, AlertTriangle, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SourceCardList } from "./SourceCardList";
@@ -25,6 +25,9 @@ interface TaskRunCardProps {
   summary: LastRunSummary;
   onUndo: () => void;
   onDismiss: () => void;
+  /** SPEC-M8 P6 — desktop only: send this run's citations to a .docx as real
+   *  Word footnotes. Shown only when provided and the run has sources. */
+  onExportFootnotes?: () => void;
 }
 
 /**
@@ -34,7 +37,7 @@ interface TaskRunCardProps {
  * where the scholar is already looking, shows what the AI leaned on, and offers
  * one-click reversal while the change is still fresh.
  */
-export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDismiss }) => {
+export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDismiss, onExportFootnotes }) => {
   const { t } = useLanguage();
   const workspace = useOptionalWorkspace();
   const percent = summary.confidence === null ? null : Math.round(summary.confidence * 100);
@@ -120,6 +123,18 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
         <div className="pt-1 border-t border-border/50">
           <SourceCardList sources={summary.sources} />
         </div>
+      )}
+
+      {onExportFootnotes && summary.sources.length > 0 && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 w-full gap-1.5 text-xs"
+          onClick={onExportFootnotes}
+        >
+          <Quote className="h-3.5 w-3.5" />
+          {t("docbridge.cite.card_button", "Export to Word with footnotes")}
+        </Button>
       )}
     </div>
   );

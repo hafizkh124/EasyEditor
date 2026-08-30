@@ -172,6 +172,27 @@ describe.runIf(LIVE)('Word adapter live (P2, real Word)', () => {
     expect(fs.readFileSync(out).subarray(0, 5).toString()).toBe('%PDF-');
   });
 
+  it('applyCitations (P6): inserts real Word footnotes at each [N] marker', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const out = outPath('cited.docx');
+    const res = await word.applyCitations(
+      { html: '<p>پہلی روایت [1] اور دوسری [2]، پھر [1] دوبارہ۔</p>' },
+      [
+        { marker: '[1]', text: 'صحیح البخاری، حدیث ۱ (صحیح)' },
+        { marker: '[2]', text: 'صحیح مسلم، حدیث ۲' },
+      ],
+      out,
+      { rtlPageSetup: true, stripMarkers: true },
+    );
+    // [1] appears twice, [2] once → 3 footnotes
+    expect(res.applied).toBe(3);
+    expect(res.notFound).toEqual([]);
+
+    const s = await word.readStructure(out);
+    expect(s.footnotes.length).toBe(3);
+    expect(s.footnotes[0].text).toContain('البخاری');
+  });
+
   it('readStructure: reports headings, footnotes, tracked changes, reading order', async () => {
     const word = await import('../../electron/adapters/word.ts');
     const s = await word.readStructure(FIXTURE);

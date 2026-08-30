@@ -35,6 +35,7 @@ const wordMocks = {
   readStructure: vi.fn(async () => ({ headings: ['A'], footnotes: [], trackedChanges: 0, wordCount: 10, readingOrder: 'rtl' })),
   installFont: vi.fn(async () => ({ fontName: 'Jameel Noori Nastaleeq', verified: true })),
   exportDocument: vi.fn(async () => ({ outputPath: 'C:\\Users\\me\\out.docx', ms: 7 })),
+  applyCitations: vi.fn(async () => ({ outputPath: 'C:\\Users\\me\\cited.docx', applied: 2, notFound: [], ms: 11 })),
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMocks);
 
@@ -144,6 +145,41 @@ describe('P3 convert dialog actions', () => {
   it('openPath forwards to shell.openPath', async () => {
     await invoke({ action: 'openPath', path: 'C:\\Users\\me\\out.docx' });
     expect((electron as unknown as { shell: { openPath: ReturnType<typeof vi.fn> } }).shell.openPath).toHaveBeenCalled();
+  });
+});
+
+describe('P6 applyCitations', () => {
+  const sources = [{ reference: 'Sahih Bukhari #1' }, { reference: 'Sahih Muslim #2' }];
+
+  it('builds footnotes from the verified sources, then converts', async () => {
+    const res = await invoke({
+      action: 'word:applyCitations',
+      html: '<p>a [1] b [2]</p>',
+      documentText: 'a [1] b [2]',
+      sources,
+      title: 'Paper',
+      options: { rtlPageSetup: true, stripMarkers: true },
+    });
+    expect(wordMocks.applyCitations).toHaveBeenCalledWith(
+      { html: '<p>a [1] b [2]</p>' },
+      [{ marker: '[1]', text: 'Sahih Bukhari #1' }, { marker: '[2]', text: 'Sahih Muslim #2' }],
+      'C:\\Users\\me\\out.docx',
+      { rtlPageSetup: true, trackChanges: false, stripMarkers: true },
+    );
+    expect(res).toMatchObject({ cancelled: false, outputPath: 'C:\\Users\\me\\cited.docx', applied: 2 });
+  });
+
+  it('refuses when no marker resolves to a source (nothing to insert)', async () => {
+    await expect(invoke({
+      action: 'word:applyCitations', html: '<p>x</p>', documentText: 'no markers', sources, title: 'P',
+    })).rejects.toThrow(/no \[N\] citation markers/i);
+    expect(wordMocks.applyCitations).not.toHaveBeenCalled();
+  });
+
+  it('names the unresolved markers when only out-of-range ones are present', async () => {
+    await expect(invoke({
+      action: 'word:applyCitations', html: '<p>[9]</p>', documentText: '[9]', sources, title: 'P',
+    })).rejects.toThrow(/9/);
   });
 });
 
