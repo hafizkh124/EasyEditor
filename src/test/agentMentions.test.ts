@@ -32,6 +32,16 @@ describe('filterMentions', () => {
   it('returns everything (capped) for an empty query', () => {
     expect(filterMentions(m, '  ')).toHaveLength(3);
   });
+  it('matches across chapters, outline headings, and Shamela books together', () => {
+    const mixed = buildMentions({
+      chapters: ['01-intro.docx'],
+      outline: ['نظرية المعرفة', 'الخاتمة'],
+      shamelaBooks: [{ id: '9', title: 'الموافقات' }],
+    });
+    // "معرفة" hits only the heading; "الم" (al-…) hits the heading + the book.
+    expect(filterMentions(mixed, 'معرفة').map((x) => x.kind)).toEqual(['heading']);
+    expect(filterMentions(mixed, 'الم').map((x) => x.kind).sort()).toEqual(['heading', 'shamela-book']);
+  });
 });
 
 describe('activeMentionQuery', () => {

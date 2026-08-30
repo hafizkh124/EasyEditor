@@ -120,9 +120,16 @@ describe("capability registry", () => {
     });
 
     it("still offers the workspace and the local workbench tabs", () => {
+      vi.stubEnv("VITE_AGENT_MODE", "false");
       expect(isCapabilityAvailable("workspace")).toBe(true);
       const tabs = availableCapabilities("workbench-tab").map((c) => c.id);
       expect(tabs).toEqual(["wb.aiReader", "wb.research", "wb.notes"]);
+    });
+
+    it("adds the Agent tab on desktop once VITE_AGENT_MODE is on", () => {
+      vi.stubEnv("VITE_AGENT_MODE", "true");
+      const tabs = availableCapabilities("workbench-tab").map((c) => c.id);
+      expect(tabs).toContain("wb.agent");
     });
   });
 

@@ -975,6 +975,8 @@
   "agent.no_chapters": "اِس فولڈر میں ابھی کوئی .docx یا .rtf فائل نہیں — ایجنٹ کے پاس پڑھنے کو کچھ نہیں۔ باب کی فائلیں شامل کریں، یا کوئی اور فولڈر چنیں۔",
   "agent.undo_task": "یہ ٹاسک واپس لیں",
   "agent.undone": "ٹاسک واپس ہو گیا",
+  "agent.voice_start": "بول کر لکھوائیں",
+  "agent.voice_stop": "لکھوانا روکیں",
   "editor.audiobook_cancelled": "آڈیو بک ایکسپورٹ منسوخ ہو گئی۔",
   "editor.audiobook_done": "آڈیو بک تیار ہے۔",
   "editor.audiobook_empty": "آڈیو بک بنانے کے لیے کوئی متن نہیں۔",
