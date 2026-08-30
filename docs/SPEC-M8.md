@@ -396,7 +396,7 @@ build on that core once it's solid.
 | **P4** | `electron/adapters/libreoffice.ts` | **Blocked on Proof 3** — run `p0-spike/test-libreoffice.mjs` for real first, and fix its `findSoffice()` false-positive (§6) |
 | **P5** | `electron/adapters/inpage.ts` (docx ↔ RTF ↔ InPage) + the legacy-Noori encoding mapping | **Blocked on Proof 4** — complete `p0-spike/inpage-rtf-checklist.md` on a machine with InPage. If the round-trip mangles Nastaliq text badly, this phase stops and the InPage strategy is re-decided separately, not improvised |
 | **P6** | ✅ **Done** (2026-08-30). `shared/convert/citationFootnotes.ts` — `buildCitationFootnotes(text, sources)` pairs each `[N]` marker with the **verified** `sources[N-1]`, never the model's typed reference (the same gate `rebuildCitedRefinement` applies to the on-screen list). Host op `applyCitations` (Word `Find` loop → real `Footnotes.Add` at every occurrence, optional `[N]`-strip). `word.applyCitations` adapter method; `word:applyCitations` IPC (builds footnotes main-side from the sources array, refuses if none resolve); `docBridge.applyCitations` preload. UI: `CitationFootnotesDialog` + a "Export to Word with footnotes" button on `TaskRunCard` when the run had sources (desktop + docBridge only). Tests: `citationFootnotes.test.ts` + `citationFootnotesDialog.test.ts` + P6 dispatch/adapter cases (CI); `hostLive.test.ts` — `[1]`×2 + `[2]` → 3 real footnotes verified via `readStructure` against Word 16.0. | "Add citations" can target a `.docx` directly |
-| **P7** | Layer 5: project folder + `fileBackend` + moving the vector index to `userData` | Privacy, drive sync, multi-device (ADR-0018) |
+| **P7** | ✅ **Done** (2026-08-30) — as an **import/export bridge**, not a `getBackend()` swap (the low-risk reading of ADR-0018; `cloudBackend`/`localBackend` and the web app untouched). `shared/fs/projectTypes.ts` + `electron/fs/projectFolder.ts` (open/scaffold a plain folder of `.docx`/`.rtf`; `.easyeditor/project.json` manifest = chapter order + stable id; `.easyeditor/backups/` timestamped copy before any overwrite; `resolveInProject` blocks path escapes). `electron/ipc/fsHandlers.ts` — `pickFolder`/`open`/`create`/`listChapters`/`readChapterHtml` (chapter → HTML via the Word adapter) / `saveChapter` (editor HTML → `.docx`, backup first) / `watch` (`FS_CHANGED` for an externally-edited file). `projectFolder` preload wrapper. Renderer: `useProjectFolder` + `ProjectFolderProvider` (one `fs.watch`), `ProjectFolderSection` in the Library's Docs tab (open folder → chapter list → click inserts into the editor), and a "Save into project folder" path in `WordExportDialog`. i18n `projectfolder.*`. The vector index already lives in `app.getPath('userData')` (`electron/db/open.ts`) — ADR-0018 §3's "not in the sync folder" requirement is met; per-project keying is deferred to P8. Tests: `projectFolder.test.ts` + `fsHandlers.test.ts` + `projectFolderSection.test.tsx` (CI); `hostLive.test.ts` — chapter `.docx` → HTML → edited `.docx` with a backup, against Word 16.0. | Privacy, drive sync, multi-device (ADR-0018) |
 | **P8** | Layer 4 + 6 + 7: playbooks + agent loop + `@` mentions + `قواعد.md` + task checkpoints + claim verification + the UI shape (§3) + the capabilities page | **"Just ask, the agent knows how"** — the actual goal |
 | **P9** | Excel/PowerPoint adapters, font/template/settings commands, more playbooks, consistency nudges, macOS AppleScript route | Full coverage |
 
@@ -524,8 +524,13 @@ See ADR-0019 for the full reasoning behind each rejection above.
 - **P6:** ✅ a citation inserted via `applyCitations` reopens as a real Word
   footnote whose text is the verified source — `hostLive.test.ts`
   "applyCitations (P6)", passed against Word 16.0 on 2026-08-30.
-- **P7:** a project folder placed inside a synced drive round-trips across
-  two machines; the vector index never appears inside that folder.
+- **P7:** ✅ a `.docx` chapter round-trips folder → editor → folder with a
+  timestamped backup, and the folder is watched for external edits —
+  `hostLive.test.ts` "project folder (P7)", passed against Word 16.0. The
+  index stays in `userData` (`electron/db/open.ts`), never in the folder.
+  *(Note: P7 shipped as an import/export bridge; the full `fileBackend`
+  `WorkspaceBackend` and the `getBackend()` swap are deferred — see the P7
+  phase row and ADR-0018.)*
 - **P8:** a natural-language instruction spanning `read → propose_edit →
   insert_footnote → export` completes end-to-end with a Trust-tab
   transcript, and an ungrounded claim is refused rather than footnoted.

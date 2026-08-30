@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { logger } from "@/lib/logger";
+import { useOptionalProjectFolder } from "@/core/projectFolder/context";
 
 const log = logger.child("WordExportDialog");
 
@@ -39,6 +40,7 @@ interface Props {
  */
 export const WordExportDialog: React.FC<Props> = ({ open, onOpenChange, html, title }) => {
   const { t } = useLanguage();
+  const projectFolder = useOptionalProjectFolder();
   const [target, setTarget] = useState<Target>("docx");
   const [rtl, setRtl] = useState(true);
   const [trackChanges, setTrackChanges] = useState(false);
@@ -46,6 +48,9 @@ export const WordExportDialog: React.FC<Props> = ({ open, onOpenChange, html, ti
   const [phase, setPhase] = useState<"idle" | "running" | "done">("idle");
   const [percent, setPercent] = useState(0);
   const [resultPath, setResultPath] = useState<string | null>(null);
+  const [toFolder, setToFolder] = useState(false);
+  const [chapterName, setChapterName] = useState("");
+  const folderOpen = Boolean(projectFolder?.folder);
 
   const bridge = typeof window !== "undefined" ? window.electronAPI?.docBridge : undefined;
 
@@ -77,6 +82,20 @@ export const WordExportDialog: React.FC<Props> = ({ open, onOpenChange, html, ti
 
   const runExport = useCallback(async () => {
     if (!bridge) return;
+
+    // Save into the open project folder as a .docx chapter (ADR-0018).
+    if (toFolder && folderOpen && projectFolder) {
+      const name = chapterName.trim().replace(/\.(docx|rtf)$/i, "") + ".docx";
+      if (name === ".docx") { toast.error(t("projectfolder.name_required", "Enter a chapter file name")); return; }
+      setPhase("running");
+      setPercent(30);
+      const ok = await projectFolder.saveChapter(name, html);
+      setPhase(ok ? "idle" : "idle");
+      setPercent(0);
+      if (ok) onOpenChange(false);
+      return;
+    }
+
     setPhase("running");
     setPercent(10);
     try {
@@ -96,7 +115,7 @@ export const WordExportDialog: React.FC<Props> = ({ open, onOpenChange, html, ti
       setPercent(0);
       toast.error(err instanceof Error ? err.message : t("docbridge.export.failed", "Export failed"));
     }
-  }, [bridge, html, title, target, rtl, trackChanges, t]);
+  }, [bridge, html, title, target, rtl, trackChanges, t, toFolder, folderOpen, projectFolder, chapterName, onOpenChange]);
 
   const openResult = useCallback(() => {
     if (resultPath) void bridge?.openPath(resultPath).catch(() => {
@@ -127,6 +146,24 @@ export const WordExportDialog: React.FC<Props> = ({ open, onOpenChange, html, ti
           </div>
         ) : (
           <div className="space-y-4">
+            {folderOpen && (
+              <div className="rounded-md border border-border p-2.5 space-y-2">
+                <Label className="flex items-center gap-2 text-sm font-normal cursor-pointer">
+                  <Checkbox checked={toFolder} onCheckedChange={(v) => setToFolder(Boolean(v))} />
+                  {t("projectfolder.save_here", "Save into project folder “{name}”").replace("{name}", projectFolder?.folder?.manifest.title ?? "")}
+                </Label>
+                {toFolder && (
+                  <input
+                    className="w-full rounded border border-border bg-background px-2 py-1 text-sm"
+                    placeholder={t("projectfolder.chapter_name", "chapter file name, e.g. 03-methodology")}
+                    value={chapterName}
+                    onChange={(e) => setChapterName(e.target.value)}
+                  />
+                )}
+              </div>
+            )}
+
+            {!toFolder && (
             <RadioGroup value={target} onValueChange={(v) => setTarget(v as Target)} className="grid gap-2">
               {TARGETS.map(({ id, icon: Icon, labelKey, fallback }) => (
                 <Label
@@ -140,6 +177,7 @@ export const WordExportDialog: React.FC<Props> = ({ open, onOpenChange, html, ti
                 </Label>
               ))}
             </RadioGroup>
+            )}
 
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-sm font-normal cursor-pointer">
@@ -173,7 +211,7 @@ export const WordExportDialog: React.FC<Props> = ({ open, onOpenChange, html, ti
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
               {t("common.cancel", "Cancel")}
             </Button>
-            <Button onClick={runExport} disabled={busy || !bridge} className="gap-2">
+            <Button onClick={runExport} disabled={busy || !bridge || (toFolder && !chapterName.trim())} className="gap-2">
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               {t("docbridge.export.run", "Export")}
             </Button>

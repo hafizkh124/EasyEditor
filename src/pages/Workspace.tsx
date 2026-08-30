@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { useParams, useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { WorkspaceProvider } from "@/core/workspace/WorkspaceContext";
+import { ProjectFolderProvider } from "@/core/projectFolder/ProjectFolderContext";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { isWorkbenchTab } from "@/core/workspace/usePanelState";
 import { documentService } from "@/core/workspace/documentService";
@@ -99,7 +100,9 @@ const WorkspacePage: React.FC = () => {
       initialWorkbenchOpenFromUrl={openWorkbenchFromUrl}
       initialWorkbenchTab={workbenchTabFromUrl}
     >
-      <WorkspaceLayout />
+      <ProjectFolderProvider>
+        <WorkspaceLayout />
+      </ProjectFolderProvider>
     </WorkspaceProvider>
   );
 };

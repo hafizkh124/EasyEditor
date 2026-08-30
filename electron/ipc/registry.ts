@@ -44,6 +44,10 @@ export const ALLOWED_IPC_CHANNELS = {
   DOC_BRIDGE_INVOKE: 'docbridge:invoke',
   DOC_BRIDGE_PROGRESS: 'docbridge:progress',
 
+  // Project folder — the .docx import/export bridge (SPEC-M8 Layer 5, ADR-0018).
+  FS_INVOKE: 'fs:invoke',
+  FS_CHANGED: 'fs:changed',
+
   // Voice (M5.5 / M5.6 placeholder channels)
   VOICE_SYNTHESIZE: 'voice:synthesize',
   VOICE_TRANSCRIBE: 'voice:transcribe',

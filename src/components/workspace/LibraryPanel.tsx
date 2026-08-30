@@ -19,6 +19,7 @@ import { useShamelaAvailability } from "@/hooks/useShamelaAvailability";
 import { logger } from "@/lib/logger";
 import { LibraryDocumentTree } from "./LibraryDocumentTree";
 import { LibraryNewProjectDialog } from "./LibraryNewProjectDialog";
+import { ProjectFolderSection } from "./ProjectFolderSection";
 
 const log = logger.child("LibraryPanel");
 import { LibrarySourcesTab } from "./LibrarySourcesTab";
@@ -262,6 +263,7 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
                 Projects data to bring across; see LegacyImportBanner. */}
             <LegacyImportBanner />
             <div className="p-2 space-y-3">
+              <ProjectFolderSection />
               <LibraryDocumentTree
                 projects={projects}
                 docsMap={docsMap}

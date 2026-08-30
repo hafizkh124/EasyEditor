@@ -201,6 +201,36 @@ describe.runIf(LIVE)('Word adapter live (P2, real Word)', () => {
     expect(Array.isArray(s.headings)).toBe(true);
   });
 
+  it('project folder (P7): chapter .docx → HTML → edited .docx, with a backup', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const pf = await import('../../electron/fs/projectFolder.ts');
+
+    const projRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'live-proj-'));
+    try {
+      fs.copyFileSync(FIXTURE, path.join(projRoot, '01-intro.docx'));
+      const project = pf.openProjectFolder(projRoot);
+      expect(project.chapters.map((c) => c.name)).toEqual(['01-intro.docx']);
+
+      // chapter -> HTML (the import direction)
+      const htmlOut = path.join(tmp2, 'chapter.html');
+      await word.fromWord(path.join(projRoot, '01-intro.docx'), 'html', htmlOut);
+      const html = fs.readFileSync(htmlOut, 'utf8');
+      expect(html.length).toBeGreaterThan(0);
+
+      // edited HTML -> chapter .docx (the export direction), backup first
+      const backup = pf.backupChapter(projRoot, '01-intro.docx');
+      expect(backup).not.toBeNull();
+      await word.toWord({ html: html + '<p>ایک نیا پیراگراف۔</p>' }, pf.chapterPath(projRoot, '01-intro.docx'), { rtlPageSetup: true });
+      pf.registerChapter(projRoot, '01-intro.docx');
+
+      const s = await word.readStructure(path.join(projRoot, '01-intro.docx'));
+      expect(s.wordCount).toBeGreaterThan(0);
+      expect(fs.existsSync(backup!)).toBe(true);
+    } finally {
+      fs.rmSync(projRoot, { recursive: true, force: true });
+    }
+  });
+
   it('installFont: a font not on this machine becomes visible to running Word', async () => {
     const word = await import('../../electron/adapters/word.ts');
     // Liberation Sans ships inside pdfjs-dist and is not a Windows font.

@@ -39,7 +39,7 @@ export interface ElectronMock {
     getFocusedWindow: ReturnType<typeof vi.fn>;
     fromWebContents: ReturnType<typeof vi.fn>;
   };
-  dialog: { showSaveDialog: ReturnType<typeof vi.fn> };
+  dialog: { showSaveDialog: ReturnType<typeof vi.fn>; showOpenDialog: ReturnType<typeof vi.fn> };
   /** Convenience: invoke a registered handler with a fake IPC event. */
   invoke: (channel: string, ...args: unknown[]) => unknown;
 }
@@ -68,6 +68,9 @@ export function createElectronMock(): ElectronMock {
     dialog: {
       showSaveDialog: vi.fn(
         async (): Promise<{ canceled: boolean; filePath?: string }> => ({ canceled: true, filePath: undefined }),
+      ),
+      showOpenDialog: vi.fn(
+        async (): Promise<{ canceled: boolean; filePaths: string[] }> => ({ canceled: true, filePaths: [] }),
       ),
     },
     invoke: (channel, ...args) => {
