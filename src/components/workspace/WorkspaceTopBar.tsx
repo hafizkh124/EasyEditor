@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   FileText, Download, Copy, CheckCircle2, Loader2, AlertCircle,
   ChevronDown, FileType, FileCode, File, Search, PanelRight, PanelLeft,
-  Languages, MoreHorizontal, ArrowLeft, History, AudioLines, X
+  Languages, MoreHorizontal, ArrowLeft, History, AudioLines, X, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { splitChaptersFromHtml } from "@/lib/audiobook/splitChapters";
 import { isDesktop, modifierKeyLabel } from "@/utils/environment";
 import { WorkspaceAppMenu } from "./WorkspaceAppMenu";
 import { DesktopAccountMenu } from "@/components/auth/DesktopAccountMenu";
+import { WordExportDialog } from "@/components/editor/WordExportDialog";
 import type { Document, DocumentVersion } from "@/core/workspace/types";
 import type { AudiobookExportProgress } from "@/core/voice/types";
 
@@ -59,6 +60,8 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
   // it runs on the local Piper voices in the main process. Ported from the
   // /editor page stub, which was the only place this UI existed (UX-v1 P3).
   const [audiobookProgress, setAudiobookProgress] = useState<AudiobookExportProgress | null>(null);
+  const [wordExportOpen, setWordExportOpen] = useState(false);
+  const canWordExport = isDesktop() && Boolean(typeof window !== "undefined" && window.electronAPI?.docBridge);
 
   useEffect(() => {
     if (!isDesktop() || !window.electronAPI?.voice?.onAudiobookProgress) return;
@@ -242,6 +245,15 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
               <FileText className="h-4 w-4" />
               {t("editor.download_txt", "Text (.txt)")}
             </DropdownMenuItem>
+            {canWordExport && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setWordExportOpen(true)} className="cursor-pointer gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  {t("docbridge.export.menu_item", "Through Word (high fidelity)")}
+                </DropdownMenuItem>
+              </>
+            )}
             {isDesktop() && (
               <DropdownMenuItem
                 onClick={handleAudiobookExport}
@@ -346,6 +358,15 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           {t("common.cancel")}
         </Button>
       </div>
+    )}
+
+    {canWordExport && (
+      <WordExportDialog
+        open={wordExportOpen}
+        onOpenChange={setWordExportOpen}
+        html={stripSuggestions(currentHtml)}
+        title={doc?.title || t("editor.untitled", "Untitled")}
+      />
     )}
     </>
   );

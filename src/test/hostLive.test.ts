@@ -159,6 +159,19 @@ describe.runIf(LIVE)('Word adapter live (P2, real Word)', () => {
     expect(fs.statSync(res.outputPath).size).toBeGreaterThan(0);
   });
 
+  it('exportDocument (P3 path): editor HTML → PDF via Word, RTL page setup applied', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const out = outPath('p3-export.pdf');
+    const res = await word.exportDocument(
+      { html: '<h1>عنوان</h1><p>P3 برآمد کا متن۔</p>' },
+      'pdf',
+      out,
+      { rtlPageSetup: true },
+    );
+    expect(res.outputPath).toBe(out);
+    expect(fs.readFileSync(out).subarray(0, 5).toString()).toBe('%PDF-');
+  });
+
   it('readStructure: reports headings, footnotes, tracked changes, reading order', async () => {
     const word = await import('../../electron/adapters/word.ts');
     const s = await word.readStructure(FIXTURE);

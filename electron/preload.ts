@@ -245,6 +245,22 @@ const electronAPI = {
     installFont: (fontPath: string): Promise<{ fontName: string; verified: boolean; note?: string }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'word:installFont', fontPath }),
 
+    // ── P3: convert dialog ─────────────────────────────────────────────
+    planConversion: (
+      from: 'docx' | 'pdf' | 'rtf' | 'html' | 'txt' | 'md' | 'inpage',
+      to: 'docx' | 'pdf' | 'rtf' | 'html' | 'txt' | 'md' | 'inpage',
+    ): Promise<{ ok: true; steps: unknown[]; losses: string[] } | { ok: false; reason: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'word:plan', from, to }),
+    exportDocument: (
+      html: string,
+      title: string,
+      to: 'docx' | 'pdf' | 'rtf' | 'txt',
+      options?: { rtlPageSetup?: boolean; trackChanges?: boolean },
+    ): Promise<{ cancelled: true } | { cancelled: false; outputPath: string; losses: string[]; ms: number }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'word:export', html, title, to, options }),
+    openPath: (path: string): Promise<{ opened: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'openPath', path }),
+
     onProgress: (callback: (p: { op: string; phase: string; percent: number }) => void): (() => void) => {
       const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);
       ipcRenderer.on(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_PROGRESS, listener);

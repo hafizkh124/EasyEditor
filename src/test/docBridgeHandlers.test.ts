@@ -10,6 +10,9 @@ import { createElectronMock } from './helpers/electronMock';
 import { isAllowedIpcChannel, ALLOWED_IPC_CHANNELS } from '../../electron/ipc/registry';
 
 const electron = createElectronMock();
+// P3: the handler reaches for shell.openPath and a real save dialog.
+(electron as unknown as { shell: Record<string, unknown> }).shell = { openPath: vi.fn(async () => '') };
+electron.dialog.showSaveDialog = vi.fn(async () => ({ canceled: false, filePath: 'C:\\Users\\me\\out.docx' }));
 vi.mock('electron', () => electron);
 
 const hostMocks = {
@@ -19,13 +22,19 @@ const hostMocks = {
 vi.mock('../../electron/host/index.ts', () => hostMocks);
 
 const wordMocks = {
-  wordDescriptor: { id: 'word', label: 'Microsoft Word', reads: [], writes: [], ops: [], platforms: ['win32'] },
+  wordDescriptor: {
+    id: 'word', label: 'Microsoft Word', platforms: ['win32'],
+    reads: [{ format: 'html', quality: 0.75 }, { format: 'pdf', quality: 0.5, lossy: 'layout lost' }],
+    writes: [{ format: 'docx', quality: 1 }, { format: 'pdf', quality: 0.95 }, { format: 'txt', quality: 0.4, lossy: 'formatting dropped' }],
+    ops: ['toWord', 'fromWord', 'reflowPdf', 'readStructure', 'installFont'],
+  },
   available: vi.fn(() => ({ available: true, version: '16.0' })),
   toWord: vi.fn(async () => ({ outputPath: 'C:\\out.docx', ms: 5 })),
   fromWord: vi.fn(async () => ({ outputPath: 'C:\\out.pdf', ms: 5 })),
   reflowPdf: vi.fn(async () => ({ outputPath: 'C:\\out.docx', wordCount: 42, ms: 20 })),
   readStructure: vi.fn(async () => ({ headings: ['A'], footnotes: [], trackedChanges: 0, wordCount: 10, readingOrder: 'rtl' })),
   installFont: vi.fn(async () => ({ fontName: 'Jameel Noori Nastaleeq', verified: true })),
+  exportDocument: vi.fn(async () => ({ outputPath: 'C:\\Users\\me\\out.docx', ms: 7 })),
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMocks);
 
@@ -107,6 +116,34 @@ describe('P2 Word adapter actions', () => {
   it('word:installFont forwards fontPath', async () => {
     await expect(invoke({ action: 'word:installFont', fontPath: 'C:\\f.ttf' })).resolves.toMatchObject({ verified: true });
     expect(wordMocks.installFont).toHaveBeenCalledWith('C:\\f.ttf');
+  });
+});
+
+describe('P3 convert dialog actions', () => {
+  it('word:plan returns the route and loss list without running anything', async () => {
+    const plan = await invoke({ action: 'word:plan', from: 'html', to: 'txt' });
+    expect(plan).toMatchObject({ ok: true, losses: ['formatting dropped'] });
+    expect(wordMocks.exportDocument).not.toHaveBeenCalled();
+  });
+
+  it('word:export shows a save dialog, then converts, and returns the path + losses', async () => {
+    const res = await invoke({ action: 'word:export', html: '<p>x</p>', title: 'My Doc', to: 'docx', options: { rtlPageSetup: true } });
+    expect(electron.dialog.showSaveDialog).toHaveBeenCalled();
+    expect(wordMocks.exportDocument).toHaveBeenCalledWith({ html: '<p>x</p>' }, 'docx', 'C:\\Users\\me\\out.docx', { rtlPageSetup: true });
+    expect(res).toMatchObject({ cancelled: false, outputPath: 'C:\\Users\\me\\out.docx' });
+  });
+
+  it('word:export returns {cancelled:true} when the save dialog is dismissed', async () => {
+    electron.dialog.showSaveDialog = vi.fn(async () => ({ canceled: true, filePath: undefined }));
+    const res = await invoke({ action: 'word:export', html: '<p>x</p>', title: 'D', to: 'pdf' });
+    expect(res).toEqual({ cancelled: true });
+    expect(wordMocks.exportDocument).not.toHaveBeenCalled();
+    electron.dialog.showSaveDialog = vi.fn(async () => ({ canceled: false, filePath: 'C:\\Users\\me\\out.docx' }));
+  });
+
+  it('openPath forwards to shell.openPath', async () => {
+    await invoke({ action: 'openPath', path: 'C:\\Users\\me\\out.docx' });
+    expect((electron as unknown as { shell: { openPath: ReturnType<typeof vi.fn> } }).shell.openPath).toHaveBeenCalled();
   });
 });
 
