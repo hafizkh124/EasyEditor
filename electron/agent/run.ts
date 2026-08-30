@@ -17,6 +17,9 @@ import { detectTools } from '../host/index.js';
 import { refreshChapters } from '../fs/projectFolder.js';
 import { generateWithTools } from './geminiTools.js';
 import { createDispatcher } from './dispatch.js';
+import { checkClaim } from './claimCheck.js';
+import { beginCheckpoint } from './checkpoint.js';
+import { toolsForMode } from '../../shared/agent/toolSchemas.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
 import { buildSystemPrompt } from '../../shared/agent/systemPrompt.js';
 import { selectPlaybook } from '../../shared/playbooks/registry.js';
@@ -44,7 +47,7 @@ export interface AgentRunInput {
   isCancelled?: () => boolean;
 }
 
-export async function runAgent(input: AgentRunInput): Promise<AgentRunResult & { playbook?: string }> {
+export async function runAgent(input: AgentRunInput): Promise<AgentRunResult & { playbook?: string; checkpointId?: string }> {
   const { instruction, mode, projectRoot } = input;
 
   const caps = detectTools();
@@ -62,14 +65,21 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult & {
         '\nFollow it where it applies; adapt to what you find in the files.'
       : '');
 
-  const { dispatch } = createDispatcher({ projectRoot });
+  // A "Do" task may edit files — open a checkpoint so it can be undone as one
+  // unit (ADR-0019 item 5). "Ask" mode never writes, so no checkpoint.
+  const canWrite = toolsForMode(mode).some((t) => t.effect === 'write');
+  const checkpointId = canWrite ? beginCheckpoint(projectRoot, instruction) : undefined;
 
-  log.info('agent run starting', { mode, playbook: playbook?.id, chapters: chapters.length });
+  const { dispatch } = createDispatcher({ projectRoot, checkpointId, claimCheck: checkClaim });
+
+  log.info('agent run starting', { mode, playbook: playbook?.id, chapters: chapters.length, checkpointId });
   const result = await runAgentLoop(instruction, generateWithTools, dispatch, systemPrompt, {
     mode,
     onProgress: input.onProgress,
     isCancelled: input.isCancelled,
   });
 
-  return { ...result, playbook: playbook?.id };
+  // Keep the checkpoint only if it actually snapshotted something.
+  const wrote = result.toolCalls.some((c) => ['insert_footnote', 'set_page_layout'].includes(c.name));
+  return { ...result, playbook: playbook?.id, checkpointId: wrote ? checkpointId : undefined };
 }

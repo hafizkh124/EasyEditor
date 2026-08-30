@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto';
 import { ALLOWED_IPC_CHANNELS } from './registry.js';
 import { logger } from '../lib/logger.js';
 import { runAgent } from '../agent/run.js';
+import { undoCheckpoint, listCheckpoints } from '../agent/checkpoint.js';
 import { acquireAgentSlot, releaseAgentSlot, cancelRunningAgent, runningTask } from '../agent/queue.js';
 import { getWorkspaceDbService } from './workspaceHandlers.js';
 import type { AgentProgress } from '../../shared/agent/types.js';
@@ -30,6 +31,17 @@ export function registerAgentHandlers(): void {
 
         case 'cancel':
           return { cancelled: cancelRunningAgent() };
+
+        case 'checkpoints':
+          return { checkpoints: listCheckpoints(String(payload.projectRoot ?? '')) };
+
+        case 'undoTask': {
+          const root = String(payload.projectRoot ?? '');
+          const checkpointId = String(payload.checkpointId ?? '');
+          if (!root || !checkpointId) throw new Error('projectRoot and checkpointId are required');
+          if (runningTask()) throw new Error('ایک ایجنٹ ٹاسک چل رہا ہے — پہلے اسے مکمل ہونے دیں');
+          return undoCheckpoint(root, checkpointId);
+        }
 
         case 'run': {
           const instruction = String(payload.instruction ?? '').trim();
@@ -91,6 +103,7 @@ export function registerAgentHandlers(): void {
               steps: result.steps,
               toolCalls: result.toolCalls,
               playbook: result.playbook,
+              checkpointId: result.checkpointId,
               error: result.error,
             };
           } finally {
