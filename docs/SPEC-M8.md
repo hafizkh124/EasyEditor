@@ -161,8 +161,8 @@ Ops added since the spike: `detectWord`, `installFont` (the real
 `AddFontResourceW` + `WM_FONTCHANGE` registration, §6 constraint 2) — P1;
 `readStructure` (headings via Word's cross-reference list + footnote text +
 tracked-change count + reading order) and `exportAs` (`{path, format}` →
-pdf/rtf/html/txt/docx) — P2. Still to come: `applyCitations` (insert a batch
-of footnotes at marked positions, §5 P6).
+pdf/rtf/html/txt/docx) — P2; `applyCitations` (`Find` loop → `Footnotes.Add`
+at every `[N]` occurrence, optional marker strip) — P6.
 
 #### IPC surface
 
@@ -395,7 +395,7 @@ build on that core once it's solid.
 | **P3** | ✅ **Done** (2026-08-30). `shared/convert/planner.ts` (Layer 3 seed — pure route + loss-list resolver; direct single-adapter routes + the pdf→docx reflow special case; refuses an impossible pair with a reason, never a silent best-effort). `word:plan` / `word:export` / `openPath` IPC + `docBridge.planConversion`/`exportDocument`/`openPath` preload. `src/components/editor/WordExportDialog.tsx` — target picker (docx/pdf/rtf/txt), RTL + track-changes options, **the loss list fetched and shown before Export runs** (§4), progress bar, "Open file" on success; the native save dialog is `dialog.showSaveDialog` from main (no big buffer round-trip). Wired into `WorkspaceTopBar`'s Export dropdown, gated on `isDesktop() && electronAPI.docBridge`. i18n keys in en/ur/ar. Tests: `convertPlanner.test.ts` + `wordExportDialog.test.tsx` + P3 dispatch cases in `docBridgeHandlers.test.ts` (CI); `hostLive.test.ts` gained the HTML→PDF-with-RTL round-trip (passed vs Word 16.0). | "Convert this to that" works from a menu, before the agent exists |
 | **P4** | `electron/adapters/libreoffice.ts` | **Blocked on Proof 3** — run `p0-spike/test-libreoffice.mjs` for real first, and fix its `findSoffice()` false-positive (§6) |
 | **P5** | `electron/adapters/inpage.ts` (docx ↔ RTF ↔ InPage) + the legacy-Noori encoding mapping | **Blocked on Proof 4** — complete `p0-spike/inpage-rtf-checklist.md` on a machine with InPage. If the round-trip mangles Nastaliq text badly, this phase stops and the InPage strategy is re-decided separately, not improvised |
-| **P6** | `applyCitations` op — insert EasyEditor's citation output as real Word footnotes at marked positions, reusing the web citation-integrity gates | "Add citations" can target a `.docx` directly |
+| **P6** | ✅ **Done** (2026-08-30). `shared/convert/citationFootnotes.ts` — `buildCitationFootnotes(text, sources)` pairs each `[N]` marker with the **verified** `sources[N-1]`, never the model's typed reference (the same gate `rebuildCitedRefinement` applies to the on-screen list). Host op `applyCitations` (Word `Find` loop → real `Footnotes.Add` at every occurrence, optional `[N]`-strip). `word.applyCitations` adapter method; `word:applyCitations` IPC (builds footnotes main-side from the sources array, refuses if none resolve); `docBridge.applyCitations` preload. UI: `CitationFootnotesDialog` + a "Export to Word with footnotes" button on `TaskRunCard` when the run had sources (desktop + docBridge only). Tests: `citationFootnotes.test.ts` + `citationFootnotesDialog.test.ts` + P6 dispatch/adapter cases (CI); `hostLive.test.ts` — `[1]`×2 + `[2]` → 3 real footnotes verified via `readStructure` against Word 16.0. | "Add citations" can target a `.docx` directly |
 | **P7** | Layer 5: project folder + `fileBackend` + moving the vector index to `userData` | Privacy, drive sync, multi-device (ADR-0018) |
 | **P8** | Layer 4 + 6 + 7: playbooks + agent loop + `@` mentions + `قواعد.md` + task checkpoints + claim verification + the UI shape (§3) + the capabilities page | **"Just ask, the agent knows how"** — the actual goal |
 | **P9** | Excel/PowerPoint adapters, font/template/settings commands, more playbooks, consistency nudges, macOS AppleScript route | Full coverage |
@@ -521,8 +521,9 @@ See ADR-0019 for the full reasoning behind each rejection above.
 - **P4/P5:** Proofs 3 and 4 have actually run and are recorded (here or in a
   follow-up ADR); if InPage fails badly, a separate decision is made rather
   than shipping a silently-lossy adapter.
-- **P6:** a citation inserted via `applyCitations` reopens correctly as a
-  real Word footnote.
+- **P6:** ✅ a citation inserted via `applyCitations` reopens as a real Word
+  footnote whose text is the verified source — `hostLive.test.ts`
+  "applyCitations (P6)", passed against Word 16.0 on 2026-08-30.
 - **P7:** a project folder placed inside a synced drive round-trips across
   two machines; the vector index never appears inside that folder.
 - **P8:** a natural-language instruction spanning `read → propose_edit →
@@ -574,6 +575,12 @@ sessions — no real Word/InPage required:
 - `commandBuilder.test.ts` — **most important**: every parameter travels as
   data; quotes, newlines, `;`, `$(…)`, and Urdu text never get concatenated
   into a command string (direct command-injection guard).
+- **P3/P6, shipped:** `convertPlanner.test.ts` (routes + every loss note +
+  every refusal path), `citationFootnotes.test.ts` (footnote text comes from
+  the verified sources array, not document text; one entry per distinct
+  marker; out-of-range/empty → `unresolved`), `wordExportDialog.test.tsx`
+  and `citationFootnotesDialog.test.tsx` (loss list / marker count shown
+  first, verified sources passed through, result summary, cancelled save).
 - `conversionGraph.test.ts` — path-finding: InPage→docx in two hops; the
   higher-quality path wins when two exist; an impossible pair is refused
   clearly, never silently.

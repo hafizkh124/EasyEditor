@@ -33,7 +33,8 @@ export type AdapterOp =
   | 'fromWord'
   | 'reflowPdf'
   | 'readStructure'
-  | 'installFont';
+  | 'installFont'
+  | 'applyCitations';
 
 /** What an adapter declares about itself (ADR-0017). */
 export interface AdapterDescriptor {

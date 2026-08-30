@@ -260,6 +260,19 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'word:export', html, title, to, options }),
     openPath: (path: string): Promise<{ opened: boolean }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'openPath', path }),
+    applyCitations: (
+      html: string,
+      documentText: string,
+      sources: Array<{ reference: string; source_url?: string | null }>,
+      title: string,
+      options?: { rtlPageSetup?: boolean; trackChanges?: boolean; stripMarkers?: boolean },
+    ): Promise<
+      | { cancelled: true }
+      | { cancelled: false; outputPath: string; applied: number; notFound: string[]; unresolved: number[]; ms: number }
+    > =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, {
+        action: 'word:applyCitations', html, documentText, sources, title, options,
+      }),
 
     onProgress: (callback: (p: { op: string; phase: string; percent: number }) => void): (() => void) => {
       const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);

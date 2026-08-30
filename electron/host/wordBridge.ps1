@@ -144,6 +144,49 @@ while ($true) {
                 Write-Result @{ ok = $true; op = 'insertFootnote'; footnoteCount = $script:doc.Footnotes.Count }
             }
 
+            'applyCitations' {
+                # P6: insert real Word footnotes at each "[N]" marker. The
+                # footnote TEXT is supplied by the caller from the verified
+                # sources array (shared/convert/citationFootnotes.ts) — this
+                # op only places what it is given, it never composes a
+                # reference itself.
+                Require-Doc
+                $applied = 0
+                $notFound = @()
+                $strip = [bool]$cmd.stripMarkers
+                foreach ($c in $cmd.footnotes) {
+                    $marker = "" + $c.marker
+                    $text = "" + $c.text
+                    if ($marker -eq '' -or $text -eq '') { continue }
+                    $hitAny = $false
+                    $rng = $script:doc.Range(0, $script:doc.Content.End)
+                    while ($true) {
+                        $f = $rng.Find
+                        $f.ClearFormatting()
+                        $f.Text = $marker
+                        $f.Forward = $true
+                        $f.Wrap = 0            # wdFindStop
+                        $f.MatchWildcards = $false
+                        if (-not $f.Execute()) { break }
+                        $hitAny = $true
+                        if ($strip) {
+                            $rng.Text = ''
+                            $ip = $script:doc.Range($rng.Start, $rng.Start)
+                        } else {
+                            $ip = $script:doc.Range($rng.End, $rng.End)
+                        }
+                        $script:doc.Footnotes.Add($ip, [System.Type]::Missing, $text) | Out-Null
+                        $applied++
+                        $next = $ip.End
+                        $docEnd = $script:doc.Content.End
+                        if ($next -ge $docEnd) { break }
+                        $rng = $script:doc.Range($next, $docEnd)
+                    }
+                    if (-not $hitAny) { $notFound += $marker }
+                }
+                Write-Result @{ ok = $true; op = 'applyCitations'; applied = $applied; notFound = $notFound; footnoteCount = $script:doc.Footnotes.Count }
+            }
+
             'installFontCheck' {
                 Ensure-Word
                 $names = @()

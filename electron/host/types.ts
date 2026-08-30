@@ -17,6 +17,7 @@ export type HostCommand =
   | { op: 'setTrackRevisions'; enabled: boolean }
   | { op: 'setRtlPageSetup' }
   | { op: 'insertFootnote'; text: string }
+  | { op: 'applyCitations'; footnotes: Array<{ marker: string; text: string }>; stripMarkers?: boolean }
   | { op: 'installFontCheck'; fontName: string }
   | { op: 'installFont'; path: string }
   | { op: 'readStructure' }
@@ -76,6 +77,16 @@ export interface InstallFontReply extends HostReply {
   verifiedInRunningWord: boolean;
 }
 
+export interface ApplyCitationsReply extends HostReply {
+  ok: true;
+  op: 'applyCitations';
+  /** How many footnotes were inserted (marker occurrences × markers). */
+  applied: number;
+  /** Markers that were not found anywhere in the document. */
+  notFound: string[];
+  footnoteCount: number;
+}
+
 /** Result of {@link detectTools}. */
 export interface ToolAvailability {
   /** PowerShell itself is reachable (always true on a working Windows box). */
@@ -97,6 +108,7 @@ export const OP_TIMEOUT_MS: Partial<Record<HostOp, number>> & { default: number 
   open: 60_000,
   openPdfReflow: 120_000,
   readStructure: 60_000,
+  applyCitations: 120_000,
   exportAs: 120_000,
   saveAs: 60_000,
   installFont: 15_000,

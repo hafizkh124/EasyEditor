@@ -20,6 +20,8 @@ const fakeHost = {
         return { ok: true, op: cmd.op, headings: ['باب اول'], footnotes: [{ index: 1, text: 'حاشیہ' }], trackedChanges: 2, wordCount: 500, readingOrder: 'rtl' };
       case 'installFont':
         return { ok: true, op: cmd.op, fontName: 'Jameel Noori Nastaleeq', facesRegistered: 1, verifiedInRunningWord: true };
+      case 'applyCitations':
+        return { ok: true, op: cmd.op, applied: 3, notFound: ['[4]'], footnoteCount: 3 };
       default: return { ok: true, op: cmd.op };
     }
   }),
@@ -135,6 +137,32 @@ describe('installFont', () => {
   it('rejects a non-font file', async () => {
     const f = path.join(dir, 'notafont.docx'); fs.writeFileSync(f, 'x');
     await expect(word.installFont(f)).rejects.toThrow(/not allowed/);
+  });
+});
+
+describe('applyCitations', () => {
+  const footnotes = [
+    { marker: '[1]', text: 'Sahih Bukhari #1' },
+    { marker: '[2]', text: 'Sahih Muslim #2' },
+  ];
+
+  it('opens, applies options, sends the footnotes, saves, closes', async () => {
+    const out = path.join(dir, 'cited.docx');
+    const res = await word.applyCitations({ html: '<p>a [1] b [2]</p>' }, footnotes, out, { rtlPageSetup: true, stripMarkers: true });
+    expect(ops()).toEqual(['open', 'setRtlPageSetup', 'applyCitations', 'saveAs', 'close']);
+    const cmd = sent.find((c) => c.op === 'applyCitations')!;
+    expect(cmd).toMatchObject({ stripMarkers: true, footnotes });
+    expect(res).toMatchObject({ applied: 3, notFound: ['[4]'] });
+  });
+
+  it('refuses an empty / blank footnote list before touching the host', async () => {
+    await expect(word.applyCitations({ html: '<p>x</p>' }, [], path.join(dir, 'o.docx'))).rejects.toThrow(/no usable footnotes/);
+    await expect(word.applyCitations({ html: '<p>x</p>' }, [{ marker: '  ', text: '' }], path.join(dir, 'o.docx'))).rejects.toThrow(/no usable footnotes/);
+    expect(fakeHost.sendOk).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-.docx output', async () => {
+    await expect(word.applyCitations({ html: '<p>[1]</p>' }, footnotes, path.join(dir, 'o.pdf'))).rejects.toThrow(/not allowed/);
   });
 });
 
