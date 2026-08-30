@@ -15,6 +15,7 @@ import { ALLOWED_IPC_CHANNELS } from './registry.js';
 import { logger } from '../lib/logger.js';
 import { runAgent } from '../agent/run.js';
 import { undoCheckpoint, listCheckpoints } from '../agent/checkpoint.js';
+import { applyGlobalOption, revertGlobalOptions, readLog as readGlobalOptionLog } from '../agent/globalOptions.js';
 import { acquireAgentSlot, releaseAgentSlot, cancelRunningAgent, runningTask } from '../agent/queue.js';
 import { getWorkspaceDbService } from './workspaceHandlers.js';
 import type { AgentProgress } from '../../shared/agent/types.js';
@@ -42,6 +43,24 @@ export function registerAgentHandlers(): void {
           if (runningTask()) throw new Error('ایک ایجنٹ ٹاسک چل رہا ہے — پہلے اسے مکمل ہونے دیں');
           return undoCheckpoint(root, checkpointId);
         }
+
+        // ── P9: consent-gated Word global options (§3 gate #5) ──────────
+        case 'applyGlobalOption': {
+          const root = String(payload.projectRoot ?? '');
+          if (!root) throw new Error('projectRoot is required');
+          if (runningTask()) throw new Error('ایک ایجنٹ ٹاسک چل رہا ہے — پہلے اسے مکمل ہونے دیں');
+          return applyGlobalOption(root, String(payload.option ?? ''), String(payload.value ?? ''));
+        }
+
+        case 'revertGlobalOptions': {
+          const root = String(payload.projectRoot ?? '');
+          if (!root) throw new Error('projectRoot is required');
+          if (runningTask()) throw new Error('ایک ایجنٹ ٹاسک چل رہا ہے — پہلے اسے مکمل ہونے دیں');
+          return revertGlobalOptions(root);
+        }
+
+        case 'globalOptionLog':
+          return { entries: readGlobalOptionLog(String(payload.projectRoot ?? '')) };
 
         case 'run': {
           const instruction = String(payload.instruction ?? '').trim();

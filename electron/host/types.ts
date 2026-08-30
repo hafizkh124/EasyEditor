@@ -20,6 +20,11 @@ export type HostCommand =
   | { op: 'applyCitations'; footnotes: Array<{ marker: string; text: string }>; stripMarkers?: boolean }
   | { op: 'installFontCheck'; fontName: string }
   | { op: 'installFont'; path: string }
+  // ── P9: templates + global options ────────────────────────────────────
+  | { op: 'installTemplate'; path: string }
+  | { op: 'attachTemplate'; path: string }
+  | { op: 'getGlobalOption'; name: string }
+  | { op: 'setGlobalOption'; name: string; value: string }
   | { op: 'readStructure' }
   | { op: 'save' }
   | { op: 'saveAs'; path: string }
@@ -101,6 +106,21 @@ export interface ApplyCitationsReply extends HostReply {
   footnoteCount: number;
 }
 
+export interface InstallTemplateReply extends HostReply {
+  ok: true;
+  op: 'installTemplate';
+  templateName: string;
+  dest: string;
+}
+
+export interface GlobalOptionReply extends HostReply {
+  ok: true;
+  op: 'getGlobalOption' | 'setGlobalOption';
+  name: string;
+  /** 'true' | 'false'. */
+  value: string;
+}
+
 export interface ExcelOpenReply extends HostReply {
   ok: true;
   op: 'excelOpen';
@@ -162,6 +182,8 @@ export const OP_TIMEOUT_MS: Partial<Record<HostOp, number>> & { default: number 
   exportAs: 120_000,
   saveAs: 60_000,
   installFont: 15_000,
+  installTemplate: 15_000,
+  attachTemplate: 30_000,
   quit: 8_000,
   // P9 — Office launch + fixed-format export are as slow as Word's.
   excelOpen: 60_000,

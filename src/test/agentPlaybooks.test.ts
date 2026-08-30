@@ -26,6 +26,13 @@ describe('playbook registry', () => {
     expect(selectPlaybook('what time is it')).toBeNull();
   });
 
+  it('matches the P9 playbooks on their keywords (EN + UR)', () => {
+    expect(selectPlaybook('make the submission pdf for chapter 3')?.id).toBe('submission-pdf');
+    expect(selectPlaybook("apply my supervisor's template")?.id).toBe('apply-supervisor-template');
+    expect(selectPlaybook('نستعلیق فونٹ انسٹال کریں')?.id).toBe('install-nastaliq-font');
+    expect(selectPlaybook('add section summaries')?.id).toBe('section-summaries');
+  });
+
   it('getPlaybook resolves by id', () => {
     expect(getPlaybook('harmonise-transliteration')?.title).toMatch(/transliteration/i);
     expect(getPlaybook('nope')).toBeUndefined();

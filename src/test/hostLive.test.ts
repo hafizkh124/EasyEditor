@@ -253,6 +253,50 @@ describe.runIf(LIVE)('Word adapter live (P2, real Word)', () => {
   });
 });
 
+describe.runIf(LIVE)('Word templates + global options live (P9, real Word)', () => {
+  const tmpT = fs.mkdtempSync(path.join(os.tmpdir(), 'docbridge-live-tpl-'));
+
+  afterAll(async () => {
+    const { shutdownDocBridge } = await import('../../electron/host/index.ts');
+    await shutdownDocBridge();
+    fs.rmSync(tmpT, { recursive: true, force: true });
+  });
+
+  it('installTemplate copies a .dotx into the user Templates folder', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const dotx = path.join(tmpT, 'live-fixture.dotx');
+    // Build a real .dotx with Word (wdFormatXMLTemplate = 13).
+    const r = spawnSync('powershell', ['-NoProfile', '-Command',
+      `$w = New-Object -ComObject Word.Application; $w.Visible=$false; $d = $w.Documents.Add(); ` +
+      `$d.SaveAs2('${dotx}', 13); $d.Close($false); $w.Quit()`,
+    ], { encoding: 'utf8', timeout: 60_000 });
+    if (!fs.existsSync(dotx)) throw new Error(`dotx build failed: ${r.stderr || r.stdout}`);
+
+    try {
+      const res = await word.installTemplate(dotx);
+      expect(res.templateName).toBe('live-fixture');
+      expect(fs.existsSync(res.installedTo)).toBe(true);
+    } finally {
+      spawnSync('powershell', ['-NoProfile', '-Command',
+        `Remove-Item (Join-Path $env:APPDATA 'Microsoft\\Templates\\live-fixture.dotx') -Force -EA SilentlyContinue`,
+      ]);
+    }
+  });
+
+  it('getWordOption / setWordOption round-trip an allow-listed Application.Option', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const before = await word.getWordOption('check_spelling');
+    const flipped = before === 'true' ? 'false' : 'true';
+    try {
+      const applied = await word.setWordOption('check_spelling', flipped);
+      expect(applied).toBe(flipped);
+      expect(await word.getWordOption('check_spelling')).toBe(flipped);
+    } finally {
+      await word.setWordOption('check_spelling', before === 'true' ? 'true' : 'false');
+    }
+  });
+});
+
 describe.runIf(LIVE)('Excel + PowerPoint adapters live (P9, real Office)', () => {
   const outPath = (name: string) => path.join(tmp3, name);
   const xlsx = () => outPath('fixture.xlsx');

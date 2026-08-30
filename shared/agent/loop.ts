@@ -34,6 +34,9 @@ function labelFor(name: string): string {
     case 'set_page_layout': return 'setting the page layout';
     case 'convert_document': return 'converting the document';
     case 'run_task': return 'running the text task';
+    case 'install_font': return 'installing the font';
+    case 'install_template': return 'installing the template';
+    case 'set_global_option': return 'requesting a Word setting change';
     default: return `running ${name}`;
   }
 }
