@@ -63,7 +63,7 @@ describe("AgentPanel", () => {
   it("prompts to open a project folder when none is open", () => {
     pf.folder = null as unknown as typeof pf.folder;
     render(<AgentPanel />);
-    expect(screen.getByText(/Open a project folder in the Library/)).toBeInTheDocument();
+    expect(screen.getByText(/The agent works on a folder of/)).toBeInTheDocument();
   });
 
   it("defaults to Ask mode and toggles to Do", () => {

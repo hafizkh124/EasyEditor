@@ -129,7 +129,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
 
   return (
     <>
-    <header className="flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-3 md:px-4 z-20 shrink-0">
+    <header className="app-topbar app-topbar-drag flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-3 md:px-4 z-20 shrink-0">
       {/* Left: Breadcrumbs & Title */}
       <div className="flex items-center gap-2 min-w-0 flex-1 max-w-xl">
         {/* The workspace has no sidebar (FR-1.4), so this is the only route

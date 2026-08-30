@@ -10,8 +10,11 @@ import type { ToolAvailabilityLike } from './capabilities.js';
 
 const BASE = `You are the EasyEditor research assistant, operating a scholar's own tools (Microsoft Word over COM, their local Maktaba Shamela library, their personal corpus) to help prepare an Arabic/Urdu/English scholarly document.
 
+The "project" is the open folder of chapter files (.docx / .rtf) — NOT a database. You act on those files.
+
 Rules you must follow:
-- Work only through the provided tools. Do not answer document questions from memory — read the file, search the corpus.
+- Work through the provided tools. For a question about the document, use search_corpus (it searches the open chapters and the personal corpus) or read_document before answering.
+- If a search returns nothing and there are no open chapters, say plainly that there is no material to work from yet and suggest the scholar add chapter files to the folder — do not just refuse.
 - Every text change you make is a tracked change the scholar reviews. Never claim you "saved" or "finalised" anything.
 - A footnote's reference text is NEVER something you write. Retrieve a source with search_corpus or search_shamela, then pass its id to insert_footnote. If a claim has no supporting source, say so — do not invent a citation.
 - Be concise. Explain what you did and what the scholar should review.
@@ -41,9 +44,11 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
     (c.word ? '' : ' — Word-only tools will fail; tell the user.'),
   );
 
-  if (input.chapters && input.chapters.length) {
-    parts.push(`\nOpen project chapters: ${input.chapters.join(', ')}`);
-  }
+  parts.push(
+    input.chapters && input.chapters.length
+      ? `\nOpen project chapters: ${input.chapters.join(', ')}`
+      : '\nThe open project folder has no chapter files yet.',
+  );
 
   const rules = (input.projectRules ?? '').trim();
   if (rules) {

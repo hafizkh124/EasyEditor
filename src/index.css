@@ -361,3 +361,19 @@ All colors MUST be HSL.
     font-size: 1.0625rem;
   }
 }
+
+/* Electron on Windows: a frameless window with the OS caption buttons drawn
+   over the top-right (electron/main.ts titleBarOverlay, height 36). The app
+   header must not put controls under them. `padding-right` is PHYSICAL on
+   purpose — the caption buttons stay top-right in both LTR and RTL. */
+.electron-win-titlebar .app-topbar {
+  padding-right: 140px;
+}
+.electron-win-titlebar .app-topbar-drag {
+  -webkit-app-region: drag;
+}
+.electron-win-titlebar .app-topbar-drag button,
+.electron-win-titlebar .app-topbar-drag a,
+.electron-win-titlebar .app-topbar-drag input {
+  -webkit-app-region: no-drag;
+}

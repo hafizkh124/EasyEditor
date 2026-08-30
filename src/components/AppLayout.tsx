@@ -83,7 +83,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </SheetContent>
           </Sheet>
           <Link to="/" className="flex items-center gap-2 flex-1 min-w-0">
-            <img src="/favicon.webp" alt="Easy Editor" width={24} height={24} className="rounded" />
+            <img src={`${import.meta.env.BASE_URL}favicon.webp`} alt="Easy Editor" width={24} height={24} className="rounded" />
             <span className="text-base font-bold text-foreground truncate">Easy Editor</span>
           </Link>
           <DesktopAccountMenu />

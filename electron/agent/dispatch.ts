@@ -89,15 +89,34 @@ export function createDispatcher(session: AgentSession): Dispatcher {
       case 'search_corpus': {
         const query = str(args.query, 'query');
         const limit = num(args.limit, 8);
+
+        // (a) the imported personal corpus (FTS over library chunks)
         const svc = await getWorkspaceDbService();
-        const hits = await svc.searchChunks(query, limit);
+        let hits: Awaited<ReturnType<typeof svc.searchChunks>> = [];
+        try { hits = await svc.searchChunks(query, limit); } catch (err) { log.warn('corpus FTS failed', { message: (err as Error).message }); }
         const chunks: RetrievedChunk[] = hits.map((h) => ({
           id: `corpus:${h.itemId}:${h.pageNumber ?? 0}`,
           reference: h.pageNumber ? `${h.title}, p. ${h.pageNumber}` : h.title,
           content: h.content,
         }));
+
+        // (b) the open project folder's OWN chapters — a lexical scan, so the
+        // agent can answer questions about the document even before anything
+        // has been imported into the corpus DB.
+        for (const name of refreshChapters(root).map((c) => c.name)) {
+          const text = await chapterText(name).catch(() => '');
+          const idx = text.toLowerCase().indexOf(query.toLowerCase());
+          if (idx === -1) continue;
+          const excerpt = text.slice(Math.max(0, idx - 120), idx + query.length + 280).replace(/\s+/g, ' ').trim();
+          chunks.push({ id: `chapter:${name}`, reference: name, content: excerpt });
+        }
+
         ledger.add(chunks);
-        return { count: chunks.length, results: chunks.map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 400) })) };
+        return {
+          count: chunks.length,
+          note: chunks.length === 0 ? 'Nothing matched in the personal corpus or the open project chapters.' : undefined,
+          results: chunks.slice(0, limit + 4).map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 400) })),
+        };
       }
 
       case 'search_shamela': {

@@ -8,6 +8,17 @@ import { applyInitialAppTheme } from "./lib/theme";
 prefetchStoredReaderFont();
 applyInitialAppTheme();
 
+// Desktop on Windows uses a frameless window with an overlaid caption-button
+// region at the top-right (electron/main.ts titleBarOverlay). Mark the root so
+// the app's top bars can reserve that strip and not sit under the buttons.
+try {
+  const w = window as unknown as { electronAPI?: { isDesktop?: boolean } };
+  const ua = navigator.userAgent || "";
+  if (w.electronAPI?.isDesktop && /Windows NT/.test(ua)) {
+    document.documentElement.classList.add("electron-win-titlebar");
+  }
+} catch { /* ignore */ }
+
 const isOAuthBrokerRoute = window.location.pathname.startsWith("/~oauth");
 
 if (isOAuthBrokerRoute && "serviceWorker" in navigator) {
