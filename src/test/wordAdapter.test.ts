@@ -12,7 +12,7 @@ import type { ToolAvailability } from '../../electron/host/types.ts';
 
 const sent: Array<{ op: string; [k: string]: unknown }> = [];
 const fakeHost = {
-  sendOk: vi.fn(async (cmd: { op: string }) => {
+  sendOk: vi.fn(async (cmd: { op: string; outPath?: string }) => {
     sent.push(cmd);
     switch (cmd.op) {
       case 'openPdfReflow': return { ok: true, op: cmd.op, wordCount: 312, ms: 22000 };
@@ -22,6 +22,9 @@ const fakeHost = {
         return { ok: true, op: cmd.op, fontName: 'Jameel Noori Nastaleeq', facesRegistered: 1, verifiedInRunningWord: true };
       case 'applyCitations':
         return { ok: true, op: cmd.op, applied: 3, notFound: ['[4]'], footnoteCount: 3 };
+      case 'compareInto':
+        fs.writeFileSync(String(cmd.outPath), 'tracked-changes');
+        return { ok: true, op: cmd.op, revisions: 5, outPath: cmd.outPath };
       default: return { ok: true, op: cmd.op };
     }
   }),
@@ -163,6 +166,24 @@ describe('applyCitations', () => {
 
   it('rejects a non-.docx output', async () => {
     await expect(word.applyCitations({ html: '<p>[1]</p>' }, footnotes, path.join(dir, 'o.pdf'))).rejects.toThrow(/not allowed/);
+  });
+});
+
+describe('applyTextTask (agent run_task)', () => {
+  it('builds a revised .docx, diffs it against the chapter, then overwrites with the comparison', async () => {
+    const chapter = path.join(dir, 'ch.docx'); fs.writeFileSync(chapter, 'original');
+    const res = await word.applyTextTask(chapter, 'refined text', { isHtml: false });
+    expect(res.revisions).toBe(5);
+    expect(ops()).toEqual(['open', 'saveAs', 'close', 'open', 'compareInto', 'close']);
+    // the temp .html/.txt source that was opened is cleaned up
+    const openCmds = sent.filter((c) => c.op === 'open');
+    expect(String(openCmds[0].path)).toMatch(/\.txt$/);
+    expect(fs.existsSync(String(openCmds[0].path))).toBe(false);
+    expect(fs.readFileSync(chapter, 'utf8')).toBe('tracked-changes');
+  });
+
+  it('rejects a chapter that does not exist, before touching the host', async () => {
+    await expect(word.applyTextTask(path.join(dir, 'ghost.docx'), 'x', { isHtml: false })).rejects.toThrow(/not found/);
   });
 });
 

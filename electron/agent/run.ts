@@ -45,6 +45,8 @@ export interface AgentRunInput {
   projectRoot: string;
   onProgress?: (p: AgentProgress) => void;
   isCancelled?: () => boolean;
+  /** Runs a General-channel search via the renderer (ADR-0019 item 7). */
+  generalSearch?: ((query: string) => Promise<import('./generalSearch.js').GeneralSearchResult>) | null;
 }
 
 export async function runAgent(input: AgentRunInput): Promise<AgentRunResult & { playbook?: string; checkpointId?: string }> {
@@ -70,7 +72,12 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult & {
   const canWrite = toolsForMode(mode).some((t) => t.effect === 'write');
   const checkpointId = canWrite ? beginCheckpoint(projectRoot, instruction) : undefined;
 
-  const { dispatch } = createDispatcher({ projectRoot, checkpointId, claimCheck: checkClaim });
+  const { dispatch } = createDispatcher({
+    projectRoot,
+    checkpointId,
+    claimCheck: checkClaim,
+    generalSearch: input.generalSearch ?? null,
+  });
 
   log.info('agent run starting', { mode, playbook: playbook?.id, chapters: chapters.length, checkpointId });
   const result = await runAgentLoop(instruction, generateWithTools, dispatch, systemPrompt, {
@@ -82,8 +89,9 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult & {
   // Keep the checkpoint only if it actually snapshotted a chapter.
   const wrote = result.toolCalls.some(
     (c) =>
-      ['insert_footnote', 'set_page_layout'].includes(c.name) ||
-      (c.name === 'install_template' && Boolean((c.args as { chapter?: unknown }).chapter)),
+      (['insert_footnote', 'set_page_layout', 'run_task'].includes(c.name)
+        && !(typeof c.result === 'object' && c.result && 'error' in c.result))
+      || (c.name === 'install_template' && Boolean((c.args as { chapter?: unknown }).chapter)),
   );
   return { ...result, playbook: playbook?.id, checkpointId: wrote ? checkpointId : undefined };
 }

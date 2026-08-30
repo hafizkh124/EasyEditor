@@ -42,6 +42,9 @@ vi.mock("@/lib/audio/chunker", () => ({
   encodeChunkToWav: vi.fn(async () => ({ arrayBuffer: async () => new ArrayBuffer(8) })),
 }));
 
+const { streamResearchQuery } = vi.hoisted(() => ({ streamResearchQuery: vi.fn() }));
+vi.mock("@/lib/research/streamers", () => ({ streamResearchQuery }));
+
 class FakeMediaRecorder {
   static isTypeSupported() { return true; }
   ondataavailable: ((e: { data: Blob }) => void) | null = null;
@@ -54,11 +57,12 @@ class FakeMediaRecorder {
 
 import { AgentPanel } from "@/components/workspace/AgentPanel";
 
-let onProgressCb: ((p: { id: string; step: number; label: string; kind: string; detail?: string }) => void) | null = null;
+let onProgressCb: ((p: { id: string; step?: number; label?: string; kind: string; detail?: string; requestId?: string; query?: string }) => void) | null = null;
 const agentRun = vi.fn(async () => ({ answer: "The chapter has 3 headings.", stopReason: "done", steps: 2, toolCalls: [{ name: "read_document", args: { chapter: "01-intro.docx" } as Record<string, unknown>, result: {} as unknown }], playbook: undefined as string | undefined }));
 const transcribe = vi.fn(async () => [{ start: 0, end: 1, text: "footnote chapter one" }]);
 const applyGlobalOption = vi.fn(async () => ({ option: "check_spelling", previous: "true", applied: "false" }));
 const revertGlobalOptions = vi.fn(async () => ({ reverted: [{ option: "check_spelling", to: "true" }] }));
+const submitGeneralSearch = vi.fn(async () => ({ ok: true }));
 
 function mockApi(over: Partial<typeof pf> = {}) {
   Object.assign(pf, over);
@@ -71,6 +75,7 @@ function mockApi(over: Partial<typeof pf> = {}) {
       onProgress: vi.fn((cb: typeof onProgressCb) => { onProgressCb = cb; return () => { onProgressCb = null; }; }),
       applyGlobalOption,
       revertGlobalOptions,
+      submitGeneralSearch,
     },
     docBridge: { detectTools: vi.fn(async () => ({ word: true, wordVersion: "16.0", windows: true })) },
     voice: { transcribe },
@@ -80,6 +85,11 @@ function mockApi(over: Partial<typeof pf> = {}) {
 beforeEach(() => {
   pf.folder = { path: "C:\\thesis", manifest: { id: "1", title: "My Thesis", createdAt: "x", chapterOrder: [], version: 1 } };
   documentOutline = [];
+  streamResearchQuery.mockImplementation(async (o: { onDelta: (c: string) => void; onDone: () => void }) => {
+    o.onDelta("Al-Ghazali was ");
+    o.onDelta("a theologian.");
+    o.onDone();
+  });
   (globalThis as unknown as { MediaRecorder: unknown }).MediaRecorder = FakeMediaRecorder;
   Object.defineProperty(navigator, "mediaDevices", {
     configurable: true,
@@ -178,6 +188,22 @@ describe("AgentPanel", () => {
     fireEvent.click(applyBtn);
     await waitFor(() => expect(applyGlobalOption).toHaveBeenCalledWith("C:\\thesis", "check_spelling", "false"));
     expect(await screen.findByRole("button", { name: /Revert Word settings/ })).toBeInTheDocument();
+  });
+
+  it("answers a general-search-request from the agent via the research streamer", async () => {
+    let resolveRun: (v: unknown) => void = () => {};
+    agentRun.mockImplementationOnce(() => new Promise((r) => { resolveRun = r as (v: unknown) => void; }));
+    render(<AgentPanel />);
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
+    fireEvent.change(ta, { target: { value: "who was al-Ghazali" } });
+    fireEvent.keyDown(ta, { key: "Enter" });
+
+    await waitFor(() => expect(onProgressCb).toBeTruthy());
+    onProgressCb!({ id: "1", kind: "general-search-request", requestId: "req_9", query: "al-Ghazali" });
+
+    await waitFor(() => expect(streamResearchQuery).toHaveBeenCalled());
+    await waitFor(() => expect(submitGeneralSearch).toHaveBeenCalledWith("req_9", { answer: "Al-Ghazali was a theologian.", channel: "general" }));
+    resolveRun({ answer: "done", stopReason: "done", steps: 1, toolCalls: [], playbook: undefined });
   });
 
   it("dictates a transcript into the input", async () => {

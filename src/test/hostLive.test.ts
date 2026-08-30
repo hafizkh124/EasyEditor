@@ -232,6 +232,18 @@ describe.runIf(LIVE)('Word adapter live (P2, real Word)', () => {
     }
   });
 
+  it('applyTextTask (agent run_task): a rewrite lands as real Word tracked changes', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const chapter = outPath('run-task.docx');
+    await word.toWord({ html: '<p>یہ اصل پیراگراف ہے۔</p><p>یہ دوسرا جملہ ہے۔</p>' }, chapter, { rtlPageSetup: true });
+
+    const res = await word.applyTextTask(chapter, 'یہ نظر ثانی شدہ پیراگراف ہے۔\nیہ ایک نیا دوسرا جملہ ہے۔', { isHtml: false });
+    expect(res.revisions).toBeGreaterThan(0);
+
+    const s = await word.readStructure(chapter);
+    expect(s.trackedChanges).toBeGreaterThan(0);
+  });
+
   it('installFont: a font not on this machine becomes visible to running Word', async () => {
     const word = await import('../../electron/adapters/word.ts');
     // Liberation Sans ships inside pdfjs-dist and is not a Windows font.

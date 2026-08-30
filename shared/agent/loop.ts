@@ -30,6 +30,7 @@ function labelFor(name: string): string {
     case 'read_document': return 'reading the chapter';
     case 'search_corpus': return 'searching the corpus';
     case 'search_shamela': return 'searching Shamela';
+    case 'search_general': return 'asking the General research channel';
     case 'insert_footnote': return 'inserting the footnote';
     case 'set_page_layout': return 'setting the page layout';
     case 'convert_document': return 'converting the document';

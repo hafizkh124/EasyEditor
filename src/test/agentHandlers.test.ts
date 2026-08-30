@@ -26,6 +26,10 @@ vi.mock('../../electron/agent/globalOptions.ts', () => ({
   applyGlobalOption, revertGlobalOptions, readLog: readGlobalOptionLog,
 }));
 
+const requestGeneralSearch = vi.fn(async () => ({ answer: 'x', channel: 'general' }));
+const resolveGeneralSearch = vi.fn();
+vi.mock('../../electron/agent/generalSearch.ts', () => ({ requestGeneralSearch, resolveGeneralSearch }));
+
 const createTaskRun = vi.fn(async () => ({ id: 'trun_1' }));
 const updateTaskRunStatus = vi.fn(async () => ({}));
 vi.mock('../../electron/ipc/workspaceHandlers.ts', () => ({
@@ -129,5 +133,18 @@ describe('global options (P9, §3 gate #5)', () => {
 
   it('applyGlobalOption requires a project folder', async () => {
     await expect(invoke({ action: 'applyGlobalOption', projectRoot: '', option: 'check_spelling', value: 'false' })).rejects.toThrow(/projectRoot/);
+  });
+});
+
+describe('generalSearchResult (renderer → main bridge, ADR-0019 #7)', () => {
+  it('forwards the renderer\'s answer to the pending request', async () => {
+    await expect(invoke({ action: 'generalSearchResult', requestId: 'req_1', answer: 'the answer', channel: 'general' }))
+      .resolves.toEqual({ ok: true });
+    expect(resolveGeneralSearch).toHaveBeenCalledWith('req_1', expect.objectContaining({ answer: 'the answer', channel: 'general' }));
+  });
+
+  it('forwards an error the same way', async () => {
+    await invoke({ action: 'generalSearchResult', requestId: 'req_2', error: 'offline' });
+    expect(resolveGeneralSearch).toHaveBeenCalledWith('req_2', expect.objectContaining({ error: 'offline' }));
   });
 });
