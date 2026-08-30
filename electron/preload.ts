@@ -283,6 +283,42 @@ const electronAPI = {
     },
   },
 
+  projectFolder: {
+    // SPEC-M8 Layer 5 / P7 — the .docx import/export bridge (ADR-0018).
+    pickFolder: (): Promise<{ cancelled: true } | { cancelled: false; path: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'pickFolder' }),
+    create: (path: string, title: string): Promise<import("../shared/fs/projectTypes").ProjectFolder> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'createProject', path, title }),
+    open: (path: string): Promise<import("../shared/fs/projectTypes").ProjectFolder> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'openProject', path }),
+    listChapters: (root: string): Promise<import("../shared/fs/projectTypes").ChapterFile[]> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'listChapters', root }),
+    readChapterHtml: (root: string, name: string): Promise<{
+      html: string;
+      name: string;
+      structure: { headings: string[]; footnotes: Array<{ index: number; text: string }>; trackedChanges: number; wordCount: number; readingOrder: 'rtl' | 'ltr' | 'mixed' };
+    }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'readChapterHtml', root, name }),
+    saveChapter: (
+      root: string,
+      name: string,
+      html: string,
+      options?: { rtlPageSetup?: boolean; trackChanges?: boolean },
+    ): Promise<{ name: string; backupPath: string | null; bytes: number }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'saveChapter', root, name, html, options }),
+    watch: (root: string): Promise<{ watching: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'watch', root }),
+    unwatch: (): Promise<{ watching: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'unwatch' }),
+    onChanged: (callback: (p: { name: string; kind: 'external' | 'saving' }) => void): (() => void) => {
+      const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);
+      ipcRenderer.on(ALLOWED_IPC_CHANNELS.FS_CHANGED, listener);
+      return () => {
+        ipcRenderer.removeListener(ALLOWED_IPC_CHANNELS.FS_CHANGED, listener);
+      };
+    },
+  },
+
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

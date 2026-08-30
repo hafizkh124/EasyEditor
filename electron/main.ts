@@ -10,6 +10,7 @@ import { terminateLocalSync } from './tafsir/mcpClient.js';
 import { registerVoiceHandlers } from './ipc/voiceHandlers.js';
 import { registerDocBridgeHandlers } from './ipc/docBridgeHandlers.js';
 import { initDocBridge, shutdownDocBridgeSync } from './host/index.js';
+import { registerFsHandlers, terminateFsWatch } from './ipc/fsHandlers.js';
 import { isAllowedExternalUrl } from './lib/urlAllowlist.js';
 import { ALLOWED_IPC_CHANNELS } from './ipc/registry.js';
 import { logger } from './lib/logger.js';
@@ -278,6 +279,7 @@ if (!gotSingleInstanceLock) {
     registerTafsirHandlers();
     registerVoiceHandlers();
     registerDocBridgeHandlers();
+    registerFsHandlers();
     createWindow();
     checkForUpdates();
 
@@ -311,6 +313,7 @@ if (!gotSingleInstanceLock) {
 app.on('before-quit', () => {
   terminateLocalSync();
   shutdownDocBridgeSync();
+  terminateFsWatch();
 });
 
 app.on('window-all-closed', () => {
