@@ -47,7 +47,7 @@ export const WorkspaceAppMenu: React.FC = () => {
           aria-label={t("nav.menu", "مینو")}
           title={t("nav.menu", "مینو")}
         >
-          <img src="/favicon.webp" alt="Easy Editor" width={22} height={22} className="rounded" />
+          <img src={`${import.meta.env.BASE_URL}favicon.webp`} alt="Easy Editor" width={22} height={22} className="rounded" />
           <ChevronDown className="h-3.5 w-3.5 opacity-60" />
         </Button>
       </DropdownMenuTrigger>

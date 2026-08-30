@@ -970,6 +970,8 @@
   "agent.step_limit": "Stopped at the step limit — ask a narrower question.",
   "agent.caps_title": "This machine's capabilities",
   "agent.caps_no_word": "Word not found on this machine",
+  "agent.needs_folder_hint": "This is separate from a Library project. Pick the folder where your chapter files live (it can be inside Google Drive / OneDrive).",
+  "agent.no_chapters": "This folder has no .docx or .rtf files yet — the agent has nothing to read. Add chapter files, or pick a different folder.",
   "agent.undo_task": "Undo this task",
   "agent.undone": "Task reverted",
   "editor.audiobook_cancelled": "Audiobook export was cancelled.",

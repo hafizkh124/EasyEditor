@@ -72,14 +72,22 @@ describe('agent dispatch', () => {
     expect(wordMock.readStructure).toHaveBeenCalledWith('C:\\p\\02-body.docx');
   });
 
-  it('search_corpus fills the retrieval ledger and returns compact results', async () => {
+  it('search_corpus searches the imported corpus AND the open chapters, filling the ledger', async () => {
     const { dispatch, ledger } = mk();
-    const r = await dispatch('search_corpus', { query: 'برکت', limit: 3 }) as { count: number; results: Array<{ id: string }> };
+    const r = await dispatch('search_corpus', { query: 'برکت', limit: 3 }) as { count: number; results: Array<{ id: string; reference: string }> };
     expect(searchChunks).toHaveBeenCalledWith('برکت', 3);
-    expect(r.count).toBe(1);
-    expect(ledger.size).toBe(1);
-    // the id the model must echo back to insert_footnote
-    expect(r.results[0].id).toBe('corpus:it1:12');
+    // one FTS hit (corpus:it1:12) + the mock chapter text contains "برکت"
+    expect(r.results.map((x) => x.id)).toContain('corpus:it1:12');
+    expect(r.results.some((x) => x.id.startsWith('chapter:'))).toBe(true);
+    expect(ledger.size).toBe(r.count);
+  });
+
+  it('search_corpus reports plainly when nothing matches', async () => {
+    searchChunks.mockResolvedValueOnce([]);
+    const { dispatch } = mk();
+    const r = await dispatch('search_corpus', { query: 'zzznotfound' }) as { count: number; note?: string };
+    expect(r.count).toBe(0);
+    expect(r.note).toMatch(/Nothing matched/);
   });
 
   it('insert_footnote REFUSES a source_id that was never retrieved', async () => {

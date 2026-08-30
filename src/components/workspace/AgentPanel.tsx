@@ -133,7 +133,8 @@ export const AgentPanel: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center text-muted-foreground">
         <Bot className="h-10 w-10 opacity-30" />
-        <p className="text-sm">{t("agent.needs_folder", "Open a project folder in the Library to use the agent.")}</p>
+        <p className="text-sm">{t("agent.needs_folder", "The agent works on a folder of .docx chapters — open one to begin.")}</p>
+        <p className="text-xs opacity-80">{t("agent.needs_folder_hint", "This is separate from a Library project. Pick the folder where your chapter files live (it can be inside Google Drive / OneDrive).")}</p>
         <Button size="sm" variant="outline" onClick={pf.openFolder} className="gap-1.5">
           <FolderOpen className="h-4 w-4" />
           {t("projectfolder.open", "Open a folder of .docx chapters")}
@@ -163,6 +164,12 @@ export const AgentPanel: React.FC = () => {
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-3 space-y-3">
+          {pf.chapters.length === 0 && (
+            <div className="flex items-center gap-1.5 rounded border border-amber-500/40 bg-amber-500/5 p-2 text-xs text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              {t("agent.no_chapters", "This folder has no .docx or .rtf files yet — the agent has nothing to read. Add chapter files, or pick a different folder.")}
+            </div>
+          )}
           {progress.length === 0 && !result && (
             <p className="text-xs text-muted-foreground">
               {mode === "ask"

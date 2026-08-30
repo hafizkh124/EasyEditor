@@ -148,7 +148,7 @@ export const AppSidebar = ({
       collapsed ? "justify-center px-2" : "justify-between px-4",
     )}>
       <Link to="/" onClick={onItemClick} className="flex items-center gap-2.5 min-w-0">
-        <img src="/favicon.webp" alt="Easy Editor" width={26} height={26} className="rounded flex-shrink-0" />
+        <img src={`${import.meta.env.BASE_URL}favicon.webp`} alt="Easy Editor" width={26} height={26} className="rounded flex-shrink-0" />
         {!collapsed && <span className="text-lg font-bold text-sidebar-foreground tracking-tight truncate">Easy Editor</span>}
       </Link>
       {showCollapseButton && !collapsed && onToggleCollapse && (
