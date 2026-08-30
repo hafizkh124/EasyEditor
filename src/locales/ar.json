@@ -970,6 +970,8 @@
   "agent.step_limit": "توقّف عند حد الخطوات — اطرح سؤالًا أضيق.",
   "agent.caps_title": "قدرات هذا الجهاز",
   "agent.caps_no_word": "لم يُعثر على Word على هذا الجهاز",
+  "agent.undo_task": "التراجع عن هذه المهمة",
+  "agent.undone": "تم التراجع عن المهمة",
   "editor.audiobook_cancelled": "أُلغي تصدير الكتاب الصوتي.",
   "editor.audiobook_done": "الكتاب الصوتي جاهز.",
   "editor.audiobook_empty": "لا يوجد نص لتحويله إلى كتاب صوتي.",

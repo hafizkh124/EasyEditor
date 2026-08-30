@@ -332,11 +332,14 @@ const electronAPI = {
       steps: number;
       toolCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown }>;
       playbook?: string;
+      checkpointId?: string;
       error?: string;
     }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'run', instruction, mode, projectRoot }),
     cancel: (): Promise<{ cancelled: boolean }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'cancel' }),
+    undoTask: (projectRoot: string, checkpointId: string): Promise<{ restored: string[]; removed: string[] }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'undoTask', projectRoot, checkpointId }),
     status: (): Promise<{ busy: boolean; running: { id: string; startedAt: number } | null }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'status' }),
     onProgress: (callback: (p: { id: string; step: number; label: string; kind: string; detail?: string }) => void): (() => void) => {

@@ -970,6 +970,8 @@
   "agent.step_limit": "Stopped at the step limit — ask a narrower question.",
   "agent.caps_title": "This machine's capabilities",
   "agent.caps_no_word": "Word not found on this machine",
+  "agent.undo_task": "Undo this task",
+  "agent.undone": "Task reverted",
   "editor.audiobook_cancelled": "Audiobook export was cancelled.",
   "editor.audiobook_done": "Audiobook is ready.",
   "editor.audiobook_empty": "There is no text to turn into an audiobook.",

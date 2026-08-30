@@ -7,14 +7,19 @@
 // rather than pretending.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+import fs from 'node:fs';
+
 const wordMock = {
   readStructure: vi.fn(async () => ({ headings: ['A'], footnotes: [], trackedChanges: 0, wordCount: 9, readingOrder: 'rtl' })),
   applyCitations: vi.fn(async () => ({ outputPath: 'C:\\p\\01.docx', applied: 1, notFound: [], ms: 1 })),
   setChapterLayout: vi.fn(async () => ({ ms: 1 })),
-  fromWord: vi.fn(async () => ({ outputPath: 'C:\\p\\export\\01.pdf', ms: 1 })),
+  fromWord: vi.fn(async (_src: string, _to: string, out: string) => { fs.writeFileSync(out, 'باب دو میں برکت کا ذکر ہے۔ برکت ایک اہم موضوع ہے۔'); return { outputPath: out, ms: 1 }; }),
   reflowPdf: vi.fn(async () => ({ outputPath: 'C:\\p\\export\\01.docx', wordCount: 5, ms: 1 })),
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMock);
+
+const recordEdit = vi.fn();
+vi.mock('../../electron/agent/checkpoint.ts', () => ({ recordEdit }));
 
 vi.mock('../../electron/host/index.ts', () => ({
   detectTools: vi.fn(() => ({ word: true, wordVersion: '16.0', windows: true })),
@@ -24,6 +29,10 @@ const backupChapter = vi.fn(() => 'C:\\p\\.easyeditor\\backups\\ts__01.docx');
 vi.mock('../../electron/fs/projectFolder.ts', () => ({
   chapterPath: (root: string, name: string) => `${root}\\${name}`,
   backupChapter,
+  refreshChapters: () => [
+    { name: '01.docx', format: 'docx', size: 1, modifiedAt: 'x', order: 0 },
+    { name: '02-body.docx', format: 'docx', size: 1, modifiedAt: 'x', order: 1 },
+  ],
 }));
 
 const searchChunks = vi.fn(async () => [
@@ -46,7 +55,8 @@ beforeEach(async () => {
   ({ createDispatcher } = await import('../../electron/agent/dispatch.ts'));
 });
 
-const mk = () => createDispatcher({ projectRoot: 'C:\\p' });
+const mk = (over: Partial<Parameters<typeof createDispatcher>[0]> = {}) =>
+  createDispatcher({ projectRoot: 'C:\\p', checkpointId: 'cp_1', ...over });
 
 describe('agent dispatch', () => {
   it('list_capabilities returns the machine summary', async () => {
@@ -79,10 +89,11 @@ describe('agent dispatch', () => {
     expect(wordMock.applyCitations).not.toHaveBeenCalled();
   });
 
-  it('insert_footnote uses the retrieved reference, backs up, and tracks the change', async () => {
+  it('insert_footnote uses the retrieved reference, checkpoints + backs up, and tracks the change', async () => {
     const { dispatch } = mk();
     await dispatch('search_shamela', { query: 'الأعمال' });
     const r = await dispatch('insert_footnote', { chapter: '01.docx', marker: '[1]', source_id: 'shamela:55:40' }) as { reference: string; backedUp: boolean };
+    expect(recordEdit).toHaveBeenCalledWith('C:\\p', 'cp_1', '01.docx');
     expect(backupChapter).toHaveBeenCalledWith('C:\\p', '01.docx');
     expect(wordMock.applyCitations).toHaveBeenCalledWith(
       { sourcePath: 'C:\\p\\01.docx' },
@@ -94,11 +105,30 @@ describe('agent dispatch', () => {
     expect(r.backedUp).toBe(true);
   });
 
-  it('set_page_layout backs up then edits in place', async () => {
+  it('insert_footnote REFUSES when the claim-check says the source does not support the claim', async () => {
+    const claimCheck = vi.fn(async () => ({ supports: false, note: 'excerpt is about wudu, not the claim' }));
+    const { dispatch } = mk({ claimCheck });
+    await dispatch('search_shamela', { query: 'x' });
+    await expect(dispatch('insert_footnote', {
+      chapter: '01.docx', marker: '[1]', source_id: 'shamela:55:40', claim: 'The Prophet forbade X.',
+    })).rejects.toThrow(/does not support this claim/);
+    expect(wordMock.applyCitations).not.toHaveBeenCalled();
+  });
+
+  it('set_page_layout checkpoints + backs up then edits in place', async () => {
     const { dispatch } = mk();
     await dispatch('set_page_layout', { chapter: '01.docx' });
+    expect(recordEdit).toHaveBeenCalledWith('C:\\p', 'cp_1', '01.docx');
     expect(backupChapter).toHaveBeenCalled();
     expect(wordMock.setChapterLayout).toHaveBeenCalledWith('C:\\p\\01.docx');
+  });
+
+  it('check_consistency finds the term in the OTHER chapters and suggests a review', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('check_consistency', { term: 'برکت', exclude_chapter: '01.docx' }) as { appearsIn: Array<{ chapter: string; count: number }>; suggestion: string };
+    expect(r.appearsIn.map((x) => x.chapter)).toEqual(['02-body.docx']);
+    expect(r.appearsIn[0].count).toBe(2);
+    expect(r.suggestion).toMatch(/consider reviewing/);
   });
 
   it('run_task is not available in this build and says so', async () => {

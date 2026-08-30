@@ -15,6 +15,10 @@ let resolveRun: (v: unknown) => void = () => {};
 const runAgent = vi.fn(() => new Promise((res) => { resolveRun = res; }));
 vi.mock('../../electron/agent/run.ts', () => ({ runAgent }));
 
+const undoCheckpoint = vi.fn(() => ({ restored: ['01.docx'], removed: [] }));
+const listCheckpoints = vi.fn(() => [{ id: 'cp_1', createdAt: 'x', label: 't', files: ['01.docx'] }]);
+vi.mock('../../electron/agent/checkpoint.ts', () => ({ undoCheckpoint, listCheckpoints }));
+
 const createTaskRun = vi.fn(async () => ({ id: 'trun_1' }));
 const updateTaskRunStatus = vi.fn(async () => ({}));
 vi.mock('../../electron/ipc/workspaceHandlers.ts', () => ({
@@ -85,5 +89,21 @@ describe('status / cancel', () => {
 
   it('an unknown action throws, naming it', async () => {
     await expect(invoke({ action: 'yolo' })).rejects.toThrow(/yolo/);
+  });
+});
+
+describe('undoTask', () => {
+  it('reverts the checkpoint and reports what was restored', async () => {
+    await expect(invoke({ action: 'undoTask', projectRoot: 'C:\\p', checkpointId: 'cp_1' }))
+      .resolves.toEqual({ restored: ['01.docx'], removed: [] });
+    expect(undoCheckpoint).toHaveBeenCalledWith('C:\\p', 'cp_1');
+  });
+
+  it('requires both projectRoot and checkpointId', async () => {
+    await expect(invoke({ action: 'undoTask', projectRoot: '', checkpointId: 'cp_1' })).rejects.toThrow(/required/);
+  });
+
+  it('checkpoints lists them', async () => {
+    await expect(invoke({ action: 'checkpoints', projectRoot: 'C:\\p' })).resolves.toEqual({ checkpoints: expect.any(Array) });
   });
 });

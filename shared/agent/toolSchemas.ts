@@ -50,11 +50,12 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'insert_footnote',
-    description: "Insert a real Word footnote at each [N] marker in a chapter, as a tracked change. The footnote text MUST come from a chunk returned by search_corpus/search_shamela — you pass the marker and the source's citation ref, not a reference you typed. Fails if the citation does not resolve to a retrieved chunk.",
+    description: "Insert a real Word footnote at each [N] marker in a chapter, as a tracked change. The footnote text MUST come from a chunk returned by search_corpus/search_shamela — you pass the marker and the source's id, not a reference you typed. Fails if the citation does not resolve to a retrieved chunk, or if `claim` is given and the source does not actually support it.",
     params: {
       chapter: { type: 'string', description: 'The chapter file name.' },
       marker: { type: 'string', description: 'The literal marker in the text, e.g. "[1]".' },
-      source_id: { type: 'string', description: 'The `match_key` (or id) of a chunk returned by a prior search_* call in this task.' },
+      source_id: { type: 'string', description: 'The id of a chunk returned by a prior search_* call in this task.' },
+      claim: { type: 'string', description: 'The exact sentence/claim this footnote supports. Strongly recommended — it is checked against the source excerpt before the footnote is inserted.' },
     },
     required: ['chapter', 'marker', 'source_id'],
     effect: 'write',
@@ -77,6 +78,16 @@ export const AGENT_TOOLS: AgentTool[] = [
     },
     required: ['chapter', 'to'],
     effect: 'write',
+  },
+  {
+    name: 'check_consistency',
+    description: "After you change a term or citation in one chapter, search the project's OTHER chapters for the same term and report where it also appears — so you can suggest a review there. A lexical search, not an automatic edit.",
+    params: {
+      term: { type: 'string', description: 'The word or phrase to look for across the other chapters.' },
+      exclude_chapter: { type: 'string', description: 'The chapter you just edited (skip it in the results).' },
+    },
+    required: ['term'],
+    effect: 'read',
   },
   {
     name: 'run_task',

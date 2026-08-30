@@ -67,3 +67,39 @@ export class RetrievalLedger {
     return chunk.source_url ? `${ref} — ${chunk.source_url}` : ref;
   }
 }
+
+// ── the optional second tier: does the source support the claim? ──────────
+
+export interface ClaimVerdict {
+  /** true = the excerpt supports the claim; false = it does not. */
+  supports: boolean;
+  /** One short line for the transcript / the error the agent sees. */
+  note: string;
+}
+
+/**
+ * Injected — the real one is a single lightweight Gemini call
+ * (electron/agent/claimCheck.ts); tests pass a fake. Not a separate
+ * "verifier agent" (ADR-0019 rejected item 1) — one model call inside the
+ * one tool.
+ */
+export type ClaimCheckFn = (claim: string, excerpt: string) => Promise<ClaimVerdict>;
+
+/**
+ * Run the claim check if a claim was given and a checker is available. A
+ * missing claim or missing checker is NOT a failure — the deterministic
+ * integrity gate (resolveOrThrow) has already run; this tier is optional.
+ * Throws when the checker says the source does not support the claim.
+ */
+export async function assertClaimSupported(
+  claim: unknown,
+  excerpt: string | undefined,
+  check: ClaimCheckFn | null,
+): Promise<ClaimVerdict | null> {
+  if (typeof claim !== 'string' || claim.trim() === '' || !check || !excerpt) return null;
+  const verdict = await check(claim.trim(), excerpt);
+  if (!verdict.supports) {
+    throw new Error(`insert_footnote: the source does not support this claim — ${verdict.note}`);
+  }
+  return verdict;
+}

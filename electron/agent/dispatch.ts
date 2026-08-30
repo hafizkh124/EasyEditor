@@ -12,14 +12,17 @@
  * function, which are later slices.
  */
 import path from 'node:path';
+import os from 'node:os';
+import fs from 'node:fs';
 import { logger } from '../lib/logger.js';
 import { detectTools } from '../host/index.js';
 import * as word from '../adapters/word.js';
-import { chapterPath, backupChapter } from '../fs/projectFolder.js';
+import { chapterPath, backupChapter, refreshChapters } from '../fs/projectFolder.js';
 import { getWorkspaceDbService } from '../ipc/workspaceHandlers.js';
 import { searchShamelaNative } from '../shamela/shamelaNative.js';
-import { RetrievalLedger, type RetrievedChunk } from '../../shared/agent/grounding.js';
+import { RetrievalLedger, assertClaimSupported, type RetrievedChunk, type ClaimCheckFn } from '../../shared/agent/grounding.js';
 import { summariseCapabilities } from '../../shared/agent/capabilities.js';
+import { recordEdit } from './checkpoint.js';
 import type { DispatchFn } from '../../shared/agent/types.js';
 
 const log = logger.child('agent/dispatch');
@@ -33,6 +36,10 @@ const num = (v: unknown, dflt: number): number => (typeof v === 'number' && Numb
 export interface AgentSession {
   /** Absolute path to the open project folder. */
   projectRoot: string;
+  /** Task checkpoint id — every edit is snapshotted under it (ADR-0019 item 5). */
+  checkpointId?: string;
+  /** The optional claim-check tier for insert_footnote (ADR-0019 item 6). */
+  claimCheck?: ClaimCheckFn | null;
 }
 
 export interface Dispatcher {
@@ -43,6 +50,29 @@ export interface Dispatcher {
 export function createDispatcher(session: AgentSession): Dispatcher {
   const ledger = new RetrievalLedger();
   const root = session.projectRoot;
+  const checkpointId = session.checkpointId;
+  const claimCheck = session.claimCheck ?? null;
+
+  /** Snapshot a chapter into the task checkpoint + take the per-write backup. */
+  const guardEdit = (chapter: string): boolean => {
+    if (checkpointId) recordEdit(root, checkpointId, chapter);
+    return Boolean(backupChapter(root, chapter));
+  };
+
+  /** Plain text of a chapter, cached for the life of this dispatcher. */
+  const textCache = new Map<string, string>();
+  const chapterText = async (chapter: string): Promise<string> => {
+    if (textCache.has(chapter)) return textCache.get(chapter)!;
+    const tmp = path.join(os.tmpdir(), `easyeditor-consist-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
+    try {
+      await word.fromWord(chapterPath(root, chapter), 'txt', tmp);
+      const txt = fs.readFileSync(tmp, 'utf8');
+      textCache.set(chapter, txt);
+      return txt;
+    } finally {
+      try { fs.rmSync(tmp, { force: true }); } catch { /* ignore */ }
+    }
+  };
 
   const dispatch: DispatchFn = async (name, args) => {
     switch (name) {
@@ -86,24 +116,42 @@ export function createDispatcher(session: AgentSession): Dispatcher {
       case 'insert_footnote': {
         const chapter = str(args.chapter, 'chapter');
         const marker = str(args.marker, 'marker');
-        const chunk = ledger.resolveOrThrow(args.source_id); // the integrity gate
+        const chunk = ledger.resolveOrThrow(args.source_id); // tier 1: integrity gate
+        const verdict = await assertClaimSupported(args.claim, chunk.content, claimCheck); // tier 2: claim check
         const dest = chapterPath(root, chapter);
-        const backup = backupChapter(root, chapter);
+        const backedUp = guardEdit(chapter);
         const res = await word.applyCitations(
           { sourcePath: dest },
           [{ marker, text: ledger.footnoteText(chunk) }],
           dest,
           { trackChanges: true },
         );
-        return { applied: res.applied, notFound: res.notFound, reference: chunk.reference, backedUp: Boolean(backup) };
+        return {
+          applied: res.applied, notFound: res.notFound, reference: chunk.reference, backedUp,
+          ...(verdict ? { claimCheck: verdict.note } : {}),
+        };
       }
 
       case 'set_page_layout': {
         const chapter = str(args.chapter, 'chapter');
-        const dest = chapterPath(root, chapter);
-        const backup = backupChapter(root, chapter);
-        await word.setChapterLayout(dest);
-        return { ok: true, chapter, backedUp: Boolean(backup) };
+        const backedUp = guardEdit(chapter);
+        await word.setChapterLayout(chapterPath(root, chapter));
+        return { ok: true, chapter, backedUp };
+      }
+
+      case 'check_consistency': {
+        const term = str(args.term, 'term');
+        const exclude = typeof args.exclude_chapter === 'string' ? args.exclude_chapter : null;
+        const names = refreshChapters(root).map((c) => c.name).filter((n) => n !== exclude);
+        const found: Array<{ chapter: string; count: number; snippet: string }> = [];
+        for (const name of names) {
+          const text = await chapterText(name).catch(() => '');
+          const idx = text.indexOf(term);
+          if (idx === -1) continue;
+          const count = text.split(term).length - 1;
+          found.push({ chapter: name, count, snippet: text.slice(Math.max(0, idx - 60), idx + term.length + 60).replace(/\s+/g, ' ').trim() });
+        }
+        return { term, appearsIn: found, suggestion: found.length ? `"${term}" also appears in ${found.map((f) => f.chapter).join(', ')} — consider reviewing those for consistency.` : `"${term}" does not appear in the other chapters.` };
       }
 
       case 'convert_document': {

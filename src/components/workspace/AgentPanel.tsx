@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Send, Loader2, Square, FolderOpen, Wrench, ScrollText, ChevronRight, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Bot, Send, Loader2, Square, FolderOpen, Wrench, ScrollText, ChevronRight, AlertTriangle, CheckCircle2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -18,6 +18,7 @@ interface RunResult {
   steps: number;
   toolCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown }>;
   playbook?: string;
+  checkpointId?: string;
   error?: string;
 }
 
@@ -117,6 +118,17 @@ export const AgentPanel: React.FC = () => {
 
   const cancel = useCallback(() => { void agent?.cancel(); }, [agent]);
 
+  const [undone, setUndone] = useState(false);
+  const undoTask = useCallback(async () => {
+    if (!agent || !projectRoot || !result?.checkpointId) return;
+    try {
+      await agent.undoTask(projectRoot, result.checkpointId);
+      setUndone(true);
+      void pf.refresh();
+    } catch { /* toast handled by the caller pattern elsewhere; keep quiet here */ }
+  }, [agent, projectRoot, result, pf]);
+  useEffect(() => { setUndone(false); }, [result]);
+
   if (!projectRoot) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center text-muted-foreground">
@@ -202,6 +214,18 @@ export const AgentPanel: React.FC = () => {
               )}
               {result.stopReason === "step-limit" && (
                 <p className="text-xs text-amber-700 dark:text-amber-400">{t("agent.step_limit", "Stopped at the step limit — ask a narrower question.")}</p>
+              )}
+              {result.checkpointId && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={() => void undoTask()}
+                  disabled={undone}
+                >
+                  <Undo2 className="h-3.5 w-3.5" />
+                  {undone ? t("agent.undone", "Task reverted") : t("agent.undo_task", "Undo this task")}
+                </Button>
               )}
             </div>
           )}
