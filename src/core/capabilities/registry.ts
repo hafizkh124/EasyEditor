@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  BookOpen, Languages, LayoutDashboard, Mic, ScanText, Search,
+  BookOpen, Bot, Languages, LayoutDashboard, Mic, ScanText, Search,
   Settings as SettingsIcon, Shield, Sparkles, StickyNote, User, Volume2,
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
@@ -35,7 +35,7 @@ export type Runtime = "web" | "desktop";
 export type Availability =
   | { on: "always" }
   | { on: "never"; reason: string }
-  | { on: "flag"; flag: "VITE_LOCAL_VOICE" };
+  | { on: "flag"; flag: "VITE_LOCAL_VOICE" | "VITE_AGENT_MODE" };
 
 export type Surface =
   | "sidebar"
@@ -49,7 +49,7 @@ export type CapabilityId =
   | "workspace" | "transcribe" | "ocr" | "speak" | "translate"
   | "research" | "settings" | "dashboard" | "profile" | "admin"
   | "voice.cloning" | "tokens.meter"
-  | "wb.aiReader" | "wb.research" | "wb.translate" | "wb.notes";
+  | "wb.aiReader" | "wb.research" | "wb.translate" | "wb.notes" | "wb.agent";
 
 export interface Capability {
   id: CapabilityId;
@@ -172,6 +172,17 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "wb.notes", route: null, labelKey: "workbench.notes", fallbackLabel: "Notes",
     icon: StickyNote, runtimes: { web: ALWAYS, desktop: ALWAYS }, surfaces: ["workbench-tab"],
   },
+  {
+    // SPEC-M8 Layer 6 / ADR-0016. The agent drives Word/Shamela/the corpus
+    // end-to-end — desktop only, and behind VITE_AGENT_MODE while it matures.
+    id: "wb.agent", route: null, labelKey: "workbench.agent", fallbackLabel: "Agent",
+    icon: Bot,
+    runtimes: {
+      web: { on: "never", reason: "The agent operates local Word and Shamela — desktop only." },
+      desktop: { on: "flag", flag: "VITE_AGENT_MODE" },
+    },
+    surfaces: ["workbench-tab"],
+  },
 ];
 
 const BY_ID = new Map(CAPABILITIES.map((c) => [c.id, c]));
@@ -186,10 +197,12 @@ function currentRuntime(): Runtime {
  * would never be replaced and the desktop build would silently read undefined.
  * Evaluated per call so tests can `vi.stubEnv` between cases.
  */
-function flagEnabled(flag: "VITE_LOCAL_VOICE"): boolean {
+function flagEnabled(flag: "VITE_LOCAL_VOICE" | "VITE_AGENT_MODE"): boolean {
   switch (flag) {
     case "VITE_LOCAL_VOICE":
       return import.meta.env.VITE_LOCAL_VOICE === "true";
+    case "VITE_AGENT_MODE":
+      return import.meta.env.VITE_AGENT_MODE === "true";
   }
 }
 

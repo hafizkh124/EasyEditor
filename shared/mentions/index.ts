@@ -1,0 +1,76 @@
+/**
+ * M8 Layer 7 — `@` mentions (SPEC-M8 §3, ADR-0019 item 1).
+ *
+ * Typing `@` in the Agent chat surfaces the project's chapters (and, later,
+ * Shamela books and the document outline). Picking one gives the agent an
+ * EXPLICIT reference — a file name or a heading — so it doesn't have to guess
+ * which file "@Ihya" means. Not a new tool: the mention text is appended to
+ * the instruction, and the agent uses it as a parameter to the existing
+ * `read_document` / `search_corpus` / `word.*` calls.
+ *
+ * Pure — no runtime globals.
+ */
+
+export type MentionKind = 'chapter' | 'heading' | 'shamela-book';
+
+export interface Mention {
+  kind: MentionKind;
+  /** What the user sees in the picker and what gets inserted (without the @). */
+  label: string;
+  /** The explicit reference the agent receives (file name, heading text, book id). */
+  ref: string;
+}
+
+export interface MentionSources {
+  chapters?: string[];
+  /** Headings from the currently open document, in order. */
+  outline?: string[];
+  shamelaBooks?: Array<{ id: string; title: string }>;
+}
+
+export function buildMentions(sources: MentionSources): Mention[] {
+  const out: Mention[] = [];
+  for (const name of sources.chapters ?? []) {
+    out.push({ kind: 'chapter', label: name, ref: name });
+  }
+  for (const h of sources.outline ?? []) {
+    const label = h.trim();
+    if (label) out.push({ kind: 'heading', label: `§ ${label}`, ref: label });
+  }
+  for (const b of sources.shamelaBooks ?? []) {
+    out.push({ kind: 'shamela-book', label: b.title, ref: `shamela:${b.id}` });
+  }
+  return out;
+}
+
+/** Filter mentions by the text typed after `@` (case-insensitive substring). */
+export function filterMentions(mentions: Mention[], query: string): Mention[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return mentions.slice(0, 20);
+  return mentions.filter((m) => m.label.toLowerCase().includes(q) || m.ref.toLowerCase().includes(q)).slice(0, 20);
+}
+
+/**
+ * Given the chat text and the caret position, return the active `@token`
+ * (the run of non-space chars after the last `@` that the caret is inside),
+ * or null. Used to drive the picker.
+ */
+export function activeMentionQuery(text: string, caret: number): { query: string; start: number } | null {
+  const upto = text.slice(0, caret);
+  const at = upto.lastIndexOf('@');
+  if (at === -1) return null;
+  const between = upto.slice(at + 1);
+  if (/\s/.test(between)) return null; // the @token ended before the caret
+  if (at > 0 && !/\s/.test(text[at - 1])) return null; // @ must start a word
+  return { query: between, start: at };
+}
+
+/** Replace the active `@query` in `text` with `@<label> ` and return the new text + caret. */
+export function applyMention(text: string, caret: number, mention: Mention): { text: string; caret: number } {
+  const active = activeMentionQuery(text, caret);
+  if (!active) return { text, caret };
+  const before = text.slice(0, active.start);
+  const after = text.slice(caret);
+  const insert = `@${mention.label} `;
+  return { text: before + insert + after, caret: (before + insert).length };
+}
