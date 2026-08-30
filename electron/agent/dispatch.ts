@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import { logger } from '../lib/logger.js';
 import { detectTools } from '../host/index.js';
 import * as word from '../adapters/word.js';
+import { isAllowedOption } from './globalOptions.js';
 import { chapterPath, backupChapter, refreshChapters } from '../fs/projectFolder.js';
 import { getWorkspaceDbService } from '../ipc/workspaceHandlers.js';
 import { searchShamelaNative } from '../shamela/shamelaNative.js';
@@ -189,6 +190,50 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
       case 'run_task':
         return { error: 'run_task is not available in this build yet — apply built-in text tasks from the editor for now' };
+
+      case 'install_font': {
+        const fontPath = str(args.font_path, 'font_path');
+        if (/^[a-z]+:\/\//i.test(fontPath)) {
+          return { error: 'install_font needs a file already on this machine, not a URL — download it first and point me at the file' };
+        }
+        if (!path.isAbsolute(fontPath)) {
+          return { error: 'install_font needs an absolute path to the font file' };
+        }
+        // word.installFont validates the extension (.ttf/.otf/.ttc) and existence.
+        return word.installFont(fontPath);
+      }
+
+      case 'install_template': {
+        const templatePath = str(args.template_path, 'template_path');
+        if (/^[a-z]+:\/\//i.test(templatePath) || !path.isAbsolute(templatePath)) {
+          return { error: 'install_template needs an absolute path to a .dotx/.dotm file already on this machine' };
+        }
+        const chapter = typeof args.chapter === 'string' && args.chapter.trim() ? args.chapter : null;
+        let backedUp = false;
+        if (chapter) backedUp = guardEdit(chapter);
+        const r = await word.installTemplate(templatePath, chapter ? { chapterPath: chapterPath(root, chapter) } : {});
+        return { ...r, ...(chapter ? { backedUp } : {}) };
+      }
+
+      case 'set_global_option': {
+        const option = str(args.option, 'option');
+        const value = args.value === 'false' ? 'false' : 'true';
+        if (!isAllowedOption(option)) {
+          return { error: `set_global_option only allows: check_spelling, check_grammar, smart_quotes (got "${option}")` };
+        }
+        const current = await word.getWordOption(option);
+        if (current === value) {
+          return { needsConsent: false, option, value, current, note: `Word's "${option}" is already ${value} — no change needed.` };
+        }
+        // Consent is required (§3 gate #5): return the request, do NOT apply.
+        return {
+          needsConsent: true,
+          option,
+          value,
+          current,
+          message: `Changing "${option}" affects every document you open in Word. Approve this in the Agent panel to apply it; every applied change is logged and can be reverted.`,
+        };
+      }
 
       default:
         log.warn('unknown tool', { name });

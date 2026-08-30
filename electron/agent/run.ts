@@ -79,7 +79,11 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunResult & {
     isCancelled: input.isCancelled,
   });
 
-  // Keep the checkpoint only if it actually snapshotted something.
-  const wrote = result.toolCalls.some((c) => ['insert_footnote', 'set_page_layout'].includes(c.name));
+  // Keep the checkpoint only if it actually snapshotted a chapter.
+  const wrote = result.toolCalls.some(
+    (c) =>
+      ['insert_footnote', 'set_page_layout'].includes(c.name) ||
+      (c.name === 'install_template' && Boolean((c.args as { chapter?: unknown }).chapter)),
+  );
   return { ...result, playbook: playbook?.id, checkpointId: wrote ? checkpointId : undefined };
 }

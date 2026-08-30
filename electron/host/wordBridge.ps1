@@ -296,6 +296,54 @@ public static class WordBridgeFontApi {
                 Write-Result @{ ok = $true; op = 'installFont'; fontName = $fontName; facesRegistered = $faces; verifiedInRunningWord = $verified }
             }
 
+            'installTemplate' {
+                # P9 — copy a .dotx/.dotm into the per-user Templates folder so
+                # Word offers it. Does not attach it to anything (see attachTemplate).
+                $src = $cmd.path
+                if (-not (Test-Path $src)) { throw "template file not found: $src" }
+                $dir = Join-Path $env:APPDATA 'Microsoft\Templates'
+                New-Item -ItemType Directory -Force -Path $dir | Out-Null
+                $dest = Join-Path $dir (Split-Path $src -Leaf)
+                Copy-Item -Path $src -Destination $dest -Force
+                Write-Result @{ ok = $true; op = 'installTemplate'; templateName = [System.IO.Path]::GetFileNameWithoutExtension($src); dest = $dest }
+            }
+
+            'attachTemplate' {
+                # P9 — attach an installed template to the open document and pull
+                # its styles in. The caller runs this inside track-changes.
+                Require-Doc
+                $script:doc.AttachedTemplate = $cmd.path
+                $script:doc.UpdateStylesOnOpen = $true
+                Write-Result @{ ok = $true; op = 'attachTemplate'; path = $cmd.path }
+            }
+
+            'getGlobalOption' {
+                # P9 — read one allow-listed Application.Option. The allow-list is
+                # enforced here AND in electron/agent (defence in depth, §3 gate #5).
+                Ensure-Word
+                $o = $script:word.Options
+                $val = switch ($cmd.name) {
+                    'CheckSpellingAsYouType'           { $o.CheckSpellingAsYouType }
+                    'CheckGrammarAsYouType'            { $o.CheckGrammarAsYouType }
+                    'AutoFormatAsYouTypeReplaceQuotes' { $o.AutoFormatAsYouTypeReplaceQuotes }
+                    default { throw "option not allowed: $($cmd.name)" }
+                }
+                Write-Result @{ ok = $true; op = 'getGlobalOption'; name = $cmd.name; value = ([string]([bool]$val)).ToLower() }
+            }
+
+            'setGlobalOption' {
+                Ensure-Word
+                $o = $script:word.Options
+                $b = ("$($cmd.value)".ToLower() -eq 'true')
+                switch ($cmd.name) {
+                    'CheckSpellingAsYouType'           { $o.CheckSpellingAsYouType = $b }
+                    'CheckGrammarAsYouType'            { $o.CheckGrammarAsYouType = $b }
+                    'AutoFormatAsYouTypeReplaceQuotes' { $o.AutoFormatAsYouTypeReplaceQuotes = $b }
+                    default { throw "option not allowed: $($cmd.name)" }
+                }
+                Write-Result @{ ok = $true; op = 'setGlobalOption'; name = $cmd.name; value = ([string]$b).ToLower() }
+            }
+
             'readStructure' {
                 # docx -> EasyEditor doc inspection side (SPEC-M8 §4). Uses
                 # Word's own cross-reference list for headings rather than

@@ -7,7 +7,7 @@
  *
  * Deferred to a later P8 slice: `search_general` (needs the General-mode edge
  * function's provenance tagging — ADR-0019 item 7), `run_playbook` execution
- * wiring, `install_font` / `install_template` / global-settings commands.
+ * wiring.
  */
 import type { AgentTool } from './types.js';
 
@@ -97,6 +97,35 @@ export const AGENT_TOOLS: AgentTool[] = [
       task: { type: 'string', description: 'The task slug.' },
     },
     required: ['chapter', 'task'],
+    effect: 'write',
+  },
+  {
+    name: 'install_font',
+    description: "Install a font file the scholar has pointed you at, so it is usable in Word (e.g. a Nastaliq font for the thesis). The path must be a font file (.ttf/.otf/.ttc) that already exists on this machine — never a download URL. Verifies the font is visible to a running Word afterwards.",
+    params: {
+      font_path: { type: 'string', description: 'Absolute path to a .ttf/.otf/.ttc file already on disk (from an @mention or the scholar\'s message).' },
+    },
+    required: ['font_path'],
+    effect: 'write',
+  },
+  {
+    name: 'install_template',
+    description: "Install a Word template (.dotx/.dotm) the scholar or their supervisor provided, and optionally attach it to a chapter (as a tracked change) so its styles apply. The path must be a template file already on disk.",
+    params: {
+      template_path: { type: 'string', description: 'Absolute path to a .dotx/.dotm file already on disk.' },
+      chapter: { type: 'string', description: 'Optional — attach the template to this chapter and update its styles.' },
+    },
+    required: ['template_path'],
+    effect: 'write',
+  },
+  {
+    name: 'set_global_option',
+    description: "Propose a change to a Word application setting that affects EVERY document the scholar opens (e.g. turning off as-you-type spell check). This does NOT apply the change — it returns a consent request the scholar must approve in the Agent panel, and every applied change is logged so it can be reverted. Allowed options: check_spelling, check_grammar, smart_quotes.",
+    params: {
+      option: { type: 'string', description: 'One of: check_spelling, check_grammar, smart_quotes.', enum: ['check_spelling', 'check_grammar', 'smart_quotes'] },
+      value: { type: 'string', description: '"true" or "false".', enum: ['true', 'false'] },
+    },
+    required: ['option', 'value'],
     effect: 'write',
   },
 ];

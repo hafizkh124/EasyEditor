@@ -23,6 +23,8 @@ import type {
   ReadStructureReply,
   InstallFontReply,
   ApplyCitationsReply,
+  InstallTemplateReply,
+  GlobalOptionReply,
 } from '../host/types.js';
 import type { CitationFootnote } from '../../shared/convert/citationFootnotes.js';
 import type {
@@ -54,7 +56,7 @@ export const wordDescriptor: AdapterDescriptor = {
     { format: 'html', quality: 0.7, lossy: 'Word HTML is verbose; some character styling is simplified.' },
     { format: 'txt', quality: 0.4, lossy: 'All formatting, footnotes, and images are dropped.' },
   ],
-  ops: ['toWord', 'fromWord', 'reflowPdf', 'readStructure', 'installFont', 'applyCitations'],
+  ops: ['toWord', 'fromWord', 'reflowPdf', 'readStructure', 'installFont', 'applyCitations', 'installTemplate', 'setGlobalOption'],
   platforms: ['win32'],
 };
 
@@ -254,6 +256,69 @@ export async function setChapterLayout(chapterPath: string): Promise<{ ms: numbe
     await h.sendOk({ op: 'close' });
   });
   return { ms: Date.now() - started };
+}
+
+/** The Word application options the agent may touch (SPEC-M8 §3 gate #5). */
+export const ALLOWED_GLOBAL_OPTIONS = {
+  check_spelling: 'CheckSpellingAsYouType',
+  check_grammar: 'CheckGrammarAsYouType',
+  smart_quotes: 'AutoFormatAsYouTypeReplaceQuotes',
+} as const;
+export type GlobalOptionKey = keyof typeof ALLOWED_GLOBAL_OPTIONS;
+
+/**
+ * P9 — install a Word template per-user, and (optionally) attach it to a
+ * chapter as a tracked change so its styles apply. The template is a file the
+ * scholar chose; nothing is downloaded.
+ */
+export async function installTemplate(
+  templatePath: string,
+  opts: { chapterPath?: string } = {},
+): Promise<{ templateName: string; installedTo: string; attachedTo?: string; ms: number }> {
+  const src = assertReadableFile(templatePath, ['.dotx', '.dotm']);
+  const chapter = opts.chapterPath ? assertReadableFile(opts.chapterPath, OPENABLE) : null;
+  const started = Date.now();
+  let templateName = '';
+  let installedTo = '';
+  await runExclusive(async () => {
+    const h = getWordHost();
+    const r = await h.sendOk<InstallTemplateReply>({ op: 'installTemplate', path: src });
+    templateName = r.templateName;
+    installedTo = r.dest;
+    await refreshOwnedWord();
+    if (chapter) {
+      await h.sendOk({ op: 'open', path: chapter });
+      await h.sendOk({ op: 'setTrackRevisions', enabled: true });
+      await h.sendOk({ op: 'attachTemplate', path: installedTo });
+      await h.sendOk({ op: 'saveAs', path: chapter });
+      await h.sendOk({ op: 'close' });
+    }
+  });
+  return { templateName, installedTo, ...(chapter ? { attachedTo: chapter } : {}), ms: Date.now() - started };
+}
+
+/** P9 — read one allow-listed Word Application option ('true' | 'false'). */
+export async function getWordOption(key: GlobalOptionKey): Promise<string> {
+  const name = ALLOWED_GLOBAL_OPTIONS[key];
+  if (!name) throw new Error(`unknown global option: ${key}`);
+  return runExclusive(async () => {
+    const h = getWordHost();
+    const r = await h.sendOk<GlobalOptionReply>({ op: 'getGlobalOption', name });
+    await refreshOwnedWord();
+    return r.value;
+  });
+}
+
+/** P9 — set one allow-listed Word Application option. Consent is the caller's job. */
+export async function setWordOption(key: GlobalOptionKey, value: 'true' | 'false'): Promise<string> {
+  const name = ALLOWED_GLOBAL_OPTIONS[key];
+  if (!name) throw new Error(`unknown global option: ${key}`);
+  return runExclusive(async () => {
+    const h = getWordHost();
+    const r = await h.sendOk<GlobalOptionReply>({ op: 'setGlobalOption', name, value });
+    await refreshOwnedWord();
+    return r.value;
+  });
 }
 
 /** Inspect a document's structure — the `.docx` → EasyEditor doc side. */

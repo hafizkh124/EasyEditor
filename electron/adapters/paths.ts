@@ -15,11 +15,14 @@ import fs from 'node:fs';
 export type DocExt =
   | '.docx' | '.pdf' | '.rtf' | '.html' | '.htm' | '.txt' | '.md'
   // P9 — Excel / PowerPoint.
-  | '.xlsx' | '.xls' | '.csv' | '.pptx' | '.ppt';
+  | '.xlsx' | '.xls' | '.csv' | '.pptx' | '.ppt'
+  // P9 — Word templates.
+  | '.dotx' | '.dotm';
 
 const DEFAULT_ALLOWED: DocExt[] = [
   '.docx', '.pdf', '.rtf', '.html', '.htm', '.txt', '.md',
   '.xlsx', '.xls', '.csv', '.pptx', '.ppt',
+  '.dotx', '.dotm',
 ];
 
 /** Directories a generated file must never be written into. */

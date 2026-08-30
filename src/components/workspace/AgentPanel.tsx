@@ -219,6 +219,32 @@ export const AgentPanel: React.FC = () => {
   }, [agent, projectRoot, result, pf]);
   useEffect(() => { setUndone(false); }, [result]);
 
+  // §3 gate #5 — set_global_option never applies itself; it returns a consent
+  // request the scholar approves here, and every applied change is revertible.
+  interface OptionConsent { needsConsent?: boolean; option?: string; value?: string; current?: string; message?: string }
+  const pendingOptions = useMemo<OptionConsent[]>(() => {
+    if (!result) return [];
+    return result.toolCalls
+      .filter((tc) => tc.name === "set_global_option")
+      .map((tc) => tc.result as OptionConsent)
+      .filter((r) => r?.needsConsent && r.option && r.value);
+  }, [result]);
+  const [optionsApplied, setOptionsApplied] = useState(false);
+  useEffect(() => { setOptionsApplied(false); }, [result]);
+  const applyOptions = useCallback(async () => {
+    if (!agent?.applyGlobalOption || !projectRoot) return;
+    for (const o of pendingOptions) {
+      try { await agent.applyGlobalOption(projectRoot, o.option!, o.value!); }
+      catch (err) { log.error("apply global option failed", { err }); }
+    }
+    setOptionsApplied(true);
+  }, [agent, projectRoot, pendingOptions]);
+  const revertOptions = useCallback(async () => {
+    if (!agent?.revertGlobalOptions || !projectRoot) return;
+    try { await agent.revertGlobalOptions(projectRoot); setOptionsApplied(false); }
+    catch (err) { log.error("revert global options failed", { err }); }
+  }, [agent, projectRoot]);
+
   if (!projectRoot) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center text-muted-foreground">
@@ -317,6 +343,28 @@ export const AgentPanel: React.FC = () => {
               )}
               {result.stopReason === "step-limit" && (
                 <p className="text-xs text-amber-700 dark:text-amber-400">{t("agent.step_limit", "Stopped at the step limit — ask a narrower question.")}</p>
+              )}
+              {pendingOptions.length > 0 && (
+                <div className="rounded border border-amber-500/40 bg-amber-500/5 p-2 text-xs space-y-1.5">
+                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                    {t("agent.global_option_consent", "This changes a Word setting for every document — approve it?")}
+                  </p>
+                  <ul className="space-y-0.5 font-mono">
+                    {pendingOptions.map((o, i) => (
+                      <li key={i}>{o.option}: {o.current} → {o.value}</li>
+                    ))}
+                  </ul>
+                  {optionsApplied ? (
+                    <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => void revertOptions()}>
+                      <Undo2 className="h-3.5 w-3.5" />
+                      {t("agent.revert_settings", "Revert Word settings")}
+                    </Button>
+                  ) : (
+                    <Button size="sm" className="h-7 gap-1.5 text-xs" onClick={() => void applyOptions()}>
+                      {t("agent.apply_settings", "Apply {n} change(s)").replace("{n}", String(pendingOptions.length))}
+                    </Button>
+                  )}
+                </div>
               )}
               {result.checkpointId && (
                 <Button

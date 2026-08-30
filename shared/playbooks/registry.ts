@@ -59,6 +59,46 @@ export const PLAYBOOKS: Playbook[] = [
       { tool: 'run_task', args: { task: 'normalize' }, note: 'Normalise spelling variants.' },
     ],
   },
+  {
+    id: 'submission-pdf',
+    title: 'Produce the submission PDF for a chapter',
+    keywords: ['submission', 'submit', 'final pdf', 'export pdf', 'جمع', 'پی ڈی ایف', 'برآمد'],
+    steps: [
+      { tool: 'read_document', note: 'Read the chapter to see its structure.' },
+      { tool: 'set_page_layout', note: 'Apply the RTL page setup.' },
+      { tool: 'run_task', args: { task: 'auto-format' }, note: 'Normalise headings and spacing.' },
+      { tool: 'insert_footnote', note: 'Turn each retrieved citation into a real footnote.' },
+      { tool: 'convert_document', args: { to: 'pdf' }, note: 'Export the submission PDF from the .docx.' },
+    ],
+  },
+  {
+    id: 'apply-supervisor-template',
+    title: "Apply a supervisor's Word template to a chapter",
+    keywords: ['template', 'supervisor', 'dotx', 'style sheet', 'ٹیمپلیٹ', 'نگران', 'قالب'],
+    steps: [
+      { tool: 'install_template', note: "Install the supervisor's .dotx and attach it to the chapter (tracked change)." },
+      { tool: 'set_page_layout', note: 'Re-apply the RTL page setup after the template.' },
+      { tool: 'run_task', args: { task: 'auto-format' }, note: 'Re-flow headings against the new styles.' },
+    ],
+  },
+  {
+    id: 'section-summaries',
+    title: 'Add a summary for every section of a chapter',
+    keywords: ['section summaries', 'summarize sections', 'abstract', 'خلاصہ', 'ابواب کا خلاصہ', 'عناوین کا خلاصہ'],
+    steps: [
+      { tool: 'read_document', note: 'Read the chapter and list its sections.' },
+      { tool: 'run_task', args: { task: 'section-summaries' }, note: 'Append a short summary under each heading (tracked change).' },
+    ],
+  },
+  {
+    id: 'install-nastaliq-font',
+    title: 'Install a Nastaliq font and make it usable in Word',
+    keywords: ['font', 'nastaliq', 'nastaleeq', 'jameel', 'noori', 'فونٹ', 'نستعلیق'],
+    steps: [
+      { tool: 'list_capabilities', note: 'Check whether Word is available on this machine.' },
+      { tool: 'install_font', note: 'Install the font file the scholar pointed at, and verify Word sees it.' },
+    ],
+  },
 ];
 
 const BY_ID = new Map(PLAYBOOKS.map((p) => [p.id, p]));

@@ -15,6 +15,11 @@ const wordMock = {
   setChapterLayout: vi.fn(async () => ({ ms: 1 })),
   fromWord: vi.fn(async (_src: string, _to: string, out: string) => { fs.writeFileSync(out, 'باب دو میں برکت کا ذکر ہے۔ برکت ایک اہم موضوع ہے۔'); return { outputPath: out, ms: 1 }; }),
   reflowPdf: vi.fn(async () => ({ outputPath: 'C:\\p\\export\\01.docx', wordCount: 5, ms: 1 })),
+  installFont: vi.fn(async () => ({ fontName: 'Jameel Noori Nastaleeq', verified: true })),
+  installTemplate: vi.fn(async () => ({ templateName: 'thesis', installedTo: 'C:\\t\\thesis.dotx', ms: 1 })),
+  getWordOption: vi.fn(async () => 'true'),
+  setWordOption: vi.fn(async () => 'false'),
+  ALLOWED_GLOBAL_OPTIONS: { check_spelling: 'CheckSpellingAsYouType', check_grammar: 'CheckGrammarAsYouType', smart_quotes: 'AutoFormatAsYouTypeReplaceQuotes' },
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMock);
 
@@ -143,5 +148,47 @@ describe('agent dispatch', () => {
     const { dispatch } = mk();
     const r = await dispatch('run_task', { chapter: '01.docx', task: 'harakat' }) as { error: string };
     expect(r.error).toMatch(/not available/i);
+  });
+});
+
+describe('P9 tools — font / template / global options', () => {
+  it('install_font rejects a URL and a relative path, but installs an absolute font file', async () => {
+    const { dispatch } = mk();
+    expect(await dispatch('install_font', { font_path: 'https://example.com/x.ttf' })).toMatchObject({ error: expect.stringMatching(/URL/i) });
+    expect(await dispatch('install_font', { font_path: 'fonts/x.ttf' })).toMatchObject({ error: expect.stringMatching(/absolute/i) });
+    expect(wordMock.installFont).not.toHaveBeenCalled();
+    await dispatch('install_font', { font_path: 'C:\\fonts\\Jameel.ttf' });
+    expect(wordMock.installFont).toHaveBeenCalledWith('C:\\fonts\\Jameel.ttf');
+  });
+
+  it('install_template checkpoints + backs up the chapter it attaches to', async () => {
+    const { dispatch } = mk();
+    await dispatch('install_template', { template_path: 'C:\\t\\thesis.dotx', chapter: '01.docx' });
+    expect(recordEdit).toHaveBeenCalledWith('C:\\p', 'cp_1', '01.docx');
+    expect(backupChapter).toHaveBeenCalledWith('C:\\p', '01.docx');
+    expect(wordMock.installTemplate).toHaveBeenCalledWith('C:\\t\\thesis.dotx', { chapterPath: 'C:\\p\\01.docx' });
+  });
+
+  it('set_global_option returns a consent request and applies NOTHING', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('set_global_option', { option: 'check_spelling', value: 'false' }) as { needsConsent: boolean; current: string; message: string };
+    expect(r.needsConsent).toBe(true);
+    expect(r.current).toBe('true');
+    expect(r.message).toMatch(/approve/i);
+    expect(wordMock.setWordOption).not.toHaveBeenCalled();
+  });
+
+  it('set_global_option refuses an option outside the allow-list', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('set_global_option', { option: 'DisableAllMacros', value: 'true' }) as { error: string };
+    expect(r.error).toMatch(/only allows/i);
+  });
+
+  it('set_global_option is a no-op when Word is already at that value', async () => {
+    wordMock.getWordOption.mockResolvedValueOnce('false');
+    const { dispatch } = mk();
+    const r = await dispatch('set_global_option', { option: 'check_spelling', value: 'false' }) as { needsConsent: boolean; note: string };
+    expect(r.needsConsent).toBe(false);
+    expect(r.note).toMatch(/already/i);
   });
 });

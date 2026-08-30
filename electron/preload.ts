@@ -365,6 +365,13 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'undoTask', projectRoot, checkpointId }),
     status: (): Promise<{ busy: boolean; running: { id: string; startedAt: number } | null }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'status' }),
+    // P9 — consent-gated Word global options (§3 gate #5).
+    applyGlobalOption: (projectRoot: string, option: string, value: string): Promise<{ option: string; previous: string; applied: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'applyGlobalOption', projectRoot, option, value }),
+    revertGlobalOptions: (projectRoot: string): Promise<{ reverted: Array<{ option: string; to: string }> }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'revertGlobalOptions', projectRoot }),
+    globalOptionLog: (projectRoot: string): Promise<{ entries: Array<{ at: string; action: string; option: string; previous: string; applied: string }> }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'globalOptionLog', projectRoot }),
     onProgress: (callback: (p: { id: string; step: number; label: string; kind: string; detail?: string }) => void): (() => void) => {
       const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);
       ipcRenderer.on(ALLOWED_IPC_CHANNELS.AGENT_PROGRESS, listener);

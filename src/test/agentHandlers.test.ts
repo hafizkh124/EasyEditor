@@ -19,6 +19,13 @@ const undoCheckpoint = vi.fn(() => ({ restored: ['01.docx'], removed: [] }));
 const listCheckpoints = vi.fn(() => [{ id: 'cp_1', createdAt: 'x', label: 't', files: ['01.docx'] }]);
 vi.mock('../../electron/agent/checkpoint.ts', () => ({ undoCheckpoint, listCheckpoints }));
 
+const applyGlobalOption = vi.fn(async () => ({ option: 'check_spelling', previous: 'true', applied: 'false' }));
+const revertGlobalOptions = vi.fn(async () => ({ reverted: [{ option: 'check_spelling', to: 'true' }] }));
+const readGlobalOptionLog = vi.fn(() => [{ at: 'x', action: 'apply', option: 'check_spelling', previous: 'true', applied: 'false' }]);
+vi.mock('../../electron/agent/globalOptions.ts', () => ({
+  applyGlobalOption, revertGlobalOptions, readLog: readGlobalOptionLog,
+}));
+
 const createTaskRun = vi.fn(async () => ({ id: 'trun_1' }));
 const updateTaskRunStatus = vi.fn(async () => ({}));
 vi.mock('../../electron/ipc/workspaceHandlers.ts', () => ({
@@ -105,5 +112,22 @@ describe('undoTask', () => {
 
   it('checkpoints lists them', async () => {
     await expect(invoke({ action: 'checkpoints', projectRoot: 'C:\\p' })).resolves.toEqual({ checkpoints: expect.any(Array) });
+  });
+});
+
+describe('global options (P9, §3 gate #5)', () => {
+  it('applyGlobalOption forwards root/option/value', async () => {
+    await expect(invoke({ action: 'applyGlobalOption', projectRoot: 'C:\\p', option: 'check_spelling', value: 'false' }))
+      .resolves.toMatchObject({ option: 'check_spelling', previous: 'true' });
+    expect(applyGlobalOption).toHaveBeenCalledWith('C:\\p', 'check_spelling', 'false');
+  });
+
+  it('revertGlobalOptions and globalOptionLog reach the module', async () => {
+    await expect(invoke({ action: 'revertGlobalOptions', projectRoot: 'C:\\p' })).resolves.toMatchObject({ reverted: expect.any(Array) });
+    await expect(invoke({ action: 'globalOptionLog', projectRoot: 'C:\\p' })).resolves.toEqual({ entries: expect.any(Array) });
+  });
+
+  it('applyGlobalOption requires a project folder', async () => {
+    await expect(invoke({ action: 'applyGlobalOption', projectRoot: '', option: 'check_spelling', value: 'false' })).rejects.toThrow(/projectRoot/);
   });
 });

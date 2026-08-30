@@ -55,8 +55,10 @@ class FakeMediaRecorder {
 import { AgentPanel } from "@/components/workspace/AgentPanel";
 
 let onProgressCb: ((p: { id: string; step: number; label: string; kind: string; detail?: string }) => void) | null = null;
-const agentRun = vi.fn(async () => ({ answer: "The chapter has 3 headings.", stopReason: "done", steps: 2, toolCalls: [{ name: "read_document", args: { chapter: "01-intro.docx" }, result: {} }], playbook: undefined }));
+const agentRun = vi.fn(async () => ({ answer: "The chapter has 3 headings.", stopReason: "done", steps: 2, toolCalls: [{ name: "read_document", args: { chapter: "01-intro.docx" } as Record<string, unknown>, result: {} as unknown }], playbook: undefined as string | undefined }));
 const transcribe = vi.fn(async () => [{ start: 0, end: 1, text: "footnote chapter one" }]);
+const applyGlobalOption = vi.fn(async () => ({ option: "check_spelling", previous: "true", applied: "false" }));
+const revertGlobalOptions = vi.fn(async () => ({ reverted: [{ option: "check_spelling", to: "true" }] }));
 
 function mockApi(over: Partial<typeof pf> = {}) {
   Object.assign(pf, over);
@@ -67,6 +69,8 @@ function mockApi(over: Partial<typeof pf> = {}) {
       cancel: vi.fn(async () => ({ cancelled: true })),
       status: vi.fn(async () => ({ busy: false, running: null })),
       onProgress: vi.fn((cb: typeof onProgressCb) => { onProgressCb = cb; return () => { onProgressCb = null; }; }),
+      applyGlobalOption,
+      revertGlobalOptions,
     },
     docBridge: { detectTools: vi.fn(async () => ({ word: true, wordVersion: "16.0", windows: true })) },
     voice: { transcribe },
@@ -157,6 +161,23 @@ describe("AgentPanel", () => {
     (window as unknown as { electronAPI?: Record<string, unknown> }).electronAPI!.voice = undefined;
     render(<AgentPanel />);
     expect(screen.queryByRole("button", { name: "Dictate" })).not.toBeInTheDocument();
+  });
+
+  it("shows a consent card for a set_global_option request and applies it on click", async () => {
+    agentRun.mockResolvedValueOnce({
+      answer: "I can turn off spell-check, but you need to approve it.",
+      stopReason: "done", steps: 1, playbook: undefined,
+      toolCalls: [{ name: "set_global_option", args: { option: "check_spelling", value: "false" }, result: { needsConsent: true, option: "check_spelling", value: "false", current: "true", message: "approve this" } }],
+    });
+    render(<AgentPanel />);
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
+    fireEvent.change(ta, { target: { value: "turn off spell check everywhere" } });
+    fireEvent.keyDown(ta, { key: "Enter" });
+
+    const applyBtn = await screen.findByRole("button", { name: /Apply 1 change/ });
+    fireEvent.click(applyBtn);
+    await waitFor(() => expect(applyGlobalOption).toHaveBeenCalledWith("C:\\thesis", "check_spelling", "false"));
+    expect(await screen.findByRole("button", { name: /Revert Word settings/ })).toBeInTheDocument();
   });
 
   it("dictates a transcript into the input", async () => {

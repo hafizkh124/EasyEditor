@@ -38,6 +38,9 @@ export type AdapterOp =
   | 'readStructure'
   | 'installFont'
   | 'applyCitations'
+  // P9 — Word templates + application options.
+  | 'installTemplate'
+  | 'setGlobalOption'
   // P9 — Excel / PowerPoint inspection.
   | 'readSheet'
   | 'readOutline'
