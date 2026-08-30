@@ -1,11 +1,10 @@
 // @vitest-environment node
 // electron/ipc/docBridgeHandlers.ts — DOC_BRIDGE_INVOKE's action switch
-// (SPEC-M8 Layer 1 / P1). Only two actions in P1 (`detectTools`, `ping`),
-// both thin forwards into electron/host/, so this covers: the channel is
-// registered on the allowlist, each action forwards to the right host
-// function, and an unknown action fails loudly naming itself (so a typo in
-// the renderer is diagnosable). The host layer itself is exercised by
-// hostPowershell.test.ts / hostProcess.test.ts.
+// (SPEC-M8 Layer 1–2 / P1–P2). Covers: the channel is on the allowlist,
+// each action forwards to the right host/adapter function with the payload
+// fields it expects, and an unknown/missing action fails loudly naming
+// itself. Host and adapter internals are exercised by hostPowershell /
+// hostProcess / wordAdapter tests.
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { createElectronMock } from './helpers/electronMock';
 import { isAllowedIpcChannel, ALLOWED_IPC_CHANNELS } from '../../electron/ipc/registry';
@@ -14,15 +13,21 @@ const electron = createElectronMock();
 vi.mock('electron', () => electron);
 
 const hostMocks = {
-  detectTools: vi.fn(() => ({
-    powershell: true,
-    word: true,
-    wordVersion: '16.0',
-    windows: true,
-  })),
+  detectTools: vi.fn(() => ({ powershell: true, word: true, wordVersion: '16.0', windows: true })),
   pingHost: vi.fn(async () => ({ ok: true, latencyMs: 12 })),
 };
 vi.mock('../../electron/host/index.ts', () => hostMocks);
+
+const wordMocks = {
+  wordDescriptor: { id: 'word', label: 'Microsoft Word', reads: [], writes: [], ops: [], platforms: ['win32'] },
+  available: vi.fn(() => ({ available: true, version: '16.0' })),
+  toWord: vi.fn(async () => ({ outputPath: 'C:\\out.docx', ms: 5 })),
+  fromWord: vi.fn(async () => ({ outputPath: 'C:\\out.pdf', ms: 5 })),
+  reflowPdf: vi.fn(async () => ({ outputPath: 'C:\\out.docx', wordCount: 42, ms: 20 })),
+  readStructure: vi.fn(async () => ({ headings: ['A'], footnotes: [], trackedChanges: 0, wordCount: 10, readingOrder: 'rtl' })),
+  installFont: vi.fn(async () => ({ fontName: 'Jameel Noori Nastaleeq', verified: true })),
+};
+vi.mock('../../electron/adapters/word.ts', () => wordMocks);
 
 let mod: typeof import('../../electron/ipc/docBridgeHandlers.ts');
 
@@ -54,7 +59,7 @@ describe('registry', () => {
   });
 });
 
-describe('action dispatch', () => {
+describe('P1 actions', () => {
   it('detectTools forwards to host.detectTools', async () => {
     await expect(invoke({ action: 'detectTools' })).resolves.toMatchObject({ word: true, wordVersion: '16.0' });
     expect(hostMocks.detectTools).toHaveBeenCalledTimes(1);
@@ -64,9 +69,50 @@ describe('action dispatch', () => {
     await expect(invoke({ action: 'ping' })).resolves.toEqual({ ok: true, latencyMs: 12 });
     expect(hostMocks.pingHost).toHaveBeenCalledTimes(1);
   });
+});
 
+describe('P2 Word adapter actions', () => {
+  it('word:descriptor returns the descriptor and current availability', async () => {
+    await expect(invoke({ action: 'word:descriptor' })).resolves.toMatchObject({
+      descriptor: { id: 'word' },
+      availability: { available: true, version: '16.0' },
+    });
+  });
+
+  it('word:toWord passes input / outputPath / options through', async () => {
+    await invoke({ action: 'word:toWord', input: { html: '<p>x</p>' }, outputPath: 'C:\\a.docx', options: { rtlPageSetup: true } });
+    expect(wordMocks.toWord).toHaveBeenCalledWith({ html: '<p>x</p>' }, 'C:\\a.docx', { rtlPageSetup: true });
+  });
+
+  it('word:fromWord passes sourcePath / to / outputPath through', async () => {
+    await invoke({ action: 'word:fromWord', sourcePath: 'C:\\a.docx', to: 'pdf', outputPath: 'C:\\a.pdf' });
+    expect(wordMocks.fromWord).toHaveBeenCalledWith('C:\\a.docx', 'pdf', 'C:\\a.pdf');
+  });
+
+  it('word:reflowPdf forwards paths and wires a progress callback', async () => {
+    const send = vi.fn();
+    const fn = electron.ipcMain.handlers.get('docbridge:invoke');
+    await fn!(
+      { sender: { send } },
+      { action: 'word:reflowPdf', pdfPath: 'C:\\a.pdf', outputPath: 'C:\\a.docx' },
+    );
+    expect(wordMocks.reflowPdf).toHaveBeenCalledWith('C:\\a.pdf', 'C:\\a.docx', expect.any(Function));
+  });
+
+  it('word:readStructure forwards docxPath', async () => {
+    await expect(invoke({ action: 'word:readStructure', docxPath: 'C:\\a.docx' })).resolves.toMatchObject({ readingOrder: 'rtl' });
+    expect(wordMocks.readStructure).toHaveBeenCalledWith('C:\\a.docx');
+  });
+
+  it('word:installFont forwards fontPath', async () => {
+    await expect(invoke({ action: 'word:installFont', fontPath: 'C:\\f.ttf' })).resolves.toMatchObject({ verified: true });
+    expect(wordMocks.installFont).toHaveBeenCalledWith('C:\\f.ttf');
+  });
+});
+
+describe('bad input', () => {
   it('an unknown action throws, naming it', async () => {
-    await expect(invoke({ action: 'toWord' })).rejects.toThrow(/toWord/);
+    await expect(invoke({ action: 'word:frobnicate' })).rejects.toThrow(/frobnicate/);
   });
 
   it('a missing action throws rather than silently resolving', async () => {

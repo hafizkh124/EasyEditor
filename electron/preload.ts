@@ -220,13 +220,32 @@ const electronAPI = {
   },
 
   docBridge: {
-    // SPEC-M8 Layer 1 / P1 — all actions travel the single allowlisted channel.
-    // P1 exposes tool detection and a host ping; adapter actions land in P2.
+    // SPEC-M8 — all actions travel the single allowlisted channel.
+    // P1: tool detection + host ping. P2: the Word adapter.
     detectTools: (): Promise<{ powershell: boolean; word: boolean; wordVersion: string | null; windows: boolean; reason?: string }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'detectTools' }),
     ping: (): Promise<{ ok: boolean; latencyMs: number | null; error?: string }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'ping' }),
-    onProgress: (callback: (p: { phase: string; percent: number; detail?: string }) => void): (() => void) => {
+
+    // ── P2: Word adapter ────────────────────────────────────────────────
+    wordDescriptor: (): Promise<{ descriptor: unknown; availability: { available: boolean; version: string | null; reason?: string } }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'word:descriptor' }),
+    toWord: (
+      input: { sourcePath?: string; html?: string },
+      outputPath: string,
+      options?: { rtlPageSetup?: boolean; trackChanges?: boolean },
+    ): Promise<{ outputPath: string; ms: number }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'word:toWord', input, outputPath, options }),
+    fromWord: (sourcePath: string, to: 'pdf' | 'rtf' | 'html' | 'txt', outputPath: string): Promise<{ outputPath: string; ms: number }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'word:fromWord', sourcePath, to, outputPath }),
+    reflowPdf: (pdfPath: string, outputPath: string): Promise<{ outputPath: string; wordCount: number; ms: number }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'word:reflowPdf', pdfPath, outputPath }),
+    readStructure: (docxPath: string): Promise<{ headings: string[]; footnotes: Array<{ index: number; text: string }>; trackedChanges: number; wordCount: number; readingOrder: 'rtl' | 'ltr' | 'mixed' }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'word:readStructure', docxPath }),
+    installFont: (fontPath: string): Promise<{ fontName: string; verified: boolean; note?: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_INVOKE, { action: 'word:installFont', fontPath }),
+
+    onProgress: (callback: (p: { op: string; phase: string; percent: number }) => void): (() => void) => {
       const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);
       ipcRenderer.on(ALLOWED_IPC_CHANNELS.DOC_BRIDGE_PROGRESS, listener);
       return () => {

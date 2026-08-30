@@ -157,11 +157,12 @@ interpolated into a script string.
 | `wordPid` | — | `{ok, pid}` | ✓ |
 | `close` / `quit` | — | `{ok}` | ✓ |
 
-New ops for P1+ (designed in the phase that needs them): `exportRtf`,
-`readStructure` (headings/footnotes/tracked-change inventory, for the
-conversion loss report), `applyCitations` (insert a batch of footnotes at
-marked positions, §5 P6), `installFont` (the real `AddFontResourceW` +
-broadcast registration, §6 constraint 2).
+Ops added since the spike: `detectWord`, `installFont` (the real
+`AddFontResourceW` + `WM_FONTCHANGE` registration, §6 constraint 2) — P1;
+`readStructure` (headings via Word's cross-reference list + footnote text +
+tracked-change count + reading order) and `exportAs` (`{path, format}` →
+pdf/rtf/html/txt/docx) — P2. Still to come: `applyCitations` (insert a batch
+of footnotes at marked positions, §5 P6).
 
 #### IPC surface
 
@@ -390,7 +391,7 @@ build on that core once it's solid.
 |---|---|---|
 | **P0 — Spike** | Six proofs on a real Windows machine (`p0-spike/`) | ✅ **Done** for the Word core (proofs 1, 2, 5, 6); **unverified** for LibreOffice (3) and InPage (4) — see §1.2, ADR-0015 |
 | **P1** | ✅ **Done** (2026-08-29). Layer 1: `electron/host/` — `powershell.ts` (`WordHost`), `process.ts` (fingerprinted orphan guard), `detectTools.ts`, `index.ts`, `wordBridge.ps1`. `DOC_BRIDGE_INVOKE`/`DOC_BRIDGE_PROGRESS` on the allowlist; `detectTools` + `ping` actions; `docBridge` preload wrapper; `main.ts` wires `initDocBridge()` (startup sweep) and `shutdownDocBridgeSync()` (`before-quit`). `scripts/check-doc-bridge.mjs` in the build. Three unit files (26 tests) + `src/test/hostLive.test.ts` (`DOC_BRIDGE_LIVE=1`, needs real Word) — **the live test passed against Word 16.0: full docx round-trip, and `host.kill()` orphan → `killOwnedWordIfAlive()` confirmed the WINWORD.EXE gone.** Also fixed the three P0 spike-script defects from ADR-0015. | Exit criterion met: live integration test drives the real host |
-| **P2** | Layer 2: `electron/adapters/word.ts` — `toWord`/`fromWord`/`openPdfReflow`/`readStructure`; `installFont` wired to the real APIs (constraint 2, §6) with the `installFontCheck` verification loop | The deepest adapter, and the template every later one follows |
+| **P2** | ✅ **Done** (2026-08-30). Layer 2: `shared/adapters/types.ts` (the pure `AdapterDescriptor`/`DocStructure` contract) + `electron/adapters/word.ts` (`wordDescriptor`, `available()`, `toWord`/`fromWord`/`reflowPdf`/`readStructure`/`installFont` — each an op sequence over the P1 host, serialised through `runExclusive` for COM re-entrancy) + `electron/adapters/paths.ts` (output/input path guards — §3 security gate #2, tightened to the project folder in P7). New host ops `readStructure` + `exportAs`. `docbridge:*` IPC actions + `docBridge.*` preload wrappers. Tests: `wordAdapter.test.ts` + `adapterPaths.test.ts` (25) run in CI; `hostLive.test.ts` gained 5 real-Word adapter round-trips — **all passed against Word 16.0: HTML→docx (RTL + headings verified), docx→pdf/rtf (magic bytes verified), pdf reflow, readStructure, and installFont (Liberation Sans → verified, then uninstalled).** | The deepest adapter, and the template every later one follows |
 | **P3** | Renderer: a convert dialog in `CanvasPanel` — pick source/target, show the Layer 3 loss list, run with a progress bar (conversions are async, §6 constraint 3), open the result. `getBackend()` only; desktop-gated. | "Convert this to that" works from a menu, before the agent exists |
 | **P4** | `electron/adapters/libreoffice.ts` | **Blocked on Proof 3** — run `p0-spike/test-libreoffice.mjs` for real first, and fix its `findSoffice()` false-positive (§6) |
 | **P5** | `electron/adapters/inpage.ts` (docx ↔ RTF ↔ InPage) + the legacy-Noori encoding mapping | **Blocked on Proof 4** — complete `p0-spike/inpage-rtf-checklist.md` on a machine with InPage. If the round-trip mangles Nastaliq text badly, this phase stops and the InPage strategy is re-decided separately, not improvised |
@@ -510,7 +511,9 @@ See ADR-0019 for the full reasoning behind each rejection above.
 - **P1:** ✅ an integration test drives the real host end-to-end (open, track
   changes, footnote, save, PID cleanup after a simulated crash) —
   `src/test/hostLive.test.ts`, passed against Word 16.0 on 2026-08-29.
-- **P2:** `word.ts` passes `docs/QA-M8.md` items 1–7 on a real machine.
+- **P2:** ✅ the Word adapter round-trips through real Word — `hostLive.test.ts`
+  "Word adapter live" block (toWord/fromWord/reflowPdf/readStructure/
+  installFont), passed against Word 16.0 on 2026-08-30.
 - **P3:** every pair in §4's table converts successfully from the menu (or
   is refused with a clear reason), without the agent.
 - **P4/P5:** Proofs 3 and 4 have actually run and are recorded (here or in a
@@ -556,12 +559,16 @@ npm run test:e2e          # packaged app smoke
 New unit tests (`src/test/`, alongside the existing 129), against mocked
 sessions — no real Word/InPage required:
 
-- **P1, shipped:** `hostPowershell.test.ts` (FIFO reply matching, per-op
+- **P1–P2, shipped:** `hostPowershell.test.ts` (FIFO reply matching, per-op
   timeout frees the slot, host-crash rejects all pending + emits `'exit'`,
   refuses off Windows), `hostProcess.test.ts` (the PID + start-time
   fingerprint — a mismatch discards the record without killing anything;
-  startup sweep), `docBridgeHandlers.test.ts` (allowlist + action dispatch).
-  `hostLive.test.ts` is the gated real-Word integration test.
+  startup sweep), `docBridgeHandlers.test.ts` (allowlist + P1/P2 action
+  dispatch), `wordAdapter.test.ts` (each operation's op sequence; outputs
+  path-validated before any op is sent; every session through the mutex),
+  `adapterPaths.test.ts` (traversal / absolute / system-dir / extension
+  guards). `hostLive.test.ts` is the gated real-Word integration test (P1
+  host + P2 adapter round-trips).
 - `commandBuilder.test.ts` — **most important**: every parameter travels as
   data; quotes, newlines, `;`, `$(…)`, and Urdu text never get concatenated
   into a command string (direct command-injection guard).
