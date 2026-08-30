@@ -8,6 +8,7 @@ import { TasksTab } from "./TasksTab";
 import { TrustTab } from "./TrustTab";
 import { AiReaderPanel } from "@/components/reader/AiReaderPanel";
 import { NotesPanel } from "@/components/reader/NotesPanel";
+import { AgentPanel } from "./AgentPanel";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { type WorkbenchTab } from "@/core/workspace/usePanelState";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -16,7 +17,7 @@ import type { Capability, CapabilityId } from "@/core/capabilities/registry";
 
 /** Written out so Tailwind's class scanner can see every value it must emit. */
 const GRID_COLS: Record<number, string> = {
-  3: "grid-cols-3", 4: "grid-cols-4", 5: "grid-cols-5", 6: "grid-cols-6", 7: "grid-cols-7",
+  3: "grid-cols-3", 4: "grid-cols-4", 5: "grid-cols-5", 6: "grid-cols-6", 7: "grid-cols-7", 8: "grid-cols-8",
 };
 
 /**
@@ -28,6 +29,7 @@ const TAB_VALUE_BY_CAPABILITY: Partial<Record<CapabilityId, WorkbenchTab>> = {
   "wb.research": "research",
   "wb.translate": "translate",
   "wb.notes": "notes",
+  "wb.agent": "agent",
 };
 
 interface WorkbenchPanelProps {
@@ -147,6 +149,11 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
         <div className={`h-full ${workbenchTab === "notes" ? "block" : "hidden"}`}>
           <NotesPanel active={workbenchTab === "notes"} />
         </div>
+        {isCapabilityAvailable("wb.agent") && (
+          <div className={`h-full ${workbenchTab === "agent" ? "block" : "hidden"}`}>
+            <AgentPanel />
+          </div>
+        )}
         {showTaskTabs && (
           <>
             <div className={`h-full ${workbenchTab === "tasks" ? "block" : "hidden"}`}>
