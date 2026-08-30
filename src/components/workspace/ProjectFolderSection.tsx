@@ -76,7 +76,7 @@ export const ProjectFolderSection: React.FC = () => {
               {pf.chapters.map((c) => (
                 <li key={c.name}>
                   <button
-                    className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-start text-xs hover:bg-muted/60 disabled:opacity-50"
+                    className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-start text-xs hover:bg-accent disabled:opacity-50"
                     onClick={() => importChapter(c.name)}
                     disabled={pf.busy}
                     title={`${c.name} — ${t("projectfolder.import_hint", "Insert this chapter into the document")}`}

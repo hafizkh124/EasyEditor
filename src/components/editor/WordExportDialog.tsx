@@ -169,7 +169,7 @@ export const WordExportDialog: React.FC<Props> = ({ open, onOpenChange, html, ti
                 <Label
                   key={id}
                   htmlFor={`wx-${id}`}
-                  className="flex items-center gap-3 rounded-md border border-border p-2.5 cursor-pointer hover:bg-muted/50 has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                  className="flex items-center gap-3 rounded-md border border-border p-2.5 cursor-pointer hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5"
                 >
                   <RadioGroupItem value={id} id={`wx-${id}`} />
                   <Icon className="h-4 w-4 text-muted-foreground" />

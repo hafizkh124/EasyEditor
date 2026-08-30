@@ -37,6 +37,7 @@ export const WorkspaceLayout: React.FC = () => {
     setWorkbenchOpen,
     mobileLibraryOpen,
     setMobileLibraryOpen,
+    setDocumentOutline,
   } = useWorkspace();
 
   const { allDocs } = useAllDocuments();
@@ -134,6 +135,17 @@ export const WorkspaceLayout: React.FC = () => {
       syncDocContent(json);
     }
   };
+
+  // Publish the open document's headings so the Agent tab's `@` picker can
+  // offer them (SPEC-M8 Layer 7). Cheap regex over the editor HTML; the context
+  // setter de-dupes so this is safe to run on every content change.
+  useEffect(() => {
+    if (!currentHtml) { setDocumentOutline([]); return; }
+    const headings = [...currentHtml.matchAll(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi)]
+      .map((m) => m[1].replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim())
+      .filter(Boolean);
+    setDocumentOutline(headings);
+  }, [currentHtml, setDocumentOutline]);
 
   const handleRestoreVersion = (contentJson: Record<string, unknown>) => {
     setRestoredContent(contentJson);

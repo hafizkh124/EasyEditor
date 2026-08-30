@@ -81,6 +81,14 @@ interface WorkspaceContextType {
   /** The mounted editor's whole-document task runner, or null (see above). */
   runDocumentTask: DocumentTaskRunner | null;
   registerDocumentTaskRunner: (runner: DocumentTaskRunner | null) => void;
+
+  /**
+   * Headings of the document currently open in the Canvas, in order. Published
+   * here so the Agent tab's `@` picker (SPEC-M8 Layer 7) can offer the outline
+   * as explicit references without reaching into the editor instance.
+   */
+  documentOutline: string[];
+  setDocumentOutline: (headings: string[]) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
@@ -110,6 +118,13 @@ export const WorkspaceProvider: React.FC<{
   const [readerJump, setReaderJump] = useState<ReaderJumpSignal | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
+  const [documentOutline, setDocumentOutlineState] = useState<string[]>([]);
+
+  const setDocumentOutline = useCallback((headings: string[]) => {
+    setDocumentOutlineState((prev) =>
+      prev.length === headings.length && prev.every((h, i) => h === headings[i]) ? prev : headings,
+    );
+  }, []);
 
   const sendSelectionToWorkbench = useCallback(
     (text: string) => {
@@ -168,6 +183,8 @@ export const WorkspaceProvider: React.FC<{
         setCommandPaletteOpen,
         runDocumentTask,
         registerDocumentTaskRunner,
+        documentOutline,
+        setDocumentOutline,
       }}
     >
       {children}

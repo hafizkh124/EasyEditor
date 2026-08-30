@@ -975,6 +975,8 @@
   "agent.no_chapters": "This folder has no .docx or .rtf files yet — the agent has nothing to read. Add chapter files, or pick a different folder.",
   "agent.undo_task": "Undo this task",
   "agent.undone": "Task reverted",
+  "agent.voice_start": "Dictate",
+  "agent.voice_stop": "Stop dictation",
   "editor.audiobook_cancelled": "Audiobook export was cancelled.",
   "editor.audiobook_done": "Audiobook is ready.",
   "editor.audiobook_empty": "There is no text to turn into an audiobook.",

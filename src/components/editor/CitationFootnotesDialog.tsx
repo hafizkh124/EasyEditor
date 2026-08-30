@@ -116,7 +116,7 @@ export const CitationFootnotesDialog: React.FC<Props> = ({ open, onOpenChange, h
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="rounded-md border border-border bg-muted/40 p-2.5 text-xs text-muted-foreground">
+            <div className="rounded-md border border-border bg-muted/60 p-2.5 text-xs text-muted-foreground">
               {t("docbridge.cite.summary", "{markers} markers · {sources} verified sources")
                 .replace("{markers}", String(markerCount))
                 .replace("{sources}", String(sources.length))}

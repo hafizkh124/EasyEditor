@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Send, Loader2, Square, FolderOpen, Wrench, ScrollText, ChevronRight, AlertTriangle, CheckCircle2, Undo2 } from "lucide-react";
+import { Bot, Send, Loader2, Square, FolderOpen, Wrench, ScrollText, ChevronRight, AlertTriangle, CheckCircle2, Undo2, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useProjectFolderContext } from "@/core/projectFolder/context";
+import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { logger } from "@/lib/logger";
+import { decodeAudioFile, encodeChunkToWav } from "@/lib/audio/chunker";
 import { buildMentions, filterMentions, activeMentionQuery, applyMention, type Mention } from "../../../shared/mentions";
 import { PLAYBOOKS } from "../../../shared/playbooks/registry";
 
@@ -26,12 +28,15 @@ interface RunResult {
  * SPEC-M8 Layer 6 / P8b — the Agent tab. Two modes: "Ask" (read-only) and
  * "Do" (tracked-change edits). Every step shows a live present-tense line
  * (§3 UI shape — a trust requirement, not decoration). `/` opens a playbook
- * picker, `@` a chapter picker. Desktop + VITE_AGENT_MODE only; needs an
- * open project folder.
+ * picker, `@` a mention picker (chapters + the open document's outline +
+ * matching Shamela books). A microphone dictates into the chat box via the
+ * existing local Whisper. Desktop + VITE_AGENT_MODE only; needs an open
+ * project folder.
  */
 export const AgentPanel: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const pf = useProjectFolderContext();
+  const ws = useOptionalWorkspace();
   const agent = typeof window !== "undefined" ? window.electronAPI?.agent : undefined;
 
   const [mode, setMode] = useState<Mode>("ask");
@@ -41,8 +46,10 @@ export const AgentPanel: React.FC = () => {
   const [result, setResult] = useState<RunResult | null>(null);
   const [showTools, setShowTools] = useState(false);
   const [caps, setCaps] = useState<string | null>(null);
-  const [picker, setPicker] = useState<{ kind: "mention" | "command"; items: Array<{ label: string; apply: () => void }> } | null>(null);
+  const [picker, setPicker] = useState<{ kind: "mention" | "command"; query: string } | null>(null);
+  const [shamelaBooks, setShamelaBooks] = useState<Array<{ id: string; title: string }>>([]);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const shamelaDbRef = useRef<string | null | undefined>(undefined);
 
   const projectRoot = pf.folder?.path ?? null;
 
@@ -58,43 +65,75 @@ export const AgentPanel: React.FC = () => {
   }, [agent]);
 
   const mentions = useMemo<Mention[]>(
-    () => buildMentions({ chapters: pf.chapters.map((c) => c.name) }),
-    [pf.chapters],
+    () => buildMentions({
+      chapters: pf.chapters.map((c) => c.name),
+      outline: ws?.documentOutline ?? [],
+      shamelaBooks,
+    }),
+    [pf.chapters, ws?.documentOutline, shamelaBooks],
   );
+
+  // Shamela-book mentions are looked up lazily: the local library holds
+  // thousands of titles, so we only query once the `@` token is specific
+  // enough (≥ 2 chars), debounced.
+  useEffect(() => {
+    const shamela = typeof window !== "undefined" ? window.electronAPI?.shamela : undefined;
+    if (!shamela || picker?.kind !== "mention") return;
+    const q = picker.query.trim();
+    if (q.length < 2) { setShamelaBooks([]); return; }
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      try {
+        if (shamelaDbRef.current === undefined) {
+          const det = await shamela.detect();
+          shamelaDbRef.current = det.masterDbPath ?? null;
+        }
+        if (!shamelaDbRef.current || cancelled) return;
+        const hits = await shamela.searchBooks(shamelaDbRef.current, q, 6);
+        if (!cancelled) setShamelaBooks(hits.map((b) => ({ id: String(b.id), title: b.title })));
+      } catch (err) {
+        log.debug("shamela mention lookup failed", { err });
+      }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [picker]);
 
   const updateInput = useCallback((text: string, caret: number) => {
     setInput(text);
-    // `/` at the very start → command (playbook) picker.
     if (text.startsWith("/")) {
-      const q = text.slice(1).toLowerCase();
-      setPicker({
-        kind: "command",
-        items: PLAYBOOKS.filter((p) => p.title.toLowerCase().includes(q) || p.id.includes(q)).map((p) => ({
-          label: p.title,
-          apply: () => { setInput(p.title + " "); setPicker(null); taRef.current?.focus(); },
-        })),
-      });
+      setPicker({ kind: "command", query: text.slice(1) });
       return;
     }
     const active = activeMentionQuery(text, caret);
-    if (active) {
-      const hits = filterMentions(mentions, active.query);
-      setPicker(hits.length ? {
-        kind: "mention",
-        items: hits.map((m) => ({
-          label: m.label,
-          apply: () => {
-            const next = applyMention(text, caret, m);
-            setInput(next.text);
-            setPicker(null);
-            requestAnimationFrame(() => { taRef.current?.focus(); taRef.current?.setSelectionRange(next.caret, next.caret); });
-          },
-        })),
-      } : null);
-      return;
+    setPicker(active ? { kind: "mention", query: active.query } : null);
+  }, []);
+
+  const pickerItems = useMemo<Array<{ kind: "mention" | "command"; label: string; apply: () => void }>>(() => {
+    if (!picker) return [];
+    if (picker.kind === "command") {
+      const q = picker.query.toLowerCase();
+      return PLAYBOOKS
+        .filter((p) => p.title.toLowerCase().includes(q) || p.id.includes(q))
+        .map((p) => ({
+          kind: "command" as const,
+          label: p.title,
+          apply: () => { setInput(p.title + " "); setPicker(null); taRef.current?.focus(); },
+        }));
     }
-    setPicker(null);
-  }, [mentions]);
+    return filterMentions(mentions, picker.query).map((m) => ({
+      kind: "mention" as const,
+      label: m.label,
+      apply: () => {
+        const ta = taRef.current;
+        const value = ta?.value ?? input;
+        const caret = ta?.selectionStart ?? value.length;
+        const next = applyMention(value, caret, m);
+        setInput(next.text);
+        setPicker(null);
+        requestAnimationFrame(() => { ta?.focus(); ta?.setSelectionRange(next.caret, next.caret); });
+      },
+    }));
+  }, [picker, mentions, input]);
 
   const send = useCallback(async () => {
     const instruction = input.trim();
@@ -117,6 +156,53 @@ export const AgentPanel: React.FC = () => {
   }, [input, agent, projectRoot, running, mode, pf]);
 
   const cancel = useCallback(() => { void agent?.cancel(); }, [agent]);
+
+  // ── Voice dictation (existing local Whisper via electron/voice) ───────────
+  const voice = typeof window !== "undefined" ? window.electronAPI?.voice : undefined;
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  const toggleRecord = useCallback(async () => {
+    if (recording) { recorderRef.current?.stop(); return; }
+    if (!voice?.transcribe) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorderRef.current = recorder;
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setRecording(false);
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        if (blob.size === 0) return;
+        setTranscribing(true);
+        try {
+          const audioBuffer = await decodeAudioFile(blob);
+          const wav = await encodeChunkToWav(audioBuffer);
+          const segments = await voice.transcribe({ audio: await wav.arrayBuffer(), lang: language });
+          const text = segments.map((s) => s.text).join(" ").replace(/\s+/g, " ").trim();
+          if (text) {
+            setInput((prev) => (prev ? `${prev.trimEnd()} ${text}` : text));
+            requestAnimationFrame(() => taRef.current?.focus());
+          }
+        } catch (err) {
+          log.error("voice transcription failed", { err });
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      recorder.start();
+      setRecording(true);
+    } catch (err) {
+      log.error("microphone access failed", { err });
+    }
+  }, [recording, voice, language]);
+
+  useEffect(() => () => { try { recorderRef.current?.stop(); } catch { /* not recording */ } }, []);
 
   const [undone, setUndone] = useState(false);
   const undoTask = useCallback(async () => {
@@ -247,11 +333,11 @@ export const AgentPanel: React.FC = () => {
 
       {/* Input */}
       <div className="relative border-t border-border p-2 shrink-0">
-        {picker && picker.items.length > 0 && (
+        {picker && pickerItems.length > 0 && (
           <div className="absolute bottom-full start-2 end-2 mb-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
-            {picker.items.map((it, i) => (
+            {pickerItems.map((it, i) => (
               <button key={i} className="flex w-full items-center gap-2 px-2 py-1.5 text-start text-xs hover:bg-muted" onClick={it.apply}>
-                {picker.kind === "command" ? <ScrollText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <span className="text-muted-foreground">@</span>}
+                {it.kind === "command" ? <ScrollText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <span className="text-muted-foreground">@</span>}
                 <span className="truncate">{it.label}</span>
               </button>
             ))}
@@ -271,6 +357,19 @@ export const AgentPanel: React.FC = () => {
             placeholder={t("agent.placeholder", "Ask, or describe a task…  @chapter  /playbook")}
             className="flex-1 resize-none rounded-md border border-border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
           />
+          {voice?.transcribe && (
+            <Button
+              size="icon"
+              variant={recording ? "default" : "outline"}
+              className="h-9 w-9 shrink-0"
+              onClick={() => void toggleRecord()}
+              disabled={running || transcribing}
+              aria-label={recording ? t("agent.voice_stop", "Stop dictation") : t("agent.voice_start", "Dictate")}
+              title={recording ? t("agent.voice_stop", "Stop dictation") : t("agent.voice_start", "Dictate")}
+            >
+              {transcribing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className={`h-4 w-4 ${recording ? "animate-pulse" : ""}`} />}
+            </Button>
+          )}
           {running ? (
             <Button size="icon" variant="outline" className="h-9 w-9 shrink-0" onClick={cancel} aria-label={t("common.cancel", "Cancel")}>
               <Square className="h-4 w-4" />

@@ -975,6 +975,8 @@
   "agent.no_chapters": "لا توجد ملفات .docx أو .rtf في هذا المجلد بعد — لا شيء ليقرأه الوكيل. أضف ملفات الفصول أو اختر مجلدًا آخر.",
   "agent.undo_task": "التراجع عن هذه المهمة",
   "agent.undone": "تم التراجع عن المهمة",
+  "agent.voice_start": "إملاء صوتي",
+  "agent.voice_stop": "إيقاف الإملاء",
   "editor.audiobook_cancelled": "أُلغي تصدير الكتاب الصوتي.",
   "editor.audiobook_done": "الكتاب الصوتي جاهز.",
   "editor.audiobook_empty": "لا يوجد نص لتحويله إلى كتاب صوتي.",

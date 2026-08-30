@@ -30,10 +30,33 @@ const pf = {
 };
 vi.mock("@/core/projectFolder/context", () => ({ useProjectFolderContext: () => pf }));
 
+let documentOutline: string[] = [];
+vi.mock("@/core/workspace/WorkspaceContext", () => ({
+  useOptionalWorkspace: () => ({ documentOutline }),
+}));
+
+// jsdom has no Web Audio / MediaRecorder — stub just enough for the mic path.
+vi.mock("@/lib/audio/chunker", () => ({
+  decodeAudioFile: vi.fn(async () => ({}) as AudioBuffer),
+  // jsdom's Blob has no arrayBuffer(), so hand back a blob-like with one.
+  encodeChunkToWav: vi.fn(async () => ({ arrayBuffer: async () => new ArrayBuffer(8) })),
+}));
+
+class FakeMediaRecorder {
+  static isTypeSupported() { return true; }
+  ondataavailable: ((e: { data: Blob }) => void) | null = null;
+  onstop: (() => void) | null = null;
+  mimeType = "audio/webm";
+  constructor(_stream: unknown, _opts: unknown) {}
+  start() { this.ondataavailable?.({ data: new Blob(["x"], { type: "audio/webm" }) }); }
+  stop() { this.onstop?.(); }
+}
+
 import { AgentPanel } from "@/components/workspace/AgentPanel";
 
 let onProgressCb: ((p: { id: string; step: number; label: string; kind: string; detail?: string }) => void) | null = null;
 const agentRun = vi.fn(async () => ({ answer: "The chapter has 3 headings.", stopReason: "done", steps: 2, toolCalls: [{ name: "read_document", args: { chapter: "01-intro.docx" }, result: {} }], playbook: undefined }));
+const transcribe = vi.fn(async () => [{ start: 0, end: 1, text: "footnote chapter one" }]);
 
 function mockApi(over: Partial<typeof pf> = {}) {
   Object.assign(pf, over);
@@ -46,11 +69,18 @@ function mockApi(over: Partial<typeof pf> = {}) {
       onProgress: vi.fn((cb: typeof onProgressCb) => { onProgressCb = cb; return () => { onProgressCb = null; }; }),
     },
     docBridge: { detectTools: vi.fn(async () => ({ word: true, wordVersion: "16.0", windows: true })) },
+    voice: { transcribe },
   };
 }
 
 beforeEach(() => {
   pf.folder = { path: "C:\\thesis", manifest: { id: "1", title: "My Thesis", createdAt: "x", chapterOrder: [], version: 1 } };
+  documentOutline = [];
+  (globalThis as unknown as { MediaRecorder: unknown }).MediaRecorder = FakeMediaRecorder;
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: { getUserMedia: vi.fn(async () => ({ getTracks: () => [{ stop: vi.fn() }] })) },
+  });
   mockApi();
 });
 afterEach(() => {
@@ -110,5 +140,32 @@ describe("AgentPanel", () => {
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "check @body", selectionStart: 10 } });
     expect(await screen.findByText("02-body.docx")).toBeInTheDocument();
+  });
+
+  it("offers the open document's headings as `@` mentions", async () => {
+    documentOutline = ["Literature Review", "Methodology"];
+    render(<AgentPanel />);
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: "expand @method", selectionStart: 14 } });
+    expect(await screen.findByText("§ Methodology")).toBeInTheDocument();
+  });
+
+  it("shows the mic only when voice transcription is available", () => {
+    const { unmount } = render(<AgentPanel />);
+    expect(screen.getByRole("button", { name: "Dictate" })).toBeInTheDocument();
+    unmount();
+    (window as unknown as { electronAPI?: Record<string, unknown> }).electronAPI!.voice = undefined;
+    render(<AgentPanel />);
+    expect(screen.queryByRole("button", { name: "Dictate" })).not.toBeInTheDocument();
+  });
+
+  it("dictates a transcript into the input", async () => {
+    render(<AgentPanel />);
+    fireEvent.click(screen.getByRole("button", { name: "Dictate" }));
+    // FakeMediaRecorder.start() pushed a chunk; clicking again stops → transcribe.
+    fireEvent.click(await screen.findByRole("button", { name: "Stop dictation" }));
+    await waitFor(() => expect(transcribe).toHaveBeenCalled());
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
+    await waitFor(() => expect(ta.value).toContain("footnote chapter one"));
   });
 });
