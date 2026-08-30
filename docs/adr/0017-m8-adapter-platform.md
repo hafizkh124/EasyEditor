@@ -2,6 +2,15 @@
 
 **Status:** Accepted · **Date:** 2026-08-29 · **Milestone:** SPEC-M8
 
+> **Implementation (2026-08-30):** the Word, Excel, and PowerPoint adapters
+> ship, each declaring its own read/write edges + ops; `electron/adapters/
+> registry.ts` (`ALL_ADAPTERS`) feeds the Layer-3 planner, so `xlsx→pdf/csv`
+> and `pptx→pdf` fall out of the graph with no per-pair converter. The
+> single long-lived host now drives all three Office apps, and
+> `electron/host/process.ts`'s orphan guard tracks WINWORD / EXCEL /
+> POWERPNT together, each behind its PID + start-time fingerprint. The
+> LibreOffice / InPage / PDF adapters remain blocked on their P0 proofs.
+
 ## Context
 
 The request behind SPEC-M8 is not "add Word export" — it's "let the agent

@@ -2,6 +2,15 @@
 
 **Status:** Accepted · **Date:** 2026-08-29 · **Milestone:** SPEC-M8
 
+> **Implementation (2026-08-30):** all of this ADR's decisions are now shipped
+> — `@` mentions (chapters + document outline + Shamela books), `قواعد.md`
+> rules, task checkpoints + "Undo this task", the two-tier `insert_footnote`
+> check, `check_consistency` as a lexical search, one-task-at-a-time, and the
+> consent-gated global-option flow (§3 gate #5). Item 7 ("no open Browser
+> tool") is realised as the renderer-bridged `search_general`: it routes
+> through the existing signed-in `research-query` channel and its answer is
+> never added to the citation ledger.
+
 ## Context
 
 Mid-design, two rounds of secondary research were brought in: a survey of

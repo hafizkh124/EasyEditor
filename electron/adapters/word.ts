@@ -25,6 +25,7 @@ import type {
   ApplyCitationsReply,
   InstallTemplateReply,
   GlobalOptionReply,
+  CompareIntoReply,
 } from '../host/types.js';
 import type { CitationFootnote } from '../../shared/convert/citationFootnotes.js';
 import type {
@@ -319,6 +320,58 @@ export async function setWordOption(key: GlobalOptionKey, value: 'true' | 'false
     await refreshOwnedWord();
     return r.value;
   });
+}
+
+/**
+ * P9 (agent `run_task`) — apply a wholesale text/HTML rewrite to a chapter as
+ * real Word tracked changes. The revised content is written to a temp file,
+ * turned into a `.docx`, then diffed against the original with Word's own
+ * `Compare` — so the scholar reviews genuine revisions, not a delete-all +
+ * insert-all. The chapter file is overwritten only with the comparison result.
+ */
+export async function applyTextTask(
+  chapterPathArg: string,
+  refined: string,
+  opts: { isHtml: boolean },
+): Promise<{ revisions: number; ms: number }> {
+  const dest = assertSafeOutputPath(chapterPathArg, ['.docx']);
+  assertReadableFile(chapterPathArg, OPENABLE); // the chapter must already exist
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const tempSrc = path.join(os.tmpdir(), `easyeditor-task-${stamp}${opts.isHtml ? '.html' : '.txt'}`);
+  const tempRevised = path.join(os.tmpdir(), `easyeditor-task-${stamp}.docx`);
+  const tempCompared = path.join(os.tmpdir(), `easyeditor-task-${stamp}-cmp.docx`);
+  fs.writeFileSync(
+    tempSrc,
+    opts.isHtml
+      ? `<!doctype html><html><head><meta charset="utf-8"></head><body>${refined}</body></html>`
+      : refined,
+    'utf8',
+  );
+
+  const started = Date.now();
+  let revisions = 0;
+  try {
+    await runExclusive(async () => {
+      const h = getWordHost();
+      // 1 — build the revised .docx from the model's output
+      await h.sendOk({ op: 'open', path: tempSrc });
+      await refreshOwnedWord();
+      await h.sendOk({ op: 'saveAs', path: tempRevised });
+      await h.sendOk({ op: 'close' });
+      // 2 — diff the original against it; the comparison result carries the revisions
+      await h.sendOk({ op: 'open', path: dest });
+      const r = await h.sendOk<CompareIntoReply>({ op: 'compareInto', revisedPath: tempRevised, outPath: tempCompared });
+      revisions = r.revisions ?? 0;
+      await h.sendOk({ op: 'close' });
+    });
+    // 3 — replace the chapter with the tracked-change version
+    fs.copyFileSync(tempCompared, dest);
+    return { revisions, ms: Date.now() - started };
+  } finally {
+    for (const p of [tempSrc, tempRevised, tempCompared]) {
+      try { fs.rmSync(p, { force: true }); } catch { /* ignore */ }
+    }
+  }
 }
 
 /** Inspect a document's structure — the `.docx` → EasyEditor doc side. */

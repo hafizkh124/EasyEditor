@@ -16,6 +16,7 @@ import { logger } from '../lib/logger.js';
 import { runAgent } from '../agent/run.js';
 import { undoCheckpoint, listCheckpoints } from '../agent/checkpoint.js';
 import { applyGlobalOption, revertGlobalOptions, readLog as readGlobalOptionLog } from '../agent/globalOptions.js';
+import { requestGeneralSearch, resolveGeneralSearch } from '../agent/generalSearch.js';
 import { acquireAgentSlot, releaseAgentSlot, cancelRunningAgent, runningTask } from '../agent/queue.js';
 import { getWorkspaceDbService } from './workspaceHandlers.js';
 import type { AgentProgress } from '../../shared/agent/types.js';
@@ -62,6 +63,16 @@ export function registerAgentHandlers(): void {
         case 'globalOptionLog':
           return { entries: readGlobalOptionLog(String(payload.projectRoot ?? '')) };
 
+        // ── P9: the renderer's reply to a search_general request (ADR-0019 #7) ──
+        case 'generalSearchResult': {
+          resolveGeneralSearch(String(payload.requestId ?? ''), {
+            answer: typeof payload.answer === 'string' ? payload.answer : undefined,
+            channel: typeof payload.channel === 'string' ? payload.channel : undefined,
+            error: typeof payload.error === 'string' ? payload.error : undefined,
+          });
+          return { ok: true };
+        }
+
         case 'run': {
           const instruction = String(payload.instruction ?? '').trim();
           const mode = payload.mode === 'do' ? 'do' : 'ask';
@@ -98,6 +109,7 @@ export function registerAgentHandlers(): void {
               instruction, mode, projectRoot,
               onProgress: emit,
               isCancelled: () => cancelled,
+              generalSearch: (query) => requestGeneralSearch(id, query, win?.webContents),
             });
 
             if (runId) {

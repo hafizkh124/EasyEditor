@@ -19,9 +19,13 @@ const wordMock = {
   installTemplate: vi.fn(async () => ({ templateName: 'thesis', installedTo: 'C:\\t\\thesis.dotx', ms: 1 })),
   getWordOption: vi.fn(async () => 'true'),
   setWordOption: vi.fn(async () => 'false'),
+  applyTextTask: vi.fn(async () => ({ revisions: 4, ms: 1 })),
   ALLOWED_GLOBAL_OPTIONS: { check_spelling: 'CheckSpellingAsYouType', check_grammar: 'CheckGrammarAsYouType', smart_quotes: 'AutoFormatAsYouTypeReplaceQuotes' },
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMock);
+
+const generateContentStream = vi.fn(async () => 'باب دو میں برکت کا ذکر ہے — درست شدہ متن۔');
+vi.mock('../../electron/ai/geminiClient.ts', () => ({ generateContentStream }));
 
 const recordEdit = vi.fn();
 vi.mock('../../electron/agent/checkpoint.ts', () => ({ recordEdit }));
@@ -144,10 +148,48 @@ describe('agent dispatch', () => {
     expect(r.suggestion).toMatch(/consider reviewing/);
   });
 
-  it('run_task is not available in this build and says so', async () => {
+  it('run_task refines the chapter in place as a tracked change', async () => {
     const { dispatch } = mk();
-    const r = await dispatch('run_task', { chapter: '01.docx', task: 'harakat' }) as { error: string };
-    expect(r.error).toMatch(/not available/i);
+    const r = await dispatch('run_task', { chapter: '01.docx', task: 'harakat' }) as { task: string; revisions: number; backedUp: boolean; changed: boolean };
+    expect(generateContentStream).toHaveBeenCalledWith(expect.objectContaining({ systemInstruction: expect.stringMatching(/diacritics|harakat/i) }));
+    expect(wordMock.applyTextTask).toHaveBeenCalledWith('C:\\p\\01.docx', expect.stringContaining('درست'), { isHtml: false });
+    expect(recordEdit).toHaveBeenCalledWith('C:\\p', 'cp_1', '01.docx');
+    expect(r).toMatchObject({ task: 'add_harakat', revisions: 4, backedUp: true, changed: true });
+  });
+
+  it('run_task maps auto-format to an HTML task and rejects an unknown slug / citations', async () => {
+    const { dispatch } = mk();
+    await dispatch('run_task', { chapter: '01.docx', task: 'auto-format' });
+    expect(wordMock.applyTextTask).toHaveBeenCalledWith('C:\\p\\01.docx', expect.any(String), { isHtml: true });
+    expect(await dispatch('run_task', { chapter: '01.docx', task: 'make-it-nice' })).toMatchObject({ error: expect.stringMatching(/unknown task/) });
+    expect(await dispatch('run_task', { chapter: '01.docx', task: 'citations' })).toMatchObject({ error: expect.stringMatching(/insert_footnote/) });
+  });
+});
+
+describe('search_general (renderer-bridged, ADR-0019 #7)', () => {
+  it('returns a clear message when no bridge is available (headless)', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('search_general', { query: 'who was al-Ghazali' }) as { error: string };
+    expect(r.error).toMatch(/Agent panel|signed-in/i);
+  });
+
+  it('routes through the injected bridge and tags the channel — but never enters the citation ledger', async () => {
+    const generalSearch = vi.fn(async () => ({ answer: 'Al-Ghazali (d. 505 AH) was a theologian and jurist.', channel: 'general' }));
+    const { dispatch, ledger } = mk({ generalSearch });
+    const r = await dispatch('search_general', { query: 'al-Ghazali' }) as { channel: string; answer: string };
+    expect(generalSearch).toHaveBeenCalledWith('al-Ghazali');
+    expect(r).toMatchObject({ channel: 'general', answer: expect.stringContaining('theologian') });
+    expect(ledger.size).toBe(0);
+    // insert_footnote cannot cite it — it was never retrieved
+    await expect(dispatch('insert_footnote', { chapter: '01.docx', marker: '[1]', source_id: 'general:1' }))
+      .rejects.toThrow(/nothing has been retrieved|not one of/);
+  });
+
+  it('surfaces the bridge error (offline / not signed in)', async () => {
+    const generalSearch = vi.fn(async () => ({ error: 'General search needs an internet connection and a signed-in session.' }));
+    const { dispatch } = mk({ generalSearch });
+    const r = await dispatch('search_general', { query: 'x' }) as { error: string };
+    expect(r.error).toMatch(/internet connection/);
   });
 });
 

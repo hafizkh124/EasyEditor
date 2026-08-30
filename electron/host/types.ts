@@ -26,6 +26,7 @@ export type HostCommand =
   | { op: 'getGlobalOption'; name: string }
   | { op: 'setGlobalOption'; name: string; value: string }
   | { op: 'readStructure' }
+  | { op: 'compareInto'; revisedPath: string; outPath: string }
   | { op: 'save' }
   | { op: 'saveAs'; path: string }
   | { op: 'exportAs'; path: string; format: 'docx' | 'pdf' | 'rtf' | 'html' | 'txt' }
@@ -106,6 +107,14 @@ export interface ApplyCitationsReply extends HostReply {
   footnoteCount: number;
 }
 
+export interface CompareIntoReply extends HostReply {
+  ok: true;
+  op: 'compareInto';
+  /** Number of tracked revisions the diff produced. */
+  revisions: number;
+  outPath: string;
+}
+
 export interface InstallTemplateReply extends HostReply {
   ok: true;
   op: 'installTemplate';
@@ -184,6 +193,7 @@ export const OP_TIMEOUT_MS: Partial<Record<HostOp, number>> & { default: number 
   installFont: 15_000,
   installTemplate: 15_000,
   attachTemplate: 30_000,
+  compareInto: 120_000,
   quit: 8_000,
   // P9 — Office launch + fixed-format export are as slow as Word's.
   excelOpen: 60_000,

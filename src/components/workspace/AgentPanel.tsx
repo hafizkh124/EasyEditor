@@ -7,6 +7,7 @@ import { useProjectFolderContext } from "@/core/projectFolder/context";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { logger } from "@/lib/logger";
 import { decodeAudioFile, encodeChunkToWav } from "@/lib/audio/chunker";
+import { streamResearchQuery } from "@/lib/research/streamers";
 import { buildMentions, filterMentions, activeMentionQuery, applyMention, type Mention } from "../../../shared/mentions";
 import { PLAYBOOKS } from "../../../shared/playbooks/registry";
 
@@ -63,10 +64,31 @@ export const AgentPanel: React.FC = () => {
     }).catch(() => setCaps(null));
   }, [t]);
 
+  // The agent asks the renderer to run a General-channel search (it can't reach
+  // the signed-in edge function from the main process — ADR-0019 item 7).
+  const handleGeneralSearch = useCallback(async (requestId: string, query: string) => {
+    if (!agent?.submitGeneralSearch) return;
+    const acc = { value: "" };
+    await streamResearchQuery({
+      query, sources: [], strictMode: false, chatHistory: [], mode: "general",
+      onDelta: (chunk) => { acc.value += chunk; },
+      onDone: () => { void agent.submitGeneralSearch!(requestId, { answer: acc.value.trim(), channel: "general" }); },
+      onError: (err) => { void agent.submitGeneralSearch!(requestId, { error: err }); },
+    }).catch((err) => {
+      void agent.submitGeneralSearch!(requestId, { error: err instanceof Error ? err.message : String(err) });
+    });
+  }, [agent]);
+
   useEffect(() => {
     if (!agent?.onProgress) return;
-    return agent.onProgress((p) => setProgress((prev) => [...prev, { step: p.step, label: p.label, kind: p.kind, detail: p.detail }]));
-  }, [agent]);
+    return agent.onProgress((p) => {
+      if (p.kind === "general-search-request" && p.requestId && typeof p.query === "string") {
+        void handleGeneralSearch(p.requestId, p.query);
+        return;
+      }
+      setProgress((prev) => [...prev, { step: p.step ?? 0, label: p.label ?? "", kind: p.kind, detail: p.detail }]);
+    });
+  }, [agent, handleGeneralSearch]);
 
   const mentions = useMemo<Mention[]>(
     () => buildMentions({

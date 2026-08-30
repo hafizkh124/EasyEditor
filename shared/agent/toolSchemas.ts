@@ -5,9 +5,7 @@
  * here, and every parameter travels as JSON data — never concatenated into a
  * command (security gate 1). "Ask" mode filters to `effect: 'read'` only.
  *
- * Deferred to a later P8 slice: `search_general` (needs the General-mode edge
- * function's provenance tagging — ADR-0019 item 7), `run_playbook` execution
- * wiring.
+ * Deferred to a later P8 slice: `run_playbook` execution wiring.
  */
 import type { AgentTool } from './types.js';
 
@@ -44,6 +42,15 @@ export const AGENT_TOOLS: AgentTool[] = [
     params: {
       query: { type: 'string', description: 'Arabic search terms.' },
       limit: { type: 'number', description: 'Max results (default 8).' },
+    },
+    required: ['query'],
+    effect: 'read',
+  },
+  {
+    name: 'search_general',
+    description: "Ask the General research channel a question (the same one the Research tab uses — a signed-in, provenance-tagged web+model search, NOT open browsing). Use only for background/context the personal corpus and Shamela cannot answer. Its result is NOT page-precise, so it can never be used as a footnote source. Needs an internet connection and a signed-in session.",
+    params: {
+      query: { type: 'string', description: 'The question, in the scholar\'s language.' },
     },
     required: ['query'],
     effect: 'read',

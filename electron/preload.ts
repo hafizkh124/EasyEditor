@@ -372,7 +372,10 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'revertGlobalOptions', projectRoot }),
     globalOptionLog: (projectRoot: string): Promise<{ entries: Array<{ at: string; action: string; option: string; previous: string; applied: string }> }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'globalOptionLog', projectRoot }),
-    onProgress: (callback: (p: { id: string; step: number; label: string; kind: string; detail?: string }) => void): (() => void) => {
+    // P9 — the renderer's answer to a `search_general` request the agent made (ADR-0019 #7).
+    submitGeneralSearch: (requestId: string, result: { answer?: string; channel?: string; error?: string }): Promise<{ ok: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'generalSearchResult', requestId, ...result }),
+    onProgress: (callback: (p: { id: string; step?: number; label?: string; kind: string; detail?: string; requestId?: string; query?: string }) => void): (() => void) => {
       const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);
       ipcRenderer.on(ALLOWED_IPC_CHANNELS.AGENT_PROGRESS, listener);
       return () => {

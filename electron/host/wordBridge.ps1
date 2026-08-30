@@ -383,6 +383,21 @@ public static class WordBridgeFontApi {
                 }
             }
 
+            'compareInto' {
+                # P9 (agent run_task) — turn a wholesale text rewrite into real
+                # tracked changes: diff the OPEN document against a revised copy
+                # and save the comparison result (which carries the revisions).
+                # $script:doc is the ORIGINAL; the caller closes it afterwards
+                # without saving.
+                Require-Doc
+                $script:doc.Compare($cmd.revisedPath, 'EasyEditor Agent', 2, $true, $true) | Out-Null  # wdCompareTargetNew
+                $result = $script:word.ActiveDocument
+                $rev = $result.Revisions.Count
+                $result.SaveAs2($cmd.outPath, 16)  # wdFormatXMLDocument
+                $result.Close($false)
+                Write-Result @{ ok = $true; op = 'compareInto'; revisions = $rev; outPath = $cmd.outPath }
+            }
+
             'save' {
                 Require-Doc
                 $script:doc.Save()

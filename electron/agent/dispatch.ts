@@ -21,10 +21,14 @@ import { isAllowedOption } from './globalOptions.js';
 import { chapterPath, backupChapter, refreshChapters } from '../fs/projectFolder.js';
 import { getWorkspaceDbService } from '../ipc/workspaceHandlers.js';
 import { searchShamelaNative } from '../shamela/shamelaNative.js';
+import { generateContentStream } from '../ai/geminiClient.js';
 import { RetrievalLedger, assertClaimSupported, type RetrievedChunk, type ClaimCheckFn } from '../../shared/agent/grounding.js';
 import { summariseCapabilities } from '../../shared/agent/capabilities.js';
+import { resolveTaskSlug, taskOutputIsHtml, RUN_TASK_NAMES } from '../../shared/agent/textTasks.js';
+import { getRefineTextPrompt } from '../../shared/ai/prompts/refineText.js';
 import { recordEdit } from './checkpoint.js';
 import type { DispatchFn } from '../../shared/agent/types.js';
+import type { GeneralSearchResult } from './generalSearch.js';
 
 const log = logger.child('agent/dispatch');
 
@@ -41,6 +45,11 @@ export interface AgentSession {
   checkpointId?: string;
   /** The optional claim-check tier for insert_footnote (ADR-0019 item 6). */
   claimCheck?: ClaimCheckFn | null;
+  /**
+   * Runs one General-channel search via the renderer (ADR-0019 item 7). Absent
+   * in a headless context — `search_general` then returns a clear message.
+   */
+  generalSearch?: ((query: string) => Promise<GeneralSearchResult>) | null;
 }
 
 export interface Dispatcher {
@@ -53,6 +62,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
   const root = session.projectRoot;
   const checkpointId = session.checkpointId;
   const claimCheck = session.claimCheck ?? null;
+  const generalSearch = session.generalSearch ?? null;
 
   /** Snapshot a chapter into the task checkpoint + take the per-write backup. */
   const guardEdit = (chapter: string): boolean => {
@@ -188,8 +198,55 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         return { outputPath: r.outputPath };
       }
 
-      case 'run_task':
-        return { error: 'run_task is not available in this build yet — apply built-in text tasks from the editor for now' };
+      case 'search_general': {
+        const query = str(args.query, 'query');
+        if (!generalSearch) {
+          return { error: 'search_general is only available from the Agent panel (it uses your signed-in research session).' };
+        }
+        const r = await generalSearch(query);
+        if (r.error) return { error: r.error };
+        const answer = (r.answer ?? '').trim();
+        if (!answer) return { count: 0, channel: r.channel ?? 'general', note: 'The General research channel returned nothing.' };
+        // Deliberately NOT added to the retrieval ledger: a General answer is
+        // not page-precise, so insert_footnote must never be able to cite it.
+        // The transcript still records this call via toolCalls.
+        return { channel: r.channel ?? 'general', answer };
+      }
+
+      case 'run_task': {
+        const chapter = str(args.chapter, 'chapter');
+        const slug = resolveTaskSlug(str(args.task, 'task'));
+        if (!slug) {
+          return { error: `unknown task "${args.task}" — try one of: ${RUN_TASK_NAMES.join(', ')}` };
+        }
+        if (slug === 'citations') {
+          return { error: 'for citations, use search_corpus / search_shamela then insert_footnote — run_task will not invent references' };
+        }
+        const prompt = getRefineTextPrompt(slug);
+        if (!prompt) return { error: `task "${slug}" has no prompt` };
+
+        const dest = chapterPath(root, chapter);
+        const isHtml = taskOutputIsHtml(slug);
+
+        // Read the chapter's current content (html for auto-format, else text).
+        const tmp = path.join(os.tmpdir(), `easyeditor-run-${Date.now()}-${Math.random().toString(36).slice(2)}.${isHtml ? 'html' : 'txt'}`);
+        let source: string;
+        try {
+          await word.fromWord(dest, isHtml ? 'html' : 'txt', tmp);
+          source = fs.readFileSync(tmp, 'utf8');
+        } finally {
+          try { fs.rmSync(tmp, { force: true }); } catch { /* ignore */ }
+        }
+        if (isHtml) source = source.replace(/^[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*$/i, '').trim();
+        if (!source.trim()) return { error: `chapter "${chapter}" has no text to work on` };
+
+        const refined = (await generateContentStream({ prompt: source, systemInstruction: prompt })).trim();
+        if (!refined) return { error: 'the model returned nothing' };
+
+        const backedUp = guardEdit(chapter);
+        const res = await word.applyTextTask(dest, refined, { isHtml });
+        return { chapter, task: slug, revisions: res.revisions, backedUp, changed: true };
+      }
 
       case 'install_font': {
         const fontPath = str(args.font_path, 'font_path');
