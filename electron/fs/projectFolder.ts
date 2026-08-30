@@ -27,22 +27,27 @@ function backupDir(root: string): string {
   return path.join(root, EASYEDITOR_DIR, BACKUP_DIR);
 }
 
+const MAX_SCAN_DEPTH = 4;
+const SKIP_DIRS = new Set([EASYEDITOR_DIR, 'node_modules', '.git', '$RECYCLE.BIN']);
+
 /**
- * Resolve `name` (which must be a bare file name, no separators) inside the
- * project root, and confirm it stays inside. This is the P7 tightening of
- * electron/adapters/paths.ts's guard: a chapter write can only touch a file
- * directly in the open project folder.
+ * Resolve a chapter `name` — a path RELATIVE to the project root, using `/`
+ * separators (real projects nest chapters in per-section subfolders, e.g.
+ * "02-body/draft-3.docx") — and confirm the result stays strictly inside the
+ * root. This is the P7 tightening of electron/adapters/paths.ts's guard:
+ * blocks `..`, absolute paths, null bytes, and anything that escapes.
  */
 export function resolveInProject(root: string, name: string): string {
   if (typeof name !== 'string' || name.trim() === '' || name.includes('\0')) {
     throw new Error('invalid chapter name');
   }
-  if (name !== path.basename(name) || name === '.' || name === '..') {
-    throw new Error(`chapter name must be a bare file name: ${name}`);
+  const normalized = name.replace(/\\/g, '/');
+  if (normalized.startsWith('/') || /^[a-zA-Z]:/.test(normalized)) {
+    throw new Error(`chapter name must be relative: ${name}`);
   }
-  const resolved = path.resolve(root, name);
   const rootResolved = path.resolve(root);
-  if (resolved !== path.join(rootResolved, name)) {
+  const resolved = path.resolve(rootResolved, normalized);
+  if (resolved !== rootResolved && !resolved.startsWith(rootResolved + path.sep)) {
     throw new Error(`chapter path escapes the project folder: ${name}`);
   }
   const ext = path.extname(resolved).toLowerCase();
@@ -78,25 +83,45 @@ function writeManifest(root: string, m: ProjectManifest): void {
 
 // ── chapter listing ────────────────────────────────────────────────────────
 
+/**
+ * Every `.docx` / `.rtf` under the project root, recursively (real theses
+ * nest a folder per chapter). `name` is the path relative to the root with
+ * `/` separators. Depth-capped, and skips `.easyeditor/`, VCS, and system
+ * dirs. `~$` Word lock files are ignored.
+ */
 function listChapterFiles(root: string, order: string[]): ChapterFile[] {
   const orderIndex = new Map(order.map((name, i) => [name, i]));
-  const entries = fs.readdirSync(root, { withFileTypes: true });
+  const rootResolved = path.resolve(root);
   const chapters: ChapterFile[] = [];
-  for (const e of entries) {
-    if (!e.isFile()) continue;
-    const ext = path.extname(e.name).toLowerCase();
-    const format = CHAPTER_EXTS[ext];
-    if (!format) continue;
-    if (e.name.startsWith('~$')) continue; // Word lock file
-    const stat = fs.statSync(path.join(root, e.name));
-    chapters.push({
-      name: e.name,
-      format,
-      size: stat.size,
-      modifiedAt: stat.mtime.toISOString(),
-      order: orderIndex.has(e.name) ? orderIndex.get(e.name)! : Number.MAX_SAFE_INTEGER,
-    });
-  }
+
+  const walk = (dir: string, depth: number): void => {
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.name.startsWith('~$')) continue;
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        if (depth >= MAX_SCAN_DEPTH || SKIP_DIRS.has(e.name) || e.name.startsWith('.')) continue;
+        walk(full, depth + 1);
+        continue;
+      }
+      if (!e.isFile()) continue;
+      const format = CHAPTER_EXTS[path.extname(e.name).toLowerCase()];
+      if (!format) continue;
+      let stat: fs.Stats;
+      try { stat = fs.statSync(full); } catch { continue; }
+      const rel = path.relative(rootResolved, full).split(path.sep).join('/');
+      chapters.push({
+        name: rel,
+        format,
+        size: stat.size,
+        modifiedAt: stat.mtime.toISOString(),
+        order: orderIndex.has(rel) ? orderIndex.get(rel)! : Number.MAX_SAFE_INTEGER,
+      });
+    }
+  };
+  walk(rootResolved, 0);
+
   chapters.sort((a, b) => (a.order - b.order) || a.name.localeCompare(b.name));
   chapters.forEach((c, i) => { c.order = i; });
   return chapters;
@@ -173,7 +198,8 @@ export function backupChapter(root: string, name: string): string | null {
   const dir = backupDir(root);
   fs.mkdirSync(dir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const dest = path.join(dir, `${stamp}__${name}`);
+  const flat = name.replace(/[\\/]/g, '__');
+  const dest = path.join(dir, `${stamp}__${flat}`);
   fs.copyFileSync(src, dest);
   return dest;
 }

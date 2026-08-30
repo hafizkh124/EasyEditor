@@ -79,10 +79,15 @@ export const ProjectFolderSection: React.FC = () => {
                     className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-start text-xs hover:bg-muted/60 disabled:opacity-50"
                     onClick={() => importChapter(c.name)}
                     disabled={pf.busy}
-                    title={t("projectfolder.import_hint", "Insert this chapter into the document")}
+                    title={`${c.name} — ${t("projectfolder.import_hint", "Insert this chapter into the document")}`}
                   >
                     <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <span className="flex-1 truncate">{c.name}</span>
+                    <span className="flex-1 truncate">
+                      {c.name.includes("/") && (
+                        <span className="text-muted-foreground/70">{c.name.slice(0, c.name.lastIndexOf("/") + 1)}</span>
+                      )}
+                      {c.name.slice(c.name.lastIndexOf("/") + 1)}
+                    </span>
                     <Download className="h-3 w-3 shrink-0 opacity-50" />
                   </button>
                 </li>

@@ -64,6 +64,25 @@ describe('openProjectFolder', () => {
     expect(openProjectFolder(root).chapters.map((c) => c.name)).toEqual(['01.docx']);
   });
 
+  it('recurses into per-section subfolders and returns relative paths', () => {
+    fs.mkdirSync(path.join(root, '01-synopsis'));
+    fs.mkdirSync(path.join(root, '02-body'));
+    touch('01-synopsis/synopsis.docx', 'S');
+    touch('02-body/draft-1.docx', 'D1');
+    touch('02-body/draft-2.rtf', 'D2');
+    touch('02-body/~$draft-1.docx');           // lock file — skipped
+    touch('scratch-notes.json');               // not a chapter
+    const names = openProjectFolder(root).chapters.map((c) => c.name);
+    expect(names).toEqual(['01-synopsis/synopsis.docx', '02-body/draft-1.docx', '02-body/draft-2.rtf']);
+  });
+
+  it('skips the .easyeditor internal folder when scanning', () => {
+    fs.mkdirSync(path.join(root, '.easyeditor', 'backups'), { recursive: true });
+    touch('.easyeditor/backups/old__ch.docx', 'BACKUP');
+    touch('real.docx', 'R');
+    expect(openProjectFolder(root).chapters.map((c) => c.name)).toEqual(['real.docx']);
+  });
+
   it('keeps the manifest order across reopen, appending new files last', () => {
     touch('b.docx'); touch('a.docx');
     let pf = openProjectFolder(root);
@@ -80,9 +99,16 @@ describe('resolveInProject', () => {
     expect(resolveInProject(root, 'ch.docx')).toBe(path.join(path.resolve(root), 'ch.docx'));
   });
 
-  it('rejects a path with separators, traversal, or a bad extension', () => {
-    expect(() => resolveInProject(root, '../evil.docx')).toThrow();
-    expect(() => resolveInProject(root, 'sub/ch.docx')).toThrow();
+  it('resolves a NESTED chapter path (real theses nest a folder per section)', () => {
+    expect(resolveInProject(root, '02-body/draft-3.docx')).toBe(path.join(path.resolve(root), '02-body', 'draft-3.docx'));
+    expect(resolveInProject(root, '02-body\\draft.docx')).toBe(path.join(path.resolve(root), '02-body', 'draft.docx'));
+  });
+
+  it('rejects traversal, absolute paths, a bad extension, or a null byte', () => {
+    expect(() => resolveInProject(root, '../evil.docx')).toThrow(/escapes/);
+    expect(() => resolveInProject(root, '02-body/../../evil.docx')).toThrow(/escapes/);
+    expect(() => resolveInProject(root, 'C:/Windows/x.docx')).toThrow(/relative/);
+    expect(() => resolveInProject(root, '/etc/x.docx')).toThrow(/relative/);
     expect(() => resolveInProject(root, 'ch.exe')).toThrow(/format/);
     expect(() => resolveInProject(root, '')).toThrow();
     expect(() => resolveInProject(root, 'a\0b.docx')).toThrow();
