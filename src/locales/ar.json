@@ -947,6 +947,7 @@
   "projectfolder.title": "مجلد المشروع",
   "projectfolder.open": "افتح مجلدًا يحوي فصول .docx",
   "projectfolder.close": "إغلاق المجلد",
+  "projectfolder.change": "تغيير المجلد",
   "projectfolder.refresh": "تحديث",
   "projectfolder.dismiss": "إغلاق",
   "projectfolder.empty": "لا توجد ملفات .docx أو .rtf في هذا المجلد بعد.",

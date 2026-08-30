@@ -157,9 +157,15 @@ export const AgentPanel: React.FC = () => {
             {m === "ask" ? t("agent.mode_ask", "Ask") : t("agent.mode_do", "Do")}
           </button>
         ))}
-        <span className="ms-auto text-xs text-muted-foreground truncate max-w-[45%]" title={pf.folder?.path}>
-          {pf.folder?.manifest.title}
-        </span>
+        <button
+          className="ms-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground truncate max-w-[55%] disabled:opacity-60"
+          title={`${pf.folder?.path ?? ""} — ${t("projectfolder.change", "Change folder")}`}
+          onClick={pf.openFolder}
+          disabled={running || pf.busy}
+        >
+          <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{pf.folder?.manifest.title}</span>
+        </button>
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
