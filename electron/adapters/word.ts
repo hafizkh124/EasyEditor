@@ -71,21 +71,27 @@ export interface ToWordOptions {
   trackChanges?: boolean;
 }
 
+const EXT_FOR: Record<'docx' | 'pdf' | 'rtf' | 'html' | 'txt', DocExt> = {
+  docx: '.docx', pdf: '.pdf', rtf: '.rtf', html: '.html', txt: '.txt',
+};
+
 /**
  * EasyEditor content (HTML from the editor, or any Word-openable source file)
- * → a `.docx`. Word opens the source, options are applied, then SaveAs docx.
+ * → a document in `to`. Word opens the source, options are applied, then it is
+ * exported. `to === 'docx'` uses SaveAs; the rest use Word's own export.
  */
-export async function toWord(
+export async function exportDocument(
   input: { sourcePath?: string; html?: string },
+  to: 'docx' | 'pdf' | 'rtf' | 'html' | 'txt',
   outputPath: string,
   opts: ToWordOptions = {},
 ): Promise<{ outputPath: string; ms: number }> {
-  const out = assertSafeOutputPath(outputPath, ['.docx']);
+  const out = assertSafeOutputPath(outputPath, [EXT_FOR[to]]);
   let tempHtml: string | null = null;
   let source: string;
 
   if (input.html != null) {
-    tempHtml = path.join(os.tmpdir(), `easyeditor-toword-${Date.now()}.html`);
+    tempHtml = path.join(os.tmpdir(), `easyeditor-export-${Date.now()}.html`);
     fs.writeFileSync(
       tempHtml,
       `<!doctype html><html><head><meta charset="utf-8"></head><body>${input.html}</body></html>`,
@@ -95,7 +101,7 @@ export async function toWord(
   } else if (input.sourcePath) {
     source = assertReadableFile(input.sourcePath, OPENABLE);
   } else {
-    throw new Error('toWord: provide either `html` or `sourcePath`');
+    throw new Error('exportDocument: provide either `html` or `sourcePath`');
   }
 
   const started = Date.now();
@@ -106,13 +112,23 @@ export async function toWord(
       await refreshOwnedWord();
       if (opts.trackChanges) await h.sendOk({ op: 'setTrackRevisions', enabled: true });
       if (opts.rtlPageSetup) await h.sendOk({ op: 'setRtlPageSetup' });
-      await h.sendOk({ op: 'saveAs', path: out });
+      if (to === 'docx') await h.sendOk({ op: 'saveAs', path: out });
+      else await h.sendOk({ op: 'exportAs', path: out, format: to });
       await h.sendOk({ op: 'close' });
     });
     return { outputPath: out, ms: Date.now() - started };
   } finally {
     if (tempHtml) { try { fs.rmSync(tempHtml, { force: true }); } catch { /* ignore */ } }
   }
+}
+
+/** `exportDocument(..., 'docx', ...)` — kept as a named entry point. */
+export function toWord(
+  input: { sourcePath?: string; html?: string },
+  outputPath: string,
+  opts: ToWordOptions = {},
+): Promise<{ outputPath: string; ms: number }> {
+  return exportDocument(input, 'docx', outputPath, opts);
 }
 
 /** `.docx` (or any openable source) → pdf / rtf / html / txt via Word's own export. */
