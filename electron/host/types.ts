@@ -19,9 +19,10 @@ export type HostCommand =
   | { op: 'insertFootnote'; text: string }
   | { op: 'installFontCheck'; fontName: string }
   | { op: 'installFont'; path: string }
+  | { op: 'readStructure' }
   | { op: 'save' }
   | { op: 'saveAs'; path: string }
-  | { op: 'exportRtf'; path: string }
+  | { op: 'exportAs'; path: string; format: 'docx' | 'pdf' | 'rtf' | 'html' | 'txt' }
   | { op: 'wordPid' }
   | { op: 'close' }
   | { op: 'quit' };
@@ -57,6 +58,24 @@ export interface DetectWordReply extends HostReply {
   build?: string | null;
 }
 
+export interface ReadStructureReply extends HostReply {
+  ok: true;
+  op: 'readStructure';
+  headings: string[];
+  footnotes: Array<{ index: number; text: string }>;
+  trackedChanges: number;
+  wordCount: number;
+  readingOrder: 'rtl' | 'ltr' | 'mixed';
+}
+
+export interface InstallFontReply extends HostReply {
+  ok: true;
+  op: 'installFont';
+  fontName: string;
+  facesRegistered: number;
+  verifiedInRunningWord: boolean;
+}
+
 /** Result of {@link detectTools}. */
 export interface ToolAvailability {
   /** PowerShell itself is reachable (always true on a working Windows box). */
@@ -75,7 +94,11 @@ export const OP_TIMEOUT_MS: Partial<Record<HostOp, number>> & { default: number 
   default: 20_000,
   ping: 5_000,
   detectWord: 30_000,
+  open: 60_000,
   openPdfReflow: 120_000,
+  readStructure: 60_000,
+  exportAs: 120_000,
+  saveAs: 60_000,
   installFont: 15_000,
   quit: 8_000,
 };

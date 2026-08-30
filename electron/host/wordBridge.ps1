@@ -145,6 +145,7 @@ while ($true) {
             }
 
             'installFontCheck' {
+                Ensure-Word
                 $names = @()
                 foreach ($f in $script:word.FontNames) { $names += $f }
                 Write-Result @{ ok = $true; op = 'installFontCheck'; found = ($names -contains $cmd.fontName); fontCount = $names.Count }
@@ -155,6 +156,7 @@ while ($true) {
                 # P0 proof 5: file copy + HKCU key ALONE is not enough — the
                 # AddFontResourceW + WM_FONTCHANGE broadcast is what makes it
                 # visible without a Word restart.
+                Ensure-Word
                 $src = $cmd.path
                 if (-not (Test-Path $src)) { throw "font file not found: $src" }
 
@@ -196,6 +198,45 @@ public static class WordBridgeFontApi {
                 Write-Result @{ ok = $true; op = 'installFont'; fontName = $fontName; facesRegistered = $faces; verifiedInRunningWord = $verified }
             }
 
+            'readStructure' {
+                # docx -> EasyEditor doc inspection side (SPEC-M8 §4). Uses
+                # Word's own cross-reference list for headings rather than
+                # walking every paragraph (fast on large books).
+                Require-Doc
+                $headings = @()
+                try {
+                    foreach ($h in $script:doc.GetCrossReferenceItems(1)) {  # wdRefTypeHeading
+                        $t = ("$h").Trim()
+                        if ($t.Length -gt 0) { $headings += $t }
+                    }
+                } catch { }
+
+                $footnotes = @()
+                $i = 0
+                foreach ($fn in $script:doc.Footnotes) {
+                    $i++
+                    $footnotes += @{ index = $i; text = ("" + $fn.Range.Text).Trim() }
+                }
+
+                $ro = 'mixed'
+                try {
+                    $val = $script:doc.Content.ParagraphFormat.ReadingOrder
+                    if ($val -eq 1) { $ro = 'rtl' } elseif ($val -eq 0) { $ro = 'ltr' }
+                } catch { }
+
+                $words = 0
+                try { $words = $script:doc.ComputeStatistics(0) } catch { $words = $script:doc.Words.Count }  # wdStatisticWords
+
+                Write-Result @{
+                    ok = $true; op = 'readStructure'
+                    headings = $headings
+                    footnotes = $footnotes
+                    trackedChanges = $script:doc.Revisions.Count
+                    wordCount = $words
+                    readingOrder = $ro
+                }
+            }
+
             'save' {
                 Require-Doc
                 $script:doc.Save()
@@ -208,10 +249,19 @@ public static class WordBridgeFontApi {
                 Write-Result @{ ok = $true; op = 'saveAs'; path = $cmd.path }
             }
 
-            'exportRtf' {
+            'exportAs' {
+                # Generic export. Format constants: wdFormat* enum.
                 Require-Doc
-                $script:doc.SaveAs2($cmd.path, 6)  # wdFormatRTF
-                Write-Result @{ ok = $true; op = 'exportRtf'; path = $cmd.path }
+                $fmt = switch ("$($cmd.format)".ToLower()) {
+                    'docx' { 16 }  # wdFormatXMLDocument
+                    'pdf'  { 17 }  # wdFormatPDF
+                    'rtf'  { 6 }   # wdFormatRTF
+                    'html' { 8 }   # wdFormatFilteredHTML
+                    'txt'  { 7 }   # wdFormatUnicodeText (UTF-16 — safe for Urdu/Arabic)
+                    default { throw "unsupported export format: $($cmd.format)" }
+                }
+                $script:doc.SaveAs2($cmd.path, $fmt)
+                Write-Result @{ ok = $true; op = 'exportAs'; path = $cmd.path; format = $cmd.format }
             }
 
             'wordPid' {

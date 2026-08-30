@@ -27,6 +27,23 @@ export * from './types.js';
 
 let host: WordHost | null = null;
 
+// The host is line-serial, but a document operation is a *sequence* of ops
+// (open → … → saveAs → close) against the single `$script:doc`. Two sequences
+// interleaving would corrupt that state, so every adapter document session
+// runs through this mutex. It also matches SPEC-M8's "only one agent task at
+// a time" rule for COM re-entrancy — extended here to plain menu conversions.
+let chain: Promise<unknown> = Promise.resolve();
+
+export function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+  const run = chain.then(fn, fn);
+  // Keep the chain going even if fn rejects, but don't let it hold the error.
+  chain = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
 /**
  * The shared host, started on first use. On an unexpected exit (crash) it
  * force-kills any WINWORD.EXE it owned — that is exactly the orphan P0 proof 6

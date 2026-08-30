@@ -22,14 +22,19 @@ const log = logger.child('host/powershell');
  */
 export function resolveBridgeScript(): string {
   const appPath = app?.getAppPath ? app.getAppPath() : process.cwd();
-  const candidates = [
-    // Packaged: electron-builder extraResources → resources/bin.
-    path.join(process.resourcesPath || '', 'bin', 'wordBridge.ps1'),
-    // build:electron staging copy.
-    path.join(appPath, 'resources', 'bin', 'wordBridge.ps1'),
-    // Dev: the source of truth.
-    path.join(appPath, 'electron', 'host', 'wordBridge.ps1'),
-  ];
+  const packaged = Boolean(app?.isPackaged);
+  // In a packaged build the .ps1 only exists under resources/bin (electron/ is
+  // not in build.files). In dev the repo copy is the source of truth — prefer
+  // it over any stale resources/bin/ staging left by an earlier `build:electron`.
+  const candidates = packaged
+    ? [
+        path.join(process.resourcesPath || '', 'bin', 'wordBridge.ps1'),
+        path.join(appPath, 'resources', 'bin', 'wordBridge.ps1'),
+      ]
+    : [
+        path.join(appPath, 'electron', 'host', 'wordBridge.ps1'),
+        path.join(process.resourcesPath || '', 'bin', 'wordBridge.ps1'),
+      ];
   for (const c of candidates) {
     if (c && fs.existsSync(c)) return c;
   }

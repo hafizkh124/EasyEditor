@@ -1,16 +1,18 @@
 // @vitest-environment node
-// electron/host/ — LIVE end-to-end test (SPEC-M8 Layer 1 / P1 exit criterion:
-// "an integration test driving the real host").
+// electron/host/ + electron/adapters/word.ts — LIVE end-to-end tests
+// (SPEC-M8 P1 exit criterion "an integration test driving the real host",
+// and the P2 Word-adapter round-trips).
 //
 // Skipped unless DOC_BRIDGE_LIVE=1, because it needs a real Windows machine
 // with Microsoft Word installed — CI (Ubuntu) cannot run it. Run locally:
 //
 //     DOC_BRIDGE_LIVE=1 npx vitest run src/test/hostLive.test.ts
 //
-// It exercises the whole P1 stack against real Word: tool detection, the
-// long-lived host, a document round-trip, and — the point of P0 proof 6 —
-// that process.ts actually kills a WINWORD.EXE the host started once the host
-// dies uncleanly.
+// P1: tool detection, the long-lived host, a document round-trip, and — the
+// point of P0 proof 6 — that process.ts kills a WINWORD.EXE the host started
+// once the host dies uncleanly.
+// P2: toWord / fromWord / reflowPdf / readStructure / installFont through the
+// adapter, against real Word, producing real files.
 import { describe, it, expect, afterAll } from 'vitest';
 import type { WordPidReply } from '../../electron/host/types.ts';
 import path from 'node:path';
@@ -30,6 +32,7 @@ function winwordAlive(pid: number): boolean {
 }
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'docbridge-live-'));
+const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), 'docbridge-live-p2-'));
 
 describe.runIf(LIVE)('doc-bridge live (real Word)', () => {
   afterAll(() => {
@@ -104,5 +107,83 @@ describe.runIf(LIVE)('doc-bridge live (real Word)', () => {
 
     await new Promise((r) => setTimeout(r, 1500));
     expect(winwordAlive(wp.pid)).toBe(false);
+  });
+});
+
+describe.runIf(LIVE)('Word adapter live (P2, real Word)', () => {
+  const outPath = (name: string) => path.join(tmp2, name);
+
+  afterAll(async () => {
+    const { shutdownDocBridge } = await import('../../electron/host/index.ts');
+    await shutdownDocBridge();
+    fs.rmSync(tmp2, { recursive: true, force: true });
+  });
+
+  it('toWord: editor HTML → a real .docx with RTL + tracked changes', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const out = outPath('from-html.docx');
+    const res = await word.toWord(
+      { html: '<h1>باب اول</h1><p>یہ اڈاپٹر ٹیسٹ کا متن ہے۔</p>' },
+      out,
+      { rtlPageSetup: true, trackChanges: true },
+    );
+    expect(res.outputPath).toBe(out);
+    expect(fs.statSync(out).size).toBeGreaterThan(0);
+
+    const s = await word.readStructure(out);
+    expect(s.readingOrder).toBe('rtl');
+    expect(s.headings).toContain('باب اول');
+  });
+
+  it('fromWord: .docx → .pdf and → .rtf via Word export', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const pdf = outPath('exported.pdf');
+    await word.fromWord(FIXTURE, 'pdf', pdf);
+    expect(fs.statSync(pdf).size).toBeGreaterThan(0);
+    expect(fs.readFileSync(pdf).subarray(0, 5).toString()).toBe('%PDF-');
+
+    const rtf = outPath('exported.rtf');
+    await word.fromWord(FIXTURE, 'rtf', rtf);
+    expect(fs.readFileSync(rtf, 'utf8').startsWith('{\\rtf')).toBe(true);
+  });
+
+  it('reflowPdf: a text .pdf → .docx with a plausible word count', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const srcPdf = outPath('for-reflow.pdf');
+    await word.fromWord(FIXTURE, 'pdf', srcPdf); // make a real text PDF first
+
+    const phases: string[] = [];
+    const res = await word.reflowPdf(srcPdf, outPath('reflowed.docx'), (p) => phases.push(p.phase));
+    expect(res.wordCount).toBeGreaterThan(0);
+    expect(phases).toEqual(['reflowing', 'saving', 'done']);
+    expect(fs.statSync(res.outputPath).size).toBeGreaterThan(0);
+  });
+
+  it('readStructure: reports headings, footnotes, tracked changes, reading order', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const s = await word.readStructure(FIXTURE);
+    expect(typeof s.wordCount).toBe('number');
+    expect(['rtl', 'ltr', 'mixed']).toContain(s.readingOrder);
+    expect(Array.isArray(s.headings)).toBe(true);
+  });
+
+  it('installFont: a font not on this machine becomes visible to running Word', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    // Liberation Sans ships inside pdfjs-dist and is not a Windows font.
+    const font = path.resolve('node_modules/pdfjs-dist/standard_fonts/LiberationSans-Regular.ttf');
+    if (!fs.existsSync(font)) return; // dependency layout changed — skip rather than fail
+
+    try {
+      const res = await word.installFont(font);
+      expect(res.fontName).toMatch(/Liberation/);
+      expect(res.verified).toBe(true);
+    } finally {
+      // uninstall so the machine is left clean
+      spawnSync('powershell', ['-NoProfile', '-Command',
+        "$d = Join-Path $env:LOCALAPPDATA 'Microsoft\\Windows\\Fonts\\LiberationSans-Regular.ttf'; " +
+        "Remove-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts' -Name 'Liberation Sans (TrueType)' -EA SilentlyContinue; " +
+        "Remove-Item $d -Force -EA SilentlyContinue",
+      ]);
+    }
   });
 });
