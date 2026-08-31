@@ -61,6 +61,16 @@ export default defineConfig(({ mode }) => {
     },
   };
 
+  // See the `build.lib` comment below: undo mergeConfig's concat of the
+  // plugin's default `formats: ["es"]` onto our `["cjs"]`. Runs after the merge.
+  const forceCjsElectronLib: Plugin = {
+    name: "electron-force-cjs-lib",
+    config(cfg) {
+      const lib = cfg.build?.lib;
+      if (lib && typeof lib === "object") lib.formats = ["cjs"];
+    },
+  };
+
   const electronViteConfig = {
     define: electronDefine,
     resolve: {
@@ -69,18 +79,23 @@ export default defineConfig(({ mode }) => {
         "~shared": path.resolve(__dirname, "./shared"),
       },
     },
-    plugins: [writeCjsPackageJson],
+    plugins: [writeCjsPackageJson, forceCjsElectronLib],
     build: {
-      // vite-plugin-electron reads the project's own package.json "type"
-      // field to decide `build.lib.formats` for every entry it builds
-      // ("es" here, since the root package.json says "type": "module") —
-      // rollupOptions.output.format is not consulted for a lib-mode build,
-      // so overriding it there (as a first attempt at this fix did) had no
-      // effect. `lib.formats` is the option that actually wins.
-      // Cast: vite-plugin-electron merges this into its own generated
-      // `lib.entry` at runtime, but Vite's own `LibraryOptions` type demands
-      // `entry` up front — supplying a real one here would just overwrite
-      // the entry vite-plugin-electron already resolved.
+      // The electron main/preload bundles MUST be CommonJS: Electron's
+      // sandboxed preload loader cannot execute ESM `import` (it throws
+      // "Cannot use import statement outside a module", which leaves
+      // `window.electronAPI` undefined and every desktop feature broken).
+      //
+      // But a `"type": "module"` root package.json makes vite-plugin-electron
+      // default `build.lib.formats` to `["es"]`, and Vite's `mergeConfig`
+      // CONCATENATES arrays — so this `["cjs"]` becomes `["es", "cjs"]` and
+      // both bundles get built into the same `[name].js`. `forceCjsElectronLib`
+      // (a plugin `config` hook, which runs AFTER the merge) puts it back to
+      // exactly `["cjs"]`. `writeCjsPackageJson` then marks `dist-electron/`
+      // as CommonJS so Node parses the `.js` output as CJS.
+      //
+      // Cast: Vite's `LibraryOptions` type demands `entry` up front, but
+      // vite-plugin-electron injects the real entry at runtime.
       lib: {
         formats: ["cjs"],
       } as import("vite").LibraryOptions,
