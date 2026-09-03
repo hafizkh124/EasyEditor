@@ -974,6 +974,8 @@
   "agent.needs_input_hint": "جاری رکھنے کے لیے نیچے جواب دیں۔",
   "agent.artifact_supported": "مؤیَّد",
   "agent.artifact_unverified": "غیر مصدّق",
+  "agent.drop_files": "ریکارڈنگز، اسکینز، فونٹس یا ٹیمپلیٹس شامل کرنے کے لیے یہاں چھوڑیں",
+  "agent.importing": "فائلیں پروجیکٹ میں شامل کی جا رہی ہیں…",
   "agent.placeholder": "پوچھیں، یا کوئی کام بتائیں…  @باب  /playbook",
   "agent.send": "بھیجیں",
   "agent.no_answer": "(کوئی جواب نہیں)",

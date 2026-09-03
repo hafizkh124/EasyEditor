@@ -11,13 +11,13 @@
  * Pure — no runtime globals.
  */
 
-export type MentionKind = 'chapter' | 'heading' | 'shamela-book';
+export type MentionKind = 'chapter' | 'heading' | 'shamela-book' | 'media' | 'scan' | 'asset';
 
 export interface Mention {
   kind: MentionKind;
   /** What the user sees in the picker and what gets inserted (without the @). */
   label: string;
-  /** The explicit reference the agent receives (file name, heading text, book id). */
+  /** The explicit reference the agent receives (file name, heading text, book id, in-project path). */
   ref: string;
 }
 
@@ -26,6 +26,17 @@ export interface MentionSources {
   /** Headings from the currently open document, in order. */
   outline?: string[];
   shamelaBooks?: Array<{ id: string; title: string }>;
+  /**
+   * Non-chapter project files (M9 Phase 3) — `name` is the in-project path
+   * (e.g. "media/lecture.mp3"), `kind` its category.
+   */
+  assets?: Array<{ name: string; kind: 'media' | 'scan' | 'asset' }>;
+}
+
+/** basename without the extension, for a readable picker label. */
+function baseLabel(relPath: string): string {
+  const file = relPath.split('/').pop() ?? relPath;
+  return file;
 }
 
 export function buildMentions(sources: MentionSources): Mention[] {
@@ -39,6 +50,9 @@ export function buildMentions(sources: MentionSources): Mention[] {
   }
   for (const b of sources.shamelaBooks ?? []) {
     out.push({ kind: 'shamela-book', label: b.title, ref: `shamela:${b.id}` });
+  }
+  for (const a of sources.assets ?? []) {
+    out.push({ kind: a.kind, label: baseLabel(a.name), ref: a.name });
   }
   return out;
 }

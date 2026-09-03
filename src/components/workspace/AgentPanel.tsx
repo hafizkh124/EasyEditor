@@ -60,10 +60,22 @@ export const AgentPanel: React.FC = () => {
   const [caps, setCaps] = useState<string | null>(null);
   const [picker, setPicker] = useState<{ kind: "mention" | "command"; query: string } | null>(null);
   const [shamelaBooks, setShamelaBooks] = useState<Array<{ id: string; title: string }>>([]);
+  const [assets, setAssets] = useState<Array<{ name: string; kind: "media" | "scan" | "asset" }>>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [importing, setImporting] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const shamelaDbRef = useRef<string | null | undefined>(undefined);
 
   const projectRoot = pf.folder?.path ?? null;
+
+  const refreshAssets = useCallback(async () => {
+    const fsApi = window.electronAPI?.projectFolder;
+    if (!fsApi?.listAssets || !projectRoot) return;
+    try { setAssets((await fsApi.listAssets(projectRoot)).map((a) => ({ name: a.name, kind: a.kind }))); }
+    catch (err) { log.debug("listAssets failed", { err }); }
+  }, [projectRoot]);
+
+  useEffect(() => { void refreshAssets(); }, [refreshAssets]);
 
   useEffect(() => {
     window.electronAPI?.docBridge?.detectTools().then((d) => {
@@ -136,9 +148,45 @@ export const AgentPanel: React.FC = () => {
       chapters: pf.chapters.map((c) => c.name),
       outline: ws?.documentOutline ?? [],
       shamelaBooks,
+      assets,
     }),
-    [pf.chapters, ws?.documentOutline, shamelaBooks],
+    [pf.chapters, ws?.documentOutline, shamelaBooks, assets],
   );
+
+  // ── M9 Phase 3: drag a recording / scan / font onto the panel ──────────
+  const importFiles = useCallback(async (files: FileList | File[]) => {
+    const fsApi = window.electronAPI?.projectFolder;
+    if (!fsApi?.importAsset || !projectRoot) return;
+    setImporting(true);
+    const added: string[] = [];
+    try {
+      for (const file of Array.from(files)) {
+        try {
+          const asset = await fsApi.importAsset(projectRoot, file.name, await file.arrayBuffer());
+          added.push(asset.name.split("/").pop() ?? asset.name);
+        } catch (err) {
+          log.warn("importAsset failed", { name: file.name, err });
+        }
+      }
+      if (added.length) {
+        await refreshAssets();
+        setInput((prev) => `${prev}${prev && !prev.endsWith(" ") ? " " : ""}${added.map((n) => `@${n}`).join(" ")} `);
+        requestAnimationFrame(() => taRef.current?.focus());
+      }
+    } finally {
+      setImporting(false);
+    }
+  }, [projectRoot, refreshAssets]);
+
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    if (Array.from(e.dataTransfer.types).includes("Files")) { e.preventDefault(); setIsDragOver(true); }
+  }, []);
+  const onDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragOver(false); }, []);
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files?.length) void importFiles(e.dataTransfer.files);
+  }, [importFiles]);
 
   // Shamela-book mentions are looked up lazily: the local library holds
   // thousands of titles, so we only query once the `@` token is specific
@@ -326,7 +374,19 @@ export const AgentPanel: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full relative"
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {(isDragOver || importing) && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center rounded border-2 border-dashed border-primary bg-primary/10 text-sm font-medium text-primary">
+          {importing
+            ? t("agent.importing", "Adding files to the project…")
+            : t("agent.drop_files", "Drop recordings, scans, fonts, or templates to add them")}
+        </div>
+      )}
       {/* Mode toggle — Ask (read-only) / Plan (approve first) / Auto (M9 ADR-0026) */}
       <div className="flex items-center gap-1 border-b border-border p-2 shrink-0">
         {(["ask", "plan", "auto"] as Mode[]).map((m) => (

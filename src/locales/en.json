@@ -974,6 +974,8 @@
   "agent.needs_input_hint": "Reply below to continue.",
   "agent.artifact_supported": "supported",
   "agent.artifact_unverified": "unverified",
+  "agent.drop_files": "Drop recordings, scans, fonts, or templates to add them",
+  "agent.importing": "Adding files to the project…",
   "agent.placeholder": "Ask, or describe a task…  @chapter  /playbook",
   "agent.send": "Send",
   "agent.no_answer": "(no answer)",

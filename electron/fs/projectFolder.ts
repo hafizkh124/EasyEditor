@@ -11,11 +11,102 @@ import {
   type ProjectFolder,
   type ChapterFile,
   type ChapterFormat,
+  type ProjectAsset,
+  type ProjectAssetKind,
 } from '../../shared/fs/projectTypes.js';
 
 const log = logger.child('fs/projectFolder');
 
 const CHAPTER_EXTS: Record<string, ChapterFormat> = { '.docx': 'docx', '.rtf': 'rtf' };
+
+// ── M9 Phase 3: non-chapter assets (recordings, scans, fonts, templates) ────
+
+const MEDIA_EXTS = new Set(['.mp3', '.m4a', '.wav', '.ogg', '.flac', '.aac', '.mp4', '.mkv', '.mov', '.webm']);
+const SCAN_EXTS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.tif', '.tiff', '.webp', '.bmp']);
+const OTHER_ASSET_EXTS = new Set(['.ttf', '.otf', '.ttc', '.dotx', '.dotm']);
+const ALL_ASSET_EXTS = new Set([...MEDIA_EXTS, ...SCAN_EXTS, ...OTHER_ASSET_EXTS]);
+
+function assetKindForExt(ext: string): ProjectAssetKind | null {
+  if (MEDIA_EXTS.has(ext)) return 'media';
+  if (SCAN_EXTS.has(ext)) return 'scan';
+  if (OTHER_ASSET_EXTS.has(ext)) return 'asset';
+  return null;
+}
+
+/** Resolve an in-project asset path (broader extension set than a chapter), same jail. */
+export function resolveAsset(root: string, name: string): string {
+  if (typeof name !== 'string' || name.trim() === '' || name.includes('\0')) {
+    throw new Error('invalid asset name');
+  }
+  const normalized = name.replace(/\\/g, '/');
+  if (normalized.startsWith('/') || /^[a-zA-Z]:/.test(normalized)) {
+    throw new Error(`asset name must be relative: ${name}`);
+  }
+  const rootResolved = path.resolve(root);
+  const resolved = path.resolve(rootResolved, normalized);
+  if (resolved !== rootResolved && !resolved.startsWith(rootResolved + path.sep)) {
+    throw new Error(`asset path escapes the project folder: ${name}`);
+  }
+  const ext = path.extname(resolved).toLowerCase();
+  if (!ALL_ASSET_EXTS.has(ext)) {
+    throw new Error(`unsupported asset type: ${ext || '(none)'}`);
+  }
+  return resolved;
+}
+
+/** Every recording / scan / font / template under `sources/` and `media/`. */
+export function listAssets(root: string): ProjectAsset[] {
+  const rootResolved = path.resolve(root);
+  const out: ProjectAsset[] = [];
+  for (const sub of ['media', 'sources']) {
+    const dir = path.join(rootResolved, sub);
+    const walk = (d: string, depth: number): void => {
+      let entries: fs.Dirent[];
+      try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+      for (const e of entries) {
+        if (e.name.startsWith('~$') || e.name.startsWith('.')) continue;
+        const full = path.join(d, e.name);
+        if (e.isDirectory()) { if (depth < 2) walk(full, depth + 1); continue; }
+        if (!e.isFile()) continue;
+        const ext = path.extname(e.name).toLowerCase();
+        const kind = assetKindForExt(ext);
+        if (!kind) continue;
+        let stat: fs.Stats;
+        try { stat = fs.statSync(full); } catch { continue; }
+        out.push({
+          name: path.relative(rootResolved, full).split(path.sep).join('/'),
+          kind, ext, size: stat.size, modifiedAt: stat.mtime.toISOString(),
+        });
+      }
+    };
+    walk(dir, 0);
+  }
+  out.sort((a, b) => a.name.localeCompare(b.name));
+  return out;
+}
+
+/**
+ * Copy a dropped file into the project folder — `media/` for audio/video,
+ * `sources/` for scans, PDFs, fonts and templates. Only the basename of `name`
+ * is used (any path is stripped); the destination is re-validated with
+ * `resolveAsset` so nothing lands outside the folder. Returns the relative path.
+ */
+export function importDroppedFile(root: string, name: string, bytes: Uint8Array): ProjectAsset {
+  // Spaces → `_` so the file stays a single `@mention` token in the chat box.
+  const base = path.basename(String(name)).replace(/[\\/:*?"<>|\0\s]+/g, '_').trim();
+  if (!base) throw new Error('a file name is required');
+  const ext = path.extname(base).toLowerCase();
+  const kind = assetKindForExt(ext);
+  if (!kind) throw new Error(`unsupported file type: ${ext || '(none)'}`);
+  const sub = kind === 'media' ? 'media' : 'sources';
+  const rel = `${sub}/${base}`;
+  const dest = resolveAsset(root, rel);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, bytes);
+  const stat = fs.statSync(dest);
+  log.info('imported dropped file', { rel, kind, size: stat.size });
+  return { name: rel, kind, ext, size: stat.size, modifiedAt: stat.mtime.toISOString() };
+}
 
 // ── path helpers ───────────────────────────────────────────────────────────
 

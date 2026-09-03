@@ -80,8 +80,17 @@ function mockApi(over: Partial<typeof pf> = {}) {
     },
     docBridge: { detectTools: vi.fn(async () => ({ word: true, wordVersion: "16.0", windows: true })) },
     voice: { transcribe },
+    projectFolder: {
+      listAssets: vi.fn(async () => assetList),
+      importAsset: vi.fn(async (_root: string, name: string) => {
+        const rel = `media/${name.replace(/\s+/g, "_")}`;
+        assetList = [...assetList, { name: rel, kind: "media" as const, ext: ".mp3", size: 10, modifiedAt: "x" }];
+        return assetList[assetList.length - 1];
+      }),
+    },
   };
 }
+let assetList: Array<{ name: string; kind: "media" | "scan" | "asset"; ext: string; size: number; modifiedAt: string }> = [];
 
 beforeEach(() => {
   pf.folder = { path: "C:\\thesis", manifest: { id: "1", title: "My Thesis", createdAt: "x", chapterOrder: [], version: 1 } };
@@ -101,6 +110,7 @@ beforeEach(() => {
 afterEach(() => {
   delete (window as unknown as { electronAPI?: unknown }).electronAPI;
   onProgressCb = null;
+  assetList = [];
   vi.clearAllMocks();
 });
 
@@ -160,6 +170,20 @@ describe("AgentPanel", () => {
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "check @body", selectionStart: 10 } });
     expect(await screen.findByText("02-body.docx")).toBeInTheDocument();
+  });
+
+  it("imports a dropped recording and inserts it as an @mention (M9 Phase 3)", async () => {
+    render(<AgentPanel />);
+    const panel = screen.getByPlaceholderText(/Ask, or describe a task/).closest("div.flex.flex-col.h-full")!;
+    // jsdom's File has no arrayBuffer() — a minimal stand-in is enough here.
+    const file = { name: "درس اول.mp3", type: "audio/mpeg", arrayBuffer: async () => new ArrayBuffer(3) };
+    fireEvent.drop(panel, { dataTransfer: { files: [file], types: ["Files"] } });
+
+    await waitFor(() => {
+      const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
+      expect(ta.value).toContain("@درس_اول.mp3");
+    });
+    expect(window.electronAPI!.projectFolder!.importAsset).toHaveBeenCalledWith("C:\\thesis", "درس اول.mp3", expect.anything());
   });
 
   it("offers the open document's headings as `@` mentions", async () => {
