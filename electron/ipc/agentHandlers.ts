@@ -17,7 +17,9 @@ import { runAgent } from '../agent/run.js';
 import { undoCheckpoint, listCheckpoints } from '../agent/checkpoint.js';
 import { applyGlobalOption, revertGlobalOptions, readLog as readGlobalOptionLog } from '../agent/globalOptions.js';
 import { requestGeneralSearch, resolveGeneralSearch } from '../agent/generalSearch.js';
+import { requestPlanApproval, resolvePlanApproval } from '../agent/planApproval.js';
 import { acquireAgentSlot, releaseAgentSlot, cancelRunningAgent, runningTask } from '../agent/queue.js';
+import type { AgentMode } from '../../shared/agent/types.js';
 import { getWorkspaceDbService } from './workspaceHandlers.js';
 import type { AgentProgress } from '../../shared/agent/types.js';
 
@@ -63,6 +65,15 @@ export function registerAgentHandlers(): void {
         case 'globalOptionLog':
           return { entries: readGlobalOptionLog(String(payload.projectRoot ?? '')) };
 
+        // ── M9: the renderer's reply to a Plan-mode approval request (ADR-0026) ──
+        case 'approvePlan': {
+          resolvePlanApproval(
+            String(payload.runId ?? ''),
+            payload.decision === 'approved' ? 'approved' : 'rejected',
+          );
+          return { ok: true };
+        }
+
         // ── P9: the renderer's reply to a search_general request (ADR-0019 #7) ──
         case 'generalSearchResult': {
           resolveGeneralSearch(String(payload.requestId ?? ''), {
@@ -75,7 +86,10 @@ export function registerAgentHandlers(): void {
 
         case 'run': {
           const instruction = String(payload.instruction ?? '').trim();
-          const mode = payload.mode === 'do' ? 'do' : 'ask';
+          const mode: AgentMode =
+            payload.mode === 'auto' || payload.mode === 'do' ? 'auto'
+            : payload.mode === 'plan' ? 'plan'
+            : 'ask';
           const projectRoot = String(payload.projectRoot ?? '');
           if (!instruction) throw new Error('instruction is required');
           if (!projectRoot) throw new Error('open a project folder first');
@@ -110,6 +124,7 @@ export function registerAgentHandlers(): void {
               onProgress: emit,
               isCancelled: () => cancelled,
               generalSearch: (query) => requestGeneralSearch(id, query, win?.webContents),
+              waitForApproval: (plan) => requestPlanApproval(id, plan, win?.webContents),
             });
 
             if (runId) {
@@ -135,6 +150,7 @@ export function registerAgentHandlers(): void {
               toolCalls: result.toolCalls,
               playbook: result.playbook,
               checkpointId: result.checkpointId,
+              question: result.question,
               error: result.error,
             };
           } finally {

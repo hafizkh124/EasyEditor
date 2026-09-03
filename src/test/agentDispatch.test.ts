@@ -27,8 +27,9 @@ vi.mock('../../electron/adapters/word.ts', () => wordMock);
 const generateContentStream = vi.fn(async () => 'باب دو میں برکت کا ذکر ہے — درست شدہ متن۔');
 vi.mock('../../electron/ai/geminiClient.ts', () => ({ generateContentStream }));
 
-const recordEdit = vi.fn();
-vi.mock('../../electron/agent/checkpoint.ts', () => ({ recordEdit }));
+const recordWrite = vi.fn();
+const recordEdit = recordWrite; // M9: recordEdit is an alias of recordWrite
+vi.mock('../../electron/agent/checkpoint.ts', () => ({ recordWrite, recordEdit: recordWrite }));
 
 vi.mock('../../electron/host/index.ts', () => ({
   detectTools: vi.fn(() => ({ word: true, wordVersion: '16.0', windows: true })),

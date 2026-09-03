@@ -26,8 +26,9 @@ import { RetrievalLedger, assertClaimSupported, type RetrievedChunk, type ClaimC
 import { summariseCapabilities } from '../../shared/agent/capabilities.js';
 import { resolveTaskSlug, taskOutputIsHtml, RUN_TASK_NAMES } from '../../shared/agent/textTasks.js';
 import { getRefineTextPrompt } from '../../shared/ai/prompts/refineText.js';
-import { recordEdit } from './checkpoint.js';
-import type { DispatchFn } from '../../shared/agent/types.js';
+import { recordWrite } from './checkpoint.js';
+import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
+import type { DispatchFn, EmitArtifactFn } from '../../shared/agent/types.js';
 import type { GeneralSearchResult } from './generalSearch.js';
 
 const log = logger.child('agent/dispatch');
@@ -37,6 +38,11 @@ const str = (v: unknown, name: string): string => {
   return v;
 };
 const num = (v: unknown, dflt: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : dflt);
+
+/** ADR-0027 F4 — no single tool result floods the context window. */
+const MAX_TOOL_RESULT_CHARS = 6000;
+const capResult = (text: string): string =>
+  text.length <= MAX_TOOL_RESULT_CHARS ? text : `${text.slice(0, MAX_TOOL_RESULT_CHARS)}\n…[truncated]`;
 
 export interface AgentSession {
   /** Absolute path to the open project folder. */
@@ -50,6 +56,14 @@ export interface AgentSession {
    * in a headless context — `search_general` then returns a clear message.
    */
   generalSearch?: ((query: string) => Promise<GeneralSearchResult>) | null;
+  /** Emits a live artifact event (M9 ADR-0024). No-op when absent. */
+  emitArtifact?: EmitArtifactFn | null;
+  /**
+   * Runs a whole playbook nested inside the free loop (`run_playbook` tool,
+   * M9 ADR-0020). Set by `run.ts` after the dispatcher exists. Absent ⇒ the
+   * tool returns a clear message.
+   */
+  runPlaybookRef?: ((ref: string, chapter?: string) => Promise<unknown>) | null;
 }
 
 export interface Dispatcher {
@@ -63,10 +77,16 @@ export function createDispatcher(session: AgentSession): Dispatcher {
   const checkpointId = session.checkpointId;
   const claimCheck = session.claimCheck ?? null;
   const generalSearch = session.generalSearch ?? null;
+  const emitArtifact: EmitArtifactFn = (ev) => { try { session.emitArtifact?.(ev); } catch { /* non-fatal */ } };
 
-  /** Snapshot a chapter into the task checkpoint + take the per-write backup. */
+  /** Snapshot any in-project write (chapter or not) into the task checkpoint. */
+  const guardWrite = (relPath: string): void => {
+    if (checkpointId) recordWrite(root, checkpointId, relPath);
+  };
+
+  /** guardWrite + the per-write corruption backup (chapters only). */
   const guardEdit = (chapter: string): boolean => {
-    if (checkpointId) recordEdit(root, checkpointId, chapter);
+    guardWrite(chapter);
     return Boolean(backupChapter(root, chapter));
   };
 
@@ -99,7 +119,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
       case 'search_corpus': {
         const query = str(args.query, 'query');
-        const limit = num(args.limit, 8);
+        const limit = Math.min(num(args.limit, 8), 12); // ADR-0027 F4 — hard cap
 
         // (a) the imported personal corpus (FTS over library chunks)
         const svc = await getWorkspaceDbService();
@@ -126,13 +146,13 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         return {
           count: chunks.length,
           note: chunks.length === 0 ? 'Nothing matched in the personal corpus or the open project chapters.' : undefined,
-          results: chunks.slice(0, limit + 4).map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 400) })),
+          results: chunks.slice(0, limit).map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 350) })),
         };
       }
 
       case 'search_shamela': {
         const query = str(args.query, 'query');
-        const limit = num(args.limit, 8);
+        const limit = Math.min(num(args.limit, 8), 12); // ADR-0027 F4 — hard cap
         const hits = await searchShamelaNative(query, limit);
         const chunks: RetrievedChunk[] = hits.map((h) => ({
           id: `shamela:${h.bookId}:${h.pageNumber}`,
@@ -140,7 +160,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           content: h.snippet,
         }));
         ledger.add(chunks);
-        return { count: chunks.length, results: chunks.map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 400) })) };
+        return { count: chunks.length, results: chunks.map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 350) })) };
       }
 
       case 'insert_footnote': {
@@ -205,7 +225,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         }
         const r = await generalSearch(query);
         if (r.error) return { error: r.error };
-        const answer = (r.answer ?? '').trim();
+        const answer = capResult((r.answer ?? '').trim());
         if (!answer) return { count: 0, channel: r.channel ?? 'general', note: 'The General research channel returned nothing.' };
         // Deliberately NOT added to the retrieval ledger: a General answer is
         // not page-precise, so insert_footnote must never be able to cite it.
@@ -246,6 +266,54 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const backedUp = guardEdit(chapter);
         const res = await word.applyTextTask(dest, refined, { isHtml });
         return { chapter, task: slug, revisions: res.revisions, backedUp, changed: true };
+      }
+
+      case 'run_playbook': {
+        const ref = str(args.playbook, 'playbook');
+        const chapter = typeof args.chapter === 'string' && args.chapter.trim() ? args.chapter : undefined;
+        if (!session.runPlaybookRef) {
+          return { error: 'run_playbook is only available from the Agent panel — select the playbook from the / menu instead.' };
+        }
+        return session.runPlaybookRef(ref, chapter);
+      }
+
+      case 'draft_section': {
+        const chapter = str(args.chapter, 'chapter');
+        const mode = str(args.mode, 'mode') as DraftMode;
+        const spec = getDraftMode(mode);
+        if (!spec) return { error: `unknown draft mode "${mode}" — one of: outline, prose, column, translation, summary, literary-urdu` };
+
+        const sourceIds = Array.isArray(args.source_ids) ? args.source_ids.filter((s): s is string => typeof s === 'string') : [];
+        if (spec.grounded && sourceIds.length === 0) {
+          return { error: `draft_section mode "${mode}" needs sources — call search_corpus / search_shamela first and pass their ids as source_ids` };
+        }
+        // Resolve every id through the ledger (same gate as insert_footnote).
+        const sources: Array<{ marker: string; reference: string; excerpt: string }> = [];
+        for (let i = 0; i < sourceIds.length; i += 1) {
+          const chunk = ledger.resolveOrThrow(sourceIds[i]);
+          sources.push({ marker: String(i + 1), reference: chunk.reference, excerpt: (chunk.content ?? '').slice(0, 1200) });
+        }
+
+        const dest = chapterPath(root, chapter);
+        let chapterExcerpt = '';
+        try { chapterExcerpt = (await chapterText(chapter)).slice(0, 3000); } catch { /* new/empty chapter */ }
+
+        const sectionHeading = typeof args.section_heading === 'string' ? args.section_heading : undefined;
+        const content = buildDraftInput({ mode, sectionHeading, chapterExcerpt, sources: sources.length ? sources : undefined });
+        const draft = (await generateContentStream({ prompt: content, systemInstruction: spec.instruction })).trim();
+        if (!draft) return { error: 'the model returned nothing' };
+
+        const artifactId = `draft-${chapter}-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `Draft — ${sectionHeading ?? chapter}`, artifactType: 'document' });
+        emitArtifact({ op: 'delta', artifactId, mode: 'replace', html: spec.html ? draft : undefined, text: spec.html ? undefined : draft });
+
+        const backedUp = guardEdit(chapter);
+        const labelled = spec.html
+          ? `<p><em>[DRAFT — review every claim]</em></p>\n${draft}`
+          : `[DRAFT — review every claim]\n${draft}`;
+        const res = await word.applyTextTask(dest, labelled, { isHtml: spec.html });
+        emitArtifact({ op: 'close', artifactId, status: 'final', targetChapter: chapter });
+        return { chapter, mode, revisions: res.revisions, backedUp, grounded: spec.grounded, sourcesUsed: sources.length };
       }
 
       case 'install_font': {

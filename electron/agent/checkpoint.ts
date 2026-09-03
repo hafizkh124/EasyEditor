@@ -36,7 +36,11 @@ export interface CheckpointMeta {
   createdAt: string;
   /** The agent instruction that opened this checkpoint. */
   label: string;
-  /** Chapter file names snapshotted under this checkpoint. */
+  /**
+   * In-project paths snapshotted under this checkpoint. Usually chapter file
+   * names; M9 also records non-chapter writes (e.g. `sources/x.transcript.txt`)
+   * so every agent write is undoable, not just chapter edits.
+   */
   files: string[];
   /** Set once "Undo this task" has been used. */
   undoneAt?: string;
@@ -61,26 +65,32 @@ function readMeta(root: string, id: string): CheckpointMeta | null {
 }
 
 /**
- * Snapshot `<chapter>` into this checkpoint, once. Call before an edit. A
- * no-op if the file was already snapshotted in this checkpoint, or does not
- * exist yet (a brand-new chapter — undo deletes it, see undoCheckpoint).
+ * Snapshot an in-project file into this checkpoint, once. Call before a write.
+ * A no-op if the file was already snapshotted in this checkpoint. A file that
+ * does not exist yet gets a `.was-new` marker — undo deletes it
+ * (see undoCheckpoint). `relPath` may be nested (`sources/x.txt`).
  */
-export function recordEdit(root: string, id: string, chapter: string): void {
+export function recordWrite(root: string, id: string, relPath: string): void {
   const meta = readMeta(root, id);
-  if (!meta) { log.warn('recordEdit: no such checkpoint', { id }); return; }
-  if (meta.files.includes(chapter)) return;
+  if (!meta) { log.warn('recordWrite: no such checkpoint', { id }); return; }
+  if (meta.files.includes(relPath)) return;
 
   const dir = checkpointDir(root, id);
-  const src = resolveInProject(root, chapter);
+  const src = resolveInProject(root, relPath);
+  const snap = path.join(dir, relPath);
+  fs.mkdirSync(path.dirname(snap), { recursive: true });
   if (fs.existsSync(src)) {
-    fs.copyFileSync(src, path.join(dir, chapter));
+    fs.copyFileSync(src, snap);
   } else {
-    // Marker: the chapter did not exist before this task; undo removes it.
-    fs.writeFileSync(path.join(dir, `${chapter}.was-new`), '', 'utf8');
+    fs.mkdirSync(path.dirname(path.join(dir, `${relPath}.was-new`)), { recursive: true });
+    fs.writeFileSync(path.join(dir, `${relPath}.was-new`), '', 'utf8');
   }
-  meta.files.push(chapter);
+  meta.files.push(relPath);
   fs.writeFileSync(metaPath(root, id), JSON.stringify(meta, null, 2), 'utf8');
 }
+
+/** Back-compat alias — chapter edits are the common case. */
+export const recordEdit = recordWrite;
 
 /** Restore every file this checkpoint touched to its pre-task state. */
 export function undoCheckpoint(root: string, id: string): { restored: string[]; removed: string[] } {
@@ -90,15 +100,16 @@ export function undoCheckpoint(root: string, id: string): { restored: string[]; 
   const restored: string[] = [];
   const removed: string[] = [];
 
-  for (const chapter of meta.files) {
-    const dest = resolveInProject(root, chapter);
-    const snap = path.join(dir, chapter);
+  for (const relPath of meta.files) {
+    const dest = resolveInProject(root, relPath);
+    const snap = path.join(dir, relPath);
     if (fs.existsSync(snap)) {
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.copyFileSync(snap, dest);
-      restored.push(chapter);
-    } else if (fs.existsSync(path.join(dir, `${chapter}.was-new`))) {
+      restored.push(relPath);
+    } else if (fs.existsSync(path.join(dir, `${relPath}.was-new`))) {
       fs.rmSync(dest, { force: true });
-      removed.push(chapter);
+      removed.push(relPath);
     }
   }
 

@@ -11,30 +11,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import CitationBadge from "./CitationBadge";
 import { DOMAIN_LABEL, groupByDomain } from "@/lib/citations/domains";
 
-export interface CitationItem {
-  domain: string;
-  citation_ref: {
-    book?: string;
-    collection?: string;
-    hadith_number?: string | number;
-    grade?: string;
-    rawi?: string;
-    surah_number?: number;
-    surah_name?: string;
-    surah_name_en?: string;
-    verse?: number;
-    juz?: number;
-    fatwa_number?: string;
-    scholar?: string;
-    url?: string;
-    volume?: number;
-    page?: number;
-    author?: string;
-    title?: string;
-    type?: string;
-  };
-  url?: string;
-}
+// The type moved to shared/ (M9 defect #3) so the Electron agent can import it
+// without crossing the purity boundary. Re-exported here for the existing
+// call sites that import it from this module.
+export type { CitationItem, ScholarlyCitationRef } from "~shared/research/citationTypes";
+import type { CitationItem } from "~shared/research/citationTypes";
 
 interface CitationPanelProps {
   citations: CitationItem[];

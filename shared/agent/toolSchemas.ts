@@ -5,9 +5,11 @@
  * here, and every parameter travels as JSON data — never concatenated into a
  * command (security gate 1). "Ask" mode filters to `effect: 'read'` only.
  *
- * Deferred to a later P8 slice: `run_playbook` execution wiring.
+ * M9: `run_playbook` (ADR-0020) and `draft_section` (ADR-0021) are wired.
+ * Each `description` carries an explicit "Do NOT use when…" clause (ADR-0027 F3)
+ * so the model does not reach for a tool on a surface keyword match.
  */
-import type { AgentTool } from './types.js';
+import type { AgentMode, AgentTool } from './types.js';
 
 export const AGENT_TOOLS: AgentTool[] = [
   {
@@ -19,7 +21,7 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'read_document',
-    description: 'Read a chapter file: its headings, footnotes, tracked-change count, word count, and reading order. Use before editing so you know the structure.',
+    description: 'Read a chapter file: its headings, footnotes, tracked-change count, word count, and reading order. Use before editing so you know the structure. Do NOT use to search for a source to cite (that is search_corpus / search_shamela).',
     params: {
       chapter: { type: 'string', description: 'The chapter file name in the open project folder, e.g. "02-body.docx".' },
     },
@@ -28,7 +30,7 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'search_corpus',
-    description: "Page/volume-precise retrieval from the user's personal corpus and the project's own chapters. Returns ranked chunks with citation refs. This is how you find a source to cite.",
+    description: "Page/volume-precise retrieval from the user's personal corpus and the project's own chapters. Returns ranked chunks with citation refs. This is how you find a source to cite. Consult this and search_shamela FIRST — they are the local gold-standard sources and the preferred citation. Do NOT use for a question the open chapter's own text answers (use read_document) or for general web context (use search_general).",
     params: {
       query: { type: 'string', description: 'What to look for, in the source language (Arabic/Urdu/English).' },
       limit: { type: 'number', description: 'Max results (default 8).' },
@@ -38,7 +40,7 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'search_shamela',
-    description: "Full-text search of the user's local Maktaba Shamela library (classical Arabic works). Returns book, page, and snippet.",
+    description: "Full-text search of the user's local Maktaba Shamela library (classical Arabic works). Returns book, page, and snippet. A local gold-standard, citable source. Do NOT use for a claim the personal corpus already covers, or for general web context (use search_general).",
     params: {
       query: { type: 'string', description: 'Arabic search terms.' },
       limit: { type: 'number', description: 'Max results (default 8).' },
@@ -48,7 +50,7 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'search_general',
-    description: "Ask the General research channel a question (the same one the Research tab uses — a signed-in, provenance-tagged web+model search, NOT open browsing). Use only for background/context the personal corpus and Shamela cannot answer. Its result is NOT page-precise, so it can never be used as a footnote source. Needs an internet connection and a signed-in session.",
+    description: "Ask the General research channel a question (the same one the Research tab uses — a signed-in, provenance-tagged web+model search, NOT open browsing). Use ONLY for background/context the personal corpus and Shamela cannot answer. Its result is NOT page-precise, so it can never be used as a footnote source. Do NOT use it as a first resort, for a classical text (use search_shamela), or when the scholar asked for a sourced citation. Needs an internet connection and a signed-in session.",
     params: {
       query: { type: 'string', description: 'The question, in the scholar\'s language.' },
     },
@@ -57,7 +59,7 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'insert_footnote',
-    description: "Insert a real Word footnote at each [N] marker in a chapter, as a tracked change. The footnote text MUST come from a chunk returned by search_corpus/search_shamela — you pass the marker and the source's id, not a reference you typed. Fails if the citation does not resolve to a retrieved chunk, or if `claim` is given and the source does not actually support it.",
+    description: "Insert a real Word footnote at each [N] marker in a chapter, as a tracked change. The footnote text MUST come from a chunk returned by a search_* tool — you pass the marker and the source's id, not a reference you typed. Fails if the citation does not resolve to a retrieved chunk, or if `claim` is given and the source does not actually support it. Do NOT use with a search_general result (never citable), and do NOT pass a `claim` alongside a bibliographic-only source (a work reference that was not read).",
     params: {
       chapter: { type: 'string', description: 'The chapter file name.' },
       marker: { type: 'string', description: 'The literal marker in the text, e.g. "[1]".' },
@@ -98,7 +100,7 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'run_task',
-    description: "Run one of the 12 built-in text tasks (harakat, spelling, paraphrase, summarize, citations, auto-format, normalize, formalize, humanize, shorten, section summaries) on a chapter's text, as a tracked change.",
+    description: "Run one of the built-in text tasks (harakat, spelling, paraphrase, summarize, auto-format, normalize, formalize, humanize, shorten, section-summaries) on a chapter's text, as a tracked change. Do NOT use for citations (use search_* then insert_footnote) or to write new prose from sources (use draft_section).",
     params: {
       chapter: { type: 'string', description: 'The chapter file name.' },
       task: { type: 'string', description: 'The task slug.' },
@@ -127,7 +129,7 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'set_global_option',
-    description: "Propose a change to a Word application setting that affects EVERY document the scholar opens (e.g. turning off as-you-type spell check). This does NOT apply the change — it returns a consent request the scholar must approve in the Agent panel, and every applied change is logged so it can be reverted. Allowed options: check_spelling, check_grammar, smart_quotes.",
+    description: "Propose a change to a Word application setting that affects EVERY document the scholar opens (e.g. turning off as-you-type spell check). This does NOT apply the change — it returns a consent request the scholar must approve in the Agent panel, and every applied change is logged so it can be reverted. Allowed options: check_spelling, check_grammar, smart_quotes. Do NOT use for a setting scoped to one chapter (that is set_page_layout / run_task).",
     params: {
       option: { type: 'string', description: 'One of: check_spelling, check_grammar, smart_quotes.', enum: ['check_spelling', 'check_grammar', 'smart_quotes'] },
       value: { type: 'string', description: '"true" or "false".', enum: ['true', 'false'] },
@@ -135,12 +137,57 @@ export const AGENT_TOOLS: AgentTool[] = [
     required: ['option', 'value'],
     effect: 'write',
   },
+  {
+    name: 'run_playbook',
+    description: "Run a whole playbook — a fixed, ordered sequence of this registry's own tool calls that captures how a skilled scholar does one task (e.g. add verified citations, prepare a thesis chapter). Use when the scholar's request matches a known playbook end-to-end. Do NOT use for a single step (call that tool directly) or when no playbook fits — just work step by step.",
+    params: {
+      playbook: { type: 'string', description: 'The playbook id or its /trigger (e.g. "add-verified-citations" or "/manuscript-takhreej").' },
+      chapter: { type: 'string', description: 'The chapter the playbook acts on, if it needs one.' },
+    },
+    required: ['playbook'],
+    effect: 'write',
+  },
+  {
+    name: 'draft_section',
+    description: "Draft or rewrite a section of a chapter using ONE of a fixed set of instruction modes (outline, prose, column, translation, summary, literary-urdu). The mode picks a fixed instruction template — you never write the generation prompt yourself. Grounded modes (prose, column, translation) REQUIRE source_ids retrieved this task and error without them. Output lands as a tracked change labelled a draft. Do NOT use for a light copy-edit (use run_task) or to insert a citation (use insert_footnote).",
+    params: {
+      chapter: { type: 'string', description: 'The chapter file name.' },
+      mode: {
+        type: 'string',
+        description: 'Which fixed drafting template to run.',
+        enum: ['outline', 'prose', 'column', 'translation', 'summary', 'literary-urdu'],
+      },
+      section_heading: { type: 'string', description: 'The heading of the section to draft under, if the chapter already has structure.' },
+      source_ids: { type: 'array', items: { type: 'string' }, description: 'Ids of chunks retrieved this task — required for prose / column / translation.' },
+    },
+    required: ['chapter', 'mode'],
+    effect: 'write',
+  },
 ];
+
+/**
+ * A pseudo-tool the model may call to ask ONE clarifying question instead of
+ * fanning out on an ambiguous ask (ADR-0027 F6). It is never dispatched — the
+ * model layer turns it into a `clarify` step and the loop surfaces the
+ * question. Not part of `AGENT_TOOLS` (the closed executable registry).
+ */
+export const CLARIFY_TOOL: AgentTool = {
+  name: 'ask_clarifying_question',
+  description: 'Ask the scholar ONE short clarifying question, and only when the request is genuinely ambiguous (a one-word topic, an unclear target, no way to choose a sensible default). Never use it to stall or to avoid doing straightforward work.',
+  params: { question: { type: 'string', description: 'The single question to ask, in the scholar\'s language.' } },
+  required: ['question'],
+  effect: 'read',
+};
 
 export const READ_ONLY_TOOLS: AgentTool[] = AGENT_TOOLS.filter((t) => t.effect === 'read');
 
-/** The tool set for a mode: "ask" is read-only, "do" is everything. */
-export function toolsForMode(mode: 'ask' | 'do'): AgentTool[] {
+/**
+ * The tool set for a mode: "ask" is read-only; "plan" and "auto" get the full
+ * registry (Plan mode still stops before the first write — that gate is in the
+ * loop, not here). Dynamic per-request pruning is layered on top by
+ * `shared/agent/toolScoping.ts` (ADR-0027 F2).
+ */
+export function toolsForMode(mode: AgentMode): AgentTool[] {
   return mode === 'ask' ? READ_ONLY_TOOLS : AGENT_TOOLS;
 }
 
