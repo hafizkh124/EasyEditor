@@ -381,7 +381,7 @@ export const AgentPanel: React.FC = () => {
       onDrop={onDrop}
     >
       {(isDragOver || importing) && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center rounded border-2 border-dashed border-primary bg-primary/10 text-sm font-medium text-primary">
+        <div className="absolute inset-0 z-30 m-1 flex items-center justify-center rounded border border-dashed border-primary bg-primary/10 text-sm font-medium text-primary">
           {importing
             ? t("agent.importing", "Adding files to the project…")
             : t("agent.drop_files", "Drop recordings, scans, fonts, or templates to add them")}
