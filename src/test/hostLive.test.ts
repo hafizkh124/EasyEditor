@@ -395,3 +395,59 @@ describe.runIf(LIVE)('Excel + PowerPoint adapters live (P9, real Office)', () =>
     }
   });
 });
+
+describe.runIf(LIVE)('M9 Phase 2 Word ops live (real Word)', () => {
+  const tmpM9 = fs.mkdtempSync(path.join(os.tmpdir(), 'docbridge-live-m9-'));
+
+  afterAll(async () => {
+    const { shutdownDocBridge } = await import('../../electron/host/index.ts');
+    await shutdownDocBridge();
+    fs.rmSync(tmpM9, { recursive: true, force: true });
+  });
+
+  it('createChapter builds a new RTL .docx from an HTML fragment', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const out = path.join(tmpM9, '01-intro.docx');
+    const res = await word.createChapter(out, { html: '<h1>الباب الأول</h1><p>هذا نص تمهيدي.</p>', rtl: true });
+    expect(fs.existsSync(res.outputPath)).toBe(true);
+    const s = await word.readStructure(out);
+    expect(s.headings.join(' ')).toContain('الأول');
+    expect(s.readingOrder).toBe('rtl');
+  });
+
+  it('addComment attaches a margin comment to the anchor text, as a tracked change', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const ch = path.join(tmpM9, 'body.docx');
+    await word.createChapter(ch, { html: '<p>قال المؤلف رحمه الله في هذا الموضع كلاما.</p>' });
+    const r = await word.addComment(ch, { anchorText: 'قال المؤلف', comment: 'راجع النقل من الأصل', author: 'المشرف' });
+    expect(r.added).toBe(true);
+    // reopen and confirm the comment survived
+    const spawnSyncMod = await import('node:child_process');
+    const check = spawnSyncMod.spawnSync('powershell', ['-NoProfile', '-Command',
+      `$w=New-Object -ComObject Word.Application;$w.Visible=$false;$d=$w.Documents.Open('${ch}');` +
+      `$n=$d.Comments.Count;$d.Close($false);$w.Quit();Write-Output $n`],
+      { encoding: 'utf8', timeout: 60_000 });
+    expect(Number(check.stdout.trim())).toBeGreaterThanOrEqual(1);
+  });
+
+  it('compareManuscripts reads back the differences between two witnesses', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const base = path.join(tmpM9, 'base.docx');
+    const witness = path.join(tmpM9, 'witness.docx');
+    await word.createChapter(base, { html: '<p>وقال الإمام إن العلم نور يهدي إلى الرشاد.</p>' });
+    await word.createChapter(witness, { html: '<p>وقال الإمام إن العلم ضياء يهدي إلى السداد.</p>' });
+    const r = await word.compareManuscripts(base, witness);
+    expect(r.count).toBeGreaterThan(0);
+    expect(fs.readFileSync(base, 'utf8').length).toBeGreaterThan(0); // base untouched
+  });
+
+  it('setPrintLayout applies the trim size + gutter, and buildIndexes marks entries + appends the INDEX', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const ch = path.join(tmpM9, 'book.docx');
+    await word.createChapter(ch, { html: '<p>ذكر الغزالي في الإحياء، ثم عاد الغزالي فقال.</p>' });
+    const pl = await word.setPrintLayout(ch, { trimWidthCm: 14, trimHeightCm: 21, gutterCm: 1.5, mirrorMargins: true, oddEvenHeaders: true, headerOdd: 'الباب', headerEven: 'كتاب' });
+    expect(pl.gutter).toBeGreaterThan(0);
+    const idx = await word.buildIndexes(ch, [{ find: 'الغزالي', entry: 'الغزالي، أبو حامد' }], { heading: 'فهرس الأعلام' });
+    expect(idx.marked).toBeGreaterThanOrEqual(2);
+  });
+});

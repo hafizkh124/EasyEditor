@@ -26,6 +26,10 @@ import type {
   InstallTemplateReply,
   GlobalOptionReply,
   CompareIntoReply,
+  CreateDocumentReply,
+  AddCommentReply,
+  ReadRevisionsReply,
+  MarkIndexEntriesReply,
 } from '../host/types.js';
 import type { CitationFootnote } from '../../shared/convert/citationFootnotes.js';
 import type {
@@ -57,7 +61,11 @@ export const wordDescriptor: AdapterDescriptor = {
     { format: 'html', quality: 0.7, lossy: 'Word HTML is verbose; some character styling is simplified.' },
     { format: 'txt', quality: 0.4, lossy: 'All formatting, footnotes, and images are dropped.' },
   ],
-  ops: ['toWord', 'fromWord', 'reflowPdf', 'readStructure', 'installFont', 'applyCitations', 'installTemplate', 'setGlobalOption'],
+  ops: [
+    'toWord', 'fromWord', 'reflowPdf', 'readStructure', 'installFont', 'applyCitations', 'installTemplate', 'setGlobalOption',
+    // M9 Phase 2
+    'createChapter', 'addComment', 'compareManuscripts', 'setPrintLayout', 'buildIndexes',
+  ],
   platforms: ['win32'],
 };
 
@@ -418,4 +426,169 @@ export async function installFont(
       ...(verified ? {} : { note: 'Font installed, but not yet visible to Word — restart Word to use it.' }),
     };
   });
+}
+
+// ── M9 Phase 2 ────────────────────────────────────────────────────────────
+
+/** Create a new chapter `.docx` — blank, or from an HTML fragment. */
+export async function createChapter(
+  destPath: string,
+  opts: { html?: string; rtl?: boolean } = {},
+): Promise<{ outputPath: string; name: string; ms: number }> {
+  const out = assertSafeOutputPath(destPath, ['.docx']);
+  let tempHtml: string | null = null;
+  if (opts.html != null) {
+    tempHtml = path.join(os.tmpdir(), `easyeditor-newchapter-${Date.now()}-${Math.random().toString(36).slice(2)}.html`);
+    fs.writeFileSync(tempHtml, `<!doctype html><html><head><meta charset="utf-8"></head><body>${opts.html}</body></html>`, 'utf8');
+  }
+  const started = Date.now();
+  let name = path.basename(out);
+  try {
+    await runExclusive(async () => {
+      const h = getWordHost();
+      const r = await h.sendOk<CreateDocumentReply>({
+        op: 'createDocument', path: out, sourcePath: tempHtml ?? undefined, rtl: opts.rtl ?? true,
+      });
+      name = r.name ?? name;
+      await refreshOwnedWord();
+      await h.sendOk({ op: 'close' });
+    });
+    return { outputPath: out, name, ms: Date.now() - started };
+  } finally {
+    if (tempHtml) { try { fs.rmSync(tempHtml, { force: true }); } catch { /* ignore */ } }
+  }
+}
+
+/** Attach a margin comment to the first occurrence of `anchorText`, as a tracked change. */
+export async function addComment(
+  chapterPathArg: string,
+  opts: { anchorText: string; comment: string; author?: string },
+): Promise<{ added: boolean; notFound: boolean; ms: number }> {
+  const dest = assertSafeOutputPath(chapterPathArg, ['.docx']);
+  assertReadableFile(chapterPathArg, OPENABLE);
+  const started = Date.now();
+  let added = false;
+  let notFound = false;
+  await runExclusive(async () => {
+    const h = getWordHost();
+    await h.sendOk({ op: 'open', path: dest });
+    await refreshOwnedWord();
+    try {
+      await h.sendOk({ op: 'setTrackRevisions', enabled: true });
+      const r = await h.sendOk<AddCommentReply>({
+        op: 'addComment', anchorText: opts.anchorText, text: opts.comment, author: opts.author,
+      });
+      added = r.added === true;
+      notFound = r.notFound === true;
+      if (added) await h.sendOk({ op: 'save' });
+    } finally {
+      await h.send({ op: 'close' });
+    }
+  });
+  return { added, notFound, ms: Date.now() - started };
+}
+
+/**
+ * Diff a base chapter against a witness with Word's Compare, then read back
+ * every revision — the raw material for an apparatus criticus
+ * (compare_manuscript_variants). Neither input file is modified.
+ */
+export async function compareManuscripts(
+  basePathArg: string,
+  witnessPathArg: string,
+): Promise<{ revisions: ReadRevisionsReply['revisions']; count: number; ms: number }> {
+  const base = assertReadableFile(basePathArg, OPENABLE);
+  const witness = assertReadableFile(witnessPathArg, OPENABLE);
+  const tempCompared = path.join(os.tmpdir(), `easyeditor-apparatus-${Date.now()}-${Math.random().toString(36).slice(2)}.docx`);
+  const started = Date.now();
+  let revisions: ReadRevisionsReply['revisions'] = [];
+  try {
+    await runExclusive(async () => {
+      const h = getWordHost();
+      await h.sendOk({ op: 'open', path: base });
+      await refreshOwnedWord();
+      await h.sendOk<CompareIntoReply>({ op: 'compareInto', revisedPath: witness, outPath: tempCompared });
+      await h.sendOk({ op: 'close' });
+      await h.sendOk({ op: 'open', path: tempCompared });
+      const r = await h.sendOk<ReadRevisionsReply>({ op: 'readRevisions' });
+      revisions = r.revisions ?? [];
+      await h.send({ op: 'close' });
+    });
+    return { revisions, count: revisions.length, ms: Date.now() - started };
+  } finally {
+    try { fs.rmSync(tempCompared, { force: true }); } catch { /* ignore */ }
+  }
+}
+
+export interface PrintLayoutOptions {
+  trimWidthCm: number;
+  trimHeightCm: number;
+  gutterCm?: number;
+  mirrorMargins?: boolean;
+  oddEvenHeaders?: boolean;
+  differentFirstPage?: boolean;
+  headerOdd?: string;
+  headerEven?: string;
+}
+
+/** Apply print-ready page geometry to a chapter, in place. Not a tracked change (page setup is not a revision). */
+export async function setPrintLayout(chapterPathArg: string, opts: PrintLayoutOptions): Promise<{ pageWidth: number; pageHeight: number; gutter: number; ms: number }> {
+  const dest = assertSafeOutputPath(chapterPathArg, ['.docx']);
+  assertReadableFile(chapterPathArg, OPENABLE);
+  const started = Date.now();
+  let out = { pageWidth: 0, pageHeight: 0, gutter: 0 };
+  await runExclusive(async () => {
+    const h = getWordHost();
+    await h.sendOk({ op: 'open', path: dest });
+    await refreshOwnedWord();
+    try {
+      const r = await h.sendOk<HostReply & { pageWidth: number; pageHeight: number; gutter: number }>({
+        op: 'setPrintLayout',
+        pageWidthCm: opts.trimWidthCm,
+        pageHeightCm: opts.trimHeightCm,
+        gutterCm: opts.gutterCm,
+        mirrorMargins: opts.mirrorMargins,
+        oddEven: opts.oddEvenHeaders,
+        differentFirstPage: opts.differentFirstPage,
+        headerOdd: opts.headerOdd,
+        headerEven: opts.headerEven,
+      });
+      out = { pageWidth: r.pageWidth ?? 0, pageHeight: r.pageHeight ?? 0, gutter: r.gutter ?? 0 };
+      await h.sendOk({ op: 'save' });
+    } finally {
+      await h.send({ op: 'close' });
+    }
+  });
+  return { ...out, ms: Date.now() - started };
+}
+
+/**
+ * Mark every occurrence of each index term with a Word XE field, then append
+ * the INDEX field so Word builds the index (build_scholarly_indexes).
+ */
+export async function buildIndexes(
+  chapterPathArg: string,
+  entries: Array<{ find: string; entry: string }>,
+  opts: { heading?: string } = {},
+): Promise<{ marked: number; ms: number }> {
+  const dest = assertSafeOutputPath(chapterPathArg, ['.docx']);
+  assertReadableFile(chapterPathArg, OPENABLE);
+  const clean = entries.filter((e) => e && e.find.trim() && e.entry.trim());
+  if (clean.length === 0) throw new Error('buildIndexes: no usable index entries');
+  const started = Date.now();
+  let marked = 0;
+  await runExclusive(async () => {
+    const h = getWordHost();
+    await h.sendOk({ op: 'open', path: dest });
+    await refreshOwnedWord();
+    try {
+      const r = await h.sendOk<MarkIndexEntriesReply>({ op: 'markIndexEntries', entries: clean });
+      marked = r.marked ?? 0;
+      await h.sendOk({ op: 'appendIndex', field: 'INDEX', heading: opts.heading });
+      await h.sendOk({ op: 'save' });
+    } finally {
+      await h.send({ op: 'close' });
+    }
+  });
+  return { marked, ms: Date.now() - started };
 }
