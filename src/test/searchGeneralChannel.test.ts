@@ -41,7 +41,9 @@ describe('requestGeneralSearch', () => {
     vi.useFakeTimers();
     const { wc } = fakeSender();
     const p = mod.requestGeneralSearch('run_2', 'x', wc as never);
-    await vi.advanceTimersByTimeAsync(60_001);
+    // M9: the bridge (researchBridge.ts) also serves the slower Islamic channel,
+    // so the timeout is 90s.
+    await vi.advanceTimersByTimeAsync(90_001);
     const r = await p;
     expect(r.error).toMatch(/internet connection and a signed-in session/);
     expect(r.answer).toBeUndefined();
