@@ -27,6 +27,7 @@ reconstruct rationale without rereading commits.
 | [0019](./0019-m8-context-rules-and-checkpoints.md) | `@` mentions, `قواعد.md`, task checkpoints — and what was deliberately not adopted | Accepted |
 | [0020](./0020-m9-playbook-execution.md) | M9 — playbooks are executed by a deterministic step executor, not seeded as advice | Accepted |
 | [0021](./0021-m9-bounded-generative-tools.md) | M9 — `draft_section`: substantial drafting via fixed instruction templates, not free-form prompts | Accepted |
+| [0022](./0022-m9-agent-reach-into-local-subsystems.md) | M9 — `query_tafseer` + `search_hadith` bridged to existing subsystems (citable); `search_web_scholarly`/Firecrawl rejected | Accepted |
 | [0024](./0024-m9-agent-artifact-channel.md) | M9 — the agent artifact channel + live document deltas; "skills" = playbooks + guidance | Accepted |
 | [0026](./0026-m9-studio-shell-and-governance-modes.md) | M9 — Ask/Plan/Auto modes (per-write "Manual" rejected); studio shell | Accepted |
 | [0027](./0027-m9-efficiency-and-intent-precision.md) | M9 — fast path, dynamic tool pruning, negative boundaries, budgeting, early-stop, ask-vs-guess | Accepted |

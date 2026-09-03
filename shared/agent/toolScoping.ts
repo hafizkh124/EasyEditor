@@ -21,7 +21,7 @@ import type { Playbook } from '../playbooks/registry.js';
 export const FLOOR_TOOLS = ['list_capabilities', 'read_document', 'search_corpus'] as const;
 
 /** Search tools whose results may become a footnote (grow as tiers land). */
-export const CITABLE_SEARCH_TOOLS = ['search_corpus', 'search_shamela'] as const;
+export const CITABLE_SEARCH_TOOLS = ['search_corpus', 'search_shamela', 'query_tafseer', 'search_hadith'] as const;
 
 interface DomainRule {
   /** Matched case-insensitively against the ask (substring). */
@@ -36,12 +36,16 @@ interface DomainRule {
  */
 const DOMAIN_RULES: DomainRule[] = [
   {
-    keywords: ['تفسیر', 'تفسير', 'آیت', 'آية', 'قرآن', 'قرآني', 'quran', 'tafsir', 'tafseer', 'ayah', 'aya', 'verse'],
-    tools: ['search_shamela', 'search_general', 'insert_footnote', 'draft_section'],
+    keywords: ['فتویٰ', 'فتوى', 'استفتاء', 'نازلہ', 'حکم شرعی', 'مذاہب', 'fatwa', 'istifta', 'ruling', 'madhhab', 'madhahib'],
+    tools: ['query_tafseer', 'search_hadith', 'search_shamela', 'search_general', 'insert_footnote', 'draft_section'],
+  },
+  {
+    keywords: ['تفسیر', 'تفسير', 'آیت', 'آية', 'قرآن', 'قرآني', 'quran', 'tafsir', 'tafseer', 'ayah', 'aya', 'verse', 'nuzool', 'نزول'],
+    tools: ['query_tafseer', 'search_shamela', 'search_general', 'insert_footnote', 'draft_section'],
   },
   {
     keywords: ['حدیث', 'حديث', 'سند', 'اسناد', 'راوی', 'رواة', 'جرح', 'تعدیل', 'hadith', 'hadeeth', 'isnad', 'sanad', 'rijal', 'rawi', 'takhrij', 'تخریج'],
-    tools: ['search_shamela', 'search_general', 'insert_footnote', 'add_document_comment'],
+    tools: ['search_hadith', 'search_shamela', 'search_general', 'insert_footnote', 'add_document_comment'],
   },
   {
     keywords: ['فونٹ', 'font', 'nastaliq', 'nastaleeq', 'نستعلیق', 'template', 'ٹیمپلیٹ', 'dotx'],

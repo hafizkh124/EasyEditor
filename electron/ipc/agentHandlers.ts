@@ -17,11 +17,15 @@ import { runAgent } from '../agent/run.js';
 import { undoCheckpoint, listCheckpoints } from '../agent/checkpoint.js';
 import { applyGlobalOption, revertGlobalOptions, readLog as readGlobalOptionLog } from '../agent/globalOptions.js';
 import { requestGeneralSearch, resolveGeneralSearch } from '../agent/generalSearch.js';
+import { requestResearch } from '../agent/researchBridge.js';
 import { requestPlanApproval, resolvePlanApproval } from '../agent/planApproval.js';
 import { acquireAgentSlot, releaseAgentSlot, cancelRunningAgent, runningTask } from '../agent/queue.js';
 import type { AgentMode } from '../../shared/agent/types.js';
 import { getWorkspaceDbService } from './workspaceHandlers.js';
 import type { AgentProgress } from '../../shared/agent/types.js';
+import type { CitationItem } from '../../shared/research/citationTypes.js';
+
+type ResearchResultCitations = CitationItem[];
 
 const log = logger.child('ipc/agent');
 
@@ -74,12 +78,13 @@ export function registerAgentHandlers(): void {
           return { ok: true };
         }
 
-        // ── P9: the renderer's reply to a search_general request (ADR-0019 #7) ──
+        // ── P9 / M9: the renderer's reply to a research request (ADR-0019 #7, ADR-0022) ──
         case 'generalSearchResult': {
           resolveGeneralSearch(String(payload.requestId ?? ''), {
             answer: typeof payload.answer === 'string' ? payload.answer : undefined,
             channel: typeof payload.channel === 'string' ? payload.channel : undefined,
             error: typeof payload.error === 'string' ? payload.error : undefined,
+            citations: Array.isArray(payload.citations) ? payload.citations as ResearchResultCitations : undefined,
           });
           return { ok: true };
         }
@@ -124,6 +129,7 @@ export function registerAgentHandlers(): void {
               onProgress: emit,
               isCancelled: () => cancelled,
               generalSearch: (query) => requestGeneralSearch(id, query, win?.webContents),
+              researchSearch: (mode, query) => requestResearch(id, query, win?.webContents, mode),
               waitForApproval: (plan) => requestPlanApproval(id, plan, win?.webContents),
             });
 

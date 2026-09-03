@@ -57,14 +57,16 @@ export async function generateWithTools(
   if (!key) throw new Error('کوئی Gemini key پاس نہیں کی گئی — Settings میں اپنی کلید درج کریں');
 
   const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
-  const body = {
+  const body: Record<string, unknown> = {
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: toContents(messages),
-    tools: [{ functionDeclarations: toFunctionDeclarations(tools) }],
-    // Playbook bind steps force a call to the one tool they were given (ADR-0020).
-    toolConfig: { functionCallingConfig: opts.forceCall ? { mode: 'ANY', allowedFunctionNames: tools.map((t) => t.name) } : { mode: 'AUTO' } },
     generationConfig: { temperature: 0.2 },
   };
+  if (tools.length) {
+    body.tools = [{ functionDeclarations: toFunctionDeclarations(tools) }];
+    // Playbook bind steps force a call to the one tool they were given (ADR-0020).
+    body.toolConfig = { functionCallingConfig: opts.forceCall ? { mode: 'ANY', allowedFunctionNames: tools.map((t) => t.name) } : { mode: 'AUTO' } };
+  }
 
   const res = await fetch(endpoint, {
     method: 'POST',
