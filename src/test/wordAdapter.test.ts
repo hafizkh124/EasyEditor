@@ -25,6 +25,21 @@ const fakeHost = {
       case 'compareInto':
         fs.writeFileSync(String(cmd.outPath), 'tracked-changes');
         return { ok: true, op: cmd.op, revisions: 5, outPath: cmd.outPath };
+      case 'createDocument':
+        return { ok: true, op: cmd.op, name: '05-new.docx' };
+      case 'addComment':
+        return (cmd as { anchorText?: string }).anchorText === 'nope'
+          ? { ok: true, op: cmd.op, added: false, notFound: true }
+          : { ok: true, op: cmd.op, added: true, commentCount: 1 };
+      case 'readRevisions':
+        return { ok: true, op: cmd.op, count: 2, revisions: [
+          { type: 'insert', text: 'زيادة', context: '… زيادة …', page: 3 },
+          { type: 'delete', text: 'نقص', context: '… نقص …', page: 4 },
+        ] };
+      case 'setPrintLayout':
+        return { ok: true, op: cmd.op, pageWidth: 396.85, pageHeight: 595.28, gutter: 42.52 };
+      case 'markIndexEntries':
+        return { ok: true, op: cmd.op, marked: 7 };
       default: return { ok: true, op: cmd.op };
     }
   }),
@@ -184,6 +199,87 @@ describe('applyTextTask (agent run_task)', () => {
 
   it('rejects a chapter that does not exist, before touching the host', async () => {
     await expect(word.applyTextTask(path.join(dir, 'ghost.docx'), 'x', { isHtml: false })).rejects.toThrow(/not found/);
+  });
+});
+
+describe('M9 Phase 2 — createChapter', () => {
+  it('from HTML: temp file → createDocument (rtl default) → close, temp cleaned', async () => {
+    const out = path.join(dir, '05-new.docx');
+    const res = await word.createChapter(out, { html: '<h1>باب پنجم</h1>' });
+    expect(res.name).toBe('05-new.docx');
+    expect(ops()).toEqual(['createDocument', 'close']);
+    const cmd = sent.find((c) => c.op === 'createDocument')!;
+    expect(String(cmd.sourcePath)).toMatch(/\.html$/);
+    expect(cmd.rtl).toBe(true);
+    expect(fs.existsSync(String(cmd.sourcePath))).toBe(false);
+  });
+
+  it('blank chapter sends no sourcePath', async () => {
+    await word.createChapter(path.join(dir, 'blank.docx'), { rtl: false });
+    const cmd = sent.find((c) => c.op === 'createDocument')!;
+    expect(cmd.sourcePath).toBeUndefined();
+    expect(cmd.rtl).toBe(false);
+  });
+
+  it('rejects a non-.docx path before touching the host', async () => {
+    await expect(word.createChapter(path.join(dir, 'x.pdf'))).rejects.toThrow(/not allowed/);
+    expect(fakeHost.sendOk).not.toHaveBeenCalled();
+  });
+});
+
+describe('M9 Phase 2 — addComment', () => {
+  it('opens, turns on track changes, adds the comment, saves, closes', async () => {
+    const ch = path.join(dir, 'ch.docx'); fs.writeFileSync(ch, 'x');
+    const res = await word.addComment(ch, { anchorText: 'قال المؤلف', comment: 'مراجعة النقل', author: 'المشرف' });
+    expect(res).toMatchObject({ added: true, notFound: false });
+    expect(ops()).toEqual(['open', 'setTrackRevisions', 'addComment', 'save', 'close']);
+    expect(sent.find((c) => c.op === 'addComment')).toMatchObject({ anchorText: 'قال المؤلف', text: 'مراجعة النقل', author: 'المشرف' });
+  });
+
+  it('reports notFound and does not save when the anchor is missing', async () => {
+    const ch = path.join(dir, 'ch.docx'); fs.writeFileSync(ch, 'x');
+    const res = await word.addComment(ch, { anchorText: 'nope', comment: 'x' });
+    expect(res.notFound).toBe(true);
+    expect(ops()).not.toContain('save');
+  });
+});
+
+describe('M9 Phase 2 — compareManuscripts', () => {
+  it('compares base vs witness, reads revisions back, never modifies the inputs', async () => {
+    const base = path.join(dir, 'base.docx'); fs.writeFileSync(base, 'base');
+    const witness = path.join(dir, 'witness.docx'); fs.writeFileSync(witness, 'witness');
+    const res = await word.compareManuscripts(base, witness);
+    expect(res.count).toBe(2);
+    expect(res.revisions[0]).toMatchObject({ type: 'insert', text: 'زيادة' });
+    expect(ops()).toEqual(['open', 'compareInto', 'close', 'open', 'readRevisions', 'close']);
+    expect(fs.readFileSync(base, 'utf8')).toBe('base');
+    expect(fs.readFileSync(witness, 'utf8')).toBe('witness');
+  });
+});
+
+describe('M9 Phase 2 — setPrintLayout', () => {
+  it('opens, applies the geometry, saves, closes', async () => {
+    const ch = path.join(dir, 'ch.docx'); fs.writeFileSync(ch, 'x');
+    const res = await word.setPrintLayout(ch, { trimWidthCm: 14, trimHeightCm: 21, gutterCm: 1.5, mirrorMargins: true, oddEvenHeaders: true, headerOdd: 'الباب الأول', headerEven: 'كتاب' });
+    expect(res.pageWidth).toBeGreaterThan(0);
+    expect(ops()).toEqual(['open', 'setPrintLayout', 'save', 'close']);
+    expect(sent.find((c) => c.op === 'setPrintLayout')).toMatchObject({ pageWidthCm: 14, pageHeightCm: 21, gutterCm: 1.5, mirrorMargins: true, oddEven: true });
+  });
+});
+
+describe('M9 Phase 2 — buildIndexes', () => {
+  it('marks the entries then appends the INDEX field, saves, closes', async () => {
+    const ch = path.join(dir, 'ch.docx'); fs.writeFileSync(ch, 'x');
+    const res = await word.buildIndexes(ch, [{ find: 'الغزالي', entry: 'الغزالي، أبو حامد' }], { heading: 'فهرس الأعلام' });
+    expect(res.marked).toBe(7);
+    expect(ops()).toEqual(['open', 'markIndexEntries', 'appendIndex', 'save', 'close']);
+    expect(sent.find((c) => c.op === 'appendIndex')).toMatchObject({ field: 'INDEX', heading: 'فهرس الأعلام' });
+  });
+
+  it('refuses an empty entry list before touching the host', async () => {
+    const ch = path.join(dir, 'ch.docx'); fs.writeFileSync(ch, 'x');
+    await expect(word.buildIndexes(ch, [{ find: ' ', entry: '' }])).rejects.toThrow(/no usable index entries/);
+    expect(fakeHost.sendOk).not.toHaveBeenCalled();
   });
 });
 

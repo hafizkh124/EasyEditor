@@ -27,6 +27,23 @@ export type HostCommand =
   | { op: 'setGlobalOption'; name: string; value: string }
   | { op: 'readStructure' }
   | { op: 'compareInto'; revisedPath: string; outPath: string }
+  // ── M9 Phase 2: chapters, comments, revisions, print layout, indexes ──
+  | { op: 'createDocument'; path: string; sourcePath?: string; rtl?: boolean }
+  | { op: 'addComment'; anchorText: string; text: string; author?: string }
+  | { op: 'readRevisions' }
+  | {
+      op: 'setPrintLayout';
+      pageWidthCm?: number;
+      pageHeightCm?: number;
+      gutterCm?: number;
+      mirrorMargins?: boolean;
+      oddEven?: boolean;
+      differentFirstPage?: boolean;
+      headerOdd?: string;
+      headerEven?: string;
+    }
+  | { op: 'markIndexEntries'; entries: Array<{ find: string; entry: string }> }
+  | { op: 'appendIndex'; field: 'INDEX' | 'TOC'; heading?: string }
   | { op: 'save' }
   | { op: 'saveAs'; path: string }
   | { op: 'exportAs'; path: string; format: 'docx' | 'pdf' | 'rtf' | 'html' | 'txt' }
@@ -160,6 +177,35 @@ export interface PptOutlineReply extends HostReply {
   slides: Array<{ index: number; title: string; bullets: string[] }>;
 }
 
+// ── M9 Phase 2 ────────────────────────────────────────────────────────────
+
+export interface CreateDocumentReply extends HostReply {
+  ok: true;
+  op: 'createDocument';
+  name: string;
+}
+
+export interface AddCommentReply extends HostReply {
+  ok: true;
+  op: 'addComment';
+  added: boolean;
+  notFound?: boolean;
+  commentCount?: number;
+}
+
+export interface ReadRevisionsReply extends HostReply {
+  ok: true;
+  op: 'readRevisions';
+  revisions: Array<{ type: 'insert' | 'delete' | 'other'; text: string; context: string; page: number }>;
+  count: number;
+}
+
+export interface MarkIndexEntriesReply extends HostReply {
+  ok: true;
+  op: 'markIndexEntries';
+  marked: number;
+}
+
 /** Result of {@link detectTools}. */
 export interface ToolAvailability {
   /** PowerShell itself is reachable (always true on a working Windows box). */
@@ -195,6 +241,13 @@ export const OP_TIMEOUT_MS: Partial<Record<HostOp, number>> & { default: number 
   attachTemplate: 30_000,
   compareInto: 120_000,
   quit: 8_000,
+  // M9 Phase 2 — index/print ops iterate the whole document with Find loops.
+  createDocument: 60_000,
+  addComment: 60_000,
+  readRevisions: 60_000,
+  setPrintLayout: 60_000,
+  markIndexEntries: 180_000,
+  appendIndex: 120_000,
   // P9 — Office launch + fixed-format export are as slow as Word's.
   excelOpen: 60_000,
   excelExport: 120_000,

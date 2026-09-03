@@ -560,6 +560,142 @@ public static class WordBridgeFontApi {
                 Write-Result @{ ok = $true; op = 'pptClose' }
             }
 
+            # ── M9 Phase 2: chapters, comments, revisions, print layout, indexes ──
+            'createDocument' {
+                # New chapter file. With a source (an HTML fragment the adapter
+                # wrote to a temp file) the content is imported; otherwise a blank
+                # document. Optional RTL page setup. Saved as .docx at $cmd.path.
+                Ensure-Word
+                if ($cmd.sourcePath) {
+                    $script:doc = $script:word.Documents.Open($cmd.sourcePath)
+                } else {
+                    $script:doc = $script:word.Documents.Add()
+                }
+                if ([bool]$cmd.rtl) {
+                    $ps = $script:doc.PageSetup
+                    $ps.TopMargin = 72; $ps.BottomMargin = 72; $ps.LeftMargin = 108; $ps.RightMargin = 72
+                    $script:doc.Content.ParagraphFormat.ReadingOrder = 1  # wdReadingOrderRtl
+                }
+                $script:doc.SaveAs2($cmd.path, 16)  # wdFormatXMLDocument
+                Write-Result @{ ok = $true; op = 'createDocument'; name = $script:doc.Name }
+            }
+
+            'addComment' {
+                # Find the anchor text and attach a margin comment to it. The
+                # caller runs this inside track-changes. Not found → reported.
+                Require-Doc
+                $rng = $script:doc.Range(0, $script:doc.Content.End)
+                $f = $rng.Find
+                $f.ClearFormatting()
+                $f.Text = "" + $cmd.anchorText
+                $f.Forward = $true
+                $f.Wrap = 0            # wdFindStop
+                $f.MatchWildcards = $false
+                if ($f.Execute()) {
+                    $c = $script:doc.Comments.Add($rng, "" + $cmd.text)
+                    if ($cmd.author) { try { $c.Author = "" + $cmd.author } catch { } }
+                    Write-Result @{ ok = $true; op = 'addComment'; added = $true; commentCount = $script:doc.Comments.Count }
+                } else {
+                    Write-Result @{ ok = $true; op = 'addComment'; added = $false; notFound = $true }
+                }
+            }
+
+            'readRevisions' {
+                # Every tracked revision as data, for building an apparatus
+                # criticus from a two-witness Compare (compare_manuscript_variants).
+                Require-Doc
+                $revs = @()
+                $docEnd = $script:doc.Content.End
+                foreach ($r in $script:doc.Revisions) {
+                    $t = switch ([int]$r.Type) { 1 { 'insert' } 2 { 'delete' } default { 'other' } }
+                    $txt = ''
+                    try { $txt = ("" + $r.Range.Text) } catch { }
+                    $ctx = ''
+                    try {
+                        $s = [Math]::Max(0, [int]$r.Range.Start - 60)
+                        $e = [Math]::Min($docEnd, [int]$r.Range.End + 60)
+                        $ctx = ("" + $script:doc.Range($s, $e).Text) -replace '\s+', ' '
+                        $ctx = $ctx.Trim()
+                    } catch { }
+                    $para = 0
+                    try { $para = [int]$r.Range.Information(10) } catch { }  # wdActiveEndAdjustedPageNumber
+                    $revs += @{ type = $t; text = $txt.Trim(); context = $ctx; page = $para }
+                }
+                Write-Result @{ ok = $true; op = 'readRevisions'; revisions = $revs; count = $revs.Count }
+            }
+
+            'setPrintLayout' {
+                # Print-ready Word page geometry (typeset_print_ready): trim size,
+                # binding gutter, mirrored margins, odd/even running heads. NOT
+                # press-grade typesetting (ADR-0025) — Word's own engine only.
+                Require-Doc
+                $cm = 28.3464567
+                $ps = $script:doc.PageSetup
+                if ($cmd.pageWidthCm)  { $ps.PageWidth  = [double]$cmd.pageWidthCm  * $cm }
+                if ($cmd.pageHeightCm) { $ps.PageHeight = [double]$cmd.pageHeightCm * $cm }
+                if ($null -ne $cmd.gutterCm)   { $ps.Gutter = [double]$cmd.gutterCm * $cm }
+                if ($null -ne $cmd.mirrorMargins)     { $ps.MirrorMargins = [bool]$cmd.mirrorMargins }
+                if ($null -ne $cmd.oddEven)           { $ps.OddAndEvenPagesHeaderFooter = [int][bool]$cmd.oddEven }
+                if ($null -ne $cmd.differentFirstPage) { $ps.DifferentFirstPageHeaderFooter = [int][bool]$cmd.differentFirstPage }
+                if ($cmd.headerOdd -or $cmd.headerEven) {
+                    foreach ($sec in $script:doc.Sections) {
+                        if ($cmd.headerOdd)  { $sec.Headers.Item(1).Range.Text = "" + $cmd.headerOdd }   # wdHeaderFooterPrimary
+                        if ($cmd.headerEven) { $sec.Headers.Item(3).Range.Text = "" + $cmd.headerEven }  # wdHeaderFooterEvenPages
+                    }
+                }
+                Write-Result @{ ok = $true; op = 'setPrintLayout'; pageWidth = $ps.PageWidth; pageHeight = $ps.PageHeight; gutter = $ps.Gutter }
+            }
+
+            'markIndexEntries' {
+                # Insert Word XE (index-entry) fields at every occurrence of each
+                # `find` term. build_scholarly_indexes builds the entry list.
+                Require-Doc
+                $marked = 0
+                $docEnd0 = $script:doc.Content.End
+                foreach ($e in $cmd.entries) {
+                    $find = "" + $e.find
+                    $entry = ("" + $e.entry) -replace '"', ''
+                    if ($find -eq '' -or $entry -eq '') { continue }
+                    $rng = $script:doc.Range(0, $script:doc.Content.End)
+                    while ($true) {
+                        $f = $rng.Find
+                        $f.ClearFormatting()
+                        $f.Text = $find
+                        $f.Forward = $true
+                        $f.Wrap = 0
+                        $f.MatchWildcards = $false
+                        if (-not $f.Execute()) { break }
+                        $ip = $script:doc.Range($rng.End, $rng.End)
+                        $script:doc.Fields.Add($ip, 4, ('"' + $entry + '"'), $false) | Out-Null  # wdFieldIndexEntry
+                        $marked++
+                        $next = $ip.End + 1
+                        $docEnd = $script:doc.Content.End
+                        if ($next -ge $docEnd) { break }
+                        $rng = $script:doc.Range($next, $docEnd)
+                    }
+                }
+                Write-Result @{ ok = $true; op = 'markIndexEntries'; marked = $marked }
+            }
+
+            'appendIndex' {
+                # Append a section break, an optional heading, then an INDEX or
+                # TOC field, and update it. The XE fields must already be in place
+                # for INDEX (see markIndexEntries).
+                Require-Doc
+                $end = $script:doc.Range($script:doc.Content.End, $script:doc.Content.End)
+                $end.InsertBreak(2)  # wdSectionBreakNextPage
+                $end = $script:doc.Range($script:doc.Content.End, $script:doc.Content.End)
+                if ($cmd.heading) {
+                    $end.InsertAfter(("" + $cmd.heading) + "`r")
+                    try { $script:doc.Paragraphs.Last.Previous().Range.Style = $script:doc.Styles.Item(-2) } catch { }  # wdStyleHeading1
+                    $end = $script:doc.Range($script:doc.Content.End, $script:doc.Content.End)
+                }
+                $fieldCode = if ("$($cmd.field)".ToUpper() -eq 'TOC') { 'TOC \o "1-3" \h' } else { 'INDEX \c "1" \z "1025"' }
+                $script:doc.Fields.Add($end, -1, $fieldCode, $true) | Out-Null  # wdFieldEmpty
+                $script:doc.Fields.Update() | Out-Null
+                Write-Result @{ ok = $true; op = 'appendIndex'; field = $cmd.field }
+            }
+
             'close' {
                 if ($null -ne $script:doc) { $script:doc.Close($false); $script:doc = $null }
                 Write-Result @{ ok = $true; op = 'close' }

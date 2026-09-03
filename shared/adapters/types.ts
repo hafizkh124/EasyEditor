@@ -45,7 +45,13 @@ export type AdapterOp =
   | 'readSheet'
   | 'readOutline'
   | 'exportSpreadsheet'
-  | 'exportPresentation';
+  | 'exportPresentation'
+  // M9 Phase 2 — new-chapter / comment / manuscript-compare / print / index.
+  | 'createChapter'
+  | 'addComment'
+  | 'compareManuscripts'
+  | 'setPrintLayout'
+  | 'buildIndexes';
 
 /** What an adapter declares about itself (ADR-0017). */
 export interface AdapterDescriptor {
