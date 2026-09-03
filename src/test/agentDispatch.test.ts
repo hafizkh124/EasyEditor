@@ -20,6 +20,7 @@ const wordMock = {
   getWordOption: vi.fn(async () => 'true'),
   setWordOption: vi.fn(async () => 'false'),
   applyTextTask: vi.fn(async () => ({ revisions: 4, ms: 1 })),
+  addComment: vi.fn(async (_p: string, o: { anchorText: string }) => ({ added: o.anchorText !== 'nope', notFound: o.anchorText === 'nope', ms: 1 })),
   ALLOWED_GLOBAL_OPTIONS: { check_spelling: 'CheckSpellingAsYouType', check_grammar: 'CheckGrammarAsYouType', smart_quotes: 'AutoFormatAsYouTypeReplaceQuotes' },
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMock);
@@ -148,6 +149,22 @@ describe('agent dispatch', () => {
     const { dispatch } = mk({ researchSearch: null });
     const r = await dispatch('search_hadith', { query: 'x' }) as { error?: string };
     expect(r.error).toMatch(/Agent panel/);
+  });
+
+  it('add_document_comment attaches a comment as a tracked change, checkpointed (M9 Phase 4)', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('add_document_comment', { chapter: '01.docx', anchor_text: 'قال المؤلف', comment: 'راجع النقل', author: 'المشرف' }) as { added: boolean; backedUp: boolean };
+    expect(recordEdit).toHaveBeenCalledWith('C:\\p', 'cp_1', '01.docx');
+    expect(wordMock.addComment).toHaveBeenCalledWith('C:\\p\\01.docx', { anchorText: 'قال المؤلف', comment: 'راجع النقل', author: 'المشرف' });
+    expect(r.added).toBe(true);
+  });
+
+  it('add_document_comment reports a missing anchor without failing', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('add_document_comment', { chapter: '01.docx', anchor_text: 'nope', comment: 'x' }) as { added: boolean; notFound: boolean; note?: string };
+    expect(r.added).toBe(false);
+    expect(r.notFound).toBe(true);
+    expect(r.note).toMatch(/not found/);
   });
 
   it('insert_footnote REFUSES a source_id that was never retrieved', async () => {

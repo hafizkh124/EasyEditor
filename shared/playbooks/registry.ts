@@ -25,6 +25,12 @@ export interface PlaybookStep {
   bind?: string[];
   /** When true, a precondition failure skips the step rather than failing the run. */
   optional?: boolean;
+  /**
+   * When true, the runner repeats this step (a fresh scoped bind call each
+   * time) for as long as there is another instance to handle — "footnote every
+   * claim", "a rijāl note per narrator" — bounded by `runPlaybook`'s cap.
+   */
+  repeat?: boolean;
   /** One line shown in the plan preview. */
   note: string;
 }
@@ -114,6 +120,48 @@ export const PLAYBOOKS: Playbook[] = [
     steps: [
       { tool: 'read_document', bind: ['chapter'], note: 'Read the chapter and list its sections.' },
       { tool: 'run_task', args: { task: 'section-summaries' }, bind: ['chapter'], note: 'Append a short summary under each heading (tracked change).' },
+    ],
+  },
+  {
+    id: 'manuscript-takhreej',
+    title: 'Verify and source the claims in a rough draft (تخريج)',
+    trigger: 'manuscript-takhreej',
+    keywords: ['takhreej', 'takhrij', 'تخریج', 'تحقیق', 'کچا مسودہ', 'مسودہ', 'حواشی', 'manuscript', 'draft verification', 'source the claims'],
+    guidance:
+      'Work as a muḥaqqiq: read the draft, identify every quotation, ruling, hadith and attribution, and for each one find the ORIGINAL source (its own book, volume, page) — never a secondary citation of it. Quote the wording exactly as the source has it and note any discrepancy. A hadith gets its collection, number and grade. Where you cannot find a supporting source, do not force one — add a margin comment saying what you searched and that the claim is unverified.',
+    steps: [
+      { tool: 'read_document', bind: ['chapter'], note: 'Read the draft and list every claim that needs a source.' },
+      { tool: 'search_shamela', bind: ['query'], repeat: true, note: 'Retrieve the original classical source for each claim.' },
+      { tool: 'search_hadith', bind: ['query'], optional: true, repeat: true, note: 'Retrieve the takhrīj + grade for each hadith claim.' },
+      { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id', 'claim'], repeat: true, note: 'Footnote each claim from its verified source.' },
+      { tool: 'add_document_comment', bind: ['chapter', 'anchor_text', 'comment'], optional: true, repeat: true, note: 'Flag each claim that could not be sourced with a margin note.' },
+    ],
+  },
+  {
+    id: 'hadith-takhreej-advanced',
+    title: 'Study a hadith chain — narrators and gradings (دراسة الأسانيد)',
+    trigger: 'hadith-takhreej-advanced',
+    keywords: ['isnad', 'sanad', 'اسناد', 'سند', 'دراسۃ الاسانید', 'دراسة الأسانيد', 'راوی', 'رواة', 'جرح', 'تعدیل', 'chain', 'narrator', 'rijal'],
+    guidance:
+      'Study the isnād as a muḥaddith: establish the base narration and every collection that reports it. For each narrator, consult the rijāl works for the verdicts of the imams of jarḥ wa taʿdīl, noting who said what. Distinguish a defect in the chain (inqiṭāʿ, tadlīs, a weak narrator) from a sound one. Conclude with a clear grade for the isnād and the wording of the hadith, resting every judgement on a retrieved source.',
+    steps: [
+      { tool: 'search_hadith', bind: ['query'], note: 'Establish the narration and the collections that report it.' },
+      { tool: 'search_shamela', bind: ['query'], repeat: true, note: 'Consult the rijāl works for each narrator in the chain.' },
+      { tool: 'add_document_comment', bind: ['chapter', 'anchor_text', 'comment'], optional: true, repeat: true, note: 'Record the jarḥ/taʿdīl verdict for each narrator as a margin note.' },
+      { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id'], optional: true, note: 'Footnote the grading with its source.' },
+    ],
+  },
+  {
+    id: 'supervisor-audit',
+    title: "Audit a chapter the way a thesis supervisor would (never edits the text)",
+    trigger: 'supervisor-audit',
+    keywords: ['supervisor', 'audit', 'نظرثانی', 'نگران', 'جانچ', 'تنقیدی', 'review my chapter', 'review thesis', 'مراجعة', 'تقييم'],
+    guidance:
+      'Audit like a supervisor, and NEVER change the text — every finding is a margin comment. Check: (1) structure — is the argument ordered and each section doing its job; (2) sourcing — is every quotation, ruling and hadith footnoted, and does the footnote actually support the sentence; (3) terminology — is each key term used consistently (use check_consistency); (4) proportion — is any section mostly quotation with little of the author\'s own analysis; (5) language register. Be specific and constructive; point to the exact passage.',
+    steps: [
+      { tool: 'read_document', bind: ['chapter'], note: 'Read the chapter — structure, footnotes, tracked-change count.' },
+      { tool: 'check_consistency', bind: ['term'], optional: true, repeat: true, note: 'Check where each key term is also used, for consistency.' },
+      { tool: 'add_document_comment', bind: ['chapter', 'anchor_text', 'comment'], repeat: true, note: 'Leave each finding as a margin comment on the exact passage.' },
     ],
   },
   {

@@ -199,6 +199,21 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         return { ok: true, chapter, backedUp };
       }
 
+      case 'add_document_comment': {
+        const chapter = str(args.chapter, 'chapter');
+        const anchor = str(args.anchor_text, 'anchor_text');
+        const comment = str(args.comment, 'comment');
+        const author = typeof args.author === 'string' && args.author.trim() ? args.author : 'EasyEditor Agent';
+        const backedUp = guardEdit(chapter);
+        const r = await word.addComment(chapterPath(root, chapter), { anchorText: anchor, comment, author });
+        return {
+          chapter, added: r.added, notFound: r.notFound, backedUp,
+          ...(r.notFound
+            ? { note: `The anchor text "${anchor.slice(0, 50)}${anchor.length > 50 ? '…' : ''}" was not found in the chapter — no comment was added. Use a shorter exact phrase.` }
+            : {}),
+        };
+      }
+
       case 'check_consistency': {
         const term = str(args.term, 'term');
         const exclude = typeof args.exclude_chapter === 'string' ? args.exclude_chapter : null;

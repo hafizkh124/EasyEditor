@@ -93,6 +93,18 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'write',
   },
   {
+    name: 'add_document_comment',
+    description: "Attach a margin comment to a passage in a chapter — a review note, a query about a source, or flagging a claim you could not verify (takhrīj / supervision). The anchor text must be a short exact phrase that appears in the chapter. Lands as a tracked change. Do NOT use to edit the text (that is run_task / draft_section) or to add a citation (insert_footnote).",
+    params: {
+      chapter: { type: 'string', description: 'The chapter file name.' },
+      anchor_text: { type: 'string', description: 'A short exact phrase from the chapter to attach the comment to.' },
+      comment: { type: 'string', description: 'The comment text, in the scholar\'s language.' },
+      author: { type: 'string', description: 'Optional — the reviewer name shown on the comment.' },
+    },
+    required: ['chapter', 'anchor_text', 'comment'],
+    effect: 'write',
+  },
+  {
     name: 'set_page_layout',
     description: 'Apply the right-to-left page setup (margins + reading order) to a chapter, as a tracked change.',
     params: {

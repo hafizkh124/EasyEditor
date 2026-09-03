@@ -32,6 +32,8 @@ export interface ResolvedStep {
   /** Arg names still to be filled by a scoped model call before dispatch. */
   bind: string[];
   optional: boolean;
+  /** Repeat this step for each remaining instance (bounded by the runner). */
+  repeat: boolean;
   note: string;
 }
 
@@ -103,6 +105,7 @@ function resolveStep(step: PlaybookStep, index: number, ctx: PlaybookContext): R
     args,
     bind,
     optional: Boolean(step.optional),
+    repeat: Boolean(step.repeat),
     note: step.note,
   };
 }
