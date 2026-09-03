@@ -44,8 +44,12 @@ const DOMAIN_RULES: DomainRule[] = [
     tools: ['query_tafseer', 'search_shamela', 'search_general', 'insert_footnote', 'draft_section'],
   },
   {
-    keywords: ['حدیث', 'حديث', 'سند', 'اسناد', 'راوی', 'رواة', 'جرح', 'تعدیل', 'hadith', 'hadeeth', 'isnad', 'sanad', 'rijal', 'rawi', 'takhrij', 'تخریج'],
+    keywords: ['حدیث', 'حديث', 'سند', 'اسناد', 'راوی', 'رواة', 'جرح', 'تعدیل', 'hadith', 'hadeeth', 'isnad', 'sanad', 'rijal', 'rawi', 'takhrij', 'تخریج', 'takhreej'],
     tools: ['search_hadith', 'search_shamela', 'search_general', 'insert_footnote', 'add_document_comment'],
+  },
+  {
+    keywords: ['نظرثانی', 'نگران', 'supervisor', 'audit', 'مراجعة', 'تقييم', 'review my', 'تنقیدی', 'تحقیق', 'مسودہ', 'محقق', 'muhaqqiq'],
+    tools: ['search_shamela', 'search_corpus', 'search_general', 'insert_footnote', 'add_document_comment', 'check_consistency'],
   },
   {
     keywords: ['فونٹ', 'font', 'nastaliq', 'nastaleeq', 'نستعلیق', 'template', 'ٹیمپلیٹ', 'dotx'],

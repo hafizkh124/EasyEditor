@@ -75,44 +75,33 @@ export async function runPlaybook(input: RunPlaybookInput): Promise<AgentRunResu
   const messages: AgentMessage[] = [{ role: 'user', text: instruction }];
   const toolCalls: AgentRunResult['toolCalls'] = [];
   let stepNo = 0;
+  /** Signal from a step handler that the whole run should hand off to the loop. */
+  const HANDOFF = Symbol('handoff');
+  type StepOutcome = { errored: boolean } | typeof HANDOFF | 'skip';
 
-  for (const step of plan.steps) {
-    if (input.isCancelled?.()) {
-      input.emitArtifact?.({ op: 'close', artifactId, status: 'aborted' });
-      return { answer: '', messages, toolCalls, steps: stepNo, stopReason: 'cancelled' };
-    }
-    stepNo += 1;
-    const tool = getTool(step.tool);
-    if (!tool) {
-      if (step.optional) { continue; }
-      return fallbackLoop(input, toolCalls, `step "${step.tool}" is not a known tool`);
-    }
-
-    // Ask mode never runs a write step.
-    if (mode === 'ask' && tool.effect === 'write') {
-      input.onProgress?.({ step: stepNo, kind: 'tool-result', label: step.note, detail: 'skipped — Ask mode is read-only' });
-      continue;
-    }
-
+  /** Prepare args (scoped bind call), dispatch once, record. */
+  const runStepOnce = async (
+    step: typeof plan.steps[number],
+    tool: NonNullable<ReturnType<typeof getTool>>,
+    iteration: number,
+  ): Promise<StepOutcome> => {
     let args = { ...step.args };
-
-    // Bind step — one scoped, forced call to exactly this tool.
     if (step.bind.length) {
       input.onProgress?.({ step: stepNo, kind: 'thinking', label: `working out: ${step.note}` });
       const scopedPrompt =
-        `${systemPrompt}\n\n── This step ──\n${step.note}\nCall ${tool.name} with the right arguments for: "${instruction}".` +
+        `${systemPrompt}\n\n── This step${iteration > 0 ? ` (item ${iteration + 1})` : ''} ──\n${step.note}\n` +
+        `Call ${tool.name} with the right arguments for: "${instruction}".` +
         (Object.keys(args).length ? `\nThese arguments are already fixed: ${JSON.stringify(args)}.` : '');
       try {
         const bound = await generateBoundCall(messages, tool, scopedPrompt);
         if (bound.name !== step.tool) {
           log.warn('bound step returned a different tool', { expected: step.tool, got: bound.name });
-          if (!step.optional) return fallbackLoop(input, toolCalls, `the model would not follow step "${step.note}"`);
-          continue;
+          return step.optional ? 'skip' : HANDOFF;
         }
-        args = { ...bound.args, ...args }; // seeded args always win
+        args = { ...bound.args, ...args };
       } catch (err) {
-        if (step.optional) { continue; }
-        return fallbackLoop(input, toolCalls, `could not prepare step "${step.note}": ${(err as Error).message}`);
+        log.warn('bind call failed', { step: step.note, message: (err as Error).message });
+        return step.optional ? 'skip' : HANDOFF;
       }
     }
 
@@ -126,14 +115,57 @@ export async function runPlaybook(input: RunPlaybookInput): Promise<AgentRunResu
     toolCalls.push({ name: step.tool, args, result });
     messages.push({ role: 'model', toolCall: { name: step.tool, args } });
     messages.push({ role: 'tool', name: step.tool, result });
-
     const errored = typeof result === 'object' && result !== null && 'error' in result;
     input.onProgress?.({
       step: stepNo, kind: 'tool-result', label: step.note,
       detail: errored ? String((result as { error: unknown }).error) : undefined,
     });
-    if (errored && !step.optional) {
-      return fallbackLoop(input, toolCalls, `step "${step.note}" did not complete`);
+    return { errored };
+  };
+
+  /** For a `repeat` step: is there another instance to handle? (bounded, cheap) */
+  const REPEAT_MAX = 8;
+  const hasMore = async (step: typeof plan.steps[number]): Promise<boolean> => {
+    try {
+      const ask = await generateWithTools(
+        [...messages, { role: 'user', text: `For the step "${step.note}", is there another distinct item still to handle? Answer only "yes" or "no".` }],
+        [],
+        systemPrompt,
+      );
+      return ask.kind === 'text' && /^\s*(yes|نعم|ہاں|جی)/i.test(ask.text);
+    } catch {
+      return false;
+    }
+  };
+
+  for (const step of plan.steps) {
+    if (input.isCancelled?.()) {
+      input.emitArtifact?.({ op: 'close', artifactId, status: 'aborted' });
+      return { answer: '', messages, toolCalls, steps: stepNo, stopReason: 'cancelled' };
+    }
+    stepNo += 1;
+    const tool = getTool(step.tool);
+    if (!tool) {
+      if (step.optional) { continue; }
+      return fallbackLoop(input, toolCalls, `step "${step.tool}" is not a known tool`);
+    }
+    if (mode === 'ask' && tool.effect === 'write') {
+      input.onProgress?.({ step: stepNo, kind: 'tool-result', label: step.note, detail: 'skipped — Ask mode is read-only' });
+      continue;
+    }
+
+    for (let iter = 0; iter < (step.repeat ? REPEAT_MAX : 1); iter += 1) {
+      if (iter > 0) { stepNo += 1; }
+      const outcome = await runStepOnce(step, tool, iter);
+      if (outcome === HANDOFF) return fallbackLoop(input, toolCalls, `the model would not follow step "${step.note}"`);
+      if (outcome === 'skip') break;
+      if (outcome.errored && !step.optional) {
+        return fallbackLoop(input, toolCalls, `step "${step.note}" did not complete`);
+      }
+      if (!step.repeat) break;
+      if (outcome.errored) break; // an optional repeat step that errored — stop repeating
+      if (!(await hasMore(step))) break;
+      if (input.isCancelled?.()) break;
     }
   }
 

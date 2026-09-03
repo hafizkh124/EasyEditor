@@ -37,6 +37,16 @@ A **deterministic step executor** replaces advisory-prose seeding.
 - `run_playbook` is also a registry tool, so the free loop can invoke a whole
   playbook mid-task (`session.runPlaybookRef`).
 
+## Repeatable steps (M9 Phase 4)
+
+Real scholarly procedures are "footnote *every* claim", "a rijāl note *per*
+narrator", "flag *each* unverified point". A `PlaybookStep` may set
+`repeat: true`: `runPlaybook` then re-runs that step (a fresh scoped bind call
+each time) and, after each success, asks the model a single cheap yes/no —
+"is there another distinct item to handle?" — stopping on "no", on an error, on
+cancellation, or at a hard cap (8). The model still never chooses *which* step
+runs or in what order; `repeat` only bounds how many times the one step fires.
+
 ## A playbook is never a dead end
 
 If a non-`optional` step fails (tool missing, dispatch error, or the bound model

@@ -52,6 +52,21 @@ describe('playbook registry', () => {
     expect(selectPlaybook('ما حكم هذه النازلة؟ استفتاء')?.id).toBe('shariah-fatwa');
   });
 
+  it('matches the M9 Phase 4 citation/tahqiq playbooks', () => {
+    expect(selectPlaybook('/manuscript-takhreej')?.id).toBe('manuscript-takhreej');
+    expect(selectPlaybook('اس کچے مسودے کی تخریج کر دو')?.id).toBe('manuscript-takhreej');
+    expect(selectPlaybook('/hadith-takhreej-advanced')?.id).toBe('hadith-takhreej-advanced');
+    expect(selectPlaybook('اس حدیث کی سند کا دراسۃ الاسانید کرو')?.id).toBe('hadith-takhreej-advanced');
+    expect(selectPlaybook('review my chapter like a supervisor audit')?.id).toBe('supervisor-audit');
+    expect(selectPlaybook('میرے باب کی تنقیدی نظرثانی کریں')?.id).toBe('supervisor-audit');
+  });
+
+  it('supervisor-audit never carries a text-editing tool (it only reads + comments)', () => {
+    const pb = getPlaybook('supervisor-audit')!;
+    const editors = new Set(['run_task', 'draft_section', 'insert_footnote', 'set_page_layout', 'convert_document']);
+    expect(pb.steps.some((s) => editors.has(s.tool))).toBe(false);
+  });
+
   it('getPlaybook resolves by id', () => {
     expect(getPlaybook('harmonise-transliteration')?.title).toMatch(/transliteration/i);
     expect(getPlaybook('nope')).toBeUndefined();
