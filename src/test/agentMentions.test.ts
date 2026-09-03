@@ -23,6 +23,28 @@ describe('buildMentions', () => {
   });
 });
 
+describe('buildMentions — M9 Phase 3 assets', () => {
+  it('surfaces recordings, scans, and other assets with a basename label and in-project ref', () => {
+    const m = buildMentions({
+      assets: [
+        { name: 'media/lecture_01.mp3', kind: 'media' },
+        { name: 'sources/page-01.jpg', kind: 'scan' },
+        { name: 'sources/JameelNoori.ttf', kind: 'asset' },
+      ],
+    });
+    expect(m).toEqual([
+      { kind: 'media', label: 'lecture_01.mp3', ref: 'media/lecture_01.mp3' },
+      { kind: 'scan', label: 'page-01.jpg', ref: 'sources/page-01.jpg' },
+      { kind: 'asset', label: 'JameelNoori.ttf', ref: 'sources/JameelNoori.ttf' },
+    ]);
+  });
+
+  it('a dropped recording is matchable by name alongside chapters', () => {
+    const m = buildMentions({ chapters: ['01.docx'], assets: [{ name: 'media/ders.mp3', kind: 'media' }] });
+    expect(filterMentions(m, 'ders').map((x) => x.kind)).toEqual(['media']);
+  });
+});
+
 describe('filterMentions', () => {
   const m = buildMentions({ chapters: ['01-intro.docx', '02-body.docx', 'appendix.docx'] });
   it('substring-matches label or ref, case-insensitive', () => {

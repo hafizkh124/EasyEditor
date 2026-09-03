@@ -316,6 +316,11 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'openProject', path }),
     listChapters: (root: string): Promise<import("../shared/fs/projectTypes").ChapterFile[]> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'listChapters', root }),
+    // M9 Phase 3 — non-chapter assets (recordings, scans, fonts, templates).
+    listAssets: (root: string): Promise<import("../shared/fs/projectTypes").ProjectAsset[]> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'listAssets', root }),
+    importAsset: (root: string, name: string, bytes: ArrayBuffer): Promise<import("../shared/fs/projectTypes").ProjectAsset> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'importAsset', root, name, bytes }),
     readChapterHtml: (root: string, name: string): Promise<{
       html: string;
       name: string;

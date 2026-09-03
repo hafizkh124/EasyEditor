@@ -15,7 +15,24 @@
 export type ChapterFormat = 'docx' | 'rtf';
 
 /** Subfolders scaffolded inside a project folder. */
-export const PROJECT_SUBDIRS = ['sources', 'templates', 'export'] as const;
+export const PROJECT_SUBDIRS = ['sources', 'templates', 'export', 'media'] as const;
+
+/**
+ * Non-chapter files an agent task can consume — recordings to transcribe,
+ * scans to OCR, fonts/templates to install (M9 Phase 3). `sources/` holds
+ * scans, PDFs, fonts and templates; `media/` holds audio and video.
+ */
+export type ProjectAssetKind = 'media' | 'scan' | 'asset';
+
+export interface ProjectAsset {
+  /** Path relative to the project root, `/`-separated (e.g. "media/lecture.mp3"). */
+  name: string;
+  kind: ProjectAssetKind;
+  /** Lowercase extension including the dot. */
+  ext: string;
+  size: number;
+  modifiedAt: string;
+}
 
 /** The internal folder EasyEditor writes to — excluded from drive sync. */
 export const EASYEDITOR_DIR = '.easyeditor';

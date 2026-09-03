@@ -24,6 +24,8 @@ import {
   backupChapter,
   registerChapter,
   chapterPath,
+  listAssets,
+  importDroppedFile,
 } from '../fs/projectFolder.js';
 import * as word from '../adapters/word.js';
 
@@ -64,6 +66,26 @@ export function registerFsHandlers(): void {
 
         case 'listChapters':
           return refreshChapters(String(payload.root));
+
+        // ── M9 Phase 3: non-chapter assets (recordings, scans, fonts, templates) ──
+        case 'listAssets':
+          return listAssets(String(payload.root));
+
+        case 'importAsset': {
+          const root = String(payload.root);
+          const name = String(payload.name ?? '');
+          const raw = payload.bytes;
+          const bytes =
+            raw instanceof Uint8Array ? raw
+            : raw instanceof ArrayBuffer ? new Uint8Array(raw)
+            : ArrayBuffer.isView(raw) ? new Uint8Array((raw as ArrayBufferView).buffer)
+            : Array.isArray(raw) ? Uint8Array.from(raw as number[])
+            : null;
+          if (!bytes || bytes.byteLength === 0) throw new Error('the dropped file was empty');
+          const MAX_BYTES = 500 * 1024 * 1024; // a 45-min lecture is well under this
+          if (bytes.byteLength > MAX_BYTES) throw new Error('that file is too large to import (500 MB max)');
+          return importDroppedFile(root, name, bytes);
+        }
 
         case 'readChapterHtml': {
           // Chapter -> editor: convert the .docx/.rtf to HTML through Word and
