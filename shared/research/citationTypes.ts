@@ -38,3 +38,42 @@ export interface CitationItem {
   citation_ref: ScholarlyCitationRef;
   url?: string;
 }
+
+/**
+ * A one-line human reference for a scholarly citation — collection + number +
+ * grade for hadith, book + volume/page for classical works, surah:ayah for
+ * Qur'an. Used to build the agent's footnote text (M9 Phase 1). Returns null
+ * when the ref carries nothing citable (the caller then drops the chunk).
+ */
+export function formatScholarlyRef(ref: ScholarlyCitationRef, domain?: string): string | null {
+  const parts: string[] = [];
+  let matched = true;
+
+  if (ref.collection || ref.book) {
+    const work = ref.collection ?? ref.book!;
+    const num = ref.hadith_number != null ? ` ${ref.hadith_number}` : '';
+    parts.push(`${work}${num}`.trim());
+    if (ref.rawi) parts.push(`عن ${ref.rawi}`);
+    if (ref.grade) parts.push(`(${ref.grade})`);
+  } else if (ref.surah_name || ref.surah_number != null) {
+    const s = ref.surah_name ?? `سورة ${ref.surah_number}`;
+    parts.push(ref.verse != null ? `${s}: ${ref.verse}` : s);
+    if (ref.juz != null) parts.push(`جزء ${ref.juz}`);
+  } else if (ref.fatwa_number || ref.scholar) {
+    if (ref.scholar) parts.push(ref.scholar);
+    if (ref.fatwa_number) parts.push(`فتوى رقم ${ref.fatwa_number}`);
+  } else if (ref.title || ref.author) {
+    if (ref.author) parts.push(ref.author);
+    if (ref.title) parts.push(`«${ref.title}»`);
+    if (ref.volume != null) parts.push(`ج${ref.volume}`);
+    if (ref.page != null) parts.push(`ص${ref.page}`);
+    // A bare title/author with no locus is weaker — tag its origin.
+    matched = ref.volume != null || ref.page != null;
+  } else {
+    return null;
+  }
+
+  if (parts.length === 0) return null;
+  const out = parts.join('، ');
+  return !matched && domain ? `${out} [${domain}]` : out;
+}

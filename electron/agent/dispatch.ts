@@ -28,8 +28,11 @@ import { resolveTaskSlug, taskOutputIsHtml, RUN_TASK_NAMES } from '../../shared/
 import { getRefineTextPrompt } from '../../shared/ai/prompts/refineText.js';
 import { recordWrite } from './checkpoint.js';
 import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
+import { queryTafseer, type TafseerMode } from './adapters/tafsir.js';
+import { formatScholarlyRef } from '../../shared/research/citationTypes.js';
 import type { DispatchFn, EmitArtifactFn } from '../../shared/agent/types.js';
 import type { GeneralSearchResult } from './generalSearch.js';
+import type { ResearchMode, ResearchResult } from './researchBridge.js';
 
 const log = logger.child('agent/dispatch');
 
@@ -56,6 +59,12 @@ export interface AgentSession {
    * in a headless context — `search_general` then returns a clear message.
    */
   generalSearch?: ((query: string) => Promise<GeneralSearchResult>) | null;
+  /**
+   * Runs a research query via the renderer — `mode: 'islamic'` returns
+   * page-precise citations (M9 Phase 1, ADR-0022). Absent in a headless
+   * context — `search_hadith` then returns a clear message.
+   */
+  researchSearch?: ((mode: ResearchMode, query: string) => Promise<ResearchResult>) | null;
   /** Emits a live artifact event (M9 ADR-0024). No-op when absent. */
   emitArtifact?: EmitArtifactFn | null;
   /**
@@ -77,6 +86,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
   const checkpointId = session.checkpointId;
   const claimCheck = session.claimCheck ?? null;
   const generalSearch = session.generalSearch ?? null;
+  const researchSearch = session.researchSearch ?? null;
   const emitArtifact: EmitArtifactFn = (ev) => { try { session.emitArtifact?.(ev); } catch { /* non-fatal */ } };
 
   /** Snapshot any in-project write (chapter or not) into the task checkpoint. */
@@ -216,6 +226,62 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         }
         const r = await word.fromWord(src, to === 'docx' ? 'rtf' : to, path.join(outDir, `${base}.${to}`));
         return { outputPath: r.outputPath };
+      }
+
+      case 'query_tafseer': {
+        const reference = str(args.reference, 'reference');
+        const mode = str(args.mode, 'mode') as TafseerMode;
+        const sources = Array.isArray(args.sources) ? args.sources.filter((s): s is string => typeof s === 'string') : undefined;
+        const q = typeof args.query === 'string' ? args.query : undefined;
+        const r = await queryTafseer({ reference, mode, sources, query: q });
+        if (r.error) return { error: r.error };
+        ledger.add(r.chunks);
+        if (r.chunks.length) {
+          const artifactId = `tafsir-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: r.chunks[0].reference, artifactType: 'document' });
+          emitArtifact({ op: 'delta', artifactId, mode: 'replace', text: r.text });
+          emitArtifact({ op: 'citations', artifactId, entries: r.chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, tier: 1 })) });
+          emitArtifact({ op: 'close', artifactId, status: 'final' });
+        }
+        return {
+          count: r.chunks.length,
+          note: r.note,
+          text: capResult(r.text),
+          results: r.chunks.map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 400) })),
+        };
+      }
+
+      case 'search_hadith': {
+        const query = str(args.query, 'query');
+        if (!researchSearch) {
+          return { error: 'search_hadith is only available from the Agent panel (it uses your signed-in research session).' };
+        }
+        const r = await researchSearch('islamic', query);
+        if (r.error) return { error: r.error };
+        const chunks: RetrievedChunk[] = [];
+        for (const c of r.citations ?? []) {
+          const ref = formatScholarlyRef(c.citation_ref, c.domain);
+          if (!ref) continue;
+          const num = c.citation_ref.hadith_number ?? c.citation_ref.fatwa_number ?? chunks.length + 1;
+          chunks.push({
+            id: `${c.domain}:${c.citation_ref.collection ?? c.citation_ref.book ?? 'x'}:${num}`,
+            reference: ref,
+            source_url: c.url ?? c.citation_ref.url ?? null,
+          });
+        }
+        ledger.add(chunks);
+        if (chunks.length) {
+          const artifactId = `hadith-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: `احادیث: ${query.slice(0, 40)}`, artifactType: 'citation-list' });
+          emitArtifact({ op: 'citations', artifactId, entries: chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, url: c.source_url ?? undefined, tier: 1 })) });
+          emitArtifact({ op: 'close', artifactId, status: 'final' });
+        }
+        return {
+          count: chunks.length,
+          note: chunks.length === 0 ? 'The hadith channel returned an answer but no page-precise citations to cite.' : undefined,
+          answer: capResult((r.answer ?? '').trim()),
+          results: chunks.map((c) => ({ id: c.id, reference: c.reference, url: c.source_url ?? undefined })),
+        };
       }
 
       case 'search_general': {

@@ -58,6 +58,14 @@ vi.mock('../../electron/shamela/shamelaNative.ts', () => ({
   ]),
 }));
 
+const queryTafseer: ReturnType<typeof vi.fn> = vi.fn(async () => ({
+  chunks: [{ id: 'tafsir:tafsir:tabari:البقرة: 255', reference: 'تفسير (tabari) — البقرة: 255 (tafsir.net)', content: 'الله لا إله إلا هو' }] as Array<{ id: string; reference: string; content: string }>,
+  text: 'الله لا إله إلا هو الحي القيوم',
+  note: undefined as string | undefined,
+  error: undefined as string | undefined,
+}));
+vi.mock('../../electron/agent/adapters/tafsir.ts', () => ({ queryTafseer }));
+
 let createDispatcher: typeof import('../../electron/agent/dispatch.ts').createDispatcher;
 
 beforeEach(async () => {
@@ -98,6 +106,48 @@ describe('agent dispatch', () => {
     const r = await dispatch('search_corpus', { query: 'zzznotfound' }) as { count: number; note?: string };
     expect(r.count).toBe(0);
     expect(r.note).toMatch(/Nothing matched/);
+  });
+
+  it('query_tafseer feeds the ledger with a citable book+surah+ayah chunk (M9 Phase 1)', async () => {
+    const { dispatch, ledger } = mk();
+    const r = await dispatch('query_tafseer', { reference: '2:255', mode: 'tafsir', sources: ['tabari'] }) as { count: number; results: Array<{ id: string }> };
+    expect(queryTafseer).toHaveBeenCalledWith(expect.objectContaining({ reference: '2:255', mode: 'tafsir', sources: ['tabari'] }));
+    expect(r.count).toBe(1);
+    expect(ledger.size).toBe(1);
+    // and it is now citable
+    const foot = await dispatch('insert_footnote', { chapter: '01.docx', marker: '[1]', source_id: r.results[0].id }) as { reference: string };
+    expect(foot.reference).toMatch(/tafsir\.net/);
+  });
+
+  it('query_tafseer surfaces an unavailable-sources error without throwing', async () => {
+    queryTafseer.mockResolvedValueOnce({ chunks: [], text: '', error: 'The Tafsir sources are not reachable' });
+    const { dispatch } = mk();
+    const r = await dispatch('query_tafseer', { reference: '2:255', mode: 'ayah' }) as { error?: string };
+    expect(r.error).toMatch(/not reachable/);
+  });
+
+  it('search_hadith maps islamic-search citations to citable ledger chunks (M9 Phase 1)', async () => {
+    const researchSearch = vi.fn(async () => ({
+      answer: 'حديث «إنما الأعمال بالنيات» متفق عليه.',
+      citations: [
+        { domain: 'hadith', citation_ref: { collection: 'صحيح البخاري', hadith_number: 1, grade: 'صحيح', rawi: 'عمر بن الخطاب' }, url: 'https://x/1' },
+        { domain: 'hadith', citation_ref: {} }, // no ref → dropped
+      ],
+    }));
+    const { dispatch, ledger } = mk({ researchSearch });
+    const r = await dispatch('search_hadith', { query: 'إنما الأعمال' }) as { count: number; results: Array<{ id: string; reference: string }> };
+    expect(researchSearch).toHaveBeenCalledWith('islamic', 'إنما الأعمال');
+    expect(r.count).toBe(1);
+    expect(r.results[0].reference).toMatch(/صحيح البخاري 1.*صحيح/);
+    expect(ledger.size).toBe(1);
+    const foot = await dispatch('insert_footnote', { chapter: '01.docx', marker: '[1]', source_id: r.results[0].id }) as { reference: string };
+    expect(foot.reference).toMatch(/صحيح البخاري/);
+  });
+
+  it('search_hadith without a renderer bridge returns a clear message', async () => {
+    const { dispatch } = mk({ researchSearch: null });
+    const r = await dispatch('search_hadith', { query: 'x' }) as { error?: string };
+    expect(r.error).toMatch(/Agent panel/);
   });
 
   it('insert_footnote REFUSES a source_id that was never retrieved', async () => {

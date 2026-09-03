@@ -46,6 +46,12 @@ describe('playbook registry', () => {
     expect(selectPlaybook('add section summaries')?.id).toBe('section-summaries');
   });
 
+  it('matches the M9 /shariah-fatwa playbook (EN + UR + AR)', () => {
+    expect(selectPlaybook('/shariah-fatwa')?.id).toBe('shariah-fatwa');
+    expect(selectPlaybook('اس مسئلہ پر فتویٰ درکار ہے')?.id).toBe('shariah-fatwa');
+    expect(selectPlaybook('ما حكم هذه النازلة؟ استفتاء')?.id).toBe('shariah-fatwa');
+  });
+
   it('getPlaybook resolves by id', () => {
     expect(getPlaybook('harmonise-transliteration')?.title).toMatch(/transliteration/i);
     expect(getPlaybook('nope')).toBeUndefined();

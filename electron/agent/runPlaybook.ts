@@ -138,7 +138,27 @@ export async function runPlaybook(input: RunPlaybookInput): Promise<AgentRunResu
   }
 
   input.emitArtifact?.({ op: 'close', artifactId, status: 'final', targetChapter: context.chapter });
-  const done = summarise(playbook, toolCalls);
+
+  // If the playbook only retrieved (e.g. Ask mode, or every write step skipped),
+  // do ONE synthesis call so the scholar gets an answer, not just a tally.
+  const wrote = toolCalls.some((c) => {
+    const t = getTool(c.name);
+    return t?.effect === 'write' && !(typeof c.result === 'object' && c.result && 'error' in c.result);
+  });
+  let done = summarise(playbook, toolCalls);
+  if (!wrote && toolCalls.some((c) => !(typeof c.result === 'object' && c.result && 'error' in c.result))) {
+    try {
+      const synth = await generateWithTools(
+        [...messages, { role: 'user', text: 'Using only what was retrieved above, give the scholar a concise, sourced answer. Cite each point by its reference. If the sources are silent on something, say so.' }],
+        [],
+        systemPrompt,
+      );
+      if (synth.kind === 'text' && synth.text.trim() && synth.text !== '(no response)') done = synth.text.trim();
+    } catch (err) {
+      log.warn('playbook synthesis call failed — using the tally', { message: (err as Error).message });
+    }
+  }
+
   input.onProgress?.({ step: stepNo, kind: 'done', label: 'playbook finished' });
   messages.push({ role: 'model', text: done });
   return { answer: done, messages, toolCalls, steps: stepNo, stopReason: 'done' };

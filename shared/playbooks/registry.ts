@@ -117,6 +117,25 @@ export const PLAYBOOKS: Playbook[] = [
     ],
   },
   {
+    id: 'shariah-fatwa',
+    title: 'Draft a sourced answer to a fiqh / istiftāʾ question',
+    trigger: 'shariah-fatwa',
+    keywords: ['fatwa', 'istifta', 'فتویٰ', 'فتوى', 'استفتاء', 'شرعی سوال', 'حکم شرعی', 'مسئلہ', 'نازلہ', 'ruling'],
+    guidance:
+      'Follow the classical istiftāʾ method: (1) restate the question precisely and note any ambiguity; ' +
+      '(2) establish the relevant Qur\'anic evidence via query_tafseer; (3) establish the hadith evidence via ' +
+      'search_hadith, noting each narration\'s grade; (4) survey the positions of the four madhāhib and any ' +
+      'contemporary academy ruling via search_shamela / search_general; (5) give a measured conclusion that ' +
+      'names the stronger view and its evidence, without overstating certainty. Every ruling attributed to a ' +
+      'madhhab or scholar must rest on a retrieved source; where the sources are silent, say so.',
+    steps: [
+      { tool: 'query_tafseer', bind: ['reference', 'mode'], optional: true, note: 'Retrieve the relevant āyah(s) and their tafsīr.' },
+      { tool: 'search_hadith', bind: ['query'], optional: true, note: 'Retrieve the relevant hadith, with grades.' },
+      { tool: 'search_shamela', bind: ['query'], note: 'Survey the fiqh positions in the classical works.' },
+      { tool: 'draft_section', args: { mode: 'outline' }, bind: ['chapter', 'section_heading'], optional: true, note: 'Lay out the 5-stage answer as a sourced outline in the chapter.' },
+    ],
+  },
+  {
     id: 'install-nastaliq-font',
     title: 'Install a Nastaliq font and make it usable in Word',
     trigger: 'install-font',

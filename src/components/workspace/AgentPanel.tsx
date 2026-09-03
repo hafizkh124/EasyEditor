@@ -7,7 +7,9 @@ import { useProjectFolderContext } from "@/core/projectFolder/context";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { logger } from "@/lib/logger";
 import { decodeAudioFile, encodeChunkToWav } from "@/lib/audio/chunker";
-import { streamResearchQuery } from "@/lib/research/streamers";
+import { streamResearchQuery, streamIslamicQuery } from "@/lib/research/streamers";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import type { CitationItem } from "~shared/research/citationTypes";
 import { buildMentions, filterMentions, activeMentionQuery, applyMention, type Mention } from "../../../shared/mentions";
 import { PLAYBOOKS } from "../../../shared/playbooks/registry";
 import { AgentArtifactPanel } from "./AgentArtifactPanel";
@@ -43,6 +45,7 @@ export const AgentPanel: React.FC = () => {
   const { t, language } = useLanguage();
   const pf = useProjectFolderContext();
   const ws = useOptionalWorkspace();
+  const { subscription } = useSubscription();
   const agent = typeof window !== "undefined" ? window.electronAPI?.agent : undefined;
 
   const [mode, setMode] = useState<Mode>("ask");
@@ -72,27 +75,41 @@ export const AgentPanel: React.FC = () => {
     }).catch(() => setCaps(null));
   }, [t]);
 
-  // The agent asks the renderer to run a General-channel search (it can't reach
-  // the signed-in edge function from the main process — ADR-0019 item 7).
-  const handleGeneralSearch = useCallback(async (requestId: string, query: string) => {
+  // The agent asks the renderer to run a research query (it can't reach the
+  // signed-in edge functions from the main process — ADR-0019 #7 / ADR-0022).
+  // `islamic` also returns page-precise citations the agent can cite.
+  const handleResearch = useCallback(async (requestId: string, query: string, mode: "general" | "islamic") => {
     if (!agent?.submitGeneralSearch) return;
     const acc = { value: "" };
-    await streamResearchQuery({
-      query, sources: [], strictMode: false, chatHistory: [], mode: "general",
-      onDelta: (chunk) => { acc.value += chunk; },
-      onDone: () => { void agent.submitGeneralSearch!(requestId, { answer: acc.value.trim(), channel: "general" }); },
-      onError: (err) => { void agent.submitGeneralSearch!(requestId, { error: err }); },
-    }).catch((err) => {
+    try {
+      if (mode === "islamic") {
+        let citations: CitationItem[] = [];
+        await streamIslamicQuery({
+          query, strictMode: false, chatHistory: [], tier: subscription?.tier ?? "free",
+          onDelta: (chunk) => { acc.value += chunk; },
+          onSourcesReady: (_c, _d, fetched) => { citations = fetched; },
+          onDone: () => { void agent.submitGeneralSearch!(requestId, { answer: acc.value.trim(), channel: "islamic", citations }); },
+          onError: (err) => { void agent.submitGeneralSearch!(requestId, { error: err }); },
+        });
+      } else {
+        await streamResearchQuery({
+          query, sources: [], strictMode: false, chatHistory: [], mode: "general",
+          onDelta: (chunk) => { acc.value += chunk; },
+          onDone: () => { void agent.submitGeneralSearch!(requestId, { answer: acc.value.trim(), channel: "general" }); },
+          onError: (err) => { void agent.submitGeneralSearch!(requestId, { error: err }); },
+        });
+      }
+    } catch (err) {
       void agent.submitGeneralSearch!(requestId, { error: err instanceof Error ? err.message : String(err) });
-    });
-  }, [agent]);
+    }
+  }, [agent, subscription?.tier]);
 
   useEffect(() => {
     if (!agent?.onProgress) return;
     return agent.onProgress((p) => {
       if (p.id) runIdRef.current = p.id;
       if (p.kind === "general-search-request" && p.requestId && typeof p.query === "string") {
-        void handleGeneralSearch(p.requestId, p.query);
+        void handleResearch(p.requestId, p.query, p.mode === "islamic" ? "islamic" : "general");
         return;
       }
       if (p.kind === "artifact" && p.artifact) {
@@ -106,7 +123,7 @@ export const AgentPanel: React.FC = () => {
       }
       setProgress((prev) => [...prev, { step: p.step ?? 0, label: p.label ?? "", kind: p.kind, detail: p.detail }]);
     });
-  }, [agent, handleGeneralSearch]);
+  }, [agent, handleResearch]);
 
   const decidePlan = useCallback(async (decision: "approved" | "rejected") => {
     setPlanPending(false);

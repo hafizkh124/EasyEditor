@@ -58,6 +58,8 @@ export interface AgentRunInput {
   isCancelled?: () => boolean;
   /** Runs a General-channel search via the renderer (ADR-0019 item 7). */
   generalSearch?: ((query: string) => Promise<import('./generalSearch.js').GeneralSearchResult>) | null;
+  /** Runs a research query via the renderer — 'islamic' returns citations (ADR-0022). */
+  researchSearch?: ((mode: import('./researchBridge.js').ResearchMode, query: string) => Promise<import('./researchBridge.js').ResearchResult>) | null;
   /** Plan mode — resolves once the scholar approves (or rejects) the plan. */
   waitForApproval?: WaitForApprovalFn;
 }
@@ -94,6 +96,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     checkpointId,
     claimCheck: checkClaim,
     generalSearch: input.generalSearch ?? null,
+    researchSearch: input.researchSearch ?? null,
     emitArtifact,
   };
   const { dispatch } = createDispatcher(session);

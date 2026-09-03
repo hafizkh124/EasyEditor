@@ -49,6 +49,29 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'read',
   },
   {
+    name: 'query_tafseer',
+    description: "Look up a Qur'anic āyah, its tafsīr, its reason for revelation (sabab an-nuzūl), or a word analysis, or search across the classical tafsīr works — from the tafsir.net sources. A citable source: the reference is book + sūrah + āyah. Do NOT use for hadith (use search_hadith) or for a fiqh ruling that is not tafsīr-based.",
+    params: {
+      reference: { type: 'string', description: 'The āyah as "surah:ayah" (e.g. "2:255" or "al-baqarah:255"). For mode "search" this may be the search phrase instead.' },
+      mode: { type: 'string', description: 'What to fetch.', enum: ['ayah', 'tafsir', 'nuzool', 'word', 'search'] },
+      sources: { type: 'array', items: { type: 'string' }, description: 'Optional tafsīr source ids to restrict to (e.g. "tabari").' },
+      query: { type: 'string', description: 'For mode "search" — the phrase to look for in the tafsīr texts.' },
+    },
+    required: ['reference', 'mode'],
+    effect: 'read',
+  },
+  {
+    name: 'search_hadith',
+    description: "Search the hadith collections (Ṣaḥīḥ works, Sunan, Musnad, and rijāl) through the grounded Islamic research channel. Returns matching narrations with collection, number, and grade — a citable source. Use ONLY when explicit hadith text, takhrīj, or a chain (isnād) is needed. Do NOT use for a lexical/grammar question, for tafsīr, or as a general web search.",
+    params: {
+      query: { type: 'string', description: 'The hadith text, topic, or narrator, in Arabic or the scholar\'s language.' },
+      collection: { type: 'string', description: 'Optional — restrict to one collection.' },
+      limit: { type: 'number', description: 'Max narrations (default 6).' },
+    },
+    required: ['query'],
+    effect: 'read',
+  },
+  {
     name: 'search_general',
     description: "Ask the General research channel a question (the same one the Research tab uses — a signed-in, provenance-tagged web+model search, NOT open browsing). Use ONLY for background/context the personal corpus and Shamela cannot answer. Its result is NOT page-precise, so it can never be used as a footnote source. Do NOT use it as a first resort, for a classical text (use search_shamela), or when the scholar asked for a sourced citation. Needs an internet connection and a signed-in session.",
     params: {
