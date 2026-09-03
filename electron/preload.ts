@@ -344,21 +344,26 @@ const electronAPI = {
 
   agent: {
     // SPEC-M8 Layer 6 / P8a — the multi-step tool loop (ADR-0016).
+    // M9: mode is Ask / Plan / Auto (ADR-0026); `'do'` still accepted as `'auto'`.
     run: (
       instruction: string,
-      mode: 'ask' | 'do',
+      mode: 'ask' | 'plan' | 'auto' | 'do',
       projectRoot: string,
     ): Promise<{
       id: string;
       answer: string;
-      stopReason: 'done' | 'step-limit' | 'cancelled' | 'error';
+      stopReason: 'done' | 'step-limit' | 'cancelled' | 'error' | 'needs-input';
       steps: number;
       toolCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown }>;
       playbook?: string;
       checkpointId?: string;
+      question?: string;
       error?: string;
     }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'run', instruction, mode, projectRoot }),
+    // M9 — the renderer's decision on a Plan-mode plan (ADR-0026).
+    approvePlan: (runId: string, decision: 'approved' | 'rejected'): Promise<{ ok: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'approvePlan', runId, decision }),
     cancel: (): Promise<{ cancelled: boolean }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'cancel' }),
     undoTask: (projectRoot: string, checkpointId: string): Promise<{ restored: string[]; removed: string[] }> =>
@@ -375,7 +380,11 @@ const electronAPI = {
     // P9 — the renderer's answer to a `search_general` request the agent made (ADR-0019 #7).
     submitGeneralSearch: (requestId: string, result: { answer?: string; channel?: string; error?: string }): Promise<{ ok: boolean }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'generalSearchResult', requestId, ...result }),
-    onProgress: (callback: (p: { id: string; step?: number; label?: string; kind: string; detail?: string; requestId?: string; query?: string }) => void): (() => void) => {
+    onProgress: (callback: (p: {
+      id: string; step?: number; label?: string; kind: string; detail?: string;
+      requestId?: string; query?: string; question?: string;
+      artifact?: import('../shared/agent/types.js').AgentArtifactEvent;
+    }) => void): (() => void) => {
       const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);
       ipcRenderer.on(ALLOWED_IPC_CHANNELS.AGENT_PROGRESS, listener);
       return () => {

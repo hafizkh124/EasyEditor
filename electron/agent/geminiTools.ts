@@ -51,6 +51,7 @@ export async function generateWithTools(
   messages: AgentMessage[],
   tools: AgentTool[],
   systemPrompt: string,
+  opts: { forceCall?: boolean } = {},
 ): Promise<ModelStep> {
   const key = await getDecryptedGeminiKey();
   if (!key) throw new Error('کوئی Gemini key پاس نہیں کی گئی — Settings میں اپنی کلید درج کریں');
@@ -60,7 +61,8 @@ export async function generateWithTools(
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: toContents(messages),
     tools: [{ functionDeclarations: toFunctionDeclarations(tools) }],
-    toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+    // Playbook bind steps force a call to the one tool they were given (ADR-0020).
+    toolConfig: { functionCallingConfig: opts.forceCall ? { mode: 'ANY', allowedFunctionNames: tools.map((t) => t.name) } : { mode: 'AUTO' } },
     generationConfig: { temperature: 0.2 },
   };
 
@@ -80,6 +82,11 @@ export async function generateWithTools(
 
   const call = parts.find((p) => p.functionCall)?.functionCall;
   if (call) {
+    // The clarify pseudo-tool (ADR-0027 F6): the model asks one question.
+    if (call.name === 'ask_clarifying_question') {
+      const q = String((call.args ?? {}).question ?? '').trim();
+      if (q) return { kind: 'clarify', question: q };
+    }
     return { kind: 'toolCall', name: call.name, args: call.args ?? {} };
   }
   const text = parts.map((p) => p.text).filter(Boolean).join('').trim();
@@ -88,4 +95,19 @@ export async function generateWithTools(
     return { kind: 'text', text: '(no response)' };
   }
   return { kind: 'text', text };
+}
+
+/**
+ * A scoped, forced call to exactly ONE tool — the mechanism a playbook bind
+ * step uses (ADR-0020). The model cannot pick another tool, answer with text,
+ * or refuse; it must return this call with its args filled.
+ */
+export async function generateBoundCall(
+  messages: AgentMessage[],
+  tool: AgentTool,
+  systemPrompt: string,
+): Promise<{ name: string; args: Record<string, unknown> }> {
+  const step = await generateWithTools(messages, [tool], systemPrompt, { forceCall: true });
+  if (step.kind === 'toolCall') return { name: step.name, args: step.args };
+  throw new Error(`bound step expected a ${tool.name} call, got ${step.kind}`);
 }

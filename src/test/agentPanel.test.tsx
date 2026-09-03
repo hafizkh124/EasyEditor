@@ -76,6 +76,7 @@ function mockApi(over: Partial<typeof pf> = {}) {
       applyGlobalOption,
       revertGlobalOptions,
       submitGeneralSearch,
+      approvePlan: vi.fn(async () => ({ ok: true })),
     },
     docBridge: { detectTools: vi.fn(async () => ({ word: true, wordVersion: "16.0", windows: true })) },
     voice: { transcribe },
@@ -110,21 +111,26 @@ describe("AgentPanel", () => {
     expect(screen.getByText(/The agent works on a folder of/)).toBeInTheDocument();
   });
 
-  it("defaults to Ask mode and toggles to Do", () => {
+  it("defaults to Ask mode and toggles to Auto", () => {
     render(<AgentPanel />);
-    const doBtn = screen.getByRole("button", { name: "Do" });
-    fireEvent.click(doBtn);
+    fireEvent.click(screen.getByRole("button", { name: "Auto" }));
     // hint text switches
     expect(screen.getByText(/Every edit lands as a tracked change/)).toBeInTheDocument();
   });
 
+  it("offers a Plan mode between Ask and Auto (M9 ADR-0026)", () => {
+    render(<AgentPanel />);
+    fireEvent.click(screen.getByRole("button", { name: "Plan" }));
+    expect(screen.getByText(/waits for your approval before changing anything/)).toBeInTheDocument();
+  });
+
   it("sends the instruction, mode, and project root to the agent", async () => {
     render(<AgentPanel />);
-    fireEvent.click(screen.getByRole("button", { name: "Do" }));
+    fireEvent.click(screen.getByRole("button", { name: "Auto" }));
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
     fireEvent.change(ta, { target: { value: "tidy chapter one" } });
     fireEvent.keyDown(ta, { key: "Enter" });
-    await waitFor(() => expect(agentRun).toHaveBeenCalledWith("tidy chapter one", "do", "C:\\thesis"));
+    await waitFor(() => expect(agentRun).toHaveBeenCalledWith("tidy chapter one", "auto", "C:\\thesis"));
     expect(await screen.findByText("The chapter has 3 headings.")).toBeInTheDocument();
   });
 

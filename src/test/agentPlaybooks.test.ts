@@ -4,7 +4,8 @@
 // never invents; every step names a tool from the closed registry. Ask mode
 // exposes only read tools.
 import { describe, it, expect } from 'vitest';
-import { PLAYBOOKS, getPlaybook, selectPlaybook } from '../../shared/playbooks/registry';
+import { PLAYBOOKS, getPlaybook, selectPlaybook, resolvePlaybook } from '../../shared/playbooks/registry';
+import { validatePlaybook } from '../../shared/playbooks/executor';
 import { AGENT_TOOLS, toolsForMode, getTool } from '../../shared/agent/toolSchemas';
 
 describe('playbook registry', () => {
@@ -15,6 +16,18 @@ describe('playbook registry', () => {
         expect(names.has(step.tool), `${pb.id} → ${step.tool}`).toBe(true);
       }
     }
+  });
+
+  it('every playbook passes static validation — steps, seeded args, and bound args all check out (M9 defect #1)', () => {
+    for (const pb of PLAYBOOKS) {
+      expect(validatePlaybook(pb), `${pb.id}: ${validatePlaybook(pb).join('; ')}`).toEqual([]);
+    }
+  });
+
+  it('an exact /trigger beats a keyword count', () => {
+    expect(selectPlaybook('/add-citations')?.id).toBe('add-verified-citations');
+    expect(resolvePlaybook('/section-summaries')?.id).toBe('section-summaries');
+    expect(resolvePlaybook('thesis-university-format')?.id).toBe('thesis-university-format');
   });
 
   it('selectPlaybook matches on keywords, English or Urdu', () => {
@@ -42,7 +55,7 @@ describe('playbook registry', () => {
 describe('tool registry', () => {
   it('Ask mode exposes only read-effect tools', () => {
     expect(toolsForMode('ask').every((t) => t.effect === 'read')).toBe(true);
-    expect(toolsForMode('do').length).toBeGreaterThan(toolsForMode('ask').length);
+    expect(toolsForMode('auto').length).toBeGreaterThan(toolsForMode('ask').length);
   });
 
   it('insert_footnote and set_page_layout are write tools; search_* are read', () => {

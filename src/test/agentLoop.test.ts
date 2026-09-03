@@ -15,7 +15,7 @@ function scriptedModel(steps: ModelStep[]) {
   return vi.fn(async (): Promise<ModelStep> => steps[Math.min(i++, steps.length - 1)]);
 }
 
-const opts = (over: Partial<Parameters<typeof runAgentLoop>[4]> = {}) => ({ mode: 'do' as const, ...over });
+const opts = (over: Partial<Parameters<typeof runAgentLoop>[4]> = {}) => ({ mode: 'auto' as const, ...over });
 
 describe('runAgentLoop', () => {
   it('runs a tool call, feeds the result back, then returns the final answer', async () => {

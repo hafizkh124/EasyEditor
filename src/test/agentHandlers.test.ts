@@ -60,11 +60,11 @@ describe('registry', () => {
 
 describe('run', () => {
   it('forwards instruction/mode/root to runAgent and records a task_run', async () => {
-    const p = invoke({ action: 'run', instruction: 'tidy chapter 1', mode: 'do', projectRoot: 'C:\\p' });
+    const p = invoke({ action: 'run', instruction: 'tidy chapter 1', mode: 'auto', projectRoot: 'C:\\p' });
     // let the microtask that creates the run + calls runAgent settle
     await new Promise((r) => setTimeout(r, 0));
     expect(createTaskRun).toHaveBeenCalledWith(expect.objectContaining({ task_slug: 'agent' }));
-    expect(runAgent).toHaveBeenCalledWith(expect.objectContaining({ instruction: 'tidy chapter 1', mode: 'do', projectRoot: 'C:\\p' }));
+    expect(runAgent).toHaveBeenCalledWith(expect.objectContaining({ instruction: 'tidy chapter 1', mode: 'auto', projectRoot: 'C:\\p' }));
 
     resolveRun({ answer: 'done', stopReason: 'done', steps: 2, toolCalls: [], playbook: undefined });
     const res = await p as { answer: string; stopReason: string };

@@ -10,20 +10,25 @@ import { decodeAudioFile, encodeChunkToWav } from "@/lib/audio/chunker";
 import { streamResearchQuery } from "@/lib/research/streamers";
 import { buildMentions, filterMentions, activeMentionQuery, applyMention, type Mention } from "../../../shared/mentions";
 import { PLAYBOOKS } from "../../../shared/playbooks/registry";
+import { AgentArtifactPanel } from "./AgentArtifactPanel";
+import { applyArtifactEvent, type ArtifactState } from "./agentArtifactState";
 
 const log = logger.child("AgentPanel");
 
-type Mode = "ask" | "do";
+type Mode = "ask" | "plan" | "auto";
 interface ProgressLine { step: number; label: string; kind: string; detail?: string }
 interface RunResult {
+  id?: string;
   answer: string;
   stopReason: string;
   steps: number;
   toolCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown }>;
   playbook?: string;
   checkpointId?: string;
+  question?: string;
   error?: string;
 }
+
 
 /**
  * SPEC-M8 Layer 6 / P8b — the Agent tab. Two modes: "Ask" (read-only) and
@@ -45,6 +50,9 @@ export const AgentPanel: React.FC = () => {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<ProgressLine[]>([]);
   const [result, setResult] = useState<RunResult | null>(null);
+  const [artifacts, setArtifacts] = useState<ArtifactState[]>([]);
+  const [planPending, setPlanPending] = useState(false);
+  const runIdRef = useRef<string | null>(null);
   const [showTools, setShowTools] = useState(false);
   const [caps, setCaps] = useState<string | null>(null);
   const [picker, setPicker] = useState<{ kind: "mention" | "command"; query: string } | null>(null);
@@ -82,13 +90,29 @@ export const AgentPanel: React.FC = () => {
   useEffect(() => {
     if (!agent?.onProgress) return;
     return agent.onProgress((p) => {
+      if (p.id) runIdRef.current = p.id;
       if (p.kind === "general-search-request" && p.requestId && typeof p.query === "string") {
         void handleGeneralSearch(p.requestId, p.query);
+        return;
+      }
+      if (p.kind === "artifact" && p.artifact) {
+        setArtifacts((prev) => applyArtifactEvent(prev, p.artifact!));
+        return;
+      }
+      if (p.kind === "plan-pending") {
+        setPlanPending(true);
+        if (p.label) setProgress((prev) => [...prev, { step: 0, label: p.label!, kind: "plan-pending" }]);
         return;
       }
       setProgress((prev) => [...prev, { step: p.step ?? 0, label: p.label ?? "", kind: p.kind, detail: p.detail }]);
     });
   }, [agent, handleGeneralSearch]);
+
+  const decidePlan = useCallback(async (decision: "approved" | "rejected") => {
+    setPlanPending(false);
+    const id = runIdRef.current;
+    if (id && agent?.approvePlan) { try { await agent.approvePlan(id, decision); } catch (err) { log.error("approvePlan failed", { err }); } }
+  }, [agent]);
 
   const mentions = useMemo<Mention[]>(
     () => buildMentions({
@@ -142,8 +166,8 @@ export const AgentPanel: React.FC = () => {
         .filter((p) => p.title.toLowerCase().includes(q) || p.id.includes(q))
         .map((p) => ({
           kind: "command" as const,
-          label: p.title,
-          apply: () => { setInput(p.title + " "); setPicker(null); taRef.current?.focus(); },
+          label: p.trigger ? `/${p.trigger} — ${p.title}` : p.title,
+          apply: () => { setInput(p.trigger ? `/${p.trigger} ` : `${p.title} `); setPicker(null); taRef.current?.focus(); },
         }));
     }
     return filterMentions(mentions, picker.query).map((m) => ({
@@ -167,6 +191,8 @@ export const AgentPanel: React.FC = () => {
     setRunning(true);
     setProgress([]);
     setResult(null);
+    setArtifacts([]);
+    setPlanPending(false);
     setPicker(null);
     try {
       const res = await agent.run(instruction, mode, projectRoot);
@@ -178,6 +204,7 @@ export const AgentPanel: React.FC = () => {
       setResult({ answer: "", stopReason: "error", steps: 0, toolCalls: [], error: err instanceof Error ? err.message : String(err) });
     } finally {
       setRunning(false);
+      setPlanPending(false);
     }
   }, [input, agent, projectRoot, running, mode, pf]);
 
@@ -283,16 +310,16 @@ export const AgentPanel: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Mode toggle */}
+      {/* Mode toggle — Ask (read-only) / Plan (approve first) / Auto (M9 ADR-0026) */}
       <div className="flex items-center gap-1 border-b border-border p-2 shrink-0">
-        {(["ask", "do"] as Mode[]).map((m) => (
+        {(["ask", "plan", "auto"] as Mode[]).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
             disabled={running}
             className={`rounded px-2.5 py-1 text-xs font-medium ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
           >
-            {m === "ask" ? t("agent.mode_ask", "Ask") : t("agent.mode_do", "Do")}
+            {m === "ask" ? t("agent.mode_ask", "Ask") : m === "plan" ? t("agent.mode_plan", "Plan") : t("agent.mode_auto", "Auto")}
           </button>
         ))}
         <button
@@ -318,8 +345,22 @@ export const AgentPanel: React.FC = () => {
             <p className="text-xs text-muted-foreground">
               {mode === "ask"
                 ? t("agent.hint_ask", "Ask about a chapter or a source. The agent reads and searches — it changes nothing.")
-                : t("agent.hint_do", "Describe a task. Every edit lands as a tracked change you review in Word.")}
+                : mode === "plan"
+                  ? t("agent.hint_plan", "Describe a task. The agent lays out its steps and waits for your approval before changing anything.")
+                  : t("agent.hint_auto", "Describe a task. Every edit lands as a tracked change you review in Word.")}
             </p>
+          )}
+
+          {artifacts.length > 0 && <AgentArtifactPanel artifacts={artifacts} />}
+
+          {planPending && (
+            <div className="rounded border border-primary/40 bg-primary/5 p-2 text-xs space-y-2">
+              <p className="font-medium">{t("agent.plan_ready", "Review the plan above, then approve it to continue.")}</p>
+              <div className="flex gap-2">
+                <Button size="sm" className="h-7 text-xs" onClick={() => void decidePlan("approved")}>{t("agent.plan_approve", "Approve & run")}</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void decidePlan("rejected")}>{t("agent.plan_reject", "Cancel")}</Button>
+              </div>
+            </div>
           )}
 
           {progress.map((p, i) => (
@@ -339,6 +380,12 @@ export const AgentPanel: React.FC = () => {
             <div className="rounded-md border border-border bg-card p-2.5 space-y-2 text-sm">
               {result.error ? (
                 <p className="text-destructive text-xs">{result.error}</p>
+              ) : result.stopReason === "needs-input" && result.question ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-primary">{t("agent.needs_input", "The agent needs a clarification:")}</p>
+                  <p className="whitespace-pre-wrap">{result.question}</p>
+                  <p className="text-xs text-muted-foreground">{t("agent.needs_input_hint", "Reply below to continue.")}</p>
+                </div>
               ) : (
                 <p className="whitespace-pre-wrap">{result.answer || t("agent.no_answer", "(no answer)")}</p>
               )}
