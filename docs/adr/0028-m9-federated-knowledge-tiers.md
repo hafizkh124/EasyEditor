@@ -71,15 +71,18 @@ address**.
 - `/thematic-paper` gained an optional `search_repositories` step (skipped
   unless the connector is on).
 - **The `openiti-index` discipline-tagging task is closed (2026-09-04) as a
-  documented negative.** A live audit found `openiti-index` is a *work-level
-  catalogue index* — one transliterated metadata line per OpenITI work, from
-  `scripts/openiti_metadata_to_csv.py` — not ingested prose: no
-  `citation_ref.discipline` on any row, no volume/page, genre signal only in
-  `citation_ref.tags` on ~40% of a sample, and embedded only off the stub (so
-  semantic search does not discriminate by topic). The tag cannot be
-  "corrected" into a scoped citable source. `openiti-index` was **removed from
-  `DISCIPLINE_DOMAINS`** (it was inert there and cost `match_count` slots); the
-  `src/lib/research/sources.ts` note was downgraded from "unverified" to this
-  concrete finding. A real full-text OpenITI ingest via `classical_to_csv.py`
-  (domain `openiti`) stays out of scope — consistent with this ADR's rejection
-  of OpenITI as a live capability. See ADR-0014's follow-ups for the full audit.
+  documented negative.** Row-level facts from `scholarly_documents`: **4,780
+  rows, 0 with `citation_ref->>'discipline'`, 0 with a `tags` key in
+  `citation_ref`.** `openiti-index` is a *work-level catalogue index* — one
+  transliterated metadata line per OpenITI work, from
+  `scripts/openiti_metadata_to_csv.py` — not ingested prose: no volume/page, and
+  the `_TAFSIR` / `_NAHW` genre markers exist only as loose text in the
+  `content` blob, not as a structured field to backfill from. The rows are
+  embedded only off the stub, so semantic search does not discriminate by topic.
+  The tag cannot be "corrected" into a scoped citable source. `openiti-index`
+  was **removed from `DISCIPLINE_DOMAINS`** (it was inert there and cost
+  `match_count` slots); the `src/lib/research/sources.ts` note was downgraded
+  from "unverified" to this concrete finding. A real full-text OpenITI ingest
+  via `classical_to_csv.py` (domain `openiti`) stays out of scope — consistent
+  with this ADR's rejection of OpenITI as a live capability. See ADR-0014's
+  follow-ups for the full audit.

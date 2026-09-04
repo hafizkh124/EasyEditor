@@ -58,25 +58,24 @@ export const DISCIPLINE_LABELS_UR: Record<Discipline, string> = {
  *      every discipline's openiti entry matched zero rows.
  *
  *  `openiti-index` was listed here for all six disciplines until 2026-09-04,
- *  then removed after a live audit (ADR-0014 follow-up / ADR-0028). The finding:
- *  `openiti-index` is a **work-level catalogue index**, not ingested prose.
- *  Every row is one transliterated metadata line per OpenITI work —
- *  `"Author: … | Title: … | Date: … AH | Tags: …"` — written by
- *  `scripts/openiti_metadata_to_csv.py`, which never reads book text.
- *  `citation_ref` is `{openiti_id, author, date_ah, tags, url}` with **no
- *  `discipline` key on any row**, and no volume/page, so a hit can never back a
- *  page-precise citation. The only genre signal is OpenITI's own `_TAFSIR` /
- *  `_NAHW` / … markers inside `citation_ref.tags`, present on only ~40% of a
- *  120-row sample (another ~13% carry `Tags: COMPLETED` alone, ~6% nothing).
- *  The rows *are* embedded, but off the transliterated stub, so semantic search
- *  does not discriminate by topic — the same handful of works rank top for
- *  "تفسير", "نحو", "رجال" and "الطب" alike. So the tag can't be "corrected"
- *  into something useful: the rows aren't citable passages. Its presence here
- *  was pure cost — `classicalSemanticChannel` post-filters on
- *  `citation_ref.discipline`, dropping every NULL openiti row anyway, while the
- *  domain still stole `match_count` slots from the real discipline domains. A
- *  full-text OpenITI ingest via `classical_to_csv.py` (domain `openiti`, real
- *  `discipline`) is the only path to a scoped OpenITI source; out of scope here.
+ *  then removed after a live audit (ADR-0014 follow-up / ADR-0028). Row-level
+ *  facts from `scholarly_documents` (2026-09-04): **4,780 rows, every one with
+ *  `citation_ref->>'discipline'` NULL and no `tags` key in `citation_ref` at
+ *  all** (0/4780 on both). `openiti-index` is a work-level catalogue index, not
+ *  ingested prose: each row is one transliterated metadata line per OpenITI work
+ *  (`scripts/openiti_metadata_to_csv.py`, which never reads book text), with no
+ *  volume/page, so a hit can never back a page-precise citation. The `_TAFSIR` /
+ *  `_NAHW` genre markers are present only as loose text inside the `content`
+ *  blob — not as queryable structured data — so there is nothing to backfill a
+ *  `discipline` tag *from* without re-parsing free text. The rows are embedded
+ *  only off the transliterated stub, so semantic search does not discriminate
+ *  by topic (the same handful of works rank top for "تفسير", "نحو", "رجال" and
+ *  "الطب" alike). Its presence here was pure cost — `classicalSemanticChannel`
+ *  post-filters on `citation_ref.discipline`, dropping every NULL openiti row
+ *  anyway, while the domain still stole `match_count` slots from the real
+ *  discipline domains. A full-text OpenITI ingest via `classical_to_csv.py`
+ *  (domain `openiti`, real `discipline`) is the only path to a scoped OpenITI
+ *  source; out of scope here.
  *
  *  `shamela` is knowingly aspirational — Shamela has never been ingested (0
  *  rows). It is kept so the mapping is right the day it is, and costs nothing
