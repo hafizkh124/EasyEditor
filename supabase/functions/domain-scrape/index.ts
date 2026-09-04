@@ -28,7 +28,25 @@ const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
 // ── Domain registry ─────────────────────────────────────────────────────────
 // Every host here MUST also appear in `src/lib/research/scrapingWhitelist.ts`
 // (mirrored in `supabase/functions/research-query/index.ts`) so upstream
-// citation rules stay in sync.
+// citation rules stay in sync. The relationship is one-way — DOMAINS ⊆
+// whitelist — and `researchSources.test.ts` now enforces it, after
+// `darulifta-deoband.com` was found registered here but in neither whitelist.
+//
+// M9 ADR-0022 (2026-09-04): the whitelist was widened with five fiqh-academy /
+// dar al-ifta hosts (iifa-aifi.org, dar-alifta.org, aliftaa.jo, binbaz.org.sa,
+// banuri.edu.pk). They were deliberately NOT added here, because:
+//   1. The two paths are independent. `isWhitelistedUrl` gates research-query's
+//      DIRECT fetch of user-supplied source URLs; results from this function
+//      bypass that check entirely and are injected as context. Widening the
+//      whitelist is therefore sufficient for the goal — letting the research
+//      channel read and cite these bodies.
+//   2. Registering a host here makes Firecrawl fan out to it on EVERY
+//      Islamic-flavoured General query (research-query omits `selectedDomains`).
+//      Five more hosts is five more paid Firecrawl calls per query, against a
+//      15 s budget already shared by twelve — real cost and latency for no gain
+//      in what the whitelist is for.
+// Add a host here only when its Firecrawl search results are actually wanted in
+// the Tier-C fan-out, and give it a real `citation` extractor when you do.
 interface DomainConfig {
   host: string;
   lang: "en" | "ur" | "ar";

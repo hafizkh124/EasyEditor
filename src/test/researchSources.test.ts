@@ -147,3 +147,45 @@ describe("selection → request payload", () => {
     expect(sanitizeSelection(undefined)).toEqual([]);
   });
 });
+
+/**
+ * M9 ADR-0022 — the scraping whitelist lives in three places and its own
+ * header comment says "keep in sync". It had already drifted:
+ * `darulifta-deoband.com` was registered in domain-scrape's DOMAINS but absent
+ * from both whitelists, so anything that function returned for it could never
+ * be fetched or cited upstream. These two tests make that unfixable-by-accident.
+ */
+describe("scraping whitelist mirrors", () => {
+  const read = async (rel: string) => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    return fs.readFileSync(path.resolve(process.cwd(), rel), "utf8");
+  };
+
+  /** The `SCRAPING_WHITELIST = [ … ];` literal, verbatim. */
+  const arrayLiteral = (src: string) => {
+    const start = src.indexOf("SCRAPING_WHITELIST = [");
+    expect(start, "SCRAPING_WHITELIST not found").toBeGreaterThan(-1);
+    const end = src.indexOf("];", start);
+    return src.slice(src.indexOf("[", start), end + 2);
+  };
+
+  it("the client copy and the research-query copy are byte-identical", async () => {
+    const client = arrayLiteral(await read("src/lib/research/scrapingWhitelist.ts"));
+    const edge = arrayLiteral(await read("supabase/functions/research-query/index.ts"));
+    expect(edge).toBe(client);
+  });
+
+  it("every host domain-scrape can return is whitelisted (DOMAINS ⊆ whitelist)", async () => {
+    const { SCRAPING_WHITELIST, isWhitelistedUrl } = await import("../lib/research/scrapingWhitelist");
+    const scrapeSrc = await read("supabase/functions/domain-scrape/index.ts");
+    // NOT anchored to line start: the compact entries put `host:` mid-line
+    // (`alulama: { host: "alulama.org", … }`), and an anchored regex silently
+    // matched only half the registry.
+    const hosts = [...scrapeSrc.matchAll(/\bhost:\s*"([^"]+)"/g)].map((m) => m[1]);
+    const registered = scrapeSrc.slice(scrapeSrc.indexOf("const DOMAINS")).match(/^\s{2}[\w"-]+:\s*\{/gm)?.length ?? 0;
+    expect(hosts.length, "parsed fewer hosts than DOMAINS entries — the regex is missing some").toBe(registered);
+    const orphans = hosts.filter((h) => !isWhitelistedUrl(`https://${h}/`));
+    expect(orphans, `hosts in domain-scrape but not in SCRAPING_WHITELIST (${SCRAPING_WHITELIST.length} entries)`).toEqual([]);
+  });
+});
