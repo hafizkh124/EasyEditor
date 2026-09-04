@@ -25,11 +25,12 @@ beforeAll(async () => {
 });
 
 describe("registration", () => {
-  it("registers all four documented channels", () => {
+  it("registers every documented channel", () => {
     expect([...electron.ipcMain.handlers.keys()].sort()).toEqual([
       "system:get-version",
       "system:is-desktop",
       "system:open-external",
+      "system:set-theme",
       "system:set-title",
     ]);
   });
