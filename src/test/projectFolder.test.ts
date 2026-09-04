@@ -19,6 +19,8 @@ import {
   resolveInProject,
   readConnectors,
   setConnector,
+  readOcrConsent,
+  setOcrConsent,
 } from '../../electron/fs/projectFolder';
 
 let root: string;
@@ -171,5 +173,31 @@ describe('connectors (M9 Phase 1b)', () => {
     openProjectFolder(root);
     expect(readConnectors(root)).toEqual({ repositories: true });
     expect(setConnector(root, 'repositories', false)).toEqual({}); // back to default-off
+  });
+});
+
+describe('OCR consent (M9 Phase 7)', () => {
+  it('defaults to no consent, round-trips a grant, and survives a re-open', () => {
+    createProjectFolder(root, 'P');
+    expect(readOcrConsent(root)).toBe(false);
+
+    expect(setOcrConsent(root, true)).toBe(true);
+    expect(readOcrConsent(root)).toBe(true);
+
+    openProjectFolder(root); // rewrites the manifest
+    expect(readOcrConsent(root)).toBe(true);
+
+    // withdrawing drops the key rather than storing false
+    expect(setOcrConsent(root, false)).toBe(false);
+    const raw = JSON.parse(fs.readFileSync(path.join(root, '.easyeditor', 'project.json'), 'utf8'));
+    expect('ocrConsent' in raw).toBe(false);
+  });
+
+  it('does not touch a connector switch already in the manifest', () => {
+    createProjectFolder(root, 'P');
+    setConnector(root, 'shamela', false);
+    setOcrConsent(root, true);
+    expect(readConnectors(root)).toEqual({ shamela: false });
+    expect(readOcrConsent(root)).toBe(true);
   });
 });

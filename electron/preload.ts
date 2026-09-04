@@ -407,11 +407,22 @@ const electronAPI = {
       result: { segments?: Array<{ start: number; end: number; text: string }>; error?: string },
     ): Promise<{ ok: boolean }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'transcriptionResult', requestId, ...result }),
+    // M9 Phase 7 — consent-gated cloud OCR (ADR-0023). `grantOcrConsent` is the
+    // scholar approving the upload for this project; `submitOcr` is the
+    // renderer's reply with the per-page text it read.
+    grantOcrConsent: (projectRoot: string, granted = true): Promise<{ ocrConsent: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'grantOcrConsent', projectRoot, granted }),
+    submitOcr: (
+      requestId: string,
+      result: { pages?: Array<{ page: number; text: string }>; error?: string },
+    ): Promise<{ ok: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'ocrResult', requestId, ...result }),
     onProgress: (callback: (p: {
       id: string; step?: number; label?: string; kind: string; detail?: string;
       requestId?: string; query?: string; question?: string;
       mode?: 'general' | 'islamic';
       mediaPath?: string; lang?: string;
+      scanPath?: string; pages?: string;
       artifact?: import('../shared/agent/types.js').AgentArtifactEvent;
     }) => void): (() => void) => {
       const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);

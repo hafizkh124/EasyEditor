@@ -162,6 +162,11 @@ export default tseslint.config(
       //    there is nothing for callEdgeFunction() to route. Exemption follows
       //    the workflow hook the page was split into. ───────────────────────
       "src/pages/ocr/useOcrWorkflow.ts",
+      // ── OCR, agent path (M9 Phase 7): same raw fetch to process-ocr, and the
+      //    client only for `auth.getSession()` to attach the bearer token —
+      //    exactly the pattern src/lib/research/streamers.ts is exempted for.
+      //    Runs on desktop, where the optional sign-in still yields a session.
+      "src/lib/ocr/ocrClient.ts",
       // ── Legacy migration of book_projects/book_chapters/book_sections and
       //    translation_projects/translation_chunks into projects/documents.
       //    Those tables exist only in the hosted database, so a local

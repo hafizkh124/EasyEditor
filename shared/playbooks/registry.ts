@@ -299,6 +299,18 @@ export const PLAYBOOKS: Playbook[] = [
     ],
   },
   {
+    id: 'digitize-book',
+    title: 'Digitise a scanned book into a chapter (اسکین شدہ کتاب سے باب)',
+    trigger: 'digitize-book',
+    keywords: ['ocr', 'scan', 'scanned', 'digitize', 'digitise', 'اسکین', 'سکین', 'عکسی', 'مصورة', 'ڈیجیٹائز', 'اسکین شدہ کتاب'],
+    guidance:
+      'This is a machine reading of a scanned page, not a transcription of a known text. The OCR engine WILL misread letters — especially in nastaʿlīq, in faint or skewed scans, and where diacritics matter. The chapter you produce is a DRAFT whose every line must be proofread against the original image; say so plainly to the scholar. Preserve the scan\'s own paragraph breaks, headings and page order; do not silently "correct", modernise or rephrase the author\'s wording, and never supply text a page does not clearly show. Do not add citations — an OCR draft is not a source.',
+    steps: [
+      { tool: 'ocr_document', bind: ['scan_path'], note: 'Read the scanned pages with the cloud OCR service (after the scholar consents).' },
+      { tool: 'create_chapter', bind: ['name', 'title', 'from_source'], note: 'Create the chapter from the OCR text, titled as an unverified draft to proofread against the scan.' },
+    ],
+  },
+  {
     id: 'install-nastaliq-font',
     title: 'Install a Nastaliq font and make it usable in Word',
     trigger: 'install-font',

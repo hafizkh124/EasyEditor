@@ -114,6 +114,17 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'write',
   },
   {
+    name: 'ocr_document',
+    description: "Extract the text from a scanned book or photographed pages that are already in the project folder (an @mentioned .pdf or image). CONSENT-GATED: the page images are sent to the EasyEditor cloud OCR service — nothing is uploaded until the scholar approves it once for this project; the first call returns `needsConsent` and you must then stop and tell the scholar to approve it in the Agent panel. The output is saved as a .ocr.txt beside the scan; it is a MACHINE READING with errors (especially nastaʿlīq and worn scans) — pass it to create_chapter with a title marked as an unverified OCR draft, and it must be proofread against the original page by page. NOT citable. Do NOT use for a recording (that is transcribe_media), for a digital .docx (read_document), or for any file outside the project folder.",
+    params: {
+      scan_path: { type: 'string', description: 'The in-project path of the scan, e.g. "sources/kitab-scan.pdf" (from an @mention).' },
+      lang: { type: 'string', description: 'Language hint: "ur", "ar", "en", or "auto" (default).' },
+      pages: { type: 'string', description: 'Optional page range for a PDF, e.g. "1-20" or "5". Omit for the whole file.' },
+    },
+    required: ['scan_path'],
+    effect: 'write',
+  },
+  {
     name: 'create_chapter',
     description: "Create a NEW chapter .docx in the project folder — blank, seeded from a transcript/notes file already in the project (from_source), or from a short HTML fragment. RTL page setup is applied. Prefer from_source over html for anything long: never paste a whole transcript through this call. Do NOT use to rewrite an existing chapter (that is draft_section / run_task).",
     params: {

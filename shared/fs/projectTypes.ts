@@ -53,6 +53,13 @@ export interface ProjectManifest {
    * tools and any playbook step that needs it is skipped.
    */
   connectors?: Record<string, boolean>;
+  /**
+   * The scholar has consented, for this project, to `ocr_document` sending page
+   * images to the cloud OCR service (M9 Phase 7, ADR-0023). Absent / false =
+   * not consented; `ocr_document` then returns a consent request and uploads
+   * nothing.
+   */
+  ocrConsent?: boolean;
   /** Manifest schema version, for future migrations. */
   version: 1;
 }

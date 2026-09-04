@@ -183,6 +183,7 @@ function readManifest(root: string): ProjectManifest | null {
       createdAt: typeof m.createdAt === 'string' ? m.createdAt : new Date().toISOString(),
       chapterOrder: Array.isArray(m.chapterOrder) ? m.chapterOrder.filter((c) => typeof c === 'string') : [],
       ...(connectors && Object.keys(connectors).length ? { connectors: connectors as Record<string, boolean> } : {}),
+      ...(m.ocrConsent === true ? { ocrConsent: true } : {}),
       version: 1,
     };
   } catch {
@@ -366,4 +367,27 @@ export function setConnector(root: string, id: string, on: boolean): Record<stri
   else { if (defaultOff) delete connectors[id]; else connectors[id] = false; }
   writeManifest(root, { ...manifest, connectors });
   return readConnectors(root);
+}
+
+// ── M9 Phase 7: consent to cloud OCR (ADR-0023) ───────────────────────────
+
+/** Has the scholar consented to `ocr_document` for this project? Default false. */
+export function readOcrConsent(root: string): boolean {
+  return readManifest(root)?.ocrConsent === true;
+}
+
+/**
+ * Record (or withdraw) the scholar's consent for `ocr_document` to send page
+ * images to the cloud OCR service. Consent is per-project and sticky; `false`
+ * drops the key so the default (no consent) applies again.
+ */
+export function setOcrConsent(root: string, granted: boolean): boolean {
+  const manifest = readManifest(root) ?? {
+    id: randomUUID(), title: path.basename(root), createdAt: new Date().toISOString(), chapterOrder: [], version: 1 as const,
+  };
+  const next = { ...manifest };
+  if (granted) next.ocrConsent = true;
+  else delete next.ocrConsent;
+  writeManifest(root, next);
+  return readOcrConsent(root);
 }
