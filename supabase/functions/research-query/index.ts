@@ -28,6 +28,16 @@ const SOURCE_CHAR_LIMIT = 20_000;
 
 // Context-aware scraping whitelist. Islamic & General research modes are
 // restricted to these trusted scholarly domains.
+// MIRROR of `src/lib/research/scrapingWhitelist.ts` — keep byte-identical.
+//
+// M9 ADR-0022 (2026-09-04) — widened to the international fiqh academies and
+// the national dar al-ifta bodies. Every candidate was fetched with THIS
+// pipeline's own User-Agent ("Mozilla/5.0 (compatible; ResearchBot/1.0)") and
+// kept only when it returned readable article HTML. Deliberately NOT added,
+// with the reason each was rejected:
+//   alifta.gov.sa  — 200, but a JS-rendered shell (~130 chars of text)
+//   islamway.net   — 200 with an EMPTY body, to every User-Agent tried
+//   cii.gov.pk     — no A/AAAA record; the zone is delegated but offline
 const SCRAPING_WHITELIST = [
   "alulama.org",
   "magazine.mohaddis.com",
@@ -40,6 +50,16 @@ const SCRAPING_WHITELIST = [
   "islamqa.info",
   "islamweb.net",
   "shamilaurdu.com",
+  // International fiqh academies + national dar al-ifta bodies.
+  "iifa-aifi.org",         // مجمع الفقه الإسلامي الدولي (OIC) — resolutions + news
+  "dar-alifta.org",        // دار الإفتاء المصرية — /ar/fatwa/details/<id>/<slug>
+  "aliftaa.jo",            // دائرة الإفتاء الأردنية — /research-fatwas/<id>/<slug>
+  "binbaz.org.sa",         // فتاوى الشيخ ابن باز — /fatwas/<id>/<slug> (the slug is required)
+  "banuri.edu.pk",         // جامعہ بنوری ٹاؤن، دار الافتاء — /readquestion/<id>/<date>
+  // Registered in domain-scrape's DOMAINS but missing here until now, which
+  // that file's own invariant forbids. A direct fetch 403s from datacentre
+  // IPs; its Firecrawl path is what actually reaches it.
+  "darulifta-deoband.com", // دار الافتاء دیوبند
 ];
 
 
