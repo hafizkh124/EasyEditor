@@ -115,6 +115,24 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'write',
   },
   {
+    name: 'typeset_print_ready',
+    description: "Apply a print-ready page layout to a chapter — trim size, binding gutter, mirrored margins, and odd/even running heads — through Word's own engine. This is a print-ready WORD layout, NOT press-grade typesetting: no kerning tables, no PDF/X, Word's own widow/orphan control only. A tracked-change-free layout write. Then export a PDF with convert_document. Do NOT use for the RTL page setup alone (that is set_page_layout).",
+    params: {
+      chapter: { type: 'string', description: 'The chapter file name.' },
+      trim: { type: 'string', description: 'Trim size.', enum: ['a5', 'b5', '6x9', 'waziri', 'digest', 'custom'] },
+      trim_width_cm: { type: 'number', description: 'For trim "custom" — page width in cm.' },
+      trim_height_cm: { type: 'number', description: 'For trim "custom" — page height in cm.' },
+      gutter_cm: { type: 'number', description: 'Binding gutter in cm (default 1.2).' },
+      mirror_margins: { type: 'boolean', description: 'Mirror the inner/outer margins for two-sided printing (default true).' },
+      odd_even_headers: { type: 'boolean', description: 'Different running heads on odd vs even pages (default true).' },
+      header_odd: { type: 'string', description: 'Running head text for odd (recto) pages — usually the chapter title.' },
+      header_even: { type: 'string', description: 'Running head text for even (verso) pages — usually the book title.' },
+      start_recto: { type: 'boolean', description: 'Start the chapter on an odd (right-hand) page.' },
+    },
+    required: ['chapter', 'trim'],
+    effect: 'write',
+  },
+  {
     name: 'compare_manuscript_variants',
     description: "Collate two witnesses of a text — a base chapter and a second manuscript — with Word's own Compare, and read back every difference as an apparatus criticus (موضع / متن الأصل / نسخة / نوع الاختلاف). Neither file is changed. Use for critical editions and فروق النسخ; then act on each locus with insert_footnote or add_document_comment. Do NOT use to review a draft against a supervisor's edits (that is read_document).",
     params: {

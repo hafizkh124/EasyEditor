@@ -33,6 +33,7 @@ import { saveTranscript, transcriptPathFor } from './adapters/transcribe.js';
 import { readAssetText, registerChapter } from '../fs/projectFolder.js';
 import { formatScholarlyRef } from '../../shared/research/citationTypes.js';
 import { buildApparatus, apparatusTable } from '../../shared/research/apparatus.js';
+import { resolveTrim, PRINT_LAYOUT_LOSS } from '../../shared/print/trimSizes.js';
 import { buildIndexExtractionInstruction, parseIndexEntries, INDEX_KINDS, type IndexKind } from '../../shared/ai/prompts/indexEntries.js';
 import type { DispatchFn, EmitArtifactFn } from '../../shared/agent/types.js';
 import type { GeneralSearchResult } from './generalSearch.js';
@@ -270,6 +271,40 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         let registered = false;
         try { registerChapter(root, name); registered = true; } catch (err) { log.warn('registerChapter failed', { name, message: (err as Error).message }); }
         return { chapter: name, outputPath: r.outputPath, seededFrom: fromSource ?? (rawHtml ? 'html' : 'blank'), registered, backedUp };
+      }
+
+      case 'typeset_print_ready': {
+        const chapter = str(args.chapter, 'chapter');
+        const trim = str(args.trim, 'trim');
+        const size = resolveTrim(
+          trim,
+          typeof args.trim_width_cm === 'number' ? args.trim_width_cm : undefined,
+          typeof args.trim_height_cm === 'number' ? args.trim_height_cm : undefined,
+        );
+        if (!size) {
+          return { error: `unknown trim "${trim}" — one of: a5, b5, 6x9, waziri, digest, or custom with trim_width_cm + trim_height_cm` };
+        }
+        const backedUp = guardEdit(chapter);
+        const r = await word.setPrintLayout(chapterPath(root, chapter), {
+          trimWidthCm: size.w,
+          trimHeightCm: size.h,
+          gutterCm: typeof args.gutter_cm === 'number' ? args.gutter_cm : 1.2,
+          mirrorMargins: args.mirror_margins !== false,
+          oddEvenHeaders: args.odd_even_headers !== false,
+          differentFirstPage: true,
+          startRecto: Boolean(args.start_recto),
+          headerOdd: typeof args.header_odd === 'string' ? args.header_odd : undefined,
+          headerEven: typeof args.header_even === 'string' ? args.header_even : undefined,
+        });
+        const cm = 28.3464567;
+        return {
+          chapter,
+          trim: size.label,
+          pageSizeCm: { width: +(r.pageWidth / cm).toFixed(2), height: +(r.pageHeight / cm).toFixed(2), gutter: +(r.gutter / cm).toFixed(2) },
+          backedUp,
+          loss: PRINT_LAYOUT_LOSS,
+          note: `Applied the ${size.label} layout. Export the PDF with convert_document(to:"pdf"). Review it before sending to a press — see the loss list.`,
+        };
       }
 
       case 'compare_manuscript_variants': {

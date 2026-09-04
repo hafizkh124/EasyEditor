@@ -123,6 +123,35 @@ export const PLAYBOOKS: Playbook[] = [
     ],
   },
   {
+    id: 'typeset-print',
+    title: 'Prepare a chapter for the press (پرنٹ ریڈی کمپوزنگ)',
+    trigger: 'typeset-print',
+    keywords: ['typeset', 'print', 'press', 'کمپوزنگ', 'پرنٹ', 'اشاعت', 'گٹر', 'gutter', 'trim', 'کتابت', 'تنضيد', 'طباعة'],
+    guidance:
+      'Prepare the chapter for a print run through Word\'s own engine — a print-ready Word layout, not press typesetting. Set the trim size, a binding gutter, mirrored margins for two-sided printing, and running heads (the book title on the verso, the chapter title on the recto). Then compile the indexes and export the PDF. Tell the scholar plainly what Word does NOT do (kerning tables, PDF/X, fine line-breaking) so they review the PDF before it goes to the press.',
+    steps: [
+      { tool: 'set_page_layout', bind: ['chapter'], note: 'Apply the RTL page setup first.' },
+      { tool: 'typeset_print_ready', bind: ['chapter', 'trim', 'header_odd', 'header_even'], note: 'Apply the trim size, gutter, mirrored margins and running heads.' },
+      { tool: 'build_scholarly_indexes', args: { kinds: ['quran', 'hadith', 'names'] }, bind: ['chapter'], optional: true, note: 'Compile the back-matter indexes.' },
+      { tool: 'convert_document', args: { to: 'pdf' }, bind: ['chapter'], note: 'Export the press PDF.' },
+    ],
+  },
+  {
+    id: 'synopsis-design',
+    title: 'Design a research synopsis for approval (خاکہ / سیناپسز)',
+    trigger: 'synopsis-design',
+    keywords: ['synopsis', 'proposal', 'خاکہ', 'سیناپسز', 'پروپوزل', 'research proposal', 'مقالے کا خاکہ', 'خطة بحث'],
+    guidance:
+      'Design a university-standard synopsis from the source chapter or notes: the research problem and its significance, the questions and hypotheses, a survey of prior work and the gap this fills, the proposed chapter breakdown, and the method and sources. Keep it tight — a synopsis is a case for approval, not the thesis. Draft it as a summary of what the material establishes; do not invent findings the research has not produced yet.',
+    steps: [
+      { tool: 'read_document', bind: ['chapter'], note: 'Read the source chapter or notes.' },
+      { tool: 'create_chapter', bind: ['name', 'title'], note: 'Create the synopsis file.' },
+      { tool: 'draft_section', args: { mode: 'summary' }, bind: ['chapter'], note: 'Draft the synopsis (problem, questions, gap, chapter plan, method).' },
+      { tool: 'typeset_print_ready', args: { trim: 'a5' }, bind: ['chapter'], optional: true, note: 'Apply an A5 layout.' },
+      { tool: 'convert_document', args: { to: 'pdf' }, bind: ['chapter'], optional: true, note: 'Export the PDF for submission.' },
+    ],
+  },
+  {
     id: 'manuscript-edition',
     title: 'Collate manuscript witnesses into a critical edition (تحقيق مخطوط)',
     trigger: 'manuscript-edition',

@@ -527,6 +527,7 @@ export interface PrintLayoutOptions {
   mirrorMargins?: boolean;
   oddEvenHeaders?: boolean;
   differentFirstPage?: boolean;
+  startRecto?: boolean;
   headerOdd?: string;
   headerEven?: string;
 }
@@ -550,6 +551,7 @@ export async function setPrintLayout(chapterPathArg: string, opts: PrintLayoutOp
         mirrorMargins: opts.mirrorMargins,
         oddEven: opts.oddEvenHeaders,
         differentFirstPage: opts.differentFirstPage,
+        startRecto: opts.startRecto,
         headerOdd: opts.headerOdd,
         headerEven: opts.headerEven,
       });

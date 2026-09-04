@@ -205,7 +205,7 @@ function playbookMatchIsStrong(ask: string, keywords: string[]): boolean {
 function taskWrote(result: AgentRunResult): boolean {
   return result.toolCalls.some(
     (c) =>
-      (['insert_footnote', 'set_page_layout', 'run_task', 'draft_section', 'add_document_comment', 'transcribe_media', 'create_chapter', 'build_scholarly_indexes'].includes(c.name)
+      (['insert_footnote', 'set_page_layout', 'run_task', 'draft_section', 'add_document_comment', 'transcribe_media', 'create_chapter', 'build_scholarly_indexes', 'typeset_print_ready'].includes(c.name)
         && !(typeof c.result === 'object' && c.result && 'error' in c.result))
       || (c.name === 'install_template' && Boolean((c.args as { chapter?: unknown }).chapter)),
   );

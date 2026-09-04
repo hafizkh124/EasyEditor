@@ -69,6 +69,13 @@ describe('playbook registry', () => {
     expect(selectPlaybook('اس باب کا اکیڈمک ترجمہ کرو')?.id).toBe('academic-translation');
   });
 
+  it('matches the M9 Phase 8 print playbooks', () => {
+    expect(selectPlaybook('/typeset-print')?.id).toBe('typeset-print');
+    expect(selectPlaybook('اس باب کی پرنٹ ریڈی کمپوزنگ کرو')?.id).toBe('typeset-print');
+    expect(selectPlaybook('/synopsis-design')?.id).toBe('synopsis-design');
+    expect(selectPlaybook('میرے مقالے کا خاکہ بنا دو')?.id).toBe('synopsis-design');
+  });
+
   it('matches the M9 Phase 6 manuscript playbooks', () => {
     expect(selectPlaybook('/manuscript-edition')?.id).toBe('manuscript-edition');
     expect(selectPlaybook('اس مخطوطہ کی تحقیق اور فروق النسخ')?.id).toBe('manuscript-edition');
