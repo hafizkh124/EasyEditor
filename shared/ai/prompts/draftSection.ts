@@ -55,10 +55,24 @@ export const DRAFT_MODES: Record<DraftMode, DraftModeSpec> = {
     html: true,
     instruction: `You are an expert academic summarizer. Produce a clear, faithful summary of the given text or section at roughly 20-30% length, as flowing prose. Do not add information not in the source. Do not quote Qur'an or hadith from memory. Preserve the working language and script. Output ONLY the summary as an HTML fragment — no commentary, no markdown fences, no "Summary:" preamble.`,
   },
+  // NOT grounded: this mode RECASTS text the chapter already holds (a lecture
+  // transcript, a rough draft) rather than composing from retrieved sources, so
+  // requiring source_ids would block the very use case it exists for. The
+  // anti-invention guarantee comes from the instruction instead: every idea must
+  // already be in the material (M9 Phase 5, ADR-0021).
   'literary-urdu': {
-    grounded: true,
+    grounded: false,
     html: true,
-    instruction: `You are a distinguished Urdu prose stylist preparing a book chapter from a raw transcript or rough draft. Recast the material into polished, dignified literary Urdu (ادبی اردو) — correct register, natural rhythm, proper connectives — while keeping every idea, ruling, and attribution exactly as in the SOURCE EXCERPTS. Organise it under clear headings. Where a point rests on a specific source, mark it [1], [2], … Output a clean HTML fragment.${COMMON_TAIL}`,
+    instruction: `You are a distinguished Urdu prose stylist preparing a book chapter from a raw transcript or rough draft. Recast the CURRENT CHAPTER TEXT into polished, dignified literary Urdu (ادبی اردو) — correct register, natural rhythm, proper connectives, paragraphs that carry one idea each — and organise it under clear headings.
+
+HARD RULES:
+1. Every idea, ruling, quotation, and attribution must ALREADY be in the material you were given. Do not add facts, examples, hadith, verses, or names of your own.
+2. Do not omit a point the speaker made; this is a recasting, not a summary.
+3. Keep quoted Qur'anic verses and hadith text verbatim; only the surrounding prose is restyled.
+4. Strip the artefacts of speech — false starts, repetitions, filler, asides to the audience.
+5. Where a point plainly rests on a specific source, end that sentence with a bare marker [1], [2], … in order of first use, so citations can be attached afterwards. Never write the reference text yourself.
+6. Preserve the working language and script (Urdu stays Urdu Nastaliq, Arabic quotations stay Arabic).
+7. Output ONLY a clean HTML fragment (<h2>, <h3>, <p>, <blockquote>) — no commentary, no markdown fences.`,
   },
 };
 

@@ -321,6 +321,8 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'listAssets', root }),
     importAsset: (root: string, name: string, bytes: ArrayBuffer): Promise<import("../shared/fs/projectTypes").ProjectAsset> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'importAsset', root, name, bytes }),
+    readAssetBytes: (root: string, name: string): Promise<ArrayBuffer> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'readAssetBytes', root, name }),
     readChapterHtml: (root: string, name: string): Promise<{
       html: string;
       name: string;
@@ -389,10 +391,18 @@ const electronAPI = {
       result: { answer?: string; channel?: string; error?: string; citations?: unknown[] },
     ): Promise<{ ok: boolean }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'generalSearchResult', requestId, ...result }),
+    // M9 Phase 5 — the renderer's answer to a transcribe_media request. The
+    // decode/chunk pipeline is Web Audio, so it can only run renderer-side.
+    submitTranscription: (
+      requestId: string,
+      result: { segments?: Array<{ start: number; end: number; text: string }>; error?: string },
+    ): Promise<{ ok: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'transcriptionResult', requestId, ...result }),
     onProgress: (callback: (p: {
       id: string; step?: number; label?: string; kind: string; detail?: string;
       requestId?: string; query?: string; question?: string;
       mode?: 'general' | 'islamic';
+      mediaPath?: string; lang?: string;
       artifact?: import('../shared/agent/types.js').AgentArtifactEvent;
     }) => void): (() => void) => {
       const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);

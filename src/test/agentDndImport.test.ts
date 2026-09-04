@@ -53,9 +53,11 @@ describe('listAssets', () => {
   it('lists everything under media/ and sources/, bucketed by kind', () => {
     importDroppedFile(root, 'a.mp3', bytes('x'));
     importDroppedFile(root, 'b.png', bytes('x'));
-    fs.writeFileSync(path.join(root, 'sources', 'ignore.txt'), 'x'); // not an asset type
+    // .txt is an asset from M9 Phase 5 — transcripts must be @mentionable.
+    fs.writeFileSync(path.join(root, 'sources', 'dars.transcript.txt'), 'x');
+    fs.writeFileSync(path.join(root, 'sources', 'ignore.bin'), 'x'); // not an asset type
     const list = listAssets(root);
-    expect(list.map((a) => a.kind).sort()).toEqual(['media', 'scan']);
+    expect(list.map((a) => a.kind).sort()).toEqual(['asset', 'media', 'scan']);
     expect(list.every((a) => a.modifiedAt && a.size > 0)).toBe(true);
   });
 });

@@ -52,6 +52,14 @@ const DOMAIN_RULES: DomainRule[] = [
     tools: ['search_shamela', 'search_corpus', 'search_general', 'insert_footnote', 'add_document_comment', 'check_consistency'],
   },
   {
+    keywords: ['audio', 'lecture', 'recording', 'transcribe', 'درس', 'خطاب', 'ریکارڈنگ', 'آڈیو', 'تقریر', 'محاضرة'],
+    tools: ['transcribe_media', 'create_chapter', 'draft_section', 'search_shamela', 'insert_footnote'],
+  },
+  {
+    keywords: ['کالم', 'مضمون', 'مقالہ', 'ترجمہ', 'ترجمة', 'column', 'essay', 'translate', 'translation', 'paper', 'draft a', 'write a chapter'],
+    tools: ['create_chapter', 'draft_section', 'search_shamela', 'search_general', 'insert_footnote', 'check_consistency'],
+  },
+  {
     keywords: ['فونٹ', 'font', 'nastaliq', 'nastaleeq', 'نستعلیق', 'template', 'ٹیمپلیٹ', 'dotx'],
     tools: ['install_font', 'install_template', 'set_page_layout'],
   },

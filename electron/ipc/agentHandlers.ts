@@ -17,7 +17,7 @@ import { runAgent } from '../agent/run.js';
 import { undoCheckpoint, listCheckpoints } from '../agent/checkpoint.js';
 import { applyGlobalOption, revertGlobalOptions, readLog as readGlobalOptionLog } from '../agent/globalOptions.js';
 import { requestGeneralSearch, resolveGeneralSearch } from '../agent/generalSearch.js';
-import { requestResearch } from '../agent/researchBridge.js';
+import { requestResearch, requestTranscription, resolveTranscription } from '../agent/researchBridge.js';
 import { requestPlanApproval, resolvePlanApproval } from '../agent/planApproval.js';
 import { acquireAgentSlot, releaseAgentSlot, cancelRunningAgent, runningTask } from '../agent/queue.js';
 import type { AgentMode } from '../../shared/agent/types.js';
@@ -78,6 +78,17 @@ export function registerAgentHandlers(): void {
           return { ok: true };
         }
 
+        // ── M9 Phase 5: the renderer's reply to a transcription request ──
+        case 'transcriptionResult': {
+          resolveTranscription(String(payload.requestId ?? ''), {
+            segments: Array.isArray(payload.segments)
+              ? payload.segments as Array<{ start: number; end: number; text: string }>
+              : undefined,
+            error: typeof payload.error === 'string' ? payload.error : undefined,
+          });
+          return { ok: true };
+        }
+
         // ── P9 / M9: the renderer's reply to a research request (ADR-0019 #7, ADR-0022) ──
         case 'generalSearchResult': {
           resolveGeneralSearch(String(payload.requestId ?? ''), {
@@ -130,6 +141,7 @@ export function registerAgentHandlers(): void {
               isCancelled: () => cancelled,
               generalSearch: (query) => requestGeneralSearch(id, query, win?.webContents),
               researchSearch: (mode, query) => requestResearch(id, query, win?.webContents, mode),
+              transcribeMedia: (mediaPath, lang) => requestTranscription(id, mediaPath, lang, win?.webContents),
               waitForApproval: (plan) => requestPlanApproval(id, plan, win?.webContents),
             });
 

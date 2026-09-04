@@ -44,6 +44,38 @@ free-form prompt.
 4. **Transcript recorded** — the call, its mode, and the source count land in
    `task_runs` → the Trust tab.
 
+## `literary-urdu` is not grounded — and why that is not a loophole (Phase 5)
+
+`literary-urdu` exists for one job: a recorded lecture has been transcribed into
+the chapter, and it must become book prose. It **recasts text the chapter
+already holds**; it does not compose from retrieved sources. Requiring
+`source_ids` would block the very use case, so the mode is `grounded: false`.
+
+The anti-invention guarantee moves into the instruction instead, and is
+test-enforced (`agentDraftSection.test.ts`): every idea, ruling, quotation and
+attribution must already be in the material; nothing may be added; it is a
+recasting, **not a summary**, so nothing may be dropped either; Qur'ānic verses
+and hadith stay verbatim; and a sourced sentence gets a bare `[N]` marker so the
+citation is attached afterwards by `insert_footnote` — the model still never
+writes reference text.
+
+## Transcription needs no new binary (Phase 5)
+
+`transcribe_media` was expected to force a choice between bundling ffmpeg
+(+20–30 MB, an LGPL/GPL review) and adding a decode op to the Python sidecar.
+Neither is needed. whisper.cpp reads only 16 kHz mono WAV, but the
+decode → silence-seam chunk → WAV pipeline already ships in the renderer
+(`src/lib/audio/chunker.ts`, ADR-0001) and is what the Transcribe page and the
+mic dictation both use. So `transcribe_media` is **renderer-bridged**, exactly
+like `search_general` (ADR-0019 item 7): main asks the panel to run the existing
+pipeline and gets segments back; `electron/agent/adapters/transcribe.ts` turns
+them into a timestamped `sources/<name>.transcript.txt`, recorded in the task
+checkpoint so "Undo this task" removes it.
+
+The transcript is then handed to `create_chapter` by **path**
+(`from_source`), never pasted back through a tool call — a 45-minute lecture
+must not travel through the model's output.
+
 ## Consequences
 
 - The 14 scholarly prompt templates in `src/lib/prompts/promptsRegistry.ts`
@@ -51,3 +83,8 @@ free-form prompt.
   `khittat_bahth` → `outline`). The Research-tab modal is unchanged; the
   templates are not moved.
 - A per-mode `targetLanguage` is threaded for `translation`.
+- `.txt` / `.md` became project assets so a transcript is `@mentionable` and
+  readable by `create_chapter`.
+- Video containers depend on the browser's `decodeAudioData`; when it refuses,
+  `chunker.ts` already returns a clear "convert to MP3/M4A" message, which the
+  tool surfaces rather than failing opaquely.

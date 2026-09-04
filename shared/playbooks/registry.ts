@@ -123,6 +123,64 @@ export const PLAYBOOKS: Playbook[] = [
     ],
   },
   {
+    id: 'audio-to-chapter',
+    title: 'Turn a recorded lecture into a book chapter (درس سے باب)',
+    trigger: 'audio-to-chapter',
+    keywords: ['audio', 'lecture', 'recording', 'transcribe', 'درس', 'خطاب', 'ریکارڈنگ', 'آڈیو', 'تقریر', 'محاضرة'],
+    guidance:
+      'The scholar spoke this; your job is to turn speech into a book chapter without turning it into your own words. Keep every point, ruling and attribution the speaker made, in the order they made it unless a clearer order is obvious. Strip the artefacts of speech — false starts, repetitions, asides to the audience, "as I was saying". Where the speaker quoted a verse or hadith or cited a scholar, mark the place so it can be sourced afterwards; never supply from memory a reference the speaker did not give.',
+    steps: [
+      { tool: 'transcribe_media', bind: ['media_path'], note: 'Transcribe the recording with the local Whisper engine.' },
+      { tool: 'create_chapter', bind: ['name', 'title', 'from_source'], note: 'Create the new chapter, seeded from the transcript.' },
+      { tool: 'draft_section', args: { mode: 'literary-urdu' }, bind: ['chapter'], note: 'Recast the transcript into literary Urdu prose under headings.' },
+      { tool: 'search_shamela', bind: ['query'], optional: true, repeat: true, note: 'Find the source for each text the speaker quoted.' },
+      { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id', 'claim'], optional: true, repeat: true, note: 'Footnote each quotation from its verified source.' },
+    ],
+  },
+  {
+    id: 'thematic-paper',
+    title: 'Research and draft a thematic paper (موضوعاتی مقالہ)',
+    trigger: 'thematic-paper',
+    keywords: ['thematic', 'paper', 'research paper', 'مقالہ', 'موضوعاتی', 'تحقیقی مقالہ', 'بحث', 'دراسة'],
+    guidance:
+      'Build the paper from the sources outward, not from an opinion inward. Survey what the classical works and the corpus actually say on the topic before settling the outline, and let the structure follow the material. Attribute every position to the work that holds it. Where the sources disagree, present the disagreement rather than flattening it. Mark each sourced sentence so the citation can be attached.',
+    steps: [
+      { tool: 'search_corpus', bind: ['query'], repeat: true, note: 'Survey the personal corpus on the topic.' },
+      { tool: 'search_shamela', bind: ['query'], repeat: true, note: 'Survey the classical works on the topic.' },
+      { tool: 'create_chapter', bind: ['name', 'title'], note: 'Create the paper file.' },
+      { tool: 'draft_section', args: { mode: 'outline' }, bind: ['chapter'], note: 'Lay out the structure the sources support.' },
+      { tool: 'draft_section', args: { mode: 'prose' }, bind: ['chapter', 'section_heading', 'source_ids'], repeat: true, note: 'Draft each section from the retrieved sources.' },
+      { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id', 'claim'], repeat: true, note: 'Footnote each marked claim.' },
+    ],
+  },
+  {
+    id: 'analytical-column',
+    title: 'Write an analytical column or essay (فکری مضمون)',
+    trigger: 'analytical-column',
+    keywords: ['column', 'essay', 'op-ed', 'کالم', 'مضمون', 'فکری', 'اخباری', 'مقال'],
+    guidance:
+      'This is a column, not a research paper: one clear line of thought, an opening that earns attention, and a close that lands. Eloquent but not florid. Analysis and general knowledge are yours to use; specific factual claims, statistics, quotations and rulings are not — those need a source or they do not go in. If you use a retrieved source, mark the sentence so it can be cited.',
+    steps: [
+      { tool: 'search_general', bind: ['query'], optional: true, note: 'Get background context on the subject.' },
+      { tool: 'create_chapter', bind: ['name', 'title'], note: 'Create the column file.' },
+      { tool: 'draft_section', args: { mode: 'column' }, bind: ['chapter'], note: 'Write the column.' },
+    ],
+  },
+  {
+    id: 'academic-translation',
+    title: 'Translate a chapter with a consistent term base (اکیڈمک ترجمہ)',
+    trigger: 'academic-translation',
+    keywords: ['translate', 'translation', 'ترجمہ', 'ترجمة', 'مترجم', 'اکیڈمک ترجمہ'],
+    guidance:
+      'Translate as a scholar-translator: idiomatic in the target language, faithful to the source in meaning and register. Build a term base as you go and hold to it — one technical or religious term, one rendering, throughout. Qur\'anic verses and hadith keep their Arabic and take an established rendering; do not paraphrase them. Where a term is contested or left transliterated, mark a translator\'s note rather than deciding silently.',
+    steps: [
+      { tool: 'read_document', bind: ['chapter'], note: 'Read the source chapter.' },
+      { tool: 'create_chapter', bind: ['name', 'title'], note: 'Create the translation file.' },
+      { tool: 'draft_section', args: { mode: 'translation' }, bind: ['chapter', 'section_heading', 'source_ids'], repeat: true, note: 'Translate each section, holding the term base.' },
+      { tool: 'check_consistency', bind: ['term'], optional: true, repeat: true, note: 'Check each key term is rendered consistently across the chapters.' },
+    ],
+  },
+  {
     id: 'manuscript-takhreej',
     title: 'Verify and source the claims in a rough draft (تخريج)',
     trigger: 'manuscript-takhreej',

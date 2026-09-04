@@ -23,7 +23,9 @@ const CHAPTER_EXTS: Record<string, ChapterFormat> = { '.docx': 'docx', '.rtf': '
 
 const MEDIA_EXTS = new Set(['.mp3', '.m4a', '.wav', '.ogg', '.flac', '.aac', '.mp4', '.mkv', '.mov', '.webm']);
 const SCAN_EXTS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.tif', '.tiff', '.webp', '.bmp']);
-const OTHER_ASSET_EXTS = new Set(['.ttf', '.otf', '.ttc', '.dotx', '.dotm']);
+// `.txt` / `.md` carry transcripts and notes — surfaced as mentions and readable
+// by `create_chapter`'s `from_source` (M9 Phase 5).
+const OTHER_ASSET_EXTS = new Set(['.ttf', '.otf', '.ttc', '.dotx', '.dotm', '.txt', '.md']);
 const ALL_ASSET_EXTS = new Set([...MEDIA_EXTS, ...SCAN_EXTS, ...OTHER_ASSET_EXTS]);
 
 function assetKindForExt(ext: string): ProjectAssetKind | null {
@@ -52,6 +54,22 @@ export function resolveAsset(root: string, name: string): string {
     throw new Error(`unsupported asset type: ${ext || '(none)'}`);
   }
   return resolved;
+}
+
+/** Read an in-project text asset (a transcript, notes). Capped so a stray huge file cannot blow up a prompt. */
+export function readAssetText(root: string, name: string, maxChars = 200_000): string {
+  const abs = resolveAsset(root, name);
+  const ext = path.extname(abs).toLowerCase();
+  if (ext !== '.txt' && ext !== '.md') throw new Error(`not a readable text asset: ${name}`);
+  return fs.readFileSync(abs, 'utf8').slice(0, maxChars);
+}
+
+/** Write a text asset into the project (a transcript). Returns its relative path. */
+export function writeAssetText(root: string, name: string, text: string): string {
+  const abs = resolveAsset(root, name);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  fs.writeFileSync(abs, text, 'utf8');
+  return name.replace(/\\/g, '/');
 }
 
 /** Every recording / scan / font / template under `sources/` and `media/`. */

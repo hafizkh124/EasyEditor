@@ -30,13 +30,21 @@ export interface ResearchResult {
   citations?: CitationItem[];
 }
 
+/** One transcript segment as the renderer's Whisper pipeline returns it. */
+export interface TranscriptionResult {
+  segments?: Array<{ start: number; end: number; text: string }>;
+  error?: string;
+}
+
 interface Pending {
-  resolve: (r: ResearchResult) => void;
+  resolve: (r: never) => void;
   timer: NodeJS.Timeout;
 }
 
 const pending = new Map<string, Pending>();
 const REQUEST_TIMEOUT_MS = 90_000;
+/** A 45-minute lecture decodes + transcribes in chunks; give it real room. */
+const TRANSCRIBE_TIMEOUT_MS = 45 * 60_000;
 
 /**
  * Ask the renderer to run one research query. Always resolves — a timeout
@@ -58,7 +66,7 @@ export function requestResearch(
       log.warn('research request timed out', { requestId, mode });
       resolve({ error: 'The research channel needs an internet connection and a signed-in session — it did not respond.' });
     }, REQUEST_TIMEOUT_MS);
-    pending.set(requestId, { resolve, timer });
+    pending.set(requestId, { resolve: resolve as (r: never) => void, timer });
     sender.send(ALLOWED_IPC_CHANNELS.AGENT_PROGRESS, {
       id: runId,
       kind: 'general-search-request',
@@ -69,14 +77,49 @@ export function requestResearch(
   });
 }
 
-/** Called by the `generalSearchResult` IPC action when the renderer replies. */
-export function resolveResearch(requestId: string, result: ResearchResult): void {
+/**
+ * Ask the renderer to decode + transcribe an in-project recording (M9 Phase 5).
+ * whisper.cpp only reads 16 kHz mono WAV and the decode/chunk pipeline
+ * (ADR-0001, `src/lib/audio/chunker.ts`) is Web Audio — so it lives in the
+ * renderer, exactly like the research channels.
+ */
+export function requestTranscription(
+  runId: string,
+  mediaPath: string,
+  lang: string,
+  sender: WebContents | null | undefined,
+): Promise<TranscriptionResult> {
+  if (!sender || sender.isDestroyed()) {
+    return Promise.resolve({ error: 'Transcription is unavailable — the app window is gone.' });
+  }
+  const requestId = randomUUID();
+  return new Promise<TranscriptionResult>((resolve) => {
+    const timer = setTimeout(() => {
+      pending.delete(requestId);
+      log.warn('transcription request timed out', { requestId, mediaPath });
+      resolve({ error: 'Transcription did not finish in time — try a shorter recording.' });
+    }, TRANSCRIBE_TIMEOUT_MS);
+    pending.set(requestId, { resolve: resolve as (r: never) => void, timer });
+    sender.send(ALLOWED_IPC_CHANNELS.AGENT_PROGRESS, {
+      id: runId,
+      kind: 'transcribe-request',
+      requestId,
+      mediaPath,
+      lang,
+    });
+  });
+}
+
+/** Called by the `generalSearchResult` / `transcriptionResult` IPC actions when the renderer replies. */
+export function resolveResearch(requestId: string, result: ResearchResult | TranscriptionResult): void {
   const p = pending.get(requestId);
   if (!p) {
-    log.debug('research result for an unknown / expired request', { requestId });
+    log.debug('bridge result for an unknown / expired request', { requestId });
     return;
   }
   clearTimeout(p.timer);
   pending.delete(requestId);
-  p.resolve(result);
+  (p.resolve as (r: unknown) => void)(result);
 }
+
+export const resolveTranscription = resolveResearch;

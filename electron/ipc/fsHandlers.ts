@@ -26,6 +26,7 @@ import {
   chapterPath,
   listAssets,
   importDroppedFile,
+  resolveAsset,
 } from '../fs/projectFolder.js';
 import * as word from '../adapters/word.js';
 
@@ -70,6 +71,14 @@ export function registerFsHandlers(): void {
         // ── M9 Phase 3: non-chapter assets (recordings, scans, fonts, templates) ──
         case 'listAssets':
           return listAssets(String(payload.root));
+
+        // M9 Phase 5 — the renderer needs a recording's bytes to decode it
+        // (Web Audio), since whisper.cpp only reads 16 kHz mono WAV.
+        case 'readAssetBytes': {
+          const abs = resolveAsset(String(payload.root), String(payload.name ?? ''));
+          const buf = fs.readFileSync(abs);
+          return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+        }
 
         case 'importAsset': {
           const root = String(payload.root);

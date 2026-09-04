@@ -21,6 +21,7 @@ const wordMock = {
   setWordOption: vi.fn(async () => 'false'),
   applyTextTask: vi.fn(async () => ({ revisions: 4, ms: 1 })),
   addComment: vi.fn(async (_p: string, o: { anchorText: string }) => ({ added: o.anchorText !== 'nope', notFound: o.anchorText === 'nope', ms: 1 })),
+  createChapter: vi.fn(async (dest: string, _opts?: { html?: string; rtl?: boolean }) => ({ outputPath: dest, name: dest.split('\\').pop() ?? dest, ms: 1 })),
   ALLOWED_GLOBAL_OPTIONS: { check_spelling: 'CheckSpellingAsYouType', check_grammar: 'CheckGrammarAsYouType', smart_quotes: 'AutoFormatAsYouTypeReplaceQuotes' },
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMock);
@@ -37,9 +38,15 @@ vi.mock('../../electron/host/index.ts', () => ({
 }));
 
 const backupChapter = vi.fn(() => 'C:\\p\\.easyeditor\\backups\\ts__01.docx');
+const readAssetText = vi.fn(() => 'پہلا پیراگراف\n\nدوسرا پیراگراف');
+const writeAssetText = vi.fn((_r: string, name: string) => name);
+const registerChapter = vi.fn(() => ({ bytes: 10 }));
 vi.mock('../../electron/fs/projectFolder.ts', () => ({
   chapterPath: (root: string, name: string) => `${root}\\${name}`,
   backupChapter,
+  readAssetText,
+  writeAssetText,
+  registerChapter,
   refreshChapters: () => [
     { name: '01.docx', format: 'docx', size: 1, modifiedAt: 'x', order: 0 },
     { name: '02-body.docx', format: 'docx', size: 1, modifiedAt: 'x', order: 1 },
@@ -149,6 +156,46 @@ describe('agent dispatch', () => {
     const { dispatch } = mk({ researchSearch: null });
     const r = await dispatch('search_hadith', { query: 'x' }) as { error?: string };
     expect(r.error).toMatch(/Agent panel/);
+  });
+
+  it('transcribe_media saves the renderer-produced segments as an in-project transcript (M9 Phase 5)', async () => {
+    const transcribeMedia = vi.fn(async () => ({ segments: [{ start: 0, end: 5, text: 'یہ درس کا پہلا حصہ ہے' }] }));
+    const { dispatch } = mk({ transcribeMedia });
+    const r = await dispatch('transcribe_media', { media_path: 'media/dars-01.mp3', lang: 'ur' }) as { transcriptPath: string; segments: number; note: string };
+    expect(transcribeMedia).toHaveBeenCalledWith('media/dars-01.mp3', 'ur');
+    expect(r.transcriptPath).toBe('sources/dars-01.transcript.txt');
+    expect(r.segments).toBe(1);
+    // the transcript is a project write, so it is part of the undo checkpoint
+    expect(recordEdit).toHaveBeenCalledWith('C:\\p', 'cp_1', 'sources/dars-01.transcript.txt');
+    // and the agent is told NOT to paste it back through a tool call
+    expect(r.note).toMatch(/from_source/);
+  });
+
+  it('transcribe_media without the renderer bridge returns a clear message', async () => {
+    const { dispatch } = mk({ transcribeMedia: null });
+    const r = await dispatch('transcribe_media', { media_path: 'media/x.mp3' }) as { error?: string };
+    expect(r.error).toMatch(/Agent panel/);
+  });
+
+  it('create_chapter seeds from a transcript file and checkpoints BEFORE the file exists', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('create_chapter', { name: '03-dars.docx', title: 'درسِ اول', from_source: 'sources/dars-01.transcript.txt' }) as { chapter: string; seededFrom: string; registered: boolean };
+    // guardEdit ran with the NEW name so "Undo this task" deletes it
+    expect(recordEdit).toHaveBeenCalledWith('C:\\p', 'cp_1', '03-dars.docx');
+    expect(readAssetText).toHaveBeenCalledWith('C:\\p', 'sources/dars-01.transcript.txt');
+    const html = String((wordMock.createChapter.mock.calls[0][1] as { html: string }).html);
+    expect(html).toContain('<h1>درسِ اول</h1>');
+    expect(html).toContain('<p>پہلا پیراگراف</p>');
+    expect(r.seededFrom).toBe('sources/dars-01.transcript.txt');
+    expect(r.registered).toBe(true);
+  });
+
+  it('create_chapter reports a bad from_source instead of creating an empty chapter', async () => {
+    readAssetText.mockImplementationOnce(() => { throw new Error('not a readable text asset'); });
+    const { dispatch } = mk();
+    const r = await dispatch('create_chapter', { name: '04.docx', from_source: 'media/x.mp3' }) as { error?: string };
+    expect(r.error).toMatch(/could not read from_source/);
+    expect(wordMock.createChapter).not.toHaveBeenCalled();
   });
 
   it('add_document_comment attaches a comment as a tracked change, checkpointed (M9 Phase 4)', async () => {
