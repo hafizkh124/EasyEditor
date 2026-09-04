@@ -32,6 +32,8 @@ import { queryTafseer, type TafseerMode } from './adapters/tafsir.js';
 import { saveTranscript, transcriptPathFor } from './adapters/transcribe.js';
 import { readAssetText, registerChapter } from '../fs/projectFolder.js';
 import { formatScholarlyRef } from '../../shared/research/citationTypes.js';
+import { buildApparatus, apparatusTable } from '../../shared/research/apparatus.js';
+import { buildIndexExtractionInstruction, parseIndexEntries, INDEX_KINDS, type IndexKind } from '../../shared/ai/prompts/indexEntries.js';
 import type { DispatchFn, EmitArtifactFn } from '../../shared/agent/types.js';
 import type { GeneralSearchResult } from './generalSearch.js';
 import type { ResearchMode, ResearchResult } from './researchBridge.js';
@@ -268,6 +270,63 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         let registered = false;
         try { registerChapter(root, name); registered = true; } catch (err) { log.warn('registerChapter failed', { name, message: (err as Error).message }); }
         return { chapter: name, outputPath: r.outputPath, seededFrom: fromSource ?? (rawHtml ? 'html' : 'blank'), registered, backedUp };
+      }
+
+      case 'compare_manuscript_variants': {
+        const baseChapter = str(args.base_chapter, 'base_chapter');
+        const witnessChapter = str(args.witness_chapter, 'witness_chapter');
+        const siglum = typeof args.siglum === 'string' && args.siglum.trim() ? args.siglum.trim() : 'ب';
+        const r = await word.compareManuscripts(chapterPath(root, baseChapter), chapterPath(root, witnessChapter));
+        const loci = buildApparatus(r.revisions);
+        const artifactId = `apparatus-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `فروق النسخ — ${baseChapter} / ${witnessChapter}`, artifactType: 'comparison' });
+        const tbl = apparatusTable(loci, siglum);
+        emitArtifact({ op: 'table', artifactId, columns: tbl.columns, rows: tbl.rows, caption: `${loci.length} موضع اختلاف` });
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+        return {
+          count: loci.length,
+          base: baseChapter,
+          witness: witnessChapter,
+          siglum,
+          loci: loci.slice(0, 40).map((l) => ({ index: l.index, page: l.page, base: l.base, witness: l.witness, kind: l.kind, context: l.context.slice(0, 100) })),
+          note: loci.length === 0 ? 'The two witnesses are identical.' : `${loci.length} loci. Act on each with insert_footnote (a فروق النسخ note) or add_document_comment.`,
+        };
+      }
+
+      case 'build_scholarly_indexes': {
+        const chapter = str(args.chapter, 'chapter');
+        const kindsIn = Array.isArray(args.kinds) ? args.kinds.filter((k): k is string => typeof k === 'string') : [];
+        const kinds = kindsIn.filter((k): k is IndexKind => (INDEX_KINDS as string[]).includes(k));
+        if (kinds.length === 0) return { error: `build_scholarly_indexes needs at least one of: ${INDEX_KINDS.join(', ')}` };
+
+        // Pre-built entries ("find||entry"), or extract them from the chapter.
+        let entries: Array<{ find: string; entry: string }> = [];
+        if (Array.isArray(args.entries) && args.entries.length) {
+          entries = (args.entries as unknown[])
+            .filter((s): s is string => typeof s === 'string' && s.includes('||'))
+            .map((s) => { const [find, entry] = s.split('||'); return { find: find.trim(), entry: entry.trim() }; })
+            .filter((e) => e.find && e.entry);
+        } else {
+          let text = '';
+          try { text = await chapterText(chapter); } catch { /* fall through to the empty check */ }
+          if (!text.trim()) return { error: `chapter "${chapter}" has no text to index` };
+          const raw = (await generateContentStream({
+            prompt: `CHAPTER TEXT:\n${text.slice(0, 12000)}`,
+            systemInstruction: buildIndexExtractionInstruction(kinds),
+          })).trim();
+          entries = parseIndexEntries(raw);
+        }
+        if (entries.length === 0) return { count: 0, note: 'No index entries could be extracted for those kinds — the chapter may not mention them substantively.' };
+
+        const artifactId = `index-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `فہارس — ${chapter}`, artifactType: 'index' });
+        emitArtifact({ op: 'table', artifactId, columns: ['المدخل', 'يُوجد عند'], rows: entries.slice(0, 60).map((e) => [e.entry, e.find]) });
+
+        const heading = typeof args.heading === 'string' && args.heading.trim() ? args.heading.trim() : undefined;
+        const backedUp = guardEdit(chapter);
+        const res = await word.buildIndexes(chapterPath(root, chapter), entries, { heading });
+        emitArtifact({ op: 'close', artifactId, status: 'final', targetChapter: chapter });
+        return { chapter, kinds, entryCount: entries.length, marked: res.marked, backedUp };
       }
 
       case 'add_document_comment': {
