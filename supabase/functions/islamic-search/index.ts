@@ -73,12 +73,15 @@ export const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 //      rows tagged citation_ref.discipline = "fatwa", fully embedded. The
 //      corpus was there the whole time; only the mapping was wrong.
 //
-// fiqh and nahw are still NOT offered: their only domains are `shamela`
-// (never ingested — 0 rows) and `openiti-index` (ingested, but as general
-// classical prose whose discipline tagging is unverified). Offering a
-// pseudo-domain that can only return zero rows would repeat the shamela-index
-// mistake already avoided in src/lib/research/sources.ts. Both become one-line
-// additions here the day their rows carry a discipline.
+// fiqh and nahw are still NOT offered: their only domain is `shamela`
+// (never ingested — 0 rows). `openiti-index` was a candidate until a live
+// audit on 2026-09-04 (ADR-0014 follow-up / ADR-0028) found it is a
+// work-level catalogue index — one transliterated metadata line per work,
+// no `citation_ref.discipline`, no page text, embedded only off the stub —
+// so it was removed from DISCIPLINE_DOMAINS entirely, not just left unoffered.
+// Offering a pseudo-domain that can only return zero rows would repeat the
+// shamela-index mistake already avoided in src/lib/research/sources.ts. Both
+// become one-line additions here the day a real full-text ingest lands.
 export const TIER_D_DOMAINS = ["classical-rijal", "classical-tafsir", "classical-lughat", "classical-fatwa", "classical-mustalah"];
 export const TIER_D_DISCIPLINE: Record<string, string> = {
   "classical-rijal": "rijal",

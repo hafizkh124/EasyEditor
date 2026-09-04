@@ -32,10 +32,20 @@
  * discipline is more often a stale mapping than an empty corpus.
  *
  * Still not offered, for the same reason `shamela-index` above is not: fiqh
- * and nahw live only in `shamela` (never ingested, 0 rows) and
- * `openiti-index` (ingested, but as general classical prose whose discipline
- * tagging is unverified), so a checkbox for either could only ever return
- * nothing.
+ * and nahw live only in `shamela` (never ingested, 0 rows) and `openiti-index`.
+ * A live audit of `openiti-index` on 2026-09-04 (ADR-0014 follow-up / ADR-0028)
+ * closed the "discipline tagging is unverified" note with a concrete finding:
+ * it is a **work-level catalogue index**, not ingested prose — one transliterated
+ * metadata line per OpenITI work (`"Author: … | Title: … | Date: … AH | Tags: …"`,
+ * from `scripts/openiti_metadata_to_csv.py`), `citation_ref` = `{openiti_id,
+ * author, date_ah, tags, url}` with **no `discipline` key on any row** and no
+ * volume/page. Genre signal exists only as OpenITI's `_TAFSIR` / `_NAHW` markers
+ * inside `citation_ref.tags`, on ~40% of a 120-row sample. The rows are embedded
+ * only off that stub, so semantic search doesn't discriminate by topic. Tagging
+ * it would yield a discipline checkbox that returns non-citable catalogue cards —
+ * the same "worse lie than not offering it" this file already avoids. It was
+ * removed from `DISCIPLINE_DOMAINS` (where it sat inert). A full-text OpenITI
+ * ingest via `classical_to_csv.py` is the only real path, and is out of scope.
  */
 
 export type SourceGroupId = "corpus" | "classical" | "api" | "web";
@@ -62,7 +72,7 @@ export const RESEARCH_SOURCES: ResearchSource[] = [
   { id: "tanzil", ur: "تنزیل — قرآن", note: "6,236 آیات، عثمانی متن", group: "corpus" },
   { id: "hadith-index", ur: "حدیث کارپس — معنوی تلاش", note: "بخاری، مسلم، مسند احمد، مصنف ابن ابی شیبہ سمیت ~350,000 احادیث، مفہوم کی بنیاد پر", group: "corpus" },
   { id: "hadith-json", ur: "حدیث کارپس — لفظی تلاش", note: "انہی احادیث میں الفاظ و اصطلاحات کی براہِ راست تلاش", group: "corpus" },
-  { id: "openiti-index", ur: "OpenITI — کلاسیکی عربی", note: "کلاسیکی عربی نثر کا ذخیرہ", group: "corpus" },
+  { id: "openiti-index", ur: "OpenITI — کلاسیکی عربی", note: "کلاسیکی عربی کتب کا فہرستی اشاریہ (مکمل متن نہیں)", group: "corpus" },
 
   // Tier D — the Tier-2 classical corpus, scoped by discipline rather than
   // by domain. Auto-detected from the question ("راوی کا حال" → رجال) even

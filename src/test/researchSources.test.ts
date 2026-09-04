@@ -91,12 +91,27 @@ describe("classical discipline pseudo-domains", () => {
   });
 
   it("does not offer fiqh or nahw — no domain of theirs has ingested rows", () => {
-    // shamela has never been ingested; openiti-index is ingested but as
-    // untagged general prose. Offering them would repeat the exact
-    // shamela-index mistake this file already documents avoiding.
+    // shamela has never been ingested; openiti-index, audited live on
+    // 2026-09-04, is a work-level catalogue index (no citation_ref.discipline,
+    // no page text) and was removed from DISCIPLINE_DOMAINS. Offering either
+    // discipline would repeat the shamela-index mistake this file documents.
     const offered = new Set(Object.values(backendDisciplineMap()));
     expect(offered.has("fiqh")).toBe(false);
     expect(offered.has("nahw")).toBe(false);
+  });
+
+  it("does not map any discipline to openiti-index — it is a catalogue, not prose", async () => {
+    // Live audit 2026-09-04 (ADR-0014 follow-up / ADR-0028): `openiti-index`
+    // rows are one transliterated metadata line per OpenITI work, carry no
+    // `citation_ref.discipline` and no volume/page, and are embedded only off
+    // that stub. classicalSemanticChannel post-filters on the discipline field,
+    // so every openiti row was dropped anyway while the domain stole match
+    // slots from the real discipline domains. It must stay out of the map until
+    // a real full-text ingest (classical_to_csv.py, domain `openiti`) lands.
+    const { DISCIPLINE_DOMAINS } = await import("../../supabase/functions/_shared/disciplines");
+    for (const [discipline, domains] of Object.entries(DISCIPLINE_DOMAINS)) {
+      expect(domains, `${discipline} still maps to the catalogue-only "openiti-index"`).not.toContain("openiti-index");
+    }
   });
 
   it("does offer fatwa — urdufatwa is a real, populated, embedded corpus", async () => {
