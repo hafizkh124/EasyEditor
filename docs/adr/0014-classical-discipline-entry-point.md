@@ -135,11 +135,26 @@ a source is absent.
 
 ## Follow-ups
 
-- Confirm live whether `openiti-index` rows carry any `citation_ref.discipline`
-  value at all (a `GROUP BY citation_ref->>'discipline'` on that domain would
-  settle it) before deciding whether fiqh/nahw are worth ingesting via
-  `scripts/classical_to_csv.py`. They remain the only two disciplines still
-  excluded from the picker.
+- ~~Confirm live whether `openiti-index` rows carry any `citation_ref.discipline`
+  value.~~ **Done, 2026-09-04 (also ADR-0028's data-quality task).** A live probe
+  of `scholarly_documents` via `vector-search` settled it: **no `openiti-index`
+  row carries `citation_ref.discipline`**, and the reason it can't simply be
+  backfilled is structural — `openiti-index` is a *work-level catalogue index*,
+  not ingested prose. Each row is one transliterated metadata line per OpenITI
+  work (`"Author: … | Title: … | Date: … AH | Tags: …"`, from
+  `scripts/openiti_metadata_to_csv.py`, which never reads book text);
+  `citation_ref` is `{openiti_id, author, date_ah, tags, url}` with no
+  volume/page. Genre signal exists only as OpenITI's `_TAFSIR` / `_NAHW` markers
+  inside `citation_ref.tags`, on ~40% of a 120-row sample; the rows are embedded
+  only off the stub, so semantic search doesn't discriminate by topic. Tagging
+  it would produce a discipline checkbox returning non-citable catalogue cards.
+  **Action taken:** `openiti-index` was removed from `DISCIPLINE_DOMAINS`
+  entirely (it sat inert — `classicalSemanticChannel` post-filters on
+  `citation_ref.discipline` and dropped every NULL row, while the domain still
+  stole `match_count` slots from the real discipline domains). fiqh and nahw
+  stay out of the picker; a real full-text OpenITI ingest via
+  `scripts/classical_to_csv.py` (domain `openiti`, real `discipline`) is the
+  only path to a scoped OpenITI source and remains unscheduled.
 - ~~**Cross-tier duplication is unaddressed.**~~ **Done, 2026-08-23.**
   `_shared/resultIdentity.ts` now gives every result a stable cross-tier
   identity and `islamic-search` de-dupes `allResults` with it. The topic-anchor

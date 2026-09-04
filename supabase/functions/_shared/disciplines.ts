@@ -57,16 +57,37 @@ export const DISCIPLINE_LABELS_UR: Record<Discipline, string> = {
  *      vector-search's TIER_B_DOMAINS and the Corpus Atlas domain census), so
  *      every discipline's openiti entry matched zero rows.
  *
+ *  `openiti-index` was listed here for all six disciplines until 2026-09-04,
+ *  then removed after a live audit (ADR-0014 follow-up / ADR-0028). The finding:
+ *  `openiti-index` is a **work-level catalogue index**, not ingested prose.
+ *  Every row is one transliterated metadata line per OpenITI work —
+ *  `"Author: … | Title: … | Date: … AH | Tags: …"` — written by
+ *  `scripts/openiti_metadata_to_csv.py`, which never reads book text.
+ *  `citation_ref` is `{openiti_id, author, date_ah, tags, url}` with **no
+ *  `discipline` key on any row**, and no volume/page, so a hit can never back a
+ *  page-precise citation. The only genre signal is OpenITI's own `_TAFSIR` /
+ *  `_NAHW` / … markers inside `citation_ref.tags`, present on only ~40% of a
+ *  120-row sample (another ~13% carry `Tags: COMPLETED` alone, ~6% nothing).
+ *  The rows *are* embedded, but off the transliterated stub, so semantic search
+ *  does not discriminate by topic — the same handful of works rank top for
+ *  "تفسير", "نحو", "رجال" and "الطب" alike. So the tag can't be "corrected"
+ *  into something useful: the rows aren't citable passages. Its presence here
+ *  was pure cost — `classicalSemanticChannel` post-filters on
+ *  `citation_ref.discipline`, dropping every NULL openiti row anyway, while the
+ *  domain still stole `match_count` slots from the real discipline domains. A
+ *  full-text OpenITI ingest via `classical_to_csv.py` (domain `openiti`, real
+ *  `discipline`) is the only path to a scoped OpenITI source; out of scope here.
+ *
  *  `shamela` is knowingly aspirational — Shamela has never been ingested (0
  *  rows). It is kept so the mapping is right the day it is, and costs nothing
  *  because filter_domains on an absent domain simply matches nothing. */
 export const DISCIPLINE_DOMAINS: Record<Discipline, string[]> = {
-  fiqh:   ["shamela", "openiti-index"],
-  fatwa:  ["shamela", "openiti-index", "islamqa-cache", "urdufatwa"],
-  tafsir: ["qul-tafsir", "shamela", "openiti-index", "islamicurdubooks-tafsir"],
-  lughat: ["shamela", "openiti-index", "islamicurdubooks-lexicon"],
-  rijal:  ["shamela", "openiti-index", "islamicurdubooks-rijal"],
-  nahw:   ["shamela", "openiti-index"],
+  fiqh:   ["shamela"],
+  fatwa:  ["shamela", "islamqa-cache", "urdufatwa"],
+  tafsir: ["qul-tafsir", "shamela", "islamicurdubooks-tafsir"],
+  lughat: ["shamela", "islamicurdubooks-lexicon"],
+  rijal:  ["shamela", "islamicurdubooks-rijal"],
+  nahw:   ["shamela"],
   // 66 rows: the اصطلاحاتِ حدیث taxonomy (13 categories -- types of hadith by
   // acceptance, by narrator count, by chain interruption, ...). Deliberately
   // excluded from ranked search by the Corpus Atlas's reasoning (definitions

@@ -39,8 +39,8 @@ query and nothing else, which is why it does not reopen ADR-0019's rejection.
 **waqfeya** and a **live OpenITI API** were dropped: waqfeya has no public API
 (reaching it means scraping — the rejected path), and OpenITI is a
 GitHub/Zenodo bulk corpus, not a query endpoint (and `openiti-index` is already
-ingested — the real work there is fixing its unverified discipline tagging,
-`src/lib/research/sources.ts:36`, a separate data-quality task).
+ingested — a separate data-quality task audited its discipline tagging; see
+Consequences).
 
 ## Decision — bibliographic-only citations
 
@@ -70,4 +70,16 @@ address**.
   entries `tier: 2`.
 - `/thematic-paper` gained an optional `search_repositories` step (skipped
   unless the connector is on).
-- The `openiti-index` discipline-tagging fix is spawned as a follow-up task.
+- **The `openiti-index` discipline-tagging task is closed (2026-09-04) as a
+  documented negative.** A live audit found `openiti-index` is a *work-level
+  catalogue index* — one transliterated metadata line per OpenITI work, from
+  `scripts/openiti_metadata_to_csv.py` — not ingested prose: no
+  `citation_ref.discipline` on any row, no volume/page, genre signal only in
+  `citation_ref.tags` on ~40% of a sample, and embedded only off the stub (so
+  semantic search does not discriminate by topic). The tag cannot be
+  "corrected" into a scoped citable source. `openiti-index` was **removed from
+  `DISCIPLINE_DOMAINS`** (it was inert there and cost `match_count` slots); the
+  `src/lib/research/sources.ts` note was downgraded from "unverified" to this
+  concrete finding. A real full-text OpenITI ingest via `classical_to_csv.py`
+  (domain `openiti`) stays out of scope — consistent with this ADR's rejection
+  of OpenITI as a live capability. See ADR-0014's follow-ups for the full audit.
