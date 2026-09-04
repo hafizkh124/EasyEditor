@@ -92,7 +92,8 @@ export interface AgentProgress {
   label?: string;
   kind:
     | 'thinking' | 'tool' | 'tool-result' | 'done' | 'error'
-    | 'clarify' | 'artifact' | 'plan-pending' | 'general-search-request';
+    | 'clarify' | 'artifact' | 'plan-pending'
+    | 'general-search-request' | 'transcribe-request';
   detail?: string;
   /** `kind: 'artifact'` — the artifact event. */
   artifact?: AgentArtifactEvent;
@@ -101,6 +102,10 @@ export interface AgentProgress {
   /** `kind: 'general-search-request'` — the renderer-bridged search (ADR-0019 #7). */
   requestId?: string;
   query?: string;
+  mode?: 'general' | 'islamic';
+  /** `kind: 'transcribe-request'` — the renderer-bridged Whisper run (M9 Phase 5). */
+  mediaPath?: string;
+  lang?: string;
 }
 
 export interface AgentRunResult {

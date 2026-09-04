@@ -60,6 +60,8 @@ export interface AgentRunInput {
   generalSearch?: ((query: string) => Promise<import('./generalSearch.js').GeneralSearchResult>) | null;
   /** Runs a research query via the renderer — 'islamic' returns citations (ADR-0022). */
   researchSearch?: ((mode: import('./researchBridge.js').ResearchMode, query: string) => Promise<import('./researchBridge.js').ResearchResult>) | null;
+  /** Decodes + transcribes an in-project recording via the renderer (M9 Phase 5). */
+  transcribeMedia?: ((mediaPath: string, lang: string) => Promise<import('./researchBridge.js').TranscriptionResult>) | null;
   /** Plan mode — resolves once the scholar approves (or rejects) the plan. */
   waitForApproval?: WaitForApprovalFn;
 }
@@ -97,6 +99,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     claimCheck: checkClaim,
     generalSearch: input.generalSearch ?? null,
     researchSearch: input.researchSearch ?? null,
+    transcribeMedia: input.transcribeMedia ?? null,
     emitArtifact,
   };
   const { dispatch } = createDispatcher(session);

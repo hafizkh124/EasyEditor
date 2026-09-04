@@ -29,6 +29,8 @@ import { getRefineTextPrompt } from '../../shared/ai/prompts/refineText.js';
 import { recordWrite } from './checkpoint.js';
 import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
 import { queryTafseer, type TafseerMode } from './adapters/tafsir.js';
+import { saveTranscript, transcriptPathFor } from './adapters/transcribe.js';
+import { readAssetText, registerChapter } from '../fs/projectFolder.js';
 import { formatScholarlyRef } from '../../shared/research/citationTypes.js';
 import type { DispatchFn, EmitArtifactFn } from '../../shared/agent/types.js';
 import type { GeneralSearchResult } from './generalSearch.js';
@@ -65,6 +67,12 @@ export interface AgentSession {
    * context — `search_hadith` then returns a clear message.
    */
   researchSearch?: ((mode: ResearchMode, query: string) => Promise<ResearchResult>) | null;
+  /**
+   * Decodes + transcribes an in-project recording via the renderer's Whisper
+   * pipeline (M9 Phase 5). Absent in a headless context — `transcribe_media`
+   * then returns a clear message.
+   */
+  transcribeMedia?: ((mediaPath: string, lang: string) => Promise<{ segments?: Array<{ start: number; end: number; text: string }>; error?: string }>) | null;
   /** Emits a live artifact event (M9 ADR-0024). No-op when absent. */
   emitArtifact?: EmitArtifactFn | null;
   /**
@@ -87,6 +95,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
   const claimCheck = session.claimCheck ?? null;
   const generalSearch = session.generalSearch ?? null;
   const researchSearch = session.researchSearch ?? null;
+  const transcribeMedia = session.transcribeMedia ?? null;
   const emitArtifact: EmitArtifactFn = (ev) => { try { session.emitArtifact?.(ev); } catch { /* non-fatal */ } };
 
   /** Snapshot any in-project write (chapter or not) into the task checkpoint. */
@@ -197,6 +206,68 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const backedUp = guardEdit(chapter);
         await word.setChapterLayout(chapterPath(root, chapter));
         return { ok: true, chapter, backedUp };
+      }
+
+      case 'transcribe_media': {
+        const mediaPath = str(args.media_path, 'media_path');
+        const lang = typeof args.lang === 'string' && args.lang.trim() ? args.lang : 'auto';
+        if (!transcribeMedia) {
+          return { error: 'transcribe_media is only available from the Agent panel (it uses the local Whisper engine there).' };
+        }
+        const artifactId = `transcript-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `Transcript — ${mediaPath.split('/').pop()}`, artifactType: 'transcript' });
+        const r = await transcribeMedia(mediaPath, lang);
+        if (r.error) {
+          emitArtifact({ op: 'close', artifactId, status: 'aborted' });
+          return { error: r.error };
+        }
+        const segments = r.segments ?? [];
+        if (segments.length === 0) {
+          emitArtifact({ op: 'close', artifactId, status: 'aborted' });
+          return { count: 0, note: 'The recording produced no speech — check that it has an audio track.' };
+        }
+        // The transcript is a project write, so it is undoable with the task.
+        guardWrite(transcriptPathFor(mediaPath));
+        const out = saveTranscript(root, mediaPath, segments);
+        emitArtifact({ op: 'delta', artifactId, mode: 'replace', text: out.text });
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+        return {
+          transcriptPath: out.transcriptPath,
+          segments: out.segments,
+          durationSeconds: out.durationSeconds,
+          preview: capResult(out.text.slice(0, 1500)),
+          note: `Saved to ${out.transcriptPath}. Pass that path to create_chapter's from_source — do not paste the transcript back through a tool call.`,
+        };
+      }
+
+      case 'create_chapter': {
+        const name = str(args.name, 'name');
+        const title = typeof args.title === 'string' ? args.title.trim() : '';
+        const fromSource = typeof args.from_source === 'string' && args.from_source.trim() ? args.from_source.trim() : null;
+        const rawHtml = typeof args.html === 'string' ? args.html : '';
+
+        let body = rawHtml;
+        if (fromSource) {
+          let text: string;
+          try { text = readAssetText(root, fromSource); }
+          catch (err) { return { error: `could not read from_source "${fromSource}": ${(err as Error).message}` }; }
+          body = text
+            .split(/\n{2,}|\r?\n/)
+            .map((p) => p.trim())
+            .filter(Boolean)
+            .map((p) => `<p>${p.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string))}</p>`)
+            .join('\n');
+        }
+        const html = (title ? `<h1>${title}</h1>\n` : '') + body;
+
+        // guardWrite BEFORE the file exists, so the checkpoint records it as new
+        // and "Undo this task" deletes it (M9 defect note).
+        const backedUp = guardEdit(name);
+        const dest = chapterPath(root, name);
+        const r = await word.createChapter(dest, { html: html || undefined, rtl: true });
+        let registered = false;
+        try { registerChapter(root, name); registered = true; } catch (err) { log.warn('registerChapter failed', { name, message: (err as Error).message }); }
+        return { chapter: name, outputPath: r.outputPath, seededFrom: fromSource ?? (rawHtml ? 'html' : 'blank'), registered, backedUp };
       }
 
       case 'add_document_comment': {

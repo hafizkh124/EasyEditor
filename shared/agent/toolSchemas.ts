@@ -93,6 +93,28 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'write',
   },
   {
+    name: 'transcribe_media',
+    description: "Transcribe a recording that is already in the project folder (an @mentioned lecture or dars) into timestamped text, saved as a .transcript.txt beside it. Uses the scholar's own local Whisper — nothing is uploaded. Long recordings are chunked automatically. Do NOT use for a file that is not in the project folder, and do NOT use to re-read a transcript that already exists (read it with create_chapter's from_source, or @mention it).",
+    params: {
+      media_path: { type: 'string', description: 'The in-project path of the recording, e.g. "media/dars-01.mp3" (from an @mention).' },
+      lang: { type: 'string', description: 'Language hint: "ur", "ar", "en", or "auto" (default).' },
+    },
+    required: ['media_path'],
+    effect: 'write',
+  },
+  {
+    name: 'create_chapter',
+    description: "Create a NEW chapter .docx in the project folder — blank, seeded from a transcript/notes file already in the project (from_source), or from a short HTML fragment. RTL page setup is applied. Prefer from_source over html for anything long: never paste a whole transcript through this call. Do NOT use to rewrite an existing chapter (that is draft_section / run_task).",
+    params: {
+      name: { type: 'string', description: 'The new chapter file name, e.g. "03-dars.docx". Must end in .docx.' },
+      title: { type: 'string', description: 'Optional heading placed at the top of the new chapter.' },
+      from_source: { type: 'string', description: 'An in-project .txt/.md file whose content seeds the chapter, e.g. "sources/dars-01.transcript.txt".' },
+      html: { type: 'string', description: 'A short HTML fragment to seed the chapter with. Use from_source for long content.' },
+    },
+    required: ['name'],
+    effect: 'write',
+  },
+  {
     name: 'add_document_comment',
     description: "Attach a margin comment to a passage in a chapter — a review note, a query about a source, or flagging a claim you could not verify (takhrīj / supervision). The anchor text must be a short exact phrase that appears in the chapter. Lands as a tracked change. Do NOT use to edit the text (that is run_task / draft_section) or to add a citation (insert_footnote).",
     params: {

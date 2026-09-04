@@ -10,12 +10,20 @@ describe('draft mode registry', () => {
     expect(DRAFT_MODE_NAMES.sort()).toEqual(['column', 'literary-urdu', 'outline', 'prose', 'summary', 'translation']);
   });
 
-  it('prose / column-with-sources / translation / literary-urdu are grounded; outline / summary are not', () => {
+  it('prose and translation are grounded; outline / summary / column are not', () => {
     expect(DRAFT_MODES.prose.grounded).toBe(true);
     expect(DRAFT_MODES.translation.grounded).toBe(true);
-    expect(DRAFT_MODES['literary-urdu'].grounded).toBe(true);
     expect(DRAFT_MODES.outline.grounded).toBe(false);
     expect(DRAFT_MODES.summary.grounded).toBe(false);
+    expect(DRAFT_MODES.column.grounded).toBe(false);
+  });
+
+  it('literary-urdu is NOT grounded — it recasts the chapter\'s own text, but its instruction forbids adding anything (M9 Phase 5)', () => {
+    const spec = DRAFT_MODES['literary-urdu'];
+    expect(spec.grounded).toBe(false);
+    expect(spec.instruction).toMatch(/CURRENT CHAPTER TEXT/);
+    expect(spec.instruction).toMatch(/Do not add facts/i);
+    expect(spec.instruction).toMatch(/not a summary/i);
   });
 
   it('every instruction forbids inventing facts beyond the excerpts', () => {

@@ -61,6 +61,21 @@ describe('playbook registry', () => {
     expect(selectPlaybook('میرے باب کی تنقیدی نظرثانی کریں')?.id).toBe('supervisor-audit');
   });
 
+  it('matches the M9 Phase 5 authoring playbooks', () => {
+    expect(selectPlaybook('/audio-to-chapter')?.id).toBe('audio-to-chapter');
+    expect(selectPlaybook('اس آڈیو درس سے باب بنا دو')?.id).toBe('audio-to-chapter');
+    expect(selectPlaybook('/thematic-paper')?.id).toBe('thematic-paper');
+    expect(selectPlaybook('/analytical-column')?.id).toBe('analytical-column');
+    expect(selectPlaybook('اس باب کا اکیڈمک ترجمہ کرو')?.id).toBe('academic-translation');
+  });
+
+  it('audio-to-chapter never pastes the transcript through a tool call — it seeds via from_source', () => {
+    const pb = getPlaybook('audio-to-chapter')!;
+    const create = pb.steps.find((s) => s.tool === 'create_chapter')!;
+    expect(create.bind).toContain('from_source');
+    expect(create.bind).not.toContain('html');
+  });
+
   it('supervisor-audit never carries a text-editing tool (it only reads + comments)', () => {
     const pb = getPlaybook('supervisor-audit')!;
     const editors = new Set(['run_task', 'draft_section', 'insert_footnote', 'set_page_layout', 'convert_document']);

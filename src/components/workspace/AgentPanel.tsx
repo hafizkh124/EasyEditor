@@ -6,7 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useProjectFolderContext } from "@/core/projectFolder/context";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { logger } from "@/lib/logger";
-import { decodeAudioFile, encodeChunkToWav } from "@/lib/audio/chunker";
+import { decodeAudioFile, encodeChunkToWav, chunkAudioBuffer } from "@/lib/audio/chunker";
 import { streamResearchQuery, streamIslamicQuery } from "@/lib/research/streamers";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import type { CitationItem } from "~shared/research/citationTypes";
@@ -116,12 +116,46 @@ export const AgentPanel: React.FC = () => {
     }
   }, [agent, subscription?.tier]);
 
+  // M9 Phase 5 — the agent asks the renderer to transcribe an in-project
+  // recording: whisper.cpp only reads 16 kHz mono WAV and the decode/chunk
+  // pipeline (ADR-0001) is Web Audio, so it can only run here.
+  const handleTranscribe = useCallback(async (requestId: string, mediaPath: string, lang: string) => {
+    const submit = agent?.submitTranscription;
+    const fsApi = window.electronAPI?.projectFolder;
+    const voiceApi = window.electronAPI?.voice;
+    if (!submit) return;
+    if (!fsApi?.readAssetBytes || !voiceApi?.transcribe || !projectRoot) {
+      void submit(requestId, { error: "Transcription needs the desktop app's local Whisper engine." });
+      return;
+    }
+    try {
+      const bytes = await fsApi.readAssetBytes(projectRoot, mediaPath);
+      const buffer = await decodeAudioFile(new Blob([bytes]));
+      const chunks = chunkAudioBuffer(buffer);
+      const segments: Array<{ start: number; end: number; text: string }> = [];
+      for (const chunk of chunks) {
+        const wav = await encodeChunkToWav(chunk.buffer);
+        const part = await voiceApi.transcribe({ audio: await wav.arrayBuffer(), lang });
+        for (const s of part) {
+          segments.push({ start: s.start + chunk.startSeconds, end: s.end + chunk.startSeconds, text: s.text });
+        }
+      }
+      void submit(requestId, { segments });
+    } catch (err) {
+      void submit(requestId, { error: err instanceof Error ? err.message : String(err) });
+    }
+  }, [agent, projectRoot]);
+
   useEffect(() => {
     if (!agent?.onProgress) return;
     return agent.onProgress((p) => {
       if (p.id) runIdRef.current = p.id;
       if (p.kind === "general-search-request" && p.requestId && typeof p.query === "string") {
         void handleResearch(p.requestId, p.query, p.mode === "islamic" ? "islamic" : "general");
+        return;
+      }
+      if (p.kind === "transcribe-request" && p.requestId && typeof p.mediaPath === "string") {
+        void handleTranscribe(p.requestId, p.mediaPath, typeof p.lang === "string" ? p.lang : "auto");
         return;
       }
       if (p.kind === "artifact" && p.artifact) {
@@ -135,7 +169,7 @@ export const AgentPanel: React.FC = () => {
       }
       setProgress((prev) => [...prev, { step: p.step ?? 0, label: p.label ?? "", kind: p.kind, detail: p.detail }]);
     });
-  }, [agent, handleResearch]);
+  }, [agent, handleResearch, handleTranscribe]);
 
   const decidePlan = useCallback(async (decision: "approved" | "rejected") => {
     setPlanPending(false);
