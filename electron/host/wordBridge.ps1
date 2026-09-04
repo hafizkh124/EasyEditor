@@ -637,6 +637,7 @@ public static class WordBridgeFontApi {
                 if ($null -ne $cmd.mirrorMargins)     { $ps.MirrorMargins = [bool]$cmd.mirrorMargins }
                 if ($null -ne $cmd.oddEven)           { $ps.OddAndEvenPagesHeaderFooter = [int][bool]$cmd.oddEven }
                 if ($null -ne $cmd.differentFirstPage) { $ps.DifferentFirstPageHeaderFooter = [int][bool]$cmd.differentFirstPage }
+                if ([bool]$cmd.startRecto) { try { $script:doc.Sections.Item(1).PageSetup.SectionStart = 4 } catch { } }  # wdSectionNewOddPage
                 if ($cmd.headerOdd -or $cmd.headerEven) {
                     foreach ($sec in $script:doc.Sections) {
                         if ($cmd.headerOdd)  { $sec.Headers.Item(1).Range.Text = "" + $cmd.headerOdd }   # wdHeaderFooterPrimary

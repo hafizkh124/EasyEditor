@@ -31,6 +31,7 @@ const wordMock = {
     count: 3, ms: 1,
   })),
   buildIndexes: vi.fn(async () => ({ marked: 5, ms: 1 })),
+  setPrintLayout: vi.fn(async () => ({ pageWidth: 481.89, pageHeight: 680.32, gutter: 34.02, ms: 1 })),
   ALLOWED_GLOBAL_OPTIONS: { check_spelling: 'CheckSpellingAsYouType', check_grammar: 'CheckGrammarAsYouType', smart_quotes: 'AutoFormatAsYouTypeReplaceQuotes' },
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMock);
@@ -205,6 +206,27 @@ describe('agent dispatch', () => {
     const r = await dispatch('create_chapter', { name: '04.docx', from_source: 'media/x.mp3' }) as { error?: string };
     expect(r.error).toMatch(/could not read from_source/);
     expect(wordMock.createChapter).not.toHaveBeenCalled();
+  });
+
+  it('typeset_print_ready applies a named trim + gutter, states the loss list, checkpointed (M9 Phase 8)', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('typeset_print_ready', { chapter: '01.docx', trim: 'waziri', header_odd: 'الباب الأول', header_even: 'كتاب التحقيق' }) as {
+      trim: string; pageSizeCm: { width: number; gutter: number }; loss: string[]; note: string; backedUp: boolean;
+    };
+    expect(recordEdit).toHaveBeenCalledWith('C:\\p', 'cp_1', '01.docx');
+    expect(wordMock.setPrintLayout).toHaveBeenCalledWith('C:\\p\\01.docx', expect.objectContaining({
+      trimWidthCm: 17, trimHeightCm: 24, gutterCm: 1.2, mirrorMargins: true, oddEvenHeaders: true, differentFirstPage: true, headerOdd: 'الباب الأول', headerEven: 'كتاب التحقيق',
+    }));
+    expect(r.trim).toMatch(/وزيري/);
+    expect(r.loss.join(' ')).toMatch(/not press typesetting/i);
+    expect(r.note).toMatch(/convert_document/);
+  });
+
+  it('typeset_print_ready rejects an unknown trim and an incomplete custom one', async () => {
+    const { dispatch } = mk();
+    expect(await dispatch('typeset_print_ready', { chapter: '01.docx', trim: 'tabloid' }) as { error?: string }).toMatchObject({ error: expect.stringMatching(/unknown trim/) });
+    expect(await dispatch('typeset_print_ready', { chapter: '01.docx', trim: 'custom', trim_width_cm: 12 }) as { error?: string }).toMatchObject({ error: expect.stringMatching(/custom/) });
+    expect(wordMock.setPrintLayout).not.toHaveBeenCalled();
   });
 
   it('compare_manuscript_variants collates two chapters into an apparatus, changing neither (M9 Phase 6)', async () => {

@@ -39,6 +39,7 @@ export type HostCommand =
       mirrorMargins?: boolean;
       oddEven?: boolean;
       differentFirstPage?: boolean;
+      startRecto?: boolean;
       headerOdd?: string;
       headerEven?: string;
     }

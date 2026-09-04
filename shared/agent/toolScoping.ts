@@ -68,7 +68,11 @@ const DOMAIN_RULES: DomainRule[] = [
     tools: ['compare_manuscript_variants', 'insert_footnote', 'add_document_comment', 'build_scholarly_indexes', 'search_shamela'],
   },
   {
-    keywords: ['فہرست', 'اشاریہ', 'index', 'indexes', 'فہارس', 'فهرس', 'فهارس', 'أعلام', 'typeset', 'کمپوزنگ', 'print', 'گٹر', 'gutter'],
+    keywords: ['typeset', 'کمپوزنگ', 'print', 'press', 'گٹر', 'gutter', 'trim', 'اشاعت', 'کتابت', 'طباعة', 'تنضيد', 'پرنٹ ریڈی'],
+    tools: ['typeset_print_ready', 'set_page_layout', 'convert_document', 'build_scholarly_indexes'],
+  },
+  {
+    keywords: ['فہرست', 'اشاریہ', 'index', 'indexes', 'فہارس', 'فهرس', 'فهارس', 'أعلام'],
     tools: ['build_scholarly_indexes', 'set_page_layout', 'convert_document', 'query_tafseer', 'search_hadith'],
   },
 ];
