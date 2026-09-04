@@ -47,6 +47,12 @@ export interface ProjectManifest {
   createdAt: string;
   /** Chapter file names (relative to the folder root), in reading order. */
   chapterOrder: string[];
+  /**
+   * Per-project source connector switches (M9 Phase 1b). A connector absent
+   * from the map is ON; `false` turns it off — the agent then does not see its
+   * tools and any playbook step that needs it is skipped.
+   */
+  connectors?: Record<string, boolean>;
   /** Manifest schema version, for future migrations. */
   version: 1;
 }

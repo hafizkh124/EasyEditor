@@ -14,6 +14,7 @@ import { registerFsHandlers, terminateFsWatch } from './ipc/fsHandlers.js';
 import { registerAgentHandlers } from './ipc/agentHandlers.js';
 import { isAllowedExternalUrl } from './lib/urlAllowlist.js';
 import { ALLOWED_IPC_CHANNELS } from './ipc/registry.js';
+import { setChromeWindow, overlayColors, refreshTitleBarOverlay } from './windowChrome.js';
 import { logger } from './lib/logger.js';
 
 const log = logger.child('main');
@@ -111,6 +112,9 @@ const __dirname = path.dirname(__filename);
 // Disable hardware acceleration issues on some Windows systems if needed
 app.disableHardwareAcceleration();
 nativeTheme.themeSource = 'system';
+// OS light/dark flip — the renderer also pushes its own resolved theme
+// (system:set-theme) when the user overrides it in-app.
+nativeTheme.on('updated', () => refreshTitleBarOverlay());
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -125,11 +129,7 @@ function createWindow() {
     autoHideMenuBar: true,
     ...(process.platform === 'win32' ? {
       titleBarStyle: 'hidden',
-      titleBarOverlay: {
-        color: '#1e1e2e',
-        symbolColor: '#cdd6f4',
-        height: 36,
-      },
+      titleBarOverlay: { ...overlayColors(nativeTheme.shouldUseDarkColors), height: 36 },
     } : { titleBarStyle: 'default' }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -140,6 +140,7 @@ function createWindow() {
       allowRunningInsecureContent: false,
     },
   });
+  setChromeWindow(mainWindow);
 
   // A failed preload script leaves `window.electronAPI` undefined with no
   // other signal — every desktop-only feature (workspace DB, desktop OAuth,

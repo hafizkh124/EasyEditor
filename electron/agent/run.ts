@@ -28,6 +28,8 @@ import { buildSystemPrompt } from '../../shared/agent/systemPrompt.js';
 import { toolsFor } from '../../shared/agent/toolScoping.js';
 import { selectPlaybook, resolvePlaybook } from '../../shared/playbooks/registry.js';
 import { detectFastPath } from '../../shared/agent/fastPath.js';
+import { isToolDisabled } from '../../shared/agent/connectors.js';
+import { readConnectors } from '../fs/projectFolder.js';
 import type {
   AgentMode,
   AgentProgress,
@@ -127,7 +129,16 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     }
   }
 
-  const scopedTools = toolsFor(mode, { ask: playbook ? undefined : instruction, playbook });
+  // Per-project connector switches (M9 Phase 1b) — a tool whose connector is
+  // off is not shown to the model, and a playbook step needing it is skipped.
+  const connectors = (() => { try { return readConnectors(projectRoot); } catch { return {}; } })();
+  const scopedTools = toolsFor(mode, { ask: playbook ? undefined : instruction, playbook })
+    .filter((tool) => !isToolDisabled(connectors, tool.name));
+  const disabledTools = new Set(
+    toolsFor(mode, { ask: playbook ? undefined : instruction, playbook })
+      .map((t) => t.name)
+      .filter((n) => isToolDisabled(connectors, n)),
+  );
 
   // ── 2. Playbook — deterministic execution ─────────────────────────────
   const isSlash = instruction.trim().startsWith('/');
@@ -141,7 +152,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
         dispatch, systemPrompt,
         onProgress: input.onProgress, emitArtifact,
         isCancelled: input.isCancelled, waitForApproval: input.waitForApproval,
-        fallbackTools: scopedTools,
+        fallbackTools: scopedTools, disabledTools,
       });
       return { playbook: pb.id, stopReason: r.stopReason, steps: r.steps, answer: r.answer };
     };
@@ -153,7 +164,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
       dispatch, systemPrompt,
       onProgress: input.onProgress, emitArtifact,
       isCancelled: input.isCancelled, waitForApproval: input.waitForApproval,
-      fallbackTools: scopedTools,
+      fallbackTools: scopedTools, disabledTools,
     });
     return { ...result, playbook: playbook.id, checkpointId: taskWrote(result) ? checkpointId : undefined };
   }
@@ -168,7 +179,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
       dispatch, systemPrompt,
       onProgress: input.onProgress, emitArtifact,
       isCancelled: input.isCancelled, waitForApproval: input.waitForApproval,
-      fallbackTools: scopedTools,
+      fallbackTools: scopedTools, disabledTools,
     });
     return { playbook: pb.id, stopReason: r.stopReason, steps: r.steps, answer: r.answer };
   };

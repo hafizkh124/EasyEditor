@@ -173,11 +173,15 @@ function readManifest(root: string): ProjectManifest | null {
     const raw = fs.readFileSync(manifestPath(root), 'utf8');
     const m = JSON.parse(raw) as Partial<ProjectManifest>;
     if (!m.id || typeof m.id !== 'string') return null;
+    const connectors = m.connectors && typeof m.connectors === 'object'
+      ? Object.fromEntries(Object.entries(m.connectors).filter(([, v]) => typeof v === 'boolean'))
+      : undefined;
     return {
       id: m.id,
       title: typeof m.title === 'string' ? m.title : path.basename(root),
       createdAt: typeof m.createdAt === 'string' ? m.createdAt : new Date().toISOString(),
       chapterOrder: Array.isArray(m.chapterOrder) ? m.chapterOrder.filter((c) => typeof c === 'string') : [],
+      ...(connectors && Object.keys(connectors).length ? { connectors: connectors as Record<string, boolean> } : {}),
       version: 1,
     };
   } catch {
@@ -333,4 +337,27 @@ export function registerChapter(root: string, name: string): { bytes: number } {
 /** The absolute path a chapter should be written to (for the Word adapter). */
 export function chapterPath(root: string, name: string): string {
   return resolveInProject(root, name);
+}
+
+// ── M9 Phase 1b: per-project source connectors ─────────────────────────────
+
+/** Read the connector switch map (absent = all on). */
+export function readConnectors(root: string): Record<string, boolean> {
+  const m = readManifest(root);
+  const c = m?.connectors;
+  if (!c || typeof c !== 'object') return {};
+  const out: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(c)) if (typeof v === 'boolean') out[k] = v;
+  return out;
+}
+
+/** Flip one connector on/off and persist it. */
+export function setConnector(root: string, id: string, on: boolean): Record<string, boolean> {
+  const manifest = readManifest(root) ?? {
+    id: randomUUID(), title: path.basename(root), createdAt: new Date().toISOString(), chapterOrder: [], version: 1 as const,
+  };
+  const connectors = { ...(manifest.connectors ?? {}) };
+  if (on) delete connectors[id]; else connectors[id] = false;
+  writeManifest(root, { ...manifest, connectors });
+  return readConnectors(root);
 }

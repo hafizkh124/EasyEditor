@@ -68,6 +68,9 @@ export const ALLOWED_IPC_CHANNELS = {
 
   // RTL / Window
   SYSTEM_SET_TITLE: 'system:set-title',
+  // M9 Phase 1b — the renderer's resolved light/dark theme, so the Windows
+  // caption-button overlay matches the app instead of a hardcoded colour.
+  SYSTEM_SET_THEME: 'system:set-theme',
 } as const;
 
 export type IpcChannel = typeof ALLOWED_IPC_CHANNELS[keyof typeof ALLOWED_IPC_CHANNELS];
