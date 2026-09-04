@@ -24,6 +24,12 @@ export interface RetrievedChunk {
   source_url?: string | null;
   /** The excerpt text — used by the future claim-check tier. */
   content?: string;
+  /**
+   * A BIBLIOGRAPHIC reference to a WORK the agent has not read (Tier-2
+   * repositories, M9 ADR-0028). `insert_footnote` accepts it only with NO
+   * `claim` — it can name the work, never assert what a page of it says.
+   */
+  bibliographic?: boolean;
 }
 
 /** Accumulates every chunk the agent has retrieved so far in one task. */

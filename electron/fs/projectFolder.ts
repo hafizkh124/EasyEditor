@@ -14,6 +14,7 @@ import {
   type ProjectAsset,
   type ProjectAssetKind,
 } from '../../shared/fs/projectTypes.js';
+import { CONNECTORS } from '../../shared/agent/connectors.js';
 
 const log = logger.child('fs/projectFolder');
 
@@ -351,13 +352,18 @@ export function readConnectors(root: string): Record<string, boolean> {
   return out;
 }
 
-/** Flip one connector on/off and persist it. */
+/**
+ * Flip one connector on/off and persist it. A `defaultOff` connector keeps an
+ * explicit `true`; all others drop the key when turned on (absent = on).
+ */
 export function setConnector(root: string, id: string, on: boolean): Record<string, boolean> {
   const manifest = readManifest(root) ?? {
     id: randomUUID(), title: path.basename(root), createdAt: new Date().toISOString(), chapterOrder: [], version: 1 as const,
   };
   const connectors = { ...(manifest.connectors ?? {}) };
-  if (on) delete connectors[id]; else connectors[id] = false;
+  const defaultOff = CONNECTORS.find((c) => c.id === id)?.defaultOff === true;
+  if (on) { if (defaultOff) connectors[id] = true; else delete connectors[id]; }
+  else { if (defaultOff) delete connectors[id]; else connectors[id] = false; }
   writeManifest(root, { ...manifest, connectors });
   return readConnectors(root);
 }

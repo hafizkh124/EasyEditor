@@ -164,4 +164,12 @@ describe('connectors (M9 Phase 1b)', () => {
     // turning it back on deletes the key rather than storing `true`
     expect(setConnector(root, 'shamela', true)).toEqual({});
   });
+
+  it('a default-off connector (repositories) stores an explicit true when turned on', () => {
+    createProjectFolder(root, 'P');
+    expect(setConnector(root, 'repositories', true)).toEqual({ repositories: true });
+    openProjectFolder(root);
+    expect(readConnectors(root)).toEqual({ repositories: true });
+    expect(setConnector(root, 'repositories', false)).toEqual({}); // back to default-off
+  });
 });

@@ -29,6 +29,7 @@ reconstruct rationale without rereading commits.
 | [0021](./0021-m9-bounded-generative-tools.md) | M9 — `draft_section`: substantial drafting via fixed instruction templates, not free-form prompts | Accepted |
 | [0022](./0022-m9-agent-reach-into-local-subsystems.md) | M9 — `query_tafseer` + `search_hadith` bridged to existing subsystems (citable); `search_web_scholarly`/Firecrawl rejected; scholarly scraping whitelist widened | Accepted |
 | [0025](./0025-m9-print-layout-scope.md) | M9 — `typeset_print_ready` is a print-ready Word layout, not press-grade typesetting; every call returns a loss list | Accepted |
+| [0028](./0028-m9-federated-knowledge-tiers.md) | M9 — `search_repositories` (Archive.org + OpenAlex), bibliographic-only citations, opt-in per project; waqfeya + live OpenITI API rejected | Accepted |
 | [0024](./0024-m9-agent-artifact-channel.md) | M9 — the agent artifact channel + live document deltas; "skills" = playbooks + guidance | Accepted |
 | [0026](./0026-m9-studio-shell-and-governance-modes.md) | M9 — Ask/Plan/Auto modes (per-write "Manual" rejected); studio shell | Accepted |
 | [0027](./0027-m9-efficiency-and-intent-precision.md) | M9 — fast path, dynamic tool pruning, negative boundaries, budgeting, early-stop, ask-vs-guess | Accepted |

@@ -34,6 +34,7 @@ import { readAssetText, registerChapter } from '../fs/projectFolder.js';
 import { formatScholarlyRef } from '../../shared/research/citationTypes.js';
 import { buildApparatus, apparatusTable } from '../../shared/research/apparatus.js';
 import { resolveTrim, PRINT_LAYOUT_LOSS } from '../../shared/print/trimSizes.js';
+import { searchRepositories, type RepositoryQuery } from './adapters/repositories.js';
 import { buildIndexExtractionInstruction, parseIndexEntries, INDEX_KINDS, type IndexKind } from '../../shared/ai/prompts/indexEntries.js';
 import type { DispatchFn, EmitArtifactFn } from '../../shared/agent/types.js';
 import type { GeneralSearchResult } from './generalSearch.js';
@@ -189,6 +190,12 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const chapter = str(args.chapter, 'chapter');
         const marker = str(args.marker, 'marker');
         const chunk = ledger.resolveOrThrow(args.source_id); // tier 1: integrity gate
+        // ADR-0028: a Tier-2 repository hit names a WORK the agent has not read.
+        // It may be cited, but never with a `claim` — that would assert what a
+        // page of it says.
+        if (chunk.bibliographic && typeof args.claim === 'string' && args.claim.trim()) {
+          throw new Error('insert_footnote: this is a bibliographic reference to a work you have not read — cite it WITHOUT a `claim`. To support a specific claim, find the passage in search_shamela or search_corpus.');
+        }
         const verdict = await assertClaimSupported(args.claim, chunk.content, claimCheck); // tier 2: claim check
         const dest = chapterPath(root, chapter);
         const backedUp = guardEdit(chapter);
@@ -461,6 +468,26 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           note: chunks.length === 0 ? 'The hadith channel returned an answer but no page-precise citations to cite.' : undefined,
           answer: capResult((r.answer ?? '').trim()),
           results: chunks.map((c) => ({ id: c.id, reference: c.reference, url: c.source_url ?? undefined })),
+        };
+      }
+
+      case 'search_repositories': {
+        const query = str(args.query, 'query');
+        const repo = typeof args.repo === 'string' ? args.repo : 'all';
+        const limit = num(args.limit, 5);
+        const r = await searchRepositories({ query, repo, limit } as RepositoryQuery);
+        if (r.error) return { error: r.error };
+        ledger.add(r.chunks);
+        if (r.chunks.length) {
+          const artifactId = `repos-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: `مراجع: ${query.slice(0, 40)}`, artifactType: 'citation-list' });
+          emitArtifact({ op: 'citations', artifactId, entries: r.chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, url: c.source_url ?? undefined, tier: 2 })) });
+          emitArtifact({ op: 'close', artifactId, status: 'final' });
+        }
+        return {
+          count: r.chunks.length,
+          note: r.note,
+          results: r.chunks.map((c) => ({ id: c.id, reference: capResult(c.reference), url: c.source_url ?? undefined, bibliographic: true })),
         };
       }
 
