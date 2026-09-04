@@ -18,11 +18,19 @@ describe('connectors', () => {
     expect(connectorForTool('insert_footnote')).toBeNull();
   });
 
-  it('a connector is ON unless the map explicitly says false', () => {
+  it('a normal connector is ON unless the map explicitly says false', () => {
     expect(isConnectorOn(undefined, 'shamela')).toBe(true);
     expect(isConnectorOn({}, 'shamela')).toBe(true);
     expect(isConnectorOn({ shamela: true }, 'shamela')).toBe(true);
     expect(isConnectorOn({ shamela: false }, 'shamela')).toBe(false);
+  });
+
+  it('the repositories connector is OFF by default (opt-in, ADR-0028)', () => {
+    expect(isConnectorOn(undefined, 'repositories')).toBe(false);
+    expect(isConnectorOn({}, 'repositories')).toBe(false);
+    expect(isConnectorOn({ repositories: true }, 'repositories')).toBe(true);
+    expect(isToolDisabled(undefined, 'search_repositories')).toBe(true);
+    expect(isToolDisabled({ repositories: true }, 'search_repositories')).toBe(false);
   });
 
   it('isToolDisabled is true only when the tool has a connector AND it is off', () => {

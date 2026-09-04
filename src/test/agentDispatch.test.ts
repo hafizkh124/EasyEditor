@@ -126,6 +126,27 @@ describe('agent dispatch', () => {
     expect(r.note).toMatch(/Nothing matched/);
   });
 
+  it('search_repositories feeds the ledger with bibliographic chunks; insert_footnote refuses one + a claim (M9 Phase 9)', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ response: { docs: [{ identifier: 'A1', title: 'Ihya', creator: 'Ghazali', year: 1990 }] } }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ results: [{ title: 'Maqasid', publication_year: 2008, doi: 'https://doi.org/10/x' }] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const { dispatch } = mk();
+      const r = await dispatch('search_repositories', { query: 'ihya', repo: 'all' }) as { count: number; results: Array<{ id: string; bibliographic: boolean }> };
+      expect(r.count).toBe(2);
+      expect(r.results.every((x) => x.bibliographic)).toBe(true);
+
+      // cite a work with NO claim → allowed (word.applyCitations runs)
+      await dispatch('insert_footnote', { chapter: '01.docx', marker: '[1]', source_id: r.results[0].id });
+      // cite it WITH a claim → refused
+      await expect(dispatch('insert_footnote', { chapter: '01.docx', marker: '[2]', source_id: r.results[1].id, claim: 'The book says X.' }))
+        .rejects.toThrow(/bibliographic reference to a work you have not read/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('query_tafseer feeds the ledger with a citable book+surah+ayah chunk (M9 Phase 1)', async () => {
     const { dispatch, ledger } = mk();
     const r = await dispatch('query_tafseer', { reference: '2:255', mode: 'tafsir', sources: ['tabari'] }) as { count: number; results: Array<{ id: string }> };

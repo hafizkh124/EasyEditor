@@ -72,6 +72,17 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'read',
   },
   {
+    name: 'search_repositories',
+    description: "Search the global scholarly repositories — the Internet Archive (scanned editions) and OpenAlex (journal articles, theses, monographs) — for WORKS on a topic. Returns bibliographic references only: author, title, year, link. You can cite a work with insert_footnote but WITHOUT a `claim` — you have not read it. To quote a passage, find it in search_shamela or search_corpus. Do NOT use for a source you can read directly, and do NOT use it as a first resort. Needs an internet connection; off by default per project.",
+    params: {
+      query: { type: 'string', description: 'The topic or title to look for.' },
+      repo: { type: 'string', description: 'Which repository.', enum: ['archive', 'openalex', 'all'] },
+      limit: { type: 'number', description: 'Max works per repository (default 5).' },
+    },
+    required: ['query'],
+    effect: 'read',
+  },
+  {
     name: 'search_general',
     description: "Ask the General research channel a question (the same one the Research tab uses — a signed-in, provenance-tagged web+model search, NOT open browsing). Use ONLY for background/context the personal corpus and Shamela cannot answer. Its result is NOT page-precise, so it can never be used as a footnote source. Do NOT use it as a first resort, for a classical text (use search_shamela), or when the scholar asked for a sourced citation. Needs an internet connection and a signed-in session.",
     params: {

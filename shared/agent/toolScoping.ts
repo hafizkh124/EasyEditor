@@ -57,7 +57,11 @@ const DOMAIN_RULES: DomainRule[] = [
   },
   {
     keywords: ['کالم', 'مضمون', 'مقالہ', 'ترجمہ', 'ترجمة', 'column', 'essay', 'translate', 'translation', 'paper', 'draft a', 'write a chapter'],
-    tools: ['create_chapter', 'draft_section', 'search_shamela', 'search_general', 'insert_footnote', 'check_consistency'],
+    tools: ['create_chapter', 'draft_section', 'search_shamela', 'search_general', 'search_repositories', 'insert_footnote', 'check_consistency'],
+  },
+  {
+    keywords: ['archive.org', 'openalex', 'repository', 'repositories', 'journal', 'مقالات', 'thesis', 'dissertation', 'مخطوطات محفوظة', 'edition scan', 'bibliograph'],
+    tools: ['search_repositories', 'search_shamela', 'search_general', 'insert_footnote', 'draft_section'],
   },
   {
     keywords: ['فونٹ', 'font', 'nastaliq', 'nastaleeq', 'نستعلیق', 'template', 'ٹیمپلیٹ', 'dotx'],

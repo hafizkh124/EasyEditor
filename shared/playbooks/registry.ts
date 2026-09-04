@@ -203,6 +203,7 @@ export const PLAYBOOKS: Playbook[] = [
     steps: [
       { tool: 'search_corpus', bind: ['query'], repeat: true, note: 'Survey the personal corpus on the topic.' },
       { tool: 'search_shamela', bind: ['query'], repeat: true, note: 'Survey the classical works on the topic.' },
+      { tool: 'search_repositories', bind: ['query'], optional: true, note: 'Find modern scholarship on the topic (if the repositories connector is on).' },
       { tool: 'create_chapter', bind: ['name', 'title'], note: 'Create the paper file.' },
       { tool: 'draft_section', args: { mode: 'outline' }, bind: ['chapter'], note: 'Lay out the structure the sources support.' },
       { tool: 'draft_section', args: { mode: 'prose' }, bind: ['chapter', 'section_heading', 'source_ids'], repeat: true, note: 'Draft each section from the retrieved sources.' },
