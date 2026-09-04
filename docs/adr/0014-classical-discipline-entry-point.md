@@ -136,25 +136,26 @@ a source is absent.
 ## Follow-ups
 
 - ~~Confirm live whether `openiti-index` rows carry any `citation_ref.discipline`
-  value.~~ **Done, 2026-09-04 (also ADR-0028's data-quality task).** A live probe
-  of `scholarly_documents` via `vector-search` settled it: **no `openiti-index`
-  row carries `citation_ref.discipline`**, and the reason it can't simply be
-  backfilled is structural — `openiti-index` is a *work-level catalogue index*,
-  not ingested prose. Each row is one transliterated metadata line per OpenITI
-  work (`"Author: … | Title: … | Date: … AH | Tags: …"`, from
-  `scripts/openiti_metadata_to_csv.py`, which never reads book text);
-  `citation_ref` is `{openiti_id, author, date_ah, tags, url}` with no
-  volume/page. Genre signal exists only as OpenITI's `_TAFSIR` / `_NAHW` markers
-  inside `citation_ref.tags`, on ~40% of a 120-row sample; the rows are embedded
-  only off the stub, so semantic search doesn't discriminate by topic. Tagging
-  it would produce a discipline checkbox returning non-citable catalogue cards.
-  **Action taken:** `openiti-index` was removed from `DISCIPLINE_DOMAINS`
-  entirely (it sat inert — `classicalSemanticChannel` post-filters on
-  `citation_ref.discipline` and dropped every NULL row, while the domain still
-  stole `match_count` slots from the real discipline domains). fiqh and nahw
-  stay out of the picker; a real full-text OpenITI ingest via
-  `scripts/classical_to_csv.py` (domain `openiti`, real `discipline`) is the
-  only path to a scoped OpenITI source and remains unscheduled.
+  value.~~ **Done, 2026-09-04 (also ADR-0028's data-quality task).** Row-level
+  facts from `scholarly_documents` (a `GROUP BY` over `domain = 'openiti-index'`):
+  **4,780 rows, every one with `citation_ref->>'discipline'` NULL and no `tags`
+  key in `citation_ref` at all** (0/4780 on both). It can't simply be backfilled
+  because it is a *work-level catalogue index*, not ingested prose: each row is
+  one transliterated metadata line per OpenITI work
+  (`scripts/openiti_metadata_to_csv.py`, which never reads book text), no
+  volume/page. The `_TAFSIR` / `_NAHW` genre markers exist only as loose text
+  inside the `content` blob — not as a structured field — so there is nothing to
+  backfill a `discipline` *from* without re-parsing free text. The rows are
+  embedded only off the transliterated stub, so semantic search doesn't
+  discriminate by topic. Tagging it would produce a discipline checkbox
+  returning non-citable catalogue cards. **Action taken:** `openiti-index` was
+  removed from `DISCIPLINE_DOMAINS` entirely (it sat inert —
+  `classicalSemanticChannel` post-filters on `citation_ref.discipline` and
+  dropped every NULL row, while the domain still stole `match_count` slots from
+  the real discipline domains). fiqh and nahw stay out of the picker; a real
+  full-text OpenITI ingest via `scripts/classical_to_csv.py` (domain `openiti`,
+  real `discipline`) is the only path to a scoped OpenITI source and remains
+  unscheduled.
 - ~~**Cross-tier duplication is unaddressed.**~~ **Done, 2026-08-23.**
   `_shared/resultIdentity.ts` now gives every result a stable cross-tier
   identity and `islamic-search` de-dupes `allResults` with it. The topic-anchor

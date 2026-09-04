@@ -101,13 +101,15 @@ describe("classical discipline pseudo-domains", () => {
   });
 
   it("does not map any discipline to openiti-index — it is a catalogue, not prose", async () => {
-    // Live audit 2026-09-04 (ADR-0014 follow-up / ADR-0028): `openiti-index`
-    // rows are one transliterated metadata line per OpenITI work, carry no
-    // `citation_ref.discipline` and no volume/page, and are embedded only off
-    // that stub. classicalSemanticChannel post-filters on the discipline field,
-    // so every openiti row was dropped anyway while the domain stole match
-    // slots from the real discipline domains. It must stay out of the map until
-    // a real full-text ingest (classical_to_csv.py, domain `openiti`) lands.
+    // Live audit 2026-09-04 (ADR-0014 follow-up / ADR-0028): row-level facts
+    // from scholarly_documents — 4,780 `openiti-index` rows, 0 with
+    // `citation_ref.discipline`, 0 with a `tags` key. Each row is one
+    // transliterated metadata line per OpenITI work, no volume/page, embedded
+    // only off that stub. classicalSemanticChannel post-filters on the
+    // discipline field, so every openiti row was dropped anyway while the domain
+    // stole match slots from the real discipline domains. It must stay out of
+    // the map until a real full-text ingest (classical_to_csv.py, domain
+    // `openiti`) lands.
     const { DISCIPLINE_DOMAINS } = await import("../../supabase/functions/_shared/disciplines");
     for (const [discipline, domains] of Object.entries(DISCIPLINE_DOMAINS)) {
       expect(domains, `${discipline} still maps to the catalogue-only "openiti-index"`).not.toContain("openiti-index");

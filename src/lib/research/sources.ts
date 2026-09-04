@@ -34,18 +34,18 @@
  * Still not offered, for the same reason `shamela-index` above is not: fiqh
  * and nahw live only in `shamela` (never ingested, 0 rows) and `openiti-index`.
  * A live audit of `openiti-index` on 2026-09-04 (ADR-0014 follow-up / ADR-0028)
- * closed the "discipline tagging is unverified" note with a concrete finding:
- * it is a **work-level catalogue index**, not ingested prose — one transliterated
- * metadata line per OpenITI work (`"Author: … | Title: … | Date: … AH | Tags: …"`,
- * from `scripts/openiti_metadata_to_csv.py`), `citation_ref` = `{openiti_id,
- * author, date_ah, tags, url}` with **no `discipline` key on any row** and no
- * volume/page. Genre signal exists only as OpenITI's `_TAFSIR` / `_NAHW` markers
- * inside `citation_ref.tags`, on ~40% of a 120-row sample. The rows are embedded
- * only off that stub, so semantic search doesn't discriminate by topic. Tagging
- * it would yield a discipline checkbox that returns non-citable catalogue cards —
- * the same "worse lie than not offering it" this file already avoids. It was
- * removed from `DISCIPLINE_DOMAINS` (where it sat inert). A full-text OpenITI
- * ingest via `classical_to_csv.py` is the only real path, and is out of scope.
+ * closed the "discipline tagging is unverified" note with row-level facts from
+ * `scholarly_documents`: **4,780 rows, every one with `citation_ref->>'discipline'`
+ * NULL and no `tags` key in `citation_ref` at all.** It is a work-level catalogue
+ * index, not ingested prose — one transliterated metadata line per OpenITI work
+ * (`scripts/openiti_metadata_to_csv.py`, which never reads book text), no
+ * volume/page. The `_TAFSIR` / `_NAHW` genre markers appear only as loose text
+ * inside the `content` blob, so there is no structured field to backfill a
+ * discipline from. Tagging it would yield a discipline checkbox that returns
+ * non-citable catalogue cards — the "worse lie than not offering it" this file
+ * already avoids. It was removed from `DISCIPLINE_DOMAINS` (where it sat inert).
+ * A full-text OpenITI ingest via `classical_to_csv.py` is the only real path,
+ * and is out of scope.
  */
 
 export type SourceGroupId = "corpus" | "classical" | "api" | "web";
