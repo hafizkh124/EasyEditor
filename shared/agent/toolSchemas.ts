@@ -115,6 +115,29 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'write',
   },
   {
+    name: 'compare_manuscript_variants',
+    description: "Collate two witnesses of a text — a base chapter and a second manuscript — with Word's own Compare, and read back every difference as an apparatus criticus (موضع / متن الأصل / نسخة / نوع الاختلاف). Neither file is changed. Use for critical editions and فروق النسخ; then act on each locus with insert_footnote or add_document_comment. Do NOT use to review a draft against a supervisor's edits (that is read_document).",
+    params: {
+      base_chapter: { type: 'string', description: 'The base manuscript chapter file (the الأصل).' },
+      witness_chapter: { type: 'string', description: 'The second witness chapter file to collate against it.' },
+      siglum: { type: 'string', description: 'Short label for the witness column, e.g. "ب" or "ح".' },
+    },
+    required: ['base_chapter', 'witness_chapter'],
+    effect: 'read',
+  },
+  {
+    name: 'build_scholarly_indexes',
+    description: "Build the back-matter indexes for a chapter (فہارس): mark every occurrence of the index terms with Word XE fields and append the INDEX field so Word compiles it. Extracts entries from the chapter text for the requested kinds unless you pass `entries` yourself. Do NOT use for a table of contents (that is Word's built-in heading TOC). A tracked change.",
+    params: {
+      chapter: { type: 'string', description: 'The chapter file name.' },
+      kinds: { type: 'array', items: { type: 'string' }, description: 'Which indexes to build: quran, hadith, names, places, terms.' },
+      entries: { type: 'array', items: { type: 'string' }, description: 'Optional — pre-built entries as "find||entry" pairs; skips extraction.' },
+      heading: { type: 'string', description: 'Optional heading for the index section, e.g. "فهرس الأعلام".' },
+    },
+    required: ['chapter', 'kinds'],
+    effect: 'write',
+  },
+  {
     name: 'add_document_comment',
     description: "Attach a margin comment to a passage in a chapter — a review note, a query about a source, or flagging a claim you could not verify (takhrīj / supervision). The anchor text must be a short exact phrase that appears in the chapter. Lands as a tracked change. Do NOT use to edit the text (that is run_task / draft_section) or to add a citation (insert_footnote).",
     params: {

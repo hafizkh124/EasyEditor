@@ -69,6 +69,13 @@ describe('playbook registry', () => {
     expect(selectPlaybook('اس باب کا اکیڈمک ترجمہ کرو')?.id).toBe('academic-translation');
   });
 
+  it('matches the M9 Phase 6 manuscript playbooks', () => {
+    expect(selectPlaybook('/manuscript-edition')?.id).toBe('manuscript-edition');
+    expect(selectPlaybook('اس مخطوطہ کی تحقیق اور فروق النسخ')?.id).toBe('manuscript-edition');
+    expect(selectPlaybook('/generate-indexes')?.id).toBe('generate-indexes');
+    expect(selectPlaybook('اس باب کی فہارس بنا دو')?.id).toBe('generate-indexes');
+  });
+
   it('audio-to-chapter never pastes the transcript through a tool call — it seeds via from_source', () => {
     const pb = getPlaybook('audio-to-chapter')!;
     const create = pb.steps.find((s) => s.tool === 'create_chapter')!;

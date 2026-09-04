@@ -22,6 +22,15 @@ const wordMock = {
   applyTextTask: vi.fn(async () => ({ revisions: 4, ms: 1 })),
   addComment: vi.fn(async (_p: string, o: { anchorText: string }) => ({ added: o.anchorText !== 'nope', notFound: o.anchorText === 'nope', ms: 1 })),
   createChapter: vi.fn(async (dest: string, _opts?: { html?: string; rtl?: boolean }) => ({ outputPath: dest, name: dest.split('\\').pop() ?? dest, ms: 1 })),
+  compareManuscripts: vi.fn(async () => ({
+    revisions: [
+      { type: 'delete', text: 'نورٌ', context: '… العلم نورٌ يهدي …', page: 3 },
+      { type: 'insert', text: 'ضياءٌ', context: '… العلم ضياءٌ يهدي …', page: 3 },
+      { type: 'insert', text: 'رحمه الله', context: '', page: 5 },
+    ],
+    count: 3, ms: 1,
+  })),
+  buildIndexes: vi.fn(async () => ({ marked: 5, ms: 1 })),
   ALLOWED_GLOBAL_OPTIONS: { check_spelling: 'CheckSpellingAsYouType', check_grammar: 'CheckGrammarAsYouType', smart_quotes: 'AutoFormatAsYouTypeReplaceQuotes' },
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMock);
@@ -196,6 +205,55 @@ describe('agent dispatch', () => {
     const r = await dispatch('create_chapter', { name: '04.docx', from_source: 'media/x.mp3' }) as { error?: string };
     expect(r.error).toMatch(/could not read from_source/);
     expect(wordMock.createChapter).not.toHaveBeenCalled();
+  });
+
+  it('compare_manuscript_variants collates two chapters into an apparatus, changing neither (M9 Phase 6)', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('compare_manuscript_variants', { base_chapter: '01.docx', witness_chapter: '02-body.docx', siglum: 'ح' }) as {
+      count: number; loci: Array<{ kind: string; base: string; witness: string }>; note: string;
+    };
+    expect(wordMock.compareManuscripts).toHaveBeenCalledWith('C:\\p\\01.docx', 'C:\\p\\02-body.docx');
+    // delete+insert → one substitution; lone insert → one addition
+    expect(r.count).toBe(2);
+    expect(r.loci[0]).toMatchObject({ kind: 'substitution', base: 'نورٌ', witness: 'ضياءٌ' });
+    expect(r.loci[1]).toMatchObject({ kind: 'addition', witness: 'رحمه الله' });
+    // read-effect: no checkpoint entry
+    expect(recordEdit).not.toHaveBeenCalled();
+    expect(r.note).toMatch(/insert_footnote|add_document_comment/);
+  });
+
+  it('compare_manuscript_variants reports identical witnesses', async () => {
+    wordMock.compareManuscripts.mockResolvedValueOnce({ revisions: [], count: 0, ms: 1 });
+    const { dispatch } = mk();
+    const r = await dispatch('compare_manuscript_variants', { base_chapter: '01.docx', witness_chapter: '02-body.docx' }) as { count: number; note: string };
+    expect(r.count).toBe(0);
+    expect(r.note).toMatch(/identical/);
+  });
+
+  it('build_scholarly_indexes extracts entries, marks them, appends the INDEX, checkpointed (M9 Phase 6)', async () => {
+    generateContentStream.mockResolvedValueOnce('[{"find":"قال الغزالي","entry":"الغزالي، أبو حامد"}]');
+    const { dispatch } = mk();
+    const r = await dispatch('build_scholarly_indexes', { chapter: '01.docx', kinds: ['names'], heading: 'فہرس الأعلام' }) as { entryCount: number; marked: number; backedUp: boolean };
+    expect(recordEdit).toHaveBeenCalledWith('C:\\p', 'cp_1', '01.docx');
+    expect(wordMock.buildIndexes).toHaveBeenCalledWith('C:\\p\\01.docx', [{ find: 'قال الغزالي', entry: 'الغزالي، أبو حامد' }], { heading: 'فہرس الأعلام' });
+    expect(r.entryCount).toBe(1);
+    expect(r.marked).toBe(5);
+  });
+
+  it('build_scholarly_indexes rejects an unknown kind and skips extraction when nothing is found', async () => {
+    const { dispatch } = mk();
+    expect(await dispatch('build_scholarly_indexes', { chapter: '01.docx', kinds: ['nonsense'] }) as { error?: string }).toMatchObject({ error: expect.stringMatching(/at least one of/) });
+    generateContentStream.mockResolvedValueOnce('[]');
+    const r = await dispatch('build_scholarly_indexes', { chapter: '01.docx', kinds: ['places'] }) as { count: number; note: string };
+    expect(r.count).toBe(0);
+    expect(wordMock.buildIndexes).not.toHaveBeenCalled();
+  });
+
+  it('build_scholarly_indexes accepts pre-built "find||entry" pairs and skips the model', async () => {
+    const { dispatch } = mk();
+    await dispatch('build_scholarly_indexes', { chapter: '01.docx', kinds: ['names'], entries: ['ابن تيمية||ابن تيمية، تقي الدين', 'bad-no-separator'] });
+    expect(generateContentStream).not.toHaveBeenCalled();
+    expect(wordMock.buildIndexes).toHaveBeenCalledWith('C:\\p\\01.docx', [{ find: 'ابن تيمية', entry: 'ابن تيمية، تقي الدين' }], {});
   });
 
   it('add_document_comment attaches a comment as a tracked change, checkpointed (M9 Phase 4)', async () => {

@@ -64,8 +64,12 @@ const DOMAIN_RULES: DomainRule[] = [
     tools: ['install_font', 'install_template', 'set_page_layout'],
   },
   {
-    keywords: ['فہرست', 'اشاریہ', 'index', 'فہارس', 'typeset', 'کمپوزنگ', 'print', 'گٹر', 'gutter'],
-    tools: ['set_page_layout', 'convert_document', 'draft_section'],
+    keywords: ['مخطوط', 'مخطوطة', 'نسخ', 'فروق النسخ', 'apparatus', 'collate', 'critical edition', 'witness', 'نسخہ', 'تدوین'],
+    tools: ['compare_manuscript_variants', 'insert_footnote', 'add_document_comment', 'build_scholarly_indexes', 'search_shamela'],
+  },
+  {
+    keywords: ['فہرست', 'اشاریہ', 'index', 'indexes', 'فہارس', 'فهرس', 'فهارس', 'أعلام', 'typeset', 'کمپوزنگ', 'print', 'گٹر', 'gutter'],
+    tools: ['build_scholarly_indexes', 'set_page_layout', 'convert_document', 'query_tafseer', 'search_hadith'],
   },
 ];
 

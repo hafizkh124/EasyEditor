@@ -123,6 +123,33 @@ export const PLAYBOOKS: Playbook[] = [
     ],
   },
   {
+    id: 'manuscript-edition',
+    title: 'Collate manuscript witnesses into a critical edition (تحقيق مخطوط)',
+    trigger: 'manuscript-edition',
+    keywords: ['critical edition', 'manuscript', 'مخطوط', 'مخطوطة', 'تحقيق', 'نسخ', 'فروق النسخ', 'apparatus', 'collate', 'witness', 'تدوین', 'نسخہ'],
+    guidance:
+      'Prepare a تنقیدی نسخہ (critical edition). Take one witness as the الأصل (base) and collate each other witness against it. For every locus of variation decide what belongs in the established text and record the rejected reading in the apparatus (فروق النسخ) — as a footnote at that point, keyed by siglum. Note where a witness adds, omits, or garbles. Do not silently emend; every editorial decision is visible in the apparatus. When the collation is done, build the scholarly indexes.',
+    steps: [
+      { tool: 'read_document', bind: ['chapter'], note: 'Read the base manuscript.' },
+      { tool: 'compare_manuscript_variants', bind: ['base_chapter', 'witness_chapter', 'siglum'], repeat: true, note: 'Collate each witness against the base.' },
+      { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id'], optional: true, repeat: true, note: 'Record each variant reading as a فروق النسخ footnote.' },
+      { tool: 'add_document_comment', bind: ['chapter', 'anchor_text', 'comment'], optional: true, repeat: true, note: 'Comment where a reading is doubtful or an emendation is proposed.' },
+      { tool: 'build_scholarly_indexes', args: { kinds: ['quran', 'hadith', 'names'] }, bind: ['chapter'], optional: true, note: 'Build the verse / hadith / names indexes.' },
+    ],
+  },
+  {
+    id: 'generate-indexes',
+    title: 'Build the back-matter indexes for a chapter or book (فہارس)',
+    trigger: 'generate-indexes',
+    keywords: ['index', 'indexes', 'indices', 'فہرست', 'فہارس', 'اشاریہ', 'فهرس', 'فهارس', 'أعلام', 'back matter'],
+    guidance:
+      'Build the scholarly فہارس. Index the Qur\'anic verses and hadith that are actually quoted or cited, the names of people and places that the chapter says something about, and the technical terms it defines or discusses substantively — not every passing mention. Each entry\'s locator phrase must occur verbatim in the text so Word can mark it.',
+    steps: [
+      { tool: 'read_document', bind: ['chapter'], note: 'Read the chapter to see what it covers.' },
+      { tool: 'build_scholarly_indexes', bind: ['chapter', 'kinds', 'heading'], note: 'Extract entries for the requested kinds and compile the INDEX.' },
+    ],
+  },
+  {
     id: 'audio-to-chapter',
     title: 'Turn a recorded lecture into a book chapter (درس سے باب)',
     trigger: 'audio-to-chapter',
