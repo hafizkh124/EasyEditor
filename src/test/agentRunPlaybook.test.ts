@@ -70,6 +70,26 @@ describe('runPlaybook', () => {
     expect(r.stopReason).toBe('needs-input');
   });
 
+  it('skips a step whose source connector is switched off (M9 Phase 1b)', async () => {
+    const pb: Playbook = {
+      id: 'p', title: 'P', keywords: [],
+      steps: [
+        { tool: 'search_shamela', bind: ['query'], note: 'search shamela' },
+        { tool: 'search_corpus', bind: ['query'], note: 'search corpus' },
+      ],
+    };
+    generateBoundCall.mockResolvedValue({ name: 'search_corpus', args: { query: 'x' } });
+    generateWithTools.mockResolvedValueOnce({ kind: 'text', text: 'answer' });
+    const dispatch = vi.fn(async () => ({ count: 1, results: [] }));
+    await runPlaybook({
+      ...base, playbook: pb, instruction: 'x', mode: 'auto', dispatch,
+      disabledTools: new Set(['search_shamela']),
+    });
+    // only search_corpus was dispatched; the disabled step was skipped
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith('search_corpus', expect.anything());
+  });
+
   it('Ask mode skips write steps and still returns a synthesised answer', async () => {
     const pb: Playbook = {
       id: 'p', title: 'P', keywords: [],

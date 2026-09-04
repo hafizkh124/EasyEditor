@@ -87,10 +87,17 @@ function mockApi(over: Partial<typeof pf> = {}) {
         assetList = [...assetList, { name: rel, kind: "media" as const, ext: ".mp3", size: 10, modifiedAt: "x" }];
         return assetList[assetList.length - 1];
       }),
+      getConnectors: vi.fn(async () => connectorState),
+      setConnector: vi.fn(async (_root: string, id: string, on: boolean) => {
+        connectorState = on ? { ...connectorState } : { ...connectorState, [id]: false };
+        if (on) delete connectorState[id];
+        return connectorState;
+      }),
     },
   };
 }
 let assetList: Array<{ name: string; kind: "media" | "scan" | "asset"; ext: string; size: number; modifiedAt: string }> = [];
+let connectorState: Record<string, boolean> = {};
 
 beforeEach(() => {
   pf.folder = { path: "C:\\thesis", manifest: { id: "1", title: "My Thesis", createdAt: "x", chapterOrder: [], version: 1 } };
@@ -111,6 +118,7 @@ afterEach(() => {
   delete (window as unknown as { electronAPI?: unknown }).electronAPI;
   onProgressCb = null;
   assetList = [];
+  connectorState = {};
   vi.clearAllMocks();
 });
 
@@ -170,6 +178,34 @@ describe("AgentPanel", () => {
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "check @body", selectionStart: 10 } });
     expect(await screen.findByText("02-body.docx")).toBeInTheDocument();
+  });
+
+  it("the + hub toggles a source connector and persists it (M9 Phase 1b)", async () => {
+    render(<AgentPanel />);
+    fireEvent.click(screen.getByRole("button", { name: /Add files, folders, playbooks/ }));
+    const shamela = screen.getByText("Maktaba Shamela").closest("label")!.querySelector("input")!;
+    expect(shamela).toBeChecked();
+    fireEvent.click(shamela);
+    await waitFor(() => expect(window.electronAPI!.projectFolder!.setConnector).toHaveBeenCalledWith("C:\\thesis", "shamela", false));
+    // the context pill now shows a source is off
+    await waitFor(() => expect(screen.getByText(/source off/)).toBeInTheDocument());
+  });
+
+  it("collapses a finished multi-step run into a 'Ran N steps' card (M9 Phase 1b)", async () => {
+    let resolveRun: (v: unknown) => void = () => {};
+    agentRun.mockImplementationOnce(() => new Promise((r) => { resolveRun = r as (v: unknown) => void; }));
+    render(<AgentPanel />);
+    fireEvent.change(screen.getByPlaceholderText(/Ask, or describe a task/), { target: { value: "do a thing" } });
+    fireEvent.keyDown(screen.getByPlaceholderText(/Ask, or describe a task/), { key: "Enter" });
+    await waitFor(() => expect(onProgressCb).toBeTruthy());
+    for (const label of ["reading the chapter", "searching Shamela", "inserting the footnote", "done"]) {
+      onProgressCb!({ id: "1", step: 1, label, kind: label === "done" ? "done" : "tool" });
+    }
+    resolveRun({ answer: "finished", stopReason: "done", steps: 4, toolCalls: [] });
+    expect(await screen.findByText(/Ran 4 steps/)).toBeInTheDocument();
+    // still expandable
+    fireEvent.click(screen.getByText(/Ran 4 steps/));
+    expect(screen.getByText("searching Shamela")).toBeInTheDocument();
   });
 
   it("imports a dropped recording and inserts it as an @mention (M9 Phase 3)", async () => {

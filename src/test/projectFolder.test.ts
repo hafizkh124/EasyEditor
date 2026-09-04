@@ -17,6 +17,8 @@ import {
   backupChapter,
   registerChapter,
   resolveInProject,
+  readConnectors,
+  setConnector,
 } from '../../electron/fs/projectFolder';
 
 let root: string;
@@ -144,5 +146,22 @@ describe('refreshChapters', () => {
     openProjectFolder(root);
     touch('02.docx');
     expect(refreshChapters(root).map((c) => c.name)).toEqual(['01.docx', '02.docx']);
+  });
+});
+
+describe('connectors (M9 Phase 1b)', () => {
+  it('round-trips a connector switch through the manifest, default all-on', () => {
+    createProjectFolder(root, 'P');
+    expect(readConnectors(root)).toEqual({});
+
+    expect(setConnector(root, 'shamela', false)).toEqual({ shamela: false });
+    expect(readConnectors(root)).toEqual({ shamela: false });
+
+    // survives a re-open (which rewrites the manifest)
+    openProjectFolder(root);
+    expect(readConnectors(root)).toEqual({ shamela: false });
+
+    // turning it back on deletes the key rather than storing `true`
+    expect(setConnector(root, 'shamela', true)).toEqual({});
   });
 });

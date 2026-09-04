@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import LocalePrefixSync from "@/components/LocalePrefixSync";
+import DesktopTitleBarSync from "@/components/DesktopTitleBarSync";
 import CapabilityRoute from "@/components/CapabilityRoute";
 import FirstRunLanguageGate from "@/components/FirstRunLanguageGate";
 import RedirectToWorkspace from "@/components/RedirectToWorkspace";
@@ -92,6 +93,7 @@ const App = () => (
             <SubscriptionProvider>
             <NotificationProvider>
             <Toaster />
+            <DesktopTitleBarSync />
             <AppRouter>
               <ErrorBoundary>
                 <LocalePrefixSync />

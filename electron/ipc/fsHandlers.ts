@@ -27,6 +27,8 @@ import {
   listAssets,
   importDroppedFile,
   resolveAsset,
+  readConnectors,
+  setConnector,
 } from '../fs/projectFolder.js';
 import * as word from '../adapters/word.js';
 
@@ -67,6 +69,13 @@ export function registerFsHandlers(): void {
 
         case 'listChapters':
           return refreshChapters(String(payload.root));
+
+        // ── M9 Phase 1b: per-project source connectors ──
+        case 'getConnectors':
+          return readConnectors(String(payload.root));
+
+        case 'setConnector':
+          return setConnector(String(payload.root), String(payload.id ?? ''), payload.on !== false);
 
         // ── M9 Phase 3: non-chapter assets (recordings, scans, fonts, templates) ──
         case 'listAssets':

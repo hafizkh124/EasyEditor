@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Send, Loader2, Square, FolderOpen, Wrench, ScrollText, ChevronRight, AlertTriangle, CheckCircle2, Undo2, Mic } from "lucide-react";
+import { Bot, Send, Loader2, Square, FolderOpen, Wrench, ScrollText, ChevronRight, ChevronDown, AlertTriangle, CheckCircle2, Undo2, Mic, Plus, Paperclip, Plug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -12,6 +12,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import type { CitationItem } from "~shared/research/citationTypes";
 import { buildMentions, filterMentions, activeMentionQuery, applyMention, type Mention } from "../../../shared/mentions";
 import { PLAYBOOKS } from "../../../shared/playbooks/registry";
+import { CONNECTORS, isConnectorOn } from "../../../shared/agent/connectors";
 import { AgentArtifactPanel } from "./AgentArtifactPanel";
 import { applyArtifactEvent, type ArtifactState } from "./agentArtifactState";
 
@@ -63,7 +64,11 @@ export const AgentPanel: React.FC = () => {
   const [assets, setAssets] = useState<Array<{ name: string; kind: "media" | "scan" | "asset" }>>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [hubOpen, setHubOpen] = useState(false);
+  const [connectors, setConnectors] = useState<Record<string, boolean>>({});
+  const [progressExpanded, setProgressExpanded] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const shamelaDbRef = useRef<string | null | undefined>(undefined);
 
   const projectRoot = pf.folder?.path ?? null;
@@ -76,6 +81,20 @@ export const AgentPanel: React.FC = () => {
   }, [projectRoot]);
 
   useEffect(() => { void refreshAssets(); }, [refreshAssets]);
+
+  useEffect(() => {
+    const fsApi = window.electronAPI?.projectFolder;
+    if (!fsApi?.getConnectors || !projectRoot) return;
+    fsApi.getConnectors(projectRoot).then(setConnectors).catch(() => setConnectors({}));
+  }, [projectRoot]);
+
+  const toggleConnector = useCallback(async (id: string, on: boolean) => {
+    const fsApi = window.electronAPI?.projectFolder;
+    if (!fsApi?.setConnector || !projectRoot) return;
+    setConnectors((prev) => ({ ...prev, [id]: on }));
+    try { setConnectors(await fsApi.setConnector(projectRoot, id, on)); }
+    catch (err) { log.warn("setConnector failed", { err }); }
+  }, [projectRoot]);
 
   useEffect(() => {
     window.electronAPI?.docBridge?.detectTools().then((d) => {
@@ -292,6 +311,8 @@ export const AgentPanel: React.FC = () => {
     setResult(null);
     setArtifacts([]);
     setPlanPending(false);
+    setProgressExpanded(false);
+    setHubOpen(false);
     setPicker(null);
     try {
       const res = await agent.run(instruction, mode, projectRoot);
@@ -474,18 +495,48 @@ export const AgentPanel: React.FC = () => {
             </div>
           )}
 
-          {progress.map((p, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs">
-              {p.kind === "error"
-                ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500 mt-0.5" />
-                : p.kind === "done"
-                  ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500 mt-0.5" />
-                  : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />}
-              <span className={p.kind === "error" ? "text-amber-700 dark:text-amber-400" : "text-foreground"}>
-                {p.label}{p.detail ? ` — ${p.detail}` : ""}
-              </span>
-            </div>
-          ))}
+          {(() => {
+            const stepLines = progress.filter((p) => p.label && p.kind !== "thinking");
+            // While running, the live lines ARE the trust surface — show them all.
+            // Once done, collapse a long run into one "Ran N steps ›" card.
+            const collapsed = !running && !!result && stepLines.length > 3 && !progressExpanded;
+            if (stepLines.length === 0) return null;
+            if (collapsed) {
+              const errs = stepLines.filter((p) => p.kind === "error").length;
+              return (
+                <button
+                  className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setProgressExpanded(true)}
+                >
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                  {t("agent.ran_steps", "Ran {n} steps").replace("{n}", String(stepLines.length))}
+                  {errs > 0 && <span className="text-amber-600">· {errs}</span>}
+                </button>
+              );
+            }
+            return (
+              <div className="space-y-1.5">
+                {!running && result && stepLines.length > 3 && (
+                  <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => setProgressExpanded(false)}>
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                    {t("agent.collapse_steps", "Hide steps")}
+                  </button>
+                )}
+                {stepLines.map((p, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    {p.kind === "error"
+                      ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500 mt-0.5" />
+                      : p.kind === "done"
+                        ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500 mt-0.5" />
+                        : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />}
+                    <span className={p.kind === "error" ? "text-amber-700 dark:text-amber-400" : "text-foreground"}>
+                      {p.label}{p.detail ? ` — ${p.detail}` : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {result && (
             <div className="rounded-md border border-border bg-card p-2.5 space-y-2 text-sm">
@@ -565,6 +616,44 @@ export const AgentPanel: React.FC = () => {
 
       {/* Input */}
       <div className="relative border-t border-border p-2 shrink-0">
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          hidden
+          accept=".mp3,.m4a,.wav,.ogg,.flac,.mp4,.mkv,.mov,.webm,.pdf,.png,.jpg,.jpeg,.tif,.tiff,.ttf,.otf,.ttc,.dotx,.dotm,.txt,.md"
+          onChange={(e) => { if (e.target.files?.length) void importFiles(e.target.files); e.target.value = ""; }}
+        />
+        {hubOpen && (
+          <div className="absolute bottom-full start-2 mb-1 w-64 rounded-md border border-border bg-popover p-1 text-xs shadow-md">
+            <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={() => { setHubOpen(false); fileInputRef.current?.click(); }}>
+              <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              {t("agent.hub_add_files", "Add recordings, scans, fonts…")}
+            </button>
+            <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={() => { setHubOpen(false); pf.openFolder(); }}>
+              <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              {t("agent.hub_change_folder", "Change project folder")}
+            </button>
+            <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={() => { setHubOpen(false); updateInput("/", 1); taRef.current?.focus(); }}>
+              <ScrollText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              {t("agent.hub_playbooks", "Playbooks  (/)")}
+            </button>
+            <div className="my-1 border-t border-border" />
+            <p className="flex items-center gap-1.5 px-2 pb-1 pt-0.5 text-muted-foreground">
+              <Plug className="h-3.5 w-3.5 shrink-0" />
+              {t("agent.hub_connectors", "Source connectors")}
+            </p>
+            {CONNECTORS.map((c) => {
+              const on = isConnectorOn(connectors, c.id);
+              return (
+                <label key={c.id} className="flex cursor-pointer items-center justify-between rounded px-2 py-1 hover:bg-muted">
+                  <span>{c.label}</span>
+                  <input type="checkbox" className="accent-primary" checked={on} onChange={(e) => void toggleConnector(c.id, e.target.checked)} />
+                </label>
+              );
+            })}
+          </div>
+        )}
         {picker && pickerItems.length > 0 && (
           <div className="absolute bottom-full start-2 end-2 mb-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
             {pickerItems.map((it, i) => (
@@ -576,6 +665,17 @@ export const AgentPanel: React.FC = () => {
           </div>
         )}
         <div className="flex items-end gap-1.5">
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-9 w-9 shrink-0"
+            onClick={() => setHubOpen((v) => !v)}
+            disabled={running}
+            aria-label={t("agent.hub_open", "Add files, folders, playbooks, connectors")}
+            title={t("agent.hub_open", "Add files, folders, playbooks, connectors")}
+          >
+            <Plus className={`h-4 w-4 transition-transform ${hubOpen ? "rotate-45" : ""}`} />
+          </Button>
           <textarea
             ref={taRef}
             value={input}
@@ -612,11 +712,18 @@ export const AgentPanel: React.FC = () => {
             </Button>
           )}
         </div>
-        {caps && (
-          <p className="mt-1 text-xs text-muted-foreground truncate" title={t("agent.caps_title", "This machine's capabilities")}>
-            <span className="opacity-60">⚙ </span>{caps}
-          </p>
-        )}
+        {/* Context stats pill — where the work is going and what's connected. */}
+        <div className="mt-1 flex items-center gap-1 overflow-hidden text-xs text-muted-foreground" title={t("agent.caps_title", "This machine's capabilities")}>
+          <FolderOpen className="h-3 w-3 shrink-0 opacity-60" />
+          <span className="truncate max-w-[38%]">{pf.folder?.manifest.title}</span>
+          <span className="opacity-40">·</span>
+          <span className="shrink-0">{t("agent.pill_chapters", "{n} ch").replace("{n}", String(pf.chapters.length))}</span>
+          {(() => { const off = CONNECTORS.filter((c) => !isConnectorOn(connectors, c.id)).length; return off > 0 ? (
+            <><span className="opacity-40">·</span><span className="shrink-0 text-amber-600">{t("agent.pill_connectors_off", "{n} source off").replace("{n}", String(off))}</span></>
+          ) : null; })()}
+          <span className="opacity-40">·</span>
+          <span className="truncate">{caps ?? t("agent.pill_word_off", "Word off")}</span>
+        </div>
       </div>
     </div>
   );

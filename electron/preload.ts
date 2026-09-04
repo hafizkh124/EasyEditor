@@ -36,6 +36,10 @@ const electronAPI = {
     ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SYSTEM_OPEN_EXTERNAL, url),
   setTitle: (title: string): Promise<void> =>
     ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SYSTEM_SET_TITLE, title),
+  // M9 Phase 1b — tell main the renderer's resolved theme so the Windows
+  // caption-button overlay matches (kills the hardcoded dark corner).
+  setTheme: (theme: 'light' | 'dark'): Promise<void> =>
+    ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SYSTEM_SET_THEME, theme),
 
   /**
    * Generic invoke, restricted to registered channels.
@@ -323,6 +327,11 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'importAsset', root, name, bytes }),
     readAssetBytes: (root: string, name: string): Promise<ArrayBuffer> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'readAssetBytes', root, name }),
+    // M9 Phase 1b — per-project source connector switches.
+    getConnectors: (root: string): Promise<Record<string, boolean>> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'getConnectors', root }),
+    setConnector: (root: string, id: string, on: boolean): Promise<Record<string, boolean>> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'setConnector', root, id, on }),
     readChapterHtml: (root: string, name: string): Promise<{
       html: string;
       name: string;

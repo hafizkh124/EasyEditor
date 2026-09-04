@@ -42,6 +42,8 @@ export interface RunPlaybookInput {
   waitForApproval?: WaitForApprovalFn;
   /** Full tool set for the fallback loop (already mode/scope-filtered). */
   fallbackTools: AgentTool[];
+  /** Tools whose connector the scholar switched off — their steps are skipped (M9 Phase 1b). */
+  disabledTools?: Set<string>;
 }
 
 export async function runPlaybook(input: RunPlaybookInput): Promise<AgentRunResult> {
@@ -148,6 +150,11 @@ export async function runPlaybook(input: RunPlaybookInput): Promise<AgentRunResu
     if (!tool) {
       if (step.optional) { continue; }
       return fallbackLoop(input, toolCalls, `step "${step.tool}" is not a known tool`);
+    }
+    if (input.disabledTools?.has(step.tool)) {
+      input.onProgress?.({ step: stepNo, kind: 'tool-result', label: step.note, detail: 'skipped — that source connector is off for this project' });
+      if (!step.optional) log.info('playbook step skipped: connector off', { tool: step.tool });
+      continue;
     }
     if (mode === 'ask' && tool.effect === 'write') {
       input.onProgress?.({ step: stepNo, kind: 'tool-result', label: step.note, detail: 'skipped — Ask mode is read-only' });
