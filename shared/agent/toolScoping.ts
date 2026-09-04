@@ -56,6 +56,10 @@ const DOMAIN_RULES: DomainRule[] = [
     tools: ['transcribe_media', 'create_chapter', 'draft_section', 'search_shamela', 'insert_footnote'],
   },
   {
+    keywords: ['ocr', 'scan', 'scanned', 'digitise', 'digitize', 'photographed', 'اسکین', 'سکین', 'عکسی', 'مصورة', 'ڈیجیٹائز', 'برائے تحویل نص'],
+    tools: ['ocr_document', 'create_chapter', 'draft_section'],
+  },
+  {
     keywords: ['کالم', 'مضمون', 'مقالہ', 'ترجمہ', 'ترجمة', 'column', 'essay', 'translate', 'translation', 'paper', 'draft a', 'write a chapter'],
     tools: ['create_chapter', 'draft_section', 'search_shamela', 'search_general', 'search_repositories', 'insert_footnote', 'check_consistency'],
   },

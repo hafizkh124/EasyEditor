@@ -165,6 +165,58 @@ export const AgentPanel: React.FC = () => {
     }
   }, [agent, projectRoot]);
 
+  // M9 Phase 7 — the agent asks the renderer to OCR an in-project scan. The
+  // consent gate is upstream (dispatch checks the per-project flag); by the
+  // time a request lands here the scholar has approved the cloud upload.
+  // pdf.js rasterisation and the signed-in process-ocr call are both browser
+  // APIs, so this can only run renderer-side (like transcribe / research).
+  const handleOcr = useCallback(async (requestId: string, scanPath: string, lang: string, pagesSpec?: string) => {
+    const submit = agent?.submitOcr;
+    const fsApi = window.electronAPI?.projectFolder;
+    if (!submit) return;
+    if (!fsApi?.readAssetBytes || !projectRoot) {
+      void submit(requestId, { error: "OCR needs the desktop app." });
+      return;
+    }
+    void lang; // the cloud OCR model is language-agnostic; hint kept for the schema
+    const wanted = (() => {
+      const m = /^(\d+)(?:\s*-\s*(\d+))?$/.exec((pagesSpec ?? "").trim());
+      if (!m) return null;
+      const from = Number(m[1]);
+      const to = m[2] ? Number(m[2]) : from;
+      return { from, to };
+    })();
+    try {
+      // Lazy — pdfjs-dist pulls DOM globals (DOMMatrix) that a jsdom test env lacks.
+      const [{ renderPdfPages }, { ocrPageImage }] = await Promise.all([
+        import("@/lib/ocr/pdfRenderer"),
+        import("@/lib/ocr/ocrClient"),
+      ]);
+      const bytes = await fsApi.readAssetBytes(projectRoot, scanPath);
+      const name = scanPath.split("/").pop() ?? "scan";
+      const isPdf = name.toLowerCase().endsWith(".pdf");
+      const pages: Array<{ page: number; text: string }> = [];
+
+      if (isPdf) {
+        const file = new File([bytes], name, { type: "application/pdf" });
+        for await (const rendered of renderPdfPages(file)) {
+          if (wanted && (rendered.pageNum < wanted.from || rendered.pageNum > wanted.to)) continue;
+          const text = await ocrPageImage(rendered.imageBase64, rendered.mimeType);
+          pages.push({ page: rendered.pageNum, text });
+        }
+      } else {
+        let binary = "";
+        const view = new Uint8Array(bytes);
+        for (let i = 0; i < view.length; i++) binary += String.fromCharCode(view[i]);
+        const text = await ocrPageImage(btoa(binary), "image/jpeg");
+        pages.push({ page: 1, text });
+      }
+      void submit(requestId, { pages });
+    } catch (err) {
+      void submit(requestId, { error: err instanceof Error ? err.message : String(err) });
+    }
+  }, [agent, projectRoot]);
+
   useEffect(() => {
     if (!agent?.onProgress) return;
     return agent.onProgress((p) => {
@@ -175,6 +227,10 @@ export const AgentPanel: React.FC = () => {
       }
       if (p.kind === "transcribe-request" && p.requestId && typeof p.mediaPath === "string") {
         void handleTranscribe(p.requestId, p.mediaPath, typeof p.lang === "string" ? p.lang : "auto");
+        return;
+      }
+      if (p.kind === "ocr-request" && p.requestId && typeof p.scanPath === "string") {
+        void handleOcr(p.requestId, p.scanPath, typeof p.lang === "string" ? p.lang : "auto", typeof p.pages === "string" ? p.pages : undefined);
         return;
       }
       if (p.kind === "artifact" && p.artifact) {
@@ -188,7 +244,7 @@ export const AgentPanel: React.FC = () => {
       }
       setProgress((prev) => [...prev, { step: p.step ?? 0, label: p.label ?? "", kind: p.kind, detail: p.detail }]);
     });
-  }, [agent, handleResearch, handleTranscribe]);
+  }, [agent, handleResearch, handleTranscribe, handleOcr]);
 
   const decidePlan = useCallback(async (decision: "approved" | "rejected") => {
     setPlanPending(false);
@@ -414,6 +470,25 @@ export const AgentPanel: React.FC = () => {
     catch (err) { log.error("revert global options failed", { err }); }
   }, [agent, projectRoot]);
 
+  // M9 Phase 7 — ocr_document is consent-gated: its first call returns
+  // `needsConsent` and uploads nothing. The scholar approves the cloud upload
+  // for this project here, then re-runs the task (ADR-0023).
+  interface OcrConsent { needsConsent?: boolean; scanPath?: string; message?: string }
+  const pendingOcr = useMemo<OcrConsent[]>(() => {
+    if (!result) return [];
+    return result.toolCalls
+      .filter((tc) => tc.name === "ocr_document")
+      .map((tc) => tc.result as OcrConsent)
+      .filter((r) => r?.needsConsent);
+  }, [result]);
+  const [ocrGranted, setOcrGranted] = useState(false);
+  useEffect(() => { setOcrGranted(false); }, [result]);
+  const grantOcr = useCallback(async () => {
+    if (!agent?.grantOcrConsent || !projectRoot) return;
+    try { await agent.grantOcrConsent(projectRoot); setOcrGranted(true); }
+    catch (err) { log.error("grant OCR consent failed", { err }); }
+  }, [agent, projectRoot]);
+
   if (!projectRoot) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center text-muted-foreground">
@@ -593,6 +668,21 @@ export const AgentPanel: React.FC = () => {
                   ) : (
                     <Button size="sm" className="h-7 gap-1.5 text-xs" onClick={() => void applyOptions()}>
                       {t("agent.apply_settings", "Apply {n} change(s)").replace("{n}", String(pendingOptions.length))}
+                    </Button>
+                  )}
+                </div>
+              )}
+              {pendingOcr.length > 0 && (
+                <div className="rounded border border-amber-500/40 bg-amber-500/5 p-2 text-xs space-y-1.5">
+                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                    {t("agent.ocr_consent", "OCR sends the page images to the EasyEditor cloud OCR service — this is not a local reading. Approve it for this project?")}
+                  </p>
+                  {pendingOcr[0]?.scanPath && <p className="font-mono opacity-80">{pendingOcr[0].scanPath}</p>}
+                  {ocrGranted ? (
+                    <p className="text-muted-foreground">{t("agent.ocr_consent_granted", "OCR approved for this project — run the task again.")}</p>
+                  ) : (
+                    <Button size="sm" className="h-7 gap-1.5 text-xs" onClick={() => void grantOcr()}>
+                      {t("agent.ocr_consent_approve", "Approve cloud OCR for this project")}
                     </Button>
                   )}
                 </div>

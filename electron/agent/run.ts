@@ -29,7 +29,7 @@ import { toolsFor } from '../../shared/agent/toolScoping.js';
 import { selectPlaybook, resolvePlaybook } from '../../shared/playbooks/registry.js';
 import { detectFastPath } from '../../shared/agent/fastPath.js';
 import { isToolDisabled } from '../../shared/agent/connectors.js';
-import { readConnectors } from '../fs/projectFolder.js';
+import { readConnectors, readOcrConsent } from '../fs/projectFolder.js';
 import type {
   AgentMode,
   AgentProgress,
@@ -64,6 +64,8 @@ export interface AgentRunInput {
   researchSearch?: ((mode: import('./researchBridge.js').ResearchMode, query: string) => Promise<import('./researchBridge.js').ResearchResult>) | null;
   /** Decodes + transcribes an in-project recording via the renderer (M9 Phase 5). */
   transcribeMedia?: ((mediaPath: string, lang: string) => Promise<import('./researchBridge.js').TranscriptionResult>) | null;
+  /** Consent-gated cloud OCR of an in-project scan via the renderer (M9 Phase 7). */
+  ocrDocument?: ((scanPath: string, lang: string, pages?: string) => Promise<import('./ocrBridge.js').OcrResult>) | null;
   /** Plan mode — resolves once the scholar approves (or rejects) the plan. */
   waitForApproval?: WaitForApprovalFn;
 }
@@ -102,6 +104,8 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     generalSearch: input.generalSearch ?? null,
     researchSearch: input.researchSearch ?? null,
     transcribeMedia: input.transcribeMedia ?? null,
+    ocrDocument: input.ocrDocument ?? null,
+    ocrConsent: (() => { try { return readOcrConsent(projectRoot); } catch { return false; } })(),
     emitArtifact,
   };
   const { dispatch } = createDispatcher(session);
@@ -204,9 +208,14 @@ function playbookMatchIsStrong(ask: string, keywords: string[]): boolean {
 
 function taskWrote(result: AgentRunResult): boolean {
   return result.toolCalls.some(
-    (c) =>
-      (['insert_footnote', 'set_page_layout', 'run_task', 'draft_section', 'add_document_comment', 'transcribe_media', 'create_chapter', 'build_scholarly_indexes', 'typeset_print_ready'].includes(c.name)
-        && !(typeof c.result === 'object' && c.result && 'error' in c.result))
-      || (c.name === 'install_template' && Boolean((c.args as { chapter?: unknown }).chapter)),
+    (c) => {
+      const r = c.result;
+      const inert = typeof r === 'object' && r !== null && ('error' in r || 'needsConsent' in r);
+      return (
+        (['insert_footnote', 'set_page_layout', 'run_task', 'draft_section', 'add_document_comment', 'transcribe_media', 'ocr_document', 'create_chapter', 'build_scholarly_indexes', 'typeset_print_ready'].includes(c.name)
+          && !inert)
+        || (c.name === 'install_template' && Boolean((c.args as { chapter?: unknown }).chapter))
+      );
+    },
   );
 }

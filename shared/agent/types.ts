@@ -93,7 +93,7 @@ export interface AgentProgress {
   kind:
     | 'thinking' | 'tool' | 'tool-result' | 'done' | 'error'
     | 'clarify' | 'artifact' | 'plan-pending'
-    | 'general-search-request' | 'transcribe-request';
+    | 'general-search-request' | 'transcribe-request' | 'ocr-request';
   detail?: string;
   /** `kind: 'artifact'` — the artifact event. */
   artifact?: AgentArtifactEvent;
@@ -106,6 +106,9 @@ export interface AgentProgress {
   /** `kind: 'transcribe-request'` — the renderer-bridged Whisper run (M9 Phase 5). */
   mediaPath?: string;
   lang?: string;
+  /** `kind: 'ocr-request'` — the consent-gated renderer→cloud OCR run (M9 Phase 7, ADR-0023). */
+  scanPath?: string;
+  pages?: string;
 }
 
 export interface AgentRunResult {

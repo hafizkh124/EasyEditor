@@ -208,6 +208,35 @@ describe('agent dispatch', () => {
     expect(r.error).toMatch(/Agent panel/);
   });
 
+  it('ocr_document returns a consent request and uploads NOTHING when consent is absent (M9 Phase 7)', async () => {
+    const ocrDocument = vi.fn(async () => ({ pages: [{ page: 1, text: 'متن' }] }));
+    const { dispatch } = mk({ ocrDocument, ocrConsent: false });
+    const r = await dispatch('ocr_document', { scan_path: 'sources/kitab-scan.pdf' }) as { needsConsent?: boolean; message?: string };
+    expect(r.needsConsent).toBe(true);
+    expect(r.message).toMatch(/cloud OCR/i);
+    expect(ocrDocument).not.toHaveBeenCalled();
+    expect(recordWrite).not.toHaveBeenCalled();
+  });
+
+  it('ocr_document with consent bridges to the renderer and saves a page-delimited .ocr.txt', async () => {
+    const ocrDocument = vi.fn(async () => ({ pages: [{ page: 1, text: 'صفحہ اول' }, { page: 2, text: 'صفحہ دوم' }] }));
+    const { dispatch } = mk({ ocrDocument, ocrConsent: true });
+    const r = await dispatch('ocr_document', { scan_path: 'sources/kitab-scan.pdf', lang: 'ur', pages: '1-2' }) as { ocrPath: string; pageCount: number; note: string };
+    expect(ocrDocument).toHaveBeenCalledWith('sources/kitab-scan.pdf', 'ur', '1-2');
+    expect(r.ocrPath).toBe('sources/kitab-scan.ocr.txt');
+    expect(r.pageCount).toBe(2);
+    // the .ocr.txt is a project write, so it joins the undo checkpoint
+    expect(recordWrite).toHaveBeenCalledWith('C:\\p', 'cp_1', 'sources/kitab-scan.ocr.txt');
+    // the agent is told to label the chapter unverified and not to cite it
+    expect(r.note).toMatch(/unverified|proofread/i);
+  });
+
+  it('ocr_document with consent but no renderer bridge returns a clear message', async () => {
+    const { dispatch } = mk({ ocrConsent: true, ocrDocument: null });
+    const r = await dispatch('ocr_document', { scan_path: 'sources/x.pdf' }) as { error?: string };
+    expect(r.error).toMatch(/Agent panel/);
+  });
+
   it('create_chapter seeds from a transcript file and checkpoints BEFORE the file exists', async () => {
     const { dispatch } = mk();
     const r = await dispatch('create_chapter', { name: '03-dars.docx', title: 'درسِ اول', from_source: 'sources/dars-01.transcript.txt' }) as { chapter: string; seededFrom: string; registered: boolean };

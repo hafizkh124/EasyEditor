@@ -30,6 +30,7 @@ import { recordWrite } from './checkpoint.js';
 import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
 import { queryTafseer, type TafseerMode } from './adapters/tafsir.js';
 import { saveTranscript, transcriptPathFor } from './adapters/transcribe.js';
+import { saveOcrText, ocrTextPathFor } from './adapters/ocr.js';
 import { readAssetText, registerChapter } from '../fs/projectFolder.js';
 import { formatScholarlyRef } from '../../shared/research/citationTypes.js';
 import { buildApparatus, apparatusTable } from '../../shared/research/apparatus.js';
@@ -77,6 +78,14 @@ export interface AgentSession {
    * then returns a clear message.
    */
   transcribeMedia?: ((mediaPath: string, lang: string) => Promise<{ segments?: Array<{ start: number; end: number; text: string }>; error?: string }>) | null;
+  /**
+   * Consent-gated cloud OCR of an in-project scan via the renderer (M9 Phase 7,
+   * ADR-0023). `ocrConsent` is the scholar's per-project approval, read from the
+   * manifest by `run.ts`; when it is false `ocr_document` returns a consent
+   * request and `ocrDocument` is never called. Absent in a headless context.
+   */
+  ocrConsent?: boolean;
+  ocrDocument?: ((scanPath: string, lang: string, pages?: string) => Promise<{ pages?: Array<{ page: number; text: string }>; error?: string }>) | null;
   /** Emits a live artifact event (M9 ADR-0024). No-op when absent. */
   emitArtifact?: EmitArtifactFn | null;
   /**
@@ -100,6 +109,8 @@ export function createDispatcher(session: AgentSession): Dispatcher {
   const generalSearch = session.generalSearch ?? null;
   const researchSearch = session.researchSearch ?? null;
   const transcribeMedia = session.transcribeMedia ?? null;
+  const ocrDocument = session.ocrDocument ?? null;
+  const ocrConsent = session.ocrConsent === true;
   const emitArtifact: EmitArtifactFn = (ev) => { try { session.emitArtifact?.(ev); } catch { /* non-fatal */ } };
 
   /** Snapshot any in-project write (chapter or not) into the task checkpoint. */
@@ -247,6 +258,50 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           durationSeconds: out.durationSeconds,
           preview: capResult(out.text.slice(0, 1500)),
           note: `Saved to ${out.transcriptPath}. Pass that path to create_chapter's from_source — do not paste the transcript back through a tool call.`,
+        };
+      }
+
+      case 'ocr_document': {
+        const scanPath = str(args.scan_path, 'scan_path');
+        const lang = typeof args.lang === 'string' && args.lang.trim() ? args.lang : 'auto';
+        const pages = typeof args.pages === 'string' && args.pages.trim() ? args.pages.trim() : undefined;
+
+        // Consent gate (ADR-0023 / SPEC-M8 §3 gate #5 shape): the first call for
+        // a project returns a request and uploads NOTHING. The scholar approves
+        // it in the Agent panel; a re-run then proceeds.
+        if (!ocrConsent) {
+          return {
+            needsConsent: true,
+            scanPath,
+            message: `OCR sends the page images of "${scanPath.split('/').pop()}" to the EasyEditor cloud OCR service — this is not a local reading. Approve OCR for this project in the Agent panel, then run this again. Nothing has been uploaded.`,
+          };
+        }
+        if (!ocrDocument) {
+          return { error: 'ocr_document is only available from the Agent panel (it renders and uploads the pages from there).' };
+        }
+
+        const artifactId = `ocr-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `OCR — ${scanPath.split('/').pop()}`, artifactType: 'document' });
+        const r = await ocrDocument(scanPath, lang, pages);
+        if (r.error) {
+          emitArtifact({ op: 'close', artifactId, status: 'aborted' });
+          return { error: r.error };
+        }
+        const ocrPages = (r.pages ?? []).filter((p) => p && typeof p.text === 'string');
+        if (ocrPages.length === 0) {
+          emitArtifact({ op: 'close', artifactId, status: 'aborted' });
+          return { pageCount: 0, note: 'The OCR service read no text from that scan — check the pages are legible and right-side up.' };
+        }
+        // The .ocr.txt is a project write, so it is undoable with the task.
+        guardWrite(ocrTextPathFor(scanPath));
+        const out = saveOcrText(root, scanPath, ocrPages);
+        emitArtifact({ op: 'delta', artifactId, mode: 'replace', text: out.text });
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+        return {
+          ocrPath: out.ocrPath,
+          pageCount: out.pageCount,
+          preview: capResult(out.text.slice(0, 1500)),
+          note: `Saved to ${out.ocrPath}. This is an unverified machine reading. Pass that path to create_chapter's from_source with a title like "[OCR — غير مدقّق]", and tell the scholar to proofread every page against the scan. Do not cite from it.`,
         };
       }
 

@@ -28,6 +28,7 @@ reconstruct rationale without rereading commits.
 | [0020](./0020-m9-playbook-execution.md) | M9 — playbooks are executed by a deterministic step executor, not seeded as advice | Accepted |
 | [0021](./0021-m9-bounded-generative-tools.md) | M9 — `draft_section`: substantial drafting via fixed instruction templates, not free-form prompts | Accepted |
 | [0022](./0022-m9-agent-reach-into-local-subsystems.md) | M9 — `query_tafseer` + `search_hadith` bridged to existing subsystems (citable); `search_web_scholarly`/Firecrawl rejected; scholarly scraping whitelist widened | Accepted |
+| [0023](./0023-m9-ocr-consent-gated-cloud-bridge.md) | M9 — `ocr_document` is a consent-gated renderer→cloud bridge (sticky per-project consent); local OCR stays blocked; OCR output is never a citation | Accepted |
 | [0025](./0025-m9-print-layout-scope.md) | M9 — `typeset_print_ready` is a print-ready Word layout, not press-grade typesetting; every call returns a loss list | Accepted |
 | [0028](./0028-m9-federated-knowledge-tiers.md) | M9 — `search_repositories` (Archive.org + OpenAlex), bibliographic-only citations, opt-in per project; waqfeya + live OpenITI API rejected | Accepted |
 | [0024](./0024-m9-agent-artifact-channel.md) | M9 — the agent artifact channel + live document deltas; "skills" = playbooks + guidance | Accepted |
