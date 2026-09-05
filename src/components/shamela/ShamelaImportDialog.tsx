@@ -253,9 +253,15 @@ export function ShamelaImportDialog({
 
           {/* Browse by category */}
           <TabsContent value="browse" className="flex-1 flex gap-4 min-h-0 mt-4">
-            <div className="w-64 shrink-0 space-y-1">
+            <div className="w-64 shrink-0 flex flex-col gap-1 min-h-0">
               <span className="text-xs font-semibold text-muted-foreground px-1">{t("shamela.categories")}</span>
-              <ScrollArea className="h-[400px] rounded border border-border">
+              {/* Was a fixed h-[400px]: on a dialog shorter than header+400px+footer,
+                  this list overflowed past its column and slid under DialogFooter,
+                  whose Import/Close buttons then lost clicks to the category row
+                  now sitting on top at that pixel position (verified via
+                  elementFromPoint — SPEC-M9 QA finding). flex-1 min-h-0 makes it
+                  size to whatever space the dialog actually has. */}
+              <ScrollArea className="flex-1 min-h-0 rounded border border-border">
                 {categories.length === 0 ? (
                   <div className="p-4 text-xs text-muted-foreground text-center">
                     {t("shamela.no_categories")}
@@ -279,8 +285,8 @@ export function ShamelaImportDialog({
               </ScrollArea>
             </div>
 
-            <div className="flex-1 min-w-0">
-              <span className="text-xs font-semibold text-muted-foreground px-1 block mb-1">
+            <div className="flex-1 min-w-0 flex flex-col gap-1 min-h-0">
+              <span className="text-xs font-semibold text-muted-foreground px-1 block">
                 {selectedCategory
                   ? `کتب — ${categories.find((c) => c.id === selectedCategory)?.name || ""}`
                   : "کتب — زمرہ منتخب کریں"}
@@ -401,7 +407,7 @@ function BookList({
   }
 
   return (
-    <ScrollArea className="h-[400px] rounded border border-border">
+    <ScrollArea className="flex-1 min-h-0 rounded border border-border">
       {books.map((book) => (
         <div
           key={book.id}
