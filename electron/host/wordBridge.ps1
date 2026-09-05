@@ -635,8 +635,14 @@ public static class WordBridgeFontApi {
                 if ($cmd.pageHeightCm) { $ps.PageHeight = [double]$cmd.pageHeightCm * $cm }
                 if ($null -ne $cmd.gutterCm)   { $ps.Gutter = [double]$cmd.gutterCm * $cm }
                 if ($null -ne $cmd.mirrorMargins)     { $ps.MirrorMargins = [bool]$cmd.mirrorMargins }
-                if ($null -ne $cmd.oddEven)           { $ps.OddAndEvenPagesHeaderFooter = [int][bool]$cmd.oddEven }
-                if ($null -ne $cmd.differentFirstPage) { $ps.DifferentFirstPageHeaderFooter = [int][bool]$cmd.differentFirstPage }
+                # NOTE: these two are plain Boolean COM properties, not WdConstant
+                # ints — Word's own setter rejects an Int32 VARIANT here ("Value
+                # does not fall within the expected range"), even though generic
+                # numeric-to-bool VARIANT coercion would normally accept it. Cast
+                # to [bool] only, matching MirrorMargins above. Confirmed live
+                # against Word 16.0 (hostLive.test.ts).
+                if ($null -ne $cmd.oddEven)           { $ps.OddAndEvenPagesHeaderFooter = [bool]$cmd.oddEven }
+                if ($null -ne $cmd.differentFirstPage) { $ps.DifferentFirstPageHeaderFooter = [bool]$cmd.differentFirstPage }
                 if ([bool]$cmd.startRecto) { try { $script:doc.Sections.Item(1).PageSetup.SectionStart = 4 } catch { } }  # wdSectionNewOddPage
                 if ($cmd.headerOdd -or $cmd.headerEven) {
                     foreach ($sec in $script:doc.Sections) {
@@ -682,14 +688,20 @@ public static class WordBridgeFontApi {
                 # Append a section break, an optional heading, then an INDEX or
                 # TOC field, and update it. The XE fields must already be in place
                 # for INDEX (see markIndexEntries).
+                #
+                # NOTE: Document.Range(Content.End, Content.End) throws "Value out
+                # of range" — Content.End points one past the final paragraph mark,
+                # which Word's Range() rejects as a zero-width boundary. The
+                # standard idiom is Content.End - 1. Confirmed live against Word
+                # 16.0 (hostLive.test.ts).
                 Require-Doc
-                $end = $script:doc.Range($script:doc.Content.End, $script:doc.Content.End)
+                $end = $script:doc.Range($script:doc.Content.End - 1, $script:doc.Content.End - 1)
                 $end.InsertBreak(2)  # wdSectionBreakNextPage
-                $end = $script:doc.Range($script:doc.Content.End, $script:doc.Content.End)
+                $end = $script:doc.Range($script:doc.Content.End - 1, $script:doc.Content.End - 1)
                 if ($cmd.heading) {
                     $end.InsertAfter(("" + $cmd.heading) + "`r")
                     try { $script:doc.Paragraphs.Last.Previous().Range.Style = $script:doc.Styles.Item(-2) } catch { }  # wdStyleHeading1
-                    $end = $script:doc.Range($script:doc.Content.End, $script:doc.Content.End)
+                    $end = $script:doc.Range($script:doc.Content.End - 1, $script:doc.Content.End - 1)
                 }
                 $fieldCode = if ("$($cmd.field)".ToUpper() -eq 'TOC') { 'TOC \o "1-3" \h' } else { 'INDEX \c "1" \z "1025"' }
                 $script:doc.Fields.Add($end, -1, $fieldCode, $true) | Out-Null  # wdFieldEmpty
