@@ -45,6 +45,8 @@ interface ChatDisplayProps {
   onClearChat: () => void;
   onRegenerate: () => void;
   researchLimitReached: boolean;
+  /** No account at all — a different reason to show than "out of tokens". */
+  isSignedIn?: boolean;
   chatEndRef: React.RefObject<HTMLDivElement>;
   t: import("@/lib/i18n").Translator;
   mode?: ResearchMode;
@@ -67,7 +69,7 @@ const ISLAMIC_QUERY_MARKERS = /(?:قرآن|قراٰن|قُرآن|حدیث|حدي
 const ChatDisplay = ({
   messages, isQuerying, query, onQueryChange, onSendQuery, isRefining,
   lastAssistantIdx, onRefine, onCopyOutput, onClearChat, onRegenerate,
-  researchLimitReached, chatEndRef: _chatEndRef, t,
+  researchLimitReached, isSignedIn = false, chatEndRef: _chatEndRef, t,
   mode = "general", onModeChange, sourcesReadyInfo, citations = [],
   assistModes = [], onAssistModesChange,
   selectedDomains = [], onSelectedDomainsChange,
@@ -297,7 +299,14 @@ const ChatDisplay = ({
 
   /* ── Layout ─────────────────────────────────────────────────── */
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    // min-w-0: ResearchPanel's wrapper switches to `lg:flex-row` at ≥1024px
+    // viewport width, turning this root into a horizontal flex item. Without
+    // this, its default min-width (auto = its content's min-content size,
+    // driven up by the `max-w-3xl` input below) let it refuse to shrink to
+    // the Workbench panel's actual ~450px share — the input box and its
+    // suggestion cards rendered up to 34px past the window edge, worse in
+    // RTL than LTR (SPEC-M9 QA finding).
+    <div className="flex-1 flex flex-col min-h-0 min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background/80 backdrop-blur-sm">
         <h1 className="text-lg font-semibold text-foreground">{t("research.title")}</h1>
@@ -359,6 +368,20 @@ const ChatDisplay = ({
           </div>
         )}
 
+        {/* Why Send is disabled — a guest, or an account out of tokens, saw
+            nothing here before; Ctrl+Enter and the button both did nothing
+            silently (SPEC-M9 QA finding). */}
+        {(!isSignedIn || researchLimitReached) && (
+          <p className="max-w-3xl mx-auto mb-1.5 px-1 text-xs text-center text-muted-foreground">
+            {!isSignedIn
+              ? t("research.sign_in_required", "تحقیقی سوالات بھیجنے کے لیے سائن اِن کریں — اوپر دائیں طرف \"سائن اِن\" بٹن دبائیں۔")
+              : t(
+                  mode === "islamic" ? "research.islamic_limit_reached" : "research.limit_reached",
+                  "اس عمل کے لیے آپ کے پاس کافی ٹوکنز نہیں ہیں۔ براہ کرم ٹاپ اپ کریں یا پلان اپ گریڈ کریں۔",
+                )}
+          </p>
+        )}
+
         {/* Modern input container */}
         <div className={cn(
           "max-w-3xl mx-auto rounded-2xl border bg-card shadow-sm transition-all duration-200",
@@ -382,7 +405,17 @@ const ChatDisplay = ({
               )}
               rows={2}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); guardedSendQuery(); }
+                if (e.key !== "Enter" || (!e.ctrlKey && !e.metaKey)) return;
+                e.preventDefault();
+                if (!query.trim() || isQuerying) return;
+                // The button next to this shows the same block visually
+                // (disabled); Ctrl+Enter used to just do nothing here.
+                if (!isSignedIn) { toast.error(t("research.sign_in_required")); return; }
+                if (researchLimitReached) {
+                  toast.error(t(mode === "islamic" ? "research.islamic_limit_reached" : "research.limit_reached"));
+                  return;
+                }
+                guardedSendQuery();
               }}
             />
             <Button

@@ -16,6 +16,7 @@ import { ByokKeyPanel } from "@/components/settings/ByokKeyPanel";
 import { VoiceEnginePanel } from "@/components/settings/VoiceEnginePanel";
 import { AdvancedVoicesPanel } from "@/components/settings/AdvancedVoicesPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { isDesktop } from "@/utils/environment";
 
 // FR-6.1: Settings contains language selection and local MCP companion controls.
 const Settings = () => {
@@ -73,6 +74,19 @@ const Settings = () => {
             <ThemeToggle variant="settings" />
           </CardContent>
         </Card>
+
+        {/* SPEC-M5 FR-2.5: a feature that can't work must be absent, never a
+            greyed-out nav entry that only ever fails — capabilityRegistry.test.ts
+            enforces that OCR/Translate render on no desktop surface at all. This
+            plain-text note (no route, no link) is the one place their existence
+            is still discoverable from the desktop app. */}
+        {isDesktop() && (
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">{t("settings.web_only_tools_note")}</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* BYOK Key Management in Desktop Mode */}
         <ByokKeyPanel />

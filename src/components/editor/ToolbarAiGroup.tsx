@@ -58,7 +58,7 @@ export const ToolbarAiGroup: React.FC<ToolbarAiGroupProps> = ({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" disabled={anyBusy} aria-label={t("editor.harakat")}>
-            {busy("add_harakat") ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="text-sm leading-none">اِعراب</span>}
+            {busy("add_harakat") ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="text-sm leading-none">{t("editor.harakat")}</span>}
             <ChevronDown className="h-3 w-3 opacity-60" />
           </Button>
         </DropdownMenuTrigger>

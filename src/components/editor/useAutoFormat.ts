@@ -20,6 +20,8 @@ interface UseAutoFormatArgs {
   setAiBusy: (key: string | null) => void;
   setPendingChunkedRun: (plan: PendingChunkedRun | null) => void;
   t: import("@/lib/i18n").Translator;
+  /** True once the active document has changed since this call started. */
+  isStaleDocument: (runDocumentId: string | undefined) => boolean;
 }
 
 /**
@@ -39,6 +41,7 @@ export function useAutoFormat({
   setAiBusy,
   setPendingChunkedRun,
   t,
+  isStaleDocument,
 }: UseAutoFormatArgs) {
   const handleAutoFormatChunked = useCallback(() => {
     if (!editor) return;
@@ -86,6 +89,12 @@ export function useAutoFormat({
       }
 
       if (html) {
+        // Same guard as runTextAction: don't let a slow auto-format land in
+        // whatever document happens to be open once it finally resolves.
+        if (!editor || editor.isDestroyed || isStaleDocument(documentId)) {
+          toast.error(t("editor.ai_stale_document"));
+          return;
+        }
         applyResult(editor, html, { isHtml: true });
         emitChange();
         toast.success(t("editor.ai_done"));
@@ -95,7 +104,10 @@ export function useAutoFormat({
     } finally {
       setAiBusy(null);
     }
-  }, [editor, accessToken, emitChange, t, documentId, availableTokens, handleAutoFormatChunked, setAiBusy]);
+  }, [
+    editor, accessToken, emitChange, t, documentId, availableTokens,
+    handleAutoFormatChunked, setAiBusy, isStaleDocument,
+  ]);
 
   return { handleAutoFormat };
 }

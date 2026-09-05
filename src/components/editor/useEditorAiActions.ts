@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { toast } from "sonner";
 import { stripHarakat } from "@/utils/arabicUtils";
@@ -64,6 +64,20 @@ export function useEditorAiActions({
   const workspace = useOptionalWorkspace();
   const documentId = workspace?.activeDocumentId ?? undefined;
 
+  // A request in flight closes over the `documentId` that was active when it
+  // started. This ref always holds the *current* one, so a response that
+  // lands after the scholar switched documents can be told apart from one
+  // that lands while they're still looking at the same file — and dropped
+  // rather than written into whatever happens to be open now.
+  const documentIdRef = useRef(documentId);
+  useEffect(() => {
+    documentIdRef.current = documentId;
+  }, [documentId]);
+  const isStaleDocument = useCallback(
+    (runDocumentId: string | undefined) => documentIdRef.current !== runDocumentId,
+    [],
+  );
+
   /** The current selection text + range, or the whole document if nothing is selected. */
   const getSelectionOrAll = useCallback(() => {
     if (!editor) return { text: "", from: 0, to: 0, hasSelection: false };
@@ -104,6 +118,7 @@ export function useEditorAiActions({
     emitChange,
     setAiBusy,
     t,
+    isStaleDocument,
   });
 
   const { runDocumentTask, resumeChunkedRun } = useDocumentRuns({
@@ -185,6 +200,15 @@ export function useEditorAiActions({
         }
 
         if (resultText) {
+          // The scholar may have switched documents while this request was
+          // in flight. Writing a stale result into whatever is open now
+          // would be worse than losing it, so it's discarded instead
+          // (FR-1.1 addendum).
+          if (!editor || editor.isDestroyed || isStaleDocument(documentId)) {
+            toast.error(t("editor.ai_stale_document"));
+            return;
+          }
+
           // The citations task returns [N] index markers, not typed-out
           // references — rebuild the actual reference text from the
           // verified `runSources` the same response carried, so what lands
@@ -233,7 +257,7 @@ export function useEditorAiActions({
     [
       editor, accessToken, getSelectionOrAll, applyTextResult, emitChange, t,
       aiReview, applyAsSuggestion, trackMode, onSetTrackMode,
-      documentId, availableTokens,
+      documentId, availableTokens, isStaleDocument,
       preRunDocRef, setLastRun, setPendingChunkedRun,
     ],
   );
@@ -249,6 +273,7 @@ export function useEditorAiActions({
     setAiBusy,
     setPendingChunkedRun,
     t,
+    isStaleDocument,
   });
 
   const onAddHarakat = useCallback(() => runTextAction("add_harakat", "add_harakat"), [runTextAction]);

@@ -199,6 +199,11 @@ export async function runChunkedTask({
       if (!result || !result.text) {
         progress.failed++;
       } else {
+        // A manual Cancel keeps whatever already reached the document (the
+        // loop breaks on `signal.aborted` next iteration) — but a document
+        // switch is different: `applyBatch` itself refuses a stale document
+        // (see useChunkedRuns), because a batch's tracked position means
+        // nothing once the editor holds an entirely different file.
         const applied = applyBatch(batch.index, result.text);
         if (applied) {
           progress.done++;
