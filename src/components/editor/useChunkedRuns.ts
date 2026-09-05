@@ -39,6 +39,8 @@ interface UseChunkedRunsArgs {
   emitChange: () => void;
   setAiBusy: (key: string | null) => void;
   t: import("@/lib/i18n").Translator;
+  /** True once the active document has changed since this call started. */
+  isStaleDocument: (runDocumentId: string | undefined) => boolean;
 }
 
 /**
@@ -55,12 +57,23 @@ export function useChunkedRuns({
   emitChange,
   setAiBusy,
   t,
+  isStaleDocument,
 }: UseChunkedRunsArgs) {
   // Chunked-run state: the plan awaiting confirmation, live progress, and the
   // controller the Cancel button aborts.
   const [pendingChunkedRun, setPendingChunkedRun] = useState<PendingChunkedRun | null>(null);
   const [chunkProgress, setChunkProgress] = useState<ChunkedRunProgress | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const runDocumentIdRef = useRef<string | undefined>(documentId);
+
+  // Switching documents mid-run must stop the remaining batches from landing
+  // in the newly-opened file. `applyBatch` below is the belt-and-braces check
+  // for anything already resolved when this fires.
+  useEffect(() => {
+    if (isStaleDocument(runDocumentIdRef.current)) {
+      abortRef.current?.abort();
+    }
+  }, [documentId, isStaleDocument]);
 
   // The finished run's card, and the document as it stood before that run.
   const [lastRun, setLastRun] = useState<LastRunSummary | null>(null);
@@ -118,6 +131,7 @@ export function useChunkedRuns({
       if (!editor) return null;
       const controller = new AbortController();
       abortRef.current = controller;
+      runDocumentIdRef.current = documentId;
       const tracker = trackRanges(editor, plan.batches);
 
       // Captured before the first batch lands, so "undo the whole run" has an
@@ -139,6 +153,11 @@ export function useChunkedRuns({
           signal: controller.signal,
           onProgress: setChunkProgress,
           applyBatch: (batchIndex, output) => {
+            // A document switch aborts the run (see the effect above), but a
+            // batch already in flight when that happened can still resolve
+            // and reach here — its tracked positions belong to a document
+            // that is no longer the one loaded in `editor`.
+            if (isStaleDocument(documentId)) return false;
             const range = tracker.ranges[batchIndex];
             const batch = plan.batches[batchIndex];
             // The user deleted this passage mid-run: drop the result rather
@@ -180,7 +199,7 @@ export function useChunkedRuns({
         setAiBusy(null);
       }
     },
-    [editor, accessToken, documentId, availableTokens, emitChange, t, setAiBusy],
+    [editor, accessToken, documentId, availableTokens, emitChange, t, setAiBusy, isStaleDocument],
   );
 
   const confirmChunkedRun = useCallback(() => {

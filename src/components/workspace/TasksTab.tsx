@@ -156,6 +156,15 @@ export const TasksTab: React.FC = () => {
             >
               {t("library.builtin_tasks", "Built-in tasks ({count})").replace("{count}", String(filtered.builtins.length))}
             </h3>
+            {/* This list is a catalogue, not a run button — a card here does
+                nothing on click except the copy icon (SPEC-M9 QA finding).
+                The run surfaces are the editor toolbar and the "/" menu. */}
+            <p className="text-xs text-muted-foreground italic mb-1.5">
+              {t(
+                "library.builtin_tasks_hint",
+                "This is a reference list. To run one: select text in the editor, then use the toolbar or type \"/\".",
+              )}
+            </p>
 
             <div className="space-y-1.5">
               {filtered.builtins.map((task) => (

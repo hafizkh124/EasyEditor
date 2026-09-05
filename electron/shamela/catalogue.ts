@@ -70,8 +70,12 @@ export function getCatalogueDb(masterDbPath: string): Database.Database {
   if (!fs.existsSync(masterDbPath)) {
     throw new Error(`Shamela master.db not found at: ${masterDbPath}`);
   }
+  // readonly: true forbids WAL mode (it requires writing the DB header), and
+  // this connection never writes, so there's nothing WAL would buy it anyway.
+  // Setting it here used to throw "attempt to write a readonly database" on
+  // every call, which is why Import Books always came back with 0 categories
+  // and 0 books.
   const db = new Database(masterDbPath, { readonly: true });
-  db.pragma('journal_mode = WAL');
   dbInstance = db;
   dbPath = masterDbPath;
   return db;

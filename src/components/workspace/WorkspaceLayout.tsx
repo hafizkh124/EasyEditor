@@ -193,7 +193,10 @@ export const WorkspaceLayout: React.FC = () => {
             maxSize={30}
             collapsible={true}
             className={cn(
-              "bg-sidebar",
+              // Same reasoning as the Workbench panel below: without this the
+              // collapsed 48px width can't actually win against a long book
+              // title's min-content size.
+              "min-w-0 bg-sidebar",
               !isMobile && libraryCollapsed && "max-w-[48px]",
               isMobile && "w-[min(20rem,85vw)] border-e border-border shadow-xl transition-transform duration-300",
             )}
@@ -211,7 +214,7 @@ export const WorkspaceLayout: React.FC = () => {
 
           {/* Pillar 2: Canvas — the only pillar left in the flex flow on mobile,
               so it fills the viewport there (FR-8.1) */}
-          <ResizablePanel defaultSize={55} minSize={35}>
+          <ResizablePanel defaultSize={55} minSize={35} className="min-w-0">
             {shamelaBook.bookId ? (
               splitSecondary ? (
                 <SplitReader
@@ -256,6 +259,13 @@ export const WorkspaceLayout: React.FC = () => {
             minSize={20}
             maxSize={40}
             className={cn(
+              // A flex item's automatic min-width is its content's min-content
+              // size, not 0 — so a `max-w-3xl` chat input inside (768px) could
+              // hold this panel wider than its 20-40% share and past the
+              // window edge, worse in RTL (SPEC-M9 QA finding). min-w-0 is the
+              // standard antidote; the panel's own overflow-hidden still clips
+              // anything that doesn't fit once it's held to its real size.
+              "min-w-0",
               !isMobile && workbenchCollapsed && "hidden",
               isMobile && "w-[min(26rem,90vw)] bg-background shadow-xl transition-transform duration-300",
             )}

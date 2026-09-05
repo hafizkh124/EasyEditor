@@ -193,6 +193,7 @@ export const ResearchPanel = () => {
           onClearChat={chat.handleNewChat}
           onRegenerate={chat.handleRegenerate}
           researchLimitReached={activeLimitReached}
+          isSignedIn={!!session}
           chatEndRef={chat.chatEndRef}
           t={t}
           mode={mode}
