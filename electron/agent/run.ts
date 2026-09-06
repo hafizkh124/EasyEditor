@@ -21,6 +21,7 @@ import { refreshChapters } from '../fs/projectFolder.js';
 import { resolveAgentModel } from './modelRouter.js';
 import { createDispatcher, type AgentSession } from './dispatch.js';
 import { runPlaybook } from './runPlaybook.js';
+import { appendJournalEntry, readRecentJournal, formatJournalForPrompt, digestRun } from './journal.js';
 import { checkClaim } from './claimCheck.js';
 import { beginCheckpoint } from './checkpoint.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
@@ -102,9 +103,27 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     capabilities: { ...caps },
     projectRules: rules,
     authorVoice,
+    recentWork: formatJournalForPrompt(readRecentJournal(projectRoot)),
     chapters,
     playbookGuidance: playbook?.guidance ?? null,
   });
+
+  /** Append one journal line (M9 Phase E) and return the output unchanged. */
+  const finish = (output: AgentRunOutput): AgentRunOutput => {
+    const { wrote, sources } = digestRun(output);
+    appendJournalEntry(projectRoot, {
+      ts: new Date().toISOString(),
+      instruction: instruction.slice(0, 300),
+      mode,
+      provider: agentModel.provider.id,
+      stopReason: output.stopReason,
+      steps: output.steps,
+      wrote,
+      sources,
+      summary: (output.answer ?? '').slice(0, 400),
+    });
+    return output;
+  };
 
   // A "plan"/"auto" task may edit files — open a checkpoint so the whole task
   // can be undone at once. "Ask" mode never writes.
@@ -137,7 +156,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
       const errored = typeof result === 'object' && result !== null && 'error' in result;
       input.onProgress?.({ step: 1, kind: errored ? 'error' : 'done', label: `running ${fast.task}` });
       const wrote = !errored;
-      return {
+      return finish({
         answer: errored
           ? `Could not run ${fast.task}: ${String((result as { error: unknown }).error)}`
           : `Ran ${fast.task} on ${fast.chapter} — review the tracked changes in Word.`,
@@ -146,7 +165,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
         steps: 1,
         stopReason: errored ? 'error' : 'done',
         checkpointId: wrote ? checkpointId : undefined,
-      };
+      });
     }
   }
 
@@ -187,7 +206,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
       isCancelled: input.isCancelled, waitForApproval: input.waitForApproval,
       fallbackTools: scopedTools, disabledTools,
     });
-    return { ...result, playbook: playbook.id, checkpointId: taskWrote(result) ? checkpointId : undefined };
+    return finish({ ...result, playbook: playbook.id, checkpointId: taskWrote(result) ? checkpointId : undefined });
   }
 
   // ── 3. Free agentic loop ─────────────────────────────────────────────
@@ -214,7 +233,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     waitForApproval: input.waitForApproval,
   });
 
-  return { ...result, playbook: playbook?.id, checkpointId: taskWrote(result) ? checkpointId : undefined };
+  return finish({ ...result, playbook: playbook?.id, checkpointId: taskWrote(result) ? checkpointId : undefined });
 }
 
 /** A keyword match is "strong" enough to run the playbook only if ≥ 2 hits. */

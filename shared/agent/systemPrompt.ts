@@ -38,6 +38,8 @@ export interface SystemPromptInput {
   projectRules?: string | null;
   /** Contents of the project folder's طرز_تحریر.md (author voice), or null if absent. */
   authorVoice?: string | null;
+  /** A digest of the last few agent tasks on this project (M9 Phase E), or null. */
+  recentWork?: string | null;
   /** Names of the chapters in the open project folder, for context. */
   chapters?: string[];
   /** Domain guidance for the one playbook selected for this run (M9). */
@@ -71,6 +73,9 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
   if (guidance) {
     parts.push(`\n── Playbook guidance (this task only) ──\n${guidance.slice(0, 3000)}`);
   }
+
+  const recent = (input.recentWork ?? '').trim();
+  if (recent) parts.push(`\n${recent.slice(0, 2000)}`);
 
   // Author voice sits before قواعد.md — style guidance the rules can still override.
   const voice = authorVoicePromptSection(input.authorVoice);

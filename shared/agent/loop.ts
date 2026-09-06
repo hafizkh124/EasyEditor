@@ -25,6 +25,38 @@ import { toolsForMode, getTool } from './toolSchemas.js';
 
 const DEFAULT_MAX_STEPS = 16;
 
+/**
+ * M9 Phase E — context hygiene for a long run. Tool results are already capped
+ * at 6000 chars each (dispatch.ts); this collapses the OLD ones to a one-line
+ * stub once the transcript grows past `KEEP_FULL_TOOL_RESULTS` of them, so a
+ * smaller-context provider does not fill up. The recent turns stay verbatim
+ * (they are what the model is actually reasoning about), and the answer text /
+ * tool-call args are never touched.
+ */
+const KEEP_FULL_TOOL_RESULTS = 5;
+
+function stubToolResult(name: string, result: unknown): unknown {
+  if (typeof result === 'object' && result !== null) {
+    const r = result as Record<string, unknown>;
+    if ('error' in r) return { summarized: `${name} → error: ${String(r.error).slice(0, 120)}` };
+    const n = Array.isArray(r.results) ? r.results.length : Array.isArray(r.chunks) ? r.chunks.length : undefined;
+    return { summarized: n !== undefined ? `${name} → ${n} result(s) (details trimmed)` : `${name} → done (details trimmed)` };
+  }
+  return { summarized: `${name} → done (details trimmed)` };
+}
+
+/** Collapse all but the last `KEEP_FULL_TOOL_RESULTS` tool results to a stub. Pure. */
+export function compactMessages(messages: AgentMessage[]): AgentMessage[] {
+  const toolIdx = messages.flatMap((m, i) => (m.role === 'tool' ? [i] : []));
+  if (toolIdx.length <= KEEP_FULL_TOOL_RESULTS) return messages;
+  const collapseBefore = toolIdx[toolIdx.length - KEEP_FULL_TOOL_RESULTS];
+  return messages.map((m, i) =>
+    m.role === 'tool' && i < collapseBefore
+      ? { ...m, result: stubToolResult(m.name, m.result) }
+      : m,
+  );
+}
+
 /** A short present-tense label for a tool call, for the live progress line. */
 function labelFor(name: string): string {
   switch (name) {
@@ -81,7 +113,7 @@ export async function runAgentLoop(
 
     let next;
     try {
-      next = await model(messages, tools, systemPrompt);
+      next = await model(compactMessages(messages), tools, systemPrompt);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       opts.onProgress?.({ step, label: 'error', kind: 'error', detail: msg });

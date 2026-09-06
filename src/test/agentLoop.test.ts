@@ -6,7 +6,7 @@
 // executed; Ask mode refuses write tools; the step limit and cancellation
 // both stop a runaway loop.
 import { describe, it, expect, vi } from 'vitest';
-import { runAgentLoop } from '../../shared/agent/loop';
+import { runAgentLoop, compactMessages } from '../../shared/agent/loop';
 import type { ModelStep, AgentMessage, AgentTool } from '../../shared/agent/types';
 
 /** A model that plays a fixed script of steps, one per call. */
@@ -110,5 +110,48 @@ describe('runAgentLoop', () => {
     });
     await runAgentLoop('q', model, vi.fn(), 'sys', opts({ mode: 'ask' }));
     expect(model).toHaveBeenCalled();
+  });
+
+  it('compacts old tool results but keeps the full transcript (M9 Phase E)', async () => {
+    let sawStubbed = false;
+    const model = vi.fn(async (m: AgentMessage[]): Promise<ModelStep> => {
+      const toolMsgs = m.filter((x) => x.role === 'tool');
+      if (toolMsgs.length > 5) {
+        const first = toolMsgs[0].result as Record<string, unknown>;
+        if (first && 'summarized' in first) sawStubbed = true;
+        return { kind: 'text', text: 'done' };
+      }
+      return { kind: 'toolCall', name: 'search_corpus', args: { query: 'x' } };
+    });
+    const dispatch = vi.fn(async () => ({ results: [{ id: 'c', reference: 'ref' }], excerpt: 'a'.repeat(400) }));
+    const res = await runAgentLoop('go', model, dispatch, 'sys', opts());
+    expect(sawStubbed).toBe(true); // the model saw compacted history
+    // the returned transcript still has the real results
+    const realTool = res.messages.filter((x) => x.role === 'tool')[0].result as Record<string, unknown>;
+    expect(realTool).not.toHaveProperty('summarized');
+    expect(realTool).toHaveProperty('results');
+  });
+});
+
+describe('compactMessages', () => {
+  const tool = (name: string, result: unknown): AgentMessage => ({ role: 'tool', name, result });
+
+  it('is a no-op below the keep threshold', () => {
+    const msgs: AgentMessage[] = [{ role: 'user', text: 'q' }, tool('search_corpus', { results: [1, 2] })];
+    expect(compactMessages(msgs)).toBe(msgs);
+  });
+
+  it('stubs everything older than the last 5 tool results, by kind', () => {
+    const msgs: AgentMessage[] = [];
+    for (let i = 0; i < 8; i += 1) {
+      msgs.push({ role: 'model', toolCall: { name: 'search_corpus', args: {} } });
+      msgs.push(tool('search_corpus', i === 2 ? { error: 'nope' } : { results: new Array(i + 1).fill(0) }));
+    }
+    const out = compactMessages(msgs);
+    const tools = out.filter((m) => m.role === 'tool');
+    expect((tools[0].result as { summarized?: string }).summarized).toMatch(/search_corpus → 1 result/);
+    expect((tools[2].result as { summarized?: string }).summarized).toMatch(/error: nope/);
+    // last 5 stay verbatim
+    expect(tools[7].result).toEqual({ results: new Array(8).fill(0) });
   });
 });
