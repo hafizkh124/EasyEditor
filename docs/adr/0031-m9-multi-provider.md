@@ -66,6 +66,22 @@ OpenRouter — third-party routing, models outside the EU/US) renders in the
 panel before the key field. Selecting Gemini was one trust decision; each new
 provider is another.
 
+## First run (Groq, 2026-09-06)
+
+- **Stale model id.** `llama-3.3-70b-versatile` was gone from Groq. Switched
+  the defaults to `openai/gpt-oss-120b` (tools) / `-20b` (text) / `qwen/qwen3.8-27b`
+  (reasoning) — all overridable via `GROQ_TOOL_MODEL` etc.
+- **`fetch failed` with no cause.** The client now retries a transport failure
+  and surfaces `err.cause`.
+- **Free-tier rate limits.** Groq's free tier is tokens-per-minute limited; our
+  system prompt + tool schemas make each request large, so a back-to-back
+  9-scenario eval run hits 429 after the first one or two (which DO pass the
+  full Groq path — retrieve, tool-call, cite — so the adapter is sound). The
+  client now retries a 429 with `retry-after` backoff, and the eval sleeps 8s
+  between scenarios for a non-Gemini provider. Clearing the whole baseline on
+  Groq needs `GROQ_TOOL_MODEL=openai/gpt-oss-20b` (smaller/faster) or a paid
+  Groq tier.
+
 ## Consequences
 
 - New: `shared/agent/providers.ts`, `electron/ai/{providerConfig,openAiCompatibleClient}.ts`,

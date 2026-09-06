@@ -71,21 +71,44 @@ export async function chatCompletion(req: ChatCompletionRequest): Promise<OpenAi
     ...(req.tools?.length ? { tools: req.tools, tool_choice: req.toolChoice ?? 'auto' } : {}),
   };
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${req.apiKey}`, ...req.extraHeaders },
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    throw new Error(redactKeyFromLog(err instanceof Error ? err.message : String(err), req.apiKey));
+  const init: RequestInit = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${req.apiKey}`, ...req.extraHeaders },
+    body: JSON.stringify(body),
+  };
+  const host = new URL(url).hostname;
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // Retry a transport failure ("fetch failed" hides its cause) and a 429
+  // (Groq's free tier is TPM-limited; it sends `retry-after`). Up to 3 tries.
+  let res: Response | null = null;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const r = await fetch(url, init);
+      if (r.status === 429 && attempt < 2) {
+        const after = Number(r.headers.get('retry-after')) || 0;
+        await sleep(after > 0 ? Math.min(after * 1000, 20_000) : 1500 * (attempt + 1));
+        continue;
+      }
+      res = r;
+      break;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 2) await sleep(400 * (attempt + 1));
+    }
+  }
+  if (!res) {
+    const e = lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+    const cause = (e as { cause?: unknown }).cause;
+    const detail = cause instanceof Error ? `: ${cause.message}` : cause ? `: ${String(cause)}` : '';
+    throw new Error(redactKeyFromLog(`could not reach ${host} — ${e.message}${detail}`, req.apiKey));
   }
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     log.warn('chat completion failed', { status: res.status, model: req.model });
-    throw parseError(res.status, text, new URL(url).hostname);
+    throw parseError(res.status, text, host);
   }
 
   const data = await res.json() as { choices?: Array<{ message?: OpenAiResponseMessage }> };

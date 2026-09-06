@@ -76,9 +76,12 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     getKeyUrl: 'https://console.groq.com/keys',
     keyPattern: /\bgsk_[A-Za-z0-9]{20,}\b/,
     keyEnvVar: 'GROQ_API_KEY',
-    toolModel: 'llama-3.3-70b-versatile',
-    textModel: 'llama-3.3-70b-versatile',
-    reasoningModel: 'deepseek-r1-distill-llama-70b',
+    // Groq's lineup churns — override with GROQ_TOOL_MODEL / _TEXT_MODEL /
+    // _REASONING_MODEL. gpt-oss-120b is the strongest tool caller Groq hosts;
+    // Qwen 3.x is kept for Arabic/Urdu prose and as the reasoning critic.
+    toolModel: 'openai/gpt-oss-120b',
+    textModel: 'openai/gpt-oss-20b',
+    reasoningModel: 'qwen/qwen3.8-27b',
     freeTier: true,
   },
   openrouter: {
