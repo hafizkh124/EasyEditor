@@ -68,6 +68,10 @@ const DOMAIN_RULES: DomainRule[] = [
     tools: ['extract_author_voice', 'read_document', 'draft_section'],
   },
   {
+    keywords: ['افشا', 'اعتراف', 'اقرار', 'disclosure', 'disclose', 'acknowledgement', 'acknowledgment', 'ai-assisted', 'ai assistance', 'ai use statement', 'declare ai'],
+    tools: ['compile_ai_disclosure'],
+  },
+  {
     keywords: ['archive.org', 'openalex', 'repository', 'repositories', 'journal', 'مقالات', 'thesis', 'dissertation', 'مخطوطات محفوظة', 'edition scan', 'bibliograph'],
     tools: ['search_repositories', 'search_shamela', 'search_general', 'insert_footnote', 'draft_section'],
   },

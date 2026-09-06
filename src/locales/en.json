@@ -977,6 +977,8 @@
   "agent.needs_input_hint": "Reply below to continue.",
   "agent.artifact_supported": "supported",
   "agent.artifact_unverified": "unverified",
+  "agent.artifact_claim": "Claim",
+  "agent.artifact_open_source": "Open the source",
   "agent.drop_files": "Drop recordings, scans, fonts, or templates to add them",
   "agent.importing": "Adding files to the project…",
   "agent.ran_steps": "Ran {n} steps",

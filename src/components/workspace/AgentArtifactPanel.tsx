@@ -9,7 +9,7 @@
  * split (Phase 1b) reuses the same component.
  */
 import React from "react";
-import { FileText, Table2, ListChecks, ListTree, GitCompare, Captions, ClipboardList } from "lucide-react";
+import { FileText, Table2, ListChecks, ListTree, GitCompare, Captions, ClipboardList, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { AgentArtifactType } from "../../../shared/agent/types";
 import type { ArtifactState } from "./agentArtifactState";
@@ -56,17 +56,57 @@ const AgentArtifactPanel: React.FC<{ artifacts: ArtifactState[] }> = ({ artifact
                 </table>
               ) : a.citations ? (
                 <ul className="space-y-1">
-                  {a.citations.map((c, i) => (
-                    <li key={i} className="flex items-start gap-1.5">
-                      <span className="font-mono text-muted-foreground">{c.marker}</span>
-                      <span className="flex-1">{c.reference}</span>
-                      {c.supported === true && <span className="text-emerald-600" title={t("agent.artifact_supported", "supported")}>✓</span>}
-                      {c.supported === false && <span className="text-amber-600" title={t("agent.artifact_unverified", "unverified")}>?</span>}
-                      {(c.tier === 2 || c.tier === 3) && (
-                        <span className="rounded bg-amber-500/15 px-1 font-mono text-amber-600" title={`tier ${c.tier}`}>{c.tier}</span>
-                      )}
-                    </li>
-                  ))}
+                  {a.citations.map((c, i) => {
+                    const head = (
+                      <>
+                        <span className="font-mono text-muted-foreground">{c.marker}</span>
+                        <span className="flex-1">{c.reference}</span>
+                        {c.supported === true && <span className="text-emerald-600" title={t("agent.artifact_supported", "supported")}>✓</span>}
+                        {c.supported === false && <span className="text-amber-600" title={t("agent.artifact_unverified", "unverified")}>?</span>}
+                        {(c.tier === 2 || c.tier === 3) && (
+                          <span className="rounded bg-amber-500/15 px-1 font-mono text-amber-600" title={`tier ${c.tier}`}>{c.tier}</span>
+                        )}
+                      </>
+                    );
+                    const expandable = Boolean(c.excerpt || c.claim || c.url);
+                    if (!expandable) {
+                      return <li key={i} className="flex items-start gap-1.5">{head}</li>;
+                    }
+                    return (
+                      <li key={i}>
+                        <details className="group">
+                          <summary className="flex cursor-pointer list-none items-start gap-1.5 [&::-webkit-details-marker]:hidden">
+                            {head}
+                            <span className="text-muted-foreground transition-transform group-open:rotate-90">›</span>
+                          </summary>
+                          <div className="mt-1 space-y-1.5 border-s-2 border-border ps-2">
+                            {c.claim && (
+                              <p className="text-muted-foreground" dir="auto">
+                                <span className="font-medium">{t("agent.artifact_claim", "Claim")}: </span>
+                                {c.claim}
+                              </p>
+                            )}
+                            {c.excerpt && (
+                              <blockquote className="whitespace-pre-wrap leading-relaxed text-foreground/80" dir="auto">
+                                {c.excerpt}
+                              </blockquote>
+                            )}
+                            {c.url && (
+                              <a
+                                href={c.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-primary hover:underline"
+                              >
+                                <ExternalLink className="h-3 w-3 shrink-0" />
+                                {t("agent.artifact_open_source", "Open the source")}
+                              </a>
+                            )}
+                          </div>
+                        </details>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : a.html ? (
                 <div className="prose prose-sm max-w-none dark:prose-invert [&_*]:text-xs" dangerouslySetInnerHTML={{ __html: a.html }} />

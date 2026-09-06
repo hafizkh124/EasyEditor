@@ -43,6 +43,25 @@ describe('applyArtifactEvent', () => {
     expect(s2[0].citations?.[0].supported).toBe(true);
   });
 
+  it('a citation entry carries the source excerpt + claim for the expand-before-accept view', () => {
+    const s = run([
+      { op: 'open', artifactId: 'f', title: 'حاشیہ [1]', artifactType: 'citation-list' },
+      {
+        op: 'citations', artifactId: 'f',
+        entries: [{
+          marker: '[1]', reference: 'صحيح البخاري، ح ١', sourceId: 'shamela:55:40',
+          supported: true, tier: 1, url: 'https://shamela.ws/book/55/40',
+          excerpt: 'إنما الأعمال بالنيات', claim: 'Actions are by intention.',
+        }],
+      },
+      { op: 'close', artifactId: 'f', status: 'final', targetChapter: '02.docx' },
+    ]);
+    expect(s[0].citations?.[0].excerpt).toBe('إنما الأعمال بالنيات');
+    expect(s[0].citations?.[0].claim).toBe('Actions are by intention.');
+    expect(s[0].citations?.[0].url).toBe('https://shamela.ws/book/55/40');
+    expect(s[0].targetChapter).toBe('02.docx');
+  });
+
   it('close marks final and records the target chapter', () => {
     const s = run([
       { op: 'open', artifactId: 'a', title: 'T', artifactType: 'document' },

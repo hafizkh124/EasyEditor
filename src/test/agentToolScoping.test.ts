@@ -42,6 +42,11 @@ describe('toolsFor', () => {
     }
   });
 
+  it('an AI-disclosure ask exposes compile_ai_disclosure (and it stays out of Ask mode)', () => {
+    expect(names('auto', { ask: 'write my AI disclosure statement' })).toContain('compile_ai_disclosure');
+    expect(names('ask', { ask: 'write my AI disclosure statement' })).not.toContain('compile_ai_disclosure');
+  });
+
   it('Ask mode never yields a write tool even after scoping', () => {
     const n = toolsFor('ask', { ask: 'اس حدیث کی تخریج' });
     expect(n.every((t) => t.effect === 'read')).toBe(true);

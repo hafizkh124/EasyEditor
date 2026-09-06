@@ -19,9 +19,11 @@ import { logger } from '../lib/logger.js';
 import { detectTools } from '../host/index.js';
 import { refreshChapters } from '../fs/projectFolder.js';
 import { resolveAgentModel } from './modelRouter.js';
+import { getTextProviderId, resolveProvider } from '../ai/providerConfig.js';
 import { createDispatcher, type AgentSession } from './dispatch.js';
 import { runPlaybook } from './runPlaybook.js';
 import { appendJournalEntry, readRecentJournal, formatJournalForPrompt, digestRun } from './journal.js';
+import { digestDisclosure, appendDisclosureEntries } from './disclosure.js';
 import { runCritique } from './critic.js';
 import { checkClaim } from './claimCheck.js';
 import { beginCheckpoint } from './checkpoint.js';
@@ -123,6 +125,14 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
       sources,
       summary: (output.answer ?? '').slice(0, 400),
     });
+    // The AI-disclosure ledger (blueprint §3): one line per drafting / rewriting
+    // write, attributed to the TEXT provider (the one that generated the prose).
+    try {
+      const textProvider = resolveProvider(getTextProviderId());
+      appendDisclosureEntries(projectRoot, digestDisclosure(output, textProvider.id, textProvider.textModel));
+    } catch (err) {
+      log.warn('could not record the AI-disclosure ledger', { message: (err as Error).message });
+    }
     return output;
   };
 
@@ -269,7 +279,7 @@ function taskWrote(result: AgentRunResult): boolean {
       const r = c.result;
       const inert = typeof r === 'object' && r !== null && ('error' in r || 'needsConsent' in r);
       return (
-        (['insert_footnote', 'set_page_layout', 'run_task', 'draft_section', 'add_document_comment', 'transcribe_media', 'ocr_document', 'create_chapter', 'build_scholarly_indexes', 'typeset_print_ready', 'extract_author_voice'].includes(c.name)
+        (['insert_footnote', 'set_page_layout', 'run_task', 'draft_section', 'add_document_comment', 'transcribe_media', 'ocr_document', 'create_chapter', 'build_scholarly_indexes', 'typeset_print_ready', 'extract_author_voice', 'compile_ai_disclosure'].includes(c.name)
           && !inert)
         || (c.name === 'install_template' && Boolean((c.args as { chapter?: unknown }).chapter))
       );

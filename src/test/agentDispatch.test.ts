@@ -42,6 +42,9 @@ vi.mock('../../electron/ai/geminiClient.ts', () => ({ generateContentStream }));
 const runCritique = vi.fn(async () => ({ ok: true, text: 'الحكم: سليم مع إصلاحات.\n1. الفقرة الثانية بلا مصدر.', model: 'gemini:gemini-2.5-flash' }));
 vi.mock('../../electron/agent/critic.ts', () => ({ runCritique }));
 
+const readDisclosureEntries = vi.fn((): unknown[] => []);
+vi.mock('../../electron/agent/disclosure.ts', () => ({ readDisclosureEntries }));
+
 const recordWrite = vi.fn();
 const recordEdit = recordWrite; // M9: recordEdit is an alias of recordWrite
 vi.mock('../../electron/agent/checkpoint.ts', () => ({ recordWrite, recordEdit: recordWrite }));
@@ -370,6 +373,18 @@ describe('agent dispatch', () => {
     expect(r.backedUp).toBe(true);
   });
 
+  it('insert_footnote emits a citation artifact carrying the source passage (open-before-accept)', async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const { dispatch } = mk({ emitArtifact: (ev) => events.push(ev as Record<string, unknown>) });
+    await dispatch('search_shamela', { query: 'الأعمال' });
+    await dispatch('insert_footnote', { chapter: '01.docx', marker: '[1]', source_id: 'shamela:55:40', claim: 'x' });
+    const cites = events.find((e) => e.op === 'citations') as { entries: Array<Record<string, unknown>> } | undefined;
+    expect(cites?.entries[0]).toMatchObject({
+      marker: '[1]', sourceId: 'shamela:55:40', tier: 1, excerpt: 'إنما الأعمال', claim: 'x',
+    });
+    expect((events.find((e) => e.op === 'close') as { targetChapter?: string } | undefined)?.targetChapter).toBe('01.docx');
+  });
+
   it('insert_footnote REFUSES when the claim-check says the source does not support the claim', async () => {
     const claimCheck = vi.fn(async () => ({ supports: false, note: 'excerpt is about wudu, not the claim' }));
     const { dispatch } = mk({ claimCheck });
@@ -549,6 +564,31 @@ describe('critique (reasoning-model critic — M9 Phase C/E)', () => {
     const r = await dispatch('critique', { chapter: '01.docx' }) as { ok: boolean; note: string };
     expect(r.ok).toBe(false);
     expect(r.note).toMatch(/could not run/);
+  });
+});
+
+describe('compile_ai_disclosure (blueprint §3, optional)', () => {
+  it('says nothing is needed when the ledger is empty', async () => {
+    readDisclosureEntries.mockReturnValueOnce([]);
+    const { dispatch } = mk();
+    expect(await dispatch('compile_ai_disclosure', {})).toMatchObject({ count: 0, note: expect.stringMatching(/no disclosure statement is needed/i) });
+    expect(writeAssetText).not.toHaveBeenCalled();
+  });
+
+  it('writes AI-DISCLOSURE.md from the ledger and emits it as an artifact', async () => {
+    readDisclosureEntries.mockReturnValueOnce([
+      { ts: '2026-09-01T10:00:00Z', chapter: '04.docx', tool: 'draft_section', kind: 'prose', provider: 'gemini', model: 'gemini-2.5-flash', sources: 2 },
+      { ts: '2026-09-03T10:00:00Z', chapter: '02.docx', tool: 'run_task', kind: 'formalize', provider: 'gemini', model: 'gemini-2.5-flash' },
+    ]);
+    const events: Array<Record<string, unknown>> = [];
+    const { dispatch } = mk({ emitArtifact: (ev) => events.push(ev as Record<string, unknown>) });
+    const r = await dispatch('compile_ai_disclosure', { title: 'مقدمة' }) as { file: string; chaptersCovered: number; entries: number; preview: string };
+    expect(r).toMatchObject({ file: 'AI-DISCLOSURE.md', chaptersCovered: 2, entries: 2 });
+    const [root, name, body] = writeAssetText.mock.calls[0] as unknown as [string, string, string];
+    expect([root, name]).toEqual(['C:\\p', 'AI-DISCLOSURE.md']);
+    expect(body).toContain('«مقدمة»');
+    expect(body).toContain('04.docx');
+    expect(events.some((e) => e.op === 'delta')).toBe(true);
   });
 });
 
