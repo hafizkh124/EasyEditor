@@ -9,6 +9,7 @@
  */
 import type { AgentMode } from './types.js';
 import type { ToolAvailabilityLike } from './capabilities.js';
+import { authorVoicePromptSection } from './authorVoice.js';
 
 const BASE = `You are the EasyEditor research assistant, operating a scholar's own tools (Microsoft Word over COM, their local Maktaba Shamela library, their personal corpus) to help prepare an Arabic/Urdu/English scholarly document.
 
@@ -35,6 +36,8 @@ export interface SystemPromptInput {
   capabilities: ToolAvailabilityLike;
   /** Contents of the project folder's قواعد.md, or null if absent. */
   projectRules?: string | null;
+  /** Contents of the project folder's طرز_تحریر.md (author voice), or null if absent. */
+  authorVoice?: string | null;
   /** Names of the chapters in the open project folder, for context. */
   chapters?: string[];
   /** Domain guidance for the one playbook selected for this run (M9). */
@@ -68,6 +71,10 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
   if (guidance) {
     parts.push(`\n── Playbook guidance (this task only) ──\n${guidance.slice(0, 3000)}`);
   }
+
+  // Author voice sits before قواعد.md — style guidance the rules can still override.
+  const voice = authorVoicePromptSection(input.authorVoice);
+  if (voice) parts.push(`\n${voice}`);
 
   const rules = (input.projectRules ?? '').trim();
   if (rules) {

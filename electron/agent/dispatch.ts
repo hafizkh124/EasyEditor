@@ -26,6 +26,7 @@ import { RetrievalLedger, assertClaimSupported, type RetrievedChunk, type ClaimC
 import { summariseCapabilities } from '../../shared/agent/capabilities.js';
 import { resolveTaskSlug, taskOutputIsHtml, RUN_TASK_NAMES } from '../../shared/agent/textTasks.js';
 import { getRefineTextPrompt } from '../../shared/ai/prompts/refineText.js';
+import { withAuthorVoice, VOICE_SHAPED_TASKS } from '../../shared/agent/authorVoice.js';
 import { recordWrite } from './checkpoint.js';
 import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
 import { queryTafseer, type TafseerMode } from './adapters/tafsir.js';
@@ -59,6 +60,13 @@ export interface AgentSession {
   projectRoot: string;
   /** Task checkpoint id — every edit is snapshotted under it (ADR-0019 item 5). */
   checkpointId?: string;
+  /**
+   * Contents of the project's طرز_تحریر.md (author voice, M9 Phase A), read
+   * from the root by run.ts. Appended to draft_section's mode template and to
+   * a voice-shaped run_task prompt so generated prose matches the scholar's
+   * hand. Null / absent ⇒ generation runs on the fixed template alone.
+   */
+  authorVoice?: string | null;
   /** The optional claim-check tier for insert_footnote (ADR-0019 item 6). */
   claimCheck?: ClaimCheckFn | null;
   /**
@@ -106,6 +114,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
   const root = session.projectRoot;
   const checkpointId = session.checkpointId;
   const claimCheck = session.claimCheck ?? null;
+  const authorVoice = session.authorVoice ?? null;
   const generalSearch = session.generalSearch ?? null;
   const researchSearch = session.researchSearch ?? null;
   const transcribeMedia = session.transcribeMedia ?? null;
@@ -572,6 +581,9 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         }
         const prompt = getRefineTextPrompt(slug);
         if (!prompt) return { error: `task "${slug}" has no prompt` };
+        // A rewriting/condensing task follows the author's voice; a mechanical
+        // pass (harakat, spelling, script, formatting) never does.
+        const systemInstruction = VOICE_SHAPED_TASKS.has(slug) ? withAuthorVoice(prompt, authorVoice) : prompt;
 
         const dest = chapterPath(root, chapter);
         const isHtml = taskOutputIsHtml(slug);
@@ -588,7 +600,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         if (isHtml) source = source.replace(/^[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*$/i, '').trim();
         if (!source.trim()) return { error: `chapter "${chapter}" has no text to work on` };
 
-        const refined = (await generateContentStream({ prompt: source, systemInstruction: prompt })).trim();
+        const refined = (await generateContentStream({ prompt: source, systemInstruction })).trim();
         if (!refined) return { error: 'the model returned nothing' };
 
         const backedUp = guardEdit(chapter);
@@ -628,7 +640,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
         const sectionHeading = typeof args.section_heading === 'string' ? args.section_heading : undefined;
         const content = buildDraftInput({ mode, sectionHeading, chapterExcerpt, sources: sources.length ? sources : undefined });
-        const draft = (await generateContentStream({ prompt: content, systemInstruction: spec.instruction })).trim();
+        const draft = (await generateContentStream({ prompt: content, systemInstruction: withAuthorVoice(spec.instruction, authorVoice) })).trim();
         if (!draft) return { error: 'the model returned nothing' };
 
         const artifactId = `draft-${chapter}-${Date.now().toString(36)}`;
@@ -641,7 +653,13 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           : `[DRAFT — review every claim]\n${draft}`;
         const res = await word.applyTextTask(dest, labelled, { isHtml: spec.html });
         emitArtifact({ op: 'close', artifactId, status: 'final', targetChapter: chapter });
-        return { chapter, mode, revisions: res.revisions, backedUp, grounded: spec.grounded, sourcesUsed: sources.length };
+        return {
+          chapter, mode, revisions: res.revisions, backedUp, grounded: spec.grounded, sourcesUsed: sources.length,
+          voiceApplied: Boolean(authorVoice),
+          ...(authorVoice
+            ? {}
+            : { note: 'Drafted on the built-in template. Add a طرز_تحریر.md to the project folder describing your writing voice and the agent will match it next time.' }),
+        };
       }
 
       case 'install_font': {
