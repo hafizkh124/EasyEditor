@@ -39,6 +39,9 @@ vi.mock('../../electron/adapters/word.ts', () => wordMock);
 const generateContentStream = vi.fn(async () => 'باب دو میں برکت کا ذکر ہے — درست شدہ متن۔');
 vi.mock('../../electron/ai/geminiClient.ts', () => ({ generateContentStream }));
 
+const runCritique = vi.fn(async () => ({ ok: true, text: 'الحكم: سليم مع إصلاحات.\n1. الفقرة الثانية بلا مصدر.', model: 'gemini:gemini-2.5-flash' }));
+vi.mock('../../electron/agent/critic.ts', () => ({ runCritique }));
+
 const recordWrite = vi.fn();
 const recordEdit = recordWrite; // M9: recordEdit is an alias of recordWrite
 vi.mock('../../electron/agent/checkpoint.ts', () => ({ recordWrite, recordEdit: recordWrite }));
@@ -482,6 +485,39 @@ describe('search_general (renderer-bridged, ADR-0019 #7)', () => {
     const { dispatch } = mk({ generalSearch });
     const r = await dispatch('search_general', { query: 'x' }) as { error: string };
     expect(r.error).toMatch(/internet connection/);
+  });
+});
+
+describe('critique (reasoning-model critic — M9 Phase C/E)', () => {
+  it('reads the chapter, runs the critic, and returns an advisory result', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('critique', { chapter: '01.docx', kind: 'sourcing', focus: 'the isnad' }) as {
+      ok: boolean; critique: string; critic: string; note: string;
+    };
+    expect(runCritique).toHaveBeenCalledWith(expect.objectContaining({ kind: 'sourcing', focus: 'the isnad', subject: expect.stringContaining('برکت') }));
+    expect(r.ok).toBe(true);
+    expect(r.critique).toContain('الحكم');
+    expect(r.note).toMatch(/advisory only/i);
+  });
+
+  it('an unknown kind falls back to "draft"', async () => {
+    const { dispatch } = mk();
+    await dispatch('critique', { chapter: '01.docx', kind: 'nonsense' });
+    expect(runCritique).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'draft' }));
+  });
+
+  it('errors on a chapter with no text', async () => {
+    wordMock.fromWord.mockImplementationOnce(async (_s: string, _t: string, out: string) => { fs.writeFileSync(out, '   '); return { outputPath: out, ms: 1 }; });
+    const { dispatch } = mk();
+    expect(await dispatch('critique', { chapter: '09-blank.docx' })).toMatchObject({ error: expect.stringMatching(/no text to critique/) });
+  });
+
+  it('surfaces the note when the critic could not run', async () => {
+    runCritique.mockResolvedValueOnce({ ok: false, text: '(critic unavailable — no key)', model: undefined as unknown as string });
+    const { dispatch } = mk();
+    const r = await dispatch('critique', { chapter: '01.docx' }) as { ok: boolean; note: string };
+    expect(r.ok).toBe(false);
+    expect(r.note).toMatch(/could not run/);
   });
 });
 

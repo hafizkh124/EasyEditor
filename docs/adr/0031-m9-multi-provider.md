@@ -89,13 +89,29 @@ provider is another.
   Groq needs `GROQ_TOOL_MODEL=openai/gpt-oss-20b` (smaller/faster) or a paid
   Groq tier.
 
+**The reasoning-model critic (§4).** A reasoning model (DeepSeek-R1, Qwen 3)
+forces tool calls poorly but critiques rigorously, so it is offered ONLY as a
+critic — never a loop driver. A third role, `critic`, defaults to the `text`
+provider and uses that provider's `reasoningModel` when it has one. Not
+eval-gated (the output is advisory prose, never an edit). `electron/agent/
+critic.ts` `runCritique({kind, subject, …})` calls the client with NO tools,
+strips `<think>`, and degrades to a short note on any failure. Surfaced two
+ways: the `critique` tool (reads a chapter / section, returns verdict + numbered
+problems + gaps, as an artifact) and an automatic pass in **Plan mode** —
+`run.ts` wraps `waitForApproval` so the critic reviews the plan and its view
+renders beside the plan before the scholar approves. The `supervisor-audit`
+playbook gained a `critique` step.
+
 ## Consequences
 
-- New: `shared/agent/providers.ts`, `electron/ai/{providerConfig,openAiCompatibleClient}.ts`,
-  `electron/agent/{openAiCompatTools,modelRouter}.ts`,
+- New: `shared/agent/providers.ts`, `shared/ai/prompts/critique.ts`,
+  `electron/ai/{providerConfig,openAiCompatibleClient}.ts`,
+  `electron/agent/{openAiCompatTools,modelRouter,critic}.ts`,
   `electron/lib/agentModelAllowlist.ts`. Tests: `agentProviders`,
   `agentProviderConfig`, `agentModelAllowlist`, `openAiCompatTools`,
-  `byokKeyPanel`.
+  `agentCritic`, `byokKeyPanel`.
+- `critique` joins the tool registry (26 tools) + the supervisor/review domain
+  rule.
 - `runPlaybook` signature gains `model`; `dispatch` swaps `generateContentStream`
   → `generateAgentText`; `aiHandlers` key channels take an optional providerId
   and gain `ai:provider`.

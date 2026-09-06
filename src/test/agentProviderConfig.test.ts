@@ -77,6 +77,17 @@ describe('text provider (split routing — M9)', () => {
   });
 });
 
+describe('critic provider (reasoning-model critic — §4)', () => {
+  it('defaults to the text provider, and is not eval-gated', () => {
+    expect(mod.getCriticProviderId()).toBe('gemini');
+    mod.setTextProviderId('groq'); // groq unverified — still fine for text
+    expect(mod.getCriticProviderId()).toBe('groq'); // follows text when unset
+    mod.setCriticProviderId('openrouter');
+    expect(mod.getCriticProviderId()).toBe('openrouter');
+    expect(mod.getActiveProviderId()).toBe('gemini'); // the loop is untouched
+  });
+});
+
 describe('resolveProvider env overrides', () => {
   it('applies <ID>_TOOL_MODEL', () => {
     process.env.GROQ_TOOL_MODEL = 'qwen-3-next';

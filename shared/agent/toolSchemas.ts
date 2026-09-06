@@ -229,6 +229,18 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'read',
   },
   {
+    name: 'critique',
+    description: "Hand a chapter (or one section of it) to a REASONING model for a rigorous second opinion — the way a muḥaqqiq or thesis supervisor scrutinises work before it is published. It reads the text itself and returns a critique: verdict, what holds up, numbered problems, gaps. ADVISORY only — it changes nothing; act on its points yourself (add a caveat, a margin comment, or tell the scholar). Use it after drafting a contested section or completing a takhrīj, or when the scholar asks for a critical review. Do NOT use it for a copy-edit (run_task) or to check one citation (that is insert_footnote's own claim check).",
+    params: {
+      chapter: { type: 'string', description: 'The chapter file name.' },
+      kind: { type: 'string', description: 'What kind of scrutiny.', enum: ['draft', 'argument', 'takhrij', 'sourcing'] },
+      section_heading: { type: 'string', description: 'Optional — critique only the section under this heading.' },
+      focus: { type: 'string', description: 'Optional — what you most want scrutinised.' },
+    },
+    required: ['chapter'],
+    effect: 'read',
+  },
+  {
     name: 'run_task',
     description: "Run one of the built-in text tasks (harakat, spelling, paraphrase, summarize, auto-format, normalize, formalize, humanize, shorten, section-summaries) on a chapter's text, as a tracked change. Do NOT use for citations (use search_* then insert_footnote) or to write new prose from sources (use draft_section).",
     params: {

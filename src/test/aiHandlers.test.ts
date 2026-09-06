@@ -131,10 +131,11 @@ describe("ai:provider", () => {
     expect(list.map((p) => p.id)).toEqual(expect.arrayContaining(["gemini", "groq", "openrouter"]));
   });
 
-  it("reports state with gemini active + text and verified by default", async () => {
-    const state = await electron.invoke("ai:provider", { action: "state" }) as { active: string; text: string; verified: string[] };
+  it("reports state with gemini active + text + critic and verified by default", async () => {
+    const state = await electron.invoke("ai:provider", { action: "state" }) as { active: string; text: string; critic: string; verified: string[] };
     expect(state.active).toBe("gemini");
     expect(state.text).toBe("gemini");
+    expect(state.critic).toBe("gemini");
     expect(state.verified).toContain("gemini");
   });
 

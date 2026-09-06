@@ -27,6 +27,8 @@ import { summariseCapabilities } from '../../shared/agent/capabilities.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
 import { buildResearchSubagentPrompt } from '../../shared/agent/systemPrompt.js';
 import { AGENT_TOOLS } from '../../shared/agent/toolSchemas.js';
+import { runCritique } from './critic.js';
+import type { CritiqueKind } from '../../shared/ai/prompts/critique.js';
 import type { ModelFn } from '../../shared/agent/types.js';
 import { resolveTaskSlug, taskOutputIsHtml, RUN_TASK_NAMES } from '../../shared/agent/textTasks.js';
 import { getRefineTextPrompt } from '../../shared/ai/prompts/refineText.js';
@@ -628,6 +630,36 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           note: found.length
             ? `${found.length} page-precise source(s) are now available — cite them with insert_footnote by their id. Do NOT call research_topic again for this topic.`
             : 'No page-precise sources were found for this topic — say so plainly rather than drafting unsourced prose.',
+        };
+      }
+
+      case 'critique': {
+        const chapter = str(args.chapter, 'chapter');
+        const kind = (['draft', 'argument', 'takhrij', 'sourcing'].includes(String(args.kind))
+          ? String(args.kind) : 'draft') as CritiqueKind;
+        const focus = typeof args.focus === 'string' && args.focus.trim() ? args.focus.trim() : undefined;
+        const heading = typeof args.section_heading === 'string' && args.section_heading.trim() ? args.section_heading.trim() : undefined;
+
+        let text = '';
+        try { text = await chapterText(chapter); } catch { /* handled below */ }
+        if (!text.trim()) return { error: `chapter "${chapter}" has no text to critique` };
+        if (heading) {
+          const at = text.indexOf(heading);
+          if (at !== -1) text = text.slice(at, at + 9000);
+        }
+
+        const artifactId = `critique-${chapter}-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `نقد — ${heading ?? chapter}`, artifactType: 'document' });
+        const r = await runCritique({ kind, subject: text, focus, context: heading ? `Section: ${heading}` : undefined });
+        emitArtifact({ op: 'delta', artifactId, mode: 'replace', text: r.text });
+        emitArtifact({ op: 'close', artifactId, status: r.ok ? 'final' : 'aborted', targetChapter: chapter });
+
+        return {
+          chapter, kind, critic: r.model ?? null, ok: r.ok,
+          critique: capResult(r.text),
+          note: r.ok
+            ? 'This is a reasoning model\'s critique — advisory only. Act on the points that matter (add a caveat, a margin comment, or raise it with the scholar). Do not just accept it wholesale.'
+            : 'The critic could not run — continue without it, or ask the scholar to set a critic provider in Settings.',
         };
       }
 

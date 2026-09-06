@@ -22,6 +22,7 @@ import { resolveAgentModel } from './modelRouter.js';
 import { createDispatcher, type AgentSession } from './dispatch.js';
 import { runPlaybook } from './runPlaybook.js';
 import { appendJournalEntry, readRecentJournal, formatJournalForPrompt, digestRun } from './journal.js';
+import { runCritique } from './critic.js';
 import { checkClaim } from './claimCheck.js';
 import { beginCheckpoint } from './checkpoint.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
@@ -132,6 +133,24 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
 
   const emitArtifact: EmitArtifactFn = (ev) => input.onProgress?.({ kind: 'artifact', artifact: ev });
 
+  // Plan mode — before the scholar approves, hand the plan to the reasoning
+  // critic and show its view alongside the plan. Non-blocking on failure.
+  const waitForApproval: WaitForApprovalFn | undefined = input.waitForApproval && (async (plan) => {
+    try {
+      const c = await runCritique({
+        kind: 'plan',
+        subject: `${plan.summary}\n\nSteps:\n${plan.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`,
+        context: `The scholar asked: "${instruction}". Open chapters: ${chapters.join(', ') || 'none'}.`,
+      });
+      if (c.text.trim()) {
+        emitArtifact({ op: 'open', artifactId: 'plan-critique', title: 'ناقد کی رائے (reasoning model)', artifactType: 'plan' });
+        emitArtifact({ op: 'delta', artifactId: 'plan-critique', mode: 'replace', text: c.text });
+        emitArtifact({ op: 'close', artifactId: 'plan-critique', status: c.ok ? 'final' : 'aborted' });
+      }
+    } catch { /* the critic is advisory — never block approval on it */ }
+    return input.waitForApproval!(plan);
+  });
+
   const session: AgentSession = {
     projectRoot,
     checkpointId,
@@ -193,7 +212,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
         context: { chapter, instruction, mentions: {} },
         dispatch, model: agentModel, systemPrompt,
         onProgress: input.onProgress, emitArtifact,
-        isCancelled: input.isCancelled, waitForApproval: input.waitForApproval,
+        isCancelled: input.isCancelled, waitForApproval,
         fallbackTools: scopedTools, disabledTools,
       });
       return { playbook: pb.id, stopReason: r.stopReason, steps: r.steps, answer: r.answer };
@@ -205,7 +224,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
       context: { chapter: chapters.length === 1 ? chapters[0] : undefined, instruction, mentions: {} },
       dispatch, model: agentModel, systemPrompt,
       onProgress: input.onProgress, emitArtifact,
-      isCancelled: input.isCancelled, waitForApproval: input.waitForApproval,
+      isCancelled: input.isCancelled, waitForApproval,
       fallbackTools: scopedTools, disabledTools,
     });
     return finish({ ...result, playbook: playbook.id, checkpointId: taskWrote(result) ? checkpointId : undefined });
@@ -220,7 +239,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
       context: { chapter, instruction, mentions: {} },
       dispatch, model: agentModel, systemPrompt,
       onProgress: input.onProgress, emitArtifact,
-      isCancelled: input.isCancelled, waitForApproval: input.waitForApproval,
+      isCancelled: input.isCancelled, waitForApproval,
       fallbackTools: scopedTools, disabledTools,
     });
     return { playbook: pb.id, stopReason: r.stopReason, steps: r.steps, answer: r.answer };
@@ -232,7 +251,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     tools: scopedTools,
     onProgress: input.onProgress,
     isCancelled: input.isCancelled,
-    waitForApproval: input.waitForApproval,
+    waitForApproval,
   });
 
   return finish({ ...result, playbook: playbook?.id, checkpointId: taskWrote(result) ? checkpointId : undefined });

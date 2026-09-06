@@ -16,6 +16,7 @@ interface ProviderInfo {
   getKeyUrl: string;
   keyEnvVar: string;
   toolModel: string;
+  reasoningModel?: string;
   privacyNote: string | null;
   keyPattern: string;
 }
@@ -28,6 +29,7 @@ export const ByokKeyPanel: React.FC = () => {
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [active, setActive] = useState<string>('gemini');
   const [textActive, setTextActive] = useState<string>('gemini');
+  const [criticActive, setCriticActive] = useState<string>('gemini');
   const [verified, setVerified] = useState<string[]>(['gemini']);
   const [statuses, setStatuses] = useState<Record<string, KeyStatus>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -46,6 +48,7 @@ export const ByokKeyPanel: React.FC = () => {
       setProviders(list);
       setActive(state.active);
       setTextActive(state.text);
+      setCriticActive(state.critic);
       setVerified(state.verified);
       const st: Record<string, KeyStatus> = {};
       await Promise.all(list.map(async (p) => { st[p.id] = await api.getKeyStatus(p.id); }));
@@ -113,16 +116,18 @@ export const ByokKeyPanel: React.FC = () => {
     }
   };
 
-  const selectText = async (id: string) => {
+  const selectRole = (setter: (id: string) => Promise<{ active: string; text: string; critic: string }>) => async (id: string) => {
     setFeedback(null);
     try {
       if (!statuses[id]?.hasKey) throw new Error(`${providers.find((p) => p.id === id)?.label} کی کوئی key نہیں — پہلے درج کریں۔`);
-      await api.setTextProvider(id);
+      await setter(id);
       await refresh();
     } catch (err) {
       setFeedback({ type: 'error', message: err instanceof Error ? err.message : String(err) });
     }
   };
+  const selectText = selectRole((id) => api.setTextProvider(id));
+  const selectCritic = selectRole((id) => api.setCriticProvider(id));
 
   const toggleVerified = async (id: string, next: boolean) => {
     try {
@@ -164,9 +169,10 @@ export const ByokKeyPanel: React.FC = () => {
           const st = statuses[p.id] ?? { hasKey: false, lastFour: null };
           const isActive = active === p.id;
           const isText = textActive === p.id;
+          const isCritic = criticActive === p.id;
           const isVerified = verified.includes(p.id);
           return (
-            <div key={p.id} className={`rounded-lg border p-3 space-y-3 ${isActive || isText ? 'border-primary bg-primary/5' : 'bg-muted/60'}`}>
+            <div key={p.id} className={`rounded-lg border p-3 space-y-3 ${isActive || isText || isCritic ? 'border-primary bg-primary/5' : 'bg-muted/60'}`}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-sm">{p.label}</span>
@@ -183,6 +189,10 @@ export const ByokKeyPanel: React.FC = () => {
                   <label className="flex items-center gap-1 text-xs">
                     <input type="radio" name="text-provider" checked={isText} onChange={() => selectText(p.id)} aria-label={`${p.label} — متن سازی`} />
                     متن سازی
+                  </label>
+                  <label className="flex items-center gap-1 text-xs" title={p.reasoningModel ? `reasoning: ${p.reasoningModel}` : undefined}>
+                    <input type="radio" name="critic-provider" checked={isCritic} onChange={() => selectCritic(p.id)} aria-label={`${p.label} — نقد`} />
+                    نقد
                   </label>
                 </div>
                 {st.hasKey ? (

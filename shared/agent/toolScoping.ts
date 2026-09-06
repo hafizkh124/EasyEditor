@@ -48,8 +48,8 @@ const DOMAIN_RULES: DomainRule[] = [
     tools: ['search_hadith', 'search_shamela', 'search_general', 'insert_footnote', 'add_document_comment'],
   },
   {
-    keywords: ['نظرثانی', 'نگران', 'supervisor', 'audit', 'مراجعة', 'تقييم', 'review my', 'تنقیدی', 'تحقیق', 'مسودہ', 'محقق', 'muhaqqiq'],
-    tools: ['search_shamela', 'search_corpus', 'search_general', 'insert_footnote', 'add_document_comment', 'check_consistency'],
+    keywords: ['نظرثانی', 'نگران', 'supervisor', 'audit', 'مراجعة', 'تقييم', 'review my', 'تنقیدی', 'تحقیق', 'مسودہ', 'محقق', 'muhaqqiq', 'نقد', 'critique', 'critical review'],
+    tools: ['search_shamela', 'search_corpus', 'search_general', 'insert_footnote', 'add_document_comment', 'check_consistency', 'critique'],
   },
   {
     keywords: ['audio', 'lecture', 'recording', 'transcribe', 'درس', 'خطاب', 'ریکارڈنگ', 'آڈیو', 'تقریر', 'محاضرة'],
