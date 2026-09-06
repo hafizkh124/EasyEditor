@@ -1,0 +1,11 @@
+{
+  "_note": "M9 Phase B live-model eval regression gate. These are conservative FLOORS, not the real Gemini 2.5 Flash numbers. After the first real run (AGENT_EVAL_LIVE=1), re-run with AGENT_EVAL_WRITE_BASELINE=1 to stamp the observed baseline, then tighten by hand so a genuine regression trips it. A candidate provider in Phase C must meet this same bar before it becomes selectable.",
+  "model": "gemini-2.5-flash",
+  "recordedAt": null,
+  "thresholds": {
+    "minPassRate": 0.7,
+    "minCitationResolveRate": 0.8,
+    "maxGroundingViolations": 1,
+    "maxMeanSteps": 10
+  }
+}
