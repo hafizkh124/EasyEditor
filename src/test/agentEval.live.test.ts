@@ -135,6 +135,8 @@ describe.runIf(LIVE)(`agent live-model eval (${PROVIDER_ID})`, () => {
   // budget of real calls — 3 min covers it.
   it.each(SCENARIOS.map((s) => [s.id, s] as const))('%s', async (_id, sc) => {
     if (!model) return; // key-check test already failed loudly
+    // Free tiers (Groq) are tokens-per-minute limited — breathe between scenarios.
+    if (PROVIDER_ID !== 'gemini') await new Promise((r) => setTimeout(r, 8000));
     const score = await runOneScenario(sc, model);
     scores.push(score);
     const failed = score.checks.filter((c) => !c.pass);
