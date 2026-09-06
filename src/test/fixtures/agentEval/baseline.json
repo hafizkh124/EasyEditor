@@ -1,11 +1,11 @@
 {
-  "_note": "M9 Phase B live-model eval regression gate. These are conservative FLOORS, not the real Gemini 2.5 Flash numbers. After the first real run (AGENT_EVAL_LIVE=1), re-run with AGENT_EVAL_WRITE_BASELINE=1 to stamp the observed baseline, then tighten by hand so a genuine regression trips it. A candidate provider in Phase C must meet this same bar before it becomes selectable.",
+  "_note": "M9 Phase B regression gate for the live-model eval (ADR-0030). Hand-tightened from an AGENT_EVAL_WRITE_BASELINE=1 run of gemini-2.5-flash (9/9 pass, 100% citation-resolve, 0 violations, 2.9 mean steps). Thresholds carry margin for LLM run-to-run variance (an earlier run scored 63% before the scenarios were sharpened) — they trip on a real regression (a grounding violation, a citation-resolve drop, several scenarios breaking, a step-count blowout), not on noise. A Phase-C provider must clear this same file before it becomes selectable. Re-stamp with AGENT_EVAL_WRITE_BASELINE=1 only after a deliberate change, then re-tighten here.",
   "model": "gemini-2.5-flash",
-  "recordedAt": null,
+  "recordedAt": "2026-09-06T10:15:44.390Z",
   "thresholds": {
-    "minPassRate": 0.7,
-    "minCitationResolveRate": 0.8,
-    "maxGroundingViolations": 1,
-    "maxMeanSteps": 10
+    "minPassRate": 0.75,
+    "minCitationResolveRate": 0.9,
+    "maxGroundingViolations": 0,
+    "maxMeanSteps": 6
   }
 }

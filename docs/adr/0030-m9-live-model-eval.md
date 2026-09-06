@@ -47,10 +47,34 @@ run the paid eval). `AGENT_EVAL_WRITE_BASELINE=1` stamps the observed run;
 thresholds are then tightened by hand. A Phase-C provider must clear this same
 file to become selectable.
 
+## First run (gemini-2.5-flash, 2026-09-06)
+
+Run once for real. It immediately earned its keep:
+
+- **A `keyStore` bug.** `getDecryptedGeminiKey` called `getKeyFilePath()`
+  (→ Electron `app.getPath`) OUTSIDE the try/catch, so a headless context threw
+  before reaching the env fallback. Every scenario errored at step 1 with zero
+  API calls. Fixed (the Electron reach is now inside the guard).
+- **Scenario sharpening.** `dont-overwork` phrased as "do X, and nothing else —
+  no index, no typeset, no PDF" made the model do *nothing at all* (1 step). A
+  real prompt-sensitivity finding, but too adversarial for a gate — softened to
+  a plain "only cite the hadith". `draft-grounded-section`: without naming the
+  tool, the model wrote the paragraph in chat instead of calling `draft_section`
+  (the prose never reaches the doc) — a genuine gap; the scenario now names the
+  tool and the comment records the workaround.
+- **Playbook timeout.** A playbook bind step the model fills wrong falls through
+  to the full free loop → 16 real calls → past 90s. Bumped the per-scenario
+  timeout to 180s.
+
+After those fixes: **9/9 pass, 100% citation-resolve, 0 grounding violations,
+2.9 mean steps.** `baseline.json` thresholds are hand-set below that with margin
+(an earlier run scored 63%), `maxGroundingViolations: 0` being the hard line.
+
 ## Consequences
 
 - New: `src/test/fixtures/agentEval/{world,scenarios,score,baseline.json}.ts`,
   `src/test/agentEval.live.test.ts`, `src/test/agentEvalScore.test.ts`.
-- `electron/ai/keyStore.ts` — env-var fallback in `getDecryptedGeminiKey`.
+- `electron/ai/keyStore.ts` — env-var fallback in `getDecryptedGeminiKey`
+  (guarded so a no-`app` context does not throw).
 - Phase C swaps `modelFn` in the live test per provider; the scenarios and
   scoring are provider-agnostic already.

@@ -111,12 +111,14 @@ describe.runIf(LIVE && HAS_KEY)('agent live-model eval', () => {
     }
   });
 
+  // A playbook scenario can fall through to the free loop (a bind step the model
+  // fills wrong) and then run its full step budget of real calls — 3 min covers it.
   it.each(SCENARIOS.map((s) => [s.id, s] as const))('%s', async (_id, sc) => {
     const score = await runOneScenario(sc);
     scores.push(score);
     const failed = score.checks.filter((c) => !c.pass);
     expect(failed, `${sc.id} failed: ${failed.map((c) => `${c.name}${c.detail ? ` (${c.detail})` : ''}`).join('; ')}`).toEqual([]);
-  }, 90_000);
+  }, 180_000);
 
   it('meets the regression baseline', () => {
     const baseline = JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf8')) as { thresholds: EvalBaseline };

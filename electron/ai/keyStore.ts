@@ -64,15 +64,16 @@ export async function getGeminiKeyStatus(): Promise<KeyStatus> {
  * environment is the fallback, matching the edge functions' convention.
  */
 export async function getDecryptedGeminiKey(): Promise<string | null> {
-  const filePath = getKeyFilePath();
   try {
-    const encryptedBuffer = await fs.readFile(filePath);
+    // `getKeyFilePath` reaches into Electron `app` — guarded so a headless /
+    // test context (no `app`) falls straight through to the env fallback.
+    const encryptedBuffer = await fs.readFile(getKeyFilePath());
     if (safeStorage.isEncryptionAvailable()) {
       const decrypted = safeStorage.decryptString(encryptedBuffer);
       if (decrypted) return decrypted;
     }
   } catch {
-    /* no saved key — fall through to the env fallback */
+    /* no Electron app, no saved key, or safeStorage unavailable — env fallback */
   }
   return process.env.GEMINI_API_KEY?.trim() || null;
 }
