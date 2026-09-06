@@ -90,6 +90,28 @@ describe('runPlaybook', () => {
     expect(dispatch).toHaveBeenCalledWith('search_corpus', expect.anything());
   });
 
+  it('stops at a step that returns needsConsent — later steps never run, and it is not reported as "applied"', async () => {
+    // A real bug: ocr_document's needsConsent result has no `error` key, so
+    // it was counted as a completed step and the playbook went on to build a
+    // chapter from OCR text that was never produced — then claimed "2 of 2
+    // steps applied".
+    const pb: Playbook = {
+      id: 'p', title: 'P', keywords: [],
+      steps: [
+        { tool: 'ocr_document', args: { scan_path: 'sources/x.png' }, note: 'ocr the scan' },
+        { tool: 'create_chapter', args: { name: 'x.docx' }, note: 'build the chapter' },
+      ],
+    };
+    const dispatch = vi.fn(async (tool: string) =>
+      tool === 'ocr_document' ? { needsConsent: true, scanPath: 'sources/x.png', message: 'approve OCR' } : { ok: true },
+    );
+    const r = await runPlaybook({ ...base, playbook: pb, instruction: 'x', mode: 'auto', dispatch });
+    expect(dispatch).toHaveBeenCalledTimes(1); // create_chapter never ran
+    expect(r.toolCalls).toHaveLength(1);
+    expect(r.stopReason).toBe('done');
+    expect(r.answer).not.toMatch(/steps applied/);
+  });
+
   it('Ask mode skips write steps and still returns a synthesised answer', async () => {
     const pb: Playbook = {
       id: 'p', title: 'P', keywords: [],
