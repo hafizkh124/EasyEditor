@@ -25,6 +25,7 @@ import { checkClaim } from './claimCheck.js';
 import { beginCheckpoint } from './checkpoint.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
 import { buildSystemPrompt } from '../../shared/agent/systemPrompt.js';
+import { AUTHOR_VOICE_FILES } from '../../shared/agent/authorVoice.js';
 import { toolsFor } from '../../shared/agent/toolScoping.js';
 import { selectPlaybook, resolvePlaybook } from '../../shared/playbooks/registry.js';
 import { detectFastPath } from '../../shared/agent/fastPath.js';
@@ -42,14 +43,25 @@ const log = logger.child('agent/run');
 
 const RULES_FILES = ['قواعد.md', 'qawaid.md', 'RULES.md'];
 
-function readProjectRules(root: string): string | null {
-  for (const name of RULES_FILES) {
+/** First matching project-root markdown file, read utf8, or null. */
+function readRootDoc(root: string, names: string[]): string | null {
+  for (const name of names) {
     try {
       const txt = fs.readFileSync(path.join(root, name), 'utf8');
       if (txt.trim()) return txt;
     } catch { /* not this one */ }
   }
   return null;
+}
+
+/** قواعد.md — the project's constitution (a CONSTRAINT). */
+function readProjectRules(root: string): string | null {
+  return readRootDoc(root, RULES_FILES);
+}
+
+/** طرز_تحریر.md — the author's writing voice (a STYLE brief, M9 Phase A). */
+function readAuthorVoice(root: string): string | null {
+  return readRootDoc(root, AUTHOR_VOICE_FILES);
 }
 
 export interface AgentRunInput {
@@ -80,12 +92,14 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     try { return refreshChapters(projectRoot).map((c) => c.name); } catch { return []; }
   })();
   const rules = readProjectRules(projectRoot);
+  const authorVoice = readAuthorVoice(projectRoot);
   const playbook = selectPlaybook(instruction);
 
   const systemPrompt = buildSystemPrompt({
     mode,
     capabilities: { ...caps },
     projectRules: rules,
+    authorVoice,
     chapters,
     playbookGuidance: playbook?.guidance ?? null,
   });
@@ -100,6 +114,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   const session: AgentSession = {
     projectRoot,
     checkpointId,
+    authorVoice,
     claimCheck: checkClaim,
     generalSearch: input.generalSearch ?? null,
     researchSearch: input.researchSearch ?? null,

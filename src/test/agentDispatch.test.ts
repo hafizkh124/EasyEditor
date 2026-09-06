@@ -411,6 +411,53 @@ describe('agent dispatch', () => {
   });
 });
 
+describe('author voice (طرز_تحریر.md — M9 Phase A)', () => {
+  const VOICE = 'میرا اسلوب: مختصر، باوقار جملے۔ اصطلاح "فریضہ"۔';
+
+  it('run_task shapes a rewriting task with the voice, but leaves a mechanical pass untouched', async () => {
+    const { dispatch } = mk({ authorVoice: VOICE });
+
+    await dispatch('run_task', { chapter: '01.docx', task: 'formalize' });
+    expect(generateContentStream).toHaveBeenLastCalledWith(expect.objectContaining({
+      systemInstruction: expect.stringContaining("AUTHOR'S VOICE"),
+    }));
+    expect(generateContentStream).toHaveBeenLastCalledWith(expect.objectContaining({
+      systemInstruction: expect.stringContaining(VOICE),
+    }));
+
+    generateContentStream.mockClear();
+    await dispatch('run_task', { chapter: '01.docx', task: 'harakat' });
+    expect(generateContentStream).toHaveBeenLastCalledWith(expect.objectContaining({
+      systemInstruction: expect.not.stringContaining("AUTHOR'S VOICE"),
+    }));
+  });
+
+  it('run_task without a voice file passes the bare template', async () => {
+    const { dispatch } = mk();
+    await dispatch('run_task', { chapter: '01.docx', task: 'formalize' });
+    expect(generateContentStream).toHaveBeenLastCalledWith(expect.objectContaining({
+      systemInstruction: expect.not.stringContaining("AUTHOR'S VOICE"),
+    }));
+  });
+
+  it('draft_section appends the voice to the mode template and reports voiceApplied', async () => {
+    const { dispatch } = mk({ authorVoice: VOICE });
+    const r = await dispatch('draft_section', { chapter: '01.docx', mode: 'literary-urdu' }) as { voiceApplied: boolean; note?: string };
+    expect(generateContentStream).toHaveBeenLastCalledWith(expect.objectContaining({
+      systemInstruction: expect.stringContaining(VOICE),
+    }));
+    expect(r.voiceApplied).toBe(true);
+    expect(r.note).toBeUndefined();
+  });
+
+  it('draft_section without a voice file nudges the scholar to add one', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('draft_section', { chapter: '01.docx', mode: 'literary-urdu' }) as { voiceApplied: boolean; note?: string };
+    expect(r.voiceApplied).toBe(false);
+    expect(r.note).toMatch(/طرز_تحریر\.md/);
+  });
+});
+
 describe('search_general (renderer-bridged, ADR-0019 #7)', () => {
   it('returns a clear message when no bridge is available (headless)', async () => {
     const { dispatch } = mk();
