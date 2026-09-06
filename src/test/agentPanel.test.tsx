@@ -152,6 +152,24 @@ describe("AgentPanel", () => {
     expect(await screen.findByText("The chapter has 3 headings.")).toBeInTheDocument();
   });
 
+  it("carries the original request and the agent's question into a clarification reply", async () => {
+    agentRun.mockResolvedValueOnce({ answer: "", stopReason: "needs-input", steps: 1, toolCalls: [], question: "Which chapter do you mean?" });
+    render(<AgentPanel />);
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
+    fireEvent.change(ta, { target: { value: "fix the spelling" } });
+    fireEvent.keyDown(ta, { key: "Enter" });
+    await waitFor(() => expect(agentRun).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Which chapter do you mean?")).toBeInTheDocument();
+
+    fireEvent.change(ta, { target: { value: "the introduction" } });
+    fireEvent.keyDown(ta, { key: "Enter" });
+    await waitFor(() => expect(agentRun).toHaveBeenCalledTimes(2));
+    const secondInstruction = agentRun.mock.calls[1][0] as string;
+    expect(secondInstruction).toContain("fix the spelling");
+    expect(secondInstruction).toContain("Which chapter do you mean?");
+    expect(secondInstruction).toContain("the introduction");
+  });
+
   it("renders live progress lines as they arrive", async () => {
     let resolveRun: (v: unknown) => void = () => {};
     agentRun.mockImplementationOnce(() => new Promise((r) => { resolveRun = r as (v: unknown) => void; }));

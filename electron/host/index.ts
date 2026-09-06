@@ -18,6 +18,8 @@ import {
   killOwnedWordIfAlive,
   killOwnedWordSync,
   sweepStaleOnStartup,
+  syncFromDisk,
+  RECORD_PATH,
 } from './process.js';
 import { HostError, type OwnedPidReply } from './types.js';
 
@@ -56,12 +58,17 @@ export function getWordHost(): WordHost {
 
   const h = new WordHost();
   h.on('exit', (code: number | null) => {
+    // A timeout-triggered kill (powershell.ts) may fire before this run ever
+    // called refreshOwnedWord() — sync in whatever wordBridge.ps1 itself
+    // wrote to disk the moment it launched Office, so there is something for
+    // killOwnedWordIfAlive() to act on even then.
+    syncFromDisk();
     void killOwnedWordIfAlive().then((r) => {
       if (r.killed) log.warn('orphan cleanup after host exit', { code, ...r });
     });
     if (host === h) host = null;
   });
-  h.start();
+  h.start(RECORD_PATH());
   host = h;
   return h;
 }
