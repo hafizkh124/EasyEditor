@@ -76,6 +76,7 @@ function labelFor(name: string): string {
     case 'run_task': return 'running the text task';
     case 'extract_author_voice': return 'learning your writing voice';
     case 'critique': return 'getting a critical review';
+    case 'compile_ai_disclosure': return 'compiling the AI-assistance disclosure';
     case 'run_playbook': return 'running the playbook';
     case 'draft_section': return 'drafting the section';
     case 'create_chapter': return 'creating the chapter';

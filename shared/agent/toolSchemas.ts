@@ -250,6 +250,15 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'read',
   },
   {
+    name: 'compile_ai_disclosure',
+    description: "Compile the project's AI-assistance disclosure statement from the ledger EasyEditor keeps automatically (every draft_section and substantive run_task write). Writes AI-DISCLOSURE.md to the project root — a bilingual, editable front-matter statement listing which chapters had AI drafting or rewriting help, the models used, and the dates. Use when the scholar asks for an AI disclosure, acknowledgement, or declaration. Do NOT use it to add anything to a chapter, and do NOT invent entries — it only reports what the ledger already recorded.",
+    params: {
+      title: { type: 'string', description: 'Optional — the book title, used in the opening sentence.' },
+    },
+    required: [],
+    effect: 'write',
+  },
+  {
     name: 'run_task',
     description: "Run one of the built-in text tasks (harakat, spelling, paraphrase, summarize, auto-format, normalize, formalize, humanize, shorten, section-summaries) on a chapter's text, as a tracked change. Do NOT use for citations (use search_* then insert_footnote) or to write new prose from sources (use draft_section).",
     params: {

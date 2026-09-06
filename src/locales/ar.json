@@ -977,6 +977,8 @@
   "agent.needs_input_hint": "أجب أدناه للمتابعة.",
   "agent.artifact_supported": "مؤيَّد",
   "agent.artifact_unverified": "غير مُصدَّق",
+  "agent.artifact_claim": "الدعوى",
+  "agent.artifact_open_source": "افتح المصدر",
   "agent.drop_files": "أفلِت التسجيلات أو المسوحات أو الخطوط أو القوالب لإضافتها",
   "agent.importing": "جارٍ إضافة الملفات إلى المشروع…",
   "agent.ran_steps": "أُنجزت {n} خطوات",

@@ -13,6 +13,10 @@ export interface ArtifactCitationEntry {
   supported?: boolean;
   url?: string;
   tier?: 1 | 2 | 3 | 4;
+  /** The retrieved source passage — shown on expand, before the scholar accepts the tracked change. */
+  excerpt?: string;
+  /** The claim this citation supports, when one was given. */
+  claim?: string;
 }
 
 export interface ArtifactState {

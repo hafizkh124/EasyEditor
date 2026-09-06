@@ -977,6 +977,8 @@
   "agent.needs_input_hint": "جاری رکھنے کے لیے نیچے جواب دیں۔",
   "agent.artifact_supported": "مؤیَّد",
   "agent.artifact_unverified": "غیر مصدّق",
+  "agent.artifact_claim": "دعویٰ",
+  "agent.artifact_open_source": "ماخذ کھولیں",
   "agent.drop_files": "ریکارڈنگز، اسکینز، فونٹس یا ٹیمپلیٹس شامل کرنے کے لیے یہاں چھوڑیں",
   "agent.importing": "فائلیں پروجیکٹ میں شامل کی جا رہی ہیں…",
   "agent.ran_steps": "{n} مراحل مکمل ہوئے",

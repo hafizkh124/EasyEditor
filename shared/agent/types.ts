@@ -78,7 +78,18 @@ export type AgentArtifactEvent =
   | {
       op: 'citations';
       artifactId: string;
-      entries: Array<{ marker: string; reference: string; sourceId: string; supported?: boolean; url?: string; tier?: 1 | 2 | 3 | 4 }>;
+      entries: Array<{
+        marker: string;
+        reference: string;
+        sourceId: string;
+        supported?: boolean;
+        url?: string;
+        tier?: 1 | 2 | 3 | 4;
+        /** The retrieved source passage — shown on expand so the scholar can read it before accepting the tracked change. */
+        excerpt?: string;
+        /** The claim this citation was inserted to support, when one was given. */
+        claim?: string;
+      }>;
     }
   | { op: 'close'; artifactId: string; status: 'final' | 'aborted'; targetChapter?: string };
 

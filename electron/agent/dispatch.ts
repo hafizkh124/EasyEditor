@@ -34,6 +34,8 @@ import { resolveTaskSlug, taskOutputIsHtml, RUN_TASK_NAMES } from '../../shared/
 import { getRefineTextPrompt } from '../../shared/ai/prompts/refineText.js';
 import { withAuthorVoice, VOICE_SHAPED_TASKS, AUTHOR_VOICE_FILES, AUTHOR_VOICE_PROPOSAL_FILE } from '../../shared/agent/authorVoice.js';
 import { AUTHOR_VOICE_EXTRACT_INSTRUCTION } from '../../shared/ai/prompts/authorVoiceExtract.js';
+import { AI_DISCLOSURE_FILE, buildDisclosureStatement } from '../../shared/agent/disclosure.js';
+import { readDisclosureEntries } from './disclosure.js';
 import { recordWrite } from './checkpoint.js';
 import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
 import { queryTafseer, type TafseerMode } from './adapters/tafsir.js';
@@ -246,6 +248,33 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           dest,
           { trackChanges: true },
         );
+
+        // Surface the source behind this footnote so the scholar can read the
+        // actual passage BEFORE accepting the tracked change in Word (blueprint
+        // §3 — "one-click open source passage").
+        if (res.applied > 0) {
+          const excerpt = (chunk.content ?? '').trim();
+          const supported = args.claim && typeof args.claim === 'string' && args.claim.trim()
+            ? (verdict ? verdict.supports : undefined)
+            : undefined;
+          const artifactId = `footnote-${chapter}-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: `حاشیہ ${marker} — ${chapter}`, artifactType: 'citation-list' });
+          emitArtifact({
+            op: 'citations', artifactId,
+            entries: [{
+              marker,
+              reference: chunk.reference,
+              sourceId: typeof args.source_id === 'string' ? args.source_id : '',
+              supported,
+              url: chunk.source_url ?? undefined,
+              tier: chunk.bibliographic ? 2 : 1,
+              excerpt: excerpt || undefined,
+              claim: typeof args.claim === 'string' && args.claim.trim() ? args.claim.trim() : undefined,
+            }],
+          });
+          emitArtifact({ op: 'close', artifactId, status: 'final', targetChapter: chapter });
+        }
+
         return {
           applied: res.applied, notFound: res.notFound, reference: chunk.reference, backedUp,
           ...(verdict ? { claimCheck: verdict.note } : {}),
@@ -512,7 +541,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           const artifactId = `tafsir-${Date.now().toString(36)}`;
           emitArtifact({ op: 'open', artifactId, title: r.chunks[0].reference, artifactType: 'document' });
           emitArtifact({ op: 'delta', artifactId, mode: 'replace', text: r.text });
-          emitArtifact({ op: 'citations', artifactId, entries: r.chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, tier: 1 })) });
+          emitArtifact({ op: 'citations', artifactId, entries: r.chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, tier: 1, excerpt: (c.content ?? '').slice(0, 500) || undefined })) });
           emitArtifact({ op: 'close', artifactId, status: 'final' });
         }
         return {
@@ -618,7 +647,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         if (found.length) {
           emitArtifact({
             op: 'citations', artifactId,
-            entries: found.slice(0, 20).map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, tier: 1 })),
+            entries: found.slice(0, 20).map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, tier: 1, excerpt: (c.content ?? '').slice(0, 300) || undefined })),
           });
         }
         emitArtifact({ op: 'close', artifactId, status: 'final' });
@@ -714,6 +743,31 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           note: r.ok
             ? 'This is a reasoning model\'s critique — advisory only. Act on the points that matter (add a caveat, a margin comment, or raise it with the scholar). Do not just accept it wholesale.'
             : 'The critic could not run — continue without it, or ask the scholar to set a critic provider in Settings.',
+        };
+      }
+
+      case 'compile_ai_disclosure': {
+        const entries = readDisclosureEntries(root);
+        if (entries.length === 0) {
+          return { count: 0, note: 'No AI drafting or rewriting has been recorded for this project — no disclosure statement is needed.' };
+        }
+        const title = typeof args.title === 'string' && args.title.trim() ? args.title.trim() : undefined;
+        const statement = buildDisclosureStatement(entries, { projectTitle: title });
+        try { guardWrite(AI_DISCLOSURE_FILE); } catch { /* the checkpoint only tracks chapter files; this .md is fine without undo */ }
+        writeAssetText(root, AI_DISCLOSURE_FILE, statement);
+
+        const artifactId = `disclosure-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: 'اعترافِ معاونتِ AI — AI-assistance disclosure', artifactType: 'document' });
+        emitArtifact({ op: 'delta', artifactId, mode: 'replace', text: statement });
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+
+        const chapters = [...new Set(entries.map((e) => e.chapter))];
+        return {
+          file: AI_DISCLOSURE_FILE,
+          chaptersCovered: chapters.length,
+          entries: entries.length,
+          preview: capResult(statement),
+          note: `Saved to ${AI_DISCLOSURE_FILE}. Review and edit it, then place it in the book's front matter. It is a factual record from EasyEditor's ledger — not legal or journal-policy advice.`,
         };
       }
 
