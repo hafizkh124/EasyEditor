@@ -77,9 +77,11 @@ export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
     keyPattern: /\bgsk_[A-Za-z0-9]{20,}\b/,
     keyEnvVar: 'GROQ_API_KEY',
     // Groq's lineup churns — override with GROQ_TOOL_MODEL / _TEXT_MODEL /
-    // _REASONING_MODEL. gpt-oss-120b is the strongest tool caller Groq hosts;
+    // _REASONING_MODEL. gpt-oss-20b clears the loop eval on the FREE tier
+    // (78% pass, 100% citation-resolve, 0 violations, 2026-09-06); a paid tier
+    // should set GROQ_TOOL_MODEL=openai/gpt-oss-120b for stronger tool choice.
     // Qwen 3.x is kept for Arabic/Urdu prose and as the reasoning critic.
-    toolModel: 'openai/gpt-oss-120b',
+    toolModel: 'openai/gpt-oss-20b',
     textModel: 'openai/gpt-oss-20b',
     reasoningModel: 'qwen/qwen3.8-27b',
     freeTier: true,
