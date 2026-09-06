@@ -42,6 +42,8 @@ export interface ChatCompletionRequest {
   toolChoice?: 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
   temperature?: number;
   maxTokens?: number;
+  /** 'json_object' asks the provider to emit strict JSON (used by the claim check). */
+  responseFormat?: 'json_object';
   extraHeaders?: Record<string, string>;
 }
 
@@ -69,6 +71,7 @@ export async function chatCompletion(req: ChatCompletionRequest): Promise<OpenAi
     temperature: req.temperature ?? 0.2,
     ...(req.maxTokens ? { max_tokens: req.maxTokens } : {}),
     ...(req.tools?.length ? { tools: req.tools, tool_choice: req.toolChoice ?? 'auto' } : {}),
+    ...(req.responseFormat ? { response_format: { type: req.responseFormat } } : {}),
   };
 
   const init: RequestInit = {

@@ -42,8 +42,12 @@ Reasoning `<think>…</think>` blocks are stripped from text output.
 `ModelFn`. `runPlaybook` now takes `{ generate, generateBound }` instead of
 importing `geminiTools` directly. `dispatch.ts` routes text generation through
 `generateAgentText`. `electron/agent/modelRouter.ts` resolves the active
-provider into all three. claim-check stays on Gemini for now (JSON-mode output
-varies by provider).
+provider into all three, plus `checkClaim` (`insert_footnote`'s second tier) —
+which follows the LOOP provider (whatever drives the citations verifies them,
+and it is always eval-verified) but uses that provider's fast `textModel` and
+JSON mode (`responseMimeType` for Gemini, `response_format: json_object` for
+openai-compat). Still non-fatal: any failure degrades to "no opinion".
+`claimCheck.ts` is now a one-line re-export.
 
 **Per-provider BYOK keys.** `electron/ai/keyStore.ts` generalised to
 `byok_<id>.enc` (the Gemini file name is unchanged); a headless / eval run
