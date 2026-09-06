@@ -1,12 +1,15 @@
 /**
  * M9 Phase C (ADR-0031) — which provider the desktop agent runs on.
  *
- * Persists `{ active, text, verified }` to `userData/agent-provider.json`:
+ * Persists `{ active, text, critic, verified }` to `userData/agent-provider.json`:
  *  - `active`   — the provider that drives the AGENTIC LOOP + playbook bind
  *                 calls (tool calling). Default 'gemini'.
  *  - `text`     — the provider for plain text generation (draft_section,
  *                 run_task, index extraction). Defaults to `active`. May differ
  *                 — e.g. Gemini for the loop, Groq for drafting.
+ *  - `critic`   — the provider for the reasoning-model CRITIC (`critique` tool,
+ *                 plan-mode review). Uses that provider's `reasoningModel` when
+ *                 it has one, else its `textModel`. Defaults to `text`.
  *  - `verified` — providers that have cleared the Phase B eval on THIS machine.
  *
  * The gate: `setActiveProvider` refuses a non-Gemini provider that is not in
@@ -27,6 +30,7 @@ import {
 interface ProviderConfigFile {
   active: ProviderId;
   text?: ProviderId;
+  critic?: ProviderId;
   verified: ProviderId[];
 }
 
@@ -42,6 +46,7 @@ function read(): ProviderConfigFile {
     return {
       active: isProviderId(raw.active) ? raw.active : DEFAULT_PROVIDER,
       text: isProviderId(raw.text) ? raw.text : undefined,
+      critic: isProviderId(raw.critic) ? raw.critic : undefined,
       verified: Array.isArray(raw.verified) ? raw.verified.filter(isProviderId) : [],
     };
   } catch {
@@ -90,6 +95,19 @@ export function setTextProviderId(id: ProviderId | null): void {
   const cfg = read();
   const next: ProviderConfigFile = { ...cfg };
   if (id) next.text = id; else delete next.text;
+  write(next);
+}
+
+/** The provider for the reasoning-model critic. Falls back to the text provider. */
+export function getCriticProviderId(): ProviderId {
+  return read().critic ?? getTextProviderId();
+}
+
+/** The critic is advisory text (never an edit) — not eval-gated, just needs a key. */
+export function setCriticProviderId(id: ProviderId | null): void {
+  const cfg = read();
+  const next: ProviderConfigFile = { ...cfg };
+  if (id) next.critic = id; else delete next.critic;
   write(next);
 }
 

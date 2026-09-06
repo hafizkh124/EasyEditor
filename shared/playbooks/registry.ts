@@ -275,6 +275,7 @@ export const PLAYBOOKS: Playbook[] = [
       'Audit like a supervisor, and NEVER change the text — every finding is a margin comment. Check: (1) structure — is the argument ordered and each section doing its job; (2) sourcing — is every quotation, ruling and hadith footnoted, and does the footnote actually support the sentence; (3) terminology — is each key term used consistently (use check_consistency); (4) proportion — is any section mostly quotation with little of the author\'s own analysis; (5) language register. Be specific and constructive; point to the exact passage.',
     steps: [
       { tool: 'read_document', bind: ['chapter'], note: 'Read the chapter — structure, footnotes, tracked-change count.' },
+      { tool: 'critique', args: { kind: 'sourcing' }, bind: ['chapter'], optional: true, note: 'Get a reasoning model\'s critical review of the argument and sourcing.' },
       { tool: 'check_consistency', bind: ['term'], optional: true, repeat: true, note: 'Check where each key term is also used, for consistency.' },
       { tool: 'add_document_comment', bind: ['chapter', 'anchor_text', 'comment'], repeat: true, note: 'Leave each finding as a margin comment on the exact passage.' },
     ],

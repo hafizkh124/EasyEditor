@@ -74,6 +74,7 @@ function labelFor(name: string): string {
     case 'set_page_layout': return 'setting the page layout';
     case 'convert_document': return 'converting the document';
     case 'run_task': return 'running the text task';
+    case 'critique': return 'getting a critical review';
     case 'run_playbook': return 'running the playbook';
     case 'draft_section': return 'drafting the section';
     case 'create_chapter': return 'creating the chapter';

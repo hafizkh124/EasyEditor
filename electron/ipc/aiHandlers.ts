@@ -16,6 +16,7 @@ import { testProviderKey } from '../agent/modelRouter.js';
 import {
   getActiveProviderId, setActiveProviderId, markProviderVerified,
   getTextProviderId, setTextProviderId,
+  getCriticProviderId, setCriticProviderId,
   verifiedProviders, resolveProvider,
 } from '../ai/providerConfig.js';
 import { PROVIDER_IDS, isProviderId, type ProviderId } from '../../shared/agent/providers.js';
@@ -58,13 +59,16 @@ export function registerAiHandlers(): void {
           };
         });
       case 'state':
-        return { active: getActiveProviderId(), text: getTextProviderId(), verified: verifiedProviders() };
+        return { active: getActiveProviderId(), text: getTextProviderId(), critic: getCriticProviderId(), verified: verifiedProviders() };
       case 'setActive':
         setActiveProviderId(asProvider(req.provider));
-        return { active: getActiveProviderId(), text: getTextProviderId() };
+        return { active: getActiveProviderId(), text: getTextProviderId(), critic: getCriticProviderId() };
       case 'setText':
         setTextProviderId(isProviderId(req.provider) ? req.provider : null);
-        return { active: getActiveProviderId(), text: getTextProviderId() };
+        return { active: getActiveProviderId(), text: getTextProviderId(), critic: getCriticProviderId() };
+      case 'setCritic':
+        setCriticProviderId(isProviderId(req.provider) ? req.provider : null);
+        return { active: getActiveProviderId(), text: getTextProviderId(), critic: getCriticProviderId() };
       case 'markVerified':
         markProviderVerified(asProvider(req.provider), req.verified !== false);
         return { active: getActiveProviderId(), verified: verifiedProviders() };
