@@ -84,14 +84,15 @@ provider is another.
   (reasoning) — all overridable via `GROQ_TOOL_MODEL` etc.
 - **`fetch failed` with no cause.** The client now retries a transport failure
   and surfaces `err.cause`.
-- **Free-tier rate limits.** Groq's free tier is tokens-per-minute limited; our
-  system prompt + tool schemas make each request large, so a back-to-back
-  9-scenario eval run hits 429 after the first one or two (which DO pass the
-  full Groq path — retrieve, tool-call, cite — so the adapter is sound). The
-  client now retries a 429 with `retry-after` backoff, and the eval sleeps 8s
-  between scenarios for a non-Gemini provider. Clearing the whole baseline on
-  Groq needs `GROQ_TOOL_MODEL=openai/gpt-oss-20b` (smaller/faster) or a paid
-  Groq tier.
+- **Free-tier rate limits.** Groq's free tier is tokens-per-minute limited (a
+  ~60 s window). `openai/gpt-oss-120b` requests are large enough that a
+  back-to-back run 429s before completing. Fixed on two fronts: the client
+  retries a 429 four times honouring `retry-after` (up to 45 s), and the eval
+  pauses 25 s between scenarios so the window resets. With
+  `openai/gpt-oss-20b` (now the Groq default) **Groq clears the loop eval on
+  the free tier** — 78 % pass, 100 % citation-resolve, 0 grounding violations,
+  3.7 mean steps (2026-09-06). A paid tier can set
+  `GROQ_TOOL_MODEL=openai/gpt-oss-120b` for stronger tool selection.
 
 **The reasoning-model critic (§4).** A reasoning model (DeepSeek-R1, Qwen 3)
 forces tool calls poorly but critiques rigorously, so it is offered ONLY as a
