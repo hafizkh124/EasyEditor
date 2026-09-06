@@ -37,7 +37,7 @@ interface OwnedProcRecord {
   recordedAt: string;
 }
 
-const RECORD_PATH = (): string =>
+export const RECORD_PATH = (): string =>
   path.join(app?.getPath ? app.getPath('userData') : process.cwd(), 'doc-bridge-host.json');
 
 /** Owned processes, keyed by name (one instance of each app at most). */
@@ -65,7 +65,14 @@ function persist(): void {
 function loadPersisted(): OwnedProcRecord[] {
   let raw: unknown;
   try {
-    raw = JSON.parse(fs.readFileSync(RECORD_PATH(), 'utf8'));
+    // Windows PowerShell 5.1's `Set-Content -Encoding UTF8` (wordBridge.ps1's
+    // Write-OwnedRecord) writes a UTF-8 BOM; Node's 'utf8' read does not strip
+    // it, and a leading BOM code point makes JSON.parse throw. This file's
+    // other writer (this module's own persist(), below) never adds one, so
+    // stripping it here is safe either way.
+    let text = fs.readFileSync(RECORD_PATH(), 'utf8');
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    raw = JSON.parse(text);
   } catch {
     return [];
   }
@@ -159,6 +166,22 @@ function killAsync(pid: number): Promise<void> {
     p.on('error', reject);
     p.on('exit', () => resolve());
   });
+}
+
+/**
+ * Merge into the in-memory registry whatever wordBridge.ps1 itself wrote to
+ * RECORD_PATH() (see wordBridge.ps1's Write-OwnedRecord) — the PID as soon as
+ * an Ensure-* function launched the app, not lazily after a successful reply.
+ * A hang inside the very op that opened Word never sends that reply, so
+ * without this the in-memory `owned` map is empty and killOwnedWordIfAlive()
+ * has nothing to act on. Never overwrites an in-memory record already tracked
+ * by the normal record*Owned* path — only fills in what this process doesn't
+ * know yet.
+ */
+export function syncFromDisk(): void {
+  for (const rec of loadPersisted()) {
+    if (!owned.has(rec.name)) owned.set(rec.name, rec);
+  }
 }
 
 /**

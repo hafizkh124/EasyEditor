@@ -75,8 +75,14 @@ export class WordHost extends EventEmitter {
     return this.proc !== null && this.proc.exitCode === null && !this.proc.killed;
   }
 
-  /** Spawn the host. Throws HostError('not-windows') off Windows. */
-  start(): void {
+  /**
+   * Spawn the host. Throws HostError('not-windows') off Windows.
+   * `recordPath`, if given, is passed to wordBridge.ps1 as -RecordPath so it
+   * can write an owned PID to disk the moment it launches Office — a fallback
+   * for electron/host/process.ts's orphan cleanup when the op that opened it
+   * then hangs and never replies (see wordBridge.ps1's Write-OwnedRecord).
+   */
+  start(recordPath?: string): void {
     if (process.platform !== 'win32') {
       throw new HostError('Word automation is Windows-only.', 'not-windows');
     }
@@ -85,11 +91,9 @@ export class WordHost extends EventEmitter {
     const script = resolveBridgeScript();
     this.stopping = false;
 
-    const proc = spawn(
-      'powershell',
-      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script],
-      { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] },
-    );
+    const args = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script];
+    if (recordPath) args.push('-RecordPath', recordPath);
+    const proc = spawn('powershell', args, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     this.proc = proc;
 
     this.rl = createInterface({ input: proc.stdout });
@@ -155,6 +159,14 @@ export class WordHost extends EventEmitter {
         const idx = this.queue.findIndex((p) => p.timer === timer);
         if (idx !== -1) this.queue.splice(idx, 1);
         reject(new HostError(`timeout after ${budget}ms waiting for "${cmd.op}"`, 'timeout', cmd.op));
+        // A timed-out op (anything but the lightweight `ping` probe) is most
+        // likely wedged inside a blocking Word COM call (e.g. a modal
+        // recovery dialog) and will never usefully reply — reusing this same
+        // process for the next command would just hand it another hang or a
+        // desynced reply. Kill it: the 'exit' handler's existing orphan-Word
+        // cleanup (electron/host/index.ts) runs, and the next getWordHost()
+        // spawns a fresh host instead of reusing a stuck one.
+        if (cmd.op !== 'ping') this.kill();
       }, budget);
 
       this.queue.push({

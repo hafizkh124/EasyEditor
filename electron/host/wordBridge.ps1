@@ -26,6 +26,8 @@
   JSON gets {ok:false, error:"bad json: ..."} and the loop continues.
 #>
 
+param([string]$RecordPath)
+
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding  = [System.Text.Encoding]::UTF8
@@ -47,6 +49,29 @@ function Write-Result($obj) {
     $json = $obj | ConvertTo-Json -Compress -Depth 8
     [Console]::Out.WriteLine($json)
     [Console]::Out.Flush()
+}
+
+# Proactive orphan-cleanup side channel (SPEC-M8 §6 constraint 1): the normal
+# "ownedByUs" PID only reaches electron/host/process.ts lazily, after this
+# process replies to a wordPid/excelPid/pptPid request — which never happens
+# if the very op that opened the app then hangs (e.g. a stuck modal). Writing
+# the PID here, straight to the same doc-bridge-host.json electron/host/process.ts
+# already reads on startup, means a hang has something to clean up even if no
+# reply ever comes back. Best-effort: never throws, never blocks an op.
+function Write-OwnedRecord($name, $procId) {
+    if ([string]::IsNullOrEmpty($RecordPath) -or $null -eq $procId) { return }
+    try {
+        $startTime = (Get-Process -Id $procId -ErrorAction Stop).StartTime.ToString('o')
+        $owned = @()
+        if (Test-Path $RecordPath) {
+            try {
+                $parsed = Get-Content -Raw -Path $RecordPath | ConvertFrom-Json
+                if ($parsed.owned) { $owned = @($parsed.owned | Where-Object { $_.name -ne $name }) }
+            } catch { $owned = @() }
+        }
+        $owned += @{ name = $name; pid = $procId; startTime = $startTime; recordedAt = (Get-Date).ToString('o') }
+        (@{ owned = $owned } | ConvertTo-Json -Depth 8) | Set-Content -Path $RecordPath -Encoding UTF8
+    } catch { }
 }
 
 function Get-WinwordPids {
@@ -77,6 +102,7 @@ function Ensure-Word {
     } else {
         $script:ownedWordPid = $null
     }
+    Write-OwnedRecord 'WINWORD' $script:ownedWordPid
 }
 
 function Require-Doc {
@@ -107,6 +133,7 @@ function Ensure-Excel {
     try { $script:excel.DisplayAlerts = $false } catch { }
     try { $script:excel.ScreenUpdating = $false } catch { }
     $script:ownedExcelPid = Resolve-OwnedPid $before (Get-ExcelPids)
+    Write-OwnedRecord 'EXCEL' $script:ownedExcelPid
 }
 
 function Ensure-Ppt {
@@ -117,6 +144,7 @@ function Ensure-Ppt {
     # WithWindow:msoFalse instead (see the 'pptOpen' op).
     try { $script:ppt.DisplayAlerts = 1 } catch { }  # ppAlertsNone
     $script:ownedPptPid = Resolve-OwnedPid $before (Get-PptPids)
+    Write-OwnedRecord 'POWERPNT' $script:ownedPptPid
 }
 
 function Require-Wb {

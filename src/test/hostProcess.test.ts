@@ -227,3 +227,51 @@ describe('multi-process ownership (P9 — Word / Excel / PowerPoint)', () => {
     expect(fs.existsSync(recordPath())).toBe(false);
   });
 });
+
+describe('syncFromDisk', () => {
+  const START = '2026-09-06T00:00:00.0000000Z';
+
+  it('picks up a record wordBridge.ps1 wrote to disk that this process never learned in memory', async () => {
+    // Simulates Write-OwnedRecord firing from Ensure-Word — no recordOwnedWord()
+    // call ever happened here because the op that opened Word then hung.
+    fs.writeFileSync(recordPath(), JSON.stringify({
+      owned: [{ name: 'WINWORD', pid: 41, startTime: START, recordedAt: 'y' }],
+    }));
+    expect(mod._ownedRecords()).toEqual([]);
+    mod.syncFromDisk();
+    expect(mod._ownedRecords()).toEqual([{ name: 'WINWORD', pid: 41, startTime: START, recordedAt: 'y' }]);
+
+    probeByName({ WINWORD: true }, START);
+    const res = await mod.killOwnedWordIfAlive();
+    expect(res.killed).toBe(true);
+    expect(spawnMock).toHaveBeenCalledWith('taskkill', ['/PID', '41', '/T', '/F'], expect.anything());
+  });
+
+  it('reads a record file written with a UTF-8 BOM (Windows PowerShell Set-Content -Encoding UTF8)', () => {
+    // wordBridge.ps1's Write-OwnedRecord writes via PowerShell 5.1's
+    // Set-Content -Encoding UTF8, which prepends a BOM Node's 'utf8' read
+    // does not strip. A real repro of this exact byte layout, not just the
+    // BOM-less JSON the two tests either side of this one write.
+    const bom = String.fromCharCode(0xfeff);
+    fs.writeFileSync(recordPath(), bom + JSON.stringify({
+      owned: [{ name: 'WINWORD', pid: 77, startTime: START, recordedAt: 'y' }],
+    }));
+    mod.syncFromDisk();
+    expect(mod._ownedRecords()).toEqual([{ name: 'WINWORD', pid: 77, startTime: START, recordedAt: 'y' }]);
+  });
+
+  it('never overwrites a record this process already knows in memory', () => {
+    probeByName({ WINWORD: true }, START);
+    mod.recordOwnedWord(11);
+    fs.writeFileSync(recordPath(), JSON.stringify({
+      owned: [{ name: 'WINWORD', pid: 999, startTime: START, recordedAt: 'y' }],
+    }));
+    mod.syncFromDisk();
+    expect(mod._currentRecord()?.pid).toBe(11);
+  });
+
+  it('no-ops when there is no record file', () => {
+    mod.syncFromDisk();
+    expect(mod._ownedRecords()).toEqual([]);
+  });
+});

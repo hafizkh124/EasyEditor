@@ -21,7 +21,7 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'read_document',
-    description: 'Read a chapter file: its headings, footnotes, tracked-change count, word count, and reading order. Use before editing so you know the structure. Do NOT use to search for a source to cite (that is search_corpus / search_shamela).',
+    description: 'Read a chapter file\'s STRUCTURE ONLY: its headings, footnotes, tracked-change count, word count, and reading order. Use before editing so you know the structure. Does NOT return the chapter\'s body text — never use this as the source for a quote, and never claim it told you what the chapter "says". Do NOT use to search for a source to cite, or to answer what the open chapter\'s own text says (that is search_corpus).',
     params: {
       chapter: { type: 'string', description: 'The chapter file name in the open project folder, e.g. "02-body.docx".' },
     },
@@ -30,7 +30,7 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'search_corpus',
-    description: "Page/volume-precise retrieval from the user's personal corpus and the project's own chapters. Returns ranked chunks with citation refs. This is how you find a source to cite. Consult this and search_shamela FIRST — they are the local gold-standard sources and the preferred citation. Do NOT use for a question the open chapter's own text answers (use read_document) or for general web context (use search_general).",
+    description: "Page/volume-precise retrieval from the user's personal corpus and the project's own chapters. Returns ranked chunks of REAL excerpted text with citation refs. This is how you find a source to cite, AND this — not read_document — is the tool for a question about what an open chapter itself says: its project-chapters branch returns literal excerpted chapter text. Consult this and search_shamela FIRST — they are the local gold-standard sources and the preferred citation. Do NOT use for general web context (use search_general).",
     params: {
       query: { type: 'string', description: 'What to look for, in the source language (Arabic/Urdu/English).' },
       limit: { type: 'number', description: 'Max results (default 8).' },

@@ -359,9 +359,22 @@ export const AgentPanel: React.FC = () => {
     }));
   }, [picker, mentions, input]);
 
+  // Each agent.run() is a fresh, memory-less run — there is no session-level
+  // history. When a run stops with `needs-input`, the scholar's next message
+  // is really a reply to that one clarifying question, not a new topic; the
+  // UI's own "Reply below to continue" promises exactly that. Since the
+  // model itself carries no memory of the question it asked, we compose the
+  // continuation ourselves rather than sending the bare reply text.
+  const [pendingClarification, setPendingClarification] = useState<{ instruction: string; question: string } | null>(null);
+  useEffect(() => { setPendingClarification(null); }, [mode]);
+  useEffect(() => { setPendingClarification(null); }, [projectRoot]);
+
   const send = useCallback(async () => {
-    const instruction = input.trim();
-    if (!instruction || !agent || !projectRoot || running) return;
+    const typed = input.trim();
+    if (!typed || !agent || !projectRoot || running) return;
+    const instruction = pendingClarification
+      ? `Original request: "${pendingClarification.instruction}"\nYou (the agent) asked: "${pendingClarification.question}"\nMy reply: "${typed}"`
+      : typed;
     setRunning(true);
     setProgress([]);
     setResult(null);
@@ -373,16 +386,20 @@ export const AgentPanel: React.FC = () => {
     try {
       const res = await agent.run(instruction, mode, projectRoot);
       setResult(res as RunResult);
+      setPendingClarification(
+        res.stopReason === "needs-input" && res.question ? { instruction, question: res.question } : null,
+      );
       setInput("");
       void pf.refresh();
     } catch (err) {
       log.error("agent run failed", { err });
       setResult({ answer: "", stopReason: "error", steps: 0, toolCalls: [], error: err instanceof Error ? err.message : String(err) });
+      setPendingClarification(null);
     } finally {
       setRunning(false);
       setPlanPending(false);
     }
-  }, [input, agent, projectRoot, running, mode, pf]);
+  }, [input, agent, projectRoot, running, mode, pf, pendingClarification]);
 
   const cancel = useCallback(() => { void agent?.cancel(); }, [agent]);
 

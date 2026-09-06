@@ -128,6 +128,25 @@ describe('timeout', () => {
     rlEmitter.emit('line', JSON.stringify({ ok: true, op: 'ping', pong: true }));
     await expect(next).resolves.toMatchObject({ pong: true });
   });
+
+  it('kills the host on a non-ping timeout so a wedged process is not reused', async () => {
+    vi.useFakeTimers();
+    const host = new powershell.WordHost();
+    host.start();
+    const onExit = vi.fn();
+    host.on('exit', onExit);
+
+    const stuck = host.send({ op: 'open', path: 'C:\\x.docx' }); // 60000ms budget
+    vi.advanceTimersByTime(60001);
+    await expect(stuck).rejects.toMatchObject({ code: 'timeout', op: 'open' });
+
+    expect(fakeProc.kill).toHaveBeenCalledWith('SIGKILL');
+    expect(host.isAlive()).toBe(false);
+    fakeProc.emit('exit', null); // simulate the OS confirming the SIGKILL
+    expect(onExit).toHaveBeenCalled();
+
+    await expect(host.send({ op: 'ping' })).rejects.toMatchObject({ code: 'host-crashed' });
+  });
 });
 
 describe('crash', () => {
