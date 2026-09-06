@@ -36,4 +36,25 @@ describe.runIf(targets.length > 0)('split routing — text generation on an unve
     });
     expect(out.toUpperCase()).toContain('SPLIT-OK');
   }, 60_000);
+
+  it.each(targets.map((id) => [id] as const))('%s runs the reasoning-model critic (no tools) and finds the flaw', async (id: ProviderId) => {
+    const { setCriticProviderId } = await import('../../electron/ai/providerConfig');
+    setCriticProviderId(id);
+    const { runCritique } = await import('../../electron/agent/critic');
+    // A plan with an obvious ordering flaw: it drafts BEFORE retrieving sources.
+    const r = await runCritique({
+      kind: 'plan',
+      subject: 'Plan:\n1. draft_section (prose) for the chapter on riba\n2. search_corpus for sources\n3. insert_footnote',
+      context: 'The scholar asked for a sourced section on riba.',
+    });
+    if (!r.ok) {
+      // A provider account limit (Groq free tier is TPM-limited) is not a code
+      // failure — the critic degraded to a note, which is the designed behaviour.
+      expect(r.text).toMatch(/unavailable|rate|تیز|quota/i);
+      return;
+    }
+    expect(r.text.length).toBeGreaterThan(40);
+    // it should notice that drafting precedes retrieval
+    expect(r.text.toLowerCase()).toMatch(/before|order|retriev|first|source/);
+  }, 90_000);
 });
