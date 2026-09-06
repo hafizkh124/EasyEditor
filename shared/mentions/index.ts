@@ -79,12 +79,21 @@ export function activeMentionQuery(text: string, caret: number): { query: string
   return { query: between, start: at };
 }
 
-/** Replace the active `@query` in `text` with `@<label> ` and return the new text + caret. */
+/**
+ * Replace the active `@query` in `text` with `@<token> ` and return the new
+ * text + caret. `token` is the mention's `ref` — the exact in-project path a
+ * tool schema expects (e.g. "media/dars-01.mp3", not just "dars-01.mp3") —
+ * for every kind except `shamela-book`, whose `ref` is an internal id
+ * ("shamela:55") no tool actually takes; no tool has a Shamela-book-id
+ * parameter (search_shamela only takes free-text query), so the title
+ * (`label`) is what is actually useful there.
+ */
 export function applyMention(text: string, caret: number, mention: Mention): { text: string; caret: number } {
   const active = activeMentionQuery(text, caret);
   if (!active) return { text, caret };
   const before = text.slice(0, active.start);
   const after = text.slice(caret);
-  const insert = `@${mention.label} `;
+  const token = mention.kind === 'shamela-book' ? mention.label : mention.ref;
+  const insert = `@${token} `;
   return { text: before + insert + after, caret: (before + insert).length };
 }

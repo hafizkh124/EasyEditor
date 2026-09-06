@@ -235,7 +235,11 @@ describe("AgentPanel", () => {
 
     await waitFor(() => {
       const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
-      expect(ta.value).toContain("@درس_اول.mp3");
+      // The full in-project path, not just the basename — transcribe_media
+      // needs the real "media/…" path to find the file (a real bug: the
+      // basename alone made every agent-invoked transcribe/OCR on a
+      // freshly-dropped file fail with "file not found").
+      expect(ta.value).toContain("@media/درس_اول.mp3");
     });
     expect(window.electronAPI!.projectFolder!.importAsset).toHaveBeenCalledWith("C:\\thesis", "درس اول.mp3", expect.anything());
   });

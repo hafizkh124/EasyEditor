@@ -79,7 +79,7 @@ export async function runPlaybook(input: RunPlaybookInput): Promise<AgentRunResu
   let stepNo = 0;
   /** Signal from a step handler that the whole run should hand off to the loop. */
   const HANDOFF = Symbol('handoff');
-  type StepOutcome = { errored: boolean } | typeof HANDOFF | 'skip';
+  type StepOutcome = { errored: boolean; needsConsent: boolean } | typeof HANDOFF | 'skip';
 
   /** Prepare args (scoped bind call), dispatch once, record. */
   const runStepOnce = async (
@@ -118,11 +118,19 @@ export async function runPlaybook(input: RunPlaybookInput): Promise<AgentRunResu
     messages.push({ role: 'model', toolCall: { name: step.tool, args } });
     messages.push({ role: 'tool', name: step.tool, result });
     const errored = typeof result === 'object' && result !== null && 'error' in result;
+    // ocr_document / set_global_option return `needsConsent` (no `error`) the
+    // first time — nothing was applied, they are asking the scholar to
+    // approve before doing anything. Treated as "not actually done" so the
+    // playbook stops here instead of continuing to a step that assumes this
+    // one's output exists (e.g. building a chapter from OCR text that was
+    // never produced) or reporting it as one of the steps "applied".
+    const needsConsent = typeof result === 'object' && result !== null
+      && 'needsConsent' in result && Boolean((result as { needsConsent?: unknown }).needsConsent);
     input.onProgress?.({
       step: stepNo, kind: 'tool-result', label: step.note,
       detail: errored ? String((result as { error: unknown }).error) : undefined,
     });
-    return { errored };
+    return { errored, needsConsent };
   };
 
   /** For a `repeat` step: is there another instance to handle? (bounded, cheap) */
@@ -166,6 +174,17 @@ export async function runPlaybook(input: RunPlaybookInput): Promise<AgentRunResu
       const outcome = await runStepOnce(step, tool, iter);
       if (outcome === HANDOFF) return fallbackLoop(input, toolCalls, `the model would not follow step "${step.note}"`);
       if (outcome === 'skip') break;
+      if (outcome.needsConsent) {
+        // Nothing further can run until the scholar approves in the Agent
+        // panel (the consent card renders off `toolCalls`, scanned there
+        // regardless of `answer`/`stopReason`) — stop rather than build the
+        // next step on output this one never produced.
+        input.emitArtifact?.({ op: 'close', artifactId, status: 'aborted' });
+        return {
+          answer: 'This step needs your approval first — see below, then run the task again.',
+          messages, toolCalls, steps: stepNo, stopReason: 'done',
+        };
+      }
       if (outcome.errored && !step.optional) {
         return fallbackLoop(input, toolCalls, `step "${step.note}" did not complete`);
       }
@@ -225,6 +244,10 @@ async function fallbackLoop(
 }
 
 function summarise(pb: Playbook, calls: AgentRunResult['toolCalls']): string {
-  const ok = calls.filter((c) => !(typeof c.result === 'object' && c.result && 'error' in c.result)).length;
+  const ok = calls.filter((c) => {
+    const r = c.result;
+    const incomplete = typeof r === 'object' && r !== null && ('error' in r || Boolean((r as { needsConsent?: unknown }).needsConsent));
+    return !incomplete;
+  }).length;
   return `Ran the "${pb.title}" playbook — ${ok} of ${calls.length} step${calls.length === 1 ? '' : 's'} applied. Review the tracked changes in Word.`;
 }

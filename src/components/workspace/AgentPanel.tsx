@@ -272,7 +272,10 @@ export const AgentPanel: React.FC = () => {
       for (const file of Array.from(files)) {
         try {
           const asset = await fsApi.importAsset(projectRoot, file.name, await file.arrayBuffer());
-          added.push(asset.name.split("/").pop() ?? asset.name);
+          // The full in-project path (e.g. "media/dars-01.mp3"), not just the
+          // basename — this is what gets @mentioned, and transcribe_media /
+          // ocr_document need the real path to find the file.
+          added.push(asset.name);
         } catch (err) {
           log.warn("importAsset failed", { name: file.name, err });
         }

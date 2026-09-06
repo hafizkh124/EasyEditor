@@ -92,4 +92,17 @@ describe('applyMention', () => {
     const res = applyMention('@in and more', 3, { kind: 'chapter', label: 'intro.docx', ref: 'intro.docx' });
     expect(res.text).toBe('@intro.docx  and more');
   });
+  it('inserts the full in-project ref for a media/scan asset, not just its basename label', () => {
+    // A real bug: inserting the label alone ("lecture_01.mp3") gave the model
+    // no way to resolve it — transcribe_media / ocr_document need the actual
+    // "media/…" / "sources/…" path.
+    const res = applyMention('transcribe @lec', 15, { kind: 'media', label: 'lecture_01.mp3', ref: 'media/lecture_01.mp3' });
+    expect(res.text).toBe('transcribe @media/lecture_01.mp3 ');
+  });
+  it('keeps the title (label), not the internal id, for a Shamela-book mention', () => {
+    // search_shamela only takes a free-text query — no tool takes a
+    // "shamela:<id>" parameter, so the id would be useless to the model.
+    const res = applyMention('check @bukh', 11, { kind: 'shamela-book', label: 'صحيح البخاري', ref: 'shamela:55' });
+    expect(res.text).toBe('check @صحيح البخاري ');
+  });
 });
