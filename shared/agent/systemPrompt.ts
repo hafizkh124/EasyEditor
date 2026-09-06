@@ -46,6 +46,23 @@ export interface SystemPromptInput {
   playbookGuidance?: string | null;
 }
 
+/**
+ * M9 Phase E — the focused prompt for a bounded research SUB-run (`research_topic`).
+ * It gathers page-precise sources and hands back a short synthesis; it never
+ * writes, and its own search chatter stays out of the parent loop's context.
+ */
+export function buildResearchSubagentPrompt(topic: string, focus?: string): string {
+  return (
+    'You are a research assistant gathering sources for a scholar, working ONLY through the search tools.\n' +
+    `Task: find the page-precise sources that bear on "${topic}"${focus ? ` — focus on: ${focus}` : ''}.\n\n` +
+    'Rules:\n' +
+    '- Search the LOCAL gold-standard sources first — search_corpus and search_shamela. Use query_tafseer / search_hadith when the topic is Qur\'anic or hadith. search_general only for background you cannot get otherwise (its results are never citable).\n' +
+    '- Try a few focused queries in the source language; stop as soon as you have solid coverage (you have a small step budget).\n' +
+    '- Do NOT write prose, draft anything, or answer the scholar\'s wider question. Your job is retrieval.\n' +
+    '- End with 2–4 sentences: what the sources collectively say, and any gap you could not fill. Name the strongest references. Say "واللہ اعلم" if the sources are silent.'
+  );
+}
+
 export function buildSystemPrompt(input: SystemPromptInput): string {
   const parts = [BASE];
 

@@ -20,8 +20,8 @@ import type { Playbook } from '../playbooks/registry.js';
 /** Always available, whatever the request. */
 export const FLOOR_TOOLS = ['list_capabilities', 'read_document', 'search_corpus'] as const;
 
-/** Search tools whose results may become a footnote (grow as tiers land). */
-export const CITABLE_SEARCH_TOOLS = ['search_corpus', 'search_shamela', 'query_tafseer', 'search_hadith'] as const;
+/** Tools whose results may become a footnote (grow as tiers land). `research_topic` gathers sources into the same ledger. */
+export const CITABLE_SEARCH_TOOLS = ['search_corpus', 'search_shamela', 'query_tafseer', 'search_hadith', 'research_topic'] as const;
 
 interface DomainRule {
   /** Matched case-insensitively against the ask (substring). */
@@ -37,11 +37,11 @@ interface DomainRule {
 const DOMAIN_RULES: DomainRule[] = [
   {
     keywords: ['فتویٰ', 'فتوى', 'استفتاء', 'نازلہ', 'حکم شرعی', 'مذاہب', 'fatwa', 'istifta', 'ruling', 'madhhab', 'madhahib'],
-    tools: ['query_tafseer', 'search_hadith', 'search_shamela', 'search_general', 'insert_footnote', 'draft_section'],
+    tools: ['query_tafseer', 'search_hadith', 'search_shamela', 'search_general', 'research_topic', 'insert_footnote', 'draft_section'],
   },
   {
     keywords: ['تفسیر', 'تفسير', 'آیت', 'آية', 'قرآن', 'قرآني', 'quran', 'tafsir', 'tafseer', 'ayah', 'aya', 'verse', 'nuzool', 'نزول'],
-    tools: ['query_tafseer', 'search_shamela', 'search_general', 'insert_footnote', 'draft_section'],
+    tools: ['query_tafseer', 'search_shamela', 'search_general', 'research_topic', 'insert_footnote', 'draft_section'],
   },
   {
     keywords: ['حدیث', 'حديث', 'سند', 'اسناد', 'راوی', 'رواة', 'جرح', 'تعدیل', 'hadith', 'hadeeth', 'isnad', 'sanad', 'rijal', 'rawi', 'takhrij', 'تخریج', 'takhreej'],
@@ -61,7 +61,7 @@ const DOMAIN_RULES: DomainRule[] = [
   },
   {
     keywords: ['کالم', 'مضمون', 'مقالہ', 'ترجمہ', 'ترجمة', 'column', 'essay', 'translate', 'translation', 'paper', 'draft a', 'write a chapter'],
-    tools: ['create_chapter', 'draft_section', 'search_shamela', 'search_general', 'search_repositories', 'insert_footnote', 'check_consistency'],
+    tools: ['create_chapter', 'draft_section', 'research_topic', 'search_shamela', 'search_general', 'search_repositories', 'insert_footnote', 'check_consistency'],
   },
   {
     keywords: ['archive.org', 'openalex', 'repository', 'repositories', 'journal', 'مقالات', 'thesis', 'dissertation', 'مخطوطات محفوظة', 'edition scan', 'bibliograph'],

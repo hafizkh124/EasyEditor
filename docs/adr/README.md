@@ -36,7 +36,8 @@ reconstruct rationale without rereading commits.
 | [0027](./0027-m9-efficiency-and-intent-precision.md) | M9 — fast path, dynamic tool pruning, negative boundaries, budgeting, early-stop, ask-vs-guess | Accepted |
 | [0029](./0029-m9-author-voice.md) | M9 Phase A — `طرز_تحریر.md` author-voice style file (guidance, not a constraint; addendum to fixed templates; generative writing only) | Accepted |
 | [0030](./0030-m9-live-model-eval.md) | M9 Phase B — live-model eval harness (scripted world + real ModelFn; golden set; CI-tested scoring; committed baseline floor); precondition for multi-provider | Accepted |
-| [0031](./0031-m9-multi-provider.md) | M9 Phase C — multi-provider routing (Groq + OpenRouter via one OpenAI-compat path; per-provider BYOK keys; eval-gated selection; separate outbound allowlist; per-provider privacy notes) | Accepted |
+| [0031](./0031-m9-multi-provider.md) | M9 Phase C — multi-provider routing (Groq + OpenRouter via one OpenAI-compat path; per-provider BYOK keys; eval-gated loop, key-only text-gen; separate outbound allowlist; per-provider privacy notes) | Accepted |
+| [0032](./0032-m9-session-memory.md) | M9 Phase E — per-project journal folded into the prompt; history compaction for the model call only; `research_topic` bounded read-only sub-run sharing the parent ledger | Accepted |
 
 ## When to write a new ADR
 

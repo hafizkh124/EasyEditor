@@ -83,6 +83,16 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'read',
   },
   {
+    name: 'research_topic',
+    description: "Hand a whole topic to a bounded research SUB-RUN: it runs its own short search loop (search_corpus / search_shamela / query_tafseer / search_hadith), then returns a short synthesis PLUS the page-precise sources it found — which you can then cite with insert_footnote by their id. Use this ONCE before drafting a section, so gathering sources does not fill your own context with search results. Do NOT use it for a single lookup (call the search tool directly), for a topic you have already researched this task, or when the scholar only asked a question.",
+    params: {
+      topic: { type: 'string', description: 'The topic or claim to gather sources for, in the source language.' },
+      focus: { type: 'string', description: 'Optional — narrow the search (a specific ruling, author, period, or which sources to prefer).' },
+    },
+    required: ['topic'],
+    effect: 'read',
+  },
+  {
     name: 'search_general',
     description: "Ask the General research channel a question (the same one the Research tab uses — a signed-in, provenance-tagged web+model search, NOT open browsing). Use ONLY for background/context the personal corpus and Shamela cannot answer. Its result is NOT page-precise, so it can never be used as a footnote source. Do NOT use it as a first resort, for a classical text (use search_shamela), or when the scholar asked for a sourced citation. Needs an internet connection and a signed-in session.",
     params: {
