@@ -58,19 +58,23 @@ export async function getGeminiKeyStatus(): Promise<KeyStatus> {
 /**
  * Internal helper to retrieve the decrypted key for API requests.
  * ONLY callable inside Electron main process.
+ *
+ * The user's saved BYOK key wins. When there is none (a headless run, or the
+ * live eval harness — `AGENT_EVAL_LIVE=1`), `GEMINI_API_KEY` in the process
+ * environment is the fallback, matching the edge functions' convention.
  */
 export async function getDecryptedGeminiKey(): Promise<string | null> {
   const filePath = getKeyFilePath();
   try {
     const encryptedBuffer = await fs.readFile(filePath);
-    if (!safeStorage.isEncryptionAvailable()) {
-      return null;
+    if (safeStorage.isEncryptionAvailable()) {
+      const decrypted = safeStorage.decryptString(encryptedBuffer);
+      if (decrypted) return decrypted;
     }
-    const decrypted = safeStorage.decryptString(encryptedBuffer);
-    return decrypted || null;
   } catch {
-    return null;
+    /* no saved key — fall through to the env fallback */
   }
+  return process.env.GEMINI_API_KEY?.trim() || null;
 }
 
 /**

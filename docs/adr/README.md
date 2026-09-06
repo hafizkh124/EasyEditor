@@ -35,6 +35,7 @@ reconstruct rationale without rereading commits.
 | [0026](./0026-m9-studio-shell-and-governance-modes.md) | M9 — Ask/Plan/Auto modes (per-write "Manual" rejected); studio shell | Accepted |
 | [0027](./0027-m9-efficiency-and-intent-precision.md) | M9 — fast path, dynamic tool pruning, negative boundaries, budgeting, early-stop, ask-vs-guess | Accepted |
 | [0029](./0029-m9-author-voice.md) | M9 Phase A — `طرز_تحریر.md` author-voice style file (guidance, not a constraint; addendum to fixed templates; generative writing only) | Accepted |
+| [0030](./0030-m9-live-model-eval.md) | M9 Phase B — live-model eval harness (scripted world + real ModelFn; golden set; CI-tested scoring; committed baseline floor); precondition for multi-provider | Accepted |
 
 ## When to write a new ADR
 
