@@ -24,6 +24,10 @@ import { searchShamelaNative } from '../shamela/shamelaNative.js';
 import { generateAgentText } from './modelRouter.js';
 import { RetrievalLedger, assertClaimSupported, type RetrievedChunk, type ClaimCheckFn } from '../../shared/agent/grounding.js';
 import { summariseCapabilities } from '../../shared/agent/capabilities.js';
+import { runAgentLoop } from '../../shared/agent/loop.js';
+import { buildResearchSubagentPrompt } from '../../shared/agent/systemPrompt.js';
+import { AGENT_TOOLS } from '../../shared/agent/toolSchemas.js';
+import type { ModelFn } from '../../shared/agent/types.js';
 import { resolveTaskSlug, taskOutputIsHtml, RUN_TASK_NAMES } from '../../shared/agent/textTasks.js';
 import { getRefineTextPrompt } from '../../shared/ai/prompts/refineText.js';
 import { withAuthorVoice, VOICE_SHAPED_TASKS } from '../../shared/agent/authorVoice.js';
@@ -102,6 +106,14 @@ export interface AgentSession {
    * tool returns a clear message.
    */
   runPlaybookRef?: ((ref: string, chapter?: string) => Promise<unknown>) | null;
+  /**
+   * The active provider's ModelFn (M9 Phase E) — drives the bounded research
+   * SUB-RUN (`research_topic`). Absent in a headless context ⇒ the tool
+   * returns a clear message.
+   */
+  model?: ModelFn | null;
+  /** Resolves true to abort — passed through to the research sub-run. */
+  isCancelled?: (() => boolean) | null;
 }
 
 export interface Dispatcher {
@@ -115,6 +127,12 @@ export function createDispatcher(session: AgentSession): Dispatcher {
   const checkpointId = session.checkpointId;
   const claimCheck = session.claimCheck ?? null;
   const authorVoice = session.authorVoice ?? null;
+  const subModel = session.model ?? null;
+
+  /** Read-only tools the research sub-run may use (never itself — no recursion). */
+  const RESEARCH_SUBAGENT_TOOLS = new Set([
+    'search_corpus', 'search_shamela', 'query_tafseer', 'search_hadith', 'search_general', 'search_repositories',
+  ]);
   const generalSearch = session.generalSearch ?? null;
   const researchSearch = session.researchSearch ?? null;
   const transcribeMedia = session.transcribeMedia ?? null;
@@ -568,6 +586,49 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         // not page-precise, so insert_footnote must never be able to cite it.
         // The transcript still records this call via toolCalls.
         return { channel: r.channel ?? 'general', answer };
+      }
+
+      case 'research_topic': {
+        const topic = str(args.topic, 'topic');
+        const focus = typeof args.focus === 'string' && args.focus.trim() ? args.focus.trim() : undefined;
+        if (!subModel) {
+          return { error: 'research_topic is only available from the Agent panel.' };
+        }
+        // The sub-run shares THIS ledger — so anything it retrieves is citable
+        // by the parent with insert_footnote — but runs its own short loop, so
+        // the search results never enter the parent's context.
+        const idsBefore = new Set(ledger.list().map((c) => c.id));
+        const subTools = AGENT_TOOLS.filter((t) => RESEARCH_SUBAGENT_TOOLS.has(t.name));
+
+        const artifactId = `research-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `مصادر — ${topic.slice(0, 60)}`, artifactType: 'citation-list' });
+
+        const sub = await runAgentLoop(
+          `Gather page-precise sources on: ${topic}${focus ? ` (focus: ${focus})` : ''}`,
+          subModel,
+          dispatch,
+          buildResearchSubagentPrompt(topic, focus),
+          { mode: 'ask', tools: subTools, maxSteps: 6, isCancelled: session.isCancelled ?? undefined },
+        );
+
+        const found = ledger.list().filter((c) => !idsBefore.has(c.id) && !c.bibliographic);
+        if (found.length) {
+          emitArtifact({
+            op: 'citations', artifactId,
+            entries: found.slice(0, 20).map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, tier: 1 })),
+          });
+        }
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+
+        return {
+          topic,
+          synthesis: capResult((sub.answer ?? '').trim()) || 'The sub-run returned no synthesis.',
+          sourcesAdded: found.length,
+          sources: found.slice(0, 15).map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 200) })),
+          note: found.length
+            ? `${found.length} page-precise source(s) are now available — cite them with insert_footnote by their id. Do NOT call research_topic again for this topic.`
+            : 'No page-precise sources were found for this topic — say so plainly rather than drafting unsourced prose.',
+        };
       }
 
       case 'run_task': {

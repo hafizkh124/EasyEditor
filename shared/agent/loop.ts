@@ -65,6 +65,7 @@ function labelFor(name: string): string {
     case 'search_corpus': return 'searching the corpus';
     case 'search_shamela': return 'searching Shamela';
     case 'search_general': return 'asking the General research channel';
+    case 'research_topic': return 'researching the topic';
     case 'search_repositories': return 'searching global repositories';
     case 'query_tafseer': return 'consulting the tafsir sources';
     case 'search_hadith': return 'searching the hadith collections';

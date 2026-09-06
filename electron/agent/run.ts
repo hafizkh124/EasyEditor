@@ -136,6 +136,8 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     projectRoot,
     checkpointId,
     authorVoice,
+    model: agentModel.generate,
+    isCancelled: input.isCancelled ?? null,
     claimCheck: checkClaim,
     generalSearch: input.generalSearch ?? null,
     researchSearch: input.researchSearch ?? null,

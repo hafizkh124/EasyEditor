@@ -48,6 +48,11 @@ export class RetrievalLedger {
     return this.byId.size;
   }
 
+  /** Every chunk retrieved so far, in insertion order (M9 Phase E — the research subagent). */
+  list(): RetrievedChunk[] {
+    return [...this.byId.values()];
+  }
+
   /**
    * Resolve `sourceId` to a retrieved chunk, or throw a clear error the agent
    * loop feeds back to the model. This is the gate: no chunk ⇒ no footnote.

@@ -485,6 +485,50 @@ describe('search_general (renderer-bridged, ADR-0019 #7)', () => {
   });
 });
 
+describe('research_topic (bounded sub-run, M9 Phase E)', () => {
+  it('needs a model — a clear message when headless', async () => {
+    const { dispatch } = mk();
+    expect(await dispatch('research_topic', { topic: 'النية في العبادات' })).toMatchObject({ error: /Agent panel/ });
+  });
+
+  it('runs a short read-only sub-loop, feeds THIS ledger, and returns a distilled result', async () => {
+    // The sub-model: one search, then a synthesis answer.
+    let call = 0;
+    const model = vi.fn(async () => (call++ === 0
+      ? { kind: 'toolCall' as const, name: 'search_corpus', args: { query: 'النية' } }
+      : { kind: 'text' as const, text: 'المصادر متفقة على أن النية شرط. أقواها: الإحياء.' }));
+
+    const { dispatch, ledger } = mk({ model });
+    const r = await dispatch('research_topic', { topic: 'النية في العبادات', focus: 'الحنفية' }) as {
+      sourcesAdded: number; synthesis: string; sources: Array<{ id: string }>; note: string;
+    };
+
+    expect(model).toHaveBeenCalled();
+    expect(r.sourcesAdded).toBeGreaterThan(0);
+    expect(r.synthesis).toContain('النية شرط');
+    expect(r.note).toMatch(/insert_footnote/);
+    // the sub-run's finds are now citable by the PARENT
+    const sid = r.sources[0].id;
+    const fn = await dispatch('insert_footnote', { chapter: '01.docx', marker: '[1]', source_id: sid }) as { applied: number };
+    expect(fn.applied).toBe(1);
+    expect(ledger.size).toBeGreaterThan(0);
+  });
+
+  it('the sub-run cannot call a write tool or recurse into research_topic', async () => {
+    const model = vi.fn(async (_m: unknown, tools: Array<{ name: string }>) => {
+      const names = tools.map((t) => t.name);
+      expect(names).not.toContain('insert_footnote');
+      expect(names).not.toContain('draft_section');
+      expect(names).not.toContain('research_topic');
+      return { kind: 'text' as const, text: 'no sources found — واللہ اعلم' };
+    });
+    const { dispatch } = mk({ model });
+    const r = await dispatch('research_topic', { topic: 'x' }) as { sourcesAdded: number; note: string };
+    expect(r.sourcesAdded).toBe(0);
+    expect(r.note).toMatch(/No page-precise sources/);
+  });
+});
+
 describe('P9 tools — font / template / global options', () => {
   it('install_font rejects a URL and a relative path, but installs an absolute font file', async () => {
     const { dispatch } = mk();
