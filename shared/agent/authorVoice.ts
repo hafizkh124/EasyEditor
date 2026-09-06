@@ -21,6 +21,9 @@
 /** Candidate file names in the project root, first match wins (mirrors RULES_FILES). */
 export const AUTHOR_VOICE_FILES = ['طرز_تحریر.md', 'طرز-تحریر.md', 'tarz.md', 'VOICE.md'];
 
+/** Where `extract_author_voice` writes its draft when a طرز_تحریر.md already exists (never clobbers it). */
+export const AUTHOR_VOICE_PROPOSAL_FILE = 'طرز_تحریر.اقتراح.md';
+
 /** Hard cap on how much of the file reaches a prompt (mirrors the 4000-char قواعد.md cap). */
 export const AUTHOR_VOICE_MAX_CHARS = 3000;
 

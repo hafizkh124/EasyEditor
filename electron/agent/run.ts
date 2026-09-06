@@ -269,7 +269,7 @@ function taskWrote(result: AgentRunResult): boolean {
       const r = c.result;
       const inert = typeof r === 'object' && r !== null && ('error' in r || 'needsConsent' in r);
       return (
-        (['insert_footnote', 'set_page_layout', 'run_task', 'draft_section', 'add_document_comment', 'transcribe_media', 'ocr_document', 'create_chapter', 'build_scholarly_indexes', 'typeset_print_ready'].includes(c.name)
+        (['insert_footnote', 'set_page_layout', 'run_task', 'draft_section', 'add_document_comment', 'transcribe_media', 'ocr_document', 'create_chapter', 'build_scholarly_indexes', 'typeset_print_ready', 'extract_author_voice'].includes(c.name)
           && !inert)
         || (c.name === 'install_template' && Boolean((c.args as { chapter?: unknown }).chapter))
       );

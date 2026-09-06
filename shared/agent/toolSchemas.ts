@@ -229,6 +229,15 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'read',
   },
   {
+    name: 'extract_author_voice',
+    description: "Read a few of the scholar's OWN existing chapters and draft a طرز_تحریر.md — a short, editable brief on how they write (register, sentence shape, connectives, preferred terms). The file is then used to match their voice when drafting. It writes a DRAFT the scholar reviews and edits — it NEVER overwrites an existing طرز_تحریر.md (it saves a طرز_تحریر.اقتراح.md alongside instead). Use it once, when the scholar asks the agent to learn or match their style and there is no طرز_تحریر.md yet. Do NOT use it to rewrite a chapter, and do NOT run it every task.",
+    params: {
+      chapters: { type: 'array', items: { type: 'string' }, description: 'Optional — which chapter file names to learn from. Omit to use the whole project (up to a few).' },
+    },
+    required: [],
+    effect: 'write',
+  },
+  {
     name: 'critique',
     description: "Hand a chapter (or one section of it) to a REASONING model for a rigorous second opinion — the way a muḥaqqiq or thesis supervisor scrutinises work before it is published. It reads the text itself and returns a critique: verdict, what holds up, numbered problems, gaps. ADVISORY only — it changes nothing; act on its points yourself (add a caveat, a margin comment, or tell the scholar). Use it after drafting a contested section or completing a takhrīj, or when the scholar asks for a critical review. Do NOT use it for a copy-edit (run_task) or to check one citation (that is insert_footnote's own claim check).",
     params: {

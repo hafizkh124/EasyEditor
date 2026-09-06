@@ -45,9 +45,17 @@ contents to `dispatch.ts` the same way `projectRoot` / `checkpointId` do.
 
 **Discoverability.** When `draft_section` runs with no voice file it returns
 `voiceApplied: false` and a one-line note telling the scholar to add a
-`طرز_تحریر.md`. A generator that bootstraps the file from the author's prior
-chapters (`extract_author_voice`) is deferred to a follow-up — the core value
-lands with the file written by hand, as scholars already do for قواعد.md.
+`طرز_تحریر.md`.
+
+**Bootstrapping — `extract_author_voice` (write tool).** Reads up to 8 of the
+scholar's own chapters (~20 k chars), runs the fixed
+`AUTHOR_VOICE_EXTRACT_INSTRUCTION` (in `shared/ai/prompts/authorVoiceExtract.ts`
+— describe HOW they write, never WHAT; never invent a preference; a 2–4 word
+phrase to illustrate, never a whole sentence; ≤ ~450 words), and writes a
+**draft** `طرز_تحریر.md` with a review-me comment at the top. It **never
+overwrites** an existing voice file — if one is present it saves
+`طرز_تحریر.اقتراح.md` alongside and tells the scholar to merge by hand
+(ADR-0029: never mutate the file silently).
 
 ## Consequences
 

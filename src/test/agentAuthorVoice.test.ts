@@ -14,6 +14,8 @@ import {
   withAuthorVoice,
 } from '../../shared/agent/authorVoice';
 import { buildSystemPrompt } from '../../shared/agent/systemPrompt';
+import { AUTHOR_VOICE_EXTRACT_INSTRUCTION } from '../../shared/ai/prompts/authorVoiceExtract';
+import { AUTHOR_VOICE_PROPOSAL_FILE } from '../../shared/agent/authorVoice';
 
 const caps = { word: true, wordVersion: '16.0', windows: true };
 
@@ -76,6 +78,20 @@ describe('VOICE_SHAPED_TASKS', () => {
 describe('AUTHOR_VOICE_FILES', () => {
   it('leads with the Urdu name the blueprint uses', () => {
     expect(AUTHOR_VOICE_FILES[0]).toBe('طرز_تحریر.md');
+  });
+  it('the proposal file is distinct from every real voice-file name', () => {
+    expect(AUTHOR_VOICE_FILES).not.toContain(AUTHOR_VOICE_PROPOSAL_FILE);
+  });
+});
+
+describe('AUTHOR_VOICE_EXTRACT_INSTRUCTION (extract_author_voice)', () => {
+  it('asks for HOW not WHAT, forbids inventing preferences and copying whole sentences, and caps length', () => {
+    const s = AUTHOR_VOICE_EXTRACT_INSTRUCTION;
+    expect(s).toMatch(/Describe the voice; do not summarise the content/i);
+    expect(s).toMatch(/do NOT invent a preference/i);
+    expect(s).toMatch(/do NOT copy a full sentence/i);
+    expect(s).toMatch(/under ~?450 words/i);
+    expect(s).toMatch(/the scholar can edit|tendencies/i); // a draft, not rules
   });
 });
 

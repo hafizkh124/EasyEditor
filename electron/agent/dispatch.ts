@@ -32,13 +32,14 @@ import type { CritiqueKind } from '../../shared/ai/prompts/critique.js';
 import type { ModelFn } from '../../shared/agent/types.js';
 import { resolveTaskSlug, taskOutputIsHtml, RUN_TASK_NAMES } from '../../shared/agent/textTasks.js';
 import { getRefineTextPrompt } from '../../shared/ai/prompts/refineText.js';
-import { withAuthorVoice, VOICE_SHAPED_TASKS } from '../../shared/agent/authorVoice.js';
+import { withAuthorVoice, VOICE_SHAPED_TASKS, AUTHOR_VOICE_FILES, AUTHOR_VOICE_PROPOSAL_FILE } from '../../shared/agent/authorVoice.js';
+import { AUTHOR_VOICE_EXTRACT_INSTRUCTION } from '../../shared/ai/prompts/authorVoiceExtract.js';
 import { recordWrite } from './checkpoint.js';
 import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
 import { queryTafseer, type TafseerMode } from './adapters/tafsir.js';
 import { saveTranscript, transcriptPathFor } from './adapters/transcribe.js';
 import { saveOcrText, ocrTextPathFor } from './adapters/ocr.js';
-import { readAssetText, registerChapter } from '../fs/projectFolder.js';
+import { readAssetText, writeAssetText, registerChapter } from '../fs/projectFolder.js';
 import { formatScholarlyRef } from '../../shared/research/citationTypes.js';
 import { buildApparatus, apparatusTable } from '../../shared/research/apparatus.js';
 import { resolveTrim, PRINT_LAYOUT_LOSS } from '../../shared/print/trimSizes.js';
@@ -630,6 +631,59 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           note: found.length
             ? `${found.length} page-precise source(s) are now available — cite them with insert_footnote by their id. Do NOT call research_topic again for this topic.`
             : 'No page-precise sources were found for this topic — say so plainly rather than drafting unsourced prose.',
+        };
+      }
+
+      case 'extract_author_voice': {
+        const picked = Array.isArray(args.chapters)
+          ? args.chapters.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+          : [];
+        const names = (picked.length ? picked : refreshChapters(root).map((c) => c.name)).slice(0, 8);
+        if (names.length === 0) return { error: 'no chapters to learn from — add some .docx chapters to the folder first' };
+
+        const samples: string[] = [];
+        let total = 0;
+        for (const name of names) {
+          const t = await chapterText(name).catch(() => '');
+          if (!t.trim()) continue;
+          const slice = t.slice(0, 4000);
+          samples.push(`── ${name} ──\n${slice}`);
+          total += slice.length;
+          if (total > 20000) break;
+        }
+        if (samples.length === 0) return { error: 'the selected chapters have no readable text yet' };
+
+        const draft = (await generateAgentText({
+          prompt: samples.join('\n\n'),
+          systemInstruction: AUTHOR_VOICE_EXTRACT_INSTRUCTION,
+        })).trim();
+        if (!draft) return { error: 'the model returned nothing' };
+
+        // Never clobber an existing طرز_تحریر.md — write a proposal beside it.
+        const primary = AUTHOR_VOICE_FILES[0];
+        const exists = AUTHOR_VOICE_FILES.some((f) => { try { fs.accessSync(path.join(root, f)); return true; } catch { return false; } });
+        const rel = exists ? AUTHOR_VOICE_PROPOSAL_FILE : primary;
+        const today = new Date().toISOString().slice(0, 10);
+        const body =
+          `<!-- مسودہ — ${today} کو ${samples.length} ابواب سے کشید کیا گیا۔ ` +
+          `نظرِ ثانی کر کے ${exists ? `پسندیدہ نکات ${primary} میں ضم کریں` : 'رکھ لیں یا درست کریں'}۔ ` +
+          `ایجنٹ اگلی نشست سے اسے آپ کے اسلوب کے طور پر برتے گا۔ -->\n\n${draft}\n`;
+
+        try { guardWrite(rel); } catch { /* the checkpoint only tracks chapter files; this advisory .md is fine without undo */ }
+        writeAssetText(root, rel, body);
+
+        const artifactId = `voice-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `طرز_تحریر — مسودہ`, artifactType: 'document' });
+        emitArtifact({ op: 'delta', artifactId, mode: 'replace', text: draft });
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+
+        return {
+          file: rel,
+          chaptersAnalysed: samples.length,
+          preview: capResult(draft),
+          note: exists
+            ? `A ${primary} already exists — this draft is saved as ${rel}. Review it and merge what you want into ${primary} yourself; nothing was overwritten.`
+            : `Saved as ${rel} — a DRAFT. Review and edit it. From the next task on, the agent will match this voice when it drafts or rewrites prose.`,
         };
       }
 

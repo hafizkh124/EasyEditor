@@ -488,6 +488,37 @@ describe('search_general (renderer-bridged, ADR-0019 #7)', () => {
   });
 });
 
+describe('extract_author_voice (M9 Phase A)', () => {
+  it('reads the project chapters, drafts a طرز_تحریر.md, and never overwrites an existing one', async () => {
+    generateContentStream.mockResolvedValueOnce('- Register: measured, first-person effaced.\n- Connectives: "چنانچہ", "بنا بریں".');
+    const { dispatch } = mk();
+    const r = await dispatch('extract_author_voice', {}) as { file: string; chaptersAnalysed: number; preview: string; note: string };
+
+    expect(generateContentStream).toHaveBeenCalledWith(expect.objectContaining({
+      systemInstruction: expect.stringMatching(/writing voice|register|connectives/i),
+    }));
+    expect(r.file).toBe('طرز_تحریر.md'); // no existing file in the fake project
+    expect(r.chaptersAnalysed).toBeGreaterThan(0);
+    expect(r.preview).toContain('چنانچہ');
+    expect(writeAssetText).toHaveBeenCalledWith('C:\\p', 'طرز_تحریر.md', expect.stringContaining('مسودہ'));
+    expect(r.note).toMatch(/DRAFT/);
+  });
+
+  it('learns from only the named chapters when given some', async () => {
+    const { dispatch } = mk();
+    await dispatch('extract_author_voice', { chapters: ['02-body.docx'] });
+    // the prompt block names the chapter it sampled
+    expect(generateContentStream).toHaveBeenLastCalledWith(expect.objectContaining({ prompt: expect.stringContaining('02-body.docx') }));
+  });
+
+  it('errors when the folder has no readable chapter text', async () => {
+    wordMock.fromWord.mockImplementation(async (_s: string, _t: string, out: string) => { fs.writeFileSync(out, '  '); return { outputPath: out, ms: 1 }; });
+    const { dispatch } = mk();
+    expect(await dispatch('extract_author_voice', {})).toMatchObject({ error: expect.stringMatching(/no readable text/) });
+    wordMock.fromWord.mockImplementation(async (_s: string, _t: string, out: string) => { fs.writeFileSync(out, 'باب دو میں برکت کا ذکر ہے۔'); return { outputPath: out, ms: 1 }; });
+  });
+});
+
 describe('critique (reasoning-model critic — M9 Phase C/E)', () => {
   it('reads the chapter, runs the critic, and returns an advisory result', async () => {
     const { dispatch } = mk();
