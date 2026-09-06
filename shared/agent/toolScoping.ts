@@ -64,6 +64,10 @@ const DOMAIN_RULES: DomainRule[] = [
     tools: ['create_chapter', 'draft_section', 'research_topic', 'search_shamela', 'search_general', 'search_repositories', 'insert_footnote', 'check_consistency'],
   },
   {
+    keywords: ['اسلوب', 'طرز تحریر', 'طرزِ تحریر', 'میرا انداز', 'my style', 'my voice', 'writing style', 'author voice', 'like i write', 'match my'],
+    tools: ['extract_author_voice', 'read_document', 'draft_section'],
+  },
+  {
     keywords: ['archive.org', 'openalex', 'repository', 'repositories', 'journal', 'مقالات', 'thesis', 'dissertation', 'مخطوطات محفوظة', 'edition scan', 'bibliograph'],
     tools: ['search_repositories', 'search_shamela', 'search_general', 'insert_footnote', 'draft_section'],
   },
