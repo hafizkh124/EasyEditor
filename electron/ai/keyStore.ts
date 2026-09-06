@@ -1,91 +1,82 @@
 import { app, safeStorage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { PROVIDERS, type ProviderId } from '../../shared/agent/providers.js';
 
-const KEY_FILE_NAME = 'byok_gemini.enc';
+/**
+ * M9 Phase C — per-provider BYOK key storage.
+ *
+ * One encrypted file per provider under userData: `byok_<id>.enc`. The Gemini
+ * file name is `byok_gemini.enc`, unchanged from M8, so an existing key keeps
+ * working. Each key is encrypted with OS `safeStorage` and never leaves the
+ * main process in the clear. A headless / eval context with no saved key falls
+ * back to the provider's env var (`GEMINI_API_KEY`, `GROQ_API_KEY`, …).
+ */
 
-function getKeyFilePath(): string {
-  return path.join(app.getPath('userData'), KEY_FILE_NAME);
+function keyFileName(provider: ProviderId): string {
+  return `byok_${provider}.enc`;
+}
+
+function keyFilePath(provider: ProviderId): string {
+  // Reaches into Electron `app` — callers guard for the headless case.
+  return path.join(app.getPath('userData'), keyFileName(provider));
 }
 
 export interface KeyStatus {
   hasKey: boolean;
   lastFour: string | null;
+  /** true when the key comes from the process env, not the encrypted store. */
+  fromEnv?: boolean;
 }
 
-/**
- * Encrypts and saves the user's Gemini API key using OS safeStorage.
- * Key never leaves main process memory unencrypted on disk.
- */
-export async function saveGeminiKey(key: string): Promise<boolean> {
+export async function saveProviderKey(provider: ProviderId, key: string): Promise<boolean> {
   const trimmed = key.trim();
-  if (!trimmed) {
-    throw new Error('Key cannot be empty');
-  }
-
+  if (!trimmed) throw new Error('Key cannot be empty');
   if (!safeStorage.isEncryptionAvailable()) {
     throw new Error('OS safeStorage encryption is not available on this device');
   }
-
-  const encryptedBuffer = safeStorage.encryptString(trimmed);
-  const filePath = getKeyFilePath();
-  await fs.writeFile(filePath, encryptedBuffer);
+  await fs.writeFile(keyFilePath(provider), safeStorage.encryptString(trimmed));
   return true;
 }
 
-/**
- * Returns whether a key exists and its last 4 characters for UI status display.
- * NEVER returns the full key to renderer.
- */
-export async function getGeminiKeyStatus(): Promise<KeyStatus> {
-  const filePath = getKeyFilePath();
+export async function deleteProviderKey(provider: ProviderId): Promise<void> {
   try {
-    const encryptedBuffer = await fs.readFile(filePath);
-    if (!safeStorage.isEncryptionAvailable()) {
-      return { hasKey: false, lastFour: null };
-    }
-    const decryptedKey = safeStorage.decryptString(encryptedBuffer);
-    if (!decryptedKey) {
-      return { hasKey: false, lastFour: null };
-    }
-    const lastFour = decryptedKey.length >= 4 ? decryptedKey.slice(-4) : decryptedKey;
-    return { hasKey: true, lastFour };
-  } catch {
-    return { hasKey: false, lastFour: null };
-  }
+    await fs.unlink(keyFilePath(provider));
+  } catch { /* not there — fine */ }
 }
 
-/**
- * Internal helper to retrieve the decrypted key for API requests.
- * ONLY callable inside Electron main process.
- *
- * The user's saved BYOK key wins. When there is none (a headless run, or the
- * live eval harness — `AGENT_EVAL_LIVE=1`), `GEMINI_API_KEY` in the process
- * environment is the fallback, matching the edge functions' convention.
- */
-export async function getDecryptedGeminiKey(): Promise<string | null> {
+/** The decrypted key for API requests — main-process only. Saved key wins; env is the fallback. */
+export async function getProviderKey(provider: ProviderId): Promise<string | null> {
   try {
-    // `getKeyFilePath` reaches into Electron `app` — guarded so a headless /
-    // test context (no `app`) falls straight through to the env fallback.
-    const encryptedBuffer = await fs.readFile(getKeyFilePath());
+    const buf = await fs.readFile(keyFilePath(provider));
     if (safeStorage.isEncryptionAvailable()) {
-      const decrypted = safeStorage.decryptString(encryptedBuffer);
+      const decrypted = safeStorage.decryptString(buf);
       if (decrypted) return decrypted;
     }
   } catch {
     /* no Electron app, no saved key, or safeStorage unavailable — env fallback */
   }
-  return process.env.GEMINI_API_KEY?.trim() || null;
+  const envVar = PROVIDERS[provider].keyEnvVar;
+  return process.env[envVar]?.trim() || null;
 }
 
-/**
- * Deletes the stored encrypted key.
- */
-export async function deleteGeminiKey(): Promise<void> {
-  const filePath = getKeyFilePath();
+/** Whether a key exists + its last 4 chars, for UI status. Never returns the key. */
+export async function getProviderKeyStatus(provider: ProviderId): Promise<KeyStatus> {
   try {
-    await fs.unlink(filePath);
-  } catch {
-    // Ignore error if file doesn't exist
-  }
+    const buf = await fs.readFile(keyFilePath(provider));
+    if (safeStorage.isEncryptionAvailable()) {
+      const decrypted = safeStorage.decryptString(buf);
+      if (decrypted) return { hasKey: true, lastFour: decrypted.slice(-4) };
+    }
+  } catch { /* fall through */ }
+  const fromEnv = process.env[PROVIDERS[provider].keyEnvVar]?.trim();
+  if (fromEnv) return { hasKey: true, lastFour: fromEnv.slice(-4), fromEnv: true };
+  return { hasKey: false, lastFour: null };
 }
+
+// ── M8 back-compat: the Gemini-only names the rest of the app still imports ──
+
+export const saveGeminiKey = (key: string): Promise<boolean> => saveProviderKey('gemini', key);
+export const getGeminiKeyStatus = (): Promise<KeyStatus> => getProviderKeyStatus('gemini');
+export const getDecryptedGeminiKey = (): Promise<string | null> => getProviderKey('gemini');
+export const deleteGeminiKey = (): Promise<void> => deleteProviderKey('gemini');

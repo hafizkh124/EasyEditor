@@ -6,9 +6,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Playbook } from '../../shared/playbooks/registry';
 
+// M9 Phase C: the runner takes its model fns injected (electron/agent/modelRouter.ts).
 const generateBoundCall = vi.fn();
 const generateWithTools = vi.fn();
-vi.mock('../../electron/agent/geminiTools.ts', () => ({ generateBoundCall, generateWithTools }));
 
 const runAgentLoop = vi.fn(async () => ({ answer: 'loop finished', messages: [], toolCalls: [], steps: 1, stopReason: 'done' as const }));
 vi.mock('../../shared/agent/loop.ts', async (orig) => ({ ...(await orig()), runAgentLoop }));
@@ -23,6 +23,7 @@ const base = {
   systemPrompt: 'sys',
   fallbackTools: [],
   context: { instruction: 'do the thing', chapter: '01.docx' },
+  model: { generate: generateWithTools, generateBound: generateBoundCall },
 };
 
 describe('runPlaybook', () => {

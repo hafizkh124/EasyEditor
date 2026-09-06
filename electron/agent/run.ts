@@ -18,7 +18,7 @@ import path from 'node:path';
 import { logger } from '../lib/logger.js';
 import { detectTools } from '../host/index.js';
 import { refreshChapters } from '../fs/projectFolder.js';
-import { generateWithTools } from './geminiTools.js';
+import { resolveAgentModel } from './modelRouter.js';
 import { createDispatcher, type AgentSession } from './dispatch.js';
 import { runPlaybook } from './runPlaybook.js';
 import { checkClaim } from './claimCheck.js';
@@ -94,6 +94,8 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   const rules = readProjectRules(projectRoot);
   const authorVoice = readAuthorVoice(projectRoot);
   const playbook = selectPlaybook(instruction);
+  const agentModel = await resolveAgentModel();
+  if (agentModel.provider.id !== 'gemini') log.info('agent model provider', { provider: agentModel.provider.id });
 
   const systemPrompt = buildSystemPrompt({
     mode,
@@ -168,7 +170,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
       const r = await runPlaybook({
         playbook: pb, instruction, mode,
         context: { chapter, instruction, mentions: {} },
-        dispatch, systemPrompt,
+        dispatch, model: agentModel, systemPrompt,
         onProgress: input.onProgress, emitArtifact,
         isCancelled: input.isCancelled, waitForApproval: input.waitForApproval,
         fallbackTools: scopedTools, disabledTools,
@@ -180,7 +182,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     const result = await runPlaybook({
       playbook, instruction, mode,
       context: { chapter: chapters.length === 1 ? chapters[0] : undefined, instruction, mentions: {} },
-      dispatch, systemPrompt,
+      dispatch, model: agentModel, systemPrompt,
       onProgress: input.onProgress, emitArtifact,
       isCancelled: input.isCancelled, waitForApproval: input.waitForApproval,
       fallbackTools: scopedTools, disabledTools,
@@ -195,7 +197,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     const r = await runPlaybook({
       playbook: pb, instruction, mode,
       context: { chapter, instruction, mentions: {} },
-      dispatch, systemPrompt,
+      dispatch, model: agentModel, systemPrompt,
       onProgress: input.onProgress, emitArtifact,
       isCancelled: input.isCancelled, waitForApproval: input.waitForApproval,
       fallbackTools: scopedTools, disabledTools,
@@ -204,7 +206,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   };
 
   log.info('agent run — free loop', { mode, playbook: playbook?.id, chapters: chapters.length, checkpointId });
-  const result = await runAgentLoop(instruction, generateWithTools, dispatch, systemPrompt, {
+  const result = await runAgentLoop(instruction, agentModel.generate, dispatch, systemPrompt, {
     mode,
     tools: scopedTools,
     onProgress: input.onProgress,

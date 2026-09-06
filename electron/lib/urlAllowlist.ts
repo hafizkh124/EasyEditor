@@ -23,6 +23,9 @@ const ALLOWED_EXTERNAL_HOSTS = new Set([
   'shamela.ws',
   'github.com',
   'aistudio.google.com',
+  // BYOK "Get a free key" deep links (M9 Phase C, ADR-0031).
+  'console.groq.com',
+  'openrouter.ai',
   'huggingface.co',
   // Optional cloud sign-in: the OAuth consent page opens in the user's real
   // browser (Google refuses to authenticate inside an embedded window, and a

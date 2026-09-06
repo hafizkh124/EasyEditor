@@ -26,14 +26,16 @@ const electron = createElectronMock();
 vi.mock("electron", () => electron);
 
 const keyStoreMocks = {
-  saveGeminiKey: vi.fn(async (_key: string) => true),
-  getGeminiKeyStatus: vi.fn(async (): Promise<KeyStatus> => ({ hasKey: false, lastFour: null })),
-  deleteGeminiKey: vi.fn(async () => undefined),
+  saveProviderKey: vi.fn(async (_provider: string, _key: string) => true),
+  getProviderKeyStatus: vi.fn(async (): Promise<KeyStatus> => ({ hasKey: false, lastFour: null })),
+  deleteProviderKey: vi.fn(async () => undefined),
 };
 vi.mock("../../electron/ai/keyStore.ts", () => keyStoreMocks);
 
+const testProviderKeyMock = vi.fn(async (_provider: string, _key: string) => ({ success: true, message: "ok" }));
+vi.mock("../../electron/agent/modelRouter.ts", () => ({ testProviderKey: testProviderKeyMock }));
+
 const geminiMocks = {
-  testGeminiKey: vi.fn(async (_key?: string) => ({ success: true, message: "ok" })),
   generateContentStream: vi.fn(
     async (_req: GeminiGenerateRequest, _onChunk?: (chunk: string) => void) => "generated text",
   ),
@@ -45,7 +47,6 @@ vi.mock("../../electron/ai/geminiClient.ts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../electron/ai/geminiClient.ts")>();
   return {
     ...actual,
-    testGeminiKey: geminiMocks.testGeminiKey,
     generateContentStream: geminiMocks.generateContentStream,
     embedTextContent: geminiMocks.embedTextContent,
   };
@@ -72,40 +73,61 @@ beforeEach(() => {
 const invoke = (payload: unknown) => electron.invoke("ai:invoke", payload);
 
 describe("registration", () => {
-  it("registers all five AI channels", () => {
+  it("registers all AI channels", () => {
     expect([...electron.ipcMain.handlers.keys()].sort()).toEqual([
       "ai:delete-key",
       "ai:get-key-status",
       "ai:invoke",
+      "ai:provider",
       "ai:save-key",
       "ai:test-key",
     ]);
   });
 });
 
-describe("ai:save-key / ai:get-key-status / ai:delete-key / ai:test-key — thin forwarding", () => {
-  it("forwards the key to saveGeminiKey and returns its result", async () => {
-    keyStoreMocks.saveGeminiKey.mockResolvedValueOnce(true);
+describe("ai:save-key / ai:get-key-status / ai:delete-key / ai:test-key — per-provider forwarding", () => {
+  it("forwards the key to saveProviderKey (default provider gemini) and returns its result", async () => {
+    keyStoreMocks.saveProviderKey.mockResolvedValueOnce(true);
     await expect(electron.invoke("ai:save-key", "AIzaSy-fake")).resolves.toBe(true);
-    expect(keyStoreMocks.saveGeminiKey).toHaveBeenCalledWith("AIzaSy-fake");
+    expect(keyStoreMocks.saveProviderKey).toHaveBeenCalledWith("gemini", "AIzaSy-fake");
   });
 
-  it("forwards getGeminiKeyStatus's result unchanged", async () => {
-    keyStoreMocks.getGeminiKeyStatus.mockResolvedValueOnce({ hasKey: true, lastFour: "1234" });
-    await expect(electron.invoke("ai:get-key-status")).resolves.toEqual({
-      hasKey: true,
-      lastFour: "1234",
-    });
+  it("routes a save to the named provider", async () => {
+    await electron.invoke("ai:save-key", "gsk_fake", "groq");
+    expect(keyStoreMocks.saveProviderKey).toHaveBeenCalledWith("groq", "gsk_fake");
+  });
+
+  it("forwards getProviderKeyStatus's result unchanged", async () => {
+    keyStoreMocks.getProviderKeyStatus.mockResolvedValueOnce({ hasKey: true, lastFour: "1234" });
+    await expect(electron.invoke("ai:get-key-status")).resolves.toEqual({ hasKey: true, lastFour: "1234" });
   });
 
   it("deletes the key and reports true", async () => {
     await expect(electron.invoke("ai:delete-key")).resolves.toBe(true);
-    expect(keyStoreMocks.deleteGeminiKey).toHaveBeenCalled();
+    expect(keyStoreMocks.deleteProviderKey).toHaveBeenCalledWith("gemini");
   });
 
-  it("passes an optional test key through to testGeminiKey", async () => {
-    await electron.invoke("ai:test-key", "some-key-to-test");
-    expect(geminiMocks.testGeminiKey).toHaveBeenCalledWith("some-key-to-test");
+  it("passes the test key + provider through to testProviderKey", async () => {
+    await electron.invoke("ai:test-key", "some-key-to-test", "groq");
+    expect(testProviderKeyMock).toHaveBeenCalledWith("groq", "some-key-to-test");
+  });
+});
+
+describe("ai:provider", () => {
+  it("lists providers with gemini present", async () => {
+    const list = await electron.invoke("ai:provider", { action: "list" }) as Array<{ id: string }>;
+    expect(list.map((p) => p.id)).toEqual(expect.arrayContaining(["gemini", "groq", "openrouter"]));
+  });
+
+  it("reports state with gemini active and verified by default", async () => {
+    const state = await electron.invoke("ai:provider", { action: "state" }) as { active: string; verified: string[] };
+    expect(state.active).toBe("gemini");
+    expect(state.verified).toContain("gemini");
+  });
+
+  it("refuses to activate an unverified provider", async () => {
+    await expect(electron.invoke("ai:provider", { action: "setActive", provider: "groq" }))
+      .rejects.toThrow(/has not passed the agent eval/);
   });
 });
 

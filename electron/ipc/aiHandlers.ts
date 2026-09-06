@@ -1,37 +1,72 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { ALLOWED_IPC_CHANNELS } from './registry.js';
 import {
-  saveGeminiKey,
-  getGeminiKeyStatus,
-  deleteGeminiKey,
+  saveProviderKey,
+  getProviderKeyStatus,
+  deleteProviderKey,
 } from '../ai/keyStore.js';
 import {
-  testGeminiKey,
   generateContentStream,
   embedTextContent,
   GeminiGenerateRequest,
   ByokApiError,
   redactKeyFromLog,
 } from '../ai/geminiClient.js';
+import { testProviderKey } from '../agent/modelRouter.js';
+import {
+  getActiveProviderId, setActiveProviderId, markProviderVerified,
+  verifiedProviders, resolveProvider,
+} from '../ai/providerConfig.js';
+import { PROVIDER_IDS, isProviderId, type ProviderId } from '../../shared/agent/providers.js';
+
+const asProvider = (v: unknown): ProviderId => (isProviderId(v) ? v : 'gemini');
 import { getWorkspaceDbService } from './workspaceHandlers.js';
 import { REFINE_TEXT_ACTIONS } from '../../shared/ai/prompts/refineText.js';
 
 export function registerAiHandlers(): void {
-  ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_SAVE_KEY, async (_event, key: string) => {
-    return saveGeminiKey(key);
+  // The key channels take (payload, provider?) — provider defaults to 'gemini'
+  // so the M8 renderer calls keep working unchanged.
+  ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_SAVE_KEY, async (_event, key: string, provider?: unknown) => {
+    return saveProviderKey(asProvider(provider), key);
   });
 
-  ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_GET_KEY_STATUS, async () => {
-    return getGeminiKeyStatus();
+  ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_GET_KEY_STATUS, async (_event, provider?: unknown) => {
+    return getProviderKeyStatus(asProvider(provider));
   });
 
-  ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_DELETE_KEY, async () => {
-    await deleteGeminiKey();
+  ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_DELETE_KEY, async (_event, provider?: unknown) => {
+    await deleteProviderKey(asProvider(provider));
     return true;
   });
 
-  ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_TEST_KEY, async (_event, key?: string) => {
-    return testGeminiKey(key);
+  ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_TEST_KEY, async (_event, key: string, provider?: unknown) => {
+    return testProviderKey(asProvider(provider), key);
+  });
+
+  ipcMain.handle(ALLOWED_IPC_CHANNELS.AI_PROVIDER, async (_event, req: { action: string; provider?: unknown; verified?: unknown }) => {
+    switch (req.action) {
+      case 'list':
+        return PROVIDER_IDS.map((id) => {
+          const p = resolveProvider(id);
+          return {
+            id, label: p.label, kind: p.kind, freeTier: p.freeTier,
+            getKeyUrl: p.getKeyUrl, keyEnvVar: p.keyEnvVar,
+            toolModel: p.toolModel, textModel: p.textModel, reasoningModel: p.reasoningModel,
+            privacyNote: p.privacyNote ?? null,
+            keyPattern: p.keyPattern.source,
+          };
+        });
+      case 'state':
+        return { active: getActiveProviderId(), verified: verifiedProviders() };
+      case 'setActive':
+        setActiveProviderId(asProvider(req.provider));
+        return { active: getActiveProviderId() };
+      case 'markVerified':
+        markProviderVerified(asProvider(req.provider), req.verified !== false);
+        return { active: getActiveProviderId(), verified: verifiedProviders() };
+      default:
+        return { error: `unknown provider action: ${req.action}` };
+    }
   });
 
   ipcMain.handle(
