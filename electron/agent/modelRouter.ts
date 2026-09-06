@@ -10,7 +10,7 @@
  * routes through electron/agent/openAiCompatTools.ts + the shared client.
  * claim-check stays on Gemini for now (JSON-mode output varies by provider).
  */
-import { getActiveProviderId, resolveProvider } from '../ai/providerConfig.js';
+import { getActiveProviderId, getTextProviderId, resolveProvider } from '../ai/providerConfig.js';
 import { getProviderKey } from '../ai/keyStore.js';
 import { generateContentStream, testGeminiKey, ByokApiError } from '../ai/geminiClient.js';
 import { chatCompletion } from '../ai/openAiCompatibleClient.js';
@@ -74,7 +74,7 @@ export interface AgentTextRequest {
 }
 
 export async function generateAgentText(req: AgentTextRequest): Promise<string> {
-  const provider = resolveProvider(getActiveProviderId());
+  const provider = resolveProvider(getTextProviderId());
 
   if (provider.kind === 'gemini') {
     return (await generateContentStream({

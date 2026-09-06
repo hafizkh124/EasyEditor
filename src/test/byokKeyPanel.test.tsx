@@ -15,12 +15,13 @@ const byok = {
     { id: 'groq', label: 'Groq', kind: 'openai-compat', freeTier: true, getKeyUrl: 'https://console.groq.com/keys', keyEnvVar: 'GROQ_API_KEY', toolModel: 'llama-3.3-70b-versatile', textModel: 'llama-3.3-70b-versatile', privacyNote: null, keyPattern: 'gsk_[A-Za-z0-9]{20,}' },
     { id: 'openrouter', label: 'OpenRouter', kind: 'openai-compat', freeTier: false, getKeyUrl: 'https://openrouter.ai/keys', keyEnvVar: 'OPENROUTER_API_KEY', toolModel: 'x', textModel: 'x', privacyNote: 'routes outside the EU/US', keyPattern: 'sk-or-v1-[A-Za-z0-9]{20,}' },
   ])),
-  providerState: vi.fn(async () => ({ active: 'gemini', verified: ['gemini'] })),
-  getKeyStatus: vi.fn(async () => ({ hasKey: false, lastFour: null })),
+  providerState: vi.fn(async () => ({ active: 'gemini', text: 'gemini', verified: ['gemini'] })),
+  getKeyStatus: vi.fn(async (_id?: string): Promise<{ hasKey: boolean; lastFour: string | null }> => ({ hasKey: false, lastFour: null })),
   saveKey: vi.fn(async () => true),
   testKey: vi.fn(async () => ({ success: true, message: 'ok' })),
   deleteKey: vi.fn(async () => true),
-  setActiveProvider: vi.fn(async () => ({ active: 'gemini' })),
+  setActiveProvider: vi.fn(async () => ({ active: 'gemini', text: 'gemini' })),
+  setTextProvider: vi.fn(async () => ({ active: 'gemini', text: 'groq' })),
   markProviderVerified: vi.fn(async () => ({ active: 'gemini', verified: ['gemini', 'groq'] })),
 };
 
@@ -51,11 +52,25 @@ describe('ByokKeyPanel (multi-provider)', () => {
     expect(screen.getByText(/EVAL_PROVIDER=groq AGENT_EVAL_LIVE=1/)).toBeInTheDocument();
   });
 
-  it('surfaces the refusal when activating an unverified provider', async () => {
+  it('surfaces the refusal when activating an unverified provider for the loop', async () => {
     byok.setActiveProvider.mockRejectedValueOnce(new Error('Groq has not passed the agent eval on this machine yet'));
     await renderPanel();
-    fireEvent.click(screen.getByLabelText('Groq کو فعال کریں'));
+    fireEvent.click(screen.getByLabelText('Groq — ایجنٹ لوپ'));
     await waitFor(() => expect(screen.getByText(/has not passed the agent eval/)).toBeInTheDocument());
+  });
+
+  it('lets an unverified provider be picked for متن سازی once it has a key', async () => {
+    byok.getKeyStatus.mockImplementation(async (id?: string) => (id === 'groq' ? { hasKey: true, lastFour: 'wxyz' } : { hasKey: false, lastFour: null }));
+    await renderPanel();
+    fireEvent.click(screen.getByLabelText('Groq — متن سازی'));
+    await waitFor(() => expect(byok.setTextProvider).toHaveBeenCalledWith('groq'));
+  });
+
+  it('refuses متن سازی on a provider with no key', async () => {
+    await renderPanel();
+    fireEvent.click(screen.getByLabelText('OpenRouter — متن سازی'));
+    await waitFor(() => expect(screen.getByText(/کوئی key نہیں/)).toBeInTheDocument());
+    expect(byok.setTextProvider).not.toHaveBeenCalled();
   });
 
   it('tests then saves a key against the right provider id', async () => {

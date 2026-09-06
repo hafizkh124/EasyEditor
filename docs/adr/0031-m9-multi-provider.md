@@ -50,12 +50,19 @@ varies by provider).
 falls back to `<ID>_API_KEY`. The M8 `getDecryptedGeminiKey` etc. are kept as
 aliases.
 
-**A hard verification gate.** `electron/ai/providerConfig.ts` persists
-`{ active, verified }`. `setActiveProviderId` refuses a non-Gemini provider
-that is not in `verified`. A provider is marked verified from the Settings
-panel — which shows the exact `EVAL_PROVIDER=<id> AGENT_EVAL_LIVE=1 …` command —
-after the scholar has seen it clear the eval. `AGENT_VERIFIED_PROVIDERS` can
-force-verify for CI.
+**Two roles, one gate.** `electron/ai/providerConfig.ts` persists
+`{ active, text, verified }`:
+- `active` drives the **agentic loop + playbook bind calls** (tool calling).
+  `setActiveProviderId` refuses a non-Gemini provider not in `verified` — the
+  eval measures exactly this. Marked verified from the Settings panel (which
+  shows the `EVAL_PROVIDER=<id> AGENT_EVAL_LIVE=1 …` command) after the scholar
+  sees it clear the eval; `AGENT_VERIFIED_PROVIDERS` force-verifies for CI.
+- `text` drives **plain text generation** (`draft_section`, `run_task`, index
+  extraction) via `generateAgentText`. It defaults to `active` but can differ —
+  e.g. Gemini for the loop, Groq for drafting. `setTextProviderId` is **not**
+  eval-gated: text gen runs a fixed instruction and its output lands as a
+  tracked change the scholar reviews, so the risk the eval measures (tool
+  choice, grounding) does not apply. It just needs a key.
 
 **A separate outbound allowlist.** `electron/lib/agentModelAllowlist.ts` (NOT
 `urlAllowlist.ts`, which gates `shell.openExternal`) — the agent's model

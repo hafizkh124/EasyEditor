@@ -54,6 +54,29 @@ describe('active provider', () => {
   });
 });
 
+describe('text provider (split routing — M9)', () => {
+  it('defaults to the loop provider', () => {
+    expect(mod.getTextProviderId()).toBe('gemini');
+    mod.markProviderVerified('groq', true);
+    mod.setActiveProviderId('groq');
+    expect(mod.getTextProviderId()).toBe('groq'); // follows active when unset
+  });
+
+  it('can be set independently of the loop provider, with NO eval gate', () => {
+    // groq is NOT verified — still allowed as the text provider
+    mod.setTextProviderId('groq');
+    expect(mod.getTextProviderId()).toBe('groq');
+    expect(mod.getActiveProviderId()).toBe('gemini'); // loop unchanged
+  });
+
+  it('clears back to following the loop provider', () => {
+    mod.setTextProviderId('openrouter');
+    expect(mod.getTextProviderId()).toBe('openrouter');
+    mod.setTextProviderId(null);
+    expect(mod.getTextProviderId()).toBe('gemini');
+  });
+});
+
 describe('resolveProvider env overrides', () => {
   it('applies <ID>_TOOL_MODEL', () => {
     process.env.GROQ_TOOL_MODEL = 'qwen-3-next';

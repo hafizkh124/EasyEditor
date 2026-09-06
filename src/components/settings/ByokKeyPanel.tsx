@@ -27,6 +27,7 @@ const EVAL_CMD = (id: string) =>
 export const ByokKeyPanel: React.FC = () => {
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [active, setActive] = useState<string>('gemini');
+  const [textActive, setTextActive] = useState<string>('gemini');
   const [verified, setVerified] = useState<string[]>(['gemini']);
   const [statuses, setStatuses] = useState<Record<string, KeyStatus>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -44,6 +45,7 @@ export const ByokKeyPanel: React.FC = () => {
       const state = await api.providerState();
       setProviders(list);
       setActive(state.active);
+      setTextActive(state.text);
       setVerified(state.verified);
       const st: Record<string, KeyStatus> = {};
       await Promise.all(list.map(async (p) => { st[p.id] = await api.getKeyStatus(p.id); }));
@@ -111,6 +113,17 @@ export const ByokKeyPanel: React.FC = () => {
     }
   };
 
+  const selectText = async (id: string) => {
+    setFeedback(null);
+    try {
+      if (!statuses[id]?.hasKey) throw new Error(`${providers.find((p) => p.id === id)?.label} کی کوئی key نہیں — پہلے درج کریں۔`);
+      await api.setTextProvider(id);
+      await refresh();
+    } catch (err) {
+      setFeedback({ type: 'error', message: err instanceof Error ? err.message : String(err) });
+    }
+  };
+
   const toggleVerified = async (id: string, next: boolean) => {
     try {
       await api.markProviderVerified(id, next);
@@ -128,8 +141,9 @@ export const ByokKeyPanel: React.FC = () => {
           <CardTitle className="text-xl font-bold">AI ماڈل پرووائیڈر (BYOK)</CardTitle>
         </div>
         <CardDescription>
-          ہر کلید آپ کے کمپیوٹر پر انکرپٹ ہو کر محفوظ رہتی ہے۔ ایجنٹ اُسی پرووائیڈر پر چلتا ہے جو یہاں منتخب ہو۔
-          Gemini کے سوا کوئی بھی پرووائیڈر تب تک منتخب نہیں ہو سکتا جب تک وہ اِس مشین پر ایجنٹ eval پاس نہ کر لے۔
+          ہر کلید آپ کے کمپیوٹر پر انکرپٹ ہو کر محفوظ رہتی ہے۔ دو کردار الگ الگ چنے جا سکتے ہیں:
+          <b> ایجنٹ لوپ</b> (ٹول کالنگ — Gemini کے سوا صرف eval پاس کرنے پر) اور
+          <b> متن سازی</b> (مسودہ/ترمیم — صرف key درکار؛ ہر مسودہ ٹریک چینج کے طور پر آپ خود دیکھتے ہیں)۔
         </CardDescription>
       </CardHeader>
       <CardContent dir="rtl" className="space-y-4">
@@ -149,18 +163,12 @@ export const ByokKeyPanel: React.FC = () => {
         {providers.map((p) => {
           const st = statuses[p.id] ?? { hasKey: false, lastFour: null };
           const isActive = active === p.id;
+          const isText = textActive === p.id;
           const isVerified = verified.includes(p.id);
           return (
-            <div key={p.id} className={`rounded-lg border p-3 space-y-3 ${isActive ? 'border-primary bg-primary/5' : 'bg-muted/60'}`}>
+            <div key={p.id} className={`rounded-lg border p-3 space-y-3 ${isActive || isText ? 'border-primary bg-primary/5' : 'bg-muted/60'}`}>
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="active-provider"
-                    checked={isActive}
-                    onChange={() => selectActive(p.id)}
-                    aria-label={`${p.label} کو فعال کریں`}
-                  />
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-sm">{p.label}</span>
                   {p.freeTier && <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">مفت tier</span>}
                   {isVerified ? (
@@ -168,6 +176,14 @@ export const ByokKeyPanel: React.FC = () => {
                   ) : (
                     <span className="flex items-center gap-1 text-xs text-amber-600"><AlertTriangle className="h-3.5 w-3.5" />غیر تصدیق شدہ</span>
                   )}
+                  <label className="flex items-center gap-1 text-xs">
+                    <input type="radio" name="loop-provider" checked={isActive} onChange={() => selectActive(p.id)} aria-label={`${p.label} — ایجنٹ لوپ`} />
+                    ایجنٹ لوپ
+                  </label>
+                  <label className="flex items-center gap-1 text-xs">
+                    <input type="radio" name="text-provider" checked={isText} onChange={() => selectText(p.id)} aria-label={`${p.label} — متن سازی`} />
+                    متن سازی
+                  </label>
                 </div>
                 {st.hasKey ? (
                   <span className="flex items-center gap-1 text-xs text-emerald-600">
