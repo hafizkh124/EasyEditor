@@ -1,15 +1,18 @@
 /**
  * M9 Phase C (ADR-0031) — which provider the desktop agent runs on.
  *
- * Persists `{ active, verified }` to `userData/agent-provider.json`:
- *  - `active`   — the provider every agent task uses (default 'gemini').
+ * Persists `{ active, text, verified }` to `userData/agent-provider.json`:
+ *  - `active`   — the provider that drives the AGENTIC LOOP + playbook bind
+ *                 calls (tool calling). Default 'gemini'.
+ *  - `text`     — the provider for plain text generation (draft_section,
+ *                 run_task, index extraction). Defaults to `active`. May differ
+ *                 — e.g. Gemini for the loop, Groq for drafting.
  *  - `verified` — providers that have cleared the Phase B eval on THIS machine.
  *
  * The gate: `setActiveProvider` refuses a non-Gemini provider that is not in
- * `verified`. A provider is marked verified by `markProviderVerified` — called
- * from the Settings panel after the scholar has run the live eval and seen it
- * pass (the eval prints the exact command and the "you may mark it verified"
- * line), or by the eval itself via `AGENT_EVAL_MARK_VERIFIED=1`.
+ * `verified` (the eval measures tool calling + grounding — the loop's job).
+ * `setTextProviderId` only needs a key: text generation is a fixed prompt whose
+ * output lands as a tracked change the scholar reviews, so it is not eval-gated.
  *
  * Model ids drift; every one can be overridden per provider with an env var.
  */
@@ -23,6 +26,7 @@ import {
 
 interface ProviderConfigFile {
   active: ProviderId;
+  text?: ProviderId;
   verified: ProviderId[];
 }
 
@@ -37,6 +41,7 @@ function read(): ProviderConfigFile {
     const raw = JSON.parse(fs.readFileSync(configPath(), 'utf8')) as Partial<ProviderConfigFile>;
     return {
       active: isProviderId(raw.active) ? raw.active : DEFAULT_PROVIDER,
+      text: isProviderId(raw.text) ? raw.text : undefined,
       verified: Array.isArray(raw.verified) ? raw.verified.filter(isProviderId) : [],
     };
   } catch {
@@ -75,12 +80,26 @@ export function setActiveProviderId(id: ProviderId): void {
   write({ ...cfg, active: id });
 }
 
+/** The provider for plain text generation (draft_section / run_task). Falls back to the loop provider. */
+export function getTextProviderId(): ProviderId {
+  return read().text ?? getActiveProviderId();
+}
+
+/** Text generation is not eval-gated (fixed prompt, output is a reviewed tracked change) — it just needs a key. */
+export function setTextProviderId(id: ProviderId | null): void {
+  const cfg = read();
+  const next: ProviderConfigFile = { ...cfg };
+  if (id) next.text = id; else delete next.text;
+  write(next);
+}
+
 export function markProviderVerified(id: ProviderId, verified: boolean): void {
   const cfg = read();
   const set = new Set(cfg.verified);
   if (verified) set.add(id); else set.delete(id);
   const next: ProviderConfigFile = { ...cfg, verified: [...set] };
   if (!verified && cfg.active === id) next.active = DEFAULT_PROVIDER;
+  // The text provider is not eval-gated, so losing verification does not reset it.
   write(next);
 }
 

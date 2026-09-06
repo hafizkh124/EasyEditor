@@ -13,8 +13,15 @@
 // (not mocked) specifically to prove the wiring actually calls it, not just
 // that the function works in isolation (see redactKeyFromLog.test.ts for
 // that).
-import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { createElectronMock } from "./helpers/electronMock";
+
+// Give providerConfig a real writable path so the ai:provider handlers persist.
+const provCfg = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "aih-")), "agent-provider.json");
+process.env.AGENT_PROVIDER_CONFIG_PATH = provCfg;
 // Type-only — erased at compile time, so this does not defeat the vi.mock
 // below. Used to give the mocks below real signatures instead of ones
 // inferred from a single call site, which is too narrow for later tests to
@@ -68,6 +75,11 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   geminiMocks.generateContentStream.mockResolvedValue("generated text");
+  try { fs.rmSync(provCfg, { force: true }); } catch { /* fresh each test */ }
+});
+afterAll(() => {
+  delete process.env.AGENT_PROVIDER_CONFIG_PATH;
+  try { fs.rmSync(path.dirname(provCfg), { recursive: true, force: true }); } catch { /* ignore */ }
 });
 
 const invoke = (payload: unknown) => electron.invoke("ai:invoke", payload);
@@ -119,15 +131,22 @@ describe("ai:provider", () => {
     expect(list.map((p) => p.id)).toEqual(expect.arrayContaining(["gemini", "groq", "openrouter"]));
   });
 
-  it("reports state with gemini active and verified by default", async () => {
-    const state = await electron.invoke("ai:provider", { action: "state" }) as { active: string; verified: string[] };
+  it("reports state with gemini active + text and verified by default", async () => {
+    const state = await electron.invoke("ai:provider", { action: "state" }) as { active: string; text: string; verified: string[] };
     expect(state.active).toBe("gemini");
+    expect(state.text).toBe("gemini");
     expect(state.verified).toContain("gemini");
   });
 
-  it("refuses to activate an unverified provider", async () => {
+  it("refuses to activate an unverified provider for the loop", async () => {
     await expect(electron.invoke("ai:provider", { action: "setActive", provider: "groq" }))
       .rejects.toThrow(/has not passed the agent eval/);
+  });
+
+  it("allows an unverified provider for text generation (no eval gate)", async () => {
+    const r = await electron.invoke("ai:provider", { action: "setText", provider: "groq" }) as { active: string; text: string };
+    expect(r.active).toBe("gemini");
+    expect(r.text).toBe("groq");
   });
 });
 

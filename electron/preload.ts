@@ -74,10 +74,12 @@ const electronAPI = {
       keyEnvVar: string; toolModel: string; textModel: string; reasoningModel?: string;
       privacyNote: string | null; keyPattern: string;
     }>> => ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_PROVIDER, { action: 'list' }),
-    providerState: (): Promise<{ active: string; verified: string[] }> =>
+    providerState: (): Promise<{ active: string; text: string; verified: string[] }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_PROVIDER, { action: 'state' }),
-    setActiveProvider: (provider: string): Promise<{ active: string }> =>
+    setActiveProvider: (provider: string): Promise<{ active: string; text: string }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_PROVIDER, { action: 'setActive', provider }),
+    setTextProvider: (provider: string): Promise<{ active: string; text: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_PROVIDER, { action: 'setText', provider }),
     markProviderVerified: (provider: string, verified: boolean): Promise<{ active: string; verified: string[] }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_PROVIDER, { action: 'markVerified', provider, verified }),
     onStreamChunk: (channelId: string, callback: (data: { chunk?: string; done?: boolean; error?: string }) => void) => {

@@ -15,6 +15,7 @@ import {
 import { testProviderKey } from '../agent/modelRouter.js';
 import {
   getActiveProviderId, setActiveProviderId, markProviderVerified,
+  getTextProviderId, setTextProviderId,
   verifiedProviders, resolveProvider,
 } from '../ai/providerConfig.js';
 import { PROVIDER_IDS, isProviderId, type ProviderId } from '../../shared/agent/providers.js';
@@ -57,10 +58,13 @@ export function registerAiHandlers(): void {
           };
         });
       case 'state':
-        return { active: getActiveProviderId(), verified: verifiedProviders() };
+        return { active: getActiveProviderId(), text: getTextProviderId(), verified: verifiedProviders() };
       case 'setActive':
         setActiveProviderId(asProvider(req.provider));
-        return { active: getActiveProviderId() };
+        return { active: getActiveProviderId(), text: getTextProviderId() };
+      case 'setText':
+        setTextProviderId(isProviderId(req.provider) ? req.provider : null);
+        return { active: getActiveProviderId(), text: getTextProviderId() };
       case 'markVerified':
         markProviderVerified(asProvider(req.provider), req.verified !== false);
         return { active: getActiveProviderId(), verified: verifiedProviders() };
