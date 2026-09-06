@@ -58,7 +58,23 @@ class FakeMediaRecorder {
 import { AgentPanel } from "@/components/workspace/AgentPanel";
 
 let onProgressCb: ((p: { id: string; step?: number; label?: string; kind: string; detail?: string; requestId?: string; query?: string }) => void) | null = null;
-const agentRun = vi.fn(async () => ({ answer: "The chapter has 3 headings.", stopReason: "done", steps: 2, toolCalls: [{ name: "read_document", args: { chapter: "01-intro.docx" } as Record<string, unknown>, result: {} as unknown }], playbook: undefined as string | undefined }));
+type PanelAgentResult = {
+  answer: string;
+  stopReason: string;
+  steps: number;
+  toolCalls: Array<{ name: string; args: Record<string, unknown>; result: unknown }>;
+  playbook?: string;
+  question?: string;
+  checkpointId?: string;
+};
+const agentRun = vi.fn<(instruction: string, mode: string, projectRoot: string, ...rest: unknown[]) => Promise<PanelAgentResult>>(
+  async () => ({
+    answer: "The chapter has 3 headings.",
+    stopReason: "done",
+    steps: 2,
+    toolCalls: [{ name: "read_document", args: { chapter: "01-intro.docx" }, result: {} }],
+  }),
+);
 const transcribe = vi.fn(async () => [{ start: 0, end: 1, text: "footnote chapter one" }]);
 const applyGlobalOption = vi.fn(async () => ({ option: "check_spelling", previous: "true", applied: "false" }));
 const revertGlobalOptions = vi.fn(async () => ({ reverted: [{ option: "check_spelling", to: "true" }] }));
