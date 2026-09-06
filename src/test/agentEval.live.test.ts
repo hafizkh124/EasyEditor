@@ -25,7 +25,8 @@ import { runAgentLoop } from '../../shared/agent/loop';
 import { buildSystemPrompt } from '../../shared/agent/systemPrompt';
 import { toolsFor } from '../../shared/agent/toolScoping';
 import { resolvePlaybook } from '../../shared/playbooks/registry';
-import { getProvider, isProviderId } from '../../shared/agent/providers';
+import { isProviderId } from '../../shared/agent/providers';
+import { resolveProvider } from '../../electron/ai/providerConfig';
 import { generateWithTools, generateBoundCall } from '../../electron/agent/geminiTools';
 import { makeOpenAiCompatModel } from '../../electron/agent/openAiCompatTools';
 import { getProviderKey } from '../../electron/ai/keyStore';
@@ -40,7 +41,7 @@ import type { AgentMessage, AgentTool, ModelStep } from '../../shared/agent/type
 
 const LIVE = process.env.AGENT_EVAL_LIVE === '1';
 const PROVIDER_ID = isProviderId(process.env.EVAL_PROVIDER) ? process.env.EVAL_PROVIDER : 'gemini';
-const provider = getProvider(PROVIDER_ID);
+const provider = resolveProvider(PROVIDER_ID); // honours <ID>_TOOL_MODEL / _TEXT_MODEL overrides
 const WRITE_BASELINE = process.env.AGENT_EVAL_WRITE_BASELINE === '1';
 const LABEL = process.env.EVAL_MODEL_LABEL ?? provider.toolModel;
 
