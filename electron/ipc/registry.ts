@@ -16,12 +16,15 @@ export const ALLOWED_IPC_CHANNELS = {
   // the OAuth consent screen in their real browser.
   AUTH_DEEP_LINK: 'auth:deep-link',
 
-  // BYOK AI (M5.2 placeholder channels)
+  // BYOK AI (M5.2; per-provider since M9 Phase C — all key channels take an
+  // optional providerId, default 'gemini').
   AI_SAVE_KEY: 'ai:save-key',
   AI_GET_KEY_STATUS: 'ai:get-key-status',
   AI_DELETE_KEY: 'ai:delete-key',
   AI_TEST_KEY: 'ai:test-key',
   AI_INVOKE: 'ai:invoke',
+  /** Provider selection + verification (M9 Phase C, ADR-0031). */
+  AI_PROVIDER: 'ai:provider',
 
   // Local SQLite Backend (M5.3 placeholder channels)
   WORKSPACE_INVOKE: 'workspace:invoke',

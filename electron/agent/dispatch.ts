@@ -21,7 +21,7 @@ import { isAllowedOption } from './globalOptions.js';
 import { chapterPath, backupChapter, refreshChapters } from '../fs/projectFolder.js';
 import { getWorkspaceDbService } from '../ipc/workspaceHandlers.js';
 import { searchShamelaNative } from '../shamela/shamelaNative.js';
-import { generateContentStream } from '../ai/geminiClient.js';
+import { generateAgentText } from './modelRouter.js';
 import { RetrievalLedger, assertClaimSupported, type RetrievedChunk, type ClaimCheckFn } from '../../shared/agent/grounding.js';
 import { summariseCapabilities } from '../../shared/agent/capabilities.js';
 import { resolveTaskSlug, taskOutputIsHtml, RUN_TASK_NAMES } from '../../shared/agent/textTasks.js';
@@ -416,7 +416,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           let text = '';
           try { text = await chapterText(chapter); } catch { /* fall through to the empty check */ }
           if (!text.trim()) return { error: `chapter "${chapter}" has no text to index` };
-          const raw = (await generateContentStream({
+          const raw = (await generateAgentText({
             prompt: `CHAPTER TEXT:\n${text.slice(0, 12000)}`,
             systemInstruction: buildIndexExtractionInstruction(kinds),
           })).trim();
@@ -600,7 +600,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         if (isHtml) source = source.replace(/^[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*$/i, '').trim();
         if (!source.trim()) return { error: `chapter "${chapter}" has no text to work on` };
 
-        const refined = (await generateContentStream({ prompt: source, systemInstruction })).trim();
+        const refined = (await generateAgentText({ prompt: source, systemInstruction })).trim();
         if (!refined) return { error: 'the model returned nothing' };
 
         const backedUp = guardEdit(chapter);
@@ -640,7 +640,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
         const sectionHeading = typeof args.section_heading === 'string' ? args.section_heading : undefined;
         const content = buildDraftInput({ mode, sectionHeading, chapterExcerpt, sources: sources.length ? sources : undefined });
-        const draft = (await generateContentStream({ prompt: content, systemInstruction: withAuthorVoice(spec.instruction, authorVoice) })).trim();
+        const draft = (await generateAgentText({ prompt: content, systemInstruction: withAuthorVoice(spec.instruction, authorVoice) })).trim();
         if (!draft) return { error: 'the model returned nothing' };
 
         const artifactId = `draft-${chapter}-${Date.now().toString(36)}`;

@@ -60,14 +60,26 @@ const electronAPI = {
   },
 
   byok: {
-    saveKey: (key: string): Promise<boolean> =>
-      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_SAVE_KEY, key),
-    getKeyStatus: (): Promise<{ hasKey: boolean; lastFour: string | null }> =>
-      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_GET_KEY_STATUS),
-    deleteKey: (): Promise<boolean> =>
-      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_DELETE_KEY),
-    testKey: (key?: string): Promise<{ success: boolean; message: string }> =>
-      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_TEST_KEY, key),
+    // provider defaults to 'gemini' in main — existing calls keep working.
+    saveKey: (key: string, provider?: string): Promise<boolean> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_SAVE_KEY, key, provider),
+    getKeyStatus: (provider?: string): Promise<{ hasKey: boolean; lastFour: string | null; fromEnv?: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_GET_KEY_STATUS, provider),
+    deleteKey: (provider?: string): Promise<boolean> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_DELETE_KEY, provider),
+    testKey: (key: string, provider?: string): Promise<{ success: boolean; message: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_TEST_KEY, key, provider),
+    listProviders: (): Promise<Array<{
+      id: string; label: string; kind: string; freeTier: boolean; getKeyUrl: string;
+      keyEnvVar: string; toolModel: string; textModel: string; reasoningModel?: string;
+      privacyNote: string | null; keyPattern: string;
+    }>> => ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_PROVIDER, { action: 'list' }),
+    providerState: (): Promise<{ active: string; verified: string[] }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_PROVIDER, { action: 'state' }),
+    setActiveProvider: (provider: string): Promise<{ active: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_PROVIDER, { action: 'setActive', provider }),
+    markProviderVerified: (provider: string, verified: boolean): Promise<{ active: string; verified: string[] }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AI_PROVIDER, { action: 'markVerified', provider, verified }),
     onStreamChunk: (channelId: string, callback: (data: { chunk?: string; done?: boolean; error?: string }) => void) => {
       const listener = (_event: unknown, data: { chunk?: string; done?: boolean; error?: string }) => callback(data);
       ipcRenderer.on(channelId, listener);

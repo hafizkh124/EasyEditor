@@ -15,7 +15,7 @@ import { planPlaybook, validatePlaybook, type PlaybookContext } from '../../shar
 import type { Playbook } from '../../shared/playbooks/registry.js';
 import { getTool } from '../../shared/agent/toolSchemas.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
-import { generateWithTools, generateBoundCall } from './geminiTools.js';
+import type { AgentModel } from './modelRouter.js';
 import type {
   AgentMessage,
   AgentMode,
@@ -35,6 +35,8 @@ export interface RunPlaybookInput {
   mode: AgentMode;
   context: PlaybookContext;
   dispatch: DispatchFn;
+  /** The active provider's model fns (M9 Phase C) — bind calls, `hasMore`, synthesis, fallback loop. */
+  model: Pick<AgentModel, 'generate' | 'generateBound'>;
   systemPrompt: string;
   onProgress?: (p: AgentProgress) => void;
   emitArtifact?: EmitArtifactFn;
@@ -95,7 +97,7 @@ export async function runPlaybook(input: RunPlaybookInput): Promise<AgentRunResu
         `Call ${tool.name} with the right arguments for: "${instruction}".` +
         (Object.keys(args).length ? `\nThese arguments are already fixed: ${JSON.stringify(args)}.` : '');
       try {
-        const bound = await generateBoundCall(messages, tool, scopedPrompt);
+        const bound = await input.model.generateBound(messages, tool, scopedPrompt);
         if (bound.name !== step.tool) {
           log.warn('bound step returned a different tool', { expected: step.tool, got: bound.name });
           return step.optional ? 'skip' : HANDOFF;
@@ -137,7 +139,7 @@ export async function runPlaybook(input: RunPlaybookInput): Promise<AgentRunResu
   const REPEAT_MAX = 8;
   const hasMore = async (step: typeof plan.steps[number]): Promise<boolean> => {
     try {
-      const ask = await generateWithTools(
+      const ask = await input.model.generate(
         [...messages, { role: 'user', text: `For the step "${step.note}", is there another distinct item still to handle? Answer only "yes" or "no".` }],
         [],
         systemPrompt,
@@ -206,7 +208,7 @@ export async function runPlaybook(input: RunPlaybookInput): Promise<AgentRunResu
   let done = summarise(playbook, toolCalls);
   if (!wrote && toolCalls.some((c) => !(typeof c.result === 'object' && c.result && 'error' in c.result))) {
     try {
-      const synth = await generateWithTools(
+      const synth = await input.model.generate(
         [...messages, { role: 'user', text: 'Using only what was retrieved above, give the scholar a concise, sourced answer. Cite each point by its reference. If the sources are silent on something, say so.' }],
         [],
         systemPrompt,
@@ -233,7 +235,7 @@ async function fallbackLoop(
     `${input.instruction}\n\n(The playbook "${input.playbook.title}" was started but stopped: ${why}. ` +
     (done ? `Steps already done:\n${done}\n` : '') +
     `Continue from here and finish the task.)`;
-  const result = await runAgentLoop(seed, generateWithTools, input.dispatch, input.systemPrompt, {
+  const result = await runAgentLoop(seed, input.model.generate, input.dispatch, input.systemPrompt, {
     mode: input.mode,
     tools: input.fallbackTools,
     onProgress: input.onProgress,
