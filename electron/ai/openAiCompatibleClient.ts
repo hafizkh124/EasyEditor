@@ -82,23 +82,24 @@ export async function chatCompletion(req: ChatCompletionRequest): Promise<OpenAi
   const host = new URL(url).hostname;
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-  // Retry a transport failure ("fetch failed" hides its cause) and a 429
-  // (Groq's free tier is TPM-limited; it sends `retry-after`). Up to 3 tries.
+  // Retry a transport failure ("fetch failed" hides its cause) and a 429 (a
+  // free tier is TPM-limited and sends `retry-after`; the window is ~60 s, so
+  // a run can recover mid-way). Up to 4 tries, honouring `retry-after`.
   let res: Response | null = null;
   let lastErr: unknown;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
       const r = await fetch(url, init);
-      if (r.status === 429 && attempt < 2) {
+      if (r.status === 429 && attempt < 3) {
         const after = Number(r.headers.get('retry-after')) || 0;
-        await sleep(after > 0 ? Math.min(after * 1000, 20_000) : 1500 * (attempt + 1));
+        await sleep(after > 0 ? Math.min(after * 1000 + 500, 45_000) : 3000 * (attempt + 1));
         continue;
       }
       res = r;
       break;
     } catch (err) {
       lastErr = err;
-      if (attempt < 2) await sleep(400 * (attempt + 1));
+      if (attempt < 3) await sleep(500 * (attempt + 1));
     }
   }
   if (!res) {
