@@ -83,6 +83,21 @@ describe("capability registry", () => {
       expect(isCapabilityAvailable("voice.cloning")).toBe(true);
       expect(isCapabilityAvailable("tokens.meter")).toBe(true);
     });
+
+    // M10 Phase 2.1 (ADR-0034 follow-up) — the agent reached web too, gated
+    // by the SAME VITE_AGENT_MODE flag desktop already used, not a new
+    // per-platform knob.
+    it("hides the Agent tab with VITE_AGENT_MODE off", () => {
+      vi.stubEnv("VITE_AGENT_MODE", "false");
+      expect(isCapabilityAvailable("wb.agent")).toBe(false);
+      expect(availableCapabilities("workbench-tab").map((c) => c.id)).not.toContain("wb.agent");
+    });
+
+    it("offers the Agent tab once VITE_AGENT_MODE is on", () => {
+      vi.stubEnv("VITE_AGENT_MODE", "true");
+      expect(isCapabilityAvailable("wb.agent")).toBe(true);
+      expect(availableCapabilities("workbench-tab").map((c) => c.id)).toContain("wb.agent");
+    });
   });
 
   describe("on the desktop", () => {

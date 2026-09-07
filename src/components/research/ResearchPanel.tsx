@@ -67,7 +67,11 @@ export const ResearchPanel = () => {
 
   const workspaceCtx = useOptionalWorkspace();
   const agentHook = useAgentRun();
-  const agentAvailable = isCapabilityAvailable("wb.agent") && Boolean(agentHook.projectRoot);
+  // M10 Phase 2.1 — the capability gate (registry.ts, VITE_AGENT_MODE) is
+  // shared by both platforms; which run path actually fires is decided by
+  // useAgentRun itself (desktop's project folder vs. web's open document).
+  const agentAvailable = isCapabilityAvailable("wb.agent")
+    && (Boolean(agentHook.projectRoot) || agentHook.webAgentAvailable);
 
   const {
     used: islamicQueriesUsed,
@@ -184,8 +188,10 @@ export const ResearchPanel = () => {
           {/* The agent capability exists on this machine but no project
               folder is open yet — surface the door to it rather than
               silently dropping it now that it no longer has its own
-              always-visible tab. */}
-          {isCapabilityAvailable("wb.agent") && (
+              always-visible tab. Desktop-only button: on web the equivalent
+              door is opening a document in the Workspace, not a folder
+              picker (agentHook.pf.openFolder is a no-op there). */}
+          {isCapabilityAvailable("wb.agent") && agentHook.pf.supported && (
             <Button
               variant="outline"
               size="sm"
