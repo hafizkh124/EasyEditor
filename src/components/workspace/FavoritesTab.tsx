@@ -93,10 +93,23 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
                 ? Math.round((progress.pageNumber / progress.pageCount) * 100)
                 : 0;
             return (
-              <button
+              // A <div role="button">, not a <button>: the remove control below
+              // is itself a real <button>, and a <button> nested inside a
+              // <button> is invalid HTML (confirmed by React's own
+              // validateDOMNesting warning) — some browsers reparent or
+              // auto-close the inner one, which is unpredictable for click,
+              // focus, and screen-reader behavior alike.
+              <div
                 key={fav.bookId}
+                role="button"
+                tabIndex={0}
                 onClick={() => onSelectBook?.(fav.bookId)}
-                className="group relative flex flex-col items-start text-left rounded-lg border border-border/50 bg-card p-3 hover:border-primary/50 hover:bg-accent/50 transition-colors cursor-pointer"
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  onSelectBook?.(fav.bookId);
+                }}
+                className="group relative flex flex-col items-start text-left rounded-lg border border-border/50 bg-card p-3 hover:border-primary/50 hover:bg-accent/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Button
                   variant="ghost"
@@ -142,7 +155,7 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
                     </div>
                   </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>

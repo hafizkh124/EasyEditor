@@ -69,3 +69,54 @@ describe("FavoritesTab — on plain web (no window.electronAPI at all)", () => {
     await waitFor(() => expect(screen.queryByText("صحيح البخاري")).not.toBeInTheDocument());
   });
 });
+
+describe("FavoritesTab — card is a <div role=\"button\">, not a nested <button> (fixed after this session's own spawn_task)", () => {
+  it("never logs a validateDOMNesting warning", async () => {
+    vi.spyOn(readerService, "listFavorites").mockResolvedValue([
+      { bookId: "5", title: "صحيح البخاري", author: null, createdAt: "2026-01-01" },
+    ]);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<FavoritesTab />);
+    await waitFor(() => expect(screen.getByText("صحيح البخاري")).toBeInTheDocument());
+    const nestingWarning = errorSpy.mock.calls.some((args) =>
+      args.some((a) => typeof a === "string" && a.includes("validateDOMNesting")),
+    );
+    expect(nestingWarning).toBe(false);
+  });
+
+  it("clicking the card opens the book", async () => {
+    vi.spyOn(readerService, "listFavorites").mockResolvedValue([
+      { bookId: "5", title: "صحيح البخاري", author: null, createdAt: "2026-01-01" },
+    ]);
+    const onSelectBook = vi.fn();
+    render(<FavoritesTab onSelectBook={onSelectBook} />);
+    await waitFor(() => expect(screen.getByText("صحيح البخاري")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /صحيح البخاري/ }));
+    expect(onSelectBook).toHaveBeenCalledWith("5");
+  });
+
+  it("Enter/Space on the focused card also opens the book (keyboard parity with a real <button>)", async () => {
+    vi.spyOn(readerService, "listFavorites").mockResolvedValue([
+      { bookId: "5", title: "صحيح البخاري", author: null, createdAt: "2026-01-01" },
+    ]);
+    const onSelectBook = vi.fn();
+    render(<FavoritesTab onSelectBook={onSelectBook} />);
+    const card = await screen.findByRole("button", { name: /صحيح البخاري/ });
+    fireEvent.keyDown(card, { key: "Enter" });
+    expect(onSelectBook).toHaveBeenCalledWith("5");
+    fireEvent.keyDown(card, { key: " " });
+    expect(onSelectBook).toHaveBeenCalledTimes(2);
+  });
+
+  it("removing a favorite does NOT also open the book (stopPropagation still works with the div wrapper)", async () => {
+    vi.spyOn(readerService, "removeFavorite").mockResolvedValue(true);
+    vi.spyOn(readerService, "listFavorites").mockResolvedValue([
+      { bookId: "5", title: "صحيح البخاري", author: null, createdAt: "2026-01-01" },
+    ]);
+    const onSelectBook = vi.fn();
+    render(<FavoritesTab onSelectBook={onSelectBook} />);
+    const removeButton = await screen.findByTitle(/Remove from favorites/i);
+    fireEvent.click(removeButton);
+    expect(onSelectBook).not.toHaveBeenCalled();
+  });
+});
