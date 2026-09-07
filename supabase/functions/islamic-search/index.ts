@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
-import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
+import { TOKEN_COSTS, calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 import { expandQueryTerms } from "../_shared/bilingualMap.ts";
 import { lookupTopicAnchors } from "../_shared/topicAnchors.ts";
 import { planQuery } from "../_shared/queryPlanner.ts";
@@ -193,6 +193,37 @@ function buildContextBlock(results: IslamicResult[]): string {
       : `[${r.domain.toUpperCase()}]`;
     return `--- Islamic Source ${i + 1} ${sourceTag} ---\n${citeLine}\n${content}`;
   }).join("\n\n");
+}
+
+/**
+ * SPEC M10 §1.1 — the caller no longer sends an explicit اسلامی/عمومی choice;
+ * `strictMode` becomes a derived property. Real corpus hits ⇒ strict (STRICT
+ * SOURCE MODE, below); zero hits ⇒ referenced (REFERENCED MODE, which already
+ * tells the model to answer from general knowledge and mark it 📌 معلومات
+ * عامہ). A boolean is still honoured when a caller passes one explicitly —
+ * assist-mode internals and any client still on the old wire contract keep
+ * working unchanged.
+ *
+ * Exported and pure so this branch has a real unit test without driving the
+ * six-tier retrieval fan-out end-to-end — see arabicMatnFilter.test.ts's
+ * file-level comment for why that fan-out is deliberately not mocked wholesale
+ * just to exercise one boolean.
+ */
+export function deriveStrictMode(explicitStrictMode: unknown, resultCount: number): boolean {
+  return typeof explicitStrictMode === "boolean" ? explicitStrictMode : resultCount > 0;
+}
+
+/**
+ * Null when no refund is due — either the caller passed strictMode
+ * explicitly (an intentional override, not an auto-degrade) or the derived
+ * choice came back strict. Otherwise the islamic/research price difference:
+ * a DERIVED "referenced" answer leans on general knowledge rather than the
+ * corpus this project owns, so it should cost what a general research query
+ * costs (30 tokens), not the islamic-search premium (40) already deducted.
+ */
+export function autoReferencedRefundAmount(explicitStrictMode: unknown, effectiveStrictMode: boolean): number | null {
+  if (typeof explicitStrictMode === "boolean" || effectiveStrictMode) return null;
+  return TOKEN_COSTS.islamic - TOKEN_COSTS.research;
 }
 
 function buildSystemPrompt(contextBlock: string, strictMode: boolean, hasCountFacts = false): string {
@@ -997,6 +1028,22 @@ export async function handle(req: Request): Promise<Response> {
       }
     }
 
+    const effectiveStrictMode = deriveStrictMode(strictMode, allResults.length);
+
+    // Fire-and-forget: this must not add an RPC round-trip before the
+    // sources_ready SSE event below, and a failed refund is logged, not
+    // fatal (refundTokens already swallows its own errors).
+    const autoRefund = autoReferencedRefundAmount(strictMode, effectiveStrictMode);
+    if (autoRefund !== null && capturedTokenCost !== undefined) {
+      void refundTokens(
+        supabase,
+        user.id,
+        autoRefund,
+        "islamic",
+        "Auto-degraded to general knowledge (no corpus hits) — refunding the islamic/research price difference",
+      );
+    }
+
     // Fill a missing surah_name on Quran rows (common on Tier-A API results)
     // so BOTH the model context AND the client citation panel show a name
     // instead of a blank. Mutates in place — allResults feeds both paths.
@@ -1137,7 +1184,7 @@ export async function handle(req: Request): Promise<Response> {
         // times" question with the authoritative figure rather than
         // declining.
         const messages: any[] = [
-          { role: "system", content: buildSystemPrompt(contextBlock + countBlock, strictMode ?? true, countBlock.length > 0) },
+          { role: "system", content: buildSystemPrompt(contextBlock + countBlock, effectiveStrictMode, countBlock.length > 0) },
         ];
         if (chatHistory && chatHistory.length > 0) {
           for (const msg of chatHistory) {

@@ -32,12 +32,17 @@ vi.mock("https://esm.sh/@supabase/supabase-js@2", () => ({
 }));
 
 type Handler = (req: Request) => Promise<Response>;
+type DeriveStrictMode = (explicit: unknown, resultCount: number) => boolean;
+type AutoReferencedRefundAmount = (explicit: unknown, effective: boolean) => number | null;
 let handle: Handler;
+let deriveStrictMode: DeriveStrictMode;
+let autoReferencedRefundAmount: AutoReferencedRefundAmount;
 let restoreNetwork: () => void;
 
 beforeAll(async () => {
   restoreNetwork = blockNetwork();
-  ({ handle } = await import("../../supabase/functions/islamic-search/index.ts"));
+  ({ handle, deriveStrictMode, autoReferencedRefundAmount } =
+    await import("../../supabase/functions/islamic-search/index.ts"));
 }, 60_000);
 
 afterAll(() => restoreNetwork?.());
@@ -97,5 +102,73 @@ describe("refund-on-crash safety net", () => {
 
     expect(res.status).toBe(401);
     expect(client.rpcCalls.map((c) => c.name)).not.toContain("credit_tokens");
+  });
+});
+
+/**
+ * SPEC M10 §1.1 — the اسلامی/عمومی switch is gone; `strictMode` is now
+ * derived from whether retrieval found anything, and the 10-token
+ * islamic/research price difference is refunded when it auto-degrades.
+ *
+ * Real, pure functions (no mocking): driving this through a live `handle()`
+ * call would mean faking every one of the six retrieval tiers just to force
+ * `allResults.length === 0` — one of which (`lookupTopicAnchors`) is
+ * keyword-matched rather than domain-gated, so even an empty
+ * `selectedDomains` cannot guarantee zero results. arabicMatnFilter.test.ts's
+ * file-level comment already made this call for `has_matn`; the same
+ * reasoning applies here, which is exactly why the derivation was pulled out
+ * into its own exported, argument-driven functions instead of staying as
+ * inline conditionals only a live retrieval run could exercise.
+ */
+describe("auto-strictness derivation (SPEC M10 §1.1)", () => {
+  it("honours an explicit boolean regardless of result count", () => {
+    expect(deriveStrictMode(true, 0)).toBe(true);
+    expect(deriveStrictMode(false, 40)).toBe(false);
+  });
+
+  it("derives strict from a positive result count when nothing explicit was sent", () => {
+    expect(deriveStrictMode(undefined, 1)).toBe(true);
+    expect(deriveStrictMode(undefined, 40)).toBe(true);
+  });
+
+  it("derives referenced from zero results when nothing explicit was sent", () => {
+    expect(deriveStrictMode(undefined, 0)).toBe(false);
+  });
+
+  it("treats any non-boolean (old/malformed clients) the same as unset", () => {
+    expect(deriveStrictMode(null, 0)).toBe(false);
+    expect(deriveStrictMode("strict", 5)).toBe(true);
+  });
+});
+
+describe("auto-referenced refund amount (SPEC M10 §1.1)", () => {
+  it("refunds the islamic/research price difference on a derived auto-degrade", () => {
+    expect(autoReferencedRefundAmount(undefined, false)).toBe(10);
+  });
+
+  it("never refunds when the caller passed strictMode explicitly", () => {
+    expect(autoReferencedRefundAmount(false, false)).toBeNull();
+    expect(autoReferencedRefundAmount(true, true)).toBeNull();
+  });
+
+  it("never refunds when the derived choice was strict", () => {
+    expect(autoReferencedRefundAmount(undefined, true)).toBeNull();
+  });
+});
+
+describe("wiring: the derived value actually reaches the prompt (source-text guard)", () => {
+  // TypeScript cannot catch a regression here — `strictMode ?? true` and
+  // `effectiveStrictMode` are both plain booleans at that call site, so a
+  // revert back to the old raw parameter would compile silently. Same
+  // rationale as arabicMatnFilter.test.ts's structural checks.
+  it("buildSystemPrompt is called with effectiveStrictMode, not the raw request parameter", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync("supabase/functions/islamic-search/index.ts", "utf8");
+    const deriveAt = src.indexOf("export function deriveStrictMode");
+    const promptCallAt = src.indexOf("buildSystemPrompt(contextBlock + countBlock,");
+    expect(deriveAt).toBeGreaterThan(-1);
+    expect(promptCallAt).toBeGreaterThan(deriveAt);
+    expect(src.slice(promptCallAt, promptCallAt + 120)).toContain("effectiveStrictMode");
+    expect(src.slice(promptCallAt, promptCallAt + 120)).not.toContain("strictMode ?? true");
   });
 });
