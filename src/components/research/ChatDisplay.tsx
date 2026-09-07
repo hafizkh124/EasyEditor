@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Send, Loader2, BookOpen, Copy, Sparkles, MessageSquarePlus, RefreshCw,
+  Wrench, ChevronRight, ChevronDown, AlertTriangle, CheckCircle2, Undo2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,8 @@ import { editorRoute } from "@/lib/routes";
 import { DocumentBox } from "./chat/DocumentBox";
 import { SourcesReadyIndicator, TypingDots, UserAvatar, AiAvatar } from "./chat/ChatAtoms";
 import { renderCitedAnswer } from "@/lib/research/citedAnswer";
+import { AgentArtifactPanel } from "@/components/workspace/AgentArtifactPanel";
+import type { AgentRunView } from "@/hooks/useAgentRun";
 
 const VIRTUALIZE_THRESHOLD = 50;
 
@@ -62,6 +65,13 @@ interface ChatDisplayProps {
   requireArabicMatn?: boolean;
   onRequireArabicMatnChange?: (next: boolean) => void;
   onContinue?: () => void;
+  /**
+   * SPEC M10 §1.2 — present only once the merged research+agent container
+   * (a later checkpoint) is driving Plan/Auto mode. Absent (today's only
+   * caller, ResearchPanel) means exactly today's behavior: no agent-run
+   * item ever enters the timeline.
+   */
+  agent?: AgentRunView;
 }
 
 const ISLAMIC_QUERY_MARKERS = /(?:قرآن|قراٰن|قُرآن|حدیث|حديث|آیت|آية|آیات|آيات|اَیات|سورۃ|سورة|نماز|روزہ|روزه|زکوٰۃ|زكاة|حج|عمرہ|عمرة|نکاح|طلاق|توبہ|توبة|صدقہ|صدقة|الله|اللہ|اللّٰہ|سنت|سنة|فقہ|فقه|تفسیر|تفسير|نبی|نبي|رسول|صحابہ|صحابة|إسلام|اسلام|sahaba|quran|qur'?an|hadith|hadis|surah|ayah|prophet|islam(?:ic)?)/i;
@@ -74,6 +84,7 @@ const ChatDisplay = ({
   assistModes = [], onAssistModesChange,
   selectedDomains = [], onSelectedDomainsChange,
   requireArabicMatn = false, onRequireArabicMatnChange, onContinue,
+  agent,
 }: ChatDisplayProps) => {
   const navigate = useNavigate();
   const isRtlQuery = detectRtl(query);
@@ -125,18 +136,37 @@ const ChatDisplay = ({
     | { type: "message"; index: number; msg: ChatMessage }
     | { type: "sources_ready" }
     | { type: "typing" }
+    // SPEC M10 §1.2 — one item for the whole agent run (progress, result,
+    // artifacts, plan-approval, consent cards), not one per section: an
+    // `agent.run()` has no session history of its own (each run is fresh —
+    // see useAgentRun's pendingClarification comment), so it is exactly one
+    // evolving card, the same way AgentPanel rendered it before this merge.
+    | { type: "agent_run" }
     | { type: "spacer" };
+
+  // Only real once something has actually happened — an agent prop with an
+  // idle hook (no progress, no result, no artifacts, nothing pending) must
+  // not insert an empty card into the middle of the conversation.
+  const hasAgentActivity = Boolean(
+    agent && (
+      agent.artifacts.length > 0
+      || agent.planPending
+      || agent.progress.some((p) => p.label && p.kind !== "thinking")
+      || agent.result
+    ),
+  );
 
   const listItems = useMemo(() => {
     const items: ListItem[] = [];
-    if (messages.length === 0) items.push({ type: "empty" });
+    if (messages.length === 0 && !hasAgentActivity) items.push({ type: "empty" });
     if (mode === "islamic" && citations.length > 0) items.push({ type: "citations" });
     messages.forEach((msg, i) => items.push({ type: "message", index: i, msg }));
+    if (hasAgentActivity) items.push({ type: "agent_run" });
     if (showSourcesIndicator && isQuerying) items.push({ type: "sources_ready" });
     if (isQuerying && messages[messages.length - 1]?.role !== "assistant") items.push({ type: "typing" });
     items.push({ type: "spacer" });
     return items;
-  }, [messages, mode, citations.length, showSourcesIndicator, isQuerying]);
+  }, [messages, mode, citations.length, showSourcesIndicator, isQuerying, hasAgentActivity]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
@@ -269,6 +299,148 @@ const ChatDisplay = ({
         <AnimatePresence>
           <SourcesReadyIndicator count={sourcesReadyInfo!.count} domains={sourcesReadyInfo!.domains} t={t} />
         </AnimatePresence>
+      );
+    } else if (item.type === "agent_run" && agent) {
+      // SPEC M10 §1.2 — moved verbatim from AgentPanel.tsx (same order:
+      // artifacts, plan-approval, steps, result), just reading `agent.*`
+      // instead of a local `a.*` hook return.
+      const stepLines = agent.progress.filter((p) => p.label && p.kind !== "thinking");
+      const collapsed = !isQuerying && !!agent.result && stepLines.length > 3 && !agent.progressExpanded;
+      content = (
+        <div className="max-w-3xl mx-auto space-y-3">
+          {agent.artifacts.length > 0 && <AgentArtifactPanel artifacts={agent.artifacts} />}
+
+          {agent.planPending && (
+            <div className="rounded border border-primary/40 bg-primary/5 p-2 text-xs space-y-2">
+              <p className="font-medium">{t("agent.plan_ready", "Review the plan above, then approve it to continue.")}</p>
+              <div className="flex gap-2">
+                <Button size="sm" className="h-7 text-xs" onClick={() => void agent.decidePlan("approved")}>{t("agent.plan_approve", "Approve & run")}</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void agent.decidePlan("rejected")}>{t("agent.plan_reject", "Cancel")}</Button>
+              </div>
+            </div>
+          )}
+
+          {stepLines.length > 0 && (collapsed ? (
+            <button
+              className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => agent.setProgressExpanded(true)}
+            >
+              <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+              {t("agent.ran_steps", "Ran {n} steps").replace("{n}", String(stepLines.length))}
+              {stepLines.some((p) => p.kind === "error") && <span className="text-amber-600">· {stepLines.filter((p) => p.kind === "error").length}</span>}
+            </button>
+          ) : (
+            <div className="space-y-1.5">
+              {!isQuerying && agent.result && stepLines.length > 3 && (
+                <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => agent.setProgressExpanded(false)}>
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                  {t("agent.collapse_steps", "Hide steps")}
+                </button>
+              )}
+              {stepLines.map((p, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs">
+                  {p.kind === "error"
+                    ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500 mt-0.5" />
+                    : p.kind === "done"
+                      ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500 mt-0.5" />
+                      : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />}
+                  <span className={p.kind === "error" ? "text-amber-700 dark:text-amber-400" : "text-foreground"}>
+                    {p.label}{p.detail ? ` — ${p.detail}` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+
+          {agent.result && (
+            <div className="rounded-md border border-border bg-card p-2.5 space-y-2 text-sm">
+              {agent.result.error ? (
+                <p className="text-destructive text-xs">{agent.result.error}</p>
+              ) : agent.result.stopReason === "needs-input" && agent.result.question ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-primary">{t("agent.needs_input", "The agent needs a clarification:")}</p>
+                  <p className="whitespace-pre-wrap">{agent.result.question}</p>
+                  <p className="text-xs text-muted-foreground">{t("agent.needs_input_hint", "Reply below to continue.")}</p>
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap">{agent.result.answer || t("agent.no_answer", "(no answer)")}</p>
+              )}
+              {agent.result.playbook && (
+                <p className="text-xs text-muted-foreground">{t("agent.used_playbook", "Playbook: {id}").replace("{id}", agent.result.playbook)}</p>
+              )}
+              {agent.result.toolCalls.length > 0 && (
+                <div>
+                  <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => agent.setShowTools((s) => !s)}>
+                    <Wrench className="h-3 w-3" />
+                    {t("agent.tool_calls", "{n} tool calls").replace("{n}", String(agent.result.toolCalls.length))}
+                  </button>
+                  {agent.showTools && (
+                    <ul className="mt-1 space-y-1 border-s border-border ps-2">
+                      {agent.result.toolCalls.map((tc, i) => (
+                        <li key={i} className="text-xs">
+                          <span className="font-mono">{tc.name}</span>
+                          <span className="text-muted-foreground"> {JSON.stringify(tc.args)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {agent.result.stopReason === "step-limit" && (
+                <p className="text-xs text-amber-700 dark:text-amber-400">{t("agent.step_limit", "Stopped at the step limit — ask a narrower question.")}</p>
+              )}
+              {agent.pendingOptions.length > 0 && (
+                <div className="rounded border border-amber-500/40 bg-amber-500/5 p-2 text-xs space-y-1.5">
+                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                    {t("agent.global_option_consent", "This changes a Word setting for every document — approve it?")}
+                  </p>
+                  <ul className="space-y-0.5 font-mono">
+                    {agent.pendingOptions.map((o, i) => (
+                      <li key={i}>{o.option}: {o.current} → {o.value}</li>
+                    ))}
+                  </ul>
+                  {agent.optionsApplied ? (
+                    <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => void agent.revertOptions()}>
+                      <Undo2 className="h-3.5 w-3.5" />
+                      {t("agent.revert_settings", "Revert Word settings")}
+                    </Button>
+                  ) : (
+                    <Button size="sm" className="h-7 gap-1.5 text-xs" onClick={() => void agent.applyOptions()}>
+                      {t("agent.apply_settings", "Apply {n} change(s)").replace("{n}", String(agent.pendingOptions.length))}
+                    </Button>
+                  )}
+                </div>
+              )}
+              {agent.pendingOcr.length > 0 && (
+                <div className="rounded border border-amber-500/40 bg-amber-500/5 p-2 text-xs space-y-1.5">
+                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                    {t("agent.ocr_consent", "OCR sends the page images to the EasyEditor cloud OCR service — this is not a local reading. Approve it for this project?")}
+                  </p>
+                  {agent.pendingOcr[0]?.scanPath && <p className="font-mono opacity-80">{agent.pendingOcr[0].scanPath}</p>}
+                  {agent.ocrGranted ? (
+                    <p className="text-muted-foreground">{t("agent.ocr_consent_granted", "OCR approved for this project — run the task again.")}</p>
+                  ) : (
+                    <Button size="sm" className="h-7 gap-1.5 text-xs" onClick={() => void agent.grantOcr()}>
+                      {t("agent.ocr_consent_approve", "Approve cloud OCR for this project")}
+                    </Button>
+                  )}
+                </div>
+              )}
+              {agent.result.checkpointId && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={() => void agent.undoTask()}
+                  disabled={agent.undone}
+                >
+                  <Undo2 className="h-3.5 w-3.5" />
+                  {agent.undone ? t("agent.undone", "Task reverted") : t("agent.undo_task", "Undo this task")}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       );
     } else if (item.type === "typing") {
       content = (
