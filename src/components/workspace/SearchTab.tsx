@@ -54,7 +54,12 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
     };
   }, []);
 
-  const runSearch = async (q: string) => {
+  // `useRoot` is an explicit parameter, not a read of the `rootMode` state,
+  // because the root-search toggle's own handler calls this in the SAME tick
+  // it calls setRootMode(next) — reading `rootMode` there would close over the
+  // pre-toggle value (a real bug this fixed: enabling root search with a
+  // query already typed searched in the OLD mode, not the new one).
+  const runSearch = async (q: string, useRoot: boolean) => {
     const trimmed = q.trim();
     if (!trimmed) {
       setResults([]);
@@ -64,7 +69,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
     setSearching(true);
     setError(null);
     try {
-      const hits = rootMode
+      const hits = useRoot
         ? await libraryItemService.searchChunksByRoot(s2DbPath, trimmed, 100)
         : await searchShamelaAsChunks(trimmed, 100);
       setResults(hits);
@@ -98,7 +103,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
               }
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") runSearch(query);
+              if (e.key === "Enter") runSearch(query, rootMode);
             }}
             placeholder={t("library.search_books_placeholder", "Search imported books…")}
             className="h-8 text-xs ps-8"
@@ -106,7 +111,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
         </div>
         <button
           type="button"
-          onClick={() => runSearch(query)}
+          onClick={() => runSearch(query, rootMode)}
           className="mt-1.5 w-full rounded-md bg-primary/10 hover:bg-primary/15 text-primary text-xs font-medium py-1 transition-colors"
         >
           {searching ? t("common.searching", "Searching…") : t("common.search", "Search")}
@@ -116,7 +121,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
           onClick={() => {
             const next = !rootMode;
             setRootMode(next);
-            if (next && query.trim()) runSearch(query);
+            if (next && query.trim()) runSearch(query, next);
           }}
           title={s2DbPath ? t("library.root_search_title_available", "Root search: match all morphological forms of the query's root") : t("library.root_search_title_unavailable", "Shamela S2.db not found — root search unavailable")}
           className={`mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border py-1 text-xs font-medium transition-colors ${

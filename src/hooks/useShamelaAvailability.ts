@@ -20,10 +20,18 @@ const UNAVAILABLE: ShamelaAvailability = { available: false, masterDbPath: null,
  * `tools/shamela-bridge` companion via `shamelaClient`, which is exactly the
  * `localStorage["shamela.connected"]` flow `useLocalShamela` already drives —
  * this hook just also confirms the companion actually responds right now,
- * not merely that it once connected. Only BrowseTab's catalogue is backed by
- * the bridge so far; SearchTab and FavoritesTab remain desktop-only until
- * their own bridge parity lands (SPEC-M5 FR-2.5 — this hook staying `false`
- * for them is what keeps those tabs absent rather than permanently empty).
+ * not merely that it once connected.
+ *
+ * M10 Phase 2.3 correction: an older version of this comment said SearchTab
+ * and FavoritesTab stayed desktop-only pending their own bridge parity. That
+ * is no longer true — SearchTab's plain search already routes through
+ * `searchShamelaAsChunks` (native vs. bridge transport, same as BrowseTab),
+ * and FavoritesTab was never bridge-bound at all (it only ever read
+ * `readerService`, the cloud/local backend facade). Root search (SearchTab's
+ * toggle) is the one genuine remainder: it needs Shamela's S2.db morphology
+ * tables, which only exist next to a native install, so it stays disabled
+ * (not absent) without one — `s2DbPath` reads null on web and the cloud
+ * `searchChunksByRoot` stub returns `[]`, never a crash.
  */
 export function useShamelaAvailability(): ShamelaAvailability {
   const [state, setState] = useState<ShamelaAvailability>({ ...UNAVAILABLE, checking: true });
