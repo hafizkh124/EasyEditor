@@ -6,7 +6,9 @@ import { logger } from "@/lib/logger";
 import { decodeAudioFile, encodeChunkToWav, chunkAudioBuffer } from "@/lib/audio/chunker";
 import { streamResearchQuery, streamIslamicQuery } from "@/lib/research/streamers";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useWebAgentEngine } from "@/hooks/useWebAgentEngine";
 import type { CitationItem } from "~shared/research/citationTypes";
+import type { AgentArtifactEvent } from "~shared/agent/types";
 import { buildMentions, filterMentions, activeMentionQuery, applyMention, type Mention } from "../../shared/mentions";
 import { PLAYBOOKS } from "../../shared/playbooks/registry";
 import { applyArtifactEvent, type ArtifactState } from "@/components/workspace/agentArtifactState";
@@ -31,6 +33,23 @@ export interface OcrConsent { needsConsent?: boolean; scanPath?: string; message
 export type PickerItem = { kind: "mention" | "command"; label: string; apply: () => void };
 
 /**
+ * The progress-callback shape both platforms deliver: desktop's
+ * `window.electronAPI.agent.onProgress` (preload.ts's own declared contract,
+ * `kind: string`) and the web engine's `run()` (which only ever sends real
+ * `AgentProgress` values, a strict subtype of this). Loosely typed on
+ * purpose — see handleProgress's own comment. `id` is an IPC-envelope field
+ * the web path never sends.
+ */
+interface ProgressEvent {
+  id?: string; step?: number; label?: string; kind: string; detail?: string;
+  requestId?: string; query?: string; question?: string;
+  mode?: "general" | "islamic";
+  mediaPath?: string; lang?: string;
+  scanPath?: string; pages?: string;
+  artifact?: AgentArtifactEvent;
+}
+
+/**
  * SPEC-M8 Layer 6 / P8b, extracted for SPEC M10 §1.2 — every stateful line
  * `AgentPanel.tsx` used to own, unchanged, so the merged research+agent
  * surface (and eventually a web dispatcher, once Phase 2 lands) can drive
@@ -44,6 +63,9 @@ export function useAgentRun() {
   const ws = useOptionalWorkspace();
   const { subscription } = useSubscription();
   const agent = typeof window !== "undefined" ? window.electronAPI?.agent : undefined;
+  // M10 Phase 2.1 — the web counterpart of `agent` above. Mutually exclusive
+  // by construction: `available` is false whenever `agent` exists.
+  const webAgent = useWebAgentEngine();
 
   const [mode, setMode] = useState<AgentMode>("ask");
   const [input, setInput] = useState("");
@@ -213,40 +235,46 @@ export function useAgentRun() {
     }
   }, [agent, projectRoot]);
 
+  // Shared by desktop's IPC event subscription (below) AND the web engine's
+  // direct callback (send(), further down) — same progress shape either way,
+  // just delivered without an IPC hop on web.
+  const handleProgress = useCallback((p: ProgressEvent) => {
+    if (p.id) runIdRef.current = p.id;
+    if (p.kind === "general-search-request" && p.requestId && typeof p.query === "string") {
+      void handleResearch(p.requestId, p.query, p.mode === "islamic" ? "islamic" : "general");
+      return;
+    }
+    if (p.kind === "transcribe-request" && p.requestId && typeof p.mediaPath === "string") {
+      void handleTranscribe(p.requestId, p.mediaPath, typeof p.lang === "string" ? p.lang : "auto");
+      return;
+    }
+    if (p.kind === "ocr-request" && p.requestId && typeof p.scanPath === "string") {
+      void handleOcr(p.requestId, p.scanPath, typeof p.lang === "string" ? p.lang : "auto", typeof p.pages === "string" ? p.pages : undefined);
+      return;
+    }
+    if (p.kind === "artifact" && p.artifact) {
+      setArtifacts((prev) => applyArtifactEvent(prev, p.artifact!));
+      return;
+    }
+    if (p.kind === "plan-pending") {
+      setPlanPending(true);
+      if (p.label) setProgress((prev) => [...prev, { step: 0, label: p.label!, kind: "plan-pending" }]);
+      return;
+    }
+    setProgress((prev) => [...prev, { step: p.step ?? 0, label: p.label ?? "", kind: p.kind, detail: p.detail }]);
+  }, [handleResearch, handleTranscribe, handleOcr]);
+
   useEffect(() => {
     if (!agent?.onProgress) return;
-    return agent.onProgress((p) => {
-      if (p.id) runIdRef.current = p.id;
-      if (p.kind === "general-search-request" && p.requestId && typeof p.query === "string") {
-        void handleResearch(p.requestId, p.query, p.mode === "islamic" ? "islamic" : "general");
-        return;
-      }
-      if (p.kind === "transcribe-request" && p.requestId && typeof p.mediaPath === "string") {
-        void handleTranscribe(p.requestId, p.mediaPath, typeof p.lang === "string" ? p.lang : "auto");
-        return;
-      }
-      if (p.kind === "ocr-request" && p.requestId && typeof p.scanPath === "string") {
-        void handleOcr(p.requestId, p.scanPath, typeof p.lang === "string" ? p.lang : "auto", typeof p.pages === "string" ? p.pages : undefined);
-        return;
-      }
-      if (p.kind === "artifact" && p.artifact) {
-        setArtifacts((prev) => applyArtifactEvent(prev, p.artifact!));
-        return;
-      }
-      if (p.kind === "plan-pending") {
-        setPlanPending(true);
-        if (p.label) setProgress((prev) => [...prev, { step: 0, label: p.label!, kind: "plan-pending" }]);
-        return;
-      }
-      setProgress((prev) => [...prev, { step: p.step ?? 0, label: p.label ?? "", kind: p.kind, detail: p.detail }]);
-    });
-  }, [agent, handleResearch, handleTranscribe, handleOcr]);
+    return agent.onProgress(handleProgress);
+  }, [agent, handleProgress]);
 
   const decidePlan = useCallback(async (decision: "approved" | "rejected") => {
     setPlanPending(false);
     const id = runIdRef.current;
     if (id && agent?.approvePlan) { try { await agent.approvePlan(id, decision); } catch (err) { log.error("approvePlan failed", { err }); } }
-  }, [agent]);
+    else webAgent.decidePlan(decision);
+  }, [agent, webAgent]);
 
   const mentions = useMemo<Mention[]>(
     () => buildMentions({
@@ -370,7 +398,11 @@ export function useAgentRun() {
 
   const send = useCallback(async () => {
     const typed = input.trim();
-    if (!typed || !agent || !projectRoot || running) return;
+    const desktopReady = Boolean(agent && projectRoot);
+    // M10 Phase 2.1 — the web path needs no project folder, only an open
+    // document; `webAgent.available` already checks agent is absent so the
+    // two paths can never both fire for the same send().
+    if (!typed || running || !(desktopReady || webAgent.available)) return;
     const instruction = pendingClarification
       ? `Original request: "${pendingClarification.instruction}"\nYou (the agent) asked: "${pendingClarification.question}"\nMy reply: "${typed}"`
       : typed;
@@ -383,13 +415,15 @@ export function useAgentRun() {
     setHubOpen(false);
     setPicker(null);
     try {
-      const res = await agent.run(instruction, mode, projectRoot);
+      const res = desktopReady
+        ? await agent!.run(instruction, mode, projectRoot!)
+        : await webAgent.run(instruction, mode, handleProgress);
       setResult(res as RunResult);
       setPendingClarification(
         res.stopReason === "needs-input" && res.question ? { instruction, question: res.question } : null,
       );
       setInput("");
-      void pf.refresh();
+      if (desktopReady) void pf.refresh();
     } catch (err) {
       log.error("agent run failed", { err });
       setResult({ answer: "", stopReason: "error", steps: 0, toolCalls: [], error: err instanceof Error ? err.message : String(err) });
@@ -398,9 +432,9 @@ export function useAgentRun() {
       setRunning(false);
       setPlanPending(false);
     }
-  }, [input, agent, projectRoot, running, mode, pf, pendingClarification]);
+  }, [input, agent, projectRoot, running, mode, pf, pendingClarification, webAgent, handleProgress]);
 
-  const cancel = useCallback(() => { void agent?.cancel(); }, [agent]);
+  const cancel = useCallback(() => { void agent?.cancel(); webAgent.cancel(); }, [agent, webAgent]);
 
   // ── Voice dictation (existing local Whisper via electron/voice) ───────────
   const voice = typeof window !== "undefined" ? window.electronAPI?.voice : undefined;
@@ -505,6 +539,11 @@ export function useAgentRun() {
 
   return {
     t, language, pf, agent, projectRoot,
+    // M10 Phase 2.1 — true when this hook can run a real agent turn on web
+    // (no electronAPI.agent, and a document is open in the Canvas). The
+    // capability's own on/off switch (registry.ts's wb.agent, VITE_AGENT_MODE)
+    // is a separate, coarser gate the caller checks first.
+    webAgentAvailable: webAgent.available,
     mode, setMode,
     input, setInput,
     running,

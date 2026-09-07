@@ -173,12 +173,15 @@ export const CAPABILITIES: readonly Capability[] = [
     icon: StickyNote, runtimes: { web: ALWAYS, desktop: ALWAYS }, surfaces: ["workbench-tab"],
   },
   {
-    // SPEC-M8 Layer 6 / ADR-0016. The agent drives Word/Shamela/the corpus
-    // end-to-end — desktop only, and behind VITE_AGENT_MODE while it matures.
+    // SPEC-M8 Layer 6 / ADR-0016; M10 Phase 2.1 (ADR-0034 follow-up) brought
+    // the agent to web too — cloud tools only (search/draft/comment/cite),
+    // Word/Shamela-bound tools stay desktop-only (shared/agent/toolScoping.ts's
+    // NATIVE_ONLY_TOOLS, platform:'web'). Same flag both runtimes: one switch
+    // for "agent mode", not a per-platform rollout knob.
     id: "wb.agent", route: null, labelKey: "workbench.agent", fallbackLabel: "Agent",
     icon: Bot,
     runtimes: {
-      web: { on: "never", reason: "The agent operates local Word and Shamela — desktop only." },
+      web: { on: "flag", flag: "VITE_AGENT_MODE" },
       desktop: { on: "flag", flag: "VITE_AGENT_MODE" },
     },
     surfaces: ["workbench-tab"],
