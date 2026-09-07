@@ -19,6 +19,18 @@ import ChatDisplay from "@/components/research/ChatDisplay";
  * inline. This is the exact same pair the merged research+agent panel's
  * agent branch uses — this file now just supplies the project-folder-needed
  * empty state and wires the two together.
+ *
+ * No longer routed to. WorkbenchPanel's separate "agent" tab is gone —
+ * ResearchPanel.tsx now decides internally whether to show this same
+ * AgentComposer+ChatDisplay pair (open project folder + wb.agent available)
+ * or plain research chat, so this component is unreachable from any tab.
+ * Kept, not deleted: agentPanel.test.tsx's 16 cases are real regression
+ * coverage of the underlying composition ResearchPanel's agent branch also
+ * uses (mode toggle, sending, mentions, playbooks, dictation, drag-drop,
+ * consent cards) — migrating them onto ResearchPanel directly (a larger
+ * mock surface: auth/subscription/token-balance) is follow-up work, not
+ * done here to avoid discovering new integration issues under time
+ * pressure on the app's most complex screen.
  */
 export const AgentPanel: React.FC = () => {
   const a = useAgentRun();

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileInput } from "lucide-react";
+import { FileInput, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,10 +10,13 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { translateStored } from "@/lib/i18n";
 import ChatDisplay from "@/components/research/ChatDisplay";
 import { useResearchChat } from "@/hooks/useResearchChat";
+import { useAgentRun } from "@/hooks/useAgentRun";
+import { AgentComposer } from "@/components/workspace/AgentComposer";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { markdownToHtml } from "@/lib/editor/htmlText";
 import type { ResearchAssistMode } from "@/lib/prompts";
 import { sanitizeSelection } from "@/lib/research/sources";
+import { isCapabilityAvailable } from "@/core/capabilities/registry";
 
 function usePersistedState<T>(key: string, initial: T, parse: (raw: string) => T): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(() => {
@@ -31,12 +34,30 @@ function usePersistedState<T>(key: string, initial: T, parse: (raw: string) => T
 }
 
 /**
- * SPEC M10 §1.1 — the اسلامی/عمومی mode switch is gone. Every query now goes
- * through islamic-search, which derives strictness itself from what it
- * actually retrieves (see useResearchChat's runQuery). There is therefore no
- * more mode to persist, switch, or confirm-before-discarding — this file
- * used to own all three (`research_mode`, `handleModeChange`, the
- * mode-switch AlertDialog); none of that is needed anymore.
+ * SPEC M10 §1 — the single Research+Agent surface. Two branches, decided by
+ * one thing: is there an open project folder AND is the agent capability
+ * available (desktop + VITE_AGENT_MODE, per registry.ts's wb.agent entry —
+ * "never" on web until Phase 2 ships a web dispatcher)?
+ *
+ *   - No (the common case, and always true on web today): exactly what this
+ *     file already was — plain research chat over islamic-search, via
+ *     useResearchChat + ChatDisplay's own composer. Zero behavior change.
+ *   - Yes: the agent branch — AgentComposer (Ask/Plan/Auto, mentions,
+ *     playbooks, dictation, drag-drop) wrapping ChatDisplay's `agent_run`
+ *     item, exactly the pair AgentPanel.tsx already proved out. "Ask" here
+ *     is the agent's own read-only tool loop (can read the open project's
+ *     chapters, search the corpus, etc.) — a strictly richer version of
+ *     plain research chat, which is exactly the duplication the user asked
+ *     to remove ("ایجنٹ کے اندر آسک موڈ سرچ والا کام ہی کرتا ہے").
+ *
+ * `useAgentRun()` is called unconditionally either way (React's own rule —
+ * hooks can't be conditional) — it is web-safe on its own (every IPC call
+ * inside it already guards on `window.electronAPI` existing) and idle when
+ * no folder is open, so this costs nothing on the common path.
+ *
+ * §1.1 already removed the اسلامی/عمومی mode switch (see git history) —
+ * there is therefore no more mode to persist, switch, or confirm-before-
+ * discarding in this file.
  */
 export const ResearchPanel = () => {
   const { user, session } = useAuth();
@@ -45,6 +66,8 @@ export const ResearchPanel = () => {
   const tier = subscription?.tier ?? "free";
 
   const workspaceCtx = useOptionalWorkspace();
+  const agentHook = useAgentRun();
+  const agentAvailable = isCapabilityAvailable("wb.agent") && Boolean(agentHook.projectRoot);
 
   const {
     used: islamicQueriesUsed,
@@ -127,10 +150,52 @@ export const ResearchPanel = () => {
     toast.success(t("research.inserted_into_canvas") || translateStored("toast.canvas.inserted"));
   };
 
+  if (agentAvailable) {
+    return (
+      <AgentComposer agent={agentHook}>
+        <ChatDisplay
+          // Research-only props ChatDisplay still requires but does not use
+          // while `composer` is supplied — see its own doc comment.
+          messages={[]}
+          query=""
+          onQueryChange={() => {}}
+          onSendQuery={() => {}}
+          isRefining={false}
+          lastAssistantIdx={-1}
+          onRefine={() => {}}
+          onCopyOutput={() => {}}
+          onClearChat={() => {}}
+          onRegenerate={() => {}}
+          researchLimitReached={false}
+          chatEndRef={{ current: null }}
+          t={t}
+          isQuerying={agentHook.running}
+          agent={agentHook}
+          composer={null}
+        />
+      </AgentComposer>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
       <div className="border-b border-border bg-background px-3 py-2">
         <div className="flex items-center justify-end gap-2 max-w-full">
+          {/* The agent capability exists on this machine but no project
+              folder is open yet — surface the door to it rather than
+              silently dropping it now that it no longer has its own
+              always-visible tab. */}
+          {isCapabilityAvailable("wb.agent") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={agentHook.pf.openFolder}
+              className="h-7 text-xs gap-1 px-2 shrink-0"
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+              {t("agent.open_folder_hint_short", "پراجیکٹ فولڈر کھولیں — ایجنٹ کی صلاحیات کے لیے")}
+            </Button>
+          )}
           {canInsertIntoCanvas && (
             <Button
               variant="outline"
