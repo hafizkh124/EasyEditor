@@ -39,6 +39,7 @@ reconstruct rationale without rereading commits.
 | [0031](./0031-m9-multi-provider.md) | M9 Phase C — multi-provider routing (Groq + OpenRouter via one OpenAI-compat path; per-provider BYOK keys; eval-gated loop, key-only text-gen; separate outbound allowlist; per-provider privacy notes) | Accepted |
 | [0032](./0032-m9-session-memory.md) | M9 Phase E — per-project journal folded into the prompt; history compaction for the model call only; `research_topic` bounded read-only sub-run sharing the parent ledger | Accepted |
 | [0033](./0033-m9-disclosure-and-source-view.md) | M9 blueprint §3 — deterministic AI-disclosure ledger + `compile_ai_disclosure` (bilingual front-matter statement); `insert_footnote` emits a citation artifact with the source excerpt for open-before-accept review | Accepted |
+| [0034](./0034-unified-research-surface.md) | M10 — unified research surface: auto-derived strictness (no Islamic/General switch), Research+Agent merged into one tab via composition, composer controls consolidated into one hub (supersedes 0002, amends 0026) | Accepted |
 
 ## When to write a new ADR
 
