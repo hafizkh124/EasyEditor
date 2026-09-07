@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import ChatDisplay from "@/components/research/ChatDisplay";
 import type { ChatMessage } from "@/components/research/types";
@@ -109,5 +109,108 @@ describe("ChatDisplay — baseline (SPEC M10 §1.2 pre-merge snapshot)", () => {
   it("shows the sign-in message instead of the limit message when signed out", () => {
     renderChat({ isSignedIn: false, researchLimitReached: true });
     expect(screen.getByText(en["research.sign_in_required"])).toBeInTheDocument();
+  });
+});
+
+/**
+ * SPEC M10 §1.2 — the new `agent_run` timeline item. A hand-built
+ * `AgentRunView` (not the real `useAgentRun()`, which needs Electron IPC
+ * mocks agentPanel.test.tsx already owns) is enough to exercise ChatDisplay's
+ * own rendering branch in isolation — it is a pure data+handler bag by
+ * design (see the hook's `Pick`-derived export comment).
+ */
+function agentView(overrides: Partial<import("@/hooks/useAgentRun").AgentRunView> = {}) {
+  return {
+    progress: [],
+    result: null,
+    artifacts: [],
+    planPending: false,
+    progressExpanded: false,
+    setProgressExpanded: vi.fn(),
+    showTools: false,
+    setShowTools: vi.fn(),
+    decidePlan: vi.fn(),
+    pendingOptions: [],
+    optionsApplied: false,
+    applyOptions: vi.fn(),
+    revertOptions: vi.fn(),
+    pendingOcr: [],
+    ocrGranted: false,
+    grantOcr: vi.fn(),
+    undone: false,
+    undoTask: vi.fn(),
+    ...overrides,
+  };
+}
+
+describe("ChatDisplay — agent_run item (SPEC M10 §1.2)", () => {
+  it("inserts nothing when agent is present but idle", () => {
+    renderChat({ agent: agentView() });
+    // The empty state (no messages, no agent activity) is still the one
+    // thing shown — an idle `agent` prop must not silently replace it.
+    expect(screen.getByRole("textbox", { name: en["research.ask_placeholder"] })).toBeInTheDocument();
+  });
+
+  it("renders a live progress line", () => {
+    renderChat({
+      agent: agentView({ progress: [{ step: 1, label: "reading the chapter", kind: "tool" }] }),
+    });
+    expect(screen.getByText("reading the chapter")).toBeInTheDocument();
+  });
+
+  it("renders the finished answer, with tool calls collapsed by default", () => {
+    const toolCalls = [{ name: "read_document", args: { chapter: "01-intro.docx" }, result: {} }];
+    const result = { answer: "The chapter has 3 headings.", stopReason: "done", steps: 1, toolCalls };
+    renderChat({ agent: agentView({ result }) });
+    expect(screen.getByText("The chapter has 3 headings.")).toBeInTheDocument();
+    expect(screen.queryByText("read_document")).not.toBeInTheDocument();
+  });
+
+  it("wires the tool-calls toggle to setShowTools, and reveals calls once showTools is true", () => {
+    const toolCalls = [{ name: "read_document", args: { chapter: "01-intro.docx" }, result: {} }];
+    const result = { answer: "done", stopReason: "done", steps: 1, toolCalls };
+    const setShowTools = vi.fn();
+    renderChat({ agent: agentView({ result, setShowTools }) });
+    fireEvent.click(screen.getByText(/1 tool calls/));
+    expect(setShowTools).toHaveBeenCalledTimes(1);
+
+    renderChat({ agent: agentView({ result, showTools: true }) });
+    expect(screen.getByText("read_document")).toBeInTheDocument();
+  });
+
+  it("shows the plan-approval card and calls decidePlan", () => {
+    const decidePlan = vi.fn();
+    renderChat({ agent: agentView({ planPending: true, decidePlan }) });
+    fireEvent.click(screen.getByRole("button", { name: en["agent.plan_approve"] }));
+    expect(decidePlan).toHaveBeenCalledWith("approved");
+  });
+
+  it("collapses a finished multi-step run into a 'Ran N steps' card", () => {
+    renderChat({
+      agent: agentView({
+        progress: [
+          { step: 1, label: "reading the chapter", kind: "tool" },
+          { step: 2, label: "searching Shamela", kind: "tool" },
+          { step: 3, label: "inserting the footnote", kind: "tool" },
+          { step: 4, label: "done", kind: "done" },
+        ],
+        result: { answer: "finished", stopReason: "done", steps: 4, toolCalls: [] },
+      }),
+    });
+    expect(screen.getByText(/Ran 4 steps/)).toBeInTheDocument();
+    expect(screen.queryByText("searching Shamela")).not.toBeInTheDocument();
+  });
+
+  it("shows the OCR consent card and calls grantOcr", () => {
+    const grantOcr = vi.fn();
+    renderChat({
+      agent: agentView({
+        result: { answer: "", stopReason: "done", steps: 1, toolCalls: [{ name: "ocr_document", args: {}, result: { needsConsent: true, scanPath: "sources/scan.pdf" } }] },
+        pendingOcr: [{ needsConsent: true, scanPath: "sources/scan.pdf" }],
+        grantOcr,
+      }),
+    });
+    fireEvent.click(screen.getByRole("button", { name: en["agent.ocr_consent_approve"] }));
+    expect(grantOcr).toHaveBeenCalled();
   });
 });

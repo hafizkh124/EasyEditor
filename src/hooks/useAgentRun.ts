@@ -545,3 +545,24 @@ export function useAgentRun() {
     grantOcr,
   };
 }
+
+/**
+ * SPEC M10 §1.2 — exactly the slice of `useAgentRun()`'s return value the
+ * merged research+agent timeline needs to render a run's progress/result/
+ * artifacts/plan-approval/consent cards. `Pick` against the hook's real
+ * return type rather than a hand-duplicated interface, so this can never
+ * silently drift out of sync with the hook it describes. Deliberately
+ * excludes the composer-only fields (mode, input, picker, mentions,
+ * dictation, drag-drop) — those stay in whatever renders the input box,
+ * not the timeline.
+ */
+export type AgentRunView = Pick<
+  ReturnType<typeof useAgentRun>,
+  | "progress" | "result" | "artifacts" | "planPending"
+  | "progressExpanded" | "setProgressExpanded"
+  | "showTools" | "setShowTools"
+  | "decidePlan"
+  | "pendingOptions" | "optionsApplied" | "applyOptions" | "revertOptions"
+  | "pendingOcr" | "ocrGranted" | "grantOcr"
+  | "undone" | "undoTask"
+>;
