@@ -2,7 +2,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Send, Loader2, Copy, Sparkles, MessageSquarePlus, RefreshCw,
+  Send, Loader2, Copy, Sparkles, MessageSquarePlus, RefreshCw, Plus,
   Wrench, ChevronRight, ChevronDown, AlertTriangle, CheckCircle2, Undo2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -129,6 +129,14 @@ const ChatDisplay = ({
 
   const showSourcesIndicator = sourcesReadyInfo != null && sourcesReadyInfo.count > 0;
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
+  // SPEC M10 §1.3 — one `+` hub instead of the five separate composer
+  // controls this used to have in a row (SourcePicker, ModeChips, the
+  // prompts button, plus the mode switcher already removed in §1.1),
+  // mirroring AgentComposer's exact hub pattern so the two composers read
+  // as one family.
+  const [researchHubOpen, setResearchHubOpen] = useState(false);
+  const hasNarrowedSources = selectedDomains.length > 0 || requireArabicMatn;
+  const hasActiveAssistModes = assistModes.length > 0;
 
   type ListItem =
     | { type: "empty" }
@@ -525,11 +533,6 @@ const ChatDisplay = ({
         composer && <div className="shrink-0">{composer}</div>
       ) : (
       <div className="px-4 pb-4 pt-2 space-y-2">
-        {onAssistModesChange && (
-          <div className="max-w-3xl mx-auto">
-            <ModeChips modes={assistModes} onModesChange={onAssistModesChange} disabled={isQuerying} t={t} />
-          </div>
-        )}
         {/* Why Send is disabled — a guest, or an account out of tokens, saw
             nothing here before; Ctrl+Enter and the button both did nothing
             silently (SPEC-M9 QA finding). */}
@@ -551,7 +554,69 @@ const ChatDisplay = ({
             ? "border-primary/50 shadow-md ring-2 ring-primary/10"
             : "border-border hover:border-border/80",
         )}>
-          <div className="flex gap-2 items-end p-3">
+          <div className="flex gap-2 items-end p-3 relative">
+            {/* SPEC M10 §1.3 — one `+` hub instead of a scattered row
+                (SourcePicker, ModeChips, the prompts button) below the
+                input. Same button position and popover shape as
+                AgentComposer's hub, so the two composers read as one
+                family rather than two different UIs. */}
+            {(onSelectedDomainsChange || onAssistModesChange) && (
+              <div className="relative shrink-0">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="h-9 w-9"
+                  onClick={() => setResearchHubOpen((v) => !v)}
+                  disabled={isQuerying}
+                  aria-label={t("research.hub_open", "ذرائع، حوالہ جات اور علمی پرامپٹس")}
+                  title={t("research.hub_open", "ذرائع، حوالہ جات اور علمی پرامپٹس")}
+                >
+                  <Plus className={cn("h-4 w-4 transition-transform", researchHubOpen && "rotate-45")} />
+                  {(hasNarrowedSources || hasActiveAssistModes) && !researchHubOpen && (
+                    <span className="absolute end-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
+                  )}
+                </Button>
+                {researchHubOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setResearchHubOpen(false)} />
+                    <div
+                      role="dialog"
+                      aria-label={t("research.hub_open", "ذرائع، حوالہ جات اور علمی پرامپٹس")}
+                      className="absolute bottom-full start-0 z-50 mb-1 w-[min(21rem,calc(100vw-2rem))] space-y-1 rounded-lg border border-border bg-popover p-2 text-xs shadow-md"
+                    >
+                      {onSelectedDomainsChange && (
+                        <div className="flex items-center justify-between gap-2 rounded-md px-1 py-1">
+                          <span className="text-muted-foreground">{t("research.sources_label")}</span>
+                          <SourcePicker
+                            selected={selectedDomains}
+                            onSelectedChange={onSelectedDomainsChange}
+                            requireArabicMatn={requireArabicMatn}
+                            onRequireArabicMatnChange={onRequireArabicMatnChange ?? (() => {})}
+                            disabled={isQuerying}
+                            t={t}
+                          />
+                        </div>
+                      )}
+                      {onAssistModesChange && (
+                        <div className="rounded-md px-1 py-1.5 border-t border-border">
+                          <p className="mb-1.5 text-muted-foreground">{t("research.chips_label")}</p>
+                          <ModeChips modes={assistModes} onModesChange={onAssistModesChange} disabled={isQuerying} t={t} />
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { setResearchHubOpen(false); setIsPromptModalOpen(true); }}
+                        className="flex w-full items-center gap-1.5 rounded-md border-t border-border px-1 pt-1.5 text-start text-primary hover:bg-primary/10 transition-colors"
+                      >
+                        <Sparkles className="h-3 w-3 shrink-0" />
+                        {t("research.scholarly_prompts", "14 علمی پرامپٹس")}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <Textarea
               ref={textareaRef}
               value={query}
@@ -566,6 +631,7 @@ const ChatDisplay = ({
                 isRtlQuery && "text-right",
               )}
               rows={2}
+              title={t("research.send_hint")}
               onKeyDown={(e) => {
                 if (e.key !== "Enter" || (!e.ctrlKey && !e.metaKey)) return;
                 e.preventDefault();
@@ -588,31 +654,6 @@ const ChatDisplay = ({
               className="shrink-0 h-9 w-9 rounded-xl"
             >
               {isQuerying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
-          <div className="px-3 pb-2 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              {onSelectedDomainsChange && (
-                <SourcePicker
-                  selected={selectedDomains}
-                  onSelectedChange={onSelectedDomainsChange}
-                  requireArabicMatn={requireArabicMatn}
-                  onRequireArabicMatnChange={onRequireArabicMatnChange ?? (() => {})}
-                  disabled={isQuerying}
-                  t={t}
-                />
-              )}
-              <p className="hidden md:block text-xs text-muted-foreground truncate">{t("research.send_hint")}</p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsPromptModalOpen(true)}
-              className="h-6 text-xs px-2 gap-1 rounded-lg text-primary border-primary/30 hover:bg-primary/10 transition-colors shrink-0"
-            >
-              <Sparkles className="h-3 w-3" />
-              14 علمی پرامپٹس
             </Button>
           </div>
         </div>

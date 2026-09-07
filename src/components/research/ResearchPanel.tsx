@@ -204,7 +204,7 @@ export const ResearchPanel = () => {
               className="h-7 text-xs gap-1 px-2 shrink-0"
             >
               <FileInput className="h-3.5 w-3.5" />
-              <span>Canvas میں داخل کریں</span>
+              <span>{t("research.insert_into_canvas", "Canvas میں داخل کریں")}</span>
             </Button>
           )}
           {assistModes.length === 0 && islamicQueriesLimit > 0 && (

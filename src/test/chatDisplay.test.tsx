@@ -93,9 +93,21 @@ describe("ChatDisplay — baseline (SPEC M10 §1.2 pre-merge snapshot)", () => {
     expect(screen.queryByText(/3/)).not.toBeInTheDocument();
   });
 
-  it("always narrows sources via SourcePicker — no mode gate left to hide it behind", () => {
+  it("always offers SourcePicker via the + hub — no mode gate hides it, no separate row either (SPEC M10 §1.3)", () => {
     renderChat({ onSelectedDomainsChange: vi.fn() });
+    // Consolidated into the hub popover now — not a standalone row, and
+    // closed by default, so its own button is absent until opened.
+    expect(screen.queryByRole("button", { name: en["research.sources_label"] })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: en["research.hub_open"] }));
     expect(screen.getByRole("button", { name: en["research.sources_label"] })).toBeInTheDocument();
+  });
+
+  it("shows a dot on the hub button when sources are narrowed, hides it once the hub is open", () => {
+    renderChat({ onSelectedDomainsChange: vi.fn(), selectedDomains: ["tanzil"] });
+    const hubButton = screen.getByRole("button", { name: en["research.hub_open"] });
+    expect(hubButton.querySelector(".bg-primary")).toBeTruthy();
+    fireEvent.click(hubButton);
+    expect(hubButton.querySelector(".bg-primary")).toBeNull();
   });
 
   it("disables Send with no query, and re-enables once text is typed", () => {
@@ -106,6 +118,30 @@ describe("ChatDisplay — baseline (SPEC M10 §1.2 pre-merge snapshot)", () => {
   it("shows the sign-in message instead of the limit message when signed out", () => {
     renderChat({ isSignedIn: false, researchLimitReached: true });
     expect(screen.getByText(en["research.sign_in_required"])).toBeInTheDocument();
+  });
+
+  it("offers assist modes (ModeChips) inside the hub, and toggling one calls back", () => {
+    const onAssistModesChange = vi.fn();
+    renderChat({ onAssistModesChange, assistModes: [] });
+    fireEvent.click(screen.getByRole("button", { name: en["research.hub_open"] }));
+    fireEvent.click(screen.getByText(en["research.chip_spelling"]));
+    expect(onAssistModesChange).toHaveBeenCalledWith(["spelling"]);
+  });
+
+  it("closes the hub and opens the scholarly-prompts modal from its row", () => {
+    renderChat({ onSelectedDomainsChange: vi.fn() });
+    fireEvent.click(screen.getByRole("button", { name: en["research.hub_open"] }));
+    fireEvent.click(screen.getByText(en["research.scholarly_prompts"]));
+    // The hub's own dialog role should be gone (it closed)...
+    expect(screen.queryByRole("dialog", { name: en["research.hub_open"] })).not.toBeInTheDocument();
+    // ...and the prompts modal's own heading/search should be reachable
+    // instead (ScholarlyPromptModal renders when isOpen is true).
+    expect(screen.queryByRole("button", { name: en["research.sources_label"] })).not.toBeInTheDocument();
+  });
+
+  it("hub button is absent entirely when neither sources nor assist modes are offered", () => {
+    renderChat();
+    expect(screen.queryByRole("button", { name: en["research.hub_open"] })).not.toBeInTheDocument();
   });
 });
 
