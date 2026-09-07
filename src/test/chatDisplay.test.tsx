@@ -6,15 +6,19 @@ import type { ChatMessage } from "@/components/research/types";
 import en from "@/locales/en.json";
 
 /**
- * SPEC M10 §1.2 — a baseline for the Research+Agent merge. ChatDisplay.tsx
+ * SPEC M10 §1.1/§1.2 — a baseline for the Research+Agent merge. ChatDisplay.tsx
  * (492 lines) and useResearchChat.ts had NO direct test coverage before this
  * file — the only existing net, workbenchKeepMounted.test.tsx, fully stubs
  * ResearchPanel and never exercises this component's own rendering. Pinning
- * the current render pipeline (message list, sources indicator, mode
- * switcher visibility) BEFORE extending ChatDisplay's ListItem union with
- * agent-produced turns, so a regression in existing behavior fails loudly
- * instead of silently — the same discipline the M10 audit itself flagged
- * missing (Phase 5's "31 of 182 test files are component tests" gap).
+ * the current render pipeline (message list, sources indicator) BEFORE
+ * extending ChatDisplay's ListItem union with agent-produced turns, so a
+ * regression in existing behavior fails loudly instead of silently — the
+ * same discipline the M10 audit itself flagged missing (Phase 5's "31 of
+ * 182 test files are component tests" gap).
+ *
+ * No more اسلامی/عمومی mode prop as of §1.1 — ChatDisplay no longer takes a
+ * `mode`/`onModeChange` pair at all, so there is nothing "mode switcher
+ * visibility" to pin here anymore; ResearchModeSwitcher.tsx was deleted.
  */
 
 const t = ((key: string, fallback?: string) =>
@@ -66,12 +70,12 @@ describe("ChatDisplay — baseline (SPEC M10 §1.2 pre-merge snapshot)", () => {
     expect(screen.getByText(/زکوٰۃ کا نصاب ساڑھے باون تولہ چاندی ہے/)).toBeInTheDocument();
   });
 
-  it("shows the sources-ready indicator only in islamic mode while querying", () => {
+  it("shows the sources-ready indicator only while querying, and only with a nonzero count", () => {
     const messages: ChatMessage[] = [{ role: "user", content: "q" }];
     const { rerender } = render(
       <MemoryRouter>
         <ChatDisplay {...baseProps({
-          messages, isQuerying: true, mode: "islamic",
+          messages, isQuerying: true,
           sourcesReadyInfo: { count: 3, domains: ["tanzil"] },
         })} />
       </MemoryRouter>,
@@ -81,24 +85,17 @@ describe("ChatDisplay — baseline (SPEC M10 §1.2 pre-merge snapshot)", () => {
     rerender(
       <MemoryRouter>
         <ChatDisplay {...baseProps({
-          messages, isQuerying: true, mode: "general",
-          sourcesReadyInfo: { count: 3, domains: ["tanzil"] },
+          messages, isQuerying: true,
+          sourcesReadyInfo: { count: 0, domains: [] },
         })} />
       </MemoryRouter>,
     );
     expect(screen.queryByText(/3/)).not.toBeInTheDocument();
   });
 
-  it("renders the mode switcher only when onModeChange is passed", () => {
-    const { rerender } = renderChat({ mode: "islamic", onModeChange: vi.fn() });
-    expect(screen.getByRole("button", { name: en["research.mode_label"] })).toBeInTheDocument();
-
-    rerender(
-      <MemoryRouter>
-        <ChatDisplay {...baseProps({ mode: "islamic", onModeChange: undefined })} />
-      </MemoryRouter>,
-    );
-    expect(screen.queryByRole("button", { name: en["research.mode_label"] })).not.toBeInTheDocument();
+  it("always narrows sources via SourcePicker — no mode gate left to hide it behind", () => {
+    renderChat({ onSelectedDomainsChange: vi.fn() });
+    expect(screen.getByRole("button", { name: en["research.sources_label"] })).toBeInTheDocument();
   });
 
   it("disables Send with no query, and re-enables once text is typed", () => {

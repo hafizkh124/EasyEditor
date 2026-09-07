@@ -1,29 +1,25 @@
-import { BookOpen, Sparkles, Search, MessageCircle } from "lucide-react";
+import { BookOpen, Search, MessageCircle, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
-import type { ResearchMode } from "./ResearchModeSwitcher";
 
 interface EmptyStateProps {
-  mode: ResearchMode;
   onSuggestionClick: (text: string) => void;
   t: import("@/lib/i18n").Translator;
 }
 
-const SUGGESTIONS: Record<ResearchMode, { icon: typeof Search; labelKey: string; queryKey: string }[]> = {
-  islamic: [
-    { icon: BookOpen, labelKey: "research.suggestion_islamic_1", queryKey: "research.suggestion_islamic_1_query" },
-    { icon: Search, labelKey: "research.suggestion_islamic_2", queryKey: "research.suggestion_islamic_2_query" },
-    { icon: MessageCircle, labelKey: "research.suggestion_islamic_3", queryKey: "research.suggestion_islamic_3_query" },
-  ],
-  general: [
-    { icon: Search, labelKey: "research.suggestion_general_1", queryKey: "research.suggestion_general_1_query" },
-    { icon: MessageCircle, labelKey: "research.suggestion_general_2", queryKey: "research.suggestion_general_2_query" },
-    { icon: Sparkles, labelKey: "research.suggestion_general_3", queryKey: "research.suggestion_general_3_query" },
-  ],
-};
+/**
+ * SPEC M10 §1.1 — the اسلامی/عمومی mode is gone, so there is only ever one
+ * suggestion set now (islamic-search's own auto-strictness handles a
+ * genuinely general question — see useResearchChat's runQuery). The old
+ * "general" suggestions/welcome copy are dead: nothing calls this with a
+ * different mode anymore.
+ */
+const SUGGESTIONS = [
+  { icon: BookOpen, labelKey: "research.suggestion_islamic_1", queryKey: "research.suggestion_islamic_1_query" },
+  { icon: Search, labelKey: "research.suggestion_islamic_2", queryKey: "research.suggestion_islamic_2_query" },
+  { icon: MessageCircle, labelKey: "research.suggestion_islamic_3", queryKey: "research.suggestion_islamic_3_query" },
+] as const;
 
-const EmptyState = ({ mode, onSuggestionClick, t }: EmptyStateProps) => {
-  const suggestions = SUGGESTIONS[mode] ?? SUGGESTIONS.general;
-
+const EmptyState = ({ onSuggestionClick, t }: EmptyStateProps) => {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       <motion.div
@@ -43,7 +39,7 @@ const EmptyState = ({ mode, onSuggestionClick, t }: EmptyStateProps) => {
         transition={{ delay: 0.1, duration: 0.3 }}
         className="text-xl font-semibold text-foreground mb-2"
       >
-        {mode === "islamic" ? t("research.welcome_islamic") : t("research.welcome")}
+        {t("research.welcome_islamic")}
       </motion.h3>
 
       <motion.p
@@ -52,7 +48,7 @@ const EmptyState = ({ mode, onSuggestionClick, t }: EmptyStateProps) => {
         transition={{ delay: 0.2, duration: 0.3 }}
         className="text-sm text-muted-foreground max-w-md mb-8"
       >
-        {mode === "islamic" ? t("research.welcome_islamic_hint") : t("research.welcome_general_hint")}
+        {t("research.welcome_islamic_hint")}
       </motion.p>
 
       <motion.div
@@ -61,7 +57,7 @@ const EmptyState = ({ mode, onSuggestionClick, t }: EmptyStateProps) => {
         transition={{ delay: 0.35, duration: 0.3 }}
         className="grid gap-2 w-full max-w-md sm:grid-cols-1"
       >
-        {suggestions.map((s, i) => {
+        {SUGGESTIONS.map((s, i) => {
           const label = t(s.labelKey as import("@/lib/i18n").TranslationKey);
           const query = t(s.queryKey as import("@/lib/i18n").TranslationKey) || label;
           if (!label) return null;

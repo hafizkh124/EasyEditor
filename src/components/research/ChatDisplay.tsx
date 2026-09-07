@@ -2,7 +2,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Send, Loader2, BookOpen, Copy, Sparkles, MessageSquarePlus, RefreshCw,
+  Send, Loader2, Copy, Sparkles, MessageSquarePlus, RefreshCw,
   Wrench, ChevronRight, ChevronDown, AlertTriangle, CheckCircle2, Undo2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +22,6 @@ import { ScholarlyPromptModal } from "./ScholarlyPromptModal";
 import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
 import { useSubmitGuard } from "@/hooks/useSubmitGuard";
 import type { ResearchAssistMode } from "@/lib/prompts";
-import ResearchModeSwitcher, { type ResearchMode } from "./ResearchModeSwitcher";
 import SourcePicker from "./SourcePicker";
 import { editorRoute } from "@/lib/routes";
 import { DocumentBox } from "./chat/DocumentBox";
@@ -52,8 +51,6 @@ interface ChatDisplayProps {
   isSignedIn?: boolean;
   chatEndRef: React.RefObject<HTMLDivElement>;
   t: import("@/lib/i18n").Translator;
-  mode?: ResearchMode;
-  onModeChange?: (mode: ResearchMode) => void;
   sourcesReadyInfo?: { count: number; domains: string[] } | null;
   citations?: CitationItem[];
   assistModes?: ResearchAssistMode[];
@@ -74,13 +71,11 @@ interface ChatDisplayProps {
   agent?: AgentRunView;
 }
 
-const ISLAMIC_QUERY_MARKERS = /(?:قرآن|قراٰن|قُرآن|حدیث|حديث|آیت|آية|آیات|آيات|اَیات|سورۃ|سورة|نماز|روزہ|روزه|زکوٰۃ|زكاة|حج|عمرہ|عمرة|نکاح|طلاق|توبہ|توبة|صدقہ|صدقة|الله|اللہ|اللّٰہ|سنت|سنة|فقہ|فقه|تفسیر|تفسير|نبی|نبي|رسول|صحابہ|صحابة|إسلام|اسلام|sahaba|quran|qur'?an|hadith|hadis|surah|ayah|prophet|islam(?:ic)?)/i;
-
 const ChatDisplay = ({
   messages, isQuerying, query, onQueryChange, onSendQuery, isRefining,
   lastAssistantIdx, onRefine, onCopyOutput, onClearChat, onRegenerate,
   researchLimitReached, isSignedIn = false, chatEndRef: _chatEndRef, t,
-  mode = "general", onModeChange, sourcesReadyInfo, citations = [],
+  sourcesReadyInfo, citations = [],
   assistModes = [], onAssistModesChange,
   selectedDomains = [], onSelectedDomainsChange,
   requireArabicMatn = false, onRequireArabicMatnChange, onContinue,
@@ -118,17 +113,8 @@ const ChatDisplay = ({
     return false;
   }, [lastMsg]);
 
-  const showSourcesIndicator = mode === "islamic" && sourcesReadyInfo != null && sourcesReadyInfo.count > 0;
+  const showSourcesIndicator = sourcesReadyInfo != null && sourcesReadyInfo.count > 0;
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
-
-  const [islamicHintDismissed, setIslamicHintDismissed] = useState<boolean>(() => {
-    try { return sessionStorage.getItem("islamicHintDismissed") === "1"; } catch { return false; }
-  });
-  const queryLooksIslamic = useMemo(
-    () => query.trim().length >= 3 && ISLAMIC_QUERY_MARKERS.test(query),
-    [query],
-  );
-  const showIslamicHint = mode === "general" && queryLooksIslamic && !islamicHintDismissed;
 
   type ListItem =
     | { type: "empty" }
@@ -159,14 +145,14 @@ const ChatDisplay = ({
   const listItems = useMemo(() => {
     const items: ListItem[] = [];
     if (messages.length === 0 && !hasAgentActivity) items.push({ type: "empty" });
-    if (mode === "islamic" && citations.length > 0) items.push({ type: "citations" });
+    if (citations.length > 0) items.push({ type: "citations" });
     messages.forEach((msg, i) => items.push({ type: "message", index: i, msg }));
     if (hasAgentActivity) items.push({ type: "agent_run" });
     if (showSourcesIndicator && isQuerying) items.push({ type: "sources_ready" });
     if (isQuerying && messages[messages.length - 1]?.role !== "assistant") items.push({ type: "typing" });
     items.push({ type: "spacer" });
     return items;
-  }, [messages, mode, citations.length, showSourcesIndicator, isQuerying, hasAgentActivity]);
+  }, [messages, citations.length, showSourcesIndicator, isQuerying, hasAgentActivity]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
@@ -185,7 +171,7 @@ const ChatDisplay = ({
     let content: React.ReactNode = null;
 
     if (item.type === "empty") {
-      content = <EmptyState mode={mode} onSuggestionClick={handleSuggestionClick} t={t} />;
+      content = <EmptyState onSuggestionClick={handleSuggestionClick} t={t} />;
     } else if (item.type === "citations") {
       content = <CitationPanel citations={citations} t={t} />;
     } else if (item.type === "message") {
@@ -523,23 +509,6 @@ const ChatDisplay = ({
             <ModeChips modes={assistModes} onModesChange={onAssistModesChange} disabled={isQuerying} t={t} />
           </div>
         )}
-        {showIslamicHint && (
-          <div className="flex items-center gap-2 max-w-3xl mx-auto rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 px-3 py-2">
-            <BookOpen className="h-4 w-4 text-blue-500 shrink-0" />
-            <p className="text-xs flex-1 text-blue-700 dark:text-blue-400">{t("research.islamic_hint")}</p>
-            {onModeChange && (
-              <Button size="sm" variant="default" className="h-7 text-xs px-2"
-                onClick={() => { onModeChange("islamic"); setIslamicHintDismissed(true); }}>
-                {t("research.islamic_hint_switch")}
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" className="h-7 text-xs px-2"
-              onClick={() => { setIslamicHintDismissed(true); try { sessionStorage.setItem("islamicHintDismissed", "1"); } catch { /* no-op */ } }}>
-              {t("research.islamic_hint_dismiss")}
-            </Button>
-          </div>
-        )}
-
         {/* Why Send is disabled — a guest, or an account out of tokens, saw
             nothing here before; Ctrl+Enter and the button both did nothing
             silently (SPEC-M9 QA finding). */}
@@ -548,7 +517,7 @@ const ChatDisplay = ({
             {!isSignedIn
               ? t("research.sign_in_required", "تحقیقی سوالات بھیجنے کے لیے سائن اِن کریں — اوپر دائیں طرف \"سائن اِن\" بٹن دبائیں۔")
               : t(
-                  mode === "islamic" ? "research.islamic_limit_reached" : "research.limit_reached",
+                  "research.islamic_limit_reached",
                   "اس عمل کے لیے آپ کے پاس کافی ٹوکنز نہیں ہیں۔ براہ کرم ٹاپ اپ کریں یا پلان اپ گریڈ کریں۔",
                 )}
           </p>
@@ -568,7 +537,7 @@ const ChatDisplay = ({
               onChange={(e) => { onQueryChange(e.target.value); autoResize(); }}
               onFocus={() => setInputFocused(true)}
               onBlur={() => setInputFocused(false)}
-              placeholder={mode === "islamic" ? t("research.ask_placeholder_islamic") : t("research.ask_placeholder")}
+              placeholder={t("research.ask_placeholder_islamic")}
               aria-label={t("research.ask_placeholder")}
               dir={isRtlQuery ? "rtl" : "ltr"}
               className={cn(
@@ -584,7 +553,7 @@ const ChatDisplay = ({
                 // (disabled); Ctrl+Enter used to just do nothing here.
                 if (!isSignedIn) { toast.error(t("research.sign_in_required")); return; }
                 if (researchLimitReached) {
-                  toast.error(t(mode === "islamic" ? "research.islamic_limit_reached" : "research.limit_reached"));
+                  toast.error(t("research.islamic_limit_reached"));
                   return;
                 }
                 guardedSendQuery();
@@ -602,8 +571,7 @@ const ChatDisplay = ({
           </div>
           <div className="px-3 pb-2 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              {onModeChange && <ResearchModeSwitcher mode={mode} onModeChange={onModeChange} t={t} />}
-              {mode === "islamic" && onSelectedDomainsChange && (
+              {onSelectedDomainsChange && (
                 <SourcePicker
                   selected={selectedDomains}
                   onSelectedChange={onSelectedDomainsChange}
@@ -633,24 +601,10 @@ const ChatDisplay = ({
         isOpen={isPromptModalOpen}
         onClose={() => setIsPromptModalOpen(false)}
         onSelectPrompt={(promptText: string, prompt: ScholarlyPromptDef) => {
-          // Route citation-heavy prompts through the grounded Islamic engine so
-          // references come from the corpus, not an ungrounded general LLM.
-          // Auto-switch only when it's safe (no conversation/draft to discard) —
-          // switching mode with content on screen triggers a confirm dialog, so
-          // in that case we advise the user to switch manually instead.
-          if (prompt.grounded && mode !== "islamic") {
-            const canAutoSwitch = messages.length === 0 && !query.trim();
-            if (canAutoSwitch && onModeChange) {
-              onModeChange("islamic");
-              onQueryChange(promptText);
-              toast.info(t("research.prompt_switched_islamic"));
-            } else {
-              onQueryChange(promptText);
-              toast.info(t("research.prompt_switch_manual"));
-            }
-          } else {
-            onQueryChange(promptText);
-          }
+          // SPEC M10 §1.1 — every query is grounded through islamic-search
+          // now (see useResearchChat's runQuery), so a "grounded" prompt no
+          // longer needs a mode switch before it can be sent.
+          onQueryChange(promptText);
           if (!prompt.corpusReady) {
             toast.warning(t("research.prompt_corpus_pending"));
           }
