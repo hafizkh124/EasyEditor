@@ -3,9 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { useLanguage } from "@/contexts/LanguageContext";
-import type { ChatMessage, Source } from "@/components/research/types";
+import type { ChatMessage } from "@/components/research/types";
 import type { CitationItem } from "@/components/research/CitationPanel";
-import { streamResearchQuery, streamIslamicQuery, assistResearchQuery } from "@/lib/research/streamers";
+import { streamIslamicQuery, assistResearchQuery } from "@/lib/research/streamers";
 import { toSelectedDomains } from "@/lib/research/sources";
 import type { ResearchAssistMode } from "@/lib/prompts";
 import {
@@ -37,9 +37,7 @@ function mergeCitations(existing: CitationItem[], fetched: CitationItem[]): Cita
 interface UseResearchChatArgs {
   user: User | null;
   session: Session | null;
-  mode: "general" | "islamic";
   tier: string;
-  sources: Source[];
   /** Islamic-mode source narrowing. EMPTY = every source (the default) —
    *  `toSelectedDomains` is what turns that into the `undefined` the backend
    *  reads as ALL_DOMAINS. Sending `[]` straight through would search nothing. */
@@ -47,7 +45,6 @@ interface UseResearchChatArgs {
   /** Corpus Atlas finding #7 — restrict citations to rows with real Arabic
    *  matn (content_ar), not the corpus's declared reading language. */
   requireArabicMatn: boolean;
-  strictMode: boolean;
   researchLimitReached: boolean;
   islamicLimitReached: boolean;
   assistModes: ResearchAssistMode[];
@@ -56,7 +53,7 @@ interface UseResearchChatArgs {
 
 export function useResearchChat(args: UseResearchChatArgs) {
   const {
-    user, session, mode, tier, sources, selectedDomains, requireArabicMatn, strictMode,
+    user, session, tier, selectedDomains, requireArabicMatn,
     researchLimitReached, islamicLimitReached, assistModes, refetch,
   } = args;
   const { t } = useLanguage();
@@ -96,7 +93,14 @@ export function useResearchChat(args: UseResearchChatArgs) {
         id: sessionIdRef.current,
         userId,
         title,
-        mode: mode === "islamic" ? "islamic" : "general",
+        // SPEC M10 §1.1 — every query now goes through islamic-search
+        // (which auto-derives strict vs. referenced itself), so there is no
+        // more caller-chosen mode to tag a session with. Kept as "islamic"
+        // rather than dropping the column: older "general" sessions remain
+        // reachable individually via the sidebar (listResearchSessions /
+        // loadResearchSession don't filter by mode), just no longer
+        // auto-resumed as "latest" — see loadRequestedOrLatest below.
+        mode: "islamic",
         messages: updatedMessages,
         citations: updatedCitations,
         selectedDomains,
@@ -113,7 +117,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
     } catch {
       log.debug("research_sessions table not available yet");
     }
-  }, [userId, mode, selectedDomains]);
+  }, [userId, selectedDomains]);
 
   // If the URL has `?session=<id>`, the global SidebarHistory has navigated
   // us into a specific past session — load THAT one instead of the latest.
@@ -138,7 +142,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
         next.delete("session");
         setSearchParams(next, { replace: true });
       }
-      const data = await loadLatestResearchSession(userId, mode === "islamic" ? "islamic" : "general");
+      const data = await loadLatestResearchSession(userId, "islamic");
       if (data) {
         sessionIdRef.current = data.id;
         setActiveSessionId(data.id);
@@ -148,7 +152,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
     } catch {
       log.debug("research_sessions table not available yet");
     }
-  }, [userId, mode, requestedSessionId, searchParams, setSearchParams]);
+  }, [userId, requestedSessionId, searchParams, setSearchParams]);
 
   useEffect(() => {
     // Never reset while a stream is actively writing into `messages` — a
@@ -212,67 +216,55 @@ export function useResearchChat(args: UseResearchChatArgs) {
       return;
     }
 
-    if (mode === "islamic") {
-      let finalCitations: CitationItem[] = citations;
-      // This query's own sources, in islamic-search's numbering order — kept
-      // separate from `finalCitations` (the session-wide merged list) so the
-      // answer's [N] markers can be resolved against the right array. See
-      // ChatMessage.sourceCitations.
-      let queryCitations: CitationItem[] = [];
-      await streamIslamicQuery({
-        query: userContent,
-        selectedDomains: toSelectedDomains(selectedDomains),
-        requireArabicMatn,
-        strictMode,
-        chatHistory: prevMessages,
-        tier,
-        onDelta,
-        onSourcesReady: (count, domains, fetched) => {
-          setSourcesReadyInfo({ count, domains });
-          queryCitations = fetched;
-          const merged = mergeCitations(citations, fetched);
-          finalCitations = merged;
-          setCitations(merged);
-        },
-        onDone: () => {
-          finish();
-          // Token deduction handled server-side — just refetch wallet balance
-          if (user) refetch();
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            const next = last?.role === "assistant"
-              ? prev.map((m, i) => (i === prev.length - 1 ? { ...m, sourceCitations: queryCitations } : m))
-              : prev;
-            saveSession(next, finalCitations);
-            return next;
-          });
-        },
-        onError: (err) => { toast.error(err); finish(); },
-      });
-    } else {
-      await streamResearchQuery({
-        query: userContent,
-        sources,
-        strictMode,
-        chatHistory: prevMessages,
-        mode,
-        onDelta,
-        onDone: () => {
-          finish();
-          // Token deduction handled server-side — just refetch wallet balance
-          if (user) refetch();
-        },
-        onError: (err) => { toast.error(err); finish(); },
-      });
-    }
-  }, [mode, citations, strictMode, tier, sources, selectedDomains, requireArabicMatn, user, refetch, saveSession, appendAssistantChunk, assistModes, t]);
+    // SPEC M10 §1.1 — no more caller-chosen اسلامی/عمومی mode: every
+    // non-assist query goes through islamic-search, which now derives
+    // strictness itself from what it actually retrieves (real corpus hits
+    // ⇒ grounded; none ⇒ general knowledge, marked 📌). `strictMode` is
+    // deliberately omitted (not `false`) so the server treats it as
+    // "derive it", not as an explicit override — see streamIslamicQuery's
+    // own doc comment.
+    let finalCitations: CitationItem[] = citations;
+    // This query's own sources, in islamic-search's numbering order — kept
+    // separate from `finalCitations` (the session-wide merged list) so the
+    // answer's [N] markers can be resolved against the right array. See
+    // ChatMessage.sourceCitations.
+    let queryCitations: CitationItem[] = [];
+    await streamIslamicQuery({
+      query: userContent,
+      selectedDomains: toSelectedDomains(selectedDomains),
+      requireArabicMatn,
+      chatHistory: prevMessages,
+      tier,
+      onDelta,
+      onSourcesReady: (count, domains, fetched) => {
+        setSourcesReadyInfo({ count, domains });
+        queryCitations = fetched;
+        const merged = mergeCitations(citations, fetched);
+        finalCitations = merged;
+        setCitations(merged);
+      },
+      onDone: () => {
+        finish();
+        // Token deduction handled server-side — just refetch wallet balance
+        if (user) refetch();
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          const next = last?.role === "assistant"
+            ? prev.map((m, i) => (i === prev.length - 1 ? { ...m, sourceCitations: queryCitations } : m))
+            : prev;
+          saveSession(next, finalCitations);
+          return next;
+        });
+      },
+      onError: (err) => { toast.error(err); finish(); },
+    });
+  }, [citations, tier, selectedDomains, requireArabicMatn, user, refetch, saveSession, appendAssistantChunk, assistModes, t]);
 
   const handleSendQuery = async () => {
     if (!query.trim() || !session?.access_token) return;
-    // Assist modes always bill against research quota regardless of tab.
-    const limitReached = assistModes.length > 0
-      ? researchLimitReached
-      : mode === "islamic" ? islamicLimitReached : researchLimitReached;
+    // Assist modes bill against research quota; every other query now goes
+    // through islamic-search (SPEC M10 §1.1), so it bills against that quota.
+    const limitReached = assistModes.length > 0 ? researchLimitReached : islamicLimitReached;
     if (limitReached) { toast.error(t("research.limit_reached")); return; }
 
     const userMsg: ChatMessage = { role: "user", content: query };
@@ -291,10 +283,9 @@ export function useResearchChat(args: UseResearchChatArgs) {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (!lastUserMsg || !session?.access_token) return;
 
-    // Assist modes always bill against research quota regardless of tab.
-    const limitReached = assistModes.length > 0
-      ? researchLimitReached
-      : mode === "islamic" ? islamicLimitReached : researchLimitReached;
+    // Assist modes bill against research quota; every other query now goes
+    // through islamic-search (SPEC M10 §1.1), so it bills against that quota.
+    const limitReached = assistModes.length > 0 ? researchLimitReached : islamicLimitReached;
     if (limitReached) { toast.error(t("research.limit_reached")); return; }
 
     const cutoff = messages.length - 1 - lastAssistantIdx >= 0
@@ -410,8 +401,7 @@ export function useResearchChat(args: UseResearchChatArgs) {
 
   const handleContinue = async () => {
     if (!session?.access_token) return;
-    const limitReached = mode === "islamic" ? islamicLimitReached : researchLimitReached;
-    if (limitReached) { toast.error(t("research.limit_reached")); return; }
+    if (islamicLimitReached) { toast.error(t("research.limit_reached")); return; }
 
     const continueMsg: ChatMessage = { role: "user", content: t("research.continue_prompt", "Continue from where you left off. Do not repeat what was already said.") };
     const prevMessages = [...messages];

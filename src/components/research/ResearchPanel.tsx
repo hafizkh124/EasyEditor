@@ -2,16 +2,6 @@ import { useState, useEffect } from "react";
 import { FileInput } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useLimitReached } from "@/hooks/useLimitReached";
@@ -19,7 +9,6 @@ import { useCanAfford } from "@/hooks/useTokenBalance";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateStored } from "@/lib/i18n";
 import ChatDisplay from "@/components/research/ChatDisplay";
-import { type ResearchMode } from "@/components/research/ResearchModeSwitcher";
 import { useResearchChat } from "@/hooks/useResearchChat";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { markdownToHtml } from "@/lib/editor/htmlText";
@@ -41,13 +30,28 @@ function usePersistedState<T>(key: string, initial: T, parse: (raw: string) => T
   return [value, update];
 }
 
+/**
+ * SPEC M10 §1.1 — the اسلامی/عمومی mode switch is gone. Every query now goes
+ * through islamic-search, which derives strictness itself from what it
+ * actually retrieves (see useResearchChat's runQuery). There is therefore no
+ * more mode to persist, switch, or confirm-before-discarding — this file
+ * used to own all three (`research_mode`, `handleModeChange`, the
+ * mode-switch AlertDialog); none of that is needed anymore.
+ */
 export const ResearchPanel = () => {
   const { user, session } = useAuth();
   const { t } = useLanguage();
   const { subscription, refetch } = useSubscription();
   const tier = subscription?.tier ?? "free";
-  
+
   const workspaceCtx = useOptionalWorkspace();
+
+  const {
+    used: islamicQueriesUsed,
+    limit: islamicQueriesLimit,
+  } = useLimitReached("islamic");
+  const { canAfford: canAffordIslamic } = useCanAfford("islamic", 1);
+  const islamicLimitReached = !canAffordIslamic;
 
   const {
     used: researchQueriesUsed,
@@ -57,18 +61,6 @@ export const ResearchPanel = () => {
   const { canAfford: canAffordResearch } = useCanAfford("research", 1);
   const researchLimitReached = !canAffordResearch;
 
-  const {
-    used: islamicQueriesUsed,
-    limit: islamicQueriesLimit,
-  } = useLimitReached("islamic");
-  const { canAfford: canAffordIslamic } = useCanAfford("islamic", 1);
-  const islamicLimitReached = !canAffordIslamic;
-
-  const [mode, setMode] = usePersistedState<ResearchMode>(
-    "research_mode",
-    "islamic",
-    (raw) => (raw === "islamic" || raw === "general" ? raw : "islamic"),
-  );
   const [assistModes, setAssistModes] = usePersistedState<ResearchAssistMode[]>(
     "research_assist_modes",
     [],
@@ -79,10 +71,10 @@ export const ResearchPanel = () => {
     },
   );
 
-  // Islamic-mode source narrowing. Empty = every source, which is the default
-  // and what ADR-0002 wanted; the picker only exists to opt OUT of some.
-  // Sanitised on read so a stale id from an older build cannot reach the
-  // backend (where an unknown domain is silently dropped from the fan-out).
+  // Source narrowing. Empty = every source, which is the default and what
+  // ADR-0002 wanted; the picker only exists to opt OUT of some. Sanitised on
+  // read so a stale id from an older build cannot reach the backend (where
+  // an unknown domain is silently dropped from the fan-out).
   const [selectedDomains, setSelectedDomains] = usePersistedState<string[]>(
     "research_selected_domains",
     [],
@@ -101,12 +93,9 @@ export const ResearchPanel = () => {
   const chat = useResearchChat({
     user,
     session,
-    mode,
     tier,
-    sources: [],
     selectedDomains,
     requireArabicMatn,
-    strictMode: mode === "islamic",
     researchLimitReached,
     islamicLimitReached,
     assistModes,
@@ -121,23 +110,10 @@ export const ResearchPanel = () => {
     }
   }, [workspaceCtx?.pendingWorkbenchQuery, chat, workspaceCtx]);
 
-  const [pendingMode, setPendingMode] = useState<ResearchMode | null>(null);
-
-  const handleModeChange = (next: ResearchMode) => {
-    if (next === mode) return;
-    if (chat.messages.length > 0 || chat.query.trim().length > 0) {
-      setPendingMode(next);
-      return;
-    }
-    setMode(next);
-  };
-
-  const confirmModeChange = () => {
-    if (pendingMode) setMode(pendingMode);
-    setPendingMode(null);
-  };
-
-  const activeLimitReached = mode === "islamic" ? islamicLimitReached : researchLimitReached;
+  // Assist modes bill against research quota; every other query now goes
+  // through islamic-search, so it bills against that quota (mirrors
+  // useResearchChat's own handleSendQuery/handleRegenerate guard).
+  const activeLimitReached = assistModes.length > 0 ? researchLimitReached : islamicLimitReached;
 
   // FR-4.5 — hand the latest answer to the Canvas. Only offered inside the
   // workspace; on the standalone /research page there is no Canvas to insert into.
@@ -166,12 +142,12 @@ export const ResearchPanel = () => {
               <span>Canvas میں داخل کریں</span>
             </Button>
           )}
-          {mode === "islamic" && islamicQueriesLimit > 0 && (
+          {assistModes.length === 0 && islamicQueriesLimit > 0 && (
             <span className={`text-xs font-medium px-2 py-0.5 rounded border whitespace-nowrap ${islamicLimitReached ? "text-destructive border-destructive/40 bg-destructive/5" : "text-muted-foreground border-border bg-muted"}`}>
               {islamicQueriesUsed} / {islamicQueriesLimit}
             </span>
           )}
-          {mode === "general" && (subscription?.research_queries_limit ?? 0) > 0 && (
+          {assistModes.length > 0 && (subscription?.research_queries_limit ?? 0) > 0 && (
             <span className={`text-xs font-medium px-2 py-0.5 rounded border whitespace-nowrap ${researchLimitReached ? "text-destructive border-destructive/40 bg-destructive/5" : "text-muted-foreground border-border bg-muted"}`}>
               {researchQueriesUsed} / {researchQueriesLimit}
             </span>
@@ -196,8 +172,6 @@ export const ResearchPanel = () => {
           isSignedIn={!!session}
           chatEndRef={chat.chatEndRef}
           t={t}
-          mode={mode}
-          onModeChange={handleModeChange}
           sourcesReadyInfo={chat.sourcesReadyInfo}
           citations={chat.citations}
           assistModes={assistModes}
@@ -209,19 +183,6 @@ export const ResearchPanel = () => {
           onContinue={chat.handleContinue}
         />
       </div>
-
-      <AlertDialog open={pendingMode !== null} onOpenChange={(open) => { if (!open) setPendingMode(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("research.mode_switch_title") || t("common.new_chat")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("research.mode_switch_unsaved")}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingMode(null)}>{t("common.cancel", "Cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmModeChange}>{t("common.confirm", "Confirm")}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

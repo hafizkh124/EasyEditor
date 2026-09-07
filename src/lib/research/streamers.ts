@@ -139,7 +139,15 @@ export async function streamIslamicQuery({
   /** Corpus Atlas finding #7 — restrict citations to rows with real Arabic
    *  matn (content_ar), not the corpus's declared reading language. */
   requireArabicMatn?: boolean;
-  strictMode: boolean;
+  /**
+   * SPEC M10 §1.1 — omit this (or pass `undefined`) to let islamic-search
+   * derive strictness itself from whether it actually found anything (real
+   * corpus hits ⇒ strict; none ⇒ referenced/general-knowledge, marked 📌).
+   * A boolean forces that mode regardless of what retrieval found — only
+   * pass one for a deliberate override (e.g. the agent's own background
+   * research tool intentionally never wants a flat refusal).
+   */
+  strictMode?: boolean;
   chatHistory: ChatMessage[];
   tier: string;
   onSourcesReady?: (count: number, domains: string[], citations: CitationItem[]) => void;
