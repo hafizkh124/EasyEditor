@@ -63,12 +63,21 @@ interface ChatDisplayProps {
   onRequireArabicMatnChange?: (next: boolean) => void;
   onContinue?: () => void;
   /**
-   * SPEC M10 §1.2 — present only once the merged research+agent container
-   * (a later checkpoint) is driving Plan/Auto mode. Absent (today's only
-   * caller, ResearchPanel) means exactly today's behavior: no agent-run
-   * item ever enters the timeline.
+   * SPEC M10 §1.2 — present once the merged research+agent panel's agent
+   * branch is active (an open project folder + wb.agent capability). Absent
+   * (plain research chat, no project folder) means exactly today's
+   * behavior: no agent-run item ever enters the timeline.
    */
   agent?: AgentRunView;
+  /**
+   * SPEC M10 §1.2 — replaces ChatDisplay's own built-in composer (Textarea,
+   * Send, SourcePicker, assist-mode chips, the scholarly-prompts modal —
+   * all research-only concepts) with AgentComposer when the agent branch is
+   * active. `query`/`onQueryChange`/`onSendQuery`/`researchLimitReached`
+   * and friends are still required props but go unused in that case; the
+   * caller passes inert placeholders (see ResearchPanel's agent branch).
+   */
+  composer?: React.ReactNode;
 }
 
 const ChatDisplay = ({
@@ -80,8 +89,13 @@ const ChatDisplay = ({
   selectedDomains = [], onSelectedDomainsChange,
   requireArabicMatn = false, onRequireArabicMatnChange, onContinue,
   agent,
+  composer,
 }: ChatDisplayProps) => {
   const navigate = useNavigate();
+  // Presence, not truthiness — `composer={null}` is a valid "render nothing
+  // here, AgentComposer already supplies the real one around me" signal,
+  // and a falsy check would wrongly fall through to the built-in composer.
+  const hasCustomComposer = composer !== undefined;
   const isRtlQuery = detectRtl(query);
   const guard = useSubmitGuard(500);
   const guardedSendQuery = guard(onSendQuery);
@@ -502,7 +516,14 @@ const ChatDisplay = ({
         )}
       </div>
 
-      {/* Input area */}
+      {/* Input area — overridden entirely by `composer` when the caller
+          supplies one (SPEC M10 §1.2: the merged panel's agent branch swaps
+          in AgentComposer, which has its own mode-aware Send/mention-picker/
+          dictation/hub — none of ChatDisplay's research-only composer
+          pieces below, assist chips included, apply to that mode). */}
+      {hasCustomComposer ? (
+        composer && <div className="shrink-0">{composer}</div>
+      ) : (
       <div className="px-4 pb-4 pt-2 space-y-2">
         {onAssistModesChange && (
           <div className="max-w-3xl mx-auto">
@@ -596,7 +617,9 @@ const ChatDisplay = ({
           </div>
         </div>
       </div>
+      )}
 
+      {!hasCustomComposer && (
       <ScholarlyPromptModal
         isOpen={isPromptModalOpen}
         onClose={() => setIsPromptModalOpen(false)}
@@ -611,6 +634,7 @@ const ChatDisplay = ({
           setTimeout(() => textareaRef.current?.focus(), 50);
         }}
       />
+      )}
     </div>
   );
 };

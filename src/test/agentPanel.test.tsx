@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 /**
  * SPEC-M8 P8b — the Agent tab. What must hold: with no project folder it
@@ -56,6 +57,15 @@ class FakeMediaRecorder {
 }
 
 import { AgentPanel } from "@/components/workspace/AgentPanel";
+
+// SPEC M10 §1.2 — AgentPanel now composes ChatDisplay (for the run
+// timeline), which calls useNavigate() unconditionally on mount (its
+// "open in editor" action on the last assistant message — never reachable
+// here, since the agent branch always passes messages=[], but the hook
+// still needs a Router to exist). Every render() needs this wrapper now.
+function renderPanel() {
+  return render(<AgentPanel />, { wrapper: MemoryRouter });
+}
 
 let onProgressCb: ((p: { id: string; step?: number; label?: string; kind: string; detail?: string; requestId?: string; query?: string }) => void) | null = null;
 type PanelAgentResult = {
@@ -141,25 +151,25 @@ afterEach(() => {
 describe("AgentPanel", () => {
   it("prompts to open a project folder when none is open", () => {
     pf.folder = null as unknown as typeof pf.folder;
-    render(<AgentPanel />);
+    renderPanel();
     expect(screen.getByText(/The agent works on a folder of/)).toBeInTheDocument();
   });
 
   it("defaults to Ask mode and toggles to Auto", () => {
-    render(<AgentPanel />);
+    renderPanel();
     fireEvent.click(screen.getByRole("button", { name: "Auto" }));
     // hint text switches
     expect(screen.getByText(/Every edit lands as a tracked change/)).toBeInTheDocument();
   });
 
   it("offers a Plan mode between Ask and Auto (M9 ADR-0026)", () => {
-    render(<AgentPanel />);
+    renderPanel();
     fireEvent.click(screen.getByRole("button", { name: "Plan" }));
     expect(screen.getByText(/waits for your approval before changing anything/)).toBeInTheDocument();
   });
 
   it("sends the instruction, mode, and project root to the agent", async () => {
-    render(<AgentPanel />);
+    renderPanel();
     fireEvent.click(screen.getByRole("button", { name: "Auto" }));
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
     fireEvent.change(ta, { target: { value: "tidy chapter one" } });
@@ -170,7 +180,7 @@ describe("AgentPanel", () => {
 
   it("carries the original request and the agent's question into a clarification reply", async () => {
     agentRun.mockResolvedValueOnce({ answer: "", stopReason: "needs-input", steps: 1, toolCalls: [], question: "Which chapter do you mean?" });
-    render(<AgentPanel />);
+    renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
     fireEvent.change(ta, { target: { value: "fix the spelling" } });
     fireEvent.keyDown(ta, { key: "Enter" });
@@ -189,7 +199,7 @@ describe("AgentPanel", () => {
   it("renders live progress lines as they arrive", async () => {
     let resolveRun: (v: unknown) => void = () => {};
     agentRun.mockImplementationOnce(() => new Promise((r) => { resolveRun = r as (v: unknown) => void; }));
-    render(<AgentPanel />);
+    renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
     fireEvent.change(ta, { target: { value: "what headings are there" } });
     fireEvent.keyDown(ta, { key: "Enter" });
@@ -201,21 +211,21 @@ describe("AgentPanel", () => {
   });
 
   it("opens the playbook picker on '/'", async () => {
-    render(<AgentPanel />);
+    renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
     fireEvent.change(ta, { target: { value: "/thesis" } });
     expect(await screen.findByText(/university thesis format/i)).toBeInTheDocument();
   });
 
   it("opens the chapter picker on '@'", async () => {
-    render(<AgentPanel />);
+    renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "check @body", selectionStart: 10 } });
     expect(await screen.findByText("02-body.docx")).toBeInTheDocument();
   });
 
   it("the + hub toggles a source connector and persists it (M9 Phase 1b)", async () => {
-    render(<AgentPanel />);
+    renderPanel();
     fireEvent.click(screen.getByRole("button", { name: /Add files, folders, playbooks/ }));
     const shamela = screen.getByText("Maktaba Shamela").closest("label")!.querySelector("input")!;
     expect(shamela).toBeChecked();
@@ -228,7 +238,7 @@ describe("AgentPanel", () => {
   it("collapses a finished multi-step run into a 'Ran N steps' card (M9 Phase 1b)", async () => {
     let resolveRun: (v: unknown) => void = () => {};
     agentRun.mockImplementationOnce(() => new Promise((r) => { resolveRun = r as (v: unknown) => void; }));
-    render(<AgentPanel />);
+    renderPanel();
     fireEvent.change(screen.getByPlaceholderText(/Ask, or describe a task/), { target: { value: "do a thing" } });
     fireEvent.keyDown(screen.getByPlaceholderText(/Ask, or describe a task/), { key: "Enter" });
     await waitFor(() => expect(onProgressCb).toBeTruthy());
@@ -243,7 +253,7 @@ describe("AgentPanel", () => {
   });
 
   it("imports a dropped recording and inserts it as an @mention (M9 Phase 3)", async () => {
-    render(<AgentPanel />);
+    renderPanel();
     const panel = screen.getByPlaceholderText(/Ask, or describe a task/).closest("div.flex.flex-col.h-full")!;
     // jsdom's File has no arrayBuffer() — a minimal stand-in is enough here.
     const file = { name: "درس اول.mp3", type: "audio/mpeg", arrayBuffer: async () => new ArrayBuffer(3) };
@@ -262,18 +272,18 @@ describe("AgentPanel", () => {
 
   it("offers the open document's headings as `@` mentions", async () => {
     documentOutline = ["Literature Review", "Methodology"];
-    render(<AgentPanel />);
+    renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "expand @method", selectionStart: 14 } });
     expect(await screen.findByText("§ Methodology")).toBeInTheDocument();
   });
 
   it("shows the mic only when voice transcription is available", () => {
-    const { unmount } = render(<AgentPanel />);
+    const { unmount } = renderPanel();
     expect(screen.getByRole("button", { name: "Dictate" })).toBeInTheDocument();
     unmount();
     (window as unknown as { electronAPI?: Record<string, unknown> }).electronAPI!.voice = undefined;
-    render(<AgentPanel />);
+    renderPanel();
     expect(screen.queryByRole("button", { name: "Dictate" })).not.toBeInTheDocument();
   });
 
@@ -283,7 +293,7 @@ describe("AgentPanel", () => {
       stopReason: "done", steps: 1, playbook: undefined,
       toolCalls: [{ name: "set_global_option", args: { option: "check_spelling", value: "false" }, result: { needsConsent: true, option: "check_spelling", value: "false", current: "true", message: "approve this" } }],
     });
-    render(<AgentPanel />);
+    renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
     fireEvent.change(ta, { target: { value: "turn off spell check everywhere" } });
     fireEvent.keyDown(ta, { key: "Enter" });
@@ -297,7 +307,7 @@ describe("AgentPanel", () => {
   it("answers a general-search-request from the agent via the research streamer", async () => {
     let resolveRun: (v: unknown) => void = () => {};
     agentRun.mockImplementationOnce(() => new Promise((r) => { resolveRun = r as (v: unknown) => void; }));
-    render(<AgentPanel />);
+    renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
     fireEvent.change(ta, { target: { value: "who was al-Ghazali" } });
     fireEvent.keyDown(ta, { key: "Enter" });
@@ -311,7 +321,7 @@ describe("AgentPanel", () => {
   });
 
   it("dictates a transcript into the input", async () => {
-    render(<AgentPanel />);
+    renderPanel();
     fireEvent.click(screen.getByRole("button", { name: "Dictate" }));
     // FakeMediaRecorder.start() pushed a chunk; clicking again stops → transcribe.
     fireEvent.click(await screen.findByRole("button", { name: "Stop dictation" }));
