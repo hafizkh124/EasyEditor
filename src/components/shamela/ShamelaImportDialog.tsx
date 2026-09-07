@@ -196,11 +196,18 @@ export function ShamelaImportDialog({
     setProgress(null);
 
     try {
+      if (!window.electronAPI?.shamela) {
+        // Defense-in-depth: handleReviewSelection already blocks this path
+        // before the estimate dialog ever opens, but importBooks is a real
+        // spend — never reach it on an assumption alone.
+        toast.error(translateStored("toast.shamela.desktop_only"));
+        return;
+      }
       const selected = books
         .filter((b) => selectedBooks.has(b.id))
         .map((b) => ({ id: b.id, title: b.title, author: b.author }));
 
-      const result = await window.electronAPI!.shamela.importBooks(selected);
+      const result = await window.electronAPI.shamela.importBooks(selected);
 
       if (result.cancelled) {
         toast.info(translateStoredFormat("toast.shamela.import_cancelled", { count: result.imported }));
