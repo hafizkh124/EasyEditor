@@ -45,3 +45,6 @@ verify_jwt = false
 [functions.tafsir-proxy]
 verify_jwt = false
 
+[functions.agent-model]
+verify_jwt = false
+

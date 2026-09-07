@@ -25,6 +25,7 @@ export const TOKEN_COSTS = {
   translate:      20,    // per page/segment translated
   citation_search: 5,    // per Quran/Hadith citation search (kept in line with `refine`)
   tafsir:         5,     // per Tafsir MCP tool call (web only — desktop's direct connection is free)
+  agent_step:     15,    // per model call inside the web agent loop (M10 §2.1) — desktop's own BYOK call is free
 } as const;
 
 export type ActionType = keyof typeof TOKEN_COSTS;

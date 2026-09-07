@@ -11,27 +11,11 @@
 import { ByokApiError, redactKeyFromLog } from './geminiClient.js';
 import { assertAllowedModelUrl } from '../lib/agentModelAllowlist.js';
 import { logger } from '../lib/logger.js';
+import type { OpenAiToolSchema, OpenAiMessage, OpenAiResponseMessage } from '../../shared/agent/openAiCompatWire.js';
 
 const log = logger.child('ai/openai-compat');
 
-export interface OpenAiToolSchema {
-  type: 'function';
-  function: { name: string; description: string; parameters: Record<string, unknown> };
-}
-
-export interface OpenAiMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
-  tool_call_id?: string;
-  tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>;
-}
-
-export interface OpenAiResponseMessage {
-  role: string;
-  content: string | null;
-  reasoning_content?: string | null;
-  tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>;
-}
+export type { OpenAiToolSchema, OpenAiMessage, OpenAiResponseMessage };
 
 export interface ChatCompletionRequest {
   baseUrl: string;

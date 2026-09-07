@@ -93,11 +93,31 @@ const DOMAIN_RULES: DomainRule[] = [
   },
 ];
 
+/**
+ * M10 Phase 2.1 — tools that reach Word COM or the local file system and so
+ * cannot exist on web at all, whatever the mode. `list_capabilities` already
+ * tells the model the truth about this per-machine (it is never in this set —
+ * FLOOR must always be exposed); this is the second, structural half: the
+ * model is never even offered these on web, so it cannot promise a chapter
+ * layout change or a font install it has no way to perform.
+ */
+export const NATIVE_ONLY_TOOLS = new Set<string>([
+  'typeset_print_ready', 'set_page_layout', 'convert_document', 'build_scholarly_indexes',
+  'install_font', 'install_template', 'set_global_option', 'run_task',
+  // Word's own diff engine (word.compareManuscripts) — not in the M10 plan's
+  // table verbatim, but it is exactly as Word-COM-bound as the tools above.
+  'compare_manuscript_variants',
+]);
+
 export interface ScopeContext {
   /** The free-text ask, for keyword domain detection. */
   ask?: string;
   /** A matched playbook — restricts to its steps' tools. */
   playbook?: Playbook | null;
+  /** Absent (desktop, and every pre-M10 caller) keeps today's behavior — full
+   *  registry. `'web'` strips NATIVE_ONLY_TOOLS after every other narrowing
+   *  step, so a playbook or domain match can never resurrect one. */
+  platform?: 'web' | 'desktop';
 }
 
 /**
@@ -105,7 +125,11 @@ export interface ScopeContext {
  * then the two invariants re-applied.
  */
 export function toolsFor(mode: AgentMode, ctx: ScopeContext = {}): AgentTool[] {
-  const base = toolsForMode(mode);
+  const fullBase = toolsForMode(mode);
+  // Strip native-only tools BEFORE any narrowing, so a playbook or domain
+  // match can never resurrect one via FLOOR_TOOLS/allowed.add — `modeNames`
+  // below is derived from this already-stripped list.
+  const base = ctx.platform === 'web' ? fullBase.filter((t) => !NATIVE_ONLY_TOOLS.has(t.name)) : fullBase;
   const writeCapable = mode !== 'ask';
 
   let allowed: Set<string> | null = null;
