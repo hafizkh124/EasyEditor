@@ -4,7 +4,7 @@
 // invariants must survive that: the FLOOR tools are always present, and if a
 // citable search tool is exposed in a write mode then insert_footnote is too.
 import { describe, it, expect } from 'vitest';
-import { toolsFor, FLOOR_TOOLS } from '../../shared/agent/toolScoping';
+import { toolsFor, FLOOR_TOOLS, NATIVE_ONLY_TOOLS } from '../../shared/agent/toolScoping';
 import { PLAYBOOKS } from '../../shared/playbooks/registry';
 
 const names = (mode: Parameters<typeof toolsFor>[0], ctx?: Parameters<typeof toolsFor>[1]) =>
@@ -56,5 +56,43 @@ describe('toolsFor', () => {
     const full = names('auto');
     const generic = names('auto', { ask: 'please help me with my chapter' });
     expect(generic.length).toBeGreaterThanOrEqual(full.length);
+  });
+
+  // M10 Phase 2.1 — platform: 'web' strips Word-COM/local-fs-only tools.
+  describe('platform: web', () => {
+    it('never exposes a native-only tool, with no narrowing at all', () => {
+      const n = names('auto', { platform: 'web' });
+      for (const nativeOnly of NATIVE_ONLY_TOOLS) expect(n).not.toContain(nativeOnly);
+    });
+
+    it('never exposes a native-only tool even when a playbook step names one', () => {
+      // typeset_print_ready needs a playbook whose steps include it; if none
+      // does today, this still proves the filter runs before FLOOR/allowed.
+      for (const pb of PLAYBOOKS) {
+        const n = names('auto', { platform: 'web', playbook: pb });
+        for (const nativeOnly of NATIVE_ONLY_TOOLS) expect(n, pb.id).not.toContain(nativeOnly);
+      }
+    });
+
+    it('never exposes a native-only tool even when a domain keyword names one', () => {
+      // The typeset/font/index domain rules list several NATIVE_ONLY_TOOLS.
+      for (const ask of ['نستعلیق font install کریں', 'typeset for print', 'فہرست بنائیں']) {
+        const n = names('auto', { platform: 'web', ask });
+        for (const nativeOnly of NATIVE_ONLY_TOOLS) expect(n, ask).not.toContain(nativeOnly);
+      }
+    });
+
+    it('still exposes the read/citation tools web CAN reach', () => {
+      const n = names('auto', { platform: 'web' });
+      expect(n).toContain('search_corpus');
+      expect(n).toContain('search_hadith');
+      expect(n).toContain('insert_footnote');
+    });
+
+    it('omitting platform (desktop, and every pre-M10 caller) keeps native tools available', () => {
+      const n = names('auto');
+      expect(n).toContain('typeset_print_ready');
+      expect(n).toContain('run_task');
+    });
   });
 });
