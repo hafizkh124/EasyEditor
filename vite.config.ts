@@ -174,9 +174,45 @@ export default defineConfig(({ mode }) => {
           name: "Easy Editor",
           short_name: "Easy Editor",
           description: "AI toolkit (Transcribe, Speak, OCR, Research)",
-          theme_color: "#ffffff",
-          background_color: "#ffffff",
+          // Matches index.html's own light-mode <meta name="theme-color">
+          // (#0d9488) instead of a plain white that clashed with it — a
+          // manifest has one static theme_color, no prefers-color-scheme.
+          theme_color: "#0d9488",
+          // Matches --background's light value (0 0% 96%, index.css) — the
+          // splash-screen background an install shows before the app paints.
+          background_color: "#f5f5f5",
           display: "standalone",
+          // start_url/scope/id: M10 Phase 2.4. "/" for all three — matches
+          // what "/" actually does on web today (Landing; DesktopToWorkspace
+          // only redirects the Electron build), so installing does not
+          // silently change what a first launch shows.
+          start_url: "/",
+          scope: "/",
+          id: "/",
+          // A text-editing tool needs both orientations on a tablet — "any"
+          // leaves rotation to the OS instead of locking one.
+          orientation: "any",
+          // Matches index.html's <html lang="en"> and getStoredLanguage()'s
+          // own default for a first-time visitor with no saved preference or
+          // /ur, /ar URL prefix (src/lib/i18n.ts) — the manifest's lang/dir
+          // is one static pair, so it follows the same default the app itself
+          // falls back to, not the RTL languages some users will switch to.
+          lang: "en",
+          dir: "ltr",
+          shortcuts: [
+            {
+              name: "نئی تحقیق",
+              short_name: "تحقیق",
+              url: "/workspace?panel=research",
+              icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+            },
+            {
+              name: "میرے پراجیکٹس",
+              short_name: "پراجیکٹس",
+              url: "/dashboard",
+              icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+            },
+          ],
           icons: [
             {
               src: "/icon-192.png",
