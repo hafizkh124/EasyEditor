@@ -7,8 +7,20 @@ import urllib.request
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://vdfdqtzndsrrlutbprtk.supabase.co")
-SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkZmRxdHpuZHNycml1dGJwcnRrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjQ1NjA5OSwiZXhwIjoyMDg4MDMyMDk5fQ.L22S45a-8bStpPzQJg0C05Y_V-q7_iQhP8rZ7qgR5_8")
+# SPEC M10 §5.0 — this used to fall back to a hardcoded service_role key
+# (revoke that key and rotate a new one before running this script again).
+# Both values are now required from the environment; there is no default and
+# no key is committed to source control.
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+
+if not SUPABASE_URL or not SERVICE_KEY:
+    print(
+        "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the environment "
+        "before running this script (no default is provided on purpose).",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 headers = {
     "apikey": SERVICE_KEY,

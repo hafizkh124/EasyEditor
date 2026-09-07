@@ -11,5 +11,6 @@ export interface UiDisciplineScanResult {
 }
 
 export const CHROME_DIRS: string[];
+export const APP_WIDE_DIRS: string[];
 
-export function scanChromeDirs(dirs?: string[]): UiDisciplineScanResult;
+export function scanChromeDirs(chromeDirs?: string[], appWideDirs?: string[]): UiDisciplineScanResult;

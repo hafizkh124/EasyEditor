@@ -14,5 +14,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: brokeredPreviewStorage(),
     persistSession: true,
     autoRefreshToken: true,
+    // SPEC M10 §5.0 — auth-js defaults to 'implicit', not 'pkce', when this is
+    // unset (confirmed against the installed @supabase/auth-js). The desktop
+    // OAuth callback (src/lib/desktopOauth.ts) already handles a PKCE `code`
+    // as its primary path; without this line that branch was dead and every
+    // sign-in fell through to the implicit fragment instead.
+    flowType: 'pkce',
   }
 });
