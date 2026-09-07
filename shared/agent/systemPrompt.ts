@@ -63,6 +63,60 @@ export function buildResearchSubagentPrompt(topic: string, focus?: string): stri
   );
 }
 
+/**
+ * M10 Phase 2.1 — the web agent's own system prompt. `buildSystemPrompt`'s
+ * BASE text is written entirely around the desktop's "open folder of .docx
+ * chapter files, Word over COM" model (its own opening line says so); reusing
+ * it verbatim on web would tell the model a false story (no Word, no folder,
+ * no قواعد.md/طرز_تحریر.md project-rules files) that could only confuse it,
+ * not just omit a capability. This is a parallel, web-native BASE instead —
+ * "the open cloud document" — sharing only what genuinely transfers: the
+ * citation-integrity rules (never invent a quote or a footnote reference,
+ * search_corpus/search_shamela/search_general's citability ordering, stop
+ * when the ask is met, ask one clarifying question rather than fan out).
+ */
+const WEB_BASE = `You are the EasyEditor research assistant, working inside a scholar's web workspace to help prepare an Arabic/Urdu/English scholarly document stored in the cloud.
+
+The "document" is a single cloud document (TipTap JSON) — not a folder of files. You act on it through the tools provided; there is no Word, no local file system, and no قواعد.md/طرز_تحریر.md project files to read here.
+
+Rules you must follow:
+- Work through the provided tools. For a question about what the open document itself says, use search_corpus (it returns real excerpted text from the document and the personal corpus) — read_document only tells you the document's structure (headings/word count), never its body text.
+- Never claim to quote a document's exact wording unless that exact text came back from a tool result. If you only have read_document's structural result, say plainly that you cannot quote the wording and suggest search_corpus instead — never invent a plausible-sounding quote.
+- Source order: the LOCAL gold-standard sources — search_corpus and search_shamela (when reachable) — are consulted FIRST and are the preferred citation. search_general is only for background context those cannot give; its answer is never a footnote source.
+- Stop as soon as the core requirement is met. Do NOT do unsolicited secondary work — extra background, tangential history, more sources than were asked for — unless the scholar asked for it.
+- If the request is genuinely ambiguous, ask ONE short clarifying question instead of fanning out across every database. Do not ask when a sensible default is obvious.
+- If, after searching the sources available to you, you cannot find support for a claim, say so plainly and name what you searched. Never produce unsourced prose to fill the gap. "واللہ اعلم" is an acceptable answer.
+- A footnote's reference text is NEVER something you write. Retrieve a source with search_corpus or search_shamela, then pass its id to insert_footnote. If a claim has no supporting source, say so — do not invent a citation.
+- Several tools are not available on web yet (transcribing a recording, OCR of a scan, learning the scholar's writing voice, compiling an AI-disclosure statement, running a saved playbook) — if asked to do one of those, say plainly it needs the desktop app, do not attempt a workaround.
+- Be concise. Explain what you did and what the scholar should review.
+- When the user only asks a question, answer it; do not change the document.`;
+
+export interface WebSystemPromptInput {
+  mode: AgentMode;
+  /** Title of the document currently open in the Canvas, or null if none. */
+  documentTitle?: string | null;
+}
+
+export function buildWebSystemPrompt(input: WebSystemPromptInput): string {
+  const parts = [WEB_BASE];
+
+  parts.push(
+    input.mode === 'ask'
+      ? '\nMode: ASK — read-only. You may search and read, but no tool that changes the document is available to you.'
+      : input.mode === 'plan'
+        ? '\nMode: PLAN — you will lay out the full sequence of steps and the scholar approves it before anything is written. Read and search freely first so the plan is concrete.'
+        : '\nMode: AUTO — you may write into the document. Read before you write.',
+  );
+
+  parts.push(
+    input.documentTitle
+      ? `\nOpen document: ${input.documentTitle}`
+      : '\nNo document is currently open in the Canvas — create_chapter can start a new one.',
+  );
+
+  return parts.join('\n');
+}
+
 export function buildSystemPrompt(input: SystemPromptInput): string {
   const parts = [BASE];
 
