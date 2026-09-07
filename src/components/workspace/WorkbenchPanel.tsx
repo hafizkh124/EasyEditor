@@ -8,7 +8,6 @@ import { TasksTab } from "./TasksTab";
 import { TrustTab } from "./TrustTab";
 import { AiReaderPanel } from "@/components/reader/AiReaderPanel";
 import { NotesPanel } from "@/components/reader/NotesPanel";
-import { AgentPanel } from "./AgentPanel";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { type WorkbenchTab } from "@/core/workspace/usePanelState";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -23,13 +22,19 @@ const GRID_COLS: Record<number, string> = {
 /**
  * Translate is a paid cloud edge function, so on desktop the tab goes with it.
  * The remaining tabs simply redistribute across the grid.
+ *
+ * SPEC M10 §1.2 — wb.agent is deliberately absent here now. The Research
+ * pillar's own panel (ResearchPanel.tsx) decides internally whether to show
+ * the agent's Ask/Plan/Auto surface (open project folder + capability
+ * available) or plain research chat — there is no separate "agent" tab to
+ * map a capability onto anymore. isCapabilityAvailable("wb.agent") is still
+ * a real, used check; it just no longer drives a tab of its own.
  */
 const TAB_VALUE_BY_CAPABILITY: Partial<Record<CapabilityId, WorkbenchTab>> = {
   "wb.aiReader": "aiReader",
   "wb.research": "research",
   "wb.translate": "translate",
   "wb.notes": "notes",
-  "wb.agent": "agent",
 };
 
 interface WorkbenchPanelProps {
@@ -149,11 +154,6 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
         <div className={`h-full ${workbenchTab === "notes" ? "block" : "hidden"}`}>
           <NotesPanel active={workbenchTab === "notes"} />
         </div>
-        {isCapabilityAvailable("wb.agent") && (
-          <div className={`h-full ${workbenchTab === "agent" ? "block" : "hidden"}`}>
-            <AgentPanel />
-          </div>
-        )}
         {showTaskTabs && (
           <>
             <div className={`h-full ${workbenchTab === "tasks" ? "block" : "hidden"}`}>
