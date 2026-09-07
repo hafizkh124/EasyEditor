@@ -23,4 +23,14 @@ if (typeof window !== "undefined") {
       dispatchEvent: () => {},
     }),
   });
+
+  // jsdom has never implemented scrollIntoView (jsdom/jsdom#1695) — every
+  // chat-style auto-scroll effect (ChatDisplay's bottomAnchorRef, similarly
+  // shaped effects elsewhere) throws in an uncaught passive-effect error the
+  // moment a real render exercises it, unrelated to whatever the test is
+  // actually asserting. SPEC M10 §1.2 (chatDisplay.test.tsx) is the first
+  // test to mount ChatDisplay for real and hit this.
+  if (!window.HTMLElement.prototype.scrollIntoView) {
+    window.HTMLElement.prototype.scrollIntoView = () => {};
+  }
 }
