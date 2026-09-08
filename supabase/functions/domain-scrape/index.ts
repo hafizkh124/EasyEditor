@@ -391,8 +391,15 @@ export async function handle(req: Request): Promise<Response> {
     // Debug escape hatch: fetch one URL directly, skipping search discovery.
     // Used to tell "the search engines block us" apart from "we have no egress".
     if (typeof probeUrl === "string") {
-      const probe = await fetchAndExtract(probeUrl);
-      return new Response(JSON.stringify({ probeUrl, ok: !!probe, chars: probe?.text.length ?? 0 }), {
+      let status = 0, bytes = 0, err = "";
+      try {
+        const r = await fetch(probeUrl, { headers: { "User-Agent": BROWSER_UA } });
+        status = r.status;
+        bytes = (await r.text()).length;
+      } catch (e) {
+        err = (e as Error).message;
+      }
+      return new Response(JSON.stringify({ probeUrl, status, bytes, err }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
