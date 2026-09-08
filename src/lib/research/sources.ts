@@ -9,8 +9,8 @@
  *
  * The grouping mirrors the backend's retrieval tiers rather than inventing a
  * user-facing taxonomy: a scholar deciding what to trust cares exactly about
- * the distinction the tiers encode — a verified local corpus, a third-party
- * API, or a page scraped live from someone's website.
+ * the distinction the tiers encode — a verified local corpus or a third-party
+ * API.
  *
  * Deliberately NOT listed: `shamela-index`. It is a Tier-B id the backend
  * accepts, but Shamela has never been ingested into scholarly_documents, so
