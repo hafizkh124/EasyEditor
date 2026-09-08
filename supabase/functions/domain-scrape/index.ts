@@ -3,23 +3,27 @@
  *
  * Reimplemented free (no Firecrawl, no API key) after the paid Firecrawl
  * version was retired 2026-09-08. Two-step pipeline per domain:
- *   1. Site-scoped search via DuckDuckGo's keyless HTML endpoint
- *      (`site:<host> <query>`) to find 1-2 candidate pages — this replaces
- *      Firecrawl's `/v2/search`.
+ *   1. Find 1-2 candidate pages. Tries the site's OWN search box first
+ *      (`SITE_SEARCH`, below) — live-verified 2026-09-08 to be the more
+ *      reliable source, since the free search engines are the actual weak
+ *      link (DuckDuckGo bot-blocks datacentre IPs; Bing serves results but
+ *      silently drops the `site:` operator). Falls back to Bing/DuckDuckGo
+ *      (`SEARCH_ENGINES`) for every site without a working native search.
+ *      Replaces Firecrawl's `/v2/search`.
  *   2. A plain `fetch` of each candidate with a browser-like User-Agent,
  *      parsed with linkedom and reduced to its main article text with a
  *      lightweight readability heuristic — this replaces Firecrawl's
  *      `scrapeOptions: { formats: ['markdown'], onlyMainContent: true }`.
  *
- * Response shape (unchanged): `{ results: IslamicResult[] }`.
+ * Response shape (unchanged): `{ results: IslamicResult[] }` (+ optional
+ * `diagnostics` when the caller passes `debug: true` — see ScrapeDiagnostic).
  *
- * Trade-off vs. Firecrawl: no JS rendering and no anti-bot handling. Every
- * host below was chosen because it already returns readable server-rendered
- * HTML to a plain fetch (verified during the M9 ADR-0022 whitelist pass with
- * this same User-Agent) — this reimplementation leans on that, not on
- * Firecrawl's headless-browser fallback. If a host starts requiring JS or
- * blocking non-browser UAs, it will silently return zero results here (the
- * per-domain try/catch degrades to `[]`, same as before) rather than error.
+ * Trade-off vs. Firecrawl: no JS rendering and no anti-bot handling. A host
+ * that requires either returns zero results through every path here (the
+ * per-domain try/catch degrades to `[]`, same as before) rather than error —
+ * `darulifta-deoband.com` was dropped from `DOMAINS` entirely for exactly
+ * this reason (403s a direct fetch, not just search) rather than left as
+ * permanent dead weight in the fan-out.
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // `/worker` export: same parseHTML, but without the optional `canvas` native
@@ -122,15 +126,6 @@ const DOMAINS: Record<string, DomainConfig> = {
     },
   },
   alulama:            { host: "alulama.org",             lang: "ur", type: "fatwa" },
-  "darulifta-deoband":{
-    host: "darulifta-deoband.com",
-    lang: "ur",
-    type: "fatwa",
-    citation: (u) => {
-      const m = u.match(/\/(?:fatwa|home)\/(\d+)/i) || u.match(/question\.php\?id=(\d+)/i);
-      return m ? { fatwa_number: m[1] } : {};
-    },
-  },
   "magazine-mohaddis":{ host: "magazine.mohaddis.com",   lang: "ur", type: "article" },
   mohaddis:           { host: "mohaddis.org",            lang: "ur", type: "article" },
   urdufatwa:          {
@@ -315,7 +310,10 @@ const SITE_SEARCH: Record<string, SiteSearch> = {
   //                           all 404 or fall back to the latest-articles list),
   //                           so it would return the same articles every query.
   //   urdufatwa.com, shamilaurdu.com — HTTP 500 to any search request.
-  //   darulifta-deoband.com — HTTP 403 to this pipeline's User-Agent.
+  // darulifta-deoband.com isn't listed here OR in DOMAINS above at all —
+  // it 403s this pipeline's User-Agent on a direct fetch too (not just
+  // search), so no path through this file can ever reach it. Removed
+  // 2026-09-08 rather than left as permanent dead weight in the fan-out.
   "alulama.org": {
     url: (q) => `https://alulama.org/?s=${encodeURIComponent(q)}`,
     home: "https://alulama.org/",
