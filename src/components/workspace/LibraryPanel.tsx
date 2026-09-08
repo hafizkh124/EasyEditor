@@ -41,17 +41,6 @@ interface LibraryPanelProps {
   activeDocumentWordCount?: number | null;
 }
 
-// Spelled out because Tailwind only ships classes it can see in the source —
-// a template-built `grid-cols-${n}` is purged and the tabs collapse.
-const TAB_GRID: Record<number, string> = {
-  3: "grid-cols-3",
-  4: "grid-cols-4",
-  5: "grid-cols-5",
-  6: "grid-cols-6",
-  7: "grid-cols-7",
-  8: "grid-cols-8",
-};
-
 export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = false, onNavigate, activeDocumentWordCount }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -77,7 +66,6 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
   // FR-2.5 says absent, not empty. useShamelaAvailability is the one place
   // that later grows a web-bridge branch (P7) once those surfaces are wired.
   const { available: shamelaAvailable, masterDbPath: shamelaMasterDbPath } = useShamelaAvailability();
-  const tabCount = 3 + (shamelaAvailable ? 1 : 0) + (graphEnabled ? 1 : 0) + (recipesEnabled ? 1 : 0);
 
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newProjTitle, setNewProjTitle] = useState("");
@@ -212,24 +200,27 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
               md, back to the compact h-7 (28px) once a mouse is the input —
               MobileTaskSheet.tsx documents the same split. Triggers fill it with
               h-full instead of repeating the breakpoint on every one. */}
-          <TabsList className={`grid ${TAB_GRID[tabCount]} h-11 md:h-7 bg-muted p-0.5`}>
-            <TabsTrigger value="home" className="text-xs h-full py-0 px-1 truncate">
+          {/* A grid that squeezes up to 6 columns truncated labels illegibly on a
+              narrow viewport (Phase 3 follow-up); scrolling horizontally instead
+              keeps every label intact, matching Admin.tsx's tab strip. */}
+          <TabsList className="w-full justify-start overflow-x-auto h-11 md:h-7 bg-muted p-0.5">
+            <TabsTrigger value="home" className="text-xs h-full py-0 px-2 shrink-0">
               <Home className="h-3.5 w-3.5 me-1" />
               {t("nav.home", "Home")}
             </TabsTrigger>
-            <TabsTrigger value="documents" className="text-xs h-full py-0 px-1 truncate">{t("library.tab_docs", "Docs")}</TabsTrigger>
+            <TabsTrigger value="documents" className="text-xs h-full py-0 px-2 shrink-0">{t("library.tab_docs", "Docs")}</TabsTrigger>
             {shamelaAvailable && (
-              <TabsTrigger value="shamela" className="text-xs h-full py-0 px-1 truncate">
+              <TabsTrigger value="shamela" className="text-xs h-full py-0 px-2 shrink-0">
                 <LibraryIcon className="h-3.5 w-3.5 me-1" />
                 {t("library.tab_shamela", "Shamela")}
               </TabsTrigger>
             )}
-            <TabsTrigger value="sources" className="text-xs h-full py-0 px-1 truncate">{t("library.tab_sources", "Sources")}</TabsTrigger>
+            <TabsTrigger value="sources" className="text-xs h-full py-0 px-2 shrink-0">{t("library.tab_sources", "Sources")}</TabsTrigger>
             {graphEnabled && (
-              <TabsTrigger value="graph" className="text-xs h-full py-0 px-1 truncate">{t("library.tab_graph", "Graph")}</TabsTrigger>
+              <TabsTrigger value="graph" className="text-xs h-full py-0 px-2 shrink-0">{t("library.tab_graph", "Graph")}</TabsTrigger>
             )}
             {recipesEnabled && (
-              <TabsTrigger value="recipes" className="text-xs h-full py-0 px-1 truncate">{t("library.tab_recipes", "Recipes")}</TabsTrigger>
+              <TabsTrigger value="recipes" className="text-xs h-full py-0 px-2 shrink-0">{t("library.tab_recipes", "Recipes")}</TabsTrigger>
             )}
           </TabsList>
         </div>
