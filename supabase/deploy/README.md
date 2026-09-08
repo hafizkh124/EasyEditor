@@ -68,15 +68,10 @@ New / changed functions in this batch:
 | `_shared/citationFormat.ts` | **new** | three citation styles |
 | `_shared/disciplines.ts` | new (earlier) | Tier-2 discipline registry |
 | `translate-page` | changed | accepts `genreInstruction` |
-| `domain-scrape` | changed | fatwa-portal parsers |
 | `mcp`, `backfill-embeddings` | changed | — |
 
 > Changes under `_shared/` are bundled into **every** function at deploy time,
 > so a redeploy of all functions is the right action, not just the two new ones.
-
-`domain-scrape` is intentionally **not** in `config.toml`: it does no manual
-bearer verification, so it must keep Supabase's default `verify_jwt = true`.
-Adding it with `verify_jwt = false` would expose it unauthenticated.
 
 ---
 

@@ -13,10 +13,9 @@ import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 // Query-time diacritic normalization now lives in the `search_documents_smart`
-// Postgres RPC (migration 20260517000000), and Tier C's filtering moved into
-// the separate `domain-scrape` function it calls over HTTP -- this file's own
-// copy of that helper had no remaining caller. Removed (first-contact
-// typechecking, TESTING-STRATEGY.md P3, caught it via `noUnusedLocals`).
+// Postgres RPC (migration 20260517000000). Tier C (live-scraped sites) was
+// removed along with the retired `domain-scrape` / Firecrawl path; this
+// function now fans out only to local corpus tiers and third-party APIs.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,8 +28,8 @@ const corsHeaders = {
 // happens via monthly query quota (islamic_queries_limit), not data access.
 // Per Phase 7.5 locked doctrine: only sources with working live integrations.
 // Sunnah.com (no API key obtained) and Dar-Alifta.org (persistent timeouts)
-// removed. They can be reinstated in `domain-scrape` / `islamic-api-fetch`
-// once upstream recovers or credentials are obtained.
+// removed. They can be reinstated in `islamic-api-fetch` once upstream recovers
+// or credentials are obtained.
 //
 // "hadith-api" and "tanzil" were listed here but never actually reach live
 // data: `islamic-api-fetch/index.ts` only implements dorar/alquran/quran-com
@@ -40,16 +39,13 @@ const corsHeaders = {
 // rather than left as dead weight. Tanzil's actual content still reaches
 // every query through Tier K (`tanzil` stays in TIER_K_DOMAINS below, backed
 // by the 6,236-row local corpus) — nothing is lost by dropping it here.
-// Exported so researchSources.test.ts can import the real wire contract
-// instead of regex-parsing this file's source text — see TESTING-STRATEGY.md
-// §6, "revisit once §5.1 lands."
+//
+// Tier C (live-scraped sites via the retired `domain-scrape` / Firecrawl path)
+// has been removed; the project now relies on its own scraper outside this
+// function. Exported so researchSources.test.ts can import the real wire
+// contract — see TESTING-STRATEGY.md §6.
 export const TIER_A_DOMAINS = ["dorar", "alquran", "quran-com"];
 export const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
-export const TIER_C_DOMAINS = [
-  "islamqa", "islamweb", "islamicurdubooks", "shamilaurdu",
-  "alulama", "magazine-mohaddis", "mohaddis", "urdufatwa",
-  "islamfort", "alminasa", "shamela",
-];
 
 export const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 
@@ -97,7 +93,7 @@ export const TIER_D_DISCIPLINE: Record<string, string> = {
   "classical-mustalah": "hadith_term",
 };
 
-const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS, ...TIER_D_DOMAINS];
+const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_K_DOMAINS, ...TIER_D_DOMAINS];
 
 // Surah names by number — used to fill a clean reference when a retrieved row
 // (typically a Tier-A API result) has an empty surah_name. The local tanzil
@@ -481,7 +477,6 @@ export async function handle(req: Request): Promise<Response> {
     // --- Fan-out: Tier A (always), Tier B (Pro/Ultra), Tier C (Pro/Ultra), Tier K (keyword) ---
     const tierADomains = effectiveDomains.filter((d) => TIER_A_DOMAINS.includes(d));
     const tierBDomains = effectiveDomains.filter((d) => TIER_B_DOMAINS.includes(d));
-    const tierCDomains = effectiveDomains.filter((d) => TIER_C_DOMAINS.includes(d));
     // Tier K has its own richer inference below (wantsQuran/wantsHadith/wantsFatwa)
     // instead of a strict membership check against TIER_K_DOMAINS — see that
     // block's comment. A `tierKDomains` filtered the same way as the other
@@ -549,30 +544,7 @@ export async function handle(req: Request): Promise<Response> {
       );
     }
 
-    // Tier C: call domain-scrape (live fatwa scraping — available to all)
-    if (tierCDomains.length > 0) {
-      const scrapeUrl = `${supabaseUrl}/functions/v1/domain-scrape`;
-      pushTimed("tierC:domain-scrape",
-        fetch(scrapeUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${supabaseKey}`,
-            apikey: supabaseKey,
-          },
-          body: JSON.stringify({ query, selectedDomains: tierCDomains }),
-          // Was 12s, which never matched domain-scrape's own internal 25s
-          // per-domain Firecrawl budget — this caller-side timeout always
-          // won first regardless. Live-measured 2026-08-16 (all 11 Tier-C
-          // domains fanned out together): 5.1s and 6.9s on two real runs.
-          // 8s keeps a margin without reintroducing the mismatch at a new size.
-          signal: AbortSignal.timeout(8_000),
-        })
-          .then((r) => r.ok ? r.json() : { results: [] })
-          .then((d) => d.results ?? [])
-          .catch(() => [])
-      );
-    }
+
 
     // Tier K: local DB keyword search with bilingual expansion (available to all tiers).
     // Source_type selection is INFERRED from the user's overall domain selection,
