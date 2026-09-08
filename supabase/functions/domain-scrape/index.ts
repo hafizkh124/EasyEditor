@@ -386,7 +386,16 @@ export async function handle(req: Request): Promise<Response> {
   }
 
   try {
-    const { query, selectedDomains, debug } = await req.json();
+    const { query, selectedDomains, debug, probeUrl } = await req.json();
+
+    // Debug escape hatch: fetch one URL directly, skipping search discovery.
+    // Used to tell "the search engines block us" apart from "we have no egress".
+    if (typeof probeUrl === "string") {
+      const probe = await fetchAndExtract(probeUrl);
+      return new Response(JSON.stringify({ probeUrl, ok: !!probe, chars: probe?.text.length ?? 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (!query || typeof query !== "string") {
       return new Response(JSON.stringify({ error: "Query is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -399,8 +408,6 @@ export async function handle(req: Request): Promise<Response> {
       ? selectedDomains.filter((d: string) => d in DOMAINS)
       : SUPPORTED_DOMAINS;
 
-    // Debug escape hatch: fetch given URLs directly, skipping search discovery.
-    if (debug === true && Array.isArray((arguments as unknown as never), 0)) { /* unreachable */ }
     const diagnostics: ScrapeDiagnostic[] | undefined = debug === true ? [] : undefined;
     const settled = await Promise.allSettled(
       targets.map((key) => scrapeDomain(key, DOMAINS[key], query, diagnostics)),
