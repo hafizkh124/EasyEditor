@@ -61,8 +61,7 @@ export function formatCitation(domain: string, ref: CitationRef): string {
   }
 
   // Fatwa
-  if (domain === "islamqa" || domain === "islamweb" || domain === "dar-alifta" ||
-      ref.fatwa_number !== undefined) {
+  if (ref.fatwa_number !== undefined) {
     const parts: string[] = [];
     if (ref.site) parts.push(ref.site);
     else if (domain) parts.push(domain);
@@ -90,9 +89,6 @@ function domainColor(domain: string): string {
   }
   if (domain === "alquran" || domain === "quran-com" || domain === "tanzil") {
     return "bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800/50 text-sky-800 dark:text-sky-300";
-  }
-  if (domain === "islamqa" || domain === "islamweb" || domain === "dar-alifta") {
-    return "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-300";
   }
   return "bg-muted border-border text-muted-foreground";
 }
