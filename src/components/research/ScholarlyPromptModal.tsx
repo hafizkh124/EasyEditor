@@ -109,7 +109,16 @@ export function ScholarlyPromptModal({ isOpen, onClose, onSelectPrompt }: Schola
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-foreground">{p.titleUr}</span>
-                    <Badge variant="secondary" className="text-xs px-1 py-0 font-sans dir-ltr">
+                    {/* M10 Phase 3 follow-up: was `... dir-ltr` — not a real
+                        Tailwind class (no such utility, no custom CSS rule
+                        defines it either — confirmed dead, not merely
+                        untested). titleAr is genuine Arabic script
+                        (promptsRegistry.ts), and this whole dialog's
+                        DialogContent already hardcodes dir="rtl" above, so
+                        the badge already inherited the correct direction for
+                        Arabic text — an explicit dir="ltr" here would have
+                        been the wrong fix, not just a missing one. */}
+                    <Badge variant="secondary" className="text-xs px-1 py-0 font-sans">
                       {p.titleAr}
                     </Badge>
                   </div>
@@ -133,7 +142,7 @@ export function ScholarlyPromptModal({ isOpen, onClose, onSelectPrompt }: Schola
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="text-base font-bold text-foreground">{selectedPrompt.titleUr}</h4>
-                    <span className="text-xs text-muted-foreground dir-ltr">({selectedPrompt.titleAr})</span>
+                    <span className="text-xs text-muted-foreground">({selectedPrompt.titleAr})</span>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">{selectedPrompt.descriptionUr}</p>
                   {selectedPrompt.grounded && (
