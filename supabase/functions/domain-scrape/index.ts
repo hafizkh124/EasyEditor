@@ -168,42 +168,106 @@ function unwrapDuckDuckGoLink(href: string): string | null {
   }
 }
 
-async function searchSite(host: string, query: string, limit: number): Promise<string[]> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5_000);
-  try {
-    const res = await fetch("https://html.duckduckgo.com/html/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": BROWSER_UA,
+/**
+ * Free web search, tried in order. DuckDuckGo's HTML endpoint is the best
+ * quality but rate-limits/anomaly-blocks datacentre IPs (which is exactly what
+ * an edge function is), so `lite.` and finally Bing act as fallbacks. Each
+ * engine's own result anchors are matched, then any off-engine link that is
+ * actually on the target host is accepted — a deliberately loose net, because
+ * the host filter below is what guarantees correctness, not the selector.
+ */
+const SEARCH_ENGINES: Array<{
+  name: string;
+  build: (q: string) => { url: string; init: RequestInit };
+}> = [
+  {
+    name: "ddg-html",
+    build: (q) => ({
+      url: "https://html.duckduckgo.com/html/",
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": BROWSER_UA },
+        body: new URLSearchParams({ q }),
       },
-      body: new URLSearchParams({ q: `site:${host} ${query}` }),
-      signal: controller.signal,
-    });
+    }),
+  },
+  {
+    name: "ddg-lite",
+    build: (q) => ({
+      url: "https://lite.duckduckgo.com/lite/",
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": BROWSER_UA },
+        body: new URLSearchParams({ q }),
+      },
+    }),
+  },
+  {
+    name: "bing",
+    build: (q) => ({
+      url: `https://www.bing.com/search?q=${encodeURIComponent(q)}&setlang=en`,
+      init: { headers: { "User-Agent": BROWSER_UA } },
+    }),
+  },
+];
+
+function hostMatches(url: string, host: string): boolean {
+  try {
+    const h = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    return h === host || h.endsWith("." + host);
+  } catch {
+    return false;
+  }
+}
+
+async function searchOn(
+  engine: (typeof SEARCH_ENGINES)[number],
+  host: string,
+  query: string,
+  limit: number,
+): Promise<string[]> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const { url, init } = engine.build(`site:${host} ${query}`);
+    const res = await fetch(url, { ...init, signal: controller.signal });
     clearTimeout(timeout);
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(`[domain-scrape] ${engine.name} HTTP ${res.status} for ${host}`);
+      return [];
+    }
 
     const html = await res.text();
     const { document: doc } = parseHTML(html);
 
     const urls: string[] = [];
     const seen = new Set<string>();
-    for (const a of Array.from(doc.querySelectorAll("a.result__a"))) {
+    for (const a of Array.from(doc.querySelectorAll("a"))) {
       const href = a.getAttribute("href");
       if (!href) continue;
       const real = unwrapDuckDuckGoLink(href);
-      if (!real || seen.has(real)) continue;
+      if (!real || seen.has(real) || !hostMatches(real, host)) continue;
       seen.add(real);
       urls.push(real);
       if (urls.length >= limit) break;
     }
+    if (urls.length === 0) {
+      console.error(`[domain-scrape] ${engine.name} returned 0 links for ${host} (${html.length} bytes)`);
+    }
     return urls;
   } catch (e) {
     clearTimeout(timeout);
-    console.error(`[domain-scrape] search failed for ${host}:`, (e as Error).message);
+    console.error(`[domain-scrape] ${engine.name} failed for ${host}:`, (e as Error).message);
     return [];
   }
+}
+
+async function searchSite(host: string, query: string, limit: number): Promise<string[]> {
+  for (const engine of SEARCH_ENGINES) {
+    const urls = await searchOn(engine, host, query, limit);
+    if (urls.length > 0) return urls;
+  }
+  return [];
 }
 
 // ── Step 2: fetch + readability-style extraction ────────────────────────────
