@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronLeft, ChevronRight, Upload, Loader2, CheckCircle2,
@@ -16,6 +16,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useOcrReview } from "@/hooks/useOcrReview";
 import { useSeo } from "@/hooks/useSeo";
 import { isRtlText } from "@/utils/textUtils";
@@ -27,7 +28,10 @@ const OcrReview = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const review = useOcrReview();
-  const [isMobile] = useState(() => window.innerWidth < 768);
+  // SPEC M10 Phase 3 — was its own one-shot `innerWidth < 768` read (never
+  // reacted to resize/rotation either) — the third copy of this same
+  // breakpoint in the app; use-mobile.tsx's matchMedia hook is shared now.
+  const isMobile = useIsMobile();
 
   useSeo({ title: "OCR Review — Easy Editor", description: "Review and edit your digitized document page by page — correct recognized Urdu, Arabic and English text before exporting.", path: "/ocr/review", noindex: true });
 
@@ -81,7 +85,7 @@ const OcrReview = () => {
   if (review.totalPages === 0) {
     return (
       <AppLayout>
-        <div className="flex flex-col h-[calc(100vh-3.5rem-5rem)] md:h-[calc(100vh-3.5rem)] items-center justify-center p-8">
+        <div className="flex flex-col h-[calc(100dvh-3.5rem-5rem)] md:h-[calc(100dvh-3.5rem)] items-center justify-center p-8">
           <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
             <FileText className="h-8 w-8 text-primary" />
           </div>
@@ -197,7 +201,7 @@ const OcrReview = () => {
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-[calc(100vh-3.5rem-5rem)] md:h-[calc(100vh-3.5rem)] overflow-hidden">
+      <div className="flex flex-col h-[calc(100dvh-3.5rem-5rem)] md:h-[calc(100dvh-3.5rem)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-background/80 backdrop-blur-sm">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/ocr")} aria-label="Back to OCR">

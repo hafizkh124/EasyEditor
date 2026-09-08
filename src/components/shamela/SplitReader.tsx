@@ -52,7 +52,7 @@ const SplitPane: React.FC<SplitPaneProps> = React.memo(function SplitPane({
   onClosePane,
   readerSettings,
 }) {
-  const { t } = useLanguage();
+  const { t, direction } = useLanguage();
   const workspace = useOptionalWorkspace();
   const progress = useReaderProgress(book.bookId, book.title, book.author);
   const startPage =
@@ -92,13 +92,13 @@ const SplitPane: React.FC<SplitPaneProps> = React.memo(function SplitPane({
     };
   }, [workspace, isPrimary, book.bookId, book.title, reader.page]);
 
-  const rtl = document.documentElement.dir === "rtl";
+  const rtl = direction === "rtl";
   const PrevIcon = rtl ? ChevronRight : ChevronLeft;
   const NextIcon = rtl ? ChevronLeft : ChevronRight;
   const pageBookmarked = progress.isPageBookmarked(reader.currentPageNumber);
 
   return (
-    <div className="flex flex-col min-w-0 flex-1 bg-background">
+    <div className="flex flex-col min-w-0 min-h-0 flex-1 bg-background">
       {/* Pane header: title + compact nav + bookmark/favorite. */}
       <div className="flex items-center gap-1 h-9 px-2 border-b border-border shrink-0">
         <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -108,19 +108,19 @@ const SplitPane: React.FC<SplitPaneProps> = React.memo(function SplitPane({
             <p className="text-xs text-muted-foreground truncate leading-tight">{book.author}</p>
           )}
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reader.prevPage} disabled={reader.currentPageNumber <= 1} title={t("reader.previous_page")} aria-label={t("reader.previous_page")}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={reader.prevPage} disabled={reader.currentPageNumber <= 1} title={t("reader.previous_page")} aria-label={t("reader.previous_page")}>
           <PrevIcon className="h-3.5 w-3.5" />
         </Button>
         <span className="text-xs text-muted-foreground px-1 tabular-nums whitespace-nowrap">
           {reader.currentPageNumber} / {reader.pageCount || "…"}
         </span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={reader.nextPage} disabled={reader.currentPageNumber >= reader.pageCount} title={t("reader.next_page")} aria-label={t("reader.next_page")}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={reader.nextPage} disabled={reader.currentPageNumber >= reader.pageCount} title={t("reader.next_page")} aria-label={t("reader.next_page")}>
           <NextIcon className="h-3.5 w-3.5" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
           onClick={() => progress.toggleBookmark(reader.currentPageNumber)}
           title={pageBookmarked ? t("reader.remove_bookmark") : t("reader.bookmark_page")}
           aria-label={pageBookmarked ? t("reader.remove_bookmark") : t("reader.bookmark_page")}
@@ -130,7 +130,7 @@ const SplitPane: React.FC<SplitPaneProps> = React.memo(function SplitPane({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
           onClick={progress.toggleFavorite}
           title={progress.isFavorite ? t("reader.remove_favorite") : t("reader.add_favorite")}
           aria-label={progress.isFavorite ? t("reader.remove_favorite") : t("reader.add_favorite")}
@@ -138,7 +138,7 @@ const SplitPane: React.FC<SplitPaneProps> = React.memo(function SplitPane({
           <Star className={cn("h-3.5 w-3.5", progress.isFavorite && "text-amber-500 fill-current")} />
         </Button>
         {onClosePane && (
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClosePane} title={t("reader.remove_pane")} aria-label={t("reader.remove_pane")}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={onClosePane} title={t("reader.remove_pane")} aria-label={t("reader.remove_pane")}>
             <X className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -217,21 +217,24 @@ export const SplitReader: React.FC<SplitReaderProps> = ({
         <ReaderSettings reader={readerSettings} />
 
         {onSwap && (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={doSwap} title={t("reader.swap_books")} aria-label={t("reader.swap_books")}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={doSwap} title={t("reader.swap_books")} aria-label={t("reader.swap_books")}>
             <ArrowLeftRight className="h-4 w-4" />
           </Button>
         )}
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onCloseSecondary} title={t("reader.single_view")} aria-label={t("reader.single_view")}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={onCloseSecondary} title={t("reader.single_view")} aria-label={t("reader.single_view")}>
           <X className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} title={t("reader.close")} aria-label={t("reader.close")}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={onClose} title={t("reader.close")} aria-label={t("reader.close")}>
           <X className="h-4 w-4" />
         </Button>
       </header>
 
-      <div className="flex-1 min-h-0 flex">
+      {/* M10 Phase 3 — two full-width Arabic/Urdu reading columns don't fit
+          side by side below `md` (~187px each at a 375px viewport); stack
+          them instead so each pane keeps a readable width, sharing height. */}
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row">
         <SplitPane key={left.bookId} book={left} primary readerSettings={readerSettings} />
-        <div className="w-px bg-border shrink-0" />
+        <div className="h-px w-full md:h-full md:w-px bg-border shrink-0" />
         <SplitPane
           key={right.bookId}
           book={right}

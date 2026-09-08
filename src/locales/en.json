@@ -1046,6 +1046,7 @@
   "reader.compare_split": "Compare side by side",
   "reader.open_pdf": "Open PDF",
   "reader.close": "Close reader",
+  "reader.more_actions": "More actions",
   "reader.remove_pane": "Remove this pane",
   "reader.split_view": "Split view",
   "reader.swap_books": "Swap the two books",

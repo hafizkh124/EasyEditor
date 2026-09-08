@@ -247,7 +247,7 @@ export function ShamelaImportDialog({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid grid-cols-2 w-64">
+          <TabsList className="grid grid-cols-2 w-full sm:w-64">
             <TabsTrigger value="browse" className="gap-1.5 text-xs">
               <Layers className="h-3.5 w-3.5" />
               {t("shamela.categories")}
@@ -258,9 +258,14 @@ export function ShamelaImportDialog({
             </TabsTrigger>
           </TabsList>
 
-          {/* Browse by category */}
-          <TabsContent value="browse" className="flex-1 flex gap-4 min-h-0 mt-4">
-            <div className="w-64 shrink-0 flex flex-col gap-1 min-h-0">
+          {/* Browse by category. M10 Phase 3: the 256px category column used
+              to sit beside the book list unconditionally — on a ~327px-wide
+              mobile dialog body that left the book list ~55px wide, in
+              practice zero. Stacked below md instead (category picker gets a
+              bounded height so the book list below it still gets real room;
+              side-by-side, fixed-width sidebar returns at md+). */}
+          <TabsContent value="browse" className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 mt-4">
+            <div className="w-full md:w-64 shrink-0 flex flex-col gap-1 min-h-0 max-h-40 md:max-h-none">
               <span className="text-xs font-semibold text-muted-foreground px-1">{t("shamela.categories")}</span>
               {/* Was a fixed h-[400px]: on a dialog shorter than header+400px+footer,
                   this list overflowed past its column and slid under DialogFooter,

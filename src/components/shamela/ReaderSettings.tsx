@@ -51,7 +51,7 @@ export const ReaderSettings: React.FC<ReaderSettingsProps> = ({ reader, triggerC
           <Type className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-80 p-0 overflow-hidden">
+      <PopoverContent align="end" sideOffset={6} className="w-[min(20rem,90vw)] p-0 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
           <p className="text-xs font-semibold text-foreground">{t("reader.settings.title")}</p>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={reset} title={t("reader.settings.reset")} aria-label={t("reader.settings.reset")}>
