@@ -386,7 +386,7 @@ export async function handle(req: Request): Promise<Response> {
   }
 
   try {
-    const { query, selectedDomains } = await req.json();
+    const { query, selectedDomains, debug } = await req.json();
     if (!query || typeof query !== "string") {
       return new Response(JSON.stringify({ error: "Query is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
