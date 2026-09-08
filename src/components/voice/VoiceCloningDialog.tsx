@@ -69,7 +69,14 @@ export const VoiceCloningDialog: React.FC<DialogProps> = ({ open, onClose, onClo
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-width-[500px] dir-rtl">
+      {/* M10 Phase 3: was `sm:max-width-[500px] dir-rtl` — neither class exists
+          in Tailwind (max-width isn't a utility, dir-rtl isn't a class at
+          all), so this dialog never got its intended 500px cap and relied on
+          the ambient page direction instead of its own hardcoded-Urdu
+          content. `dir="rtl"` is a real DOM attribute here, matching
+          ShamelaImportDialog's own convention for a dialog whose content is
+          always Urdu regardless of the app's current language. */}
+      <DialogContent className="sm:max-w-[500px]" dir="rtl">
         <DialogHeader>
           <DialogTitle className="text-right font-bold">
             اخلاقی صوتی کلوننگ (Live Voice Enrollment)
