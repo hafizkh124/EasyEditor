@@ -414,14 +414,22 @@ export async function handle(req: Request): Promise<Response> {
     // Used to tell "the search engines block us" apart from "we have no egress".
     if (typeof probeUrl === "string") {
       let status = 0, bytes = 0, err = "";
+      let marks: Record<string, unknown> = {};
       try {
         const r = await fetch(probeUrl, { headers: { "User-Agent": BROWSER_UA } });
         status = r.status;
-        bytes = (await r.text()).length;
+        const body = await r.text();
+        bytes = body.length;
+        marks = {
+          ck: (body.match(/\/ck\/a/g) ?? []).length,
+          ua1: (body.match(/u=a1/g) ?? []).length,
+          host: (body.match(/islamqa\.info/g) ?? []).length,
+          head: body.slice(0, 200),
+        };
       } catch (e) {
         err = (e as Error).message;
       }
-      return new Response(JSON.stringify({ probeUrl, status, bytes, err }), {
+      return new Response(JSON.stringify({ probeUrl, status, bytes, err, marks }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
