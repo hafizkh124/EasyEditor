@@ -48,7 +48,7 @@ const corsHeaders = {
 export const TIER_A_DOMAINS = ["dorar", "alquran", "quran-com"];
 export const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
 export const TIER_C_DOMAINS = [
-  "islamqa", "islamweb", "islamicurdubooks", "shamilaurdu",
+  "islamqa", "islamweb", "islamicurdubooks",
   "alulama", "magazine-mohaddis", "mohaddis", "urdufatwa",
   "islamfort", "alminasa", "shamela",
 ];
@@ -140,7 +140,7 @@ function buildContextBlock(results: IslamicResult[]): string {
     // the raw braces (and empty fields) verbatim into its References section.
     let citeLine = "";
 
-    if (r.domain === "dorar" || r.domain === "hadith-api" || r.domain === "hadith-index" || r.domain === "hadith-json" || r.domain === "islamicurdubooks" || r.domain === "shamilaurdu" || cite.hadith_number !== undefined) {
+    if (r.domain === "dorar" || r.domain === "hadith-api" || r.domain === "hadith-index" || r.domain === "hadith-json" || r.domain === "islamicurdubooks" || cite.hadith_number !== undefined) {
       // `cite.hadith_number !== undefined` as a fallback (mirrors the fatwa
       // branch below): urdu-hadith rows carry real grade + takhreej data —
       // 19,443 of them, e.g. grade "صحيح" with a full cross-reference chain
@@ -588,7 +588,7 @@ export async function handle(req: Request): Promise<Response> {
       ["tanzil", "alquran", "quran-com"].includes(d),
     );
     const wantsHadith = effectiveDomains.some((d) =>
-      ["dorar", "hadith-index", "hadith-json", "islamicurdubooks", "shamilaurdu"].includes(d),
+      ["dorar", "hadith-index", "hadith-json", "islamicurdubooks"].includes(d),
     );
     // Same inference for fatwa: selecting any Tier-C fatwa site should also
     // search the local `source_type = 'fatwa'` rows. urdufatwa alone has

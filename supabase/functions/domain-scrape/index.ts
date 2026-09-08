@@ -110,21 +110,6 @@ const DOMAINS: Record<string, DomainConfig> = {
       return out;
     },
   },
-  shamilaurdu: {
-    host: "shamilaurdu.com",
-    lang: "ur",
-    type: "hadith",
-    citation: (u) => {
-      const m = u.match(/shamilaurdu\.com\/(hadith|book|quran)\/([^/]+)\/(\d+)/i);
-      if (!m) return {};
-      const [, section, slug, num] = m;
-      const out: Record<string, string | number> = { book: slug };
-      if (section === "hadith") out.hadith_number = num;
-      else if (section === "book") out.page = Number(num);
-      else if (section === "quran") out.surah_number = Number(num);
-      return out;
-    },
-  },
   alulama:            { host: "alulama.org",             lang: "ur", type: "fatwa" },
   "magazine-mohaddis":{ host: "magazine.mohaddis.com",   lang: "ur", type: "article" },
   mohaddis:           { host: "mohaddis.org",            lang: "ur", type: "article" },
@@ -333,9 +318,11 @@ const SITE_SEARCH: Record<string, SiteSearch> = {
       `https://urdufatwa.com/frontend-search?search_cat=2&search_tag=${encodeURIComponent(q)}&sEnType=website&sType=OR`,
     pattern: /\/view\/\d+\/\d+\//,
   },
-  // shamilaurdu.com is NOT here: its 500 is a WAF ("You have been blocked due
-  // to suspicious activity detected from your browser"), returned for the
-  // HOME PAGE too, not just search — no path through this file can reach it.
+  // shamilaurdu.com isn't listed here OR in DOMAINS above at all — its 500
+  // is a WAF ("You have been blocked due to suspicious activity detected
+  // from your browser"), returned for the HOME PAGE too, not just search,
+  // so no path through this file can ever reach it either. Removed from
+  // DOMAINS 2026-09-08, same reasoning as darulifta-deoband.com above.
 };
 
 const ASSET_RE = /\.(png|jpe?g|gif|svg|webp|css|js|ico|woff2?|ttf|xml|pdf|zip|mp3|mp4)$/i;
