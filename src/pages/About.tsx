@@ -159,7 +159,7 @@ const About = () => {
       </section>
 
       <section className="bg-primary/5 py-16" dir={direction}>
-        <div className="mx-auto max-w-3xl px-4 text-center">
+        <div className="page-container text-center">
           <Quote className="mx-auto h-8 w-8 text-primary/70" />
           <p className="mt-4 text-xl font-medium leading-relaxed md:text-2xl">
             {pick(
@@ -173,7 +173,7 @@ const About = () => {
       </section>
 
       <section className="border-t border-border/60 py-16" dir={direction}>
-        <div className="mx-auto max-w-3xl px-4 text-center">
+        <div className="page-container text-center">
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
             {pick(lang, "Get started today", "ابھی شروع کریں", "ابدأ اليوم")}
           </h2>
