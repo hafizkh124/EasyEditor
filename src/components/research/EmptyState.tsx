@@ -65,7 +65,7 @@ const EmptyState = ({ onSuggestionClick, t }: EmptyStateProps) => {
             <button
               key={i}
               onClick={() => onSuggestionClick(query)}
-              className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left text-sm text-foreground transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm active:scale-[0.98]"
+              className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-start text-sm text-foreground transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm active:scale-[0.98]"
             >
               <s.icon className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
               <span className="line-clamp-1">{label}</span>

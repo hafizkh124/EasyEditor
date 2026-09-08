@@ -332,7 +332,14 @@ export default function TranslationWorkspace({ documentId, projectId, documentTi
   const activeChunk = chunks[activeChunkIndex];
 
   const body = (
-    <div className="flex flex-col h-full w-full overflow-hidden bg-background">
+    // M10 Phase 3 — this whole page's UI text is hardcoded Urdu (no useLanguage()
+    // import, no t() calls), unlike the rest of the app — so unlike everywhere
+    // else, its RTL-ness is NOT conditional on the app's selected language.
+    // dir="rtl" here at the root (rather than scattered per-element, as the
+    // sub-panes below already did for the source/translation text areas) is
+    // what makes every ms-/me-/text-start/text-end/border-s/border-e below
+    // resolve to the same physical sides this page always rendered.
+    <div className="flex flex-col h-full w-full overflow-hidden bg-background" dir="rtl">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-3">
@@ -345,7 +352,7 @@ export default function TranslationWorkspace({ documentId, projectId, documentTi
         {!loading && !selectedProject && (
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => setNewProjectModal(true)}>
-              <Plus className="h-4 w-4 ml-1.5" />
+              <Plus className="h-4 w-4 ms-1.5" />
               ترجمہ شروع کریں
             </Button>
           </div>
@@ -356,7 +363,7 @@ export default function TranslationWorkspace({ documentId, projectId, documentTi
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Sidebar: Chunk list for this document's translation project. */}
         {selectedProject && (
-          <div className="w-full md:w-72 max-h-56 md:max-h-none border-b md:border-b-0 md:border-r border-border bg-muted/60 flex flex-col overflow-y-auto shrink-0">
+          <div className="w-full md:w-72 max-h-56 md:max-h-none border-b md:border-b-0 md:border-e border-border bg-muted/60 flex flex-col overflow-y-auto shrink-0">
             <div className="p-3 border-b border-border">
               <Badge variant="outline" className="text-xs px-1 py-0">{selectedProject.genre}</Badge>{" "}
               <span className="text-xs text-muted-foreground">{selectedProject.source_lang.toUpperCase()} ➔ {selectedProject.target_lang.toUpperCase()}</span>
@@ -370,13 +377,13 @@ export default function TranslationWorkspace({ documentId, projectId, documentTi
                   <button
                     key={c.id}
                     onClick={() => handleChunkChange(idx)}
-                    className={`w-full text-right p-2 rounded border text-xs flex items-center justify-between transition-colors ${
+                    className={`w-full text-end p-2 rounded border text-xs flex items-center justify-between transition-colors ${
                       activeChunkIndex === idx
                         ? "border-primary bg-primary/10 font-medium"
                         : "border-border hover:bg-muted"
                     }`}
                   >
-                    <span className="truncate flex-1 pl-2">ٹکڑا #{c.chunk_index}: {c.source_text.slice(0, 20)}...</span>
+                    <span className="truncate flex-1 ps-2">ٹکڑا #{c.chunk_index}: {c.source_text.slice(0, 20)}...</span>
                     {c.translated_text ? (
                       <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                     ) : (
@@ -393,11 +400,11 @@ export default function TranslationWorkspace({ documentId, projectId, documentTi
         {selectedProject && activeChunk ? (
           <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
             {/* Left Pane: Source Text */}
-            <div className="flex-1 border-r border-border p-4 flex flex-col overflow-y-auto bg-card">
+            <div className="flex-1 border-e border-border p-4 flex flex-col overflow-y-auto bg-card">
               <div className="flex items-center justify-between mb-2">
                 <Badge variant="secondary" className="text-xs">عربی اصل متن (ٹکڑا #{activeChunk.chunk_index})</Badge>
                 <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(activeChunk.source_text)}>
-                  <Copy className="h-3.5 w-3.5 ml-1" /> کاپی
+                  <Copy className="h-3.5 w-3.5 ms-1" /> کاپی
                 </Button>
               </div>
               <div
@@ -417,11 +424,11 @@ export default function TranslationWorkspace({ documentId, projectId, documentTi
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Button size="sm" variant="outline" onClick={handleAiTranslateChunk} disabled={translating}>
-                    {translating ? <Loader2 className="h-3.5 w-3.5 animate-spin ml-1" /> : <Sparkles className="h-3.5 w-3.5 ml-1 text-primary" />}
+                    {translating ? <Loader2 className="h-3.5 w-3.5 animate-spin ms-1" /> : <Sparkles className="h-3.5 w-3.5 ms-1 text-primary" />}
                     AI ترجمہ
                   </Button>
                   <Button size="sm" onClick={handleSaveChunk} disabled={saving}>
-                    <Save className="h-3.5 w-3.5 ml-1" />
+                    <Save className="h-3.5 w-3.5 ms-1" />
                     محفوظ کریں
                   </Button>
                 </div>
@@ -531,7 +538,7 @@ export default function TranslationWorkspace({ documentId, projectId, documentTi
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setNewProjectModal(false)}>منسوخ</Button>
             <Button onClick={handleCreateProject} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin ml-1" /> : "شروع کریں"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin ms-1" /> : "شروع کریں"}
             </Button>
           </DialogFooter>
         </DialogContent>

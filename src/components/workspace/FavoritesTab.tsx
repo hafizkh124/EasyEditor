@@ -109,7 +109,7 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
                   e.preventDefault();
                   onSelectBook?.(fav.bookId);
                 }}
-                className="group relative flex flex-col items-start text-left rounded-lg border border-border/50 bg-card p-3 hover:border-primary/50 hover:bg-accent/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group relative flex flex-col items-start text-start rounded-lg border border-border/50 bg-card p-3 hover:border-primary/50 hover:bg-accent/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Button
                   variant="ghost"

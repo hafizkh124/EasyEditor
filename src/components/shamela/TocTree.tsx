@@ -44,8 +44,9 @@ export const TocTree: React.FC<TocTreeProps> = ({
             key={entry.titleId}
             type="button"
             onClick={() => onSelect(entry)}
+            dir="rtl"
             className={cn(
-              "w-full text-right flex items-start gap-1.5 px-2 py-1.5 text-xs leading-relaxed transition-colors border-e-2 border-transparent hover:bg-accent hover:text-accent-foreground",
+              "w-full text-end flex items-start gap-1.5 px-2 py-1.5 text-xs leading-relaxed transition-colors border-e-2 border-transparent hover:bg-accent hover:text-accent-foreground",
               active && "border-primary bg-accent/50 text-accent-foreground font-medium",
             )}
             style={{ paddingRight: `${(entry.depth + 1) * 10}px` }}

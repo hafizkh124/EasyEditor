@@ -278,7 +278,7 @@ const RichEditor = ({
 
       <div
         dir={isRtl ? "rtl" : "ltr"}
-        className={cn(isRtl && "text-right", isFullscreen && "flex-1 overflow-auto")}
+        className={cn(isRtl && "text-end", isFullscreen && "flex-1 overflow-auto")}
       >
         <EditorContent editor={editor} />
       </div>

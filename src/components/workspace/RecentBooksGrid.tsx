@@ -76,7 +76,7 @@ export const RecentBooksGrid: React.FC<RecentBooksGridProps> = ({
             <button
               key={item.itemId}
               onClick={() => onSelectBook?.(item.itemId)}
-              className="group flex flex-col items-start text-left rounded-lg border border-border/50 bg-card p-3 hover:border-primary/50 hover:bg-accent/50 transition-colors cursor-pointer"
+              className="group flex flex-col items-start text-start rounded-lg border border-border/50 bg-card p-3 hover:border-primary/50 hover:bg-accent/50 transition-colors cursor-pointer"
             >
               {/* Book Cover */}
               {shamelaBookId ? (

@@ -135,7 +135,7 @@ const FaqAiHaram = () => {
 
         <div className="mt-10 space-y-8">
           {qas.map((qa, i) => (
-            <section key={i} className="border-l-2 border-primary/40 ps-5">
+            <section key={i} className="border-s-2 border-primary/40 ps-5">
               <h2 className="text-xl font-semibold leading-snug md:text-2xl">{qa.q}</h2>
               <p className="mt-3 text-base text-foreground/90 leading-relaxed">{qa.a}</p>
             </section>

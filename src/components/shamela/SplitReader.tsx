@@ -203,7 +203,7 @@ export const SplitReader: React.FC<SplitReaderProps> = ({
       {/* Split toolbar: shared settings + split controls. */}
       <header className="flex items-center gap-1 h-11 px-2 border-b border-border bg-background/95 backdrop-blur shrink-0">
         <div className="flex items-center min-w-0 mx-1 flex-1">
-          <Columns2 className="h-4 w-4 text-muted-foreground shrink-0 mr-2" />
+          <Columns2 className="h-4 w-4 text-muted-foreground shrink-0 me-2" />
           <div className="min-w-0">
             <p className="text-sm font-medium truncate leading-tight">
               {primary.title} <span className="text-muted-foreground">↔</span> {secondary.title}

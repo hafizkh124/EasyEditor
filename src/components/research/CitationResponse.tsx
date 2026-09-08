@@ -89,7 +89,7 @@ const CitationResponse = ({
         dir={rtl ? "rtl" : "ltr"}
         className={cn(
           "whitespace-pre-wrap text-sm text-foreground leading-relaxed",
-          rtl && "text-right",
+          rtl && "text-end",
         )}
       >
         {text}

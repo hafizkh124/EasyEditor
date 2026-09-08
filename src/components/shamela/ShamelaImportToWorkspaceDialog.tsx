@@ -230,7 +230,7 @@ export function ShamelaImportToWorkspaceDialog({
             {t("common.cancel", "منسوخ")}
           </Button>
           <Button onClick={handleImport} disabled={importing}>
-            {importing ? <Loader2 className="h-4 w-4 animate-spin ml-1.5" /> : null}
+            {importing ? <Loader2 className="h-4 w-4 animate-spin ms-1.5" /> : null}
             {t("shamela.workspace_import.confirm", "درآمد کریں")}
           </Button>
         </DialogFooter>

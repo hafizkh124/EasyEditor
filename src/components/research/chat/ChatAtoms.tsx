@@ -34,7 +34,7 @@ export const SourcesReadyIndicator = ({ count, domains, t }: SourcesReadyIndicat
         <span className="font-semibold">{count}</span>{" "}
         {t("research.sources_fetched")}
         {domainLabels && (
-          <span className="text-emerald-600 dark:text-emerald-500 ml-1">— {domainLabels}</span>
+          <span className="text-emerald-600 dark:text-emerald-500 ms-1">— {domainLabels}</span>
         )}
       </span>
     </motion.div>

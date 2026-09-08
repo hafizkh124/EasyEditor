@@ -270,7 +270,7 @@ const Transcribe = () => {
                     dir={rtlText ? "rtl" : "ltr"}
                     className={cn(
                       "min-h-[200px] rounded-md border border-input bg-background p-4 text-sm whitespace-pre-wrap",
-                      rtlText && "text-right"
+                      rtlText && "text-end"
                     )}
                   >
                     {transcript}
@@ -281,7 +281,7 @@ const Transcribe = () => {
                     dir={rtlText ? "rtl" : "ltr"}
                     className={cn(
                       "min-h-[200px] rounded-md border border-input bg-background p-4 text-sm whitespace-pre-wrap",
-                      rtlText && "text-right"
+                      rtlText && "text-end"
                     )}
                   >
                     {originalText}

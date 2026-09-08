@@ -92,7 +92,7 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
                   </div>
 
                   {item.anchor?.quote && (
-                    <blockquote className="border-r-2 border-amber-500/40 pe-1.5 text-xs italic text-muted-foreground truncate">
+                    <blockquote className="border-s-2 border-amber-500/40 pe-1.5 text-xs italic text-muted-foreground truncate">
                       "{item.anchor.quote}"
                     </blockquote>
                   )}
