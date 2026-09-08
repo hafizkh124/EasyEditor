@@ -307,15 +307,15 @@ interface SiteSearch {
 }
 
 const SITE_SEARCH: Record<string, SiteSearch> = {
-  "www.islamweb.net": {
-    url: (q) => `https://www.islamweb.net/ar/fatawa/search/?query=${encodeURIComponent(q)}`,
-    // ≥4 digits: the short ids (/fatawa/876) are category pages, not fatwas.
-    pattern: /\/fatawa\/\d{4,}/,
-  },
-  "magazine.mohaddis.com": {
-    url: (q) => `https://magazine.mohaddis.com/?s=${encodeURIComponent(q)}`,
-    pattern: /\/articledetail\/\d+/,
-  },
+  // Deliberately NOT here, each checked live on 2026-09-08:
+  //   islamqa.info          — search results are rendered client-side; the HTML
+  //                           carries no /answers/<id> link at all.
+  //   www.islamweb.net      — same; its search page exposes only category ids.
+  //   magazine.mohaddis.com — has no search endpoint (?s=, /search, /Home/Search
+  //                           all 404 or fall back to the latest-articles list),
+  //                           so it would return the same articles every query.
+  //   urdufatwa.com, shamilaurdu.com — HTTP 500 to any search request.
+  //   darulifta-deoband.com — HTTP 403 to this pipeline's User-Agent.
   "alulama.org": {
     url: (q) => `https://alulama.org/?s=${encodeURIComponent(q)}`,
     home: "https://alulama.org/",
@@ -503,42 +503,7 @@ export async function handle(req: Request): Promise<Response> {
   }
 
   try {
-    const { query, selectedDomains, debug, probeUrl } = await req.json();
-
-    // Debug escape hatch: fetch one URL directly, skipping search discovery.
-    // Used to tell "the search engines block us" apart from "we have no egress".
-    if (typeof probeUrl === "string") {
-      let status = 0, bytes = 0, err = "";
-      let marks: Record<string, unknown> = {};
-      try {
-        const r = await fetch(probeUrl, { headers: { "User-Agent": BROWSER_UA } });
-        status = r.status;
-        const body = await r.text();
-        bytes = body.length;
-        marks = {
-          ck: (body.match(/\/ck\/a/g) ?? []).length,
-          ua1: (body.match(/u=a1/g) ?? []).length,
-          host: (body.match(/islamqa\.info/g) ?? []).length,
-          head: body.slice(0, 200),
-        };
-      } catch (e) {
-        err = (e as Error).message;
-      }
-      return new Response(JSON.stringify({ probeUrl, status, bytes, err, marks }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (!query || typeof query !== "string") {
-      return new Response(JSON.stringify({ error: "Query is required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Choose which domains to hit. `selectedDomains` filters to the intersection
-    // with SUPPORTED_DOMAINS; when omitted, we fan out to every registered host.
-    const targets: string[] = Array.isArray(selectedDomains) && selectedDomains.length > 0
-      ? selectedDomains.filter((d: string) => d in DOMAINS)
-      : SUPPORTED_DOMAINS;
+    const { query, selectedDomains, debug } = await req.json();
 
     const diagnostics: ScrapeDiagnostic[] | undefined = debug === true ? [] : undefined;
     const settled = await Promise.allSettled(
