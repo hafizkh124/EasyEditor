@@ -82,11 +82,16 @@ export function exportHtml(html: string, title: string): void {
 }
 
 /**
- * Word export. A `.doc` file is really just HTML with Word-specific headers and
- * the application/msword MIME type. Word opens it with all formatting, fonts,
- * and RTL direction preserved — no docx library required.
+ * Legacy Word export. A `.doc` file that is really just HTML with
+ * Word-specific headers and the application/msword MIME type — Word opens
+ * it with formatting + RTL preserved, but it is NOT real OOXML (a modern
+ * Word shows a "format mismatch" warning, and there are no real styles or
+ * footnotes). Superseded by `exportDoc`'s real `.docx` path (M10 Phase 2.6,
+ * src/lib/editor/docxExport.ts) — kept only as that path's own fallback for
+ * a release or two, in case the DOM-to-OOXML conversion ever hits an HTML
+ * shape it does not handle.
  */
-export function exportDoc(html: string, title: string): void {
+export function exportDocLegacy(html: string, title: string): void {
   const docHtml =
     `<html xmlns:o="urn:schemas-microsoft-com:office:office" ` +
     `xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">` +
@@ -94,6 +99,26 @@ export function exportDoc(html: string, title: string): void {
     `<style>${FONT_CSS}</style></head>` +
     `<body dir="auto">${stripSuggestions(html)}</body></html>`;
   triggerDownload(new Blob([docHtml], { type: "application/msword;charset=utf-8" }), `${safeName(title)}.doc`);
+}
+
+/**
+ * Word export. Real OOXML `.docx` via the `docx` npm package (lazy-loaded —
+ * see docxExport.ts), not an HTML file wearing a `.doc` extension. Falls
+ * back to `exportDocLegacy` if the conversion itself fails for any reason —
+ * a scholar always gets a working download either way.
+ */
+export async function exportDoc(html: string, title: string): Promise<void> {
+  const { htmlToDocxBlob } = await import("./docxExport");
+  // Stripped once, here — docxExport.ts takes already-clean HTML so it has
+  // no need to import back from this file (avoids a circular import between
+  // the two, since this function itself dynamically imports docxExport.ts).
+  const clean = stripSuggestions(html);
+  const blob = await htmlToDocxBlob(clean, title);
+  if (blob) {
+    triggerDownload(blob, `${safeName(title)}.docx`);
+    return;
+  }
+  exportDocLegacy(html, title);
 }
 
 /**
