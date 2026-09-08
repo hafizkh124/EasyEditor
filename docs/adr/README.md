@@ -40,6 +40,7 @@ reconstruct rationale without rereading commits.
 | [0032](./0032-m9-session-memory.md) | M9 Phase E — per-project journal folded into the prompt; history compaction for the model call only; `research_topic` bounded read-only sub-run sharing the parent ledger | Accepted |
 | [0033](./0033-m9-disclosure-and-source-view.md) | M9 blueprint §3 — deterministic AI-disclosure ledger + `compile_ai_disclosure` (bilingual front-matter statement); `insert_footnote` emits a citation artifact with the source excerpt for open-before-accept review | Accepted |
 | [0034](./0034-unified-research-surface.md) | M10 — unified research surface: auto-derived strictness (no Islamic/General switch), Research+Agent merged into one tab via composition, composer controls consolidated into one hub (supersedes 0002, amends 0026) | Accepted |
+| [0036](./0036-web-byok.md) | M10 §2.5 — Web BYOK: one key/one role v1 (no per-role split, no eval gate — desktop's fuller model deferred), key encrypted server-side and never returned to the browser, CORS verified NOT the reason for the proxy, BYOK substitutes generation only (never retrieval), no client-supplied baseUrl so no new allowlist surface (extends 0031) | Accepted |
 
 ## When to write a new ADR
 
