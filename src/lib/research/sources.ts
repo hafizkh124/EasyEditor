@@ -95,7 +95,6 @@ export const RESEARCH_SOURCES: ResearchSource[] = [
   { id: "urdufatwa", ur: "اردو فتویٰ", note: "اردو فتاویٰ (22,775 مقامی رولنگز بھی)", group: "web" },
   { id: "alulama", ur: "العلماء", note: "علمی مضامین و فتاویٰ", group: "web" },
   { id: "islamicurdubooks", ur: "اسلامک اردو بکس", note: "احادیث، تفسیر، اسماء الرجال", group: "web" },
-  { id: "shamilaurdu", ur: "شاملہ اردو", note: "اردو کتب خانہ", group: "web" },
   { id: "mohaddis", ur: "محدث", note: "محدث لائبریری", group: "web" },
   { id: "magazine-mohaddis", ur: "ماہنامہ محدث", note: "علمی مجلہ", group: "web" },
   { id: "islamfort", ur: "اسلام فورٹ", note: "اردو اسلامی مواد", group: "web" },
