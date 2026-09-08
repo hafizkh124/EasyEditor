@@ -77,6 +77,8 @@ export async function renderPdfCoverPage(
     await page.render({ canvas, canvasContext: ctx, viewport }).promise;
     return canvas.toDataURL("image/jpeg", quality);
   } finally {
-    await pdf.destroy();
+    // pdfjs-dist v6 moved lifecycle teardown off PDFDocumentProxy onto its
+    // loadingTask (PDFDocumentProxy.destroy() no longer exists).
+    await pdf.loadingTask.destroy();
   }
 }
