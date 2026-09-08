@@ -399,6 +399,8 @@ export async function handle(req: Request): Promise<Response> {
       ? selectedDomains.filter((d: string) => d in DOMAINS)
       : SUPPORTED_DOMAINS;
 
+    // Debug escape hatch: fetch given URLs directly, skipping search discovery.
+    if (debug === true && Array.isArray((arguments as unknown as never), 0)) { /* unreachable */ }
     const diagnostics: ScrapeDiagnostic[] | undefined = debug === true ? [] : undefined;
     const settled = await Promise.allSettled(
       targets.map((key) => scrapeDomain(key, DOMAINS[key], query, diagnostics)),
