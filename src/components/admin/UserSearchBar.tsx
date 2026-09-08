@@ -27,7 +27,7 @@ const UserSearchBar = ({ value, onChange }: UserSearchBarProps) => {
         <Button
           variant="ghost"
           size="icon"
-          className="absolute end-1 top-1/2 -translate-y-1/2 h-7 w-7"
+          className="absolute end-1 top-1/2 -translate-y-1/2 h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
           onClick={() => {
             onChange("");
             inputRef.current?.focus();

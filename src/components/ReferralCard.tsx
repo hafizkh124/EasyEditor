@@ -121,7 +121,7 @@ const ReferralCard = () => {
             <div className="flex items-center justify-between gap-2">
               <span className="font-mono text-base font-semibold">{code ?? "—"}</span>
               {code && (
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copy(code)} aria-label="Copy referral code">
+                <Button size="icon" variant="ghost" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={() => copy(code)} aria-label="Copy referral code">
                   <Copy className="h-3.5 w-3.5" />
                 </Button>
               )}

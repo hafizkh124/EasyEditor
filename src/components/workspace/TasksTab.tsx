@@ -125,7 +125,7 @@ export const TasksTab: React.FC = () => {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 w-6 p-0"
+                          className="h-6 w-6 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
                           onClick={() => handleEdit(row)}
                           aria-label={t("library.edit_task", "Edit {label}").replace("{label}", row.label)}
                         >
@@ -134,7 +134,7 @@ export const TasksTab: React.FC = () => {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 w-6 p-0 text-destructive"
+                          className="h-6 w-6 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-destructive"
                           onClick={() => handleArchive(row)}
                           aria-label={t("library.remove_task", "Remove {label}").replace("{label}", row.label)}
                         >
@@ -200,7 +200,7 @@ export const TasksTab: React.FC = () => {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-6 w-6 p-0 shrink-0"
+                      className="h-6 w-6 p-0 shrink-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
                       onClick={() => handleDuplicate(task)}
                       aria-label={t("library.duplicate_task", "Duplicate {label}").replace("{label}", task.defaultLabel)}
                     >

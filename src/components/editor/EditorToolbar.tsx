@@ -110,7 +110,7 @@ const EditorToolbar = ({
               pressed={btn.active}
               onPressedChange={() => btn.action()}
               aria-label={btn.label}
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
             >
               <btn.icon className="h-4 w-4" />
             </Toggle>
@@ -167,7 +167,7 @@ const EditorToolbar = ({
         onPressedChange={onToggleBrush}
         aria-label={t("editor.format_brush")}
         title={t("editor.format_brush")}
-        className="h-8 w-8 p-0"
+        className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
       >
         <Paintbrush className="h-4 w-4" />
       </Toggle>
@@ -253,7 +253,7 @@ const EditorToolbar = ({
 
       {/* Accept all */}
       <Button
-        variant="ghost" size="sm" className="h-8 w-8 p-0 text-emerald-600"
+        variant="ghost" size="sm" className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-emerald-600"
         onClick={onAcceptAll} disabled={pendingCount === 0} aria-label={t("editor.accept_all")} title={t("editor.accept_all")}
       >
         <Check className="h-4 w-4" />
@@ -261,7 +261,7 @@ const EditorToolbar = ({
 
       {/* Reject all */}
       <Button
-        variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive"
+        variant="ghost" size="sm" className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-destructive"
         onClick={onRejectAll} disabled={pendingCount === 0} aria-label={t("editor.reject_all")} title={t("editor.reject_all")}
       >
         <X className="h-4 w-4" />
@@ -281,7 +281,7 @@ const EditorToolbar = ({
             pressed={btn.active}
             onPressedChange={() => btn.action()}
             aria-label={btn.label}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
           >
             <btn.icon className="h-4 w-4" />
           </Toggle>
@@ -297,7 +297,7 @@ const EditorToolbar = ({
         onPressedChange={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
         aria-label="Undo"
-        className="h-8 w-8 p-0"
+        className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
       >
         <Undo2 className="h-4 w-4" />
       </Toggle>
@@ -307,7 +307,7 @@ const EditorToolbar = ({
         onPressedChange={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
         aria-label="Redo"
-        className="h-8 w-8 p-0"
+        className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
       >
         <Redo2 className="h-4 w-4" />
       </Toggle>
@@ -321,7 +321,7 @@ const EditorToolbar = ({
         onPressedChange={onToggleFullscreen}
         aria-label={isFullscreen ? t("editor.exit_fullscreen") : t("editor.fullscreen")}
         title={isFullscreen ? t("editor.exit_fullscreen") : t("editor.fullscreen")}
-        className="h-8 w-8 p-0"
+        className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
       >
         {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
       </Toggle>
@@ -338,7 +338,7 @@ const EditorToolbar = ({
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 sm:hidden"
+        className="h-8 w-8 min-h-touch min-w-touch sm:hidden"
         aria-label={t("editor.more_formatting", "More formatting")}
         title={t("editor.more_formatting", "More formatting")}
         onClick={() => setMoreOpen(true)}

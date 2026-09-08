@@ -93,7 +93,7 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
               onClick={() => workspace.setWorkbenchTab("trust")}
               aria-label={t("library.open_trust", "Open in Trust tab")}
             >
@@ -103,7 +103,7 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
           <Button
             size="sm"
             variant="ghost"
-            className="h-6 w-6 p-0"
+            className="h-6 w-6 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
             onClick={onDismiss}
             aria-label={t("library.close_card", "Close this card")}
           >

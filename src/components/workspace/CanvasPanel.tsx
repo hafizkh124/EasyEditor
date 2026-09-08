@@ -77,7 +77,7 @@ export const CanvasPanel: React.FC<CanvasPanelProps> = ({
             <Button
               variant="ghost"
               size="icon"
-              className="absolute end-1.5 top-1.5 h-6 w-6 text-muted-foreground hover:text-foreground"
+              className="absolute end-1.5 top-1.5 h-6 w-6 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-muted-foreground hover:text-foreground"
               onClick={dismissHint}
               aria-label={t("canvas.hint_dismiss", "Dismiss")}
             >

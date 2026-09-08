@@ -204,7 +204,7 @@ const OcrReview = () => {
       <div className="flex flex-col h-[calc(100dvh-3.5rem-5rem)] md:h-[calc(100dvh-3.5rem)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-background/80 backdrop-blur-sm">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/ocr")} aria-label="Back to OCR">
+          <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={() => navigate("/ocr")} aria-label="Back to OCR">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-base font-semibold text-foreground flex-1">{t("ocr_review.title")}</h1>
@@ -212,7 +212,7 @@ const OcrReview = () => {
           {/* Page nav */}
           <div className="flex items-center gap-1.5">
             <Button
-              variant="ghost" size="icon" className="h-8 w-8"
+              variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
               disabled={review.currentPage <= 1}
               onClick={() => review.setCurrentPage(review.currentPage - 1)}
               aria-label="Previous page"
@@ -223,7 +223,7 @@ const OcrReview = () => {
               {review.currentPage} / {review.totalPages}
             </span>
             <Button
-              variant="ghost" size="icon" className="h-8 w-8"
+              variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
               disabled={review.currentPage >= review.totalPages}
               onClick={() => review.setCurrentPage(review.currentPage + 1)}
               aria-label="Next page"

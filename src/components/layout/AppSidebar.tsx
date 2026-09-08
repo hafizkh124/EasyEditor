@@ -156,7 +156,7 @@ export const AppSidebar = ({
           variant="ghost"
           size="icon"
           onClick={onToggleCollapse}
-          className="h-9 w-9"
+          className="h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
           aria-label={t("sidebar.collapse", "Collapse sidebar")}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -170,7 +170,7 @@ export const AppSidebar = ({
           variant="ghost"
           size="icon"
           onClick={onToggleCollapse}
-          className="h-9 w-9"
+          className="h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
           aria-label={t("sidebar.expand", "Expand sidebar")}
         >
           <ChevronRight className="h-4 w-4" />

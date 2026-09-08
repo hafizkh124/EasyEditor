@@ -149,7 +149,7 @@ const SidebarHistory = ({ section, activeId, onSelect, collapsed, showNewChat = 
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 opacity-100 focus:opacity-100 data-[state=open]:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+              className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0 opacity-100 focus:opacity-100 data-[state=open]:opacity-100 md:opacity-0 md:group-hover:opacity-100"
               aria-label={t("sidebar.history_item_menu", "Item menu")}
             >
               <MoreHorizontal className="h-4 w-4" />

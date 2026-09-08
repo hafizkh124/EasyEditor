@@ -146,28 +146,28 @@ export const PdfViewerDialog: React.FC<PdfViewerDialogProps> = ({
         </div>
 
         <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(page - 1)} disabled={page <= 1} title={t("reader.previous_page")} aria-label={t("reader.previous_page")}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={() => goToPage(page - 1)} disabled={page <= 1} title={t("reader.previous_page")} aria-label={t("reader.previous_page")}>
             <ChevronRight className="h-4 w-4" />
           </Button>
           <span className="text-xs text-muted-foreground px-1 tabular-nums whitespace-nowrap">
             {page} / {numPages || "…"}
           </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToPage(page + 1)} disabled={page >= numPages} title={t("reader.next_page")} aria-label={t("reader.next_page")}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={() => goToPage(page + 1)} disabled={page >= numPages} title={t("reader.next_page")} aria-label={t("reader.next_page")}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="w-px h-4 bg-border mx-1" />
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} title={t("reader.zoom_out")} aria-label={t("reader.zoom_out")}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} title={t("reader.zoom_out")} aria-label={t("reader.zoom_out")}>
             <ZoomOut className="h-4 w-4" />
           </Button>
           <span className="text-xs text-muted-foreground px-1 tabular-nums whitespace-nowrap w-11 text-center">
             {Math.round(zoom * 100)}%
           </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom((z) => Math.min(3, z + 0.25))} title={t("reader.zoom_in")} aria-label={t("reader.zoom_in")}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={() => setZoom((z) => Math.min(3, z + 0.25))} title={t("reader.zoom_in")} aria-label={t("reader.zoom_in")}>
             <ZoomIn className="h-4 w-4" />
           </Button>
         </div>
 
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={close} title={t("reader.close_pdf")} aria-label={t("reader.close_pdf")}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={close} title={t("reader.close_pdf")} aria-label={t("reader.close_pdf")}>
           <X className="h-4 w-4" />
         </Button>
       </header>

@@ -115,7 +115,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ active = false }) => {
         />
         <Button
           size="icon"
-          className="h-8 w-8 shrink-0"
+          className="h-8 w-8 shrink-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
           title={t("reader.notes.add", "Add note")}
           aria-label={t("reader.notes.add", "Add note")}
           onClick={handleAdd}
@@ -155,7 +155,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ active = false }) => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-muted-foreground/60 hover:text-destructive"
+                    className="h-6 w-6 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-muted-foreground/60 hover:text-destructive"
                     onClick={() => handleDelete(n.pageNumber)}
                     title={t("reader.notes.delete")}
                     aria-label={t("reader.notes.delete")}

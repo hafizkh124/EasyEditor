@@ -192,10 +192,10 @@ export const TranslatePanel = () => {
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <span className="text-xs font-semibold">Quick Translate</span>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Copy translation" onClick={handleCopyAll}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0" aria-label="Copy translation" onClick={handleCopyAll}>
             <Copy className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Insert into Canvas" onClick={handleOpenInEditor}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0" aria-label="Insert into Canvas" onClick={handleOpenInEditor}>
             <FileEdit className="h-3.5 w-3.5" />
           </Button>
         </div>
