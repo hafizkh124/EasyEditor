@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { WebByokKeyPanel } from './WebByokKeyPanel';
 import { logger } from '@/lib/logger';
 
 const log = logger.child('ByokKeyPanel');
@@ -80,7 +81,13 @@ export const ByokKeyPanel: React.FC = () => {
     return () => window.removeEventListener('focus', check);
   }, [api, providers, statuses, drafts]);
 
-  if (typeof window === 'undefined' || !window.electronAPI?.isDesktop || !api) return null;
+  // M10 Phase 2.5.3 — web gets its own, deliberately simpler panel (one
+  // provider at a time, no per-role split, no eval-verification gate — see
+  // WebByokKeyPanel.tsx's own doc comment). Everything below this line is
+  // desktop-only: window.electronAPI.byok has no web equivalent.
+  if (typeof window === 'undefined' || !window.electronAPI?.isDesktop || !api) {
+    return <WebByokKeyPanel />;
+  }
 
   const saveAndTest = async (id: string) => {
     const key = (drafts[id] ?? '').trim();

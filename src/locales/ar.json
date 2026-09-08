@@ -1639,5 +1639,16 @@
   "research.sources_hint_all": "يجري البحث حاليًا في كل مصدر متاح.",
   "research.sources_hint_some": "سيتم البحث في المصادر المحددة فقط. مكتبتك الخاصة مشمولة دائمًا.",
   "research.arabic_matn_only": "المصادر ذات المتن العربي فقط",
-  "research.arabic_matn_only_note": "الاستشهاد فقط بالمقاطع التي تحمل نصًا عربيًا حقيقيًا، وليس مجرد ترجمة أردية."
+  "research.arabic_matn_only_note": "الاستشهاد فقط بالمقاطع التي تحمل نصًا عربيًا حقيقيًا، وليس مجرد ترجمة أردية.",
+  "byok.web.title": "مفتاح نموذج الذكاء الاصطناعي الخاص بك (BYOK)",
+  "byok.web.description": "احفظ مفتاحك المجاني الخاص بـ Gemini/Groq/OpenRouter هنا ليعمل الوكيل بمفتاحك الخاص — دون استهلاك أي رموز. يُحفظ المفتاح مشفّرًا على خادمنا ولا يُرسل مطلقًا إلى المتصفح.",
+  "byok.web.saved": "تم حفظ مفتاح {label} والتحقق منه.",
+  "byok.web.error": "خطأ",
+  "byok.web.success": "نجاح",
+  "byok.web.saved_as": "محفوظ — …{last4}",
+  "byok.web.get_key": "احصل على مفتاح",
+  "byok.web.show_key": "إظهار المفتاح",
+  "byok.web.delete": "حذف",
+  "byok.web.checking": "جارٍ التحقق…",
+  "byok.web.save_and_test": "حفظ والتحقق"
 }

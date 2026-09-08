@@ -1,12 +1,13 @@
-// agent-model — M10 Phase 2.1 (ADR-0034 follow-up). The web agent's model
-// call. shared/agent/loop.ts is pure and already runs the same way in the
-// browser as it does in the Electron main process; the one thing it cannot
-// do from a browser is call Gemini/Groq/OpenRouter directly (no server-side
-// BYOK key store yet — that is Phase 2.5). Until then this is the desktop's
-// modelRouter.ts's web counterpart: authenticate, meter, and forward to the
-// SAME `_shared/aiGateway.ts` every other edge function already uses.
+// agent-model — M10 Phase 2.1/2.5. The web agent's model call.
+// shared/agent/loop.ts is pure and already runs the same way in the browser
+// as it does in the Electron main process; the one thing it cannot do from a
+// browser is call Gemini/Groq/OpenRouter directly. This function is that:
+// authenticate, then either (a) BYOK — the user has their own key stored
+// (byok-keys), decrypt it and call their provider directly, no token
+// deduction at all — or (b) the paid path — meter and forward to the SAME
+// `_shared/aiGateway.ts` every other edge function already uses.
 //
-// Deliberately thin: the AgentMessage ⇄ OpenAI wire-format mapping
+// Deliberately thin: the AgentMessage <-> OpenAI wire-format mapping
 // (toOpenAiMessages/toOpenAiTools/parseModelStep) lives in
 // shared/agent/openAiCompatWire.ts and runs CLIENT-SIDE (src/core/agent's
 // web ModelFn) — this function only ever sees an already-OpenAI-shaped body
@@ -14,18 +15,20 @@
 // electron/ai/openAiCompatibleClient.ts's `chatCompletion` returns, so the
 // same `parseModelStep` runs unmodified on both platforms.
 //
-// No baseUrl parameter exists yet: callChatCompletions only ever calls our
-// own Gemini-direct / Lovable endpoints, so there is no user-controlled
-// fetch target to allowlist here. Phase 2.5 (BYOK) will add one — and MUST
-// route it through electron/lib/agentModelAllowlist.ts's shared allowlist
-// (per the M10 plan's own note), not a bespoke check, before this function
-// ever forwards to a provider host it does not already hardcode.
+// No client-supplied baseUrl exists, on purpose: BYOK routing decides which
+// provider to call from the user's OWN stored row (user_provider_keys), never
+// from anything the client's request body says — there is no attacker-
+// reachable fetch target to allowlist in the first place. `body.model` is
+// therefore ignored entirely on the BYOK path; the stored provider's own
+// toolModel (_shared/providerRegistry.ts) is what actually gets called.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "npm:zod@^3.25.76";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
 import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
+import { decryptKey } from "../_shared/providerKeyCrypto.ts";
+import { PROVIDERS, type ProviderId } from "../_shared/providerRegistry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -115,6 +118,70 @@ export async function handle(req: Request): Promise<Response> {
       });
     }
     const body = parsed.data;
+
+    // M10 Phase 2.5.3 — BYOK. Whichever provider row was saved/updated most
+    // recently is "the" active one — the web panel is a single dropdown (one
+    // key at a time from the scholar's perspective), not desktop's per-role
+    // (loop/text/critic) selection, so there is nothing else to disambiguate
+    // on. Retrieval (islamic-search, search_corpus, …) is never affected —
+    // this only ever substitutes the model CALL.
+    const { data: byokRows } = await supabase
+      .from("user_provider_keys")
+      .select("provider, encrypted_key")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+    const byokRow = byokRows?.[0] as { provider: ProviderId; encrypted_key: string } | undefined;
+    const providerKeySecret = Deno.env.get("PROVIDER_KEY_SECRET");
+
+    if (byokRow && providerKeySecret) {
+      const spec = PROVIDERS[byokRow.provider];
+      try {
+        const plainKey = await decryptKey(byokRow.encrypted_key, providerKeySecret);
+        const res = await fetch(`${spec.baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${plainKey}` },
+          body: JSON.stringify({
+            model: spec.toolModel, // NOT body.model — that string assumed our own Gemini call
+            messages: body.messages,
+            ...(body.tools?.length ? { tools: body.tools, tool_choice: body.tool_choice ?? "auto" } : {}),
+            ...(body.temperature !== undefined ? { temperature: body.temperature } : {}),
+            ...(body.max_tokens !== undefined ? { max_tokens: body.max_tokens } : {}),
+          }),
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          // A BYOK failure is surfaced, never silently retried on the paid
+          // path — that would bill app tokens the scholar did not expect
+          // after specifically opting into their own free key.
+          return new Response(JSON.stringify({
+            error: `${spec.label} کی آپ کی اپنی key سے کال ناکام (${res.status}): ${text.slice(0, 300)} — Settings میں key چیک کریں۔`,
+          }), {
+            status: res.status >= 500 ? 502 : res.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const data = await res.json().catch(() => null) as { choices?: Array<{ message?: unknown }> } | null;
+        const message = data?.choices?.[0]?.message;
+        if (!message) {
+          return new Response(JSON.stringify({ error: `${spec.label} نے کوئی جواب نہیں دیا۔` }), {
+            status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        // No checkAndDeductTokens anywhere on this path — the whole point.
+        return new Response(JSON.stringify(message), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({
+          error: `${spec.label} key ڈکرپٹ نہیں ہو سکی — دوبارہ Settings میں محفوظ کریں۔ (${e instanceof Error ? e.message : String(e)})`,
+        }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     const tokenCost = calculateCost("agent_step", 1);
     const tokenResult = await checkAndDeductTokens(
