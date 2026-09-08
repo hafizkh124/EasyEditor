@@ -343,7 +343,9 @@ const homeLinkCache = new Map<string, Set<string>>();
 
 async function pageLinks(url: string, host: string): Promise<string[]> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
+  // 20s, not 10s: urdufatwa's search page is ~165 KB of RTL HTML and reliably
+  // took longer than 10s from the edge — the abort looked like a site failure.
+  const timeout = setTimeout(() => controller.abort(), 20_000);
   try {
     const res = await fetch(url, { headers: { "User-Agent": BROWSER_UA }, signal: controller.signal });
     clearTimeout(timeout);
