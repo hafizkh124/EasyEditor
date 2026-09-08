@@ -335,9 +335,28 @@ async function fetchAndExtract(url: string): Promise<{ title: string; text: stri
 }
 
 // ── Per-domain pipeline ──────────────────────────────────────────────────────
-async function scrapeDomain(key: string, cfg: DomainConfig, query: string): Promise<IslamicResult[]> {
+/** Per-domain trace, filled only when the caller passes `debug: true`. */
+export interface ScrapeDiagnostic {
+  domain: string;
+  urls: string[];
+  extracted: number;
+}
+
+async function scrapeDomain(
+  key: string,
+  cfg: DomainConfig,
+  query: string,
+  diag?: ScrapeDiagnostic[],
+): Promise<IslamicResult[]> {
   const urls = await searchSite(cfg.host, query, 2);
   const pages = await Promise.allSettled(urls.map((u) => fetchAndExtract(u)));
+  if (diag) {
+    diag.push({
+      domain: key,
+      urls,
+      extracted: pages.filter((p) => p.status === "fulfilled" && p.value).length,
+    });
+  }
 
   const out: IslamicResult[] = [];
   pages.forEach((p, i) => {
