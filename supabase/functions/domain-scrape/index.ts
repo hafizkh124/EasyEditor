@@ -288,7 +288,102 @@ async function searchOn(
   }
 }
 
+// ── Step 1b: the site's OWN search box ──────────────────────────────────────
+// Measured live from this function on 2026-09-08: the free engines are the
+// weak link, not the sites. DuckDuckGo answers a datacentre IP with HTTP 202
+// and an empty anomaly page, and Bing answers 200 but silently DROPS the
+// `site:` operator, returning results from unrelated domains. Every site here,
+// by contrast, answers its own search URL with real result markup.
+//
+// `pattern` picks the detail pages out of the search page. Where a site has no
+// distinctive detail URL shape (WordPress pretty permalinks), we instead diff
+// the search page's links against the home page's — whatever is NOT chrome is
+// a result. The home page is fetched once per function instance and cached.
+interface SiteSearch {
+  url: (q: string) => string;
+  pattern?: RegExp;
+  /** Home page used for the chrome diff when `pattern` is absent. */
+  home?: string;
+}
+
+const SITE_SEARCH: Record<string, SiteSearch> = {
+  "www.islamweb.net": {
+    url: (q) => `https://www.islamweb.net/ar/fatawa/search/?query=${encodeURIComponent(q)}`,
+    // ≥4 digits: the short ids (/fatawa/876) are category pages, not fatwas.
+    pattern: /\/fatawa\/\d{4,}/,
+  },
+  "magazine.mohaddis.com": {
+    url: (q) => `https://magazine.mohaddis.com/?s=${encodeURIComponent(q)}`,
+    pattern: /\/articledetail\/\d+/,
+  },
+  "alulama.org": {
+    url: (q) => `https://alulama.org/?s=${encodeURIComponent(q)}`,
+    home: "https://alulama.org/",
+  },
+  "islamfort.com": {
+    url: (q) => `https://islamfort.com/?s=${encodeURIComponent(q)}`,
+    home: "https://islamfort.com/",
+  },
+};
+
+const ASSET_RE = /\.(png|jpe?g|gif|svg|webp|css|js|ico|woff2?|ttf|xml|pdf|zip|mp3|mp4)$/i;
+const homeLinkCache = new Map<string, Set<string>>();
+
+async function pageLinks(url: string, host: string): Promise<string[]> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": BROWSER_UA }, signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      console.error(`[domain-scrape] site search HTTP ${res.status} for ${host}`);
+      return [];
+    }
+    const { document: doc } = parseHTML(await res.text());
+    const out: string[] = [];
+    for (const a of Array.from(doc.querySelectorAll("a"))) {
+      const href = a.getAttribute("href");
+      if (!href) continue;
+      let abs: URL;
+      try {
+        abs = new URL(href, url);
+      } catch {
+        continue;
+      }
+      if (!hostMatches(abs.toString(), host)) continue;
+      if (ASSET_RE.test(abs.pathname)) continue;
+      out.push(abs.origin + abs.pathname);
+    }
+    return [...new Set(out)];
+  } catch (e) {
+    clearTimeout(timeout);
+    console.error(`[domain-scrape] site search failed for ${host}:`, (e as Error).message);
+    return [];
+  }
+}
+
+async function searchNative(host: string, query: string, limit: number): Promise<string[]> {
+  const cfg = SITE_SEARCH[host];
+  if (!cfg) return [];
+
+  const found = await pageLinks(cfg.url(query), host);
+  if (found.length === 0) return [];
+
+  if (cfg.pattern) {
+    return found.filter((u) => cfg.pattern!.test(u)).slice(0, limit);
+  }
+
+  let chrome = homeLinkCache.get(host);
+  if (!chrome) {
+    chrome = new Set(await pageLinks(cfg.home ?? `https://${host}/`, host));
+    homeLinkCache.set(host, chrome);
+  }
+  return found.filter((u) => !chrome!.has(u) && !u.includes("/search")).slice(0, limit);
+}
+
 async function searchSite(host: string, query: string, limit: number): Promise<string[]> {
+  const native = await searchNative(host, query, limit);
+  if (native.length > 0) return native;
   for (const engine of SEARCH_ENGINES) {
     const urls = await searchOn(engine, host, query, limit);
     if (urls.length > 0) return urls;
