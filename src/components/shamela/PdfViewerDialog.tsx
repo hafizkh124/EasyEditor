@@ -68,7 +68,9 @@ export const PdfViewerDialog: React.FC<PdfViewerDialogProps> = ({
         if (!bytes || cancelled) return;
         const pdf = await openPdfDocument(bytes);
         if (cancelled) {
-          await pdf.destroy();
+          // pdfjs-dist v6 moved lifecycle teardown off PDFDocumentProxy onto
+          // its loadingTask (PDFDocumentProxy.destroy() no longer exists).
+          await pdf.loadingTask.destroy();
           return;
         }
         setDoc(pdf);
@@ -84,7 +86,7 @@ export const PdfViewerDialog: React.FC<PdfViewerDialogProps> = ({
     return () => {
       cancelled = true;
       setDoc((prev) => {
-        void prev?.destroy();
+        void prev?.loadingTask.destroy();
         return null;
       });
     };
