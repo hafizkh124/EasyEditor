@@ -302,7 +302,7 @@
   "islamic.domain_dorar": "Dorar.net",
   "islamic.domain_sunnah": "Sunnah.com",
   "islamic.domain_hadithapi": "HadithAPI.com (UR/AR/EN)",
-  "research.islamic_hint": "This looks like an Islamic question. Switch to the Islamic Research tab for properly sourced answers (Qur'an + Hadith + fiqh directly)."
+  "research.islamic_hint": "This looks like an Islamic question. Switch to the Islamic Research tab for properly sourced answers (Qur'an + Hadith + fiqh directly).",
   "research.islamic_hint_switch": "Switch to Islamic",
   "research.islamic_hint_dismiss": "Ask here anyway",
   "research.prompt_switched_islamic": "Switched to grounded Islamic mode — citations will come from sources.",
