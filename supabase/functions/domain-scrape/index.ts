@@ -181,19 +181,34 @@ function unwrapSearchLink(href: string, base: string): string | null {
 }
 
 /**
- * Free web search, tried in order. DuckDuckGo's HTML endpoint is the best
- * quality but rate-limits/anomaly-blocks datacentre IPs (which is exactly what
- * an edge function is), so `lite.` and finally Bing act as fallbacks. Each
- * engine's own result anchors are matched, then any off-engine link that is
- * actually on the target host is accepted — a deliberately loose net, because
- * the host filter below is what guarantees correctness, not the selector.
+ * Free web search, tried in order.
+ *
+ * Bing is FIRST on purpose. DuckDuckGo's HTML/lite endpoints answer a
+ * datacentre IP — which is exactly what an edge function is — with HTTP 202 and
+ * an anomaly page carrying no results at all, verified live from this project's
+ * own function; they stay only as a fallback in case that ever relaxes. Bing
+ * answers 200 with real result markup from the same IPs.
+ *
+ * Every anchor on the page is considered and then filtered by host: the engines
+ * rewrite their result classes often, so the host check — not a CSS selector —
+ * is what guarantees correctness.
  */
 const SEARCH_ENGINES: Array<{
   name: string;
+  base: string;
   build: (q: string) => { url: string; init: RequestInit };
 }> = [
   {
+    name: "bing",
+    base: "https://www.bing.com",
+    build: (q) => ({
+      url: `https://www.bing.com/search?q=${encodeURIComponent(q)}`,
+      init: { headers: { "User-Agent": BROWSER_UA } },
+    }),
+  },
+  {
     name: "ddg-html",
+    base: "https://duckduckgo.com",
     build: (q) => ({
       url: "https://html.duckduckgo.com/html/",
       init: {
@@ -205,6 +220,7 @@ const SEARCH_ENGINES: Array<{
   },
   {
     name: "ddg-lite",
+    base: "https://duckduckgo.com",
     build: (q) => ({
       url: "https://lite.duckduckgo.com/lite/",
       init: {
@@ -212,13 +228,6 @@ const SEARCH_ENGINES: Array<{
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": BROWSER_UA },
         body: new URLSearchParams({ q }),
       },
-    }),
-  },
-  {
-    name: "bing",
-    build: (q) => ({
-      url: `https://www.bing.com/search?q=${encodeURIComponent(q)}&setlang=en`,
-      init: { headers: { "User-Agent": BROWSER_UA } },
     }),
   },
 ];
@@ -248,7 +257,8 @@ async function searchOn(
     const { url, init } = engine.build(`site:${host} ${query}`);
     const res = await fetch(url, { ...init, signal: controller.signal });
     clearTimeout(timeout);
-    if (!res.ok) {
+    // 202 is DuckDuckGo's bot-anomaly response — technically `ok`, always empty.
+    if (!res.ok || res.status === 202) {
       console.error(`[domain-scrape] ${engine.name} HTTP ${res.status} for ${host}`);
       return [];
     }
@@ -261,7 +271,7 @@ async function searchOn(
     for (const a of Array.from(doc.querySelectorAll("a"))) {
       const href = a.getAttribute("href");
       if (!href) continue;
-      const real = unwrapDuckDuckGoLink(href);
+      const real = unwrapSearchLink(href, engine.base);
       if (!real || seen.has(real) || !hostMatches(real, host)) continue;
       seen.add(real);
       urls.push(real);
