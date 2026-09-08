@@ -504,6 +504,17 @@ export async function handle(req: Request): Promise<Response> {
 
   try {
     const { query, selectedDomains, debug } = await req.json();
+    if (!query || typeof query !== "string") {
+      return new Response(JSON.stringify({ error: "Query is required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Choose which domains to hit. `selectedDomains` filters to the intersection
+    // with SUPPORTED_DOMAINS; when omitted, we fan out to every registered host.
+    const targets: string[] = Array.isArray(selectedDomains) && selectedDomains.length > 0
+      ? selectedDomains.filter((d: string) => d in DOMAINS)
+      : SUPPORTED_DOMAINS;
 
     const diagnostics: ScrapeDiagnostic[] | undefined = debug === true ? [] : undefined;
     const settled = await Promise.allSettled(
