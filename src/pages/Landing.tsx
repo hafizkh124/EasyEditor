@@ -405,7 +405,7 @@ const Landing = () => {
 
       {/* CTA */}
       <section className="border-t border-border/60 bg-primary/5 py-16">
-        <div className="mx-auto max-w-3xl px-4 text-center">
+        <div className="page-container text-center">
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
             {t("landing.cta_title")}
           </h2>
