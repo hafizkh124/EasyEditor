@@ -400,7 +400,7 @@ export async function handle(req: Request): Promise<Response> {
       : SUPPORTED_DOMAINS;
 
     const settled = await Promise.allSettled(
-      targets.map((key) => scrapeDomain(key, DOMAINS[key], query)),
+      targets.map((key) => scrapeDomain(key, DOMAINS[key], query, diagnostics)),
     );
 
     const results: IslamicResult[] = [];
