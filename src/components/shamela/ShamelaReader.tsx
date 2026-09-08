@@ -127,8 +127,7 @@ export const ShamelaReader: React.FC<ShamelaReaderProps> = ({
         {tocOpen && (
           <aside
             className={cn(
-              "w-64 border-e border-border bg-muted/60 shrink-0 overflow-y-auto",
-              "max-md:absolute max-md:inset-y-0 max-md:start-0 max-md:z-20 max-md:bg-background max-md:shadow-xl",
+              "w-64 border-e border-border bg-muted/60 shrink-0 overflow-y-auto max-md:absolute max-md:inset-y-0 max-md:start-0 max-md:z-20 max-md:bg-background max-md:shadow-xl",
             )}
             aria-label={t("reader.contents")}
           >

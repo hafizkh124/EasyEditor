@@ -88,7 +88,7 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
           onChange={(e) => { if (e.target.files?.length) void a.importFiles(e.target.files); e.target.value = ""; }}
         />
         {a.hubOpen && (
-          <div className="absolute bottom-full start-2 mb-1 w-64 rounded-md border border-border bg-popover p-1 text-xs shadow-md">
+          <div className="absolute bottom-full start-2 mb-1 w-[min(16rem,80vw)] rounded-md border border-border bg-popover p-1 text-xs shadow-md">
             <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={() => { a.setHubOpen(false); a.fileInputRef.current?.click(); }}>
               <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               {t("agent.hub_add_files", "Add recordings, scans, fonts…")}

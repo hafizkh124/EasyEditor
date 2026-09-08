@@ -124,10 +124,7 @@ const LEGACY_PHYSICAL_DIRECTION = new Set([
   "src/pages/Transcribe.tsx",
   "src/pages/TranslationWorkspace.tsx",
 ]);
-const LEGACY_VIEWPORT = new Set([
-  "src/components/workspace/WorkspaceLayout.tsx",
-  "src/pages/OcrReview.tsx",
-]);
+const LEGACY_VIEWPORT = new Set();
 
 function stripComments(source) {
   return source

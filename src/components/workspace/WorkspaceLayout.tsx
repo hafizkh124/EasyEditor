@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/resizable";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { WorkspaceTopBar } from "./WorkspaceTopBar";
 import { LibraryPanel } from "./LibraryPanel";
@@ -41,7 +42,11 @@ export const WorkspaceLayout: React.FC = () => {
   } = useWorkspace();
 
   const { allDocs } = useAllDocuments();
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  // SPEC M10 Phase 3 — this used to be its own innerWidth<768 state+resize
+  // listener, a third copy of the same breakpoint (OcrReview.tsx had the
+  // second). use-mobile.tsx's matchMedia-based hook is the one already
+  // shared elsewhere in the app.
+  const isMobile = useIsMobile();
 
   const shamelaBook = useShamelaBook(activeDocumentId);
 
@@ -65,12 +70,6 @@ export const WorkspaceLayout: React.FC = () => {
     setSplitSecondary(book);
     setSplitPickerOpen(false);
   };
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   const drawerStyle = (open: boolean, edge: "start" | "end"): React.CSSProperties => {
     const base: React.CSSProperties = { position: "absolute", top: 0, bottom: 0, zIndex: 40 };
@@ -154,7 +153,7 @@ export const WorkspaceLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background" dir={direction}>
+    <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-background" dir={direction}>
       {/* TopBar */}
       <WorkspaceTopBar
         doc={doc}

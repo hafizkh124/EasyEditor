@@ -19,14 +19,14 @@ export const ReaderBottomBar: React.FC<ReaderBottomBarProps> = ({
   onPrev,
   onNext,
 }) => {
-  const { t } = useLanguage();
+  const { t, direction } = useLanguage();
   const [value, setValue] = useState(String(currentPage));
 
   useEffect(() => {
     setValue(String(currentPage));
   }, [currentPage]);
 
-  const rtl = document.documentElement.dir === "rtl";
+  const rtl = direction === "rtl";
   const PrevIcon = rtl ? ChevronRight : ChevronLeft;
   const NextIcon = rtl ? ChevronLeft : ChevronRight;
 
@@ -41,7 +41,7 @@ export const ReaderBottomBar: React.FC<ReaderBottomBarProps> = ({
 
   return (
     <footer className="flex items-center justify-center gap-2 h-10 border-t border-border px-3 bg-background/95 backdrop-blur shrink-0">
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onPrev} disabled={currentPage <= 1} title={t("reader.previous_page")} aria-label={t("reader.previous_page")}>
+      <Button variant="ghost" size="icon" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={onPrev} disabled={currentPage <= 1} title={t("reader.previous_page")} aria-label={t("reader.previous_page")}>
         <PrevIcon className="h-3.5 w-3.5" />
       </Button>
 
@@ -63,12 +63,12 @@ export const ReaderBottomBar: React.FC<ReaderBottomBarProps> = ({
         <span className="text-xs text-muted-foreground whitespace-nowrap">
           / {pageCount || "…"}
         </span>
-        <Button variant="ghost" size="icon" type="submit" className="h-7 w-7" title={t("reader.go_to_page")} aria-label={t("reader.go_to_page")}>
+        <Button variant="ghost" size="icon" type="submit" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0" title={t("reader.go_to_page")} aria-label={t("reader.go_to_page")}>
           <CornerDownLeft className="h-3.5 w-3.5" />
         </Button>
       </form>
 
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onNext} disabled={currentPage >= pageCount} title={t("reader.next_page")} aria-label={t("reader.next_page")}>
+      <Button variant="ghost" size="icon" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={onNext} disabled={currentPage >= pageCount} title={t("reader.next_page")} aria-label={t("reader.next_page")}>
         <NextIcon className="h-3.5 w-3.5" />
       </Button>
     </footer>
