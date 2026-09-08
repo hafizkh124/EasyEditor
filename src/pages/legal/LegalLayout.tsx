@@ -39,7 +39,7 @@ export default function LegalLayout({
   return (
     <div dir={direction} className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
+        <div className="page-container flex h-14 items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
             <img src="/favicon.png" alt="Easy Editor" width={24} height={24} className="rounded" />
             <span className="text-base font-bold tracking-tight">Easy Editor</span>
@@ -79,7 +79,7 @@ export default function LegalLayout({
       </main>
 
       <footer className="border-t border-border/60 py-8 mt-12">
-        <div className="mx-auto max-w-4xl px-4 text-center text-sm text-muted-foreground">
+        <div className="page-container text-center text-sm text-muted-foreground">
           © {new Date().getFullYear()} Al-Ulama Easy Editor · Operated by Hafiz Khizar Hayat ·{" "}
           <Link to="/terms" className="hover:text-foreground">
             {language === "ar" ? "الشروط" : language === "ur" ? "شرائط" : "Terms"}

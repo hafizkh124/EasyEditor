@@ -91,7 +91,7 @@ const About = () => {
               "radial-gradient(circle at 20% 20%, hsl(var(--primary) / 0.25) 0, transparent 40%), radial-gradient(circle at 80% 80%, hsl(var(--primary) / 0.2) 0, transparent 40%)",
           }}
         />
-        <div className="relative mx-auto max-w-4xl px-4 py-16 md:py-24 text-center" dir={direction}>
+        <div className="relative page-container py-16 md:py-24 text-center" dir={direction}>
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
             <Users className="h-3.5 w-3.5" />
             {pick(lang, "About us", "ہمارا تعارف", "من نحن")}
