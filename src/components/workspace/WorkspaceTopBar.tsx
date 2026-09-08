@@ -104,10 +104,10 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
     toast.success(t("editor.copied", "Copied to clipboard"));
   };
 
-  const handleDownload = (format: "word" | "pdf" | "html" | "txt") => {
+  const handleDownload = async (format: "word" | "pdf" | "html" | "txt") => {
     const title = doc?.title || t("editor.untitled");
     switch (format) {
-      case "word": exportDoc(currentHtml, title); break;
+      case "word": await exportDoc(currentHtml, title); break;
       case "pdf": exportPdf(currentHtml, title); break;
       case "html": exportHtml(currentHtml, title); break;
       case "txt": {
