@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BookOpen, Bot, Languages, LayoutDashboard, Mic, ScanText, Search,
-  Settings as SettingsIcon, Shield, Sparkles, StickyNote, User, Volume2,
+  Settings as SettingsIcon, Shield, Sparkles, User, Volume2,
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
 import { isDesktop } from "@/utils/environment";
@@ -49,7 +49,7 @@ export type CapabilityId =
   | "workspace" | "transcribe" | "ocr" | "speak" | "translate"
   | "research" | "settings" | "dashboard" | "profile" | "admin"
   | "voice.cloning" | "tokens.meter"
-  | "wb.aiReader" | "wb.research" | "wb.translate" | "wb.notes" | "wb.agent";
+  | "wb.aiReader" | "wb.research" | "wb.translate" | "wb.agent";
 
 export interface Capability {
   id: CapabilityId;
@@ -154,8 +154,14 @@ export const CAPABILITIES: readonly Capability[] = [
 
   // Workbench tabs. Translate is the same cloud edge function as its
   // standalone page, so it disappears on desktop for the same reason.
+  //
+  // M10 Phase 3 §3.6 — this id used to gate a standalone "AI Reader" tab.
+  // It now gates "Study", which merges AI Reader + Notes into one tab with
+  // an inner segmented control (StudyPanel.tsx) — `wb.notes` was removed as
+  // its own capability entirely (it had zero other consumers; grep before
+  // removing found only this registration and its old tab-value mapping).
   {
-    id: "wb.aiReader", route: null, labelKey: "workbench.ai_reader", fallbackLabel: "AI Reader",
+    id: "wb.aiReader", route: null, labelKey: "workbench.study", fallbackLabel: "Study",
     icon: Sparkles, runtimes: { web: ALWAYS, desktop: ALWAYS }, surfaces: ["workbench-tab"],
   },
   {
@@ -167,10 +173,6 @@ export const CAPABILITIES: readonly Capability[] = [
     icon: Languages,
     runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Translation runs on a cloud edge function." } },
     surfaces: ["workbench-tab"],
-  },
-  {
-    id: "wb.notes", route: null, labelKey: "workbench.notes", fallbackLabel: "Notes",
-    icon: StickyNote, runtimes: { web: ALWAYS, desktop: ALWAYS }, surfaces: ["workbench-tab"],
   },
   {
     // SPEC-M8 Layer 6 / ADR-0016; M10 Phase 2.1 (ADR-0034 follow-up) brought

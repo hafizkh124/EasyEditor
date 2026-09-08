@@ -358,6 +358,7 @@
   "theme.system": "System",
   "reader.theme.auto": "Automatic (match app)",
   "reader.theme.sepia": "Sepia",
+  "workbench.study": "Study",
   "workbench.ai_reader": "AI Reader",
   "workbench.notes": "Notes",
   "workbench.tasks": "Tasks",

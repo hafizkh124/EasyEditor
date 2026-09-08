@@ -21,8 +21,17 @@ function Probe() {
 
 describe("isWorkbenchTab", () => {
   it("accepts every real workbench tab", () => {
-    for (const tab of ["aiReader", "research", "translate", "notes", "tasks", "trust"]) {
+    // M10 Phase 3 §3.6 — "aiReader"/"notes" merged into "study", "tasks" folded
+    // into "trust". A stale ?panel=notes (or similar) link is no longer a
+    // known tab — see the "rejects a retired tab id" case below.
+    for (const tab of ["study", "research", "translate", "trust"]) {
       expect(isWorkbenchTab(tab)).toBe(true);
+    }
+  });
+
+  it("rejects a retired pre-Phase-3 tab id instead of silently opening something", () => {
+    for (const retired of ["aiReader", "notes", "tasks", "agent"]) {
+      expect(isWorkbenchTab(retired)).toBe(false);
     }
   });
 
@@ -47,22 +56,32 @@ describe("WorkspaceProvider — opening on a specific tab from the URL", () => {
     expect(probe.dataset.tab).toBe("translate");
   });
 
-  it("opens on notes too — not just the one tab Workspace.tsx used to special-case", () => {
+  it("opens on study too — not just the one tab Workspace.tsx used to special-case", () => {
     render(
-      <WorkspaceProvider initialWorkbenchTab="notes">
+      <WorkspaceProvider initialWorkbenchTab="study">
         <Probe />
       </WorkspaceProvider>,
     );
-    expect(screen.getByTestId("probe").dataset.tab).toBe("notes");
+    expect(screen.getByTestId("probe").dataset.tab).toBe("study");
   });
 
   it("overrides whichever tab was last left open in localStorage", () => {
-    localStorage.setItem("workspace.panels", JSON.stringify({ workbenchTab: "notes", workbenchCollapsed: true }));
+    localStorage.setItem("workspace.panels", JSON.stringify({ workbenchTab: "study", workbenchCollapsed: true }));
     render(
-      <WorkspaceProvider initialWorkbenchTab="notes">
+      <WorkspaceProvider initialWorkbenchTab="study">
         <Probe />
       </WorkspaceProvider>,
     );
-    expect(screen.getByTestId("probe").dataset.tab).toBe("notes");
+    expect(screen.getByTestId("probe").dataset.tab).toBe("study");
+  });
+
+  it("a stale pre-Phase-3 persisted tab (e.g. \"notes\") falls back to the default rather than crashing", () => {
+    localStorage.setItem("workspace.panels", JSON.stringify({ workbenchTab: "notes", workbenchCollapsed: false }));
+    render(
+      <WorkspaceProvider>
+        <Probe />
+      </WorkspaceProvider>,
+    );
+    expect(screen.getByTestId("probe").dataset.tab).toBe("research");
   });
 });

@@ -138,7 +138,7 @@ describe("capability registry", () => {
       vi.stubEnv("VITE_AGENT_MODE", "false");
       expect(isCapabilityAvailable("workspace")).toBe(true);
       const tabs = availableCapabilities("workbench-tab").map((c) => c.id);
-      expect(tabs).toEqual(["wb.aiReader", "wb.research", "wb.notes"]);
+      expect(tabs).toEqual(["wb.aiReader", "wb.research"]);
     });
 
     it("adds the Agent tab on desktop once VITE_AGENT_MODE is on", () => {

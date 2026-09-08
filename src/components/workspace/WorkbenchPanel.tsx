@@ -1,13 +1,11 @@
 import React from "react";
-import { ListChecks, ShieldCheck, X } from "lucide-react";
+import { ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResearchPanel } from "@/components/research/ResearchPanel";
 import { TranslatePanel } from "@/components/translate/TranslatePanel";
-import { TasksTab } from "./TasksTab";
-import { TrustTab } from "./TrustTab";
-import { AiReaderPanel } from "@/components/reader/AiReaderPanel";
-import { NotesPanel } from "@/components/reader/NotesPanel";
+import { StudyPanel } from "./StudyPanel";
+import { TrustPanel } from "./TrustPanel";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { type WorkbenchTab } from "@/core/workspace/usePanelState";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -29,12 +27,15 @@ const GRID_COLS: Record<number, string> = {
  * available) or plain research chat — there is no separate "agent" tab to
  * map a capability onto anymore. isCapabilityAvailable("wb.agent") is still
  * a real, used check; it just no longer drives a tab of its own.
+ *
+ * SPEC M10 §3.6 — wb.aiReader now maps to "study" (StudyPanel.tsx merges
+ * AI Reader + Notes behind an inner segmented control); wb.notes was
+ * removed as its own capability entirely, so it has no entry here at all.
  */
 const TAB_VALUE_BY_CAPABILITY: Partial<Record<CapabilityId, WorkbenchTab>> = {
-  "wb.aiReader": "aiReader",
+  "wb.aiReader": "study",
   "wb.research": "research",
   "wb.translate": "translate",
-  "wb.notes": "notes",
 };
 
 interface WorkbenchPanelProps {
@@ -49,9 +50,10 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
   const { workbenchCollapsed, setWorkbenchOpen, workbenchTab, setWorkbenchTab } = useWorkspace();
   const { t } = useLanguage();
   const hidden = workbenchCollapsed && !alwaysVisible;
-  // Tasks + Trust are both Pillar A/C surfaces, so they ride the flag SPEC-M3
-  // §4.3 defines. (An extra `VITE_TRUST_UI` flag would be a fourth, undocumented
-  // switch that `.env.example` never mentions.)
+  // Tasks + Trust (now one merged "trust" tab, TrustPanel.tsx) are both
+  // Pillar A/C surfaces, so they ride the flag SPEC-M3 §4.3 defines. (An
+  // extra `VITE_TRUST_UI` flag would be a fourth, undocumented switch that
+  // `.env.example` never mentions.)
   const showTaskTabs = import.meta.env.VITE_TASK_LIBRARY !== "false";
 
   const baseTabs = React.useMemo(
@@ -67,7 +69,7 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
   // this the Workbench renders a tab strip with no panel under it.
   const activeTabAvailable =
     baseTabs.some((entry) => entry.value === workbenchTab)
-    || (showTaskTabs && (workbenchTab === "tasks" || workbenchTab === "trust"));
+    || (showTaskTabs && workbenchTab === "trust");
   React.useEffect(() => {
     if (!activeTabAvailable && baseTabs.length > 0) setWorkbenchTab(baseTabs[0].value);
   }, [activeTabAvailable, baseTabs, setWorkbenchTab]);
@@ -92,7 +94,7 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
               text a screen reader or a hovering user ever gets. */}
           {/* h-11 (44px, min-h-touch) below md, h-7 once a mouse is the input —
               same split as LibraryPanel's tab strip. Triggers fill via h-full. */}
-          <TabsList className={`grid ${GRID_COLS[baseTabs.length + (showTaskTabs ? 2 : 0)]} h-11 md:h-7 bg-muted p-0.5`}>
+          <TabsList className={`grid ${GRID_COLS[baseTabs.length + (showTaskTabs ? 1 : 0)]} h-11 md:h-7 bg-muted p-0.5`}>
             {baseTabs.map(({ capability, value }) => {
               const label = t(capability.labelKey, capability.fallbackLabel);
               const Icon = capability.icon;
@@ -104,21 +106,20 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
                   title={label}
                   aria-label={label}
                 >
-                  <Icon className={`h-3 w-3 shrink-0 ${value === "aiReader" ? "text-primary" : ""}`} />
+                  <Icon className={`h-3 w-3 shrink-0 ${value === "study" ? "text-primary" : ""}`} />
                   {!showTaskTabs && <span className="truncate">{label}</span>}
                 </TabsTrigger>
               );
             })}
 
+            {/* M10 Phase 3 §3.6 — Tasks + Trust merged into one "trust" tab
+                (TrustPanel.tsx's own inner segmented control switches between
+                them); this outer trigger only needs the combined tab's own
+                identity, not two. */}
             {showTaskTabs && (
-              <>
-                <TabsTrigger value="tasks" className="text-xs h-full py-0 gap-1 px-1" title={t("workbench.tasks", "Tasks")} aria-label={t("workbench.tasks", "Tasks")}>
-                  <ListChecks className="h-3.5 w-3.5 shrink-0" />
-                </TabsTrigger>
-                <TabsTrigger value="trust" className="text-xs h-full py-0 gap-1 px-1" title={t("workbench.trust", "Trust")} aria-label={t("workbench.trust", "Trust")}>
-                  <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                </TabsTrigger>
-              </>
+              <TabsTrigger value="trust" className="text-xs h-full py-0 gap-1 px-1" title={t("workbench.trust", "Trust")} aria-label={t("workbench.trust", "Trust")}>
+                <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+              </TabsTrigger>
             )}
           </TabsList>
         </Tabs>
@@ -137,8 +138,8 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
 
       {/* Tab Panels — render active tab while keeping mounted */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
-        <div className={`h-full ${workbenchTab === "aiReader" ? "block" : "hidden"}`}>
-          <AiReaderPanel />
+        <div className={`h-full ${workbenchTab === "study" ? "block" : "hidden"}`}>
+          <StudyPanel active={workbenchTab === "study"} />
         </div>
         <div className={`h-full ${workbenchTab === "research" ? "block" : "hidden"}`}>
           <ResearchPanel />
@@ -151,18 +152,10 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
             <TranslatePanel />
           </div>
         )}
-        <div className={`h-full ${workbenchTab === "notes" ? "block" : "hidden"}`}>
-          <NotesPanel active={workbenchTab === "notes"} />
-        </div>
         {showTaskTabs && (
-          <>
-            <div className={`h-full ${workbenchTab === "tasks" ? "block" : "hidden"}`}>
-              <TasksTab />
-            </div>
-            <div className={`h-full ${workbenchTab === "trust" ? "block" : "hidden"}`}>
-              <TrustTab />
-            </div>
-          </>
+          <div className={`h-full ${workbenchTab === "trust" ? "block" : "hidden"}`}>
+            <TrustPanel />
+          </div>
         )}
       </div>
     </div>
