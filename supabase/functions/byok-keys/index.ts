@@ -10,21 +10,17 @@
 // path and returns the same shape. There is no "get" action at all.
 //
 // At rest: AES-256-GCM under a key derived from the PROVIDER_KEY_SECRET
-// edge-function secret (never checked in) via SHA-256. The DB row itself
-// has no RLS policy for any client role (see the migration's own comment) —
-// this function's service-role client is the only thing that can ever
-// reach the table.
-//
-// Provider info (labels, toolModel, base URLs) is a small, deliberate copy
-// of shared/agent/providers.ts's essential fields, not an import — see
-// Phase 2.5.1's commit note: edge functions in this repo are self-contained
-// (tafsir-proxy's own header comment), and nothing here has verified that a
-// relative import escaping supabase/functions/ survives Lovable's deploy
-// packaging. Keep the two in sync by hand if a provider or model changes.
+// edge-function secret (never checked in) — see _shared/providerKeyCrypto.ts,
+// shared with agent-model so the derivation is byte-for-byte identical. The
+// DB row itself has no RLS policy for any client role (see the migration's
+// own comment) — this function's service-role client is the only thing that
+// can ever reach the table.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "npm:zod@^3.25.76";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
+import { encryptKey } from "../_shared/providerKeyCrypto.ts";
+import { PROVIDERS, PROVIDER_IDS, type ProviderId } from "../_shared/providerRegistry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,87 +28,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-type ProviderId = "gemini" | "groq" | "openrouter";
-
-interface ProviderSpec {
-  label: string;
-  kind: "gemini" | "openai-compat";
-  baseUrl: string;
-  host: string;
-  toolModel: string;
-}
-
-// Mirrors shared/agent/providers.ts's PROVIDERS — see this file's header.
-const PROVIDERS: Record<ProviderId, ProviderSpec> = {
-  gemini: { label: "Google Gemini", kind: "gemini", baseUrl: "", host: "generativelanguage.googleapis.com", toolModel: "gemini-2.5-flash" },
-  groq: { label: "Groq", kind: "openai-compat", baseUrl: "https://api.groq.com/openai/v1", host: "api.groq.com", toolModel: "openai/gpt-oss-20b" },
-  openrouter: { label: "OpenRouter", kind: "openai-compat", baseUrl: "https://openrouter.ai/api/v1", host: "openrouter.ai", toolModel: "google/gemini-2.5-flash" },
-};
-const PROVIDER_IDS = Object.keys(PROVIDERS) as ProviderId[];
-
-// ── AES-256-GCM at rest ──────────────────────────────────────────────────
-
-async function deriveKey(secret: string): Promise<CryptoKey> {
-  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret));
-  return crypto.subtle.importKey("raw", hash, "AES-GCM", false, ["encrypt", "decrypt"]);
-}
-
-function toBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
-function fromBase64(b64: string): Uint8Array {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
-async function encryptKey(plaintext: string, secret: string): Promise<string> {
-  const cryptoKey = await deriveKey(secret);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = new Uint8Array(
-    await crypto.subtle.encrypt({ name: "AES-GCM", iv }, cryptoKey, new TextEncoder().encode(plaintext)),
-  );
-  const combined = new Uint8Array(iv.length + ciphertext.length);
-  combined.set(iv, 0);
-  combined.set(ciphertext, iv.length);
-  return toBase64(combined);
-}
-
-/** Exported for agent-model (Phase 2.5.3) to decrypt the stored key server-side. */
-export async function decryptKey(encoded: string, secret: string): Promise<string> {
-  const cryptoKey = await deriveKey(secret);
-  const combined = fromBase64(encoded);
-  const iv = combined.slice(0, 12);
-  const ciphertext = combined.slice(12);
-  const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, ciphertext);
-  return new TextDecoder().decode(plaintext);
-}
-
 // ── testing a key (a cheap, one-shot ping — never saves anything) ───────
-
+// All three providers speak the same OpenAI-compatible /chat/completions
+// shape with `Authorization: Bearer <key>` — including Gemini's own
+// compat endpoint (the same one _shared/aiGateway.ts's callChatCompletions
+// already uses for our own paid calls) — so one code path covers all three.
 async function testProviderKey(provider: ProviderId, key: string): Promise<{ success: boolean; message: string }> {
   const spec = PROVIDERS[provider];
   try {
-    if (spec.kind === "gemini") {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${spec.toolModel}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-          body: JSON.stringify({ contents: [{ parts: [{ text: "Hi" }] }] }),
-        },
-      );
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        return { success: false, message: `${spec.label} key قبول نہیں ہوئی (${res.status}): ${text.slice(0, 150)}` };
-      }
-      return { success: true, message: `${spec.label} key کام کر رہی ہے` };
-    }
-
     const res = await fetch(`${spec.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },

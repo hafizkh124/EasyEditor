@@ -4,7 +4,7 @@
 // validation, token metering, refund-on-failure); the universal HTTP contract
 // (CORS preflight, never-throws-on-malformed-body) is edgeFunctionContract.test.ts.
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import { blockNetwork } from "./helpers/denoShim";
+import { blockNetwork, setDenoEnv } from "./helpers/denoShim";
 import { createFakeClient, type FakeSupabaseConfig } from "./helpers/fakeSupabase";
 
 const state = vi.hoisted(() => ({ client: null as unknown }));
@@ -23,10 +23,10 @@ beforeAll(async () => {
 
 afterAll(() => restoreNetwork?.());
 
-function arrange(rpc: FakeSupabaseConfig["rpc"] = {}) {
+function arrange(rpc: FakeSupabaseConfig["rpc"] = {}, tables: FakeSupabaseConfig["tables"] = {}) {
   const client = createFakeClient({
     user: { id: "user-agent-model-test" },
-    tables: { user_roles: [] },
+    tables: { user_roles: [], user_provider_keys: [], ...tables },
     rpc: {
       deduct_tokens: { data: { success: true, monthly_balance: 100, topup_balance: 0, total: 100 } },
       credit_tokens: { data: { success: true } },
@@ -124,5 +124,55 @@ describe("agent-model", () => {
     arrange();
     const res = await post({ ...VALID_BODY, tool_choice: { nonsense: true } });
     expect(res.status).toBe(400);
+  });
+});
+
+// M10 Phase 2.5.3 — BYOK routing. A stored user_provider_keys row must take
+// over the model call entirely: no token deduction, body.model ignored in
+// favor of the stored provider's own toolModel, and a provider-side failure
+// surfaces as an error rather than silently falling back to the paid path
+// (which would bill tokens the scholar did not expect).
+describe("agent-model — BYOK routing", () => {
+  it("skips checkAndDeductTokens entirely when a provider key is stored", async () => {
+    const restoreEnv = setDenoEnv("PROVIDER_KEY_SECRET", "test-secret");
+    const { encryptKey } = await import("../../supabase/functions/_shared/providerKeyCrypto.ts");
+    const encrypted = await encryptKey("gsk_realkey0000000000000000000000000000", "test-secret");
+    const client = arrange({}, { user_provider_keys: [
+      { user_id: "user-agent-model-test", provider: "groq", encrypted_key: encrypted, updated_at: "2026-01-01" },
+    ] });
+    const res = await post(VALID_BODY);
+    // network is blocked, so the actual provider call fails — this only
+    // asserts the paid metering path was never even entered.
+    expect(res.status).not.toBe(200);
+    expect(client.rpcCalls.find((c) => c.name === "deduct_tokens")).toBeUndefined();
+    restoreEnv();
+  });
+
+  it("surfaces a clear error (not a silent fallback to the paid path) when the provider rejects the BYOK key", async () => {
+    const restoreEnv = setDenoEnv("PROVIDER_KEY_SECRET", "test-secret");
+    const { encryptKey } = await import("../../supabase/functions/_shared/providerKeyCrypto.ts");
+    const encrypted = await encryptKey("gsk_realkey0000000000000000000000000000", "test-secret");
+    arrange({}, { user_provider_keys: [
+      { user_id: "user-agent-model-test", provider: "groq", encrypted_key: encrypted, updated_at: "2026-01-01" },
+    ] });
+    const res = await post(VALID_BODY);
+    const body = await res.json();
+    expect(body.error).toBeTruthy();
+    expect(body.error).toMatch(/Groq/);
+    restoreEnv();
+  });
+
+  it("falls through to the normal paid path when PROVIDER_KEY_SECRET is not configured, even with a stored row", async () => {
+    const client = arrange({}, { user_provider_keys: [
+      { user_id: "user-agent-model-test", provider: "groq", encrypted_key: "whatever", updated_at: "2026-01-01" },
+    ] });
+    await post(VALID_BODY);
+    expect(client.rpcCalls.find((c) => c.name === "deduct_tokens")).toBeTruthy();
+  });
+
+  it("uses the normal paid path when no key is stored at all", async () => {
+    const client = arrange({}, { user_provider_keys: [] });
+    await post(VALID_BODY);
+    expect(client.rpcCalls.find((c) => c.name === "deduct_tokens")).toBeTruthy();
   });
 });

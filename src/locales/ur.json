@@ -1639,5 +1639,16 @@
   "research.sources_hint_all": "ابھی ہر دستیاب مأخذ میں تلاش ہو رہی ہے۔",
   "research.sources_hint_some": "صرف منتخب مآخذ میں تلاش ہوگی۔ آپ کی اپنی لائبریری ہمیشہ شامل رہتی ہے۔",
   "research.arabic_matn_only": "صرف عربی متن والے مآخذ",
-  "research.arabic_matn_only_note": "صرف وہ حوالے دیں جن میں حقیقی عربی الفاظ موجود ہوں، محض اردو ترجمہ نہیں۔"
+  "research.arabic_matn_only_note": "صرف وہ حوالے دیں جن میں حقیقی عربی الفاظ موجود ہوں، محض اردو ترجمہ نہیں۔",
+  "byok.web.title": "AI ماڈل کی اپنی کلید (BYOK)",
+  "byok.web.description": "اپنی مفت Gemini/Groq/OpenRouter کلید یہاں محفوظ کریں تاکہ ایجنٹ آپ کی اپنی کلید سے چلے — کوئی ٹوکن خرچ نہیں ہوگا۔ کلید ہمارے سرور پر انکرپٹ ہو کر محفوظ رہتی ہے، براؤزر کو کبھی واپس نہیں بھیجی جاتی۔",
+  "byok.web.saved": "{label} key محفوظ اور تصدیق ہو گئی۔",
+  "byok.web.error": "غلطی",
+  "byok.web.success": "کامیاب",
+  "byok.web.saved_as": "محفوظ — …{last4}",
+  "byok.web.get_key": "کلید حاصل کریں",
+  "byok.web.show_key": "کلید دکھائیں",
+  "byok.web.delete": "حذف",
+  "byok.web.checking": "جانچ…",
+  "byok.web.save_and_test": "محفوظ و تصدیق"
 }

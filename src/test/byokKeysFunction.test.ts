@@ -21,7 +21,8 @@ let restoreNetwork: () => void;
 
 beforeAll(async () => {
   restoreNetwork = blockNetwork();
-  ({ handle, decryptKey } = await import("../../supabase/functions/byok-keys/index.ts"));
+  ({ handle } = await import("../../supabase/functions/byok-keys/index.ts"));
+  ({ decryptKey } = await import("../../supabase/functions/_shared/providerKeyCrypto.ts"));
 }, 60_000);
 
 afterAll(() => restoreNetwork?.());

@@ -1639,5 +1639,16 @@
   "research.sources_hint_all": "Every available source is being searched.",
   "research.sources_hint_some": "Only the selected sources will be searched. Your own library is always included.",
   "research.arabic_matn_only": "Arabic matn only",
-  "research.arabic_matn_only_note": "Only cite passages that carry real Arabic wording, not merely an Urdu translation."
+  "research.arabic_matn_only_note": "Only cite passages that carry real Arabic wording, not merely an Urdu translation.",
+  "byok.web.title": "Your Own AI Model Key (BYOK)",
+  "byok.web.description": "Save your own free Gemini/Groq/OpenRouter key here so the agent runs on your own key — no tokens spent. The key is stored encrypted on our server and is never sent back to the browser.",
+  "byok.web.saved": "{label} key saved and verified.",
+  "byok.web.error": "Error",
+  "byok.web.success": "Success",
+  "byok.web.saved_as": "Saved — …{last4}",
+  "byok.web.get_key": "Get a key",
+  "byok.web.show_key": "Show key",
+  "byok.web.delete": "Delete",
+  "byok.web.checking": "Checking…",
+  "byok.web.save_and_test": "Save & verify"
 }
