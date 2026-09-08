@@ -22,7 +22,9 @@
  * per-domain try/catch degrades to `[]`, same as before) rather than error.
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { parseHTML } from "https://esm.sh/linkedom@0.18.13";
+// `/worker` export: same parseHTML, but without the optional `canvas` native
+// dependency that the default entry pulls in (it fails to bundle on Deno Deploy).
+import { parseHTML } from "https://esm.sh/linkedom@0.18.13/worker";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 
 const corsHeaders = {
