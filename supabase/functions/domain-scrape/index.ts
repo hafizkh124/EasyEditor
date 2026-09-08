@@ -321,24 +321,21 @@ const SITE_SEARCH: Record<string, SiteSearch> = {
     url: (q) => `https://islamfort.com/?s=${encodeURIComponent(q)}`,
     home: "https://islamfort.com/",
   },
-  // Re-added 2026-09-08 as a diagnostic retry, not a confirmed fix: an
-  // earlier live check found "HTTP 500 to any search request" for both, but
-  // only the status code was logged, not the body — pageLinks() now logs a
-  // body snippet on failure, so the NEXT live invocation should reveal the
-  // actual cause (wrong param name, a WAF challenge page, a PHP fatal on
-  // non-ASCII query text, …) instead of just "500" again. Same `?s=`
-  // WordPress-style pattern as alulama.org/islamfort.com above, since these
-  // are the same genre of Urdu fatwa/article site — worth trying before
-  // assuming it's the wrong shape. If the logs show it's still wrong, remove
-  // these two again and note the real cause here instead of guessing twice.
+  // Diagnosed live 2026-09-08. The earlier "HTTP 500 to any search request"
+  // was NOT a block: urdufatwa is a Laravel app, not WordPress, and `?s=`
+  // crashes its HomeController ("Undefined array key 2"). Its real search is
+  // GET /frontend-search with search_cat=2 (عمومی تلاش), search_tag=<query>,
+  // sEnType=website (internal engine, not Google), sType=OR. Verified: 200,
+  // ~160 KB, with detail links shaped /view/<catId>/<fatwaId>/<slug>.
+  // search_cat MUST be present — without it the route 404s.
   "urdufatwa.com": {
-    url: (q) => `https://urdufatwa.com/?s=${encodeURIComponent(q)}`,
-    home: "https://urdufatwa.com/",
+    url: (q) =>
+      `https://urdufatwa.com/frontend-search?search_cat=2&search_tag=${encodeURIComponent(q)}&sEnType=website&sType=OR`,
+    pattern: /\/view\/\d+\/\d+\//,
   },
-  "shamilaurdu.com": {
-    url: (q) => `https://shamilaurdu.com/?s=${encodeURIComponent(q)}`,
-    home: "https://shamilaurdu.com/",
-  },
+  // shamilaurdu.com is NOT here: its 500 is a WAF ("You have been blocked due
+  // to suspicious activity detected from your browser"), returned for the
+  // HOME PAGE too, not just search — no path through this file can reach it.
 };
 
 const ASSET_RE = /\.(png|jpe?g|gif|svg|webp|css|js|ico|woff2?|ttf|xml|pdf|zip|mp3|mp4)$/i;
