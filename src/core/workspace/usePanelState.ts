@@ -1,9 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 
-export type WorkbenchTab = "aiReader" | "research" | "translate" | "notes" | "tasks" | "trust" | "agent";
+// M10 Phase 3 §3.6 — "aiReader"+"notes" merged into "study" (StudyPanel.tsx),
+// "tasks"+"trust" merged into "trust" (TrustPanel.tsx); "agent" was already
+// dead since Phase 1.2 removed the standalone Agent tab (ResearchPanel now
+// decides internally whether to show the agent composer). A stale persisted
+// value from any of the retired names falls through loadStoredState's
+// isWorkbenchTab check below to DEFAULT_STATE — a one-time reset to Research,
+// not a crash.
+export type WorkbenchTab = "study" | "research" | "translate" | "trust";
 
 export const WORKBENCH_TABS: readonly WorkbenchTab[] =
-  ["aiReader", "research", "translate", "notes", "tasks", "trust", "agent"];
+  ["study", "research", "translate", "trust"];
 
 export function isWorkbenchTab(value: unknown): value is WorkbenchTab {
   return typeof value === "string" && (WORKBENCH_TABS as readonly string[]).includes(value);

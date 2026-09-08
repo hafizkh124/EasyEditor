@@ -1,9 +1,20 @@
 import { describe, it, expect, vi } from "vitest";
 import { useEffect } from "react";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { WorkspaceProvider } from "@/core/workspace/WorkspaceContext";
 import { WorkbenchPanel } from "@/components/workspace/WorkbenchPanel";
+
+// Radix's TabsTrigger selects on `mousedown`, not `click` (its own source:
+// @radix-ui/react-tabs/dist/index.mjs composes onValueChange into
+// onMouseDown) — jsdom's `.click()` never synthesizes that, unlike a real
+// browser's click sequence. Found while writing workbenchTabConsolidation.test.tsx:
+// this file's own `.click()` below had silently never been exercising a real
+// tab switch — only the mount-count/no-unmount assertions, which don't
+// depend on the switch actually landing, ever passed either way.
+function selectTab(el: HTMLElement) {
+  act(() => { fireEvent.mouseDown(el); });
+}
 
 /**
  * FR-1.5 / FR-4.3 — the Workbench must never unmount.
@@ -75,10 +86,12 @@ describe("Workbench keep-mounted (FR-4.3 / FR-1.5)", () => {
     renderWorkbench();
     const afterFirstRender = { ...mountCounts };
 
-    // Switch tabs, then close the panel entirely.
-    act(() => {
-      screen.getByTitle("Translate").click();
-    });
+    // Switch tabs — and actually confirm the switch landed, not just that
+    // nothing crashed — then close the panel entirely.
+    selectTab(screen.getByTitle("Translate"));
+    expect(screen.getByTestId("translate-panel").parentElement).not.toHaveClass("hidden");
+    expect(screen.getByTestId("research-panel").parentElement).toHaveClass("hidden");
+
     act(() => {
       const closeBtn = document.querySelector<HTMLButtonElement>("[aria-label='Close Workbench']");
       closeBtn?.click();
