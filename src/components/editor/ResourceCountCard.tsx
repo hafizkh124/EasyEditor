@@ -33,7 +33,7 @@ export const ResourceCountCard = ({ count, onInsertSummary, t }: ResourceCountCa
             {count.buckets.map((b) => (
               <tr key={`${b.source_type}-${b.key}`} className="border-b border-border/40 last:border-0">
                 <td className="px-2.5 py-1.5" dir="rtl">{b.label}</td>
-                <td className="px-2.5 py-1.5 text-right tabular-nums font-medium">{b.occurrences}</td>
+                <td className="px-2.5 py-1.5 text-end tabular-nums font-medium">{b.occurrences}</td>
               </tr>
             ))}
           </tbody>

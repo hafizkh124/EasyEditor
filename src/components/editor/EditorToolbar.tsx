@@ -232,7 +232,7 @@ const EditorToolbar = ({
           <Button variant={trackMode === "edit" ? "ghost" : "secondary"} size="sm" className="h-8 gap-1 px-2 text-xs" aria-label={t("editor.track_changes")} title={t("editor.track_changes")}>
             <GitCompare className="h-4 w-4" />
             <span className="hidden sm:inline">{t(`editor.mode_${trackMode}` as import("@/lib/i18n").TranslationKey)}</span>
-            {pendingCount > 0 && <span className="ml-0.5 rounded-full bg-primary px-1.5 text-xs leading-4 text-primary-foreground">{pendingCount}</span>}
+            {pendingCount > 0 && <span className="ms-0.5 rounded-full bg-primary px-1.5 text-xs leading-4 text-primary-foreground">{pendingCount}</span>}
             <ChevronDown className="h-3 w-3 opacity-60" />
           </Button>
         </DropdownMenuTrigger>

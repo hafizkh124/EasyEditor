@@ -91,7 +91,7 @@ export function ScholarlyPromptModal({ isOpen, onClose, onSelectPrompt }: Schola
         {/* Body Split Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 flex-1 overflow-hidden">
           {/* Prompts List Sidebar */}
-          <ScrollArea className="md:col-span-5 border-l border-border p-2 space-y-1 max-h-[50vh] md:max-h-[60vh]">
+          <ScrollArea className="md:col-span-5 border-e border-border p-2 space-y-1 max-h-[50vh] md:max-h-[60vh]">
             {filteredPrompts.map((p) => {
               const isSelected = selectedPrompt?.id === p.id;
               return (
@@ -101,7 +101,7 @@ export function ScholarlyPromptModal({ isOpen, onClose, onSelectPrompt }: Schola
                     setSelectedPrompt(p);
                     setArgValues({});
                   }}
-                  className={`w-full text-right p-2.5 rounded-lg border transition-all text-xs mb-1.5 flex flex-col gap-1 ${
+                  className={`w-full text-end p-2.5 rounded-lg border transition-all text-xs mb-1.5 flex flex-col gap-1 ${
                     isSelected
                       ? "border-primary bg-primary/10 font-semibold"
                       : "border-border/60 hover:bg-muted"

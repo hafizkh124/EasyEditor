@@ -283,7 +283,7 @@ export function ShamelaImportDialog({
                     <button
                       key={cat.id}
                       onClick={() => handleCategorySelect(cat.id)}
-                      className={`w-full text-right px-3 py-2 text-xs flex items-center justify-between gap-2 hover:bg-muted transition-colors ${
+                      className={`w-full text-end px-3 py-2 text-xs flex items-center justify-between gap-2 hover:bg-muted transition-colors ${
                         selectedCategory === cat.id ? "bg-primary/10 text-primary font-medium" : ""
                       }`}
                     >
@@ -403,7 +403,7 @@ function BookList({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40 text-xs text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin ml-2" />
+        <Loader2 className="h-5 w-5 animate-spin ms-2" />
         {t("shamela.searching")}
       </div>
     );

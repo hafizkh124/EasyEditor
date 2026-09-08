@@ -196,7 +196,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
                     <span className="rounded-md bg-primary/10 p-1.5">
                       <FolderTree className="h-3.5 w-3.5 text-primary" />
                     </span>
-                    <span className="flex-1 min-w-0 text-right">
+                    <span className="flex-1 min-w-0 text-start">
                       <span className="block text-xs font-medium truncate">{cat.name}</span>
                       <span className="block text-xs text-muted-foreground">
                         {t("library.book_count", "{count} books").replace("{count}", cat.bookCount.toLocaleString())}
@@ -249,7 +249,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
                     <span className="rounded-md bg-primary/10 p-1.5">
                       <Clock className="h-3.5 w-3.5 text-primary" />
                     </span>
-                    <span className="flex-1 min-w-0 text-right">
+                    <span className="flex-1 min-w-0 text-start">
                       <span className="block text-xs font-medium truncate">{period.label}</span>
                       <span className="block text-xs text-muted-foreground">
                         {t("library.book_count", "{count} books").replace("{count}", period.bookCount.toLocaleString())}
@@ -313,7 +313,7 @@ const AuthorList: React.FC<{
                 <span className="rounded-md bg-primary/10 p-1.5 shrink-0">
                   <User className="h-3.5 w-3.5 text-primary" />
                 </span>
-                <span className="flex-1 min-w-0 text-right">
+                <span className="flex-1 min-w-0 text-start">
                   <span className="block text-xs font-medium truncate">{author.name}</span>
                   <span className="block text-xs text-muted-foreground">
                     {author.deathNumber != null && author.deathNumber < 99999

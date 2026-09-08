@@ -181,7 +181,7 @@ const OcrReview = () => {
           dir={isRtl ? "rtl" : "ltr"}
           className={cn(
             "h-full min-h-[300px] resize-none text-sm leading-relaxed",
-            isRtl && "text-right",
+            isRtl && "text-end",
           )}
           placeholder={t("ocr_review.text_placeholder")}
         />

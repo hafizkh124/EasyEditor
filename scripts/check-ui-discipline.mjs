@@ -90,40 +90,12 @@ const HAS_BREAKPOINT = /\b(?:sm|md|lg):/;
  * direction hits / 30 files, 3 viewport hits / 2 files). New files may NEVER
  * be added to either set — that is the whole point of the ratchet. Phase 3
  * removes an entry the moment its file is fixed to use logical utilities /
- * `dvh`; a shrinking list is the visible measure of that work.
+ * `dvh`; a shrinking list is the visible measure of that work — both sets
+ * are now empty (Phase 3, 2026-09-08): every physical-direction hit and every
+ * `h-screen`/`w-screen`/`100vh` from the 2026-09-07 baseline is fixed, so the
+ * two HARD rules apply to the whole app with zero exceptions.
  */
-const LEGACY_PHYSICAL_DIRECTION = new Set([
-  "src/components/editor/EditorToolbar.tsx",
-  "src/components/editor/ResourceCountCard.tsx",
-  "src/components/editor/ResourceResultCard.tsx",
-  "src/components/editor/ResourceSearchDialog.tsx",
-  "src/components/editor/RichEditor.tsx",
-  "src/components/editor/SlashCommandMenu.tsx",
-  "src/components/research/ChatDisplay.tsx",
-  "src/components/research/CitationPanel.tsx",
-  "src/components/research/CitationResponse.tsx",
-  "src/components/research/EmptyState.tsx",
-  "src/components/research/ScholarlyPromptModal.tsx",
-  "src/components/research/SpellingResponse.tsx",
-  "src/components/research/chat/ChatAtoms.tsx",
-  "src/components/research/chat/DocumentBox.tsx",
-  "src/components/shamela/ReaderToolbar.tsx",
-  "src/components/shamela/ShamelaConnectPanel.tsx",
-  "src/components/shamela/ShamelaImportDialog.tsx",
-  "src/components/shamela/ShamelaImportToWorkspaceDialog.tsx",
-  "src/components/shamela/SplitReader.tsx",
-  "src/components/shamela/TocTree.tsx",
-  "src/components/workspace/AnnotationList.tsx",
-  "src/components/workspace/BrowseTab.tsx",
-  "src/components/workspace/FavoritesTab.tsx",
-  "src/components/workspace/RecentBooksGrid.tsx",
-  "src/components/workspace/SearchTab.tsx",
-  "src/pages/FaqAiHaram.tsx",
-  "src/pages/OCR.tsx",
-  "src/pages/OcrReview.tsx",
-  "src/pages/Transcribe.tsx",
-  "src/pages/TranslationWorkspace.tsx",
-]);
+const LEGACY_PHYSICAL_DIRECTION = new Set();
 const LEGACY_VIEWPORT = new Set();
 
 function stripComments(source) {

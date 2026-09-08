@@ -27,7 +27,7 @@ export const ResourceResultCard = ({ result, onInsert, t }: ResourceResultCardPr
       )}
       <p
         dir={rtl ? "rtl" : "ltr"}
-        className={cn("text-sm leading-relaxed line-clamp-4 mt-1.5", rtl && "text-right")}
+        className={cn("text-sm leading-relaxed line-clamp-4 mt-1.5", rtl && "text-end")}
       >
         {result.content}
       </p>

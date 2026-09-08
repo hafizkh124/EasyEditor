@@ -235,7 +235,7 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
                   {statusIcon(diagnostics.jreFound)}
                   <span>{t("shamela.java_runtime")}</span>
                   {diagnostics.jreVersion && (
-                    <code className="font-mono text-xs text-muted-foreground mr-auto">
+                    <code className="font-mono text-xs text-muted-foreground me-auto">
                       {diagnostics.jreVersion}
                     </code>
                   )}
@@ -244,7 +244,7 @@ export function ShamelaConnectPanel({ onBrowseBooks }: ShamelaConnectPanelProps 
                   {statusIcon(diagnostics.luceneJarsFound)}
                   <span>{t("shamela.lucene_jars")}</span>
                   {diagnostics.luceneVersion && (
-                    <code className="font-mono text-xs text-muted-foreground mr-auto">
+                    <code className="font-mono text-xs text-muted-foreground me-auto">
                       {diagnostics.luceneVersion}
                     </code>
                   )}

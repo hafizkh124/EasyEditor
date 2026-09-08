@@ -153,7 +153,7 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
       </Button>
 
       <div className="flex items-center min-w-0 mx-1 flex-1">
-        <BookOpen className="h-4 w-4 text-muted-foreground shrink-0 mr-2" />
+        <BookOpen className="h-4 w-4 text-muted-foreground shrink-0 me-2" />
         <div className="min-w-0">
           <p className="text-sm font-medium truncate leading-tight">{title}</p>
           {subtitle && (

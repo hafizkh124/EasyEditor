@@ -33,7 +33,7 @@ export const DocumentBox = ({
   return (
     <div className="relative rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <div className="flex items-center gap-1.5 p-2 border-b border-border bg-muted/60 flex-wrap">
-        <span className="text-xs font-medium text-muted-foreground mr-1 flex items-center gap-1">
+        <span className="text-xs font-medium text-muted-foreground me-1 flex items-center gap-1">
           <Sparkles className="h-3.5 w-3.5" />
           {t("research.ai_tools")}
         </span>
@@ -70,7 +70,7 @@ export const DocumentBox = ({
         dir={isRtl ? "rtl" : "ltr"}
         className={cn(
           "px-4 py-5 sm:px-6 sm:py-5 prose prose-sm dark:prose-invert max-w-none min-h-[200px] leading-relaxed",
-          isRtl && "text-right",
+          isRtl && "text-end",
         )}
       >
         {/* Answers are Urdu prose carrying LTR runs — citation labels like

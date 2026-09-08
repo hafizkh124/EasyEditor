@@ -40,7 +40,7 @@ const CitationPanel = ({ citations, t }: CitationPanelProps) => {
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <BookMarked className="h-4 w-4 text-primary shrink-0" />
           <span>{t("research.citations_panel_title")}</span>
-          <span className="ml-1 rounded-full bg-primary/10 text-primary text-xs font-semibold px-1.5 py-0.5 leading-none">
+          <span className="ms-1 rounded-full bg-primary/10 text-primary text-xs font-semibold px-1.5 py-0.5 leading-none">
             {citations.length}
           </span>
           <span className="text-xs text-muted-foreground font-normal">

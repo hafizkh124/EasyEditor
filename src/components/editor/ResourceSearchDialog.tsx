@@ -133,7 +133,7 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") runSearch(); }}
             dir={isRtlText(query) ? "rtl" : "ltr"}
-            className={cn(isRtlText(query) && "text-right")}
+            className={cn(isRtlText(query) && "text-end")}
             placeholder={t("editor.search_placeholder")}
           />
           {filter === "tafsir" && tafsirAvailable && (

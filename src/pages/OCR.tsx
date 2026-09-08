@@ -270,7 +270,7 @@ const OCR = () => {
               onChange={(e) => setExtractedText(e.target.value)}
               aria-label={t("ocr.result")}
               dir={rtl ? "rtl" : "ltr"}
-              className={cn("min-h-[200px] resize-y", rtl && "text-right")}
+              className={cn("min-h-[200px] resize-y", rtl && "text-end")}
             />
             <div className="flex flex-wrap gap-2">
               <Button

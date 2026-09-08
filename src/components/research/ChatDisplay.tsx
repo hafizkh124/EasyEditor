@@ -210,7 +210,7 @@ const ChatDisplay = ({
             className="flex justify-end gap-2"
           >
             <div className="rounded-2xl rounded-tr-md px-4 py-2.5 max-w-[80%] text-sm bg-primary text-primary-foreground shadow-sm">
-              <div dir={isRtl ? "rtl" : "ltr"} className={cn("whitespace-pre-wrap", isRtl && "text-right")}>
+              <div dir={isRtl ? "rtl" : "ltr"} className={cn("whitespace-pre-wrap", isRtl && "text-end")}>
                 {msg.content}
               </div>
             </div>
@@ -286,7 +286,7 @@ const ChatDisplay = ({
           >
             <AiAvatar />
             <div className="rounded-2xl rounded-tl-md px-4 py-2.5 max-w-[80%] text-sm bg-muted text-foreground border border-border/50 relative shadow-sm">
-              <div dir={isRtl ? "rtl" : "ltr"} className={cn("prose prose-sm dark:prose-invert max-w-none", isRtl && "text-right")}>
+              <div dir={isRtl ? "rtl" : "ltr"} className={cn("prose prose-sm dark:prose-invert max-w-none", isRtl && "text-end")}>
                 <ReactMarkdown>{olderContent}</ReactMarkdown>
               </div>
               <button
@@ -628,7 +628,7 @@ const ChatDisplay = ({
               dir={isRtlQuery ? "rtl" : "ltr"}
               className={cn(
                 "min-h-[56px] max-h-[320px] resize-none flex-1 overflow-y-auto border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-sm",
-                isRtlQuery && "text-right",
+                isRtlQuery && "text-end",
               )}
               rows={2}
               title={t("research.send_hint")}

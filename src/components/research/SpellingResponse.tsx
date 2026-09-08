@@ -140,7 +140,7 @@ const SpellingResponse = ({ original, corrected, changes, t }: SpellingResponseP
       </div>
       <div
         dir={rtl ? "rtl" : "ltr"}
-        className={cn("whitespace-pre-wrap text-sm text-foreground leading-relaxed", rtl && "text-right")}
+        className={cn("whitespace-pre-wrap text-sm text-foreground leading-relaxed", rtl && "text-end")}
       >
         {segments.map((seg, i) =>
           seg.kind === "text" ? (

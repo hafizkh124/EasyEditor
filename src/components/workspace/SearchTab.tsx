@@ -169,7 +169,8 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
                 <button
                   type="button"
                   onClick={() => handleSelect(hit)}
-                  className="w-full text-right flex flex-col gap-1 px-3 py-2 border-b border-border/40 hover:bg-accent hover:text-accent-foreground transition-colors"
+                  dir="rtl"
+                  className="w-full text-end flex flex-col gap-1 px-3 py-2 border-b border-border/40 hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
                   <span className="flex items-center gap-1.5 text-xs font-medium leading-snug">
                     <FileText className="h-3.5 w-3.5 text-primary shrink-0" />

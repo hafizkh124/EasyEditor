@@ -245,7 +245,7 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
               role="option"
               aria-selected={isSelected}
               onClick={() => runOption(opt)}
-              className={`w-full text-right px-2.5 py-1.5 rounded text-xs flex items-center gap-2 transition-colors ${
+              className={`w-full text-end px-2.5 py-1.5 rounded text-xs flex items-center gap-2 transition-colors ${
                 isSelected ? "bg-primary text-primary-foreground font-medium" : "hover:bg-accent text-foreground"
               }`}
             >
