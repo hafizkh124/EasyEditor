@@ -945,8 +945,7 @@ alias verify-receipt already established, plus two real-but-undeclared
 `citation_ref` fields (`title`, genuinely set by the personal-library channel;
 `author`, referenced defensively but never actually set by anything);
 `islamic-search` lost one dead function (`stripArabicDiacritics`, superseded
-by a Postgres RPC and a separate `domain-scrape` function, per its own
-now-stale comment) and one dead variable (`tierKDomains` — Tier K uses a
+by a Postgres RPC and the retired `domain-scrape` / Firecrawl path) and one dead variable (`tierKDomains` — Tier K uses a
 richer `wantsQuran`/`wantsHadith`/`wantsFatwa` inference instead, documented
 in the block right below where the unused variable sat); and its `timed()`
 helper's parameter type was tightened from `Promise<T>` to `PromiseLike<T>`

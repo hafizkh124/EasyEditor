@@ -43,22 +43,20 @@ ADR-0019 item 4 rejected an open web tool; the user reaffirmed this in the M9
 planning session (Firecrawl out). The web path stays `search_general` through the
 signed-in `research-query` channel, whose provenance tagging Trust UI depends on.
 Widening its reach means adding domains to `src/lib/research/scrapingWhitelist.ts`
-**and its two Supabase mirrors** (`research-query`, `domain-scrape`) — a separate,
-reviewed change against the deployed functions, not part of the agent work.
+**and its Supabase mirror** (`research-query`) — a separate, reviewed change
+against the deployed function, not part of the agent work.
 
 ### The whitelist widening — done (2026-09-04)
 
-Five hosts added to `SCRAPING_WHITELIST` in both mirrors, plus one that fixed a
-pre-existing drift:
+Five hosts added to `SCRAPING_WHITELIST` in both mirrors:
 
 | Host | Body |
-|---|---|
+|---|---|---|
 | `iifa-aifi.org` | مجمع الفقه الإسلامي الدولي (OIC) |
 | `dar-alifta.org` | دار الإفتاء المصرية |
 | `aliftaa.jo` | دائرة الإفتاء الأردنية |
 | `binbaz.org.sa` | فتاوى الشيخ ابن باز |
 | `banuri.edu.pk` | جامعہ بنوری ٹاؤن، دار الافتاء |
-| `darulifta-deoband.com` | دار الافتاء دیوبند — **drift fix**, see below |
 
 Each candidate was fetched with the pipeline's own User-Agent
 (`Mozilla/5.0 (compatible; ResearchBot/1.0)`) and kept only when it returned
@@ -67,19 +65,11 @@ readable article HTML. **Three were rejected on evidence**, not taste:
 `islamway.net` (200 with an empty body to every User-Agent tried), and
 `cii.gov.pk` (no A/AAAA record; the zone is delegated but offline).
 
-**Drift found:** `darulifta-deoband.com` was registered in `domain-scrape`'s
-`DOMAINS` but absent from both whitelists — which that file's own comment
-forbids — so anything it returned for that host could never be fetched or cited
-upstream. `researchSources.test.ts` now enforces both invariants: the two
-whitelist array literals must be byte-identical, and `DOMAINS ⊆ whitelist`.
-
-**`domain-scrape`'s `DOMAINS` was deliberately left unchanged.** The two paths
-are independent: `isWhitelistedUrl` gates research-query's *direct* fetch of
-user-supplied source URLs, while domain-scrape's results bypass that check and
-are injected as context — so widening the whitelist alone achieves the goal.
-Registering a host in `DOMAINS` instead makes Firecrawl fan out to it on every
-Islamic-flavoured General query, which is five more paid calls against a 15 s
-budget already shared by twelve hosts. The reasoning is recorded in that file.
+**`domain-scrape` retired (2026-09-08):** the standalone Firecrawl-backed edge
+function and its Tier-C live-scraped sites were removed. `researchSources.test.ts`
+still enforces that the two whitelist array literals (`src/lib/research/
+scrapingWhitelist.ts` and `supabase/functions/research-query/index.ts`) remain
+byte-identical.
 
 ## Consequences
 

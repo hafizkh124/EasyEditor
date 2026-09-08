@@ -9,8 +9,8 @@
  *
  * The grouping mirrors the backend's retrieval tiers rather than inventing a
  * user-facing taxonomy: a scholar deciding what to trust cares exactly about
- * the distinction the tiers encode — a verified local corpus, a third-party
- * API, or a page scraped live from someone's website.
+ * the distinction the tiers encode — a verified local corpus or a third-party
+ * API.
  *
  * Deliberately NOT listed: `shamela-index`. It is a Tier-B id the backend
  * accepts, but Shamela has never been ingested into scholarly_documents, so
@@ -48,7 +48,7 @@
  * and is out of scope.
  */
 
-export type SourceGroupId = "corpus" | "classical" | "api" | "web";
+export type SourceGroupId = "corpus" | "classical" | "api";
 
 export interface ResearchSource {
   /** Domain id sent to islamic-search. Must exist in its ALL_DOMAINS. */
@@ -64,7 +64,6 @@ export const SOURCE_GROUPS: Array<{ id: SourceGroupId; ur: string; note: string 
   { id: "corpus", ur: "مقامی کارپس", note: "ہمارے اپنے ڈیٹابیس میں محفوظ، تصدیق شدہ متون" },
   { id: "classical", ur: "کلاسیکی موضوعات", note: "رجال، تفسیر اور لغت — عام قرآن و حدیث تلاش سے الگ" },
   { id: "api", ur: "براہِ راست API", note: "بیرونی خدمات سے فوری استفسار" },
-  { id: "web", ur: "ویب سائٹس", note: "سوال کے وقت لائیو پڑھی جانے والی سائٹس" },
 ];
 
 export const RESEARCH_SOURCES: ResearchSource[] = [
@@ -88,19 +87,6 @@ export const RESEARCH_SOURCES: ResearchSource[] = [
   { id: "dorar", ur: "دُرر السنیہ", note: "احادیث اور اُن کے درجات", group: "api" },
   { id: "alquran", ur: "AlQuran.cloud", note: "قرآن، متعدد تراجم", group: "api" },
   { id: "quran-com", ur: "Quran.com", note: "قرآن، تفسیر و ترجمہ", group: "api" },
-
-  // Tier C — live-scraped sites.
-  { id: "islamqa", ur: "IslamQA", note: "فتاویٰ", group: "web" },
-  { id: "islamweb", ur: "IslamWeb", note: "فتاویٰ", group: "web" },
-  { id: "urdufatwa", ur: "اردو فتویٰ", note: "اردو فتاویٰ (22,775 مقامی رولنگز بھی)", group: "web" },
-  { id: "alulama", ur: "العلماء", note: "علمی مضامین و فتاویٰ", group: "web" },
-  { id: "islamicurdubooks", ur: "اسلامک اردو بکس", note: "احادیث، تفسیر، اسماء الرجال", group: "web" },
-  { id: "shamilaurdu", ur: "شاملہ اردو", note: "اردو کتب خانہ", group: "web" },
-  { id: "mohaddis", ur: "محدث", note: "محدث لائبریری", group: "web" },
-  { id: "magazine-mohaddis", ur: "ماہنامہ محدث", note: "علمی مجلہ", group: "web" },
-  { id: "islamfort", ur: "اسلام فورٹ", note: "اردو اسلامی مواد", group: "web" },
-  { id: "alminasa", ur: "المنصہ", note: "عربی علمی مواد", group: "web" },
-  { id: "shamela", ur: "المکتبۃ الشاملۃ", note: "کلاسیکی عربی کتب", group: "web" },
 ];
 
 export const ALL_SOURCE_IDS: string[] = RESEARCH_SOURCES.map((s) => s.id);
