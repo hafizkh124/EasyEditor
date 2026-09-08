@@ -399,6 +399,7 @@ export async function handle(req: Request): Promise<Response> {
       ? selectedDomains.filter((d: string) => d in DOMAINS)
       : SUPPORTED_DOMAINS;
 
+    const diagnostics: ScrapeDiagnostic[] | undefined = debug === true ? [] : undefined;
     const settled = await Promise.allSettled(
       targets.map((key) => scrapeDomain(key, DOMAINS[key], query, diagnostics)),
     );
@@ -408,7 +409,7 @@ export async function handle(req: Request): Promise<Response> {
       if (r.status === "fulfilled") results.push(...r.value);
     }
 
-    return new Response(JSON.stringify({ results }), {
+    return new Response(JSON.stringify(diagnostics ? { results, diagnostics } : { results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
