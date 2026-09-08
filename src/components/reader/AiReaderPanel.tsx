@@ -215,7 +215,7 @@ export const AiReaderPanel: React.FC = () => {
         />
         <Button
           size="icon"
-          className="h-8 w-8 shrink-0"
+          className="h-8 w-8 shrink-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
           title={t("research.send")}
           aria-label={t("research.send")}
           onClick={handleSend}

@@ -166,7 +166,7 @@ export function LibrarySourcesTab() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+                        className="h-6 w-6 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-muted-foreground hover:text-primary"
                         onClick={() => handleResumeIngest(item)}
                         disabled={resuming === item.id}
                         title={t("library.resume_process", "Resume process")}
@@ -183,7 +183,7 @@ export function LibrarySourcesTab() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-6 w-6 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => handleDelete(item.id, item.title)}
                       title={t("library.delete_book", "Delete book")}
                       aria-label={t("library.delete_book_aria", "Delete '{title}'").replace("{title}", item.title)}

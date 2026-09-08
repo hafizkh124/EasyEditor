@@ -292,7 +292,7 @@ const ChatDisplay = ({
               <button
                 onClick={() => copyMessage(olderContent)}
 
-                className="absolute top-1.5 end-1.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring md:opacity-0 md:group-hover:opacity-100"
+                className="absolute top-1.5 end-1.5 flex h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring md:opacity-0 md:group-hover:opacity-100"
                 aria-label={t("research.copy")}
                 title={t("research.copy")}
               >
@@ -566,7 +566,7 @@ const ChatDisplay = ({
                   type="button"
                   size="icon"
                   variant="outline"
-                  className="h-9 w-9"
+                  className="h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
                   onClick={() => setResearchHubOpen((v) => !v)}
                   disabled={isQuerying}
                   aria-label={t("research.hub_open", "ذرائع، حوالہ جات اور علمی پرامپٹس")}
@@ -651,7 +651,7 @@ const ChatDisplay = ({
               disabled={!query.trim() || isQuerying || researchLimitReached}
               size="icon"
               aria-label={t("research.send", "Send")}
-              className="shrink-0 h-9 w-9 rounded-xl"
+              className="shrink-0 h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0 rounded-xl"
             >
               {isQuerying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>

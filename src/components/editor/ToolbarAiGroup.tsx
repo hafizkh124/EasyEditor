@@ -98,7 +98,7 @@ export const ToolbarAiGroup: React.FC<ToolbarAiGroupProps> = ({
       <Button
         variant="ghost"
         size="sm"
-        className="h-8 w-8 p-0"
+        className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
         onClick={onSpellCheck}
         disabled={anyBusy}
         aria-label={t("editor.spell_check")}
@@ -111,7 +111,7 @@ export const ToolbarAiGroup: React.FC<ToolbarAiGroupProps> = ({
       <Button
         variant="ghost"
         size="sm"
-        className="h-8 w-8 p-0"
+        className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
         onClick={onParaphrase}
         disabled={anyBusy}
         aria-label={t("editor.paraphrase")}
@@ -124,7 +124,7 @@ export const ToolbarAiGroup: React.FC<ToolbarAiGroupProps> = ({
       <Button
         variant="ghost"
         size="sm"
-        className="h-8 w-8 p-0"
+        className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
         onClick={onSummarize}
         disabled={anyBusy}
         aria-label={t("editor.summarize")}

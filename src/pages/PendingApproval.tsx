@@ -326,7 +326,7 @@ const PendingApproval = () => {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 flex-shrink-0"
+                        className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0 flex-shrink-0"
                         onClick={() => copyValue(r.value)}
                         aria-label={t("pending.copy", "Copy")}
                         data-approval-allow

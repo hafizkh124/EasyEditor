@@ -54,7 +54,7 @@ export const ReaderSettings: React.FC<ReaderSettingsProps> = ({ reader, triggerC
       <PopoverContent align="end" sideOffset={6} className="w-[min(20rem,90vw)] p-0 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
           <p className="text-xs font-semibold text-foreground">{t("reader.settings.title")}</p>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={reset} title={t("reader.settings.reset")} aria-label={t("reader.settings.reset")}>
+          <Button variant="ghost" size="icon" className="h-6 w-6 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={reset} title={t("reader.settings.reset")} aria-label={t("reader.settings.reset")}>
             <RotateCcw className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -98,7 +98,7 @@ export const ReaderSettings: React.FC<ReaderSettingsProps> = ({ reader, triggerC
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6"
+                  className="h-6 w-6 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
                   onClick={() => update({ fontSize: Math.max(14, settings.fontSize - 1) })}
                   disabled={settings.fontSize <= 14}
                   title={t("reader.settings.smaller")}
@@ -110,7 +110,7 @@ export const ReaderSettings: React.FC<ReaderSettingsProps> = ({ reader, triggerC
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6"
+                  className="h-6 w-6 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
                   onClick={() => update({ fontSize: Math.min(30, settings.fontSize + 1) })}
                   disabled={settings.fontSize >= 30}
                   title={t("reader.settings.larger")}

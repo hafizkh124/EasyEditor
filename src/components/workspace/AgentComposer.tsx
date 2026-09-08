@@ -131,7 +131,7 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
           <Button
             size="icon"
             variant="outline"
-            className="h-9 w-9 shrink-0"
+            className="h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0 shrink-0"
             onClick={() => a.setHubOpen((v) => !v)}
             disabled={a.running}
             aria-label={t("agent.hub_open", "Add files, folders, playbooks, connectors")}
@@ -156,7 +156,7 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
             <Button
               size="icon"
               variant={a.recording ? "default" : "outline"}
-              className="h-9 w-9 shrink-0"
+              className="h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0 shrink-0"
               onClick={() => void a.toggleRecord()}
               disabled={a.running || a.transcribing}
               aria-label={a.recording ? t("agent.voice_stop", "Stop dictation") : t("agent.voice_start", "Dictate")}
@@ -166,11 +166,11 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
             </Button>
           )}
           {a.running ? (
-            <Button size="icon" variant="outline" className="h-9 w-9 shrink-0" onClick={a.cancel} aria-label={t("common.cancel", "Cancel")}>
+            <Button size="icon" variant="outline" className="h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0 shrink-0" onClick={a.cancel} aria-label={t("common.cancel", "Cancel")}>
               <Square className="h-4 w-4" />
             </Button>
           ) : (
-            <Button size="icon" className="h-9 w-9 shrink-0" onClick={() => void a.send()} disabled={!a.input.trim()} aria-label={t("agent.send", "Send")}>
+            <Button size="icon" className="h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0 shrink-0" onClick={() => void a.send()} disabled={!a.input.trim()} aria-label={t("agent.send", "Send")}>
               {a.running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           )}

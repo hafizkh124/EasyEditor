@@ -46,7 +46,7 @@ const UserPagination = ({ pagination, onPageChange, onPageSizeChange }: UserPagi
           <Button
             variant="outline"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
             disabled={page <= 1}
             onClick={() => onPageChange(1)}
             aria-label="First page"
@@ -56,7 +56,7 @@ const UserPagination = ({ pagination, onPageChange, onPageSizeChange }: UserPagi
           <Button
             variant="outline"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
             aria-label="Previous page"
@@ -69,7 +69,7 @@ const UserPagination = ({ pagination, onPageChange, onPageSizeChange }: UserPagi
           <Button
             variant="outline"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
             aria-label="Next page"
@@ -79,7 +79,7 @@ const UserPagination = ({ pagination, onPageChange, onPageSizeChange }: UserPagi
           <Button
             variant="outline"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
             disabled={page >= totalPages}
             onClick={() => onPageChange(totalPages)}
             aria-label="Last page"

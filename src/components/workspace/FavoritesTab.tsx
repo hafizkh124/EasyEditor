@@ -114,7 +114,7 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ onSelectBook }) => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute top-1 end-1 h-7 w-7 text-muted-foreground/60 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 end-1 h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-muted-foreground/60 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRemove(fav.bookId);

@@ -138,7 +138,7 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
   if (libraryCollapsed) {
     return (
       <div className="flex flex-col items-center py-3 gap-3 h-full bg-sidebar border-e border-sidebar-border w-12 shrink-0">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-sidebar-foreground" onClick={toggleLibrary} aria-label={t("library.expand_library", "Expand Library")}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-sidebar-foreground" onClick={toggleLibrary} aria-label={t("library.expand_library", "Expand Library")}>
           <BookOpen className="h-4 w-4" />
         </Button>
       </div>
@@ -156,7 +156,7 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
         <div className="flex items-center gap-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-sidebar-foreground" aria-label={t("library.add_menu", "Add project or ingest")}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-sidebar-foreground" aria-label={t("library.add_menu", "Add project or ingest")}>
                 <Plus className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -184,7 +184,7 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-sidebar-foreground" onClick={toggleLibrary} aria-label={t("library.collapse_library", "Collapse Library")}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-sidebar-foreground" onClick={toggleLibrary} aria-label={t("library.collapse_library", "Collapse Library")}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
         </div>

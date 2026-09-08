@@ -135,14 +135,14 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         {/* The workspace has no sidebar (FR-1.4), so this is the only route
             back to the dashboard, the tools and the profile. */}
         <WorkspaceAppMenu />
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 md:hidden" onClick={() => navigate(-1)} aria-label={t("common.go_back", "Go back")}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch shrink-0 md:hidden" onClick={() => navigate(-1)} aria-label={t("common.go_back", "Go back")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         {/* Library drawer toggle — mobile only (FR-8.2) */}
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0 md:hidden"
+          className="h-8 w-8 min-h-touch min-w-touch shrink-0 md:hidden"
           onClick={() => setMobileLibraryOpen(!mobileLibraryOpen)}
           aria-expanded={mobileLibraryOpen}
           aria-label={t("nav.library", "Library")}
@@ -216,7 +216,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
 
         {/* Copy — h-4 glyph to match this bar's other icon-only h-8 w-8 buttons
             (back arrow, library toggle, language toggle, overflow menu). */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex" aria-label={t("editor.copy_text", "Copy text")} onClick={handleCopy}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0 hidden sm:flex" aria-label={t("editor.copy_text", "Copy text")} onClick={handleCopy}>
           <Copy className="h-4 w-4" />
         </Button>
 
@@ -271,7 +271,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         <DesktopAccountMenu />
 
         {/* Language / RTL toggle */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-xs" aria-label={t("common.switch_language", "Switch Language / RTL")} onClick={toggleDirection}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-xs" aria-label={t("common.switch_language", "Switch Language / RTL")} onClick={toggleDirection}>
           <Languages className="h-4 w-4" />
         </Button>
 
@@ -292,7 +292,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         <div className="sm:hidden">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t("common.more_options", "More options")}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch" aria-label={t("common.more_options", "More options")}>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
