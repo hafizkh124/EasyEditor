@@ -56,6 +56,7 @@ const SCRAPING_WHITELIST = [
   "aliftaa.jo",            // دائرة الإفتاء الأردنية — /research-fatwas/<id>/<slug>
   "binbaz.org.sa",         // فتاوى الشيخ ابن باز — /fatwas/<id>/<slug> (the slug is required)
   "banuri.edu.pk",         // جامعہ بنوری ٹاؤن، دار الافتاء — /readquestion/<id>/<date>
+  "darulifta-deoband.com", // دار الافتاء دیوبند — registered in domain-scrape's DOMAINS
 ];
 
 
@@ -444,6 +445,45 @@ export async function handle(req: Request): Promise<Response> {
       console.log(`[Research] Parallel fetch completed in ${Date.now() - startTime}ms`);
     }
 
+    // Phase 10.4.a: when on General tab (no user sources, non-strict mode)
+    // AND the query smells Islamic-topical, fire `domain-scrape` in parallel
+    // and inject the results as additional context for Gemini. This brings
+    // islamqa.info / islamweb.net / islamicurdubooks.com citations into the
+    // General-tab pipeline. Non-blocking — fails silently on slow upstreams.
+    const ISLAMIC_MARKERS = /(?:قرآن|قراٰن|قُرآن|حدیث|حديث|آیت|آية|آیات|آيات|اَیات|سورۃ|سورة|نماز|روزہ|روزه|زکوٰۃ|زكاة|حج|عمرہ|عمرة|نکاح|طلاق|توبہ|توبة|صدقہ|صدقة|الله|اللہ|اللّٰہ|سنت|سنة|فقہ|فقه|تفسیر|تفسير|نبی|نبي|رسول|صحابہ|صحابة|إسلام|اسلام|sahaba|quran|qur'?an|hadith|hadis|surah|ayah|prophet|islam(?:ic)?)/i;
+    if (!strictMode && contextParts.length === 0 && ISLAMIC_MARKERS.test(query)) {
+      try {
+        const scrapeRes = await fetch(`${supabaseUrl}/functions/v1/domain-scrape`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization:  `Bearer ${supabaseKey}`,
+            apikey:         supabaseKey,
+          },
+          body: JSON.stringify({
+            query,
+            // Omit selectedDomains → domain-scrape fans out to every registered host.
+          }),
+          signal: AbortSignal.timeout(15_000),
+
+        });
+        if (scrapeRes.ok) {
+          const data = await scrapeRes.json();
+          const scrapeResults: any[] = data?.results ?? [];
+          if (scrapeResults.length > 0) {
+            const formatted = scrapeResults.slice(0, 6).map((r) => {
+              const url = r?.citation_ref?.url ?? "";
+              const dom = r?.domain ?? "scraper";
+              return `--- Web source [${dom}]${url ? ` (${url})` : ""} ---\n${r.content ?? ""}`;
+            });
+            contextParts.push(...formatted);
+            console.log(`[Research] General-tab scraping injected ${formatted.length} source(s) for Islamic-topical query`);
+          }
+        }
+      } catch (e) {
+        console.warn("[Research] General-tab scraping failed (non-fatal):", e);
+      }
+    }
 
     // Phase 10.3: when not-strict AND no user sources, omit the "No sources"
     // line entirely. With STRICT_INSTRUCTION_OFF active (Phase 8.5 rewrite),

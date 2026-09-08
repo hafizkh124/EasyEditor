@@ -13,6 +13,9 @@ export const DOMAIN_LABEL: Record<string, string> = {
   alquran: "AlQuran.cloud",
   "quran-com": "Quran.com",
   tanzil: "Tanzil",
+  islamqa: "IslamQA.info",
+  islamweb: "IslamWeb.net",
+  "dar-alifta": "Dar-Alifta.org",
   "shamela-index": "Shamela Library",
   "openiti-index": "OpenITI",
   // The user's own uploaded books (SPEC-M4 FR-2.7). Labelled distinctly and in
