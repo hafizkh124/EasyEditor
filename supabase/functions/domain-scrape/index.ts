@@ -149,18 +149,30 @@ const DOMAINS: Record<string, DomainConfig> = {
 
 export const SUPPORTED_DOMAINS = Object.keys(DOMAINS);
 
-// ── Step 1: DuckDuckGo HTML search, scoped to one site ──────────────────────
-// DDG wraps every result href through its own redirector
-// (`//duckduckgo.com/l/?uddg=<url-encoded-target>&rut=...`) instead of
-// linking straight to the target — this unwraps that. A direct `https://`
-// href (no wrapper) is passed through unchanged, in case DDG's markup drops
-// the redirector for some result types.
-function unwrapDuckDuckGoLink(href: string): string | null {
+// ── Step 1: free web search, scoped to one site ─────────────────────────────
+// Search engines never link straight at the result; each wraps it in its own
+// redirector, and this unwraps both shapes we meet:
+//   DuckDuckGo — //duckduckgo.com/l/?uddg=<url-encoded target>&rut=…
+//   Bing       — /ck/a?…&u=a1<base64url of the target>&ntb=1
+// A plain http(s) href is passed through unchanged.
+function unwrapSearchLink(href: string, base: string): string | null {
   try {
-    const u = new URL(href, "https://duckduckgo.com");
+    const u = new URL(href, base);
     if (u.hostname.endsWith("duckduckgo.com") && u.pathname === "/l/") {
       const target = u.searchParams.get("uddg");
       return target ? decodeURIComponent(target) : null;
+    }
+    if (u.hostname.endsWith("bing.com") && u.pathname === "/ck/a") {
+      const raw = u.searchParams.get("u");
+      if (!raw || !raw.startsWith("a1")) return null;
+      let b64 = raw.slice(2).replace(/-/g, "+").replace(/_/g, "/");
+      b64 += "=".repeat((4 - (b64.length % 4)) % 4);
+      try {
+        const decoded = atob(b64);
+        return decoded.startsWith("http") ? decoded : null;
+      } catch {
+        return null;
+      }
     }
     return u.protocol === "http:" || u.protocol === "https:" ? u.toString() : null;
   } catch {
