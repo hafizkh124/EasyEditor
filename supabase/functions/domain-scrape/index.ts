@@ -213,8 +213,12 @@ const SEARCH_ENGINES: Array<{
 
 function hostMatches(url: string, host: string): boolean {
   try {
+    // Strip `www.` from BOTH sides: two registry entries store the host WITH the
+    // prefix ("www.islamweb.net", "www.islamicurdubooks.com"), so a one-sided
+    // strip silently rejected every result those two sites ever returned.
     const h = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
-    return h === host || h.endsWith("." + host);
+    const want = host.toLowerCase().replace(/^www\./, "");
+    return h === want || h.endsWith("." + want);
   } catch {
     return false;
   }
