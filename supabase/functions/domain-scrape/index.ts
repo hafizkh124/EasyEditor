@@ -309,7 +309,6 @@ const SITE_SEARCH: Record<string, SiteSearch> = {
   //   magazine.mohaddis.com — has no search endpoint (?s=, /search, /Home/Search
   //                           all 404 or fall back to the latest-articles list),
   //                           so it would return the same articles every query.
-  //   urdufatwa.com, shamilaurdu.com — HTTP 500 to any search request.
   // darulifta-deoband.com isn't listed here OR in DOMAINS above at all —
   // it 403s this pipeline's User-Agent on a direct fetch too (not just
   // search), so no path through this file can ever reach it. Removed
@@ -321,6 +320,24 @@ const SITE_SEARCH: Record<string, SiteSearch> = {
   "islamfort.com": {
     url: (q) => `https://islamfort.com/?s=${encodeURIComponent(q)}`,
     home: "https://islamfort.com/",
+  },
+  // Re-added 2026-09-08 as a diagnostic retry, not a confirmed fix: an
+  // earlier live check found "HTTP 500 to any search request" for both, but
+  // only the status code was logged, not the body — pageLinks() now logs a
+  // body snippet on failure, so the NEXT live invocation should reveal the
+  // actual cause (wrong param name, a WAF challenge page, a PHP fatal on
+  // non-ASCII query text, …) instead of just "500" again. Same `?s=`
+  // WordPress-style pattern as alulama.org/islamfort.com above, since these
+  // are the same genre of Urdu fatwa/article site — worth trying before
+  // assuming it's the wrong shape. If the logs show it's still wrong, remove
+  // these two again and note the real cause here instead of guessing twice.
+  "urdufatwa.com": {
+    url: (q) => `https://urdufatwa.com/?s=${encodeURIComponent(q)}`,
+    home: "https://urdufatwa.com/",
+  },
+  "shamilaurdu.com": {
+    url: (q) => `https://shamilaurdu.com/?s=${encodeURIComponent(q)}`,
+    home: "https://shamilaurdu.com/",
   },
 };
 
@@ -334,7 +351,11 @@ async function pageLinks(url: string, host: string): Promise<string[]> {
     const res = await fetch(url, { headers: { "User-Agent": BROWSER_UA }, signal: controller.signal });
     clearTimeout(timeout);
     if (!res.ok) {
-      console.error(`[domain-scrape] site search HTTP ${res.status} for ${host}`);
+      // First ~300 chars of the body — a server error page usually names the
+      // actual cause (missing param, a PHP fatal, a WAF challenge page, …)
+      // where the status code alone doesn't.
+      const snippet = await res.text().then((t) => t.slice(0, 300)).catch(() => "<unreadable body>");
+      console.error(`[domain-scrape] site search HTTP ${res.status} for ${host} — url=${url} body=${JSON.stringify(snippet)}`);
       return [];
     }
     const { document: doc } = parseHTML(await res.text());
