@@ -41,11 +41,17 @@ const corsHeaders = {
 // by the 6,236-row local corpus) — nothing is lost by dropping it here.
 //
 // Tier C (live-scraped sites via the retired `domain-scrape` / Firecrawl path)
-// has been removed; the project now relies on its own scraper outside this
-// function. Exported so researchSources.test.ts can import the real wire
-// contract — see TESTING-STRATEGY.md §6.
+// was replaced (2026-09-08) by a free DuckDuckGo-search + plain-fetch
+// scraper in the same `domain-scrape` function, same wire contract. Exported
+// so researchSources.test.ts can import the real wire contract — see
+// TESTING-STRATEGY.md §6.
 export const TIER_A_DOMAINS = ["dorar", "alquran", "quran-com"];
 export const TIER_B_DOMAINS = ["hadith-index", "shamela-index", "openiti-index"];
+export const TIER_C_DOMAINS = [
+  "islamqa", "islamweb", "islamicurdubooks", "shamilaurdu",
+  "alulama", "magazine-mohaddis", "mohaddis", "urdufatwa",
+  "islamfort", "alminasa", "shamela",
+];
 
 export const TIER_K_DOMAINS = ["tanzil", "hadith-json"];
 
@@ -93,7 +99,7 @@ export const TIER_D_DISCIPLINE: Record<string, string> = {
   "classical-mustalah": "hadith_term",
 };
 
-const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_K_DOMAINS, ...TIER_D_DOMAINS];
+const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS, ...TIER_D_DOMAINS];
 
 // Surah names by number — used to fill a clean reference when a retrieved row
 // (typically a Tier-A API result) has an empty surah_name. The local tanzil
@@ -477,6 +483,7 @@ export async function handle(req: Request): Promise<Response> {
     // --- Fan-out: Tier A (always), Tier B (Pro/Ultra), Tier C (Pro/Ultra), Tier K (keyword) ---
     const tierADomains = effectiveDomains.filter((d) => TIER_A_DOMAINS.includes(d));
     const tierBDomains = effectiveDomains.filter((d) => TIER_B_DOMAINS.includes(d));
+    const tierCDomains = effectiveDomains.filter((d) => TIER_C_DOMAINS.includes(d));
     // Tier K has its own richer inference below (wantsQuran/wantsHadith/wantsFatwa)
     // instead of a strict membership check against TIER_K_DOMAINS — see that
     // block's comment. A `tierKDomains` filtered the same way as the other
@@ -544,7 +551,31 @@ export async function handle(req: Request): Promise<Response> {
       );
     }
 
-
+    // Tier C: call domain-scrape (live fatwa scraping — available to all).
+    // Free DuckDuckGo-search + plain-fetch scraper since 2026-09-08 (was
+    // Firecrawl-backed); same wire contract, so nothing else here changed.
+    if (tierCDomains.length > 0) {
+      const scrapeUrl = `${supabaseUrl}/functions/v1/domain-scrape`;
+      pushTimed("tierC:domain-scrape",
+        fetch(scrapeUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+            apikey: supabaseKey,
+          },
+          body: JSON.stringify({ query, selectedDomains: tierCDomains }),
+          // 8s caller-side budget. The free scraper's own per-domain timeouts
+          // (5s search + 6s fetch, run in parallel across domains via
+          // Promise.allSettled) are tighter than the old Firecrawl call's
+          // 25s, so this margin is if anything more comfortable than before.
+          signal: AbortSignal.timeout(8_000),
+        })
+          .then((r) => r.ok ? r.json() : { results: [] })
+          .then((d) => d.results ?? [])
+          .catch(() => [])
+      );
+    }
 
     // Tier K: local DB keyword search with bilingual expansion (available to all tiers).
     // Source_type selection is INFERRED from the user's overall domain selection,

@@ -1,6 +1,7 @@
 // Trusted scholarly domains for Islamic & General research modes.
 // Custom Sources mode bypasses this whitelist (user takes responsibility).
-// Keep in sync with `supabase/functions/research-query/index.ts` SCRAPING_WHITELIST.
+// Keep in sync with `supabase/functions/domain-scrape/index.ts` DOMAINS
+// and `supabase/functions/research-query/index.ts` SCRAPING_WHITELIST.
 //
 // M9 ADR-0022 (2026-09-04) — widened to the international fiqh academies and
 // the national dar al-ifta bodies. Every candidate was fetched with THIS
@@ -28,6 +29,7 @@ export const SCRAPING_WHITELIST = [
   "aliftaa.jo",            // دائرة الإفتاء الأردنية — /research-fatwas/<id>/<slug>
   "binbaz.org.sa",         // فتاوى الشيخ ابن باز — /fatwas/<id>/<slug> (the slug is required)
   "banuri.edu.pk",         // جامعہ بنوری ٹاؤن، دار الافتاء — /readquestion/<id>/<date>
+  "darulifta-deoband.com", // دار الافتاء دیوبند — registered in domain-scrape's DOMAINS
 ];
 
 export function isWhitelistedUrl(rawUrl: string): boolean {

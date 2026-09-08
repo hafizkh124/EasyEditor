@@ -29,6 +29,7 @@ import {
 let islamicSearchTiers: {
   TIER_A_DOMAINS: string[];
   TIER_B_DOMAINS: string[];
+  TIER_C_DOMAINS: string[];
   TIER_K_DOMAINS: string[];
   TIER_D_DOMAINS: string[];
   TIER_D_DISCIPLINE: Record<string, string>;
@@ -39,8 +40,8 @@ beforeAll(async () => {
 });
 
 function backendDomains(): string[] {
-  const { TIER_A_DOMAINS, TIER_B_DOMAINS, TIER_K_DOMAINS, TIER_D_DOMAINS } = islamicSearchTiers;
-  return [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_K_DOMAINS, ...TIER_D_DOMAINS];
+  const { TIER_A_DOMAINS, TIER_B_DOMAINS, TIER_C_DOMAINS, TIER_K_DOMAINS, TIER_D_DOMAINS } = islamicSearchTiers;
+  return [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS, ...TIER_D_DOMAINS];
 }
 
 describe("research source catalogue", () => {
@@ -165,10 +166,11 @@ describe("selection → request payload", () => {
 });
 
 /**
- * M9 ADR-0022 — the scraping whitelist is mirrored between the client copy
- * (`src/lib/research/scrapingWhitelist.ts`) and the edge copy
- * (`supabase/functions/research-query/index.ts`). The retired `domain-scrape`
- * function has been removed; only the byte-identical mirror remains.
+ * M9 ADR-0022 — the scraping whitelist lives in three places and its own
+ * header comment says "keep in sync". It had already drifted:
+ * `darulifta-deoband.com` was registered in domain-scrape's DOMAINS but absent
+ * from both whitelists, so anything that function returned for it could never
+ * be fetched or cited upstream. These two tests make that unfixable-by-accident.
  */
 describe("scraping whitelist mirrors", () => {
   const read = async (rel: string) => {
@@ -189,5 +191,18 @@ describe("scraping whitelist mirrors", () => {
     const client = arrayLiteral(await read("src/lib/research/scrapingWhitelist.ts"));
     const edge = arrayLiteral(await read("supabase/functions/research-query/index.ts"));
     expect(edge).toBe(client);
+  });
+
+  it("every host domain-scrape can return is whitelisted (DOMAINS ⊆ whitelist)", async () => {
+    const { SCRAPING_WHITELIST, isWhitelistedUrl } = await import("../lib/research/scrapingWhitelist");
+    const scrapeSrc = await read("supabase/functions/domain-scrape/index.ts");
+    // NOT anchored to line start: the compact entries put `host:` mid-line
+    // (`alulama: { host: "alulama.org", … }`), and an anchored regex silently
+    // matched only half the registry.
+    const hosts = [...scrapeSrc.matchAll(/\bhost:\s*"([^"]+)"/g)].map((m) => m[1]);
+    const registered = scrapeSrc.slice(scrapeSrc.indexOf("const DOMAINS")).match(/^\s{2}[\w"-]+:\s*\{/gm)?.length ?? 0;
+    expect(hosts.length, "parsed fewer hosts than DOMAINS entries — the regex is missing some").toBe(registered);
+    const orphans = hosts.filter((h) => !isWhitelistedUrl(`https://${h}/`));
+    expect(orphans, `hosts in domain-scrape but not in SCRAPING_WHITELIST (${SCRAPING_WHITELIST.length} entries)`).toEqual([]);
   });
 });

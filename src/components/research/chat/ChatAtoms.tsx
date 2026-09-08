@@ -6,6 +6,7 @@ import type { Translator } from "@/lib/i18n";
 const DOMAIN_SHORT: Record<string, string> = {
   dorar: "Dorar", sunnah: "Sunnah", "hadith-index": "Hadith Index",
   alquran: "AlQuran", "quran-com": "Quran.com", tanzil: "Tanzil",
+  islamqa: "IslamQA", islamweb: "IslamWeb", "dar-alifta": "Dar-Alifta",
   "shamela-index": "Shamela", "openiti-index": "OpenITI",
 };
 
