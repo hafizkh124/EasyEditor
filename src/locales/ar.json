@@ -1700,5 +1700,17 @@
   "shamelaCloud.retry": "إعادة المحاولة",
   "shamelaCloud.waitingForBrowser": "فُتحت صفحة تسجيل الدخول في متصفحك — اسمح بالوصول ثم عُد إلى هنا.",
   "shamelaCloud.quotaNote": "خدمة مجانية بحصة لكل حساب: دفعة لكل سؤال، ومعدل ثابت دونها، وسقف يومي. عند التجاوز يُرفض الطلب مع بيان وقت إعادة المحاولة.",
-  "shamelaCloud.opensBrowserOnce": "تُفتح صفحة الدخول مرة واحدة في متصفحك."
+  "shamelaCloud.opensBrowserOnce": "تُفتح صفحة الدخول مرة واحدة في متصفحك.",
+  "connectors.jkhssn.desc": "محرك جوامع الكلم المحلي للحديث — شجرة الإسناد، تراجم 30 ألف راوٍ مع مراتب ابن حجر والذهبي والجرح والتعديل، والتخريج، وأحكام الأئمة والعلل، وفهرس فقهي موضوعي. يعمل دون اتصال. تُستكمل أسماء الرواة والمتون من المدونة.",
+  "jkhssn.title": "جوامع الكلم — التخريج والأسانيد",
+  "jkhssn.desktop_only": "محرك جوامع الكلم متاح في تطبيق سطح المكتب فقط.",
+  "jkhssn.status_ready": "متصل",
+  "jkhssn.status_building": "جارٍ بناء الفهرس",
+  "jkhssn.status_off": "غير متصل",
+  "jkhssn.check_data": "مجلد HadithDB",
+  "jkhssn.check_tables": "جداول قابلة للقراءة",
+  "jkhssn.check_index": "الفهرس مبني",
+  "jkhssn.check_fresh": "الفهرس محدَّث",
+  "jkhssn.building": "جارٍ البدء…",
+  "jkhssn.rebuild": "إعادة بناء الفهرس"
 }

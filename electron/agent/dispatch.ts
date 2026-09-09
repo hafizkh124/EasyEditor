@@ -52,6 +52,7 @@ import { buildApparatus, apparatusTable } from '../../shared/research/apparatus.
 import { resolveTrim, PRINT_LAYOUT_LOSS } from '../../shared/print/trimSizes.js';
 import { searchRepositories, type RepositoryQuery } from './adapters/repositories.js';
 import { gradeHadith } from './adapters/dorar.js';
+import * as jkhssnAdapter from './adapters/jkhssn.js';
 import { buildRijalQuery, type NarratorAspect } from '../../shared/agent/rijalQuery.js';
 import { buildLexiconQuery, almaanyUrl } from '../../shared/agent/lexiconQuery.js';
 import { printedPageCitation } from './adapters/lexicon.js';
@@ -136,6 +137,11 @@ export interface AgentSession {
    */
   shamelaLocalEnabled?: boolean;
   shamelaCloudEnabled?: boolean;
+  /** ADR-0045 — the جوامع الكلم connector's merged state (absent ⇒ on). */
+  jkhssnEnabled?: boolean;
+  /** Phase 4 — book/author/category/century scope for search tools (refs like
+   *  'shamela:1681' | 'jkhssn:55' | 'corpus:<uuid>'). Absent ⇒ unscoped. */
+  bookScope?: string[];
 }
 
 /** ADR-0044 — the local-first router's options for this run. */
@@ -164,6 +170,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
     'search_corpus', 'search_shamela', 'read_shamela_page', 'find_shamela_book', 'query_tafseer', 'search_hadith',
     'grade_hadith', 'lookup_narrator', 'lookup_lexicon', 'search_persian_poetry', 'lookup_urdu_verse',
     'search_general', 'search_repositories',
+    'jkhssn_narrator', 'jkhssn_sanad_tree', 'jkhssn_takhrij', 'jkhssn_judgments', 'jkhssn_thematic',
   ]);
   const generalSearch = session.generalSearch ?? null;
   const researchSearch = session.researchSearch ?? null;
@@ -862,6 +869,65 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           note,
           results: chunks.map((c) => ({ id: c.id, reference: c.reference, grade: c.grade, excerpt: (c.content ?? '').slice(0, 400) })),
         };
+      }
+
+      case 'jkhssn_narrator': {
+        if (session.jkhssnEnabled === false) return { error: 'جوامع الكلم کنیکٹر بند ہے۔' };
+        const r = await jkhssnAdapter.jkhssnNarrator(
+          { name: str(args.name, 'name'), aspect: typeof args.aspect === 'string' ? (args.aspect as never) : undefined },
+          { researchSearch: researchSearch as never },
+        );
+        if (r.error) return { error: r.error };
+        ledger.add(r.chunks);
+        const artifactId = `jkhssn-narrator-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `راوی: ${str(args.name, 'name').slice(0, 40)}`, artifactType: 'narrator-card' });
+        emitArtifact({ op: 'data', artifactId, payload: r.data });
+        if (r.chunks.length) {
+          emitArtifact({ op: 'citations', artifactId, entries: r.chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, url: c.source_url ?? undefined, tier: 1 })) });
+        }
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+        return { count: r.chunks.length, answer: r.answer ? capResult(r.answer) : undefined, note: r.note, card: r.data };
+      }
+
+      case 'jkhssn_sanad_tree': {
+        if (session.jkhssnEnabled === false) return { error: 'جوامع الكلم کنیکٹر بند ہے۔' };
+        const r = await jkhssnAdapter.jkhssnSanadTree({ hadithMainId: num(args.hadith_main_id, 0) || undefined, hadithText: typeof args.hadith_text === 'string' ? args.hadith_text : undefined });
+        if (r.error) return { error: r.error };
+        if (r.data) {
+          const artifactId = `jkhssn-sanad-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: 'شجرۂ اسناد', artifactType: 'sanad-tree' });
+          emitArtifact({ op: 'data', artifactId, payload: r.data });
+          emitArtifact({ op: 'close', artifactId, status: 'final' });
+        }
+        return { note: r.note, tree: r.data };
+      }
+
+      case 'jkhssn_takhrij': {
+        if (session.jkhssnEnabled === false) return { error: 'جوامع الكلم کنیکٹر بند ہے۔' };
+        const r = await jkhssnAdapter.jkhssnTakhrij({ hadithMainId: num(args.hadith_main_id, 0) || undefined, hadithText: typeof args.hadith_text === 'string' ? args.hadith_text : undefined });
+        if (r.error) return { error: r.error };
+        return { note: r.note, takhrij: r.data };
+      }
+
+      case 'jkhssn_judgments': {
+        if (session.jkhssnEnabled === false) return { error: 'جوامع الكلم کنیکٹر بند ہے۔' };
+        const r = await jkhssnAdapter.jkhssnJudgments({ hadithMainId: num(args.hadith_main_id, 0) || undefined, hadithText: typeof args.hadith_text === 'string' ? args.hadith_text : undefined });
+        if (r.error) return { error: r.error };
+        ledger.add(r.chunks);
+        if (r.chunks.length) {
+          const artifactId = `jkhssn-judgments-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: 'احکامِ ائمہ و علل', artifactType: 'citation-list' });
+          emitArtifact({ op: 'citations', artifactId, entries: r.chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, excerpt: (c.content ?? '').slice(0, 400) })) });
+          emitArtifact({ op: 'close', artifactId, status: 'final' });
+        }
+        return { count: r.chunks.length, answer: r.answer ? capResult(r.answer) : undefined, note: r.note };
+      }
+
+      case 'jkhssn_thematic': {
+        if (session.jkhssnEnabled === false) return { error: 'جوامع الكلم کنیکٹر بند ہے۔' };
+        const r = await jkhssnAdapter.jkhssnThematic({ query: typeof args.query === 'string' ? args.query : undefined, subjectId: num(args.subject_id, 0) || undefined });
+        if (r.error) return { error: r.error };
+        return { note: r.note, thematic: r.data };
       }
 
       case 'search_repositories': {

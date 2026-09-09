@@ -58,6 +58,43 @@ describe('toolsFor', () => {
     expect(generic.length).toBeGreaterThanOrEqual(full.length);
   });
 
+  // ADR-0045 — the جوامع الكلم tools are native-only and land under the
+  // existing hadith / rijal / grading domain rules, plus one thematic rule.
+  describe('jkhssn tools', () => {
+    it('are all native-only', () => {
+      for (const t of ['jkhssn_sanad_tree', 'jkhssn_narrator', 'jkhssn_takhrij', 'jkhssn_judgments', 'jkhssn_thematic']) {
+        expect(NATIVE_ONLY_TOOLS.has(t)).toBe(true);
+      }
+    });
+    it('a shajarat al-isnad ask exposes jkhssn_sanad_tree on desktop', () => {
+      const n = names('auto', { ask: 'اس حدیث کا شجرۂ اسناد بنائیں' });
+      expect(n).toContain('jkhssn_sanad_tree');
+      expect(n).toContain('jkhssn_takhrij');
+    });
+    it('a narrator ask exposes jkhssn_narrator alongside lookup_narrator', () => {
+      const n = names('auto', { ask: 'اس راوی کا حال اور مرتبہ' });
+      expect(n).toContain('jkhssn_narrator');
+      expect(n).toContain('lookup_narrator');
+    });
+    it('an ʿilal ask exposes jkhssn_judgments', () => {
+      expect(names('auto', { ask: 'اس حدیث کی علل کیا ہیں' })).toContain('jkhssn_judgments');
+    });
+    it('a thematic ask maps to the jkhssn connector', () => {
+      const rules = matchDomains('ابواب الفقہ کے تحت احادیث');
+      expect(rules.some((r) => r.connector === 'jkhssn')).toBe(true);
+    });
+    it('web strips every jkhssn tool even when the domain rule fires', () => {
+      const n = names('auto', { ask: 'اس حدیث کا شجرۂ اسناد', platform: 'web' });
+      for (const t of ['jkhssn_sanad_tree', 'jkhssn_narrator', 'jkhssn_takhrij', 'jkhssn_judgments', 'jkhssn_thematic']) {
+        expect(n).not.toContain(t);
+      }
+    });
+    it('citation closure still holds — insert_footnote survives with jkhssn_narrator', () => {
+      const n = names('auto', { ask: 'اس راوی کا حال اور مرتبہ' });
+      expect(n).toContain('insert_footnote');
+    });
+  });
+
   // M10 Phase 2.1 — platform: 'web' strips Word-COM/local-fs-only tools.
   describe('platform: web', () => {
     it('never exposes a native-only tool, with no narrowing at all', () => {

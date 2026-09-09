@@ -62,6 +62,11 @@ export const ALLOWED_IPC_CHANNELS = {
   // Cloud Shamela (Connectors Hub Phase 8, ADR-0044) — OAuth BYOA to shamela.link/mcp.
   SHAMELA_CLOUD_INVOKE: 'shamela:cloud-invoke',
 
+  // JKHSSN — جوامع الكلم local hadith engine (ADR-0045). Detection, the 6 axes,
+  // and a background index (re)build with progress.
+  JKHSSN_INVOKE: 'jkhssn:invoke',
+  JKHSSN_INDEX_PROGRESS: 'jkhssn:index-progress',
+
   // Voice (M5.5 / M5.6 placeholder channels)
   VOICE_SYNTHESIZE: 'voice:synthesize',
   VOICE_TRANSCRIBE: 'voice:transcribe',

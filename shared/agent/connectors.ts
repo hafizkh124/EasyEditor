@@ -150,6 +150,19 @@ export const CONNECTORS: Connector[] = [
     tools: ['lookup_narrator'],
   },
   {
+    // ADR-0045 — جوامع الكلم local hadith engine. `local-file`: the connector is
+    // healthy when `jkhssn.sqlite` is built (a seed ships, so it works out of
+    // the box). Distinct `jkhssn_*` tools, NOT co-owner of lookup_narrator /
+    // grade_hadith — different result shapes; the model calls both and reconciles.
+    id: 'jkhssn',
+    label: 'جوامع الكلم — تخريج و أسانيد (مقامی)',
+    category: 'hadith-rijal',
+    descriptionKey: 'connectors.jkhssn.desc',
+    icon: 'git-fork',
+    healthKind: 'local-file',
+    tools: ['jkhssn_sanad_tree', 'jkhssn_narrator', 'jkhssn_takhrij', 'jkhssn_judgments', 'jkhssn_thematic'],
+  },
+  {
     id: 'web',
     label: 'General web research',
     category: 'islamic-sciences',
@@ -207,6 +220,7 @@ export const CONNECTOR_PROVENANCE_LABEL: Record<string, string> = {
   hadith: 'حدیث',
   dorar: 'درر السنیہ',
   rijal: 'علم الرجال',
+  jkhssn: '💻 جوامع الكلم',
   ganjoor: 'گنجور',
   'urdu-prosody': 'اردو عروض',
   web: 'ویب',

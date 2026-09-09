@@ -5,6 +5,7 @@ import { registerSystemHandlers } from './ipc/systemHandlers.js';
 import { registerAiHandlers } from './ipc/aiHandlers.js';
 import { registerWorkspaceHandlers } from './ipc/workspaceHandlers.js';
 import { registerShamelaHandlers } from './ipc/shamelaHandlers.js';
+import { registerJkhssnHandlers, terminateJkhssn } from './ipc/jkhssnHandlers.js';
 import { registerTafsirHandlers } from './ipc/tafsirHandlers.js';
 import { terminateLocalSync } from './tafsir/mcpClient.js';
 import { registerVoiceHandlers } from './ipc/voiceHandlers.js';
@@ -281,6 +282,7 @@ if (!gotSingleInstanceLock) {
     registerAiHandlers();
     registerWorkspaceHandlers();
     registerShamelaHandlers();
+    registerJkhssnHandlers();
     registerTafsirHandlers();
     registerVoiceHandlers();
     registerDocBridgeHandlers();
@@ -323,6 +325,7 @@ app.on('before-quit', () => {
   terminateCloudClientSync(); // ADR-0044 — abort any in-flight شامله لنک OAuth flow + close the loopback server
   shutdownDocBridgeSync();
   terminateFsWatch();
+  terminateJkhssn();
 });
 
 app.on('window-all-closed', () => {
