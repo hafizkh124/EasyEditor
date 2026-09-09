@@ -33,6 +33,14 @@ export interface EvalWorld {
   corpus: EvalChunk[];
   /** Returned by search_shamela. */
   shamela: EvalChunk[];
+  /** Returned by grade_hadith (الدرر السنية, ADR-0040) — citable. */
+  dorar?: EvalChunk[];
+  /** Returned by lookup_narrator (rijāl corpus, ADR-0041) — citable. */
+  rijal?: EvalChunk[];
+  /** Returned by search_persian_poetry (Ganjoor, ADR-0042) — citable. */
+  ganjoor?: EvalChunk[];
+  /** Returned by lookup_lexicon's corpus channel (ADR-0043) — citable. */
+  lexicon?: EvalChunk[];
   /** Canned answer for search_general (never citable). */
   general?: string;
   /** claim substrings the fake claim-check REJECTS — to test the model backing off. */
@@ -112,6 +120,63 @@ export function makeScriptedDispatch(world: EvalWorld): ScriptedDispatch {
       case 'query_tafseer':
       case 'search_hadith':
         return record(name, args, { chunks: [], note: 'no results in this eval world' });
+
+      case 'grade_hadith': {
+        const pool = world.dorar ?? [];
+        const found = matchChunks(pool, String(args.text ?? ''), 5);
+        if (pool.length === 0) return record(name, args, { count: 0, note: 'no gradings in this eval world' });
+        ledger.add(found.map(asRetrieved));
+        return record(name, args, {
+          count: found.length,
+          results: found.map((c) => ({ id: c.id, reference: c.reference, excerpt: c.content.slice(0, 300) })),
+        });
+      }
+
+      case 'lookup_narrator': {
+        const pool = world.rijal ?? [];
+        const found = matchChunks(pool, String(args.name ?? ''), 5);
+        if (pool.length === 0) return record(name, args, { count: 0, note: 'no rijāl entries in this eval world' });
+        ledger.add(found.map(asRetrieved));
+        return record(name, args, {
+          count: found.length,
+          answer: 'The narrator is discussed in the rijāl works.',
+          results: found.map((c) => ({ id: c.id, reference: c.reference })),
+        });
+      }
+
+      case 'search_persian_poetry': {
+        const pool = world.ganjoor ?? [];
+        const found = matchChunks(pool, String(args.query ?? ''), 5);
+        if (pool.length === 0) return record(name, args, { count: 0, note: 'no Persian verses in this eval world' });
+        ledger.add(found.map(asRetrieved));
+        return record(name, args, {
+          count: found.length,
+          results: found.map((c) => ({ id: c.id, reference: c.reference, excerpt: c.content.slice(0, 200) })),
+        });
+      }
+
+      case 'scan_urdu_prosody':
+        // Pure compute — no world data; just echo a heuristic-shaped result.
+        return record(name, args, {
+          note: 'Machine reading — verify.',
+          lines: [{ line: String(args.text ?? ''), pattern: '= − = =', feet: [], bahr: null, confidence: 'low' }],
+        });
+
+      case 'lookup_urdu_verse':
+        return record(name, args, { count: 0, note: 'no Urdu verse corpus in this eval world' });
+
+      case 'lookup_lexicon': {
+        const pool = world.lexicon ?? [];
+        const found = matchChunks(pool, String(args.word ?? ''), 5);
+        const almaanyUrl = `https://www.almaany.com/ur/dict/ar-ur/${encodeURIComponent(String(args.word ?? ''))}/`;
+        if (pool.length) ledger.add(found.map(asRetrieved));
+        return record(name, args, {
+          count: pool.length ? found.length : 0,
+          almaanyUrl,
+          note: `Verify at al-Maany: ${almaanyUrl}`,
+          results: found.map((c) => ({ id: c.id, reference: c.reference })),
+        });
+      }
 
       case 'insert_footnote': {
         try {

@@ -16,7 +16,7 @@ import type { RetrievedChunk } from '../../../shared/agent/grounding.js';
 
 const log = logger.child('agent/tafsir');
 
-export type TafseerMode = 'ayah' | 'tafsir' | 'nuzool' | 'word' | 'search';
+export type TafseerMode = 'ayah' | 'tafsir' | 'nuzool' | 'word' | 'search' | 'root' | 'qeraat';
 
 export interface TafseerQuery {
   reference: string;
@@ -69,6 +69,8 @@ const MODE_TOOL: Record<TafseerMode, string> = {
   nuzool: 'fetch_nuzool_reason',
   word: 'analyze_word',
   search: 'search_in_tafsir',
+  root: 'find_root_occurrences',
+  qeraat: 'get_qeraat_variants',
 };
 
 export async function queryTafseer(q: TafseerQuery): Promise<TafseerResult> {
@@ -79,6 +81,26 @@ export async function queryTafseer(q: TafseerQuery): Promise<TafseerResult> {
 
   const tool = MODE_TOOL[q.mode];
   if (!tool) return { chunks: [], text: '', error: `unknown tafsir mode "${q.mode}"` };
+
+  // `root` (بحوث / Bahouth) — a triliteral-root lookup, not an āyah. Two
+  // allowlisted tools: the occurrences and the aggregate stats, merged.
+  if (q.mode === 'root') {
+    const root = (q.query ?? q.reference).trim();
+    if (!root) return { chunks: [], text: '', error: 'root mode needs the Qur\'anic root (e.g. "نصر" or "ن ص ر")' };
+    let occ = '';
+    let stats = '';
+    try { occ = (await callTool('find_root_occurrences', { root, limit: 12 })).text ?? ''; }
+    catch (err) { return { chunks: [], text: '', error: `root lookup failed: ${(err as Error).message}` }; }
+    try { stats = (await callTool('get_root_stats', { root })).text ?? ''; } catch { /* stats are a bonus */ }
+    const merged = [stats.trim(), occ.trim()].filter(Boolean).join('\n\n');
+    if (!merged) return { chunks: [], text: '', note: `No occurrences found for the root "${root}".` };
+    const chunk: RetrievedChunk = {
+      id: `tafsir:root:${root}`,
+      reference: `جذر «${root}» — وقوعاته وإحصاؤه (باحوث / tafsir.net)`,
+      content: merged.slice(0, 4000),
+    };
+    return { chunks: [chunk], text: merged.slice(0, 6000) };
+  }
 
   // `search` works on a free-text query; the others need a sūrah:āyah.
   let args: Record<string, unknown>;
@@ -99,7 +121,7 @@ export async function queryTafseer(q: TafseerQuery): Promise<TafseerResult> {
     if (q.mode === 'tafsir' || q.mode === 'nuzool') {
       if (q.sources?.length) args.sources = q.sources;
     }
-    if (q.mode === 'word') args.word_no = q.word_no ?? 1;
+    if (q.mode === 'word' || q.mode === 'qeraat') args.word_no = q.word_no ?? 1;
   }
 
   let text = '';
@@ -115,11 +137,12 @@ export async function queryTafseer(q: TafseerQuery): Promise<TafseerResult> {
   const kind =
     q.mode === 'nuzool' ? 'سبب النزول'
     : q.mode === 'word' ? 'تحليل لفظي'
+    : q.mode === 'qeraat' ? 'قراءات'
     : q.mode === 'ayah' ? 'نص الآية'
     : 'تفسير';
   const chunk: RetrievedChunk = {
     id: `tafsir:${q.mode}:${(q.sources?.[0] ?? 'all')}:${refLabel}`,
-    reference: `${kind}${sourceLabel} — ${refLabel} (tafsir.net)`,
+    reference: `${kind}${sourceLabel} — ${refLabel} (باحوث / tafsir.net)`,
     content: text.slice(0, 4000),
   };
 

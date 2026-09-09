@@ -20,7 +20,12 @@ import * as word from '../adapters/word.js';
 import { isAllowedOption } from './globalOptions.js';
 import { chapterPath, backupChapter, refreshChapters } from '../fs/projectFolder.js';
 import { getWorkspaceDbService } from '../ipc/workspaceHandlers.js';
-import { searchShamelaNative } from '../shamela/shamelaNative.js';
+import {
+  routeShamelaSearch,
+  routeShamelaReadPage,
+  routeShamelaFindBook,
+  type RouteOpts,
+} from './adapters/shamelaRouter.js';
 import { generateAgentText } from './modelRouter.js';
 import { RetrievalLedger, assertClaimSupported, type RetrievedChunk, type ClaimCheckFn } from '../../shared/agent/grounding.js';
 import { summariseCapabilities } from '../../shared/agent/capabilities.js';
@@ -46,6 +51,12 @@ import { formatScholarlyRef } from '../../shared/research/citationTypes.js';
 import { buildApparatus, apparatusTable } from '../../shared/research/apparatus.js';
 import { resolveTrim, PRINT_LAYOUT_LOSS } from '../../shared/print/trimSizes.js';
 import { searchRepositories, type RepositoryQuery } from './adapters/repositories.js';
+import { gradeHadith } from './adapters/dorar.js';
+import { buildRijalQuery, type NarratorAspect } from '../../shared/agent/rijalQuery.js';
+import { buildLexiconQuery, almaanyUrl } from '../../shared/agent/lexiconQuery.js';
+import { printedPageCitation } from './adapters/lexicon.js';
+import { searchPersianPoetry } from './adapters/ganjoor.js';
+import { scanUrduProsody, lookupUrduVerse } from './adapters/urduProsody.js';
 import { buildIndexExtractionInstruction, parseIndexEntries, INDEX_KINDS, type IndexKind } from '../../shared/ai/prompts/indexEntries.js';
 import type { DispatchFn, EmitArtifactFn } from '../../shared/agent/types.js';
 import type { GeneralSearchResult } from './generalSearch.js';
@@ -119,6 +130,20 @@ export interface AgentSession {
   model?: ModelFn | null;
   /** Resolves true to abort — passed through to the research sub-run. */
   isCancelled?: (() => boolean) | null;
+  /**
+   * ADR-0044 — the two Shamela transports' merged connector state, set by
+   * `run.ts`. Absent (headless / eval) ⇒ local on, cloud off.
+   */
+  shamelaLocalEnabled?: boolean;
+  shamelaCloudEnabled?: boolean;
+}
+
+/** ADR-0044 — the local-first router's options for this run. */
+function shamelaRouteOpts(session: AgentSession): RouteOpts {
+  return {
+    localEnabled: session.shamelaLocalEnabled !== false,
+    cloudEnabled: session.shamelaCloudEnabled === true,
+  };
 }
 
 export interface Dispatcher {
@@ -136,7 +161,9 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
   /** Read-only tools the research sub-run may use (never itself — no recursion). */
   const RESEARCH_SUBAGENT_TOOLS = new Set([
-    'search_corpus', 'search_shamela', 'query_tafseer', 'search_hadith', 'search_general', 'search_repositories',
+    'search_corpus', 'search_shamela', 'read_shamela_page', 'find_shamela_book', 'query_tafseer', 'search_hadith',
+    'grade_hadith', 'lookup_narrator', 'lookup_lexicon', 'search_persian_poetry', 'lookup_urdu_verse',
+    'search_general', 'search_repositories',
   ]);
   const generalSearch = session.generalSearch ?? null;
   const researchSearch = session.researchSearch ?? null;
@@ -219,14 +246,53 @@ export function createDispatcher(session: AgentSession): Dispatcher {
       case 'search_shamela': {
         const query = str(args.query, 'query');
         const limit = Math.min(num(args.limit, 8), 12); // ADR-0027 F4 — hard cap
-        const hits = await searchShamelaNative(query, limit);
-        const chunks: RetrievedChunk[] = hits.map((h) => ({
-          id: `shamela:${h.bookId}:${h.pageNumber}`,
-          reference: `${h.bookTitle}، ص ${h.pageNumber}`,
+        const r = await routeShamelaSearch(query, limit, shamelaRouteOpts(session));
+        if (r.transport === 'none' && r.error) return { error: r.error, transport: 'none' };
+        const prefix = r.transport === 'cloud' ? 'shamela-cloud' : 'shamela';
+        const chunks: RetrievedChunk[] = r.hits.map((h) => ({
+          id: `${prefix}:${h.bookId}:${h.pageNumber}`,
+          reference: `${h.bookTitle || 'الشاملة'}، ص ${h.pageNumber}`,
           content: h.snippet,
+          ...(r.transport === 'cloud' && !Number(h.bookId) ? { bibliographic: true } : {}),
         }));
         ledger.add(chunks);
-        return { count: chunks.length, results: chunks.map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 350) })) };
+        return {
+          count: chunks.length,
+          transport: r.transport,        // non-model-facing — read by connectorsUsed (ADR-0044)
+          note: r.note,
+          results: chunks.map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 350) })),
+        };
+      }
+
+      case 'read_shamela_page': {
+        const sid = str(args.source_id, 'source_id');
+        const m = /^(shamela(?:-cloud)?):([^:]+):(\d+)$/.exec(sid);
+        if (!m) return { error: 'read_shamela_page needs a shamela:<bookId>:<page> id from search_shamela' };
+        const [, pfx, bookId, pageStr] = m;
+        const r = await routeShamelaReadPage(bookId, Number(pageStr), {
+          ...shamelaRouteOpts(session),
+          preferTransport: pfx === 'shamela-cloud' ? 'cloud' : 'local',
+        });
+        if (!r.page) return { error: r.error ?? 'could not read the page', transport: r.transport };
+        ledger.add([{ id: sid, reference: `الشاملة، ص ${r.page.pageNumber}`, content: r.page.text }]);
+        return {
+          transport: r.transport,
+          bookId,
+          page: r.page.pageNumber,
+          text: capResult(r.page.text),
+          footnotes: r.page.footnotes ? capResult(r.page.footnotes) : undefined,
+        };
+      }
+
+      case 'find_shamela_book': {
+        const query = str(args.query, 'query');
+        const r = await routeShamelaFindBook(query, shamelaRouteOpts(session));
+        if (r.transport === 'none' && r.error) return { error: r.error, transport: 'none' };
+        return {
+          transport: r.transport,
+          note: r.books.length === 0 ? (r.note ?? 'No matching Shamela book or author.') : r.note,
+          books: r.books.slice(0, 15),
+        };
       }
 
       case 'insert_footnote': {
@@ -534,7 +600,8 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const mode = str(args.mode, 'mode') as TafseerMode;
         const sources = Array.isArray(args.sources) ? args.sources.filter((s): s is string => typeof s === 'string') : undefined;
         const q = typeof args.query === 'string' ? args.query : undefined;
-        const r = await queryTafseer({ reference, mode, sources, query: q });
+        const wordNo = typeof args.word_no === 'number' ? args.word_no : undefined;
+        const r = await queryTafseer({ reference, mode, sources, query: q, word_no: wordNo });
         if (r.error) return { error: r.error };
         ledger.add(r.chunks);
         if (r.chunks.length) {
@@ -582,6 +649,174 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           note: chunks.length === 0 ? 'The hadith channel returned an answer but no page-precise citations to cite.' : undefined,
           answer: capResult((r.answer ?? '').trim()),
           results: chunks.map((c) => ({ id: c.id, reference: c.reference, url: c.source_url ?? undefined })),
+        };
+      }
+
+      case 'search_persian_poetry': {
+        const query = str(args.query, 'query');
+        const poet = typeof args.poet === 'string' ? args.poet : undefined;
+        const r = await searchPersianPoetry({ query, poet });
+        if (r.error) return { error: r.error };
+        ledger.add(r.chunks);
+        if (r.chunks.length) {
+          const artifactId = `persian-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: `شعر فارسی: ${query.slice(0, 40)}`, artifactType: 'citation-list' });
+          emitArtifact({ op: 'citations', artifactId, entries: r.chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, url: c.source_url ?? undefined, tier: 1, excerpt: (c.content ?? '').slice(0, 400) || undefined })) });
+          emitArtifact({ op: 'close', artifactId, status: 'final' });
+        }
+        return {
+          count: r.chunks.length,
+          note: r.note,
+          results: r.chunks.map((c) => ({ id: c.id, reference: c.reference, url: c.source_url ?? undefined, excerpt: (c.content ?? '').slice(0, 300) })),
+        };
+      }
+
+      case 'scan_urdu_prosody': {
+        const text = str(args.text, 'text');
+        const scan = scanUrduProsody(text);
+        const artifactId = `prosody-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `تقطیع: ${text.slice(0, 30)}…`, artifactType: 'table' });
+        emitArtifact({
+          op: 'table', artifactId,
+          columns: ['مصرع', 'تقطیع', 'بحر (تخمینہ)', 'اعتماد'],
+          rows: scan.lines.map((l) => [l.input, l.pattern || '—', l.bahr ?? '—', l.confidence]),
+          caption: scan.note,
+        });
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+        return {
+          note: scan.note,
+          lines: scan.lines.map((l) => ({
+            line: l.input, pattern: l.pattern, feet: l.feet, bahr: l.bahr, confidence: l.confidence,
+          })),
+        };
+      }
+
+      case 'lookup_urdu_verse': {
+        const query = str(args.query, 'query');
+        const r = await lookupUrduVerse(query);
+        if (r.error) return { error: r.error };
+        ledger.add(r.chunks);
+        if (r.chunks.length) {
+          const artifactId = `urdu-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: `شعر اردو: ${query.slice(0, 40)}`, artifactType: 'citation-list' });
+          emitArtifact({ op: 'citations', artifactId, entries: r.chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, tier: 1, excerpt: (c.content ?? '').slice(0, 400) || undefined })) });
+          emitArtifact({ op: 'close', artifactId, status: 'final' });
+        }
+        return {
+          count: r.chunks.length,
+          note: r.note,
+          results: r.chunks.map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 300) })),
+        };
+      }
+
+      case 'lookup_lexicon': {
+        const word = str(args.word, 'word');
+        if (!researchSearch) {
+          return { error: 'lookup_lexicon is only available from the Agent panel (it uses your signed-in research session).' };
+        }
+        const r = await researchSearch('islamic', buildLexiconQuery(word));
+        const chunks: RetrievedChunk[] = [];
+        if (!r.error) {
+          for (const c of r.citations ?? []) {
+            const ref = formatScholarlyRef(c.citation_ref, c.domain);
+            if (!ref) continue;
+            const key = c.citation_ref.hadith_number ?? c.citation_ref.page ?? chunks.length + 1;
+            chunks.push({
+              id: `${c.domain}:lex:${c.citation_ref.book ?? c.citation_ref.collection ?? 'x'}:${key}`,
+              reference: ref,
+              source_url: c.url ?? c.citation_ref.url ?? null,
+            });
+          }
+        }
+        // A printed-page citation ONLY when a real root→page index is bundled
+        // (ADR-0043) — never a fabricated one.
+        const printed = await printedPageCitation(word).catch(() => null);
+        if (printed) chunks.push(printed);
+        ledger.add(chunks);
+
+        const almaany = almaanyUrl(word);
+        const artifactId = `lexicon-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `لغت: ${word.slice(0, 40)}`, artifactType: 'citation-list' });
+        emitArtifact({
+          op: 'citations', artifactId,
+          entries: [
+            ...chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, tier: 1 as const, url: c.source_url ?? undefined })),
+            // al-Maany is a link to VERIFY, not a source we read — no ledger id.
+            { marker: '↗', reference: 'المعاني (عربی–اردو) — رابط خارجي للتحقق', sourceId: 'almaany', url: almaany },
+          ],
+        });
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+
+        return {
+          count: chunks.length,
+          almaanyUrl: almaany,
+          note: chunks.length === 0
+            ? `No entry for «${word}» in the offline Arabic–Urdu lexical material. Open the al-Maany link to check: ${almaany}`
+            : `Verify further at al-Maany: ${almaany}`,
+          answer: r.error ? undefined : capResult((r.answer ?? '').trim()),
+          results: chunks.map((c) => ({ id: c.id, reference: c.reference, url: c.source_url ?? undefined })),
+        };
+      }
+
+      case 'lookup_narrator': {
+        const nameArg = str(args.name, 'name');
+        const aspect = (typeof args.aspect === 'string' ? args.aspect : 'biography') as NarratorAspect;
+        if (!researchSearch) {
+          return { error: 'lookup_narrator is only available from the Agent panel (it uses your signed-in research session).' };
+        }
+        const r = await researchSearch('islamic', buildRijalQuery(nameArg, aspect));
+        if (r.error) return { error: r.error };
+        const chunks: RetrievedChunk[] = [];
+        for (const c of r.citations ?? []) {
+          const ref = formatScholarlyRef(c.citation_ref, c.domain);
+          if (!ref) continue;
+          const key = c.citation_ref.hadith_number ?? c.citation_ref.page ?? chunks.length + 1;
+          chunks.push({
+            id: `${c.domain}:rijal:${c.citation_ref.book ?? c.citation_ref.collection ?? 'x'}:${key}`,
+            reference: ref,
+            source_url: c.url ?? c.citation_ref.url ?? null,
+          });
+        }
+        ledger.add(chunks);
+        if (chunks.length) {
+          const artifactId = `rijal-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: `ترجمہ راوی: ${nameArg.slice(0, 40)}`, artifactType: 'citation-list' });
+          emitArtifact({ op: 'citations', artifactId, entries: chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, url: c.source_url ?? undefined, tier: 1 })) });
+          emitArtifact({ op: 'close', artifactId, status: 'final' });
+        }
+        return {
+          count: chunks.length,
+          note: chunks.length === 0
+            ? 'The rijāl channel returned an answer but no page-precise citations to cite. Isnād-chain tracing is not available yet.'
+            : undefined,
+          answer: capResult((r.answer ?? '').trim()),
+          results: chunks.map((c) => ({ id: c.id, reference: c.reference, url: c.source_url ?? undefined })),
+        };
+      }
+
+      case 'grade_hadith': {
+        const text = str(args.text, 'text');
+        const limit = num(args.limit, 5);
+        const r = await gradeHadith({ text, limit });
+        if (r.error) return { error: r.error };
+        ledger.add(r.chunks);
+        if (r.chunks.length) {
+          const artifactId = `grade-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: `تخریج و درجہ: ${text.slice(0, 40)}`, artifactType: 'citation-list' });
+          emitArtifact({
+            op: 'citations', artifactId,
+            entries: r.chunks.map((c, i) => ({
+              marker: String(i + 1), reference: c.reference, sourceId: c.id,
+              supported: true, tier: 1, grade: c.grade,
+              excerpt: (c.content ?? '').slice(0, 400) || undefined,
+            })),
+          });
+          emitArtifact({ op: 'close', artifactId, status: 'final' });
+        }
+        return {
+          count: r.chunks.length,
+          note: r.note,
+          results: r.chunks.map((c) => ({ id: c.id, reference: c.reference, grade: c.grade, excerpt: (c.content ?? '').slice(0, 400) })),
         };
       }
 

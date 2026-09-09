@@ -449,6 +449,40 @@ const electronAPI = {
     },
   },
 
+  // Cloud Shamela (شامله لنک) — OAuth BYOA (ADR-0044). `status` never carries a token.
+  shamelaCloud: {
+    status: (): Promise<{ connected: boolean; hasAccount: boolean; flowPending: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_CLOUD_INVOKE, { action: 'status' }),
+    connect: (): Promise<{ connected: boolean; hasAccount: boolean; flowPending: boolean; ok: boolean; error?: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_CLOUD_INVOKE, { action: 'connect' }),
+    disconnect: (): Promise<{ disconnected: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_CLOUD_INVOKE, { action: 'disconnect' }),
+    signOut: (): Promise<{ signedOut: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_CLOUD_INVOKE, { action: 'signOut' }),
+    listTools: (): Promise<{ tools: Array<{ name: string; description?: string }>; error?: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_CLOUD_INVOKE, { action: 'listTools' }),
+  },
+
+  // Connectors Hub — the registry, per-machine global switches, and health.
+  connectors: {
+    list: (projectRoot?: string): Promise<{
+      connectors: import('../shared/agent/connectors.js').Connector[];
+      global: Record<string, boolean>;
+      project: Record<string, boolean>;
+      merged: Record<string, boolean>;
+    }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.CONNECTORS_INVOKE, { action: 'list', projectRoot }),
+    setEnabled: (
+      id: string,
+      on: boolean,
+      scope: 'global' | 'project',
+      projectRoot?: string,
+    ): Promise<{ global?: Record<string, boolean>; project?: Record<string, boolean> }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.CONNECTORS_INVOKE, { action: 'setEnabled', id, on, scope, projectRoot }),
+    ping: (id: string): Promise<import('../shared/connectors/health.js').HealthResult> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.CONNECTORS_INVOKE, { action: 'ping', id }),
+  },
+
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

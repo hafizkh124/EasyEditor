@@ -240,6 +240,12 @@ export function TafsirConnectPanel({ mode, onConnectedChange }: TafsirConnectPan
                 <span className="font-medium text-foreground">سرور</span>
                 <span className="text-muted-foreground">{connectInfo.server} {connectInfo.version}</span>
               </div>
+              {connectInfo.endpoint && (
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-foreground">اینڈ پوائنٹ</span>
+                  <span className="text-muted-foreground" dir="ltr">{new URL(connectInfo.endpoint).host}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="font-medium text-foreground">اوزار</span>
                 <span className="text-muted-foreground">{connectInfo.tools.length}</span>

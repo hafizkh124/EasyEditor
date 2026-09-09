@@ -4,7 +4,7 @@
 // invariants must survive that: the FLOOR tools are always present, and if a
 // citable search tool is exposed in a write mode then insert_footnote is too.
 import { describe, it, expect } from 'vitest';
-import { toolsFor, FLOOR_TOOLS, NATIVE_ONLY_TOOLS } from '../../shared/agent/toolScoping';
+import { toolsFor, FLOOR_TOOLS, NATIVE_ONLY_TOOLS, matchDomains } from '../../shared/agent/toolScoping';
 import { PLAYBOOKS } from '../../shared/playbooks/registry';
 
 const names = (mode: Parameters<typeof toolsFor>[0], ctx?: Parameters<typeof toolsFor>[1]) =>
@@ -93,6 +93,115 @@ describe('toolsFor', () => {
       const n = names('auto');
       expect(n).toContain('typeset_print_ready');
       expect(n).toContain('run_task');
+    });
+  });
+
+  // ADR-0038 — the intent classifier's connector gating.
+  describe('gateConnectors', () => {
+    it('gated to tafsir drops the hadith connector tool but keeps FLOOR + insert_footnote', () => {
+      const n = names('auto', { ask: 'اس آیت کی تفسیر', gateConnectors: ['tafsir'] });
+      expect(n).toContain('query_tafseer');
+      expect(n).not.toContain('search_hadith');
+      expect(n).not.toContain('search_repositories');
+      for (const f of FLOOR_TOOLS) expect(n).toContain(f);
+      expect(n).toContain('insert_footnote'); // citation closure still runs last
+    });
+
+    it('gated to hadith drops query_tafseer', () => {
+      const n = names('auto', { ask: 'اس حدیث کی سند', gateConnectors: ['hadith'] });
+      expect(n).toContain('search_hadith');
+      expect(n).not.toContain('query_tafseer');
+    });
+
+    it('gated to dorar (a grading ask) exposes grade_hadith, not query_tafseer', () => {
+      const n = names('auto', { ask: 'کیا یہ حدیث صحیح ہے', gateConnectors: ['dorar'] });
+      expect(n).toContain('grade_hadith');
+      expect(n).not.toContain('query_tafseer');
+      expect(n).toContain('insert_footnote'); // grade_hadith is a citable search
+    });
+
+    it('gated to rijal (a narrator ask) exposes lookup_narrator, not query_tafseer/grade_hadith', () => {
+      const n = names('auto', { ask: 'راوی کا حال اور جرح و تعدیل', gateConnectors: ['rijal'] });
+      expect(n).toContain('lookup_narrator');
+      expect(n).not.toContain('query_tafseer');
+      expect(n).not.toContain('grade_hadith');
+    });
+
+    it('gated to lexicon (a word-meaning ask) exposes lookup_lexicon, not search_hadith', () => {
+      const n = names('auto', { ask: 'اس لفظ کا لغوی معنیٰ', gateConnectors: ['lexicon'] });
+      expect(n).toContain('lookup_lexicon');
+      expect(n).not.toContain('search_hadith');
+      expect(n).toContain('insert_footnote');
+    });
+
+    it('gated to ganjoor (a Persian-poetry ask) exposes only search_persian_poetry', () => {
+      const n = names('auto', { ask: 'رومی کی مثنوی کا شعر', gateConnectors: ['ganjoor'] });
+      expect(n).toContain('search_persian_poetry');
+      expect(n).not.toContain('lookup_urdu_verse');
+      expect(n).not.toContain('search_hadith');
+    });
+
+    it('gated to urdu-prosody (a taqṭīʿ ask) exposes scan_urdu_prosody + lookup_urdu_verse, not Persian', () => {
+      const n = names('auto', { ask: 'اس شعر کی تقطیع', gateConnectors: ['urdu-prosody'] });
+      expect(n).toContain('scan_urdu_prosody');
+      expect(n).toContain('lookup_urdu_verse');
+      expect(n).not.toContain('search_persian_poetry');
+    });
+
+    it('gateConnectors: [] (a plain edit) keeps only non-connector tools', () => {
+      const n = names('auto', { ask: 'اس جملے کو دوبارہ لکھو', gateConnectors: [] });
+      expect(n).not.toContain('query_tafseer');
+      expect(n).not.toContain('search_hadith');
+      expect(n).not.toContain('search_shamela');
+      expect(n).not.toContain('search_repositories');
+      for (const f of FLOOR_TOOLS) expect(n).toContain(f); // search_corpus is FLOOR, not a connector
+    });
+
+    it('tolerates a gate id that matches no connector (drops all connector tools, no throw)', () => {
+      const n = names('auto', { ask: 'اس حدیث کی سند', gateConnectors: ['nonexistent'] });
+      expect(n).not.toContain('search_hadith');
+      expect(n).not.toContain('query_tafseer');
+      for (const f of FLOOR_TOOLS) expect(n).toContain(f);
+    });
+
+    it('Ask mode + gateConnectors still yields only read tools', () => {
+      const n = toolsFor('ask', { ask: 'اس آیت کی تفسیر', gateConnectors: ['tafsir'] });
+      expect(n.every((t) => t.effect === 'read')).toBe(true);
+    });
+  });
+
+  // ADR-0044 — read_shamela_page / find_shamela_book ride along with search_shamela.
+  describe('shamela closure', () => {
+    it('wherever search_shamela survives narrowing, so do read_shamela_page + find_shamela_book', () => {
+      const n = names('auto', { ask: 'صحیح البخاری میں اس مسئلے پر کیا ہے؟ حوالہ دیں' }); // hadith rule → search_shamela
+      expect(n).toContain('search_shamela');
+      expect(n).toContain('read_shamela_page');
+      expect(n).toContain('find_shamela_book');
+    });
+    it('a plain ask with no shamela does not gain them', () => {
+      const n = names('auto', { ask: 'اس شعر کی تقطیع' });
+      expect(n).not.toContain('search_shamela');
+      expect(n).not.toContain('read_shamela_page');
+    });
+  });
+
+  describe('matchDomains', () => {
+    it('the tafsir rule carries connector:tafsir, the hadith rule connector:hadith', () => {
+      expect(matchDomains('اس آیت کی تفسیر').some((r) => r.connector === 'tafsir')).toBe(true);
+      expect(matchDomains('اس حدیث کی سند').some((r) => r.connector === 'hadith')).toBe(true);
+    });
+    it('a plain ask matches no domain', () => {
+      expect(matchDomains('اس جملے کو دوبارہ لکھو')).toHaveLength(0);
+    });
+    // ADR-0039 — a Qur'anic-root / qirāʾāt ask is Bahouth work → the tafsir connector.
+    it('a root / qirāʾāt ask maps to the tafsir connector', () => {
+      expect(matchDomains('لفظ "نصر" کے قرآنی جذر کے وقوعات').some((r) => r.connector === 'tafsir')).toBe(true);
+      expect(matchDomains('اس کلمے کی قراءات بتائیں').some((r) => r.connector === 'tafsir')).toBe(true);
+    });
+    it('a root ask gates to query_tafseer only (not hadith)', () => {
+      const n = names('auto', { ask: 'قرآنی جذر «نصر» کے وقوعات', gateConnectors: ['tafsir'] });
+      expect(n).toContain('query_tafseer');
+      expect(n).not.toContain('search_hadith');
     });
   });
 });

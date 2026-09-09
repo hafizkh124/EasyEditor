@@ -26,6 +26,13 @@ vi.mock("~shared/agent/toolScoping", () => ({ toolsFor: (...args: unknown[]) => 
 const buildWebSystemPromptMock = vi.fn((..._args: unknown[]) => "SYSTEM PROMPT");
 vi.mock("~shared/agent/systemPrompt", () => ({ buildWebSystemPrompt: (...args: unknown[]) => buildWebSystemPromptMock(...args) }));
 
+// ADR-0038 — stub the intent classifier; its own behaviour is covered by
+// agentIntent.test.ts. Here we only care that the engine threads its output in.
+vi.mock("~shared/agent/intent", () => ({
+  classifyIntent: () => ({ route: { kind: "open" }, ambiguous: false, matchedDomains: [] }),
+  negativeConstraintBlock: () => "",
+}));
+
 import { useWebAgentEngine } from "@/hooks/useWebAgentEngine";
 
 beforeEach(() => {
@@ -72,7 +79,7 @@ describe("useWebAgentEngine — run()", () => {
     await act(async () => {
       await result.current.run("مضمون لکھیں", "ask", vi.fn());
     });
-    expect(buildWebSystemPromptMock).toHaveBeenCalledWith({ mode: "ask" });
+    expect(buildWebSystemPromptMock).toHaveBeenCalledWith({ mode: "ask", toolGating: "" });
     expect(toolsForMock).toHaveBeenCalledWith("ask", expect.objectContaining({ platform: "web", ask: "مضمون لکھیں" }));
   });
 

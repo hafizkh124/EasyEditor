@@ -17,6 +17,8 @@ export interface ArtifactCitationEntry {
   excerpt?: string;
   /** The claim this citation supports, when one was given. */
   claim?: string;
+  /** A hadith grading as the source stated it (الدرر السنية, ADR-0040). */
+  grade?: string;
 }
 
 export interface ArtifactState {

@@ -24,6 +24,8 @@ import path from 'node:path';
 import { runAgentLoop } from '../../shared/agent/loop';
 import { buildSystemPrompt } from '../../shared/agent/systemPrompt';
 import { toolsFor } from '../../shared/agent/toolScoping';
+import { classifyIntent, negativeConstraintBlock } from '../../shared/agent/intent';
+import { CONNECTORS } from '../../shared/agent/connectors';
 import { resolvePlaybook } from '../../shared/playbooks/registry';
 import { isProviderId } from '../../shared/agent/providers';
 import { resolveProvider } from '../../electron/ai/providerConfig';
@@ -67,7 +69,21 @@ async function buildModel(): Promise<Model | null> {
 
 async function runOneScenario(sc: EvalScenario, model: Model): Promise<ScenarioScore> {
   const { dispatch, calls } = makeScriptedDispatch(sc.world);
-  const systemPrompt = buildSystemPrompt({ mode: sc.mode, capabilities: caps, chapters: Object.keys(sc.world.chapters) });
+
+  // ADR-0038 — mirror run.ts: the heuristic classifier (no LLM in the eval)
+  // scopes tools and appends the negative-constraint block.
+  const intent = classifyIntent(sc.instruction, { connectorsOn: CONNECTORS.map((c) => c.id) });
+  const gateConnectors = intent.route.kind === 'gated'
+    ? intent.route.connectors
+    : intent.route.kind === 'direct'
+      ? []
+      : undefined;
+  const systemPrompt = buildSystemPrompt({
+    mode: sc.mode,
+    capabilities: caps,
+    chapters: Object.keys(sc.world.chapters),
+    toolGating: sc.kind === 'playbook' ? null : negativeConstraintBlock(intent.route),
+  });
 
   if (sc.kind === 'playbook') {
     const pb = resolvePlaybook(sc.playbook!);
@@ -85,10 +101,11 @@ async function runOneScenario(sc: EvalScenario, model: Model): Promise<ScenarioS
     return scoreScenario(sc, result, calls);
   }
 
+  const directNoTools = sc.mode === 'ask' && intent.route.kind === 'direct';
   const result = await runAgentLoop(sc.instruction, model.generate, dispatch, systemPrompt, {
     mode: sc.mode,
-    tools: toolsFor(sc.mode, { ask: sc.instruction }),
-    maxSteps: 16,
+    tools: directNoTools ? [] : toolsFor(sc.mode, { ask: sc.instruction, gateConnectors }),
+    maxSteps: directNoTools ? 2 : 16,
   });
   return scoreScenario(sc, result, calls);
 }

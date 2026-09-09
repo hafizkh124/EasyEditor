@@ -33,7 +33,7 @@ it('surahLabel maps a number to its Arabic name', () => {
 const isConnected = vi.fn(() => false);
 const connectRemote = vi.fn(async () => ({ mode: 'remote', connected: true, tools: [] }));
 const connectLocal = vi.fn();
-const callTool = vi.fn(async () => ({ tool: 'fetch_tafsir', text: 'قوله تعالى: الله لا إله إلا هو…', length: 30, truncated: false }));
+const callTool = vi.fn(async (_tool?: string, _args?: unknown) => ({ tool: 'fetch_tafsir', text: 'قوله تعالى: الله لا إله إلا هو…', length: 30, truncated: false }));
 vi.mock('../../electron/tafsir/mcpClient.ts', () => ({ isConnected, connectRemote, connectLocal, callTool }));
 
 let queryTafseer: typeof import('../../electron/agent/adapters/tafsir').queryTafseer;
@@ -70,5 +70,32 @@ describe('queryTafseer', () => {
     const r = await queryTafseer({ reference: 'الميزان يوم القيامة', mode: 'search' });
     expect(callTool).toHaveBeenCalledWith('search_in_tafsir', expect.objectContaining({ query: 'الميزان يوم القيامة' }));
     expect(r.chunks[0].reference).toMatch(/بحث في التفاسير/);
+  });
+
+  // ADR-0039 — Bahouth / Markaz Tafsir lexical modes.
+  it('root mode calls find_root_occurrences AND get_root_stats and merges them', async () => {
+    const r = await queryTafseer({ reference: 'نصر', mode: 'root' });
+    expect(callTool).toHaveBeenCalledWith('find_root_occurrences', { root: 'نصر', limit: 12 });
+    expect(callTool).toHaveBeenCalledWith('get_root_stats', { root: 'نصر' });
+    expect(r.chunks).toHaveLength(1);
+    expect(r.chunks[0].id).toBe('tafsir:root:نصر');
+    expect(r.chunks[0].reference).toMatch(/جذر «نصر»/);
+  });
+
+  it('root mode still returns the occurrences when get_root_stats fails', async () => {
+    callTool.mockImplementation(async (tool?: string) =>
+      tool === 'get_root_stats'
+        ? Promise.reject(new Error('stats down'))
+        : { tool: tool ?? '', text: 'ورد الجذر ٢٠ مرة', length: 12, truncated: false });
+    const r = await queryTafseer({ reference: 'ن ص ر', mode: 'root' });
+    expect(r.error).toBeUndefined();
+    expect(r.text).toMatch(/ورد الجذر/);
+  });
+
+  it('qeraat mode maps to get_qeraat_variants with a word position', async () => {
+    callTool.mockResolvedValue({ tool: 'get_qeraat_variants', text: 'قرأ حمزة…', length: 8, truncated: false });
+    const r = await queryTafseer({ reference: '1:2', mode: 'qeraat', word_no: 3 });
+    expect(callTool).toHaveBeenCalledWith('get_qeraat_variants', { surah: 1, ayah: 2, word_no: 3 });
+    expect(r.chunks[0].reference).toMatch(/قراءات/);
   });
 });
