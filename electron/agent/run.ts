@@ -33,8 +33,11 @@ import { AUTHOR_VOICE_FILES } from '../../shared/agent/authorVoice.js';
 import { toolsFor } from '../../shared/agent/toolScoping.js';
 import { selectPlaybook, resolvePlaybook } from '../../shared/playbooks/registry.js';
 import { detectFastPath } from '../../shared/agent/fastPath.js';
-import { isToolDisabled } from '../../shared/agent/connectors.js';
+import { classifyIntent, negativeConstraintBlock } from '../../shared/agent/intent.js';
+import { classifyIntentLLM } from './intentClassifier.js';
+import { isToolDisabled, mergeConnectorState } from '../../shared/agent/connectors.js';
 import { readConnectors, readOcrConsent } from '../fs/projectFolder.js';
+import { readGlobalConnectors } from '../connectors/globalStore.js';
 import type {
   AgentMode,
   AgentProgress,
@@ -101,6 +104,33 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   const agentModel = await resolveAgentModel();
   if (agentModel.provider.id !== 'gemini') log.info('agent model provider', { provider: agentModel.provider.id });
 
+  // Per-project connector switches (M9 Phase 1b) merged with the per-machine
+  // Hub layer (ADR-0037): the model sees a connector's tools only when BOTH
+  // layers say on.
+  const connectors = (() => {
+    try { return mergeConnectorState(readGlobalConnectors(), readConnectors(projectRoot)); }
+    catch { return {}; }
+  })();
+  const connectorsOn = Object.entries(connectors).filter(([, v]) => v).map(([k]) => k);
+
+  // ── Intent classification (ADR-0038) ────────────────────────────────────
+  // Level 1 is an instant heuristic; only an ambiguous verdict on a non-
+  // playbook run spends one cached LLM call. A playbook run is already scoped
+  // to its steps — do not gate it further.
+  let intent = classifyIntent(instruction, { connectorsOn });
+  if (!playbook && intent.ambiguous) {
+    intent = await classifyIntentLLM(instruction, { connectorsOn }, intent);
+  }
+  log.info('agent intent', { route: intent.route.kind, connectors: intent.matchedDomains, degraded: intent.degraded ?? false });
+
+  const gateConnectors = playbook
+    ? undefined
+    : intent.route.kind === 'gated'
+      ? intent.route.connectors
+      : intent.route.kind === 'direct'
+        ? []
+        : undefined;
+
   const systemPrompt = buildSystemPrompt({
     mode,
     capabilities: { ...caps },
@@ -109,6 +139,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     recentWork: formatJournalForPrompt(readRecentJournal(projectRoot)),
     chapters,
     playbookGuidance: playbook?.guidance ?? null,
+    toolGating: playbook ? null : negativeConstraintBlock(intent.route),
   });
 
   /** Append one journal line (M9 Phase E) and return the output unchanged. */
@@ -174,6 +205,9 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     ocrDocument: input.ocrDocument ?? null,
     ocrConsent: (() => { try { return readOcrConsent(projectRoot); } catch { return false; } })(),
     emitArtifact,
+    // ADR-0044 — the local-first Shamela router reads these.
+    shamelaLocalEnabled: connectors['shamela'] !== false,
+    shamelaCloudEnabled: connectors['shamela-cloud'] === true,
   };
   const { dispatch } = createDispatcher(session);
 
@@ -200,16 +234,33 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     }
   }
 
-  // Per-project connector switches (M9 Phase 1b) — a tool whose connector is
-  // off is not shown to the model, and a playbook step needing it is skipped.
-  const connectors = (() => { try { return readConnectors(projectRoot); } catch { return {}; } })();
-  const scopedTools = toolsFor(mode, { ask: playbook ? undefined : instruction, playbook })
+  // `connectors` (merged Hub + per-project state) and `intent` were resolved
+  // above. A tool whose connector is off is not shown to the model; the intent
+  // classifier's `gateConnectors` narrows further (ADR-0038).
+  const scopeCtx = { ask: playbook ? undefined : instruction, playbook, gateConnectors };
+  const scopedTools = toolsFor(mode, scopeCtx)
     .filter((tool) => !isToolDisabled(connectors, tool.name));
   const disabledTools = new Set(
-    toolsFor(mode, { ask: playbook ? undefined : instruction, playbook })
+    toolsFor(mode, scopeCtx)
       .map((t) => t.name)
       .filter((n) => isToolDisabled(connectors, n)),
   );
+
+  // ── 1b. Direct answer — a plain-editing ask in Ask mode needs no tools ──
+  // (ADR-0038). The fast path (canWrite only) already handles the write side;
+  // this is the read-only counterpart: rewrite / spelling / translate / summary
+  // with the text in front of the model. Zero retrieval, one model turn.
+  if (mode === 'ask' && !playbook && intent.route.kind === 'direct') {
+    log.info('agent run — direct answer (no tools)', { checkpointId });
+    const result = await runAgentLoop(instruction, agentModel.generate, dispatch, systemPrompt, {
+      mode,
+      tools: [],
+      maxSteps: 2,
+      onProgress: input.onProgress,
+      isCancelled: input.isCancelled,
+    });
+    return finish({ ...result, playbook: undefined, checkpointId: undefined });
+  }
 
   // ── 2. Playbook — deterministic execution ─────────────────────────────
   const isSlash = instruction.trim().startsWith('/');

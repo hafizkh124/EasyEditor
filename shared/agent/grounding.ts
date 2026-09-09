@@ -30,6 +30,12 @@ export interface RetrievedChunk {
    * `claim` — it can name the work, never assert what a page of it says.
    */
   bibliographic?: boolean;
+  /**
+   * A hadith grading verdict AS THE SOURCE STATED IT (الدرر السنية, ADR-0040) —
+   * never our own judgement. Shown as a distinct chip, not folded into the
+   * reference line.
+   */
+  grade?: string;
 }
 
 /** Accumulates every chunk the agent has retrieved so far in one task. */

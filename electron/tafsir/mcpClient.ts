@@ -13,7 +13,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { StdioClientTransport, type StdioServerParameters } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { REMOTE_ENDPOINT, validateToolArgs, MAX_RESULT_CHARS } from './allowlist.js';
+import { REMOTE_ENDPOINTS, validateToolArgs, MAX_RESULT_CHARS } from './allowlist.js';
 import type {
   TafsirConnectResult,
   TafsirCallResult,
@@ -28,6 +28,13 @@ interface ActiveSession {
   mode: TafsirMode;
   client: Client;
   transport: StreamableHTTPClientTransport | StdioClientTransport;
+  /** For a remote session — which of REMOTE_ENDPOINTS actually connected. */
+  endpoint?: string;
+}
+
+/** The remote endpoint the live session connected through, or null. */
+export function currentEndpoint(): string | null {
+  return session?.endpoint ?? null;
 }
 
 let session: ActiveSession | null = null;
@@ -73,11 +80,11 @@ function withTimeout<T>(promise: Promise<T>, mode: TafsirMode): Promise<T> {
   });
 }
 
-/** Lightweight, connection-less health check for the remote endpoint. */
-export async function pingRemote(): Promise<TafsirPingResult> {
+/** One connection-less `initialize` probe against a single endpoint. */
+async function probeEndpoint(endpoint: string): Promise<{ ok: boolean; latencyMs: number | null; error?: string }> {
   const started = Date.now();
   try {
-    const res = await fetch(REMOTE_ENDPOINT, {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -95,35 +102,52 @@ export async function pingRemote(): Promise<TafsirPingResult> {
         },
       }),
     });
-    if (res.status >= 400) {
-      return { ok: false, mode: 'remote', latencyMs: null, error: `HTTP ${res.status}` };
-    }
-    return { ok: true, mode: 'remote', latencyMs: Date.now() - started };
+    if (res.status >= 400) return { ok: false, latencyMs: null, error: `HTTP ${res.status}` };
+    return { ok: true, latencyMs: Date.now() - started };
   } catch (err) {
-    return {
-      ok: false,
-      mode: 'remote',
-      latencyMs: null,
-      error: err instanceof Error ? err.message : String(err),
-    };
+    return { ok: false, latencyMs: null, error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+/**
+ * Lightweight, connection-less health check — tries each REMOTE_ENDPOINTS in
+ * order and reports the first that answers (ADR-0039).
+ */
+export async function pingRemote(): Promise<TafsirPingResult> {
+  let lastError: string | undefined;
+  for (const endpoint of REMOTE_ENDPOINTS) {
+    const r = await probeEndpoint(endpoint);
+    if (r.ok) return { ok: true, mode: 'remote', latencyMs: r.latencyMs };
+    lastError = r.error;
+  }
+  return { ok: false, mode: 'remote', latencyMs: null, error: lastError };
 }
 
 export async function connectRemote(): Promise<TafsirConnectResult> {
   await disconnect();
-  const client = new Client({ name: 'easy-editor-tafsir', version: '1.0.0' });
-  const transport = new StreamableHTTPClientTransport(new URL(REMOTE_ENDPOINT));
-  await withTimeout(client.connect(transport), 'remote');
-  const tools = await withTimeout(client.listTools(), 'remote');
-  const server = client.getServerVersion();
-  session = { mode: 'remote', client, transport };
-  return {
-    mode: 'remote',
-    connected: true,
-    server: server?.name,
-    version: server?.version,
-    tools: toToolInfo(tools.tools),
-  };
+  let lastError: unknown;
+  for (const endpoint of REMOTE_ENDPOINTS) {
+    const client = new Client({ name: 'easy-editor-tafsir', version: '1.0.0' });
+    const transport = new StreamableHTTPClientTransport(new URL(endpoint));
+    try {
+      await withTimeout(client.connect(transport), 'remote');
+      const tools = await withTimeout(client.listTools(), 'remote');
+      const server = client.getServerVersion();
+      session = { mode: 'remote', client, transport, endpoint };
+      return {
+        mode: 'remote',
+        connected: true,
+        server: server?.name,
+        version: server?.version,
+        endpoint,
+        tools: toToolInfo(tools.tools),
+      };
+    } catch (err) {
+      lastError = err;
+      try { await transport.close(); } catch { /* ignore */ }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
 export async function connectLocal(params: StdioServerParameters): Promise<TafsirConnectResult> {

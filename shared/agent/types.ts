@@ -89,6 +89,8 @@ export type AgentArtifactEvent =
         excerpt?: string;
         /** The claim this citation was inserted to support, when one was given. */
         claim?: string;
+        /** A hadith grading AS THE SOURCE STATED IT (الدرر السنية, ADR-0040) — a distinct chip, never our verdict. */
+        grade?: string;
       }>;
     }
   | { op: 'close'; artifactId: string; status: 'final' | 'aborted'; targetChapter?: string };

@@ -1,0 +1,4 @@
+{
+  "_note": "Bundled Urdu verse corpus for lookup_urdu_verse (ADR-0042). Ships empty on purpose — see README.md. Each entry: { id, poet, work?, ghazal?, text }.",
+  "verses": []
+}

@@ -5,6 +5,8 @@ import { webAgentModel } from "@/core/agent/webModel";
 import { runAgentLoop } from "~shared/agent/loop";
 import { toolsFor } from "~shared/agent/toolScoping";
 import { buildWebSystemPrompt } from "~shared/agent/systemPrompt";
+import { classifyIntent, negativeConstraintBlock } from "~shared/agent/intent";
+import { CONNECTORS } from "~shared/agent/connectors";
 import type { AgentMode, AgentProgress, AgentRunResult } from "~shared/agent/types";
 
 const PLAN_APPROVAL_TIMEOUT_MS = 10 * 60_000; // mirrors electron/agent/planApproval.ts
@@ -92,8 +94,16 @@ export function useWebAgentEngine() {
           })
         : undefined;
 
-      const tools = toolsFor(mode, { platform: "web", ask: instruction });
-      const systemPrompt = buildWebSystemPrompt({ mode });
+      // ADR-0038 — Level-1 (heuristic only) intent gating on web. No per-project
+      // connector switches here yet, so every connector counts as "on".
+      const intent = classifyIntent(instruction, { connectorsOn: CONNECTORS.map((c) => c.id) });
+      const gateConnectors = intent.route.kind === "gated"
+        ? intent.route.connectors
+        : intent.route.kind === "direct"
+          ? []
+          : undefined;
+      const tools = toolsFor(mode, { platform: "web", ask: instruction, gateConnectors });
+      const systemPrompt = buildWebSystemPrompt({ mode, toolGating: negativeConstraintBlock(intent.route) });
 
       return runAgentLoop(instruction, webAgentModel, dispatch, systemPrompt, {
         mode, tools, onProgress, waitForApproval, isCancelled: () => cancelledRef.current,

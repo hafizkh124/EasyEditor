@@ -227,7 +227,7 @@ describe("AgentPanel", () => {
   it("the + hub toggles a source connector and persists it (M9 Phase 1b)", async () => {
     renderPanel();
     fireEvent.click(screen.getByRole("button", { name: /Add files, folders, playbooks/ }));
-    const shamela = screen.getByText("Maktaba Shamela").closest("label")!.querySelector("input")!;
+    const shamela = screen.getByText(/^المكتبة الشاملة/).closest("label")!.querySelector("input")!;
     expect(shamela).toBeChecked();
     fireEvent.click(shamela);
     await waitFor(() => expect(window.electronAPI!.projectFolder!.setConnector).toHaveBeenCalledWith("C:\\thesis", "shamela", false));

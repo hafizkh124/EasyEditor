@@ -15,7 +15,18 @@ export interface ToolSpec {
   args?: Record<string, ToolArgType>;
 }
 
-export const REMOTE_ENDPOINT = 'https://mcp.tafsir.net/mcp';
+/**
+ * Markaz Tafsir runs the same MCP server behind two brand hostnames — `mcp.`
+ * and its research brand `bahouth.` (بحوث). We try them in order (ADR-0039);
+ * a missing or identical fallback is harmless.
+ */
+export const REMOTE_ENDPOINTS = [
+  'https://mcp.tafsir.net/mcp',
+  'https://bahouth.tafsir.net/mcp',
+] as const;
+
+/** Primary endpoint — for callers that just want "the" URL (diagnostics, tests). */
+export const REMOTE_ENDPOINT = REMOTE_ENDPOINTS[0];
 
 export const TAFSIR_TOOL_ALLOWLIST: ToolSpec[] = [
   { name: 'fetch_ayah', title: 'آیت', args: { surah: 'number', ayah: 'number', include: 'string[]' } },

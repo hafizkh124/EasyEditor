@@ -44,6 +44,8 @@ export interface SystemPromptInput {
   chapters?: string[];
   /** Domain guidance for the one playbook selected for this run (M9). */
   playbookGuidance?: string | null;
+  /** ADR-0038 — the intent classifier's negative-constraint block for this request. */
+  toolGating?: string | null;
 }
 
 /**
@@ -95,6 +97,8 @@ export interface WebSystemPromptInput {
   mode: AgentMode;
   /** Title of the document currently open in the Canvas, or null if none. */
   documentTitle?: string | null;
+  /** ADR-0038 — the intent classifier's negative-constraint block for this request. */
+  toolGating?: string | null;
 }
 
 export function buildWebSystemPrompt(input: WebSystemPromptInput): string {
@@ -113,6 +117,9 @@ export function buildWebSystemPrompt(input: WebSystemPromptInput): string {
       ? `\nOpen document: ${input.documentTitle}`
       : '\nNo document is currently open in the Canvas — create_chapter can start a new one.',
   );
+
+  const webGating = (input.toolGating ?? '').trim();
+  if (webGating) parts.push(`\n── TOOL SCOPE (this request) ──\n${webGating}`);
 
   return parts.join('\n');
 }
@@ -139,6 +146,9 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
       ? `\nOpen project chapters: ${input.chapters.join(', ')}`
       : '\nThe open project folder has no chapter files yet.',
   );
+
+  const gating = (input.toolGating ?? '').trim();
+  if (gating) parts.push(`\n── TOOL SCOPE (this request) ──\n${gating}`);
 
   const guidance = (input.playbookGuidance ?? '').trim();
   if (guidance) {

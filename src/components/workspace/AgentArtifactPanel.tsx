@@ -11,6 +11,8 @@
 import React from "react";
 import { FileText, Table2, ListChecks, ListTree, GitCompare, Captions, ClipboardList, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { cn } from "@/lib/utils";
+import { classifyHadithGrade, GRADE_FAMILY_STYLE } from "@/lib/citations/hadithGrade";
 import type { AgentArtifactType } from "../../../shared/agent/types";
 import type { ArtifactState } from "./agentArtifactState";
 
@@ -66,6 +68,25 @@ const AgentArtifactPanel: React.FC<{ artifacts: ArtifactState[] }> = ({ artifact
                         {(c.tier === 2 || c.tier === 3) && (
                           <span className="rounded bg-amber-500/15 px-1 font-mono text-amber-600" title={`tier ${c.tier}`}>{c.tier}</span>
                         )}
+                        {c.grade && (() => {
+                          // ADR-0040 / STRATEGY-v1 P2 — the source's own verdict, a
+                          // quiet chip, never presented as ours.
+                          const fam = classifyHadithGrade(c.grade);
+                          const style = fam ? GRADE_FAMILY_STYLE[fam] : null;
+                          return (
+                            <span
+                              className={cn(
+                                "rounded-full border px-1.5 leading-none",
+                                style ? style.chip : "border-border bg-muted text-muted-foreground",
+                              )}
+                              title={t("citations.grade_disclaimer", "{source}: {grade} — graded by the source, not by us")
+                                .replace("{source}", "الدرر السنية")
+                                .replace("{grade}", c.grade)}
+                            >
+                              {style ? style.label : c.grade}
+                            </span>
+                          );
+                        })()}
                       </>
                     );
                     const expandable = Boolean(c.excerpt || c.claim || c.url);

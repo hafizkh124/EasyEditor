@@ -10,7 +10,8 @@ import AppLayout from "@/components/AppLayout";
 import { handleSupabaseError } from "@/lib/errors";
 import AppVersionBadge from "@/components/AppVersionBadge";
 
-import { LocalShamelaConnector } from "@/components/mcp/LocalShamelaConnector";
+import { ConnectorsHub } from "@/components/settings/ConnectorsHub";
+import { ShamelaConnectors } from "@/components/mcp/ShamelaConnectors";
 import { TafsirConnector } from "@/components/mcp/TafsirConnector";
 import { ByokKeyPanel } from "@/components/settings/ByokKeyPanel";
 import { VoiceEnginePanel } from "@/components/settings/VoiceEnginePanel";
@@ -95,8 +96,12 @@ const Settings = () => {
         <VoiceEnginePanel />
         <AdvancedVoicesPanel />
 
-        {/* Local Shamela 4 MCP Connector */}
-        <LocalShamelaConnector />
+        {/* Connectors Hub — the categorised grid over the curated registry.
+            The panels below stay as the per-connector connect/download views. */}
+        <ConnectorsHub />
+
+        {/* Maktaba Shamela — local library + شامله لنک cloud (ADR-0044) */}
+        <ShamelaConnectors />
 
         {/* Tafsir MCP Connector (remote + local) */}
         <TafsirConnector />

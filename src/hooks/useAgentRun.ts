@@ -100,19 +100,39 @@ export function useAgentRun() {
 
   useEffect(() => { void refreshAssets(); }, [refreshAssets]);
 
-  useEffect(() => {
+  // `connectors` is the per-project map (what the `+` popover writes).
+  // `connectorState` is the merged view (global ∩ project) the model actually
+  // sees; `connectorGlobal` says whether a connector is off machine-wide, so
+  // the popover can grey a row and point to Settings.
+  const [connectorState, setConnectorState] = useState<Record<string, boolean>>({});
+  const [connectorGlobal, setConnectorGlobal] = useState<Record<string, boolean>>({});
+
+  const refreshConnectors = useCallback(async () => {
     const fsApi = window.electronAPI?.projectFolder;
-    if (!fsApi?.getConnectors || !projectRoot) return;
-    fsApi.getConnectors(projectRoot).then(setConnectors).catch(() => setConnectors({}));
+    if (fsApi?.getConnectors && projectRoot) {
+      fsApi.getConnectors(projectRoot).then(setConnectors).catch(() => setConnectors({}));
+    }
+    const hub = window.electronAPI?.connectors;
+    if (hub?.list) {
+      try {
+        const r = await hub.list(projectRoot ?? undefined);
+        setConnectorState(r.merged);
+        setConnectorGlobal(r.global);
+      } catch (err) { log.debug("connectors.list failed", { err }); }
+    }
   }, [projectRoot]);
+
+  useEffect(() => { void refreshConnectors(); }, [refreshConnectors]);
 
   const toggleConnector = useCallback(async (id: string, on: boolean) => {
     const fsApi = window.electronAPI?.projectFolder;
     if (!fsApi?.setConnector || !projectRoot) return;
     setConnectors((prev) => ({ ...prev, [id]: on }));
+    setConnectorState((prev) => ({ ...prev, [id]: on }));
     try { setConnectors(await fsApi.setConnector(projectRoot, id, on)); }
     catch (err) { log.warn("setConnector failed", { err }); }
-  }, [projectRoot]);
+    void refreshConnectors();
+  }, [projectRoot, refreshConnectors]);
 
   useEffect(() => {
     window.electronAPI?.docBridge?.detectTools().then((d) => {
@@ -559,6 +579,8 @@ export function useAgentRun() {
     importing,
     hubOpen, setHubOpen,
     connectors,
+    connectorState,
+    connectorGlobal,
     toggleConnector,
     progressExpanded, setProgressExpanded,
     taRef,

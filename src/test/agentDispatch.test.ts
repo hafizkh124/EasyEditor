@@ -82,6 +82,24 @@ vi.mock('../../electron/shamela/shamelaNative.ts', () => ({
   ]),
 }));
 
+// ADR-0044 — mock the router so dispatch tests control the transport + keep the
+// MCP-SDK-heavy cloud client out of this suite.
+const shamelaRouterMock = {
+  routeShamelaSearch: vi.fn(async (): Promise<import('../../electron/agent/adapters/shamelaRouter').SearchRoute> => ({
+    hits: [{ bookId: '55', bookTitle: 'صحيح البخاري', pageNumber: 40, snippet: 'إنما الأعمال', score: 0.9 }],
+    transport: 'local',
+  })),
+  routeShamelaReadPage: vi.fn(async (): Promise<import('../../electron/agent/adapters/shamelaRouter').PageRoute> => ({
+    page: { bookId: '55', pageNumber: 40, text: 'نص الصفحة كاملًا', footnotes: undefined },
+    transport: 'local',
+  })),
+  routeShamelaFindBook: vi.fn(async (): Promise<import('../../electron/agent/adapters/shamelaRouter').BookRoute> => ({
+    books: [{ id: 55, title: 'صحيح البخاري', author: 'البخاري', deathYear: 256 }],
+    transport: 'local',
+  })),
+};
+vi.mock('../../electron/agent/adapters/shamelaRouter.ts', () => shamelaRouterMock);
+
 const queryTafseer: ReturnType<typeof vi.fn> = vi.fn(async () => ({
   chunks: [{ id: 'tafsir:tafsir:tabari:البقرة: 255', reference: 'تفسير (tabari) — البقرة: 255 (tafsir.net)', content: 'الله لا إله إلا هو' }] as Array<{ id: string; reference: string; content: string }>,
   text: 'الله لا إله إلا هو الحي القيوم',
@@ -193,6 +211,56 @@ describe('agent dispatch', () => {
     const { dispatch } = mk({ researchSearch: null });
     const r = await dispatch('search_hadith', { query: 'x' }) as { error?: string };
     expect(r.error).toMatch(/Agent panel/);
+  });
+
+  it('lookup_narrator builds a rijāl-shaped query and maps citations to citable chunks (ADR-0041)', async () => {
+    const researchSearch = vi.fn(async () => ({
+      answer: 'شعبة بن الحجاج ثقة حافظ متقن.',
+      citations: [
+        { domain: 'classical-rijal', citation_ref: { book: 'تهذيب الكمال', page: 479, volume: 12 }, url: 'https://x/rijal' },
+      ],
+    }));
+    const { dispatch, ledger } = mk({ researchSearch });
+    const r = await dispatch('lookup_narrator', { name: 'شعبة بن الحجاج', aspect: 'grade' }) as { count: number; results: Array<{ id: string }> };
+    const [mode, q] = researchSearch.mock.calls[0] as unknown as [string, string];
+    expect(mode).toBe('islamic');
+    expect(q).toContain('شعبة بن الحجاج');
+    expect(q).toMatch(/رجال|الجرح والتعديل/);
+    expect(r.count).toBe(1);
+    expect(ledger.size).toBe(1);
+    expect(r.results[0].id).toMatch(/^classical-rijal:rijal:/);
+  });
+
+  it('lookup_narrator without a renderer bridge returns a clear message', async () => {
+    const { dispatch } = mk({ researchSearch: null });
+    const r = await dispatch('lookup_narrator', { name: 'الأعمش' }) as { error?: string };
+    expect(r.error).toMatch(/Agent panel/);
+  });
+
+  it('lookup_lexicon returns corpus chunks + an al-Maany link, and never a fabricated page citation (ADR-0043)', async () => {
+    const researchSearch = vi.fn(async () => ({
+      answer: 'سرابيل: قمیصیں۔',
+      citations: [{ domain: 'islamicurdubooks-lexicon', citation_ref: { book: 'لغتِ قرآن', page: 7 }, url: 'https://x/lex' }],
+    }));
+    const { dispatch, ledger } = mk({ researchSearch });
+    const r = await dispatch('lookup_lexicon', { word: 'سرابيل' }) as {
+      count: number; almaanyUrl: string; results: Array<{ id: string }>;
+    };
+    expect((researchSearch.mock.calls[0] as unknown as [string])?.[0]).toBe('islamic');
+    expect(r.almaanyUrl).toContain('almaany.com/ur/dict/ar-ur/');
+    expect(r.count).toBe(1);
+    // the corpus entry is in the ledger; the al-Maany link is NOT (cannot be footnoted)
+    expect(ledger.size).toBe(1);
+    expect(r.results.every((x) => !x.id.startsWith('lexicon:page:'))).toBe(true); // no bundled index → no page cite
+  });
+
+  it('lookup_lexicon with no corpus hit still gives the al-Maany link, no error', async () => {
+    const researchSearch = vi.fn(async () => ({ answer: '', citations: [] }));
+    const { dispatch } = mk({ researchSearch });
+    const r = await dispatch('lookup_lexicon', { word: 'جهبذ' }) as { count: number; note: string; error?: string };
+    expect(r.error).toBeUndefined();
+    expect(r.count).toBe(0);
+    expect(r.note).toMatch(/almaany\.com/);
   });
 
   it('transcribe_media saves the renderer-produced segments as an in-project transcript (M9 Phase 5)', async () => {
@@ -393,6 +461,56 @@ describe('agent dispatch', () => {
       chapter: '01.docx', marker: '[1]', source_id: 'shamela:55:40', claim: 'The Prophet forbade X.',
     })).rejects.toThrow(/does not support this claim/);
     expect(wordMock.applyCitations).not.toHaveBeenCalled();
+  });
+
+  // ── ADR-0044: dual Shamela via the router ────────────────────────────────
+  it('search_shamela: local transport → shamela:… ids, carries transport', async () => {
+    const { dispatch, ledger } = mk();
+    const r = await dispatch('search_shamela', { query: 'نية' }) as { count: number; transport: string; results: Array<{ id: string }> };
+    expect(shamelaRouterMock.routeShamelaSearch).toHaveBeenCalled();
+    expect(r.transport).toBe('local');
+    expect(r.results[0].id).toMatch(/^shamela:/);
+    expect(ledger.size).toBe(1);
+  });
+
+  it('search_shamela: cloud transport → shamela-cloud:… ids; a text-only hit is bibliographic', async () => {
+    shamelaRouterMock.routeShamelaSearch.mockResolvedValueOnce({
+      hits: [{ bookId: 'h0abc', bookTitle: 'شامله لنک', pageNumber: 0, snippet: 'نص', score: 0 }],
+      transport: 'cloud',
+    });
+    const { dispatch } = mk();
+    const r = await dispatch('search_shamela', { query: 'نية' }) as { transport: string; results: Array<{ id: string }> };
+    expect(r.transport).toBe('cloud');
+    expect(r.results[0].id).toMatch(/^shamela-cloud:/);
+  });
+
+  it('search_shamela: router transport "none" + error → { error }', async () => {
+    shamelaRouterMock.routeShamelaSearch.mockResolvedValueOnce({ hits: [], transport: 'none', error: 'both off' });
+    const { dispatch } = mk();
+    const r = await dispatch('search_shamela', { query: 'x' }) as { error?: string };
+    expect(r.error).toBe('both off');
+  });
+
+  it('read_shamela_page: parses the id, routes by prefix, ledgers the page', async () => {
+    const { dispatch, ledger } = mk();
+    const r = await dispatch('read_shamela_page', { source_id: 'shamela-cloud:55:40' }) as { text: string; transport: string };
+    expect(shamelaRouterMock.routeShamelaReadPage).toHaveBeenCalledWith('55', 40, expect.objectContaining({ preferTransport: 'cloud' }));
+    expect(r.text).toContain('نص الصفحة');
+    expect(ledger.size).toBe(1);
+  });
+
+  it('read_shamela_page: a bad id is a clear error', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('read_shamela_page', { source_id: 'not-an-id' }) as { error?: string };
+    expect(r.error).toMatch(/shamela:<bookId>/);
+  });
+
+  it('find_shamela_book: returns books (not a ledger tool)', async () => {
+    const { dispatch, ledger } = mk();
+    const r = await dispatch('find_shamela_book', { query: 'بخاري' }) as { books: Array<{ id: number }>; transport: string };
+    expect(r.books[0].id).toBe(55);
+    expect(r.transport).toBe('local');
+    expect(ledger.size).toBe(0);
   });
 
   it('set_page_layout checkpoints + backs up then edits in place', async () => {

@@ -1,7 +1,7 @@
 import React from "react";
 import { Send, Loader2, Square, FolderOpen, ScrollText, Mic, Plus, Paperclip, Plug } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CONNECTORS, isConnectorOn } from "../../../shared/agent/connectors";
+import { CONNECTORS, isConnectorOn, connectorsByCategory } from "../../../shared/agent/connectors";
 import { useAgentRun, type AgentMode } from "@/hooks/useAgentRun";
 
 /**
@@ -106,15 +106,33 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
               <Plug className="h-3.5 w-3.5 shrink-0" />
               {t("agent.hub_connectors", "Source connectors")}
             </p>
-            {CONNECTORS.map((c) => {
-              const on = isConnectorOn(a.connectors, c.id);
-              return (
-                <label key={c.id} className="flex cursor-pointer items-center justify-between rounded px-2 py-1 hover:bg-muted">
-                  <span>{c.label}</span>
-                  <input type="checkbox" className="accent-primary" checked={on} onChange={(e) => void a.toggleConnector(c.id, e.target.checked)} />
-                </label>
-              );
-            })}
+            {connectorsByCategory().map((group) => (
+              <div key={group.category}>
+                <p className="px-2 pt-1 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground/70">
+                  {t(`connectors.category.${group.category}` as import("@/lib/i18n").TranslationKey)}
+                </p>
+                {group.connectors.map((c) => {
+                  const globallyOn = a.connectorGlobal?.[c.id] ?? !c.defaultOff;
+                  const on = a.connectorState?.[c.id] ?? isConnectorOn(a.connectors, c.id);
+                  return (
+                    <label
+                      key={c.id}
+                      className={`flex items-center justify-between rounded px-2 py-1 ${globallyOn ? "cursor-pointer hover:bg-muted" : "cursor-not-allowed opacity-60"}`}
+                      title={globallyOn ? undefined : t("connectors.enable_in_settings")}
+                    >
+                      <span>{c.label}</span>
+                      <input
+                        type="checkbox"
+                        className="accent-primary"
+                        checked={on && globallyOn}
+                        disabled={!globallyOn}
+                        onChange={(e) => void a.toggleConnector(c.id, e.target.checked)}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         )}
         {a.picker && a.pickerItems.length > 0 && (
@@ -181,7 +199,7 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
           <span className="truncate max-w-[38%]">{a.pf.folder?.manifest.title}</span>
           <span className="opacity-40">·</span>
           <span className="shrink-0">{t("agent.pill_chapters", "{n} ch").replace("{n}", String(a.pf.chapters.length))}</span>
-          {(() => { const off = CONNECTORS.filter((c) => !isConnectorOn(a.connectors, c.id)).length; return off > 0 ? (
+          {(() => { const off = CONNECTORS.filter((c) => !(a.connectorState?.[c.id] ?? isConnectorOn(a.connectors, c.id))).length; return off > 0 ? (
             <><span className="opacity-40">·</span><span className="shrink-0 text-amber-600">{t("agent.pill_connectors_off", "{n} source off").replace("{n}", String(off))}</span></>
           ) : null; })()}
           <span className="opacity-40">·</span>

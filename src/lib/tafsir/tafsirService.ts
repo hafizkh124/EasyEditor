@@ -48,6 +48,8 @@ export interface TafsirConnectResult {
   connected: boolean;
   server?: string;
   version?: string;
+  /** For a remote session — which brand hostname connected (ADR-0039). */
+  endpoint?: string;
   tools: TafsirToolInfo[];
   error?: string;
 }

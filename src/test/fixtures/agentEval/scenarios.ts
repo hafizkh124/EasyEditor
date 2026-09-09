@@ -60,6 +60,66 @@ const worldNoSource: EvalWorld = {
   general: 'General background: the concept of intention is widely discussed in the fiqh literature.',
 };
 
+/** A world where the corpus lexical works have the word (ADR-0043). */
+const worldWithLexicon: EvalWorld = {
+  chapters: { '01-fiqh.docx': { ...CH_FIQH } },
+  corpus: [],
+  shamela: [],
+  lexicon: [
+    {
+      id: 'islamicurdubooks-lexicon:lex:lughat-quran:7',
+      reference: 'لغتِ قرآن، مادہ «سربل»، ص 7',
+      content: 'سرابيل: جمع سربال، قمیصیں، لباس۔ قرآن میں «سرابيل تقيكم الحر»۔',
+      match: ['سرابيل', 'سربل', 'سربال', 'لغوی', 'معنیٰ', 'meaning', 'lexical', 'مادہ'],
+    },
+  ],
+};
+
+/** A world where Ganjoor has a Persian verse (ADR-0042). */
+const worldWithPersian: EvalWorld = {
+  chapters: { '01-fiqh.docx': { ...CH_FIQH } },
+  corpus: [],
+  shamela: [],
+  ganjoor: [
+    {
+      id: 'ganjoor:2130',
+      reference: 'حافظ — دیوان حافظ — غزل ۱ (گنجور / Ganjoor)',
+      content: 'الا یا ایها الساقی ادر کاسا و ناولها',
+      match: ['حافظ', 'ساقی', 'persian', 'شعر', 'فارسی', 'verse'],
+    },
+  ],
+};
+
+/** A world where the rijāl corpus has an entry for a narrator (ADR-0041). */
+const worldWithRijal: EvalWorld = {
+  chapters: { '01-fiqh.docx': { ...CH_FIQH } },
+  corpus: [],
+  shamela: [],
+  rijal: [
+    {
+      id: 'classical-rijal:rijal:tahdhib:1',
+      reference: 'تهذيب الكمال، ترجمة شعبة بن الحجاج، ج 12 ص 479',
+      content: 'شعبة بن الحجاج بن الورد العتكي، أمير المؤمنين في الحديث، ثقة حافظ متقن. مات سنة 160 هـ.',
+      match: ['شعبة', 'الحجاج', 'شعبة بن الحجاج', 'راوی', 'narrator', 'ثقہ', 'grade', 'حال'],
+    },
+  ],
+};
+
+/** A world where الدرر السنية has a grading for the نية hadith (ADR-0040). */
+const worldWithGrading: EvalWorld = {
+  chapters: { '01-fiqh.docx': { ...CH_FIQH } },
+  corpus: [],
+  shamela: [],
+  dorar: [
+    {
+      id: 'dorar:a1b2c3d4e5f6',
+      reference: 'صحيح البخاري، رقم 1 — الراوي: عمر بن الخطاب — الحكم: صحيح (الدرر السنية)',
+      content: 'إنما الأعمال بالنيات وإنما لكل امرئ ما نوى',
+      match: ['نية', 'النية', 'نيات', 'أعمال', 'حديث', 'intention', 'صحيح', 'درجة', 'grade'],
+    },
+  ],
+};
+
 // ── scenarios ──────────────────────────────────────────────────────────────
 
 export const SCENARIOS: EvalScenario[] = [
@@ -180,6 +240,147 @@ export const SCENARIOS: EvalScenario[] = [
       maxFootnotes: 0,
       mustComplete: true,
       maxSteps: 10,
+    },
+  },
+  {
+    // ADR-0038 — a plain rewrite in Ask mode must call NOTHING.
+    id: 'intent-plain-edit-no-tools',
+    kind: 'loop',
+    mode: 'ask',
+    chapter: '01-fiqh.docx',
+    instruction: 'اس جملے کو زیادہ رسمی انداز میں دوبارہ لکھو: "النية شرط في العبادات"۔ کوئی حوالہ نہیں چاہیے۔',
+    world: worldWithSource,
+    expect: {
+      forbidTools: ['search_corpus', 'search_shamela', 'query_tafseer', 'search_hadith', 'insert_footnote'],
+      mustComplete: true,
+      maxSteps: 3,
+    },
+  },
+  {
+    // ADR-0038 — a Qur'anic/lexical ask is gated to the tafsir connector.
+    id: 'intent-gate-tafsir-not-hadith',
+    kind: 'loop',
+    mode: 'ask',
+    chapter: '01-fiqh.docx',
+    instruction: 'قرآن مجید میں لفظ "نية" کے مادے کا لغوی تجزیہ اور اس کے وقوعات بتائیں۔',
+    world: worldWithSource,
+    expect: {
+      expectAnyTool: [['query_tafseer']],
+      forbidTools: ['search_hadith'],
+      mustComplete: true,
+      maxSteps: 6,
+    },
+  },
+  {
+    // ADR-0038 — a hadith/isnad ask is gated to the hadith connector.
+    id: 'intent-gate-hadith-not-tafsir',
+    kind: 'loop',
+    mode: 'ask',
+    chapter: '01-fiqh.docx',
+    instruction: 'حدیثِ "إنما الأعمال بالنيات" کی سند اور اس کے رواة کے بارے میں بتائیں۔',
+    world: worldWithSource,
+    expect: {
+      expectAnyTool: [['search_hadith']],
+      forbidTools: ['query_tafseer'],
+      mustComplete: true,
+      maxSteps: 6,
+    },
+  },
+  {
+    // ADR-0043 — "what does this Arabic word mean in Urdu" goes to lookup_lexicon
+    // (corpus + al-Maany link), NOT search_hadith / the general channel, and the
+    // model must not invent a gloss.
+    id: 'lexicon-word-meaning',
+    kind: 'loop',
+    mode: 'ask',
+    chapter: '01-fiqh.docx',
+    instruction: 'لفظ "سرابيل" کا لغوی معنیٰ اور مادہ بتائیں۔',
+    world: worldWithLexicon,
+    expect: {
+      expectAnyTool: [['lookup_lexicon']],
+      forbidTools: ['search_hadith', 'search_general'],
+      mustComplete: true,
+      maxSteps: 6,
+    },
+  },
+  {
+    // ADR-0042 — a Persian-poetry ask goes to Ganjoor, NOT the Urdu verse tool
+    // or the tafsir/hadith connectors.
+    id: 'persian-poetry-not-urdu',
+    kind: 'loop',
+    mode: 'ask',
+    chapter: '01-fiqh.docx',
+    instruction: 'حافظ شیرازی کے اس فارسی مصرعے کا حوالہ اور مکمل شعر بتائیں: "الا یا ایها الساقی"۔',
+    world: worldWithPersian,
+    expect: {
+      expectAnyTool: [['search_persian_poetry']],
+      forbidTools: ['lookup_urdu_verse', 'query_tafseer', 'search_hadith', 'search_general'],
+      mustComplete: true,
+      maxSteps: 6,
+    },
+  },
+  {
+    // ADR-0042 — a taqṭīʿ ask uses scan_urdu_prosody, and the run must not
+    // present its heuristic output as a verdict (that is on the model / prompt).
+    id: 'urdu-taqti-heuristic',
+    kind: 'loop',
+    mode: 'ask',
+    chapter: '01-fiqh.docx',
+    instruction: 'اس مصرعے کی تقطیع کر کے بحر کا اندازہ لگائیں: "کوئی امید بر نہیں آتی"۔',
+    world: worldWithRijal,
+    expect: {
+      expectAnyTool: [['scan_urdu_prosody']],
+      forbidTools: ['search_persian_poetry', 'query_tafseer', 'search_general'],
+      mustComplete: true,
+      maxSteps: 5,
+    },
+  },
+  {
+    // ADR-0041 — a question ABOUT A NARRATOR goes to lookup_narrator, NOT
+    // search_hadith / query_tafseer / the general channel.
+    id: 'rijal-narrator-lookup',
+    kind: 'loop',
+    mode: 'ask',
+    chapter: '01-fiqh.docx',
+    instruction: 'راوی "شعبة بن الحجاج" کا حال، اس کی توثیق اور شیوخ بتائیں۔',
+    world: worldWithRijal,
+    expect: {
+      expectAnyTool: [['lookup_narrator']],
+      forbidTools: ['query_tafseer', 'search_general'],
+      mustComplete: true,
+      maxSteps: 6,
+    },
+  },
+  {
+    // ADR-0040 — a grading question goes to الدرر السنية (grade_hadith), NOT
+    // query_tafseer or the general web channel.
+    id: 'grade-hadith-dorar-only',
+    kind: 'loop',
+    mode: 'auto',
+    chapter: '01-fiqh.docx',
+    instruction: 'باب 01-fiqh.docx میں [1] مارکر پر "إنما الأعمال بالنيات" کا درجہ اور تخریج درر السنیہ سے لگاؤ۔',
+    world: worldWithGrading,
+    expect: {
+      expectAnyTool: [['grade_hadith'], ['insert_footnote']],
+      forbidTools: ['query_tafseer', 'search_general'],
+      minFootnotes: 1,
+      mustComplete: true,
+      maxSteps: 10,
+    },
+  },
+  {
+    // ADR-0039 — a Qur'anic-root lookup is Bahouth work: query_tafseer, mode 'root'.
+    id: 'lexical-root-lookup',
+    kind: 'loop',
+    mode: 'ask',
+    chapter: '01-fiqh.docx',
+    instruction: 'قرآن مجید میں لفظ "نصر" کے مادے (جذر) کے وقوعات اور اعداد بتائیں۔',
+    world: worldWithSource,
+    expect: {
+      expectAnyTool: [['query_tafseer']],
+      forbidTools: ['search_hadith', 'search_general'],
+      mustComplete: true,
+      maxSteps: 6,
     },
   },
   {

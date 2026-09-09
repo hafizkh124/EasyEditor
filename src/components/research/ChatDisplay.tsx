@@ -28,6 +28,8 @@ import { DocumentBox } from "./chat/DocumentBox";
 import { SourcesReadyIndicator, TypingDots, UserAvatar, AiAvatar } from "./chat/ChatAtoms";
 import { renderCitedAnswer } from "@/lib/research/citedAnswer";
 import { AgentArtifactPanel } from "@/components/workspace/AgentArtifactPanel";
+import { ProvenanceChips } from "@/components/workspace/ProvenanceChip";
+import { connectorsUsed } from "~shared/agent/connectors";
 import type { AgentRunView } from "@/hooks/useAgentRun";
 
 const VIRTUALIZE_THRESHOLD = 50;
@@ -373,6 +375,7 @@ const ChatDisplay = ({
               ) : (
                 <p className="whitespace-pre-wrap">{agent.result.answer || t("agent.no_answer", "(no answer)")}</p>
               )}
+              {!agent.result.error && <ProvenanceChips connectorIds={connectorsUsed(agent.result.toolCalls)} />}
               {agent.result.playbook && (
                 <p className="text-xs text-muted-foreground">{t("agent.used_playbook", "Playbook: {id}").replace("{id}", agent.result.playbook)}</p>
               )}

@@ -40,7 +40,7 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'search_shamela',
-    description: "Full-text search of the user's local Maktaba Shamela library (classical Arabic works). Returns book, page, and snippet. A local gold-standard, citable source. Do NOT use for a claim the personal corpus already covers, or for general web context (use search_general).",
+    description: "Full-text search of the scholar's Maktaba Shamela — their local library, or the online شامله لنک library if the local one is not available (the app routes automatically; you always call this one tool). Returns book, page, and snippet. A gold-standard, citable source. Do NOT use for a claim the personal corpus already covers, or for general web context (use search_general).",
     params: {
       query: { type: 'string', description: 'Arabic search terms.' },
       limit: { type: 'number', description: 'Max results (default 8).' },
@@ -49,13 +49,32 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'read',
   },
   {
-    name: 'query_tafseer',
-    description: "Look up a Qur'anic āyah, its tafsīr, its reason for revelation (sabab an-nuzūl), or a word analysis, or search across the classical tafsīr works — from the tafsir.net sources. A citable source: the reference is book + sūrah + āyah. Do NOT use for hadith (use search_hadith) or for a fiqh ruling that is not tafsīr-based.",
+    name: 'read_shamela_page',
+    description: "Read the FULL text (and footnotes) of ONE page of a Shamela book you already found with search_shamela — pass its result id (e.g. \"shamela:1681:245\"). Use to read the context around a snippet before quoting it. Not a search tool; call search_shamela first.",
     params: {
-      reference: { type: 'string', description: 'The āyah as "surah:ayah" (e.g. "2:255" or "al-baqarah:255"). For mode "search" this may be the search phrase instead.' },
-      mode: { type: 'string', description: 'What to fetch.', enum: ['ayah', 'tafsir', 'nuzool', 'word', 'search'] },
+      source_id: { type: 'string', description: 'A shamela:<bookId>:<page> id returned by search_shamela.' },
+    },
+    required: ['source_id'],
+    effect: 'read',
+  },
+  {
+    name: 'find_shamela_book',
+    description: "Look up Shamela books or authors by name — returns matching titles with their book id, author, and death year, so you can then search_shamela or read a page from a specific work. A discovery helper, NOT a citable source.",
+    params: {
+      query: { type: 'string', description: 'A book title or author name, in Arabic.' },
+    },
+    required: ['query'],
+    effect: 'read',
+  },
+  {
+    name: 'query_tafseer',
+    description: "Qur'ān work from Markaz Tafsir (باحوث / Bahouth): an āyah's text, its tafsīr, its reason for revelation (sabab an-nuzūl), a word analysis, the triliteral-root occurrences and stats (mode 'root'), the qirāʾāt variants of a word (mode 'qeraat'), or a free-text search across the classical tafsīr works. A citable source: the reference is book + sūrah + āyah (or the root). Do NOT use for hadith text or grading (use search_hadith), for a narrator / rijāl question, or for a fiqh ruling that is not tafsīr-based.",
+    params: {
+      reference: { type: 'string', description: 'The āyah as "surah:ayah" (e.g. "2:255" or "al-baqarah:255"). For mode "search" the search phrase; for mode "root" the triliteral root (e.g. "نصر" or "ن ص ر").' },
+      mode: { type: 'string', description: 'What to fetch.', enum: ['ayah', 'tafsir', 'nuzool', 'word', 'qeraat', 'root', 'search'] },
       sources: { type: 'array', items: { type: 'string' }, description: 'Optional tafsīr source ids to restrict to (e.g. "tabari").' },
-      query: { type: 'string', description: 'For mode "search" — the phrase to look for in the tafsīr texts.' },
+      query: { type: 'string', description: 'For mode "search" — the phrase to look for in the tafsīr texts. For mode "root" — an alternative place to give the root.' },
+      word_no: { type: 'number', description: 'For mode "word" / "qeraat" — the 1-based word position in the āyah (default 1).' },
     },
     required: ['reference', 'mode'],
     effect: 'read',
@@ -67,6 +86,68 @@ export const AGENT_TOOLS: AgentTool[] = [
       query: { type: 'string', description: 'The hadith text, topic, or narrator, in Arabic or the scholar\'s language.' },
       collection: { type: 'string', description: 'Optional — restrict to one collection.' },
       limit: { type: 'number', description: 'Max narrations (default 6).' },
+    },
+    required: ['query'],
+    effect: 'read',
+  },
+  {
+    name: 'lookup_lexicon',
+    description: "Look up an Arabic word or root for its Urdu meaning, in the classical Arabic → Urdu lexical material (لغتِ قرآن and the ingested Urdu lexicon works). A citable source — the reference is the work it came from. Every result also carries an al-Maany (المعاني) link for the scholar to verify. This tool does NOT invent a gloss: if the corpus has nothing, it says so and gives the al-Maany link. Do NOT use for hadith, for tafsīr of a whole āyah (query_tafseer), or as a spell-checker.",
+    params: {
+      word: { type: 'string', description: 'The Arabic word or triliteral root, e.g. "سرابيل" or "كبر".' },
+      dict: { type: 'string', description: 'Which printed dictionary to prefer for a page citation, when one is indexed.', enum: ['misbah', 'qamus', 'both'] },
+    },
+    required: ['word'],
+    effect: 'read',
+  },
+  {
+    name: 'lookup_narrator',
+    description: "Look up a hadith narrator (rāwī) in the classical rijāl / asmāʾ al-rijāl literature: biography, jarḥ wa taʿdīl (the critics' verdicts), teachers and students, and roughly how many narrations they transmit. A citable source. Use THIS — not search_hadith — when the question is about a NARRATOR (their reliability, dates, shaykhs). Do NOT use to grade a whole hadith (grade_hadith), for tafsīr, or for a topical hadith search (search_hadith). Tracing the isnād CHAIN between two narrators is not available yet.",
+    params: {
+      name: { type: 'string', description: 'The narrator, in Arabic (e.g. "شعبة بن الحجاج", "الأعمش", "أبو هريرة").' },
+      aspect: {
+        type: 'string',
+        description: 'What to focus on (default biography).',
+        enum: ['biography', 'grade', 'teachers-students', 'narration-count'],
+      },
+    },
+    required: ['name'],
+    effect: 'read',
+  },
+  {
+    name: 'grade_hadith',
+    description: "Look up a hadith's grading and takhrīj in الدرر السنية (dorar.net): الراوي, المحدث, المصدر, and الحكم EXACTLY as Dorar states it — never our own verdict. A citable source. Use THIS, not search_hadith, when the ask is about whether a hadith is ṣaḥīḥ / ḍaʿīf or where it is graded. Do NOT use for tafsīr, a lexical question, a narrator biography on its own, or a topical hadith search (that is search_hadith).",
+    params: {
+      text: { type: 'string', description: 'The hadith text, or a distinctive phrase from it, in Arabic.' },
+      limit: { type: 'number', description: 'Max gradings to return (1–15, default 5).' },
+    },
+    required: ['text'],
+    effect: 'read',
+  },
+  {
+    name: 'search_persian_poetry',
+    description: "Search Persian (Fārsī) poetry through Ganjoor — Rūmī, Saʿdī, Ḥāfiẓ, ʿAṭṭār, Jāmī, and Iqbāl's Persian dīwāns. Returns verses with the poet, the work, and a ganjoor.net link — a citable source. Persian ONLY. Do NOT use for Urdu poetry (lookup_urdu_verse), for Arabic, or for prose.",
+    params: {
+      query: { type: 'string', description: 'A phrase or theme, in Persian or transliteration.' },
+      poet: { type: 'string', description: 'Optional — restrict to one poet (e.g. "حافظ", "مولوی", "اقبال لاهوری").' },
+    },
+    required: ['query'],
+    effect: 'read',
+  },
+  {
+    name: 'scan_urdu_prosody',
+    description: "Scan an Urdu or Persian verse for its metre — the taqṭīʿ (syllable weights), the arkān, and a best guess at the baḥr — with a rule engine. HEURISTIC: it reads the written form without full vowel marks, so it can be wrong on an irregular line. Present it as a machine reading to CHECK, and never cite a baḥr as fact. Do NOT use for the ʿarūḍ of an Arabic Qur'anic verse.",
+    params: {
+      text: { type: 'string', description: 'The verse — one or more miṣraʿ lines, newline-separated.' },
+    },
+    required: ['text'],
+    effect: 'read',
+  },
+  {
+    name: 'lookup_urdu_verse',
+    description: "Find an Urdu verse in the bundled poetry corpus (whatever collections the scholar has added — see resources/prosody). A citable source. Do NOT use for Persian poetry (search_persian_poetry) or for metre scanning (scan_urdu_prosody).",
+    params: {
+      query: { type: 'string', description: 'A phrase from the verse, or a theme, in Urdu.' },
     },
     required: ['query'],
     effect: 'read',

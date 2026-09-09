@@ -54,6 +54,14 @@
       {
         "from": "resources/bin",
         "to": "bin"
+      },
+      {
+        "from": "resources/prosody",
+        "to": "prosody"
+      },
+      {
+        "from": "resources/lexicon",
+        "to": "lexicon"
       }
     ],
     "asarUnpack": [

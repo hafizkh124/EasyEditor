@@ -12,6 +12,9 @@ import { registerDocBridgeHandlers } from './ipc/docBridgeHandlers.js';
 import { initDocBridge, shutdownDocBridgeSync } from './host/index.js';
 import { registerFsHandlers, terminateFsWatch } from './ipc/fsHandlers.js';
 import { registerAgentHandlers } from './ipc/agentHandlers.js';
+import { registerConnectorsHandlers } from './ipc/connectorsHandlers.js';
+import { registerShamelaCloudHandlers } from './ipc/shamelaCloudHandlers.js';
+import { terminateCloudClientSync } from './shamela/cloudClient.js';
 import { isAllowedExternalUrl } from './lib/urlAllowlist.js';
 import { ALLOWED_IPC_CHANNELS } from './ipc/registry.js';
 import { setChromeWindow, overlayColors, refreshTitleBarOverlay } from './windowChrome.js';
@@ -283,6 +286,8 @@ if (!gotSingleInstanceLock) {
     registerDocBridgeHandlers();
     registerFsHandlers();
     registerAgentHandlers();
+    registerConnectorsHandlers();
+    registerShamelaCloudHandlers();
     createWindow();
     checkForUpdates();
 
@@ -315,6 +320,7 @@ if (!gotSingleInstanceLock) {
 //     P0 proof 6 — Word does not exit on its own when its automator dies)
 app.on('before-quit', () => {
   terminateLocalSync();
+  terminateCloudClientSync(); // ADR-0044 — abort any in-flight شامله لنک OAuth flow + close the loopback server
   shutdownDocBridgeSync();
   terminateFsWatch();
 });
