@@ -177,20 +177,41 @@ describe('readCloudPage / findCloudBook', () => {
   });
 });
 
-describe('pingCloud (never interactive)', () => {
-  it('no saved account → ok:false, and no transport is built', async () => {
+describe('pingCloud (never interactive, never connects)', () => {
+  it('no saved account → ok:null (a set-up state, not an error), no transport built', async () => {
     oauth.hasSavedAccount.mockReturnValue(false);
     const r = await mod.pingCloud();
-    expect(r.ok).toBe(false);
-    expect(r.detail).toMatch(/حساب/);
+    expect(r.ok).toBe(null);
+    expect(r.detail).toMatch(/sign in/i);
     expect(transportsMade).toHaveLength(0);
   });
 
-  it('saved account + reachable server → ok:true with a latency', async () => {
+  it('account linked but no live session → ok:null, and it does NOT call connectCloud', async () => {
+    oauth.hasSavedAccount.mockReturnValue(true);
+    connectScript = ['unauth']; // would throw / go interactive if pingCloud connected
+    const r = await mod.pingCloud();
+    expect(r.ok).toBe(null);
+    expect(oauth.waitForLoopbackCode).not.toHaveBeenCalled();
+    expect(transportsMade).toHaveLength(0);
+  });
+
+  it('an established session that answers ping → ok:true with a latency', async () => {
     connectScript = ['ok'];
+    await mod.connectCloud();
+    transportsMade.length = 0;
     const r = await mod.pingCloud();
     expect(r.ok).toBe(true);
     expect(typeof r.latencyMs).toBe('number');
+    expect(transportsMade).toHaveLength(0); // reused the session, no new transport
+  });
+
+  it('an established session that stops answering → ok:false (a real failure)', async () => {
+    connectScript = ['ok'];
+    await mod.connectCloud();
+    pingImpl = async () => { throw new Error('socket hang up'); };
+    const r = await mod.pingCloud();
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/socket hang up/);
   });
 });
 

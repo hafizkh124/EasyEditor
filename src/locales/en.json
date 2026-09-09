@@ -1665,6 +1665,7 @@
   "connectors.status.disabled": "Off",
   "connectors.status.error": "Error",
   "connectors.status.unknown": "Checked when used",
+  "connectors.status.setup": "Sign-in needed",
   "connectors.status.checking": "Checking…",
   "connectors.category.islamic-sciences": "Islamic sciences",
   "connectors.category.hadith-rijal": "Hadith & narrators",

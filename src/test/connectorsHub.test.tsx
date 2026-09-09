@@ -83,4 +83,21 @@ describe("ConnectorsHub", () => {
     fireEvent.click(buttons[0]);
     await waitFor(() => expect(api.ping).toHaveBeenCalled());
   });
+
+  it("an MCP connector whose ping returns ok:null shows 'Sign-in needed', not an error", async () => {
+    const global = { "shamela-cloud": true };
+    const api = makeApi({
+      list: vi.fn(async () => ({
+        connectors: CONNECTORS, global, project: {},
+        merged: mergeConnectorState(global, {}),
+      })),
+      ping: vi.fn(async (id: string) =>
+        id === "shamela-cloud" ? { ok: null, detail: "Not linked yet — sign in from the شامله لنک panel below." } : { ok: true, latencyMs: 5 },
+      ),
+    });
+    win.electronAPI = { connectors: api };
+    render(<ConnectorsHub />);
+    expect(await screen.findByText("Sign-in needed")).toBeInTheDocument();
+    expect(screen.queryByText("Error")).not.toBeInTheDocument();
+  });
 });
