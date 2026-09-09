@@ -1665,6 +1665,7 @@
   "connectors.status.disabled": "متوقف",
   "connectors.status.error": "خطأ",
   "connectors.status.unknown": "يُفحص عند الاستخدام",
+  "connectors.status.setup": "يلزم تسجيل الدخول",
   "connectors.status.checking": "جارٍ الفحص…",
   "connectors.category.islamic-sciences": "العلوم الإسلامية",
   "connectors.category.hadith-rijal": "الحديث والرجال",

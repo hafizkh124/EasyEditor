@@ -35,7 +35,12 @@ interface StatusView {
   hint?: string;
 }
 
-function statusView(enabled: boolean, health: Health, t: Translator): StatusView {
+function statusView(
+  enabled: boolean,
+  health: Health,
+  healthKind: Connector["healthKind"],
+  t: Translator,
+): StatusView {
   if (!enabled) return { dot: "⚪", tone: "text-muted-foreground", label: t("connectors.status.disabled") };
   if (health === "checking") return { dot: "⏳", tone: "text-muted-foreground", label: t("connectors.status.checking") };
   if (!health) return { dot: "•", tone: "text-muted-foreground", label: "—" };
@@ -45,6 +50,12 @@ function statusView(enabled: boolean, health: Health, t: Translator): StatusView
   }
   if (health.ok === false) {
     return { dot: "🔴", tone: "text-red-600 dark:text-red-400", label: t("connectors.status.error"), hint: health.detail };
+  }
+  // ok === null. For an MCP connector that just isn't linked yet, that is a
+  // one-time sign-in, NOT an error — a distinct amber "setup" state. Everything
+  // else (bridged connectors) stays a quiet "checked when used".
+  if (healthKind === "mcp") {
+    return { dot: "🟡", tone: "text-amber-600 dark:text-amber-500", label: t("connectors.status.setup"), hint: health.detail };
   }
   return { dot: "⚪", tone: "text-muted-foreground", label: t("connectors.status.unknown"), hint: health.detail };
 }
@@ -61,7 +72,7 @@ export function ConnectorCard({
 }) {
   const { t } = useLanguage();
   const Icon = ICONS[connector.icon] ?? Plug;
-  const s = statusView(enabled, health, t);
+  const s = statusView(enabled, health, connector.healthKind, t);
   const pingable = enabled && connector.healthKind !== "compute" && connector.healthKind !== "bridged";
 
   return (
@@ -105,6 +116,9 @@ export function ConnectorCard({
       </div>
       {s.hint && s.dot === "🔴" && (
         <p className="mt-1 ps-9 text-xs text-red-600 dark:text-red-400">{s.hint}</p>
+      )}
+      {s.hint && s.dot === "🟡" && (
+        <p className="mt-1 ps-9 text-xs text-amber-600 dark:text-amber-500">{s.hint}</p>
       )}
     </div>
   );

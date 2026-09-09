@@ -173,21 +173,29 @@ export async function listCloudToolsRaw(): Promise<Array<{ name: string; descrip
   return r.tools.map((t) => ({ name: t.name, description: t.description }));
 }
 
-/** Health probe — NEVER starts an interactive flow. */
+/**
+ * Health probe. NEVER starts an interactive flow and NEVER calls `connectCloud`
+ * (which would open the browser on an expired token). Reports:
+ *  - `ok: null`  — no account linked yet, or linked-but-not-connected this
+ *                  session. Not an error — the card shows a neutral "set up"
+ *                  note, not 🔴. A connection happens on first agent use, or
+ *                  when the user clicks Connect in the شامله لنک panel.
+ *  - `ok: true`  — an established session answered `ping()`.
+ *  - `ok: false` — an established session FAILED to answer (a real problem).
+ */
 export async function pingCloud(): Promise<HealthResult> {
   if (!hasSavedAccount()) {
-    return { ok: false, detail: 'حساب متصل نہیں — Connect your شامله لنک account in Settings' };
+    return { ok: null, detail: 'Not linked yet — sign in from the شامله لنک panel below.' };
   }
   if (!session) {
-    try { await connectCloud(); }
-    catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e), detail: 'reconnect your account' }; }
+    return { ok: null, detail: 'Account linked — connects on first use.' };
   }
   const started = Date.now();
   try {
-    await withTimeout(session!.client.ping(), 10_000, 'ping');
+    await withTimeout(session.client.ping(), 10_000, 'ping');
     return { ok: true, latencyMs: Date.now() - started };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    return { ok: false, error: e instanceof Error ? e.message : String(e), detail: 'The شامله لنک session stopped responding — reconnect from its panel.' };
   }
 }
 

@@ -1665,6 +1665,7 @@
   "connectors.status.disabled": "بند",
   "connectors.status.error": "خرابی",
   "connectors.status.unknown": "استعمال کے وقت جانچ",
+  "connectors.status.setup": "لاگ اِن درکار",
   "connectors.status.checking": "جانچا جا رہا ہے…",
   "connectors.category.islamic-sciences": "اسلامی علوم",
   "connectors.category.hadith-rijal": "حدیث و رجال",

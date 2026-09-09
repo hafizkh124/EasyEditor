@@ -34,7 +34,7 @@ const shamela = {
   ),
 };
 
-const cloudClient = { pingCloud: vi.fn(async () => ({ ok: false, detail: "not connected" })) };
+const cloudClient = { pingCloud: vi.fn(async () => ({ ok: null, detail: "Not linked yet — sign in from the شامله لنک panel below." })) };
 vi.mock("../../electron/shamela/cloudClient.ts", () => cloudClient);
 vi.mock("../../electron/agent/adapters/ganjoor.ts", () => ({ GANJOOR_HEALTH_URL: "https://api.ganjoor.net/api/ganjoor/poets" }));
 vi.mock("../../electron/shamela/shamelaNative.ts", () => shamela);
@@ -101,10 +101,10 @@ describe("connectorsHandlers", () => {
     expect(r.ok).toBe(true);
   });
 
-  it("ping mcp (shamela-cloud) delegates to pingCloud (ADR-0044)", async () => {
+  it("ping mcp (shamela-cloud) delegates to pingCloud — an unlinked account is null, not an error (ADR-0044)", async () => {
     const r = (await invoke({ action: "ping", id: "shamela-cloud" })) as { ok: boolean | null };
     expect(cloudClient.pingCloud).toHaveBeenCalled();
-    expect(r.ok).toBe(false);
+    expect(r.ok).toBe(null);
   });
 
   it("ping local-native (shamela) reflects the installation detector", async () => {
