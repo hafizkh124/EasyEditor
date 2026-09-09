@@ -545,9 +545,14 @@ export async function handle(req: Request): Promise<Response> {
       : SUPPORTED_DOMAINS;
 
     const diagnostics: ScrapeDiagnostic[] | undefined = debug === true ? [] : undefined;
+    // Whole-request wall clock. Kept just under the caller's own abort
+    // (islamic-search: 15s) so we always return partial results rather than
+    // having the caller drop the entire Tier C fan-out.
+    const deadline = Date.now() + 13_000;
     const settled = await Promise.allSettled(
-      targets.map((key) => scrapeDomain(key, DOMAINS[key], query, diagnostics)),
+      targets.map((key) => scrapeDomain(key, DOMAINS[key], query, deadline, diagnostics)),
     );
+
 
     const results: IslamicResult[] = [];
     for (const r of settled) {
