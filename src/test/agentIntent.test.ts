@@ -127,6 +127,20 @@ describe('negativeConstraintBlock', () => {
     expect(s).toMatch(/do not call the hadith connector/i);
   });
 
+  it('every gateable connector has tailored guidance (not the generic fallback)', () => {
+    for (const c of ['tafsir', 'hadith', 'dorar', 'rijal', 'lexicon', 'ganjoor', 'urdu-prosody', 'repositories']) {
+      const s = negativeConstraintBlock({ kind: 'gated', connectors: [c] });
+      expect(s, c).not.toMatch(/^Stay within the/);
+      expect(s.length, c).toBeGreaterThan(40);
+    }
+  });
+
+  it('gated→dorar steers to grade_hadith and away from tafsir', () => {
+    const s = negativeConstraintBlock({ kind: 'gated', connectors: ['dorar'] });
+    expect(s).toMatch(/grade_hadith/);
+    expect(s).toMatch(/query_tafseer/);
+  });
+
   it('open adds nothing', () => {
     expect(negativeConstraintBlock({ kind: 'open' })).toBe('');
   });

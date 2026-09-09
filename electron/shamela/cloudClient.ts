@@ -9,9 +9,8 @@
  *
  * All tool names / result shapes are PROVISIONAL — see `cloudAllowlist.ts`.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createHash } from 'node:crypto';
 import { logger } from '../lib/logger.js';
 import type { HealthResult } from '../../shared/connectors/health.js';
@@ -70,9 +69,37 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   });
 }
 
-function newTransport(): { client: Client; transport: StreamableHTTPClientTransport } {
-  const client = new Client({ name: 'easy-editor-shamela-cloud', version: '1.0.0' });
-  const transport = new StreamableHTTPClientTransport(new URL(CLOUD_ENDPOINT), { authProvider: getProvider() });
+/**
+ * The MCP SDK (and especially `client/auth.js`, the OAuth machinery) is a heavy
+ * dependency tree. Load it only when the cloud connector is actually used, so an
+ * agent run that never touches شامله لنک does not pay for it at startup.
+ */
+type McpSdk = {
+  Client: typeof import('@modelcontextprotocol/sdk/client/index.js').Client;
+  StreamableHTTPClientTransport: typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js').StreamableHTTPClientTransport;
+  UnauthorizedError: typeof import('@modelcontextprotocol/sdk/client/auth.js').UnauthorizedError;
+};
+let sdkCache: McpSdk | null = null;
+async function loadSdk(): Promise<McpSdk> {
+  if (!sdkCache) {
+    const [idx, http, auth] = await Promise.all([
+      import('@modelcontextprotocol/sdk/client/index.js'),
+      import('@modelcontextprotocol/sdk/client/streamableHttp.js'),
+      import('@modelcontextprotocol/sdk/client/auth.js'),
+    ]);
+    sdkCache = {
+      Client: idx.Client,
+      StreamableHTTPClientTransport: http.StreamableHTTPClientTransport,
+      UnauthorizedError: auth.UnauthorizedError,
+    };
+  }
+  return sdkCache;
+}
+
+async function newTransport(): Promise<{ client: Client; transport: StreamableHTTPClientTransport }> {
+  const { Client: ClientCtor, StreamableHTTPClientTransport: TransportCtor } = await loadSdk();
+  const client = new ClientCtor({ name: 'easy-editor-shamela-cloud', version: '1.0.0' });
+  const transport = new TransportCtor(new URL(CLOUD_ENDPOINT), { authProvider: getProvider() });
   return { client, transport };
 }
 
@@ -88,7 +115,8 @@ export async function connectCloud(): Promise<void> {
   if (session) return;
   if (connecting) return connecting;
   connecting = (async () => {
-    const first = newTransport();
+    const { UnauthorizedError } = await loadSdk();
+    const first = await newTransport();
     try {
       await withTimeout(first.client.connect(first.transport), CONNECT_TIMEOUT_MS, 'connect');
       session = first;
@@ -111,7 +139,7 @@ export async function connectCloud(): Promise<void> {
       await safeClose(first.transport);
       stopLoopbackServer();
 
-      const second = newTransport();
+      const second = await newTransport();
       await withTimeout(second.client.connect(second.transport), CONNECT_TIMEOUT_MS, 'reconnect');
       session = second;
     }
@@ -172,6 +200,7 @@ interface CloudCallResult {
 
 async function callCloud(name: string, rawArgs: unknown): Promise<CloudCallResult> {
   await connectCloud();
+  const { UnauthorizedError } = await loadSdk();
   const safe = validateCloudToolArgs(name, rawArgs);
   try {
     return (await withTimeout(session!.client.callTool({ name, arguments: safe }), CALL_TIMEOUT_MS, name)) as CloudCallResult;
