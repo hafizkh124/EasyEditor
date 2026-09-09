@@ -30,6 +30,8 @@ const catalogueMocks = {
   listBooksByAuthor: vi.fn(() => []),
   listPeriods: vi.fn(() => []),
   listBooksByPeriod: vi.fn(() => []),
+  listBooks: vi.fn(() => [{ id: 2, title: "کتاب 2" }]),
+  countBooks: vi.fn(() => 42),
   getBookPdfInfo: vi.fn(() => ({ hasPdf: true })),
   readBookPdfFile: vi.fn((): Buffer | null => Buffer.from("pdf-bytes")),
   closeCatalogueDb: vi.fn(),
@@ -151,6 +153,17 @@ describe("catalogue actions — required-parameter validation", () => {
   it("forwards caller-supplied limit/offset instead of the defaults", async () => {
     await invoke({ action: "catalogue:booksByCategory", masterDbPath: "/m.db", categoryId: 3, limit: 10, offset: 20 });
     expect(catalogueMocks.listBooksByCategory).toHaveBeenCalledWith("/m.db", 3, 10, 20);
+  });
+
+  it("catalogue:listBooks forwards the flexible filter", async () => {
+    await invoke({ action: "catalogue:listBooks", masterDbPath: "/m.db", filter: { century: 5, categoryId: 7 }, limit: 200 });
+    expect(catalogueMocks.listBooks).toHaveBeenCalledWith("/m.db", { century: 5, categoryId: 7 }, 200, 0);
+  });
+
+  it("catalogue:countBooks forwards the filter and needs a masterDbPath", async () => {
+    await invoke({ action: "catalogue:countBooks", masterDbPath: "/m.db", filter: { query: "بخاري" } });
+    expect(catalogueMocks.countBooks).toHaveBeenCalledWith("/m.db", { query: "بخاري" });
+    await expect(invoke({ action: "catalogue:countBooks", filter: {} })).rejects.toThrow(/masterDbPath/);
   });
 });
 

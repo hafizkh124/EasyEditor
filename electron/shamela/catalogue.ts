@@ -339,6 +339,57 @@ export function listBooksByPeriod(
   return rows.map(mapBook);
 }
 
+export interface BookFilter {
+  authorId?: number;
+  categoryId?: number;
+  /** Author death-century bucket (AH): 1..15, 0 = pre-Islamic, 16 = unknown. */
+  century?: number;
+  /** LIKE against book name / author name / category name. */
+  query?: string;
+}
+
+function bookFilterClause(f: BookFilter): { sql: string; args: unknown[] } {
+  const parts: string[] = ['b.hidden = 0'];
+  const args: unknown[] = [];
+  if (f.authorId != null) {
+    parts.push('b.book_id IN (SELECT book_id FROM author_book WHERE author_id = ? UNION SELECT book_id FROM book WHERE main_author = ?)');
+    args.push(f.authorId, f.authorId);
+  }
+  if (f.categoryId != null) { parts.push('b.book_category = ?'); args.push(f.categoryId); }
+  if (f.century != null) {
+    if (f.century <= 0) parts.push('b.book_date <= 0');
+    else if (f.century >= 16) parts.push('b.book_date >= 99999');
+    else parts.push(`b.book_date > ${(f.century - 1) * 100} AND b.book_date <= ${f.century * 100}`);
+  }
+  if (f.query && f.query.trim()) {
+    const p = `%${f.query.trim()}%`;
+    parts.push('(b.book_name LIKE ? OR a.author_name LIKE ? OR b.authors LIKE ? OR c.category_name LIKE ?)');
+    args.push(p, p, p, p);
+  }
+  return { sql: parts.join(' AND '), args };
+}
+
+/** Flexible book query — AND-combines author / category / century / keyword.
+ *  Phase 4 scope resolution + the Browse-tab catalogue search both use this. */
+export function listBooks(masterDbPath: string, filter: BookFilter, limit = 100, offset = 0): ShamelaBook[] {
+  const db = getCatalogueDb(masterDbPath);
+  const { sql, args } = bookFilterClause(filter);
+  const rows = db.prepare(`${BOOK_SELECT} WHERE ${sql} ORDER BY b.book_name LIMIT ? OFFSET ?`).all(...args, limit, offset) as any[];
+  return rows.map(mapBook);
+}
+
+export function countBooks(masterDbPath: string, filter: BookFilter): number {
+  const db = getCatalogueDb(masterDbPath);
+  const { sql, args } = bookFilterClause(filter);
+  const row = db.prepare(`
+    SELECT COUNT(*) AS n FROM book b
+    LEFT JOIN author a ON b.main_author = a.author_id
+    LEFT JOIN category c ON b.book_category = c.category_id
+    WHERE ${sql}
+  `).get(...args) as { n: number };
+  return row?.n ?? 0;
+}
+
 // ─── PDF / covers (SPEC-M6 Phase 10) ────────────────────────────────────────
 
 export interface ShamelaPdfFile {

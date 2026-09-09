@@ -9,7 +9,7 @@
  * split (Phase 1b) reuses the same component.
  */
 import React from "react";
-import { FileText, Table2, ListChecks, ListTree, GitCompare, Captions, ClipboardList, ExternalLink } from "lucide-react";
+import { FileText, Table2, ListChecks, ListTree, GitCompare, Captions, ClipboardList, ExternalLink, GitFork, UserSquare } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { classifyHadithGrade, GRADE_FAMILY_STYLE } from "@/lib/citations/hadithGrade";
@@ -25,6 +25,9 @@ const ICON: Record<AgentArtifactType, React.ComponentType<{ className?: string }
   index: ListTree,
   transcript: Captions,
   plan: ClipboardList,
+  "sanad-tree": GitFork,
+  "matn-diff": GitCompare,
+  "narrator-card": UserSquare,
 };
 
 const AgentArtifactPanel: React.FC<{ artifacts: ArtifactState[] }> = ({ artifacts }) => {

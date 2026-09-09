@@ -52,12 +52,15 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
     selectedCategory, selectedAuthor, selectedPeriod,
     books, booksLoading,
     openCategory, openAuthor, openPeriod, goBackToBrowse,
+    catalogueQuery, setCatalogueQuery, catalogueResults, catalogueSearching, clearCatalogueSearch,
   } = useCatalogueBrowser();
 
   const handleSelectBook = (book: CatalogueBook) => {
     onNavigate?.();
     onSelectBook?.(String(book.id));
   };
+
+  const searching = catalogueQuery.trim().length >= 2;
 
   // ── View: drilling into a category/author/period's book list ────────────
   if (selectedCategory || selectedAuthor || selectedPeriod) {
@@ -140,6 +143,71 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
   // ── View: browse landing (categories / authors / periods) ──────────────
   return (
     <div className="flex flex-col h-full">
+      {/* Universal catalogue search — book title / author / category name. */}
+      {available && (
+        <div className="p-2 border-b border-border">
+          <div className="relative">
+            <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={catalogueQuery}
+              onChange={(e) => setCatalogueQuery(e.target.value)}
+              placeholder={t("library.catalogue_search_placeholder", "کتاب، مصنف یا کیٹگری کا نام…")}
+              className="h-8 text-xs ps-8 pe-8"
+            />
+            {catalogueQuery && (
+              <button
+                type="button"
+                onClick={clearCatalogueSearch}
+                aria-label={t("common.clear", "صاف کریں")}
+                className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <ChevronRight className="h-3.5 w-3.5 rotate-45" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {searching ? (
+        <ScrollArea className="flex-1 min-h-0">
+          {catalogueSearching && catalogueResults.books.length + catalogueResults.authors.length + catalogueResults.categories.length === 0 ? (
+            <p className="p-3 text-xs text-muted-foreground">{t("common.searching", "تلاش…")}</p>
+          ) : catalogueResults.books.length + catalogueResults.authors.length + catalogueResults.categories.length === 0 ? (
+            <EmptyState icon={Search} title={t("library.no_results_title", "کوئی نتیجہ نہیں")} description={t("library.catalogue_no_results", "کوئی کتاب، مصنف یا کیٹگری اس نام سے نہیں ملی۔")} />
+          ) : (
+            <div className="p-2 space-y-3">
+              {catalogueResults.categories.length > 0 && (
+                <ResultGroup label={t("library.categories_tab", "کیٹگریز")}>
+                  {catalogueResults.categories.map((c) => (
+                    <ResultRow key={`c-${c.id}`} icon={FolderTree} title={c.name}
+                      subtitle={t("library.book_count", "{count} books").replace("{count}", c.bookCount.toLocaleString())}
+                      onClick={() => { clearCatalogueSearch(); openCategory(c); }} />
+                  ))}
+                </ResultGroup>
+              )}
+              {catalogueResults.authors.length > 0 && (
+                <ResultGroup label={t("library.authors_tab", "مصنفین")}>
+                  {catalogueResults.authors.map((a) => (
+                    <ResultRow key={`a-${a.id}`} icon={User} title={a.name}
+                      subtitle={t("library.author_book_count", "{count} book(s)").replace("{count}", String(a.bookCount))}
+                      onClick={() => { clearCatalogueSearch(); openAuthor(a); }} />
+                  ))}
+                </ResultGroup>
+              )}
+              {catalogueResults.books.length > 0 && (
+                <ResultGroup label={t("library.tab_docs", "کتب")}>
+                  {catalogueResults.books.map((b) => (
+                    <ResultRow key={`b-${b.id}`} icon={BookOpen} title={b.title}
+                      subtitle={[b.author, b.deathYear != null && b.deathYear < 99999 ? t("library.death_ah", "d. {year} AH").replace("{year}", String(b.deathYear)) : null].filter(Boolean).join(" · ")}
+                      onClick={() => handleSelectBook(b)} />
+                  ))}
+                </ResultGroup>
+              )}
+            </div>
+          )}
+        </ScrollArea>
+      ) : (
+      <>
       <div className="px-2 pt-2 pb-1.5 border-b border-border">
         <div className="grid grid-cols-3 gap-1 rounded-md bg-muted p-0.5">
           {([
@@ -263,9 +331,32 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
           )}
         </ScrollArea>
       )}
+      </>
+      )}
     </div>
   );
 };
+
+const ResultGroup: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div>
+    <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">{label}</p>
+    <div className="space-y-0.5">{children}</div>
+  </div>
+);
+
+const ResultRow: React.FC<{ icon: React.ComponentType<{ className?: string }>; title: string; subtitle?: string; onClick: () => void }> = ({ icon: Icon, title, subtitle, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-start hover:bg-accent hover:text-accent-foreground transition-colors"
+  >
+    <span className="rounded-md bg-primary/10 p-1.5 shrink-0"><Icon className="h-3.5 w-3.5 text-primary" /></span>
+    <span className="flex-1 min-w-0">
+      <span className="block text-xs font-medium truncate">{title}</span>
+      {subtitle && <span className="block text-xs text-muted-foreground truncate">{subtitle}</span>}
+    </span>
+  </button>
+);
 
 /**
  * Phase 10 — author list grouped by Arabic letter badge. When searching, the
