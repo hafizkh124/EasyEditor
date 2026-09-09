@@ -14,6 +14,7 @@ import { LibraryPanel } from "./LibraryPanel";
 import { CanvasPanel } from "./CanvasPanel";
 import { WorkbenchPanel } from "./WorkbenchPanel";
 import { CommandPalette } from "./CommandPalette";
+import { WorkspaceStatusBar } from "./WorkspaceStatusBar";
 import { useDocument } from "@/core/workspace/useDocument";
 import { countWords } from "@/core/workspace/documentService";
 import type { DocChangePayload } from "@/components/editor/RichEditor";
@@ -275,6 +276,13 @@ export const WorkspaceLayout: React.FC = () => {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+
+      {/* Plan §3.2 — bottom status bar: local corpora + open-document state */}
+      <WorkspaceStatusBar
+        wordCount={liveWordCount}
+        direction={doc?.text_direction === "rtl" || doc?.text_direction === "ltr" ? doc.text_direction : null}
+        saveStatus={saveStatus}
+      />
 
       {/* Spotlight Command Palette */}
       <CommandPalette />

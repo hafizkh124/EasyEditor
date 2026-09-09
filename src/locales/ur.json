@@ -1715,5 +1715,11 @@
   "jkhssn.rebuild": "انڈیکس دوبارہ بنائیں",
   "library.catalogue_search_placeholder": "کتاب، مصنف یا کیٹگری کا نام…",
   "library.catalogue_no_results": "کوئی کتاب، مصنف یا کیٹگری اس نام سے نہیں ملی۔",
-  "common.clear": "صاف کریں"
+  "common.clear": "صاف کریں",
+  "connectors.shamela.label": "مکتبہ شاملہ",
+  "workspace.connect": "جوڑیں",
+  "workspace.save_saving": "محفوظ ہو رہا ہے…",
+  "workspace.save_saved": "محفوظ",
+  "workspace.save_error": "محفوظ نہیں ہوا",
+  "workspace.word_count": "الفاظ {n}"
 }
