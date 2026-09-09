@@ -230,9 +230,11 @@ async function searchOn(
   host: string,
   query: string,
   limit: number,
+  deadline: number,
 ): Promise<string[]> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8_000);
+  const timeout = setTimeout(() => controller.abort(), Math.min(5_000, Math.max(1_000, deadline - Date.now())));
+
   try {
     const { url, init } = engine.build(`site:${host} ${query}`);
     const res = await fetch(url, { ...init, signal: controller.signal });
@@ -328,11 +330,23 @@ const SITE_SEARCH: Record<string, SiteSearch> = {
 const ASSET_RE = /\.(png|jpe?g|gif|svg|webp|css|js|ico|woff2?|ttf|xml|pdf|zip|mp3|mp4)$/i;
 const homeLinkCache = new Map<string, Set<string>>();
 
-async function pageLinks(url: string, host: string): Promise<string[]> {
+/**
+ * Every request carries a wall-clock deadline. Before this existed the search
+ * step alone could burn 20s (native) + 3×8s (engine fallbacks) while the
+ * caller (islamic-search) aborted the whole Tier C fan-out at 8s — so live
+ * fatwa citations effectively never arrived. Each network step now gets
+ * `min(its own cap, time actually left)`, and steps are skipped outright once
+ * too little is left to be useful.
+ */
+function msLeft(deadline: number): number {
+  return deadline - Date.now();
+}
+
+async function pageLinks(url: string, host: string, deadline: number): Promise<string[]> {
+  const budget = Math.min(9_000, msLeft(deadline));
+  if (budget < 1_500) return [];
   const controller = new AbortController();
-  // 20s, not 10s: urdufatwa's search page is ~165 KB of RTL HTML and reliably
-  // took longer than 10s from the edge — the abort looked like a site failure.
-  const timeout = setTimeout(() => controller.abort(), 20_000);
+  const timeout = setTimeout(() => controller.abort(), budget);
   try {
     const res = await fetch(url, { headers: { "User-Agent": BROWSER_UA }, signal: controller.signal });
     clearTimeout(timeout);
@@ -367,11 +381,11 @@ async function pageLinks(url: string, host: string): Promise<string[]> {
   }
 }
 
-async function searchNative(host: string, query: string, limit: number): Promise<string[]> {
+async function searchNative(host: string, query: string, limit: number, deadline: number): Promise<string[]> {
   const cfg = SITE_SEARCH[host];
   if (!cfg) return [];
 
-  const found = await pageLinks(cfg.url(query), host);
+  const found = await pageLinks(cfg.url(query), host, deadline);
   if (found.length === 0) return [];
 
   if (cfg.pattern) {
@@ -380,21 +394,25 @@ async function searchNative(host: string, query: string, limit: number): Promise
 
   let chrome = homeLinkCache.get(host);
   if (!chrome) {
-    chrome = new Set(await pageLinks(cfg.home ?? `https://${host}/`, host));
+    chrome = new Set(await pageLinks(cfg.home ?? `https://${host}/`, host, deadline));
     homeLinkCache.set(host, chrome);
   }
   return found.filter((u) => !chrome!.has(u) && !u.includes("/search")).slice(0, limit);
 }
 
-async function searchSite(host: string, query: string, limit: number): Promise<string[]> {
-  const native = await searchNative(host, query, limit);
+async function searchSite(host: string, query: string, limit: number, deadline: number): Promise<string[]> {
+  const native = await searchNative(host, query, limit, deadline);
   if (native.length > 0) return native;
   for (const engine of SEARCH_ENGINES) {
-    const urls = await searchOn(engine, host, query, limit);
+    // Leave room for at least one fetchAndExtract afterwards, otherwise a
+    // successful search would be useless.
+    if (msLeft(deadline) < 6_000) break;
+    const urls = await searchOn(engine, host, query, limit, deadline);
     if (urls.length > 0) return urls;
   }
   return [];
 }
+
 
 // ── Step 2: fetch + readability-style extraction ────────────────────────────
 const NOISE_SELECTORS = "script, style, nav, header, footer, aside, form, button, svg, noscript, iframe";
@@ -437,9 +455,12 @@ function extractArticle(html: string): { title: string; text: string } | null {
   return { title: title.slice(0, 200), text };
 }
 
-async function fetchAndExtract(url: string): Promise<{ title: string; text: string } | null> {
+async function fetchAndExtract(url: string, deadline: number): Promise<{ title: string; text: string } | null> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6_000);
+  const budget = Math.min(6_000, deadline - Date.now());
+  if (budget < 1_000) return null;
+  const timeout = setTimeout(() => controller.abort(), budget);
+
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": BROWSER_UA },
@@ -468,10 +489,12 @@ async function scrapeDomain(
   key: string,
   cfg: DomainConfig,
   query: string,
+  deadline: number,
   diag?: ScrapeDiagnostic[],
 ): Promise<IslamicResult[]> {
-  const urls = await searchSite(cfg.host, query, 2);
-  const pages = await Promise.allSettled(urls.map((u) => fetchAndExtract(u)));
+  const urls = await searchSite(cfg.host, query, 2, deadline);
+  const pages = await Promise.allSettled(urls.map((u) => fetchAndExtract(u, deadline)));
+
   if (diag) {
     diag.push({
       domain: key,
@@ -522,9 +545,14 @@ export async function handle(req: Request): Promise<Response> {
       : SUPPORTED_DOMAINS;
 
     const diagnostics: ScrapeDiagnostic[] | undefined = debug === true ? [] : undefined;
+    // Whole-request wall clock. Kept just under the caller's own abort
+    // (islamic-search: 15s) so we always return partial results rather than
+    // having the caller drop the entire Tier C fan-out.
+    const deadline = Date.now() + 13_000;
     const settled = await Promise.allSettled(
-      targets.map((key) => scrapeDomain(key, DOMAINS[key], query, diagnostics)),
+      targets.map((key) => scrapeDomain(key, DOMAINS[key], query, deadline, diagnostics)),
     );
+
 
     const results: IslamicResult[] = [];
     for (const r of settled) {
