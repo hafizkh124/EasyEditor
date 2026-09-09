@@ -1715,5 +1715,11 @@
   "jkhssn.rebuild": "إعادة بناء الفهرس",
   "library.catalogue_search_placeholder": "اسم كتاب أو مؤلف أو تصنيف…",
   "library.catalogue_no_results": "لا يوجد كتاب أو مؤلف أو تصنيف بهذا الاسم.",
-  "common.clear": "مسح"
+  "common.clear": "مسح",
+  "connectors.shamela.label": "المكتبة الشاملة",
+  "workspace.connect": "اتصال",
+  "workspace.save_saving": "جارٍ الحفظ…",
+  "workspace.save_saved": "محفوظ",
+  "workspace.save_error": "لم يُحفظ",
+  "workspace.word_count": "{n} كلمة"
 }

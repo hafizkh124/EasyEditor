@@ -82,7 +82,7 @@ export function JkhssnConnectPanel() {
         <Badge variant="outline" className={badge.cls}>{badge.label}</Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-md border border-border bg-muted/30 p-2.5">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-md border border-border bg-muted p-2.5">
         {row(diag?.catalogFound ?? null, t("jkhssn.check_data", "HadithDB فولڈر"))}
         {row((diag?.readableTables ?? 0) > 0 ? true : diag ? false : null, t("jkhssn.check_tables", "قابلِ مطالعہ جداول"))}
         {row(avail.indexBuilt, t("jkhssn.check_index", "انڈیکس تیار"))}

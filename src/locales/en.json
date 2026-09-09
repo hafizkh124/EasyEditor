@@ -1715,5 +1715,11 @@
   "jkhssn.rebuild": "Rebuild index",
   "library.catalogue_search_placeholder": "Book, author or category name…",
   "library.catalogue_no_results": "No book, author or category matches that name.",
-  "common.clear": "Clear"
+  "common.clear": "Clear",
+  "connectors.shamela.label": "Maktaba Shamela",
+  "workspace.connect": "Connect",
+  "workspace.save_saving": "Saving…",
+  "workspace.save_saved": "Saved",
+  "workspace.save_error": "Not saved",
+  "workspace.word_count": "{n} words"
 }
