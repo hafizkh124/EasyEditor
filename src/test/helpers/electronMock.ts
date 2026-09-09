@@ -34,6 +34,7 @@ export interface ElectronMock {
     getVersion: ReturnType<typeof vi.fn>;
     /** Defaults to throwing — tests that need a real path override this per file. */
     getPath: ReturnType<typeof vi.fn>;
+    getAppPath: ReturnType<typeof vi.fn>;
   };
   BrowserWindow: {
     getFocusedWindow: ReturnType<typeof vi.fn>;
@@ -60,6 +61,7 @@ export function createElectronMock(): ElectronMock {
       getPath: vi.fn((key: string) => {
         throw new Error(`electronMock: app.getPath("${key}") has no default — set it in the test file`);
       }),
+      getAppPath: vi.fn(() => process.cwd()),
     },
     BrowserWindow: {
       getFocusedWindow: vi.fn(() => null),
