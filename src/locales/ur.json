@@ -1700,5 +1700,17 @@
   "shamelaCloud.retry": "دوبارہ کوشش",
   "shamelaCloud.waitingForBrowser": "آپ کے براؤزر میں لاگ اِن صفحہ کھلا ہے — رسائی کی اجازت دیں، پھر یہاں واپس آئیں۔",
   "shamelaCloud.quotaNote": "مفت خدمت، فی اکاؤنٹ حصہ کے ساتھ: فی سوال ایک بیچ، اس سے کم ایک مستقل شرح، اور روزانہ کی حد۔ حد سے تجاوز پر درخواست مسترد، بمع دوبارہ کوشش کا وقت۔",
-  "shamelaCloud.opensBrowserOnce": "لاگ اِن صفحہ آپ کے براؤزر میں ایک بار کھلتا ہے۔"
+  "shamelaCloud.opensBrowserOnce": "لاگ اِن صفحہ آپ کے براؤزر میں ایک بار کھلتا ہے۔",
+  "connectors.jkhssn.desc": "جوامع الكلم کا مقامی حدیث انجن — شجرۂ اسناد، 30 ہزار رواۃ کے تراجم مع مراتبِ ابن حجر و ذہبی اور جرح و تعدیل، تخریج، احکامِ ائمہ و علل، اور فقہی و موضوعی اشاریہ۔ آف لائن۔ راویوں کے نام اور متن کارپس سے مکمل کیے جاتے ہیں۔",
+  "jkhssn.title": "جوامع الكلم — تخریج و اسناد",
+  "jkhssn.desktop_only": "جوامع الكلم انجن صرف ڈیسک ٹاپ ایپ میں دستیاب ہے۔",
+  "jkhssn.status_ready": "متصل",
+  "jkhssn.status_building": "انڈیکس بن رہا ہے",
+  "jkhssn.status_off": "غیر متصل",
+  "jkhssn.check_data": "HadithDB فولڈر",
+  "jkhssn.check_tables": "قابلِ مطالعہ جداول",
+  "jkhssn.check_index": "انڈیکس تیار",
+  "jkhssn.check_fresh": "انڈیکس تازہ",
+  "jkhssn.building": "شروع ہو رہا ہے…",
+  "jkhssn.rebuild": "انڈیکس دوبارہ بنائیں"
 }

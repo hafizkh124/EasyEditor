@@ -22,7 +22,7 @@ import type { Playbook } from '../playbooks/registry.js';
 export const FLOOR_TOOLS = ['list_capabilities', 'read_document', 'search_corpus'] as const;
 
 /** Tools whose results may become a footnote (grow as tiers land). `research_topic` gathers sources into the same ledger. */
-export const CITABLE_SEARCH_TOOLS = ['search_corpus', 'search_shamela', 'query_tafseer', 'search_hadith', 'grade_hadith', 'lookup_narrator', 'lookup_lexicon', 'search_persian_poetry', 'lookup_urdu_verse', 'research_topic'] as const;
+export const CITABLE_SEARCH_TOOLS = ['search_corpus', 'search_shamela', 'query_tafseer', 'search_hadith', 'grade_hadith', 'lookup_narrator', 'lookup_lexicon', 'search_persian_poetry', 'lookup_urdu_verse', 'research_topic', 'jkhssn_narrator', 'jkhssn_takhrij', 'jkhssn_judgments'] as const;
 
 export interface DomainRule {
   /** Matched case-insensitively against the ask (substring). */
@@ -71,8 +71,9 @@ const DOMAIN_RULES: DomainRule[] = [
     keywords: [
       'درجہ حدیث', 'درجۃ الحدیث', 'صحت حدیث', 'حکم الحدیث', 'حكم الحديث', 'خلاصة حكم', 'is this hadith authentic',
       'is this hadith sahih', 'ضعیف ہے', 'صحیح ہے', 'موضوع ہے', 'hadith grade', 'grade of this hadith', 'authenticity of the hadith',
+      'علت', 'علل', 'ادراج', 'مدرج', 'ilal', 'illah',
     ],
-    tools: ['grade_hadith', 'search_hadith', 'search_shamela', 'insert_footnote'],
+    tools: ['grade_hadith', 'jkhssn_judgments', 'jkhssn_takhrij', 'search_hadith', 'search_shamela', 'insert_footnote'],
     connector: 'dorar',
   },
   {
@@ -80,15 +81,24 @@ const DOMAIN_RULES: DomainRule[] = [
     keywords: [
       'راوی کا حال', 'راوی کے حالات', 'ترجمة الراوي', 'ترجمہ راوی', 'جرح و تعدیل', 'جرح وتعديل', 'اسماء الرجال', 'أسماء الرجال',
       'ثقہ ہے', 'ثقة أم', 'ضعيف الحديث', 'تهذيب الكمال', 'شیوخه', 'تلاميذه', 'شيوخ الراوي', 'narrator reliability', 'narrator biography',
-      'is this narrator', 'who did this narrator', 'raawi ka haal', 'کتنی احادیث روایت',
+      'is this narrator', 'who did this narrator', 'raawi ka haal', 'کتنی احادیث روایت', 'مرتبہ', 'تقریب', 'طبقہ',
     ],
-    tools: ['lookup_narrator', 'search_hadith', 'search_shamela', 'insert_footnote'],
+    tools: ['lookup_narrator', 'jkhssn_narrator', 'search_hadith', 'search_shamela', 'insert_footnote'],
     connector: 'rijal',
   },
   {
-    keywords: ['حدیث', 'حديث', 'سند', 'اسناد', 'راوی', 'رواة', 'جرح', 'تعدیل', 'hadith', 'hadeeth', 'isnad', 'sanad', 'rijal', 'rawi', 'takhrij', 'تخریج', 'takhreej'],
-    tools: ['search_hadith', 'grade_hadith', 'lookup_narrator', 'search_shamela', 'search_general', 'insert_footnote', 'add_document_comment'],
+    keywords: ['حدیث', 'حديث', 'سند', 'اسناد', 'راوی', 'رواة', 'جرح', 'تعدیل', 'hadith', 'hadeeth', 'isnad', 'sanad', 'rijal', 'rawi', 'takhrij', 'تخریج', 'takhreej', 'شجرہ', 'شجرۂ', 'مدار', 'مدارِ'],
+    tools: ['search_hadith', 'grade_hadith', 'lookup_narrator', 'jkhssn_sanad_tree', 'jkhssn_takhrij', 'jkhssn_narrator', 'search_shamela', 'search_general', 'insert_footnote', 'add_document_comment'],
     connector: 'hadith',
+  },
+  {
+    // ADR-0045 — navigating جوامع الكلم's own fiqh / thematic index.
+    keywords: [
+      'موضوعاتی', 'موضوعی اشاریہ', 'ابواب الفقہ', 'ابواب فقہ', 'کتاب الطہارۃ', 'باب سے احادیث', 'thematic hadith', 'hadith on the topic of',
+      'فہرست موضوعات', 'اشاریہ موضوعات', 'فقہی ابواب',
+    ],
+    tools: ['jkhssn_thematic', 'jkhssn_takhrij', 'search_hadith', 'search_shamela', 'insert_footnote'],
+    connector: 'jkhssn',
   },
   {
     keywords: ['نظرثانی', 'نگران', 'supervisor', 'audit', 'مراجعة', 'تقييم', 'review my', 'تنقیدی', 'تحقیق', 'مسودہ', 'محقق', 'muhaqqiq', 'نقد', 'critique', 'critical review'],
@@ -169,6 +179,8 @@ export const NATIVE_ONLY_TOOLS = new Set<string>([
   // Word's own diff engine (word.compareManuscripts) — not in the M10 plan's
   // table verbatim, but it is exactly as Word-COM-bound as the tools above.
   'compare_manuscript_variants',
+  // ADR-0045 — the جوامع الكلم engine is a bundled local SQLite index, desktop only.
+  'jkhssn_sanad_tree', 'jkhssn_narrator', 'jkhssn_takhrij', 'jkhssn_judgments', 'jkhssn_thematic',
 ]);
 
 export interface ScopeContext {

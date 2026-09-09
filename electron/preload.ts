@@ -208,6 +208,40 @@ const electronAPI = {
     },
   },
 
+  jkhssn: {
+    detect: (): Promise<import('../shared/jkhssn/types').JkhssnStatus> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'detect' }),
+    diagnose: (): Promise<import('../shared/jkhssn/types').JkhssnDiagnostics> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'diagnose' }),
+    savePath: (path: string): Promise<import('../shared/jkhssn/types').JkhssnStatus> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'savePath', path }),
+    rebuildIndex: (withMatnComparison?: boolean): Promise<{ ok?: boolean; error?: string; rowCounts?: Record<string, number>; skipped?: string[]; elapsedMs?: number }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'rebuildIndex', withMatnComparison }),
+    cancelRebuild: (): Promise<{ cancelled: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'cancelRebuild' }),
+    onIndexProgress: (cb: (p: import('../shared/jkhssn/types').JkhssnIndexProgress) => void): (() => void) => {
+      const listener = (_e: unknown, data: import('../shared/jkhssn/types').JkhssnIndexProgress) => cb(data);
+      ipcRenderer.on(ALLOWED_IPC_CHANNELS.JKHSSN_INDEX_PROGRESS, listener);
+      return () => ipcRenderer.removeListener(ALLOWED_IPC_CHANNELS.JKHSSN_INDEX_PROGRESS, listener);
+    },
+    axisSanadTree: (q: { hadithMainId?: number; chainNodeId?: number }): Promise<import('../shared/jkhssn/types').SanadTreePayload> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'axisSanadTree', ...q }),
+    axisNarrator: (q: { rawyId?: number; nameQuery?: string }): Promise<import('../shared/jkhssn/types').NarratorCardPayload | null> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'axisNarrator', ...q }),
+    axisTakhrij: (hadithMainId: number): Promise<import('../shared/jkhssn/types').TakhrijPayload> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'axisTakhrij', hadithMainId }),
+    axisMatnCompare: (groupId: number): Promise<import('../shared/jkhssn/types').MatnComparePayload> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'axisMatnCompare', groupId }),
+    axisJudgments: (hadithMainId: number): Promise<import('../shared/jkhssn/types').JudgmentsPayload> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'axisJudgments', hadithMainId }),
+    axisThematic: (q: { subjectId?: number; query?: string }): Promise<import('../shared/jkhssn/types').ThematicPayload> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'axisThematic', ...q }),
+    fts: (query: string, kinds: string[], limit?: number): Promise<Array<{ kind: string; refId: number; text: string | null }>> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'fts', query, kinds, limit }),
+    searchBooks: (query: string, limit?: number): Promise<import('../shared/jkhssn/types').JkhssnBookHit[]> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.JKHSSN_INVOKE, { action: 'searchBooks', query, limit }),
+  },
+
   tafsir: {
     // SPEC-TAFSIR §FR-4 — all actions travel a single allowlisted channel.
     ping: (mode?: 'remote' | 'local'): Promise<{ ok: boolean; mode: 'remote' | 'local'; latencyMs: number | null; error?: string }> =>

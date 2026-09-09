@@ -69,12 +69,16 @@ export type DispatchFn = (name: string, args: Record<string, unknown>) => Promis
  */
 export type AgentArtifactType =
   | 'document' | 'table' | 'citation-list' | 'outline' | 'index'
-  | 'comparison' | 'transcript' | 'plan';
+  | 'comparison' | 'transcript' | 'plan'
+  // ADR-0045 — JKHSSN visualisations (rendered by the artifact stage in Phase 5).
+  | 'sanad-tree' | 'matn-diff' | 'narrator-card';
 
 export type AgentArtifactEvent =
   | { op: 'open'; artifactId: string; title: string; artifactType: AgentArtifactType }
   | { op: 'delta'; artifactId: string; mode: 'append' | 'replace'; html?: string; text?: string; anchor?: string }
   | { op: 'table'; artifactId: string; columns: string[]; rows: string[][]; caption?: string }
+  /** Structured payload for a visualisation artifact (sanad-tree nodes, etc.). */
+  | { op: 'data'; artifactId: string; payload: unknown }
   | {
       op: 'citations';
       artifactId: string;

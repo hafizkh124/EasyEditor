@@ -208,6 +208,8 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     // ADR-0044 — the local-first Shamela router reads these.
     shamelaLocalEnabled: connectors['shamela'] !== false,
     shamelaCloudEnabled: connectors['shamela-cloud'] === true,
+    // ADR-0045 — the جوامع الكلم engine.
+    jkhssnEnabled: connectors['jkhssn'] !== false,
   };
   const { dispatch } = createDispatcher(session);
 

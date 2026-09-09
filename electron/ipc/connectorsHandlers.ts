@@ -74,8 +74,16 @@ async function probe(id: string): Promise<HealthResult> {
       }
       return { ok: null, detail: 'not detected' };
     }
-    case 'local-file':
+    case 'local-file': {
+      if (id === 'jkhssn') {
+        const { detectJkhssnInstallation } = await import('../jkhssn/jkhssnNative.js');
+        const s = await detectJkhssnInstallation();
+        if (!s.indexBuilt) return { ok: false, error: s.reason, detail: s.reason ?? 'index not built' };
+        if (s.indexStale) return { ok: null, detail: s.reason ?? 'index stale — rebuild' };
+        return { ok: true, detail: s.dataPath ?? undefined };
+      }
       return { ok: null, detail: 'no index configured yet' };
+    }
     case 'bridged':
       return { ok: null, detail: 'checked at query time via your signed-in session' };
     case 'compute':

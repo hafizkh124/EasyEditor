@@ -31,6 +31,8 @@ export interface ArtifactState {
   table?: { columns: string[]; rows: string[][]; caption?: string };
   citations?: ArtifactCitationEntry[];
   targetChapter?: string;
+  /** ADR-0045 — structured payload for a visualisation artifact. */
+  data?: unknown;
 }
 
 /** Fold one artifact event into the ordered artifact list. */
@@ -57,6 +59,9 @@ export function applyArtifactEvent(prev: ArtifactState[], ev: AgentArtifactEvent
     }
     case "table":
       at({ table: { columns: ev.columns, rows: ev.rows, caption: ev.caption } });
+      break;
+    case "data":
+      at({ data: ev.payload });
       break;
     case "citations":
       at({ citations: ev.entries });

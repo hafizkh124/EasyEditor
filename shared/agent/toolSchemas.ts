@@ -125,6 +125,56 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'read',
   },
   {
+    name: 'jkhssn_narrator',
+    description: "Look up a narrator in the LOCAL جوامع الكلم engine: their ṭabaqa, death year, Ibn Ḥajar's التقريب formula, al-Dhahabī's rank, the full jarḥ-wa-taʿdīl verdict list WITH each critic's own words, and teacher/student counts. A citable source, offline. Complements lookup_narrator (which searches other rijāl works) — call BOTH for an important narrator and reconcile. Do NOT use to grade a whole hadith or for tafsīr. Narrator display names come from a separate lookup — expect Arabic name forms.",
+    params: {
+      name: { type: 'string', description: 'The narrator in Arabic (e.g. "شعبة بن الحجاج", "الأعمش").' },
+      aspect: { type: 'string', description: 'Focus (default all).', enum: ['biography', 'jarh', 'teachers', 'students', 'all'] },
+    },
+    required: ['name'],
+    effect: 'read',
+  },
+  {
+    name: 'jkhssn_sanad_tree',
+    description: "Build the isnād (sanad) tree for a hadith from the LOCAL جوامع الكلم engine — the chain(s) of narrators from the Companion down to the collector, with each link tagged marfūʿ / mawqūf / maqṭūʿ. Structural, not textual. Prefer a hadith_main_id from a prior jkhssn_takhrij; free text is best-effort — if it can't resolve, ask the scholar for the collection + printed number. Do NOT use for a narrator biography (jkhssn_narrator) or a grading (grade_hadith).",
+    params: {
+      hadith_main_id: { type: 'number', description: 'The جوامع الكلم hadith id (from jkhssn_takhrij / jkhssn_thematic).' },
+      hadith_text: { type: 'string', description: 'A distinctive Arabic phrase — best-effort fallback when no id is known.' },
+    },
+    required: [],
+    effect: 'read',
+  },
+  {
+    name: 'jkhssn_takhrij',
+    description: "Takhrīj from the LOCAL جوامع الكلم engine: every place a hadith (and the others sharing its matn group) appears, which books, and جوامع الكلم's own service flags (has isnād analysis, has ʿilal, is gharīb, degree). Offline, citable. Takes a hadith_main_id, or a book + printed number, or best-effort free text. Complements grade_hadith (which gives الدرر السنية's verdict) — this gives the cross-collection map.",
+    params: {
+      hadith_main_id: { type: 'number', description: 'The جوامع الكلم hadith id.' },
+      hadith_text: { type: 'string', description: 'A distinctive Arabic phrase — best-effort fallback.' },
+    },
+    required: [],
+    effect: 'read',
+  },
+  {
+    name: 'jkhssn_judgments',
+    description: "The imams' rulings and ʿilal notes on a specific hadith from the LOCAL جوامع الكلم engine — each scholar's verbatim words (e.g. \"هذا إسناد منقطع\", \"صحيح على شرط الشيخين\"). Offline, citable. Complements grade_hadith: grade_hadith gives الدرر السنية's summary verdict, this gives the classical critics' full statements. Needs a hadith_main_id (from jkhssn_takhrij) or best-effort free text.",
+    params: {
+      hadith_main_id: { type: 'number', description: 'The جوامع الكلم hadith id.' },
+      hadith_text: { type: 'string', description: 'A distinctive Arabic phrase — best-effort fallback.' },
+    },
+    required: [],
+    effect: 'read',
+  },
+  {
+    name: 'jkhssn_thematic',
+    description: "Navigate جوامع الكلم's fiqh / thematic index (LOCAL): drill from a subject node to its children and, at a leaf, the hadith ids under it. With a query, matches جوامع الكلم's own book-section headings. Offline. Use to find every hadith on a fiqh topic within the engine, then jkhssn_takhrij / jkhssn_sanad_tree on the results. Not a substitute for search_hadith (which searches full text across all corpora).",
+    params: {
+      query: { type: 'string', description: 'A fiqh topic / chapter heading, in Arabic.' },
+      subject_id: { type: 'number', description: 'A جوامع الكلم subject-tree node id to drill into.' },
+    },
+    required: [],
+    effect: 'read',
+  },
+  {
     name: 'search_persian_poetry',
     description: "Search Persian (Fārsī) poetry through Ganjoor — Rūmī, Saʿdī, Ḥāfiẓ, ʿAṭṭār, Jāmī, and Iqbāl's Persian dīwāns. Returns verses with the poet, the work, and a ganjoor.net link — a citable source. Persian ONLY. Do NOT use for Urdu poetry (lookup_urdu_verse), for Arabic, or for prose.",
     params: {
