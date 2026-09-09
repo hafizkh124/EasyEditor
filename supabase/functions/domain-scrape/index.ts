@@ -230,9 +230,11 @@ async function searchOn(
   host: string,
   query: string,
   limit: number,
+  deadline: number,
 ): Promise<string[]> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8_000);
+  const timeout = setTimeout(() => controller.abort(), Math.min(5_000, Math.max(1_000, deadline - Date.now())));
+
   try {
     const { url, init } = engine.build(`site:${host} ${query}`);
     const res = await fetch(url, { ...init, signal: controller.signal });
