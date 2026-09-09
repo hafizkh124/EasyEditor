@@ -106,9 +106,15 @@ export interface ShamelaClient {
    *  Lucene-backed name search. Desktop is unaffected (it lists all). */
   authors(limit?: number, offset?: number): Promise<CatalogueAuthor[]>;
   searchAuthors(query: string, limit?: number, offset?: number): Promise<CatalogueAuthor[]>;
+  /** LIKE against book name / author name / category name. Desktop-only for now
+   *  (the web bridge has no equivalent) — returns [] on web. */
+  searchBooks(query: string, limit?: number, offset?: number): Promise<CatalogueBook[]>;
   booksByAuthor(authorId: number, limit?: number, offset?: number): Promise<CatalogueBook[]>;
   periods(): Promise<CataloguePeriod[]>;
   booksByPeriod(century: number, limit?: number, offset?: number): Promise<CatalogueBook[]>;
+  /** Flexible AND-combined filter (author/category/century/keyword). Desktop-only. */
+  listBooks(filter: { authorId?: number; categoryId?: number; century?: number; query?: string }, limit?: number, offset?: number): Promise<CatalogueBook[]>;
+  countBooks(filter: { authorId?: number; categoryId?: number; century?: number; query?: string }): Promise<number>;
 
   /** Table of contents for one book, flat and page-ordered (depth 0 = top level). */
   readToc(bookId: string): Promise<ReaderTocEntry[]>;
@@ -164,9 +170,12 @@ function createElectronClient(): ShamelaClient {
       withMasterDb((p, api) => api.booksByCategory(p, categoryId, limit, offset), []),
     authors: (limit, offset) => withMasterDb((p, api) => api.authors(p, limit, offset), []),
     searchAuthors: (query, limit, offset) => withMasterDb((p, api) => api.searchAuthors(p, query, limit, offset), []),
+    searchBooks: (query, limit, offset) => withMasterDb((p, api) => api.searchBooks(p, query, limit, offset), []),
     booksByAuthor: (authorId, limit, offset) => withMasterDb((p, api) => api.booksByAuthor(p, authorId, limit, offset), []),
     periods: () => withMasterDb((p, api) => api.periods(p), []),
     booksByPeriod: (century, limit, offset) => withMasterDb((p, api) => api.booksByPeriod(p, century, limit, offset), []),
+    listBooks: (filter, limit, offset) => withMasterDb((p, api) => api.listBooks(p, filter, limit, offset), []),
+    countBooks: (filter) => withMasterDb((p, api) => api.countBooks(p, filter), 0),
     // Reader IPC (readPage/readToc/pageCount) doesn't need masterDbPath —
     // shamelaHandlers.ts's reader cases take bookId directly.
     async readToc(bookId) {
@@ -237,11 +246,25 @@ function createBridgeClient(): ShamelaClient {
     authors: (limit = 100, offset = 0) => bridgeFetch(`/catalogue/authors?limit=${limit}&offset=${offset}`, []),
     searchAuthors: (query, limit = 100, offset = 0) =>
       bridgeFetch(`/catalogue/authors?q=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`, []),
+    searchBooks: (query, limit = 50, offset = 0) =>
+      bridgeFetch(`/catalogue/books?q=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`, []),
     booksByAuthor: (authorId, limit = 100, offset = 0) =>
       bridgeFetch(`/catalogue/books?authorId=${authorId}&limit=${limit}&offset=${offset}`, []),
     periods: () => bridgeFetch("/catalogue/periods", []),
     booksByPeriod: (century, limit = 100, offset = 0) =>
       bridgeFetch(`/catalogue/books?century=${century}&limit=${limit}&offset=${offset}`, []),
+    // The web bridge has no flexible filter endpoint — degrade to a keyword search.
+    listBooks: (filter, limit = 100, offset = 0) =>
+      filter.query
+        ? bridgeFetch(`/catalogue/books?q=${encodeURIComponent(filter.query)}&limit=${limit}&offset=${offset}`, [])
+        : filter.authorId != null
+          ? bridgeFetch(`/catalogue/books?authorId=${filter.authorId}&limit=${limit}&offset=${offset}`, [])
+          : filter.categoryId != null
+            ? bridgeFetch(`/catalogue/books?categoryId=${filter.categoryId}&limit=${limit}&offset=${offset}`, [])
+            : filter.century != null
+              ? bridgeFetch(`/catalogue/books?century=${filter.century}&limit=${limit}&offset=${offset}`, [])
+              : Promise.resolve([]),
+    countBooks: async (filter) => (await (bridgeFetch(`/catalogue/books?q=${encodeURIComponent(filter.query ?? '')}&limit=1000`, []) as Promise<unknown[]>)).length,
     readToc: (bookId) => bridgeFetch(`/reader/toc?bookId=${bookId}`, []),
     readPage: (bookId, pageNumber) =>
       bridgeFetch(`/reader/page?bookId=${bookId}&pageNumber=${pageNumber}`, null),

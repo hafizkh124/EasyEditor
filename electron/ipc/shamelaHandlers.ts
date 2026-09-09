@@ -22,6 +22,8 @@ import {
   listBooksByAuthor,
   listPeriods,
   listBooksByPeriod,
+  listBooks,
+  countBooks,
   getBookPdfInfo,
   readBookPdfFile,
   closeCatalogueDb,
@@ -160,6 +162,22 @@ export function registerShamelaHandlers(): void {
           const offset = typeof payload.offset === 'number' ? payload.offset : 0;
           if (!masterDbPath) throw new Error('masterDbPath is required');
           return listBooksByPeriod(masterDbPath, century, limit, offset);
+        }
+
+        case 'catalogue:listBooks': {
+          const masterDbPath = String(payload.masterDbPath || '');
+          if (!masterDbPath) throw new Error('masterDbPath is required');
+          const filter = (payload.filter && typeof payload.filter === 'object' ? payload.filter : {}) as Record<string, number | string>;
+          const limit = typeof payload.limit === 'number' ? payload.limit : 100;
+          const offset = typeof payload.offset === 'number' ? payload.offset : 0;
+          return listBooks(masterDbPath, filter, limit, offset);
+        }
+
+        case 'catalogue:countBooks': {
+          const masterDbPath = String(payload.masterDbPath || '');
+          if (!masterDbPath) throw new Error('masterDbPath is required');
+          const filter = (payload.filter && typeof payload.filter === 'object' ? payload.filter : {}) as Record<string, number | string>;
+          return countBooks(masterDbPath, filter);
         }
 
         // ── PDF / covers (SPEC-M6 Phase 10) ───────────────────────

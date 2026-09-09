@@ -1510,10 +1510,10 @@
   "library.tab_docs": "Docs",
   "library.tab_browse": "Browse",
   "library.tab_shamela": "Shamela",
-  "library.tab_sources": "Sources",
+  "library.tab_sources": "Personal Library",
   "library.tab_graph": "Graph",
   "library.tab_recipes": "Recipes",
-  "library.corpus_title": "Library (Personal Corpus)",
+  "library.corpus_title": "Personal Library",
   "library.upload_book": "Upload book",
   "library.loading": "Loading…",
   "library.corpus_empty": "Your personal library is empty",
@@ -1712,5 +1712,8 @@
   "jkhssn.check_index": "Index built",
   "jkhssn.check_fresh": "Index up to date",
   "jkhssn.building": "Starting…",
-  "jkhssn.rebuild": "Rebuild index"
+  "jkhssn.rebuild": "Rebuild index",
+  "library.catalogue_search_placeholder": "Book, author or category name…",
+  "library.catalogue_no_results": "No book, author or category matches that name.",
+  "common.clear": "Clear"
 }

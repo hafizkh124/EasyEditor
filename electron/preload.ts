@@ -183,6 +183,10 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:periods', masterDbPath }),
     booksByPeriod: (masterDbPath: string, century: number, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; deathYear: number | null; bookType: number | null; info: string | null }>> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:booksByPeriod', masterDbPath, century, limit, offset }),
+    listBooks: (masterDbPath: string, filter: { authorId?: number; categoryId?: number; century?: number; query?: string }, limit?: number, offset?: number): Promise<Array<{ id: number; title: string; author: string | null; category: string | null; deathYear: number | null; bookType: number | null; info: string | null }>> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:listBooks', masterDbPath, filter, limit, offset }),
+    countBooks: (masterDbPath: string, filter: { authorId?: number; categoryId?: number; century?: number; query?: string }): Promise<number> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SHAMELA_INVOKE, { action: 'catalogue:countBooks', masterDbPath, filter }),
 
     // ── PDF / covers (SPEC-M6 Phase 10) ─────────────────────────
     bookPdfInfo: (masterDbPath: string, bookId: number): Promise<{ available: boolean; files: Array<{ fileIndex: number; name: string; path: string; size: number }>; coverPage: number | null }> =>

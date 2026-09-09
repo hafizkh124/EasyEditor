@@ -54,6 +54,16 @@ export function useCatalogueBrowser() {
   const [books, setBooks] = useState<CatalogueBook[]>([]);
   const [booksLoading, setBooksLoading] = useState(false);
 
+  // A universal catalogue search that spans books + authors + categories, so
+  // finding "that book" or "that author" doesn't mean drilling the tree.
+  const [catalogueQuery, setCatalogueQuery] = useState("");
+  const [catalogueResults, setCatalogueResults] = useState<{
+    books: CatalogueBook[];
+    authors: CatalogueAuthor[];
+    categories: CatalogueCategory[];
+  }>({ books: [], authors: [], categories: [] });
+  const [catalogueSearching, setCatalogueSearching] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     const detect = async () => {
@@ -174,6 +184,40 @@ export function useCatalogueBrowser() {
     loadAuthors(query);
   }, [loadAuthors]);
 
+  // Debounced universal search. Categories are already loaded (41 of them), so
+  // they're filtered client-side; books + authors go to the catalogue.
+  useEffect(() => {
+    const q = catalogueQuery.trim();
+    if (!available || q.length < 2) {
+      setCatalogueResults({ books: [], authors: [], categories: [] });
+      return;
+    }
+    let cancelled = false;
+    setCatalogueSearching(true);
+    const handle = setTimeout(async () => {
+      try {
+        const client = getShamelaClient();
+        const [books, authors] = await Promise.all([
+          client.searchBooks(q, 50),
+          client.searchAuthors(q, 40),
+        ]);
+        if (cancelled) return;
+        const cats = categories.filter((c) => c.name.includes(q));
+        setCatalogueResults({ books, authors, categories: cats });
+      } catch (err) {
+        if (!cancelled) setError(message(err, "Search failed."));
+      } finally {
+        if (!cancelled) setCatalogueSearching(false);
+      }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [catalogueQuery, available, categories]);
+
+  const clearCatalogueSearch = useCallback(() => {
+    setCatalogueQuery("");
+    setCatalogueResults({ books: [], authors: [], categories: [] });
+  }, []);
+
   return {
     available, detecting, error,
     mode, setMode,
@@ -183,5 +227,6 @@ export function useCatalogueBrowser() {
     selectedCategory, selectedAuthor, selectedPeriod,
     books, booksLoading,
     openCategory, openAuthor, openPeriod, goBackToBrowse,
+    catalogueQuery, setCatalogueQuery, catalogueResults, catalogueSearching, clearCatalogueSearch,
   };
 }

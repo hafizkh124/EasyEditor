@@ -1510,10 +1510,10 @@
   "library.tab_docs": "دستاویزات",
   "library.tab_browse": "براؤز",
   "library.tab_shamela": "شاملہ",
-  "library.tab_sources": "مآخذ",
+  "library.tab_sources": "ذاتی لائبریری",
   "library.tab_graph": "گراف",
   "library.tab_recipes": "ریسیپیز",
-  "library.corpus_title": "کتب خانہ (Personal Corpus)",
+  "library.corpus_title": "ذاتی لائبریری",
   "library.upload_book": "کتاب اپلوڈ کریں",
   "library.loading": "لوڈ ہو رہا ہے…",
   "library.corpus_empty": "آپ کا ذاتی کتب خانہ خالی ہے",
@@ -1712,5 +1712,8 @@
   "jkhssn.check_index": "انڈیکس تیار",
   "jkhssn.check_fresh": "انڈیکس تازہ",
   "jkhssn.building": "شروع ہو رہا ہے…",
-  "jkhssn.rebuild": "انڈیکس دوبارہ بنائیں"
+  "jkhssn.rebuild": "انڈیکس دوبارہ بنائیں",
+  "library.catalogue_search_placeholder": "کتاب، مصنف یا کیٹگری کا نام…",
+  "library.catalogue_no_results": "کوئی کتاب، مصنف یا کیٹگری اس نام سے نہیں ملی۔",
+  "common.clear": "صاف کریں"
 }

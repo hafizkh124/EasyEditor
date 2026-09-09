@@ -1510,10 +1510,10 @@
   "library.tab_docs": "المستندات",
   "library.tab_browse": "تصفح",
   "library.tab_shamela": "الشاملة",
-  "library.tab_sources": "المصادر",
+  "library.tab_sources": "مكتبتي الخاصة",
   "library.tab_graph": "الرسم البياني",
   "library.tab_recipes": "الخطوط",
-  "library.corpus_title": "المكتبة (المجموعة الشخصية)",
+  "library.corpus_title": "مكتبتي الخاصة",
   "library.upload_book": "رفع كتاب",
   "library.loading": "جارٍ التحميل…",
   "library.corpus_empty": "مكتبتك الشخصية فارغة",
@@ -1712,5 +1712,8 @@
   "jkhssn.check_index": "الفهرس مبني",
   "jkhssn.check_fresh": "الفهرس محدَّث",
   "jkhssn.building": "جارٍ البدء…",
-  "jkhssn.rebuild": "إعادة بناء الفهرس"
+  "jkhssn.rebuild": "إعادة بناء الفهرس",
+  "library.catalogue_search_placeholder": "اسم كتاب أو مؤلف أو تصنيف…",
+  "library.catalogue_no_results": "لا يوجد كتاب أو مؤلف أو تصنيف بهذا الاسم.",
+  "common.clear": "مسح"
 }
