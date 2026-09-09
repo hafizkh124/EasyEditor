@@ -565,11 +565,12 @@ export async function handle(req: Request): Promise<Response> {
             apikey: supabaseKey,
           },
           body: JSON.stringify({ query, selectedDomains: tierCDomains }),
-          // 8s caller-side budget. The free scraper's own per-domain timeouts
-          // (5s search + 6s fetch, run in parallel across domains via
-          // Promise.allSettled) are tighter than the old Firecrawl call's
-          // 25s, so this margin is if anything more comfortable than before.
-          signal: AbortSignal.timeout(8_000),
+          // 15s caller-side budget, matched to the scraper's own 13s internal
+          // wall clock (it bounds every search/fetch step against that
+          // deadline and returns partial results). An 8s abort here used to
+          // kill the whole Tier C fan-out before any site could answer.
+          signal: AbortSignal.timeout(15_000),
+
         })
           .then((r) => r.ok ? r.json() : { results: [] })
           .then((d) => d.results ?? [])
