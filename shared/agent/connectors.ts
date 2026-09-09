@@ -128,12 +128,16 @@ export const CONNECTORS: Connector[] = [
     tools: ['search_hadith'],
   },
   {
+    // `grade_hadith` reaches dorar.net through the signed-in research bridge
+    // (the edge function's IP is not Cloudflare-blocked, unlike many residential
+    // ones) with a direct in-process fetch as a fallback — so health is
+    // "checked at query time", not a standalone HTTP probe (ADR-0040 amended).
     id: 'dorar',
     label: 'الدرر السنية — Dorar',
     category: 'hadith-rijal',
     descriptionKey: 'connectors.dorar.desc',
     icon: 'scale',
-    healthKind: 'http',
+    healthKind: 'bridged',
     tools: ['grade_hadith'],
   },
   {

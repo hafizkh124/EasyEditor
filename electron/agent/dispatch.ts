@@ -797,26 +797,70 @@ export function createDispatcher(session: AgentSession): Dispatcher {
       case 'grade_hadith': {
         const text = str(args.text, 'text');
         const limit = num(args.limit, 5);
-        const r = await gradeHadith({ text, limit });
-        if (r.error) return { error: r.error };
-        ledger.add(r.chunks);
-        if (r.chunks.length) {
-          const artifactId = `grade-${Date.now().toString(36)}`;
-          emitArtifact({ op: 'open', artifactId, title: `تخریج و درجہ: ${text.slice(0, 40)}`, artifactType: 'citation-list' });
-          emitArtifact({
-            op: 'citations', artifactId,
-            entries: r.chunks.map((c, i) => ({
-              marker: String(i + 1), reference: c.reference, sourceId: c.id,
-              supported: true, tier: 1, grade: c.grade,
-              excerpt: (c.content ?? '').slice(0, 400) || undefined,
-            })),
-          });
-          emitArtifact({ op: 'close', artifactId, status: 'final' });
+
+        // dorar.net Cloudflare-hard-blocks many residential IPs (a bare 403 on
+        // every path, headers don't help) — the direct in-process fetch (ADR-0040)
+        // fails for those users. The signed-in research bridge reaches الدرر
+        // السنية through the edge function's datacenter IP, which is not blocked.
+        // Bridge first; the direct adapter is the fallback (headless, or an IP
+        // that CAN reach dorar.net, and it also carries the matn text).
+        const chunks: RetrievedChunk[] = [];
+        let note: string | undefined;
+
+        if (researchSearch) {
+          try {
+            const rb = await researchSearch('islamic', text);
+            if (!rb.error) {
+              for (const c of rb.citations ?? []) {
+                if (c.domain !== 'dorar') continue;
+                const ref = formatScholarlyRef(c.citation_ref, c.domain);
+                if (!ref) continue;
+                const key = c.citation_ref.hadith_number ?? chunks.length + 1;
+                chunks.push({
+                  id: `dorar:${c.citation_ref.collection ?? c.citation_ref.book ?? 'x'}:${key}`,
+                  reference: `${ref} (الدرر السنية)`,
+                  grade: c.citation_ref.grade,
+                  source_url: c.url ?? c.citation_ref.url ?? null,
+                  bibliographic: true, // the bridge carries the ref + الحكم, not the matn
+                });
+                if (chunks.length >= limit) break;
+              }
+            }
+          } catch (err) {
+            log.warn('grade_hadith bridge lookup failed, trying direct', { message: (err as Error).message });
+          }
         }
+
+        if (chunks.length === 0) {
+          const direct = await gradeHadith({ text, limit });
+          if (direct.error) {
+            if (!researchSearch) return { error: direct.error };
+            note = 'الدرر السنية could not be reached directly, and the research session returned no grading for that text — try search_hadith instead.';
+          } else {
+            chunks.push(...direct.chunks);
+            note = direct.note;
+          }
+        }
+
+        if (chunks.length === 0) {
+          return { count: 0, note: note ?? 'الدرر السنية returned no grading for that text.' };
+        }
+        ledger.add(chunks);
+        const artifactId = `grade-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `تخریج و درجہ: ${text.slice(0, 40)}`, artifactType: 'citation-list' });
+        emitArtifact({
+          op: 'citations', artifactId,
+          entries: chunks.map((c, i) => ({
+            marker: String(i + 1), reference: c.reference, sourceId: c.id,
+            supported: true, tier: 1, grade: c.grade,
+            excerpt: (c.content ?? '').slice(0, 400) || undefined,
+          })),
+        });
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
         return {
-          count: r.chunks.length,
-          note: r.note,
-          results: r.chunks.map((c) => ({ id: c.id, reference: c.reference, grade: c.grade, excerpt: (c.content ?? '').slice(0, 400) })),
+          count: chunks.length,
+          note,
+          results: chunks.map((c) => ({ id: c.id, reference: c.reference, grade: c.grade, excerpt: (c.content ?? '').slice(0, 400) })),
         };
       }
 
