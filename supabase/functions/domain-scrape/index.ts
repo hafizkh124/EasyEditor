@@ -455,9 +455,12 @@ function extractArticle(html: string): { title: string; text: string } | null {
   return { title: title.slice(0, 200), text };
 }
 
-async function fetchAndExtract(url: string): Promise<{ title: string; text: string } | null> {
+async function fetchAndExtract(url: string, deadline: number): Promise<{ title: string; text: string } | null> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6_000);
+  const budget = Math.min(6_000, deadline - Date.now());
+  if (budget < 1_000) return null;
+  const timeout = setTimeout(() => controller.abort(), budget);
+
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": BROWSER_UA },
