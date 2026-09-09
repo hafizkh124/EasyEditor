@@ -1,6 +1,26 @@
 # ADR 0040 — الدرر السنية as a standalone connector, and `grade_hadith`
 
-**Status:** Accepted · **Date:** 2026-09-09 · **Milestone:** Connectors Hub (Phase 4) · **Extends:** [ADR-0028](./0028-m9-federated-knowledge-tiers.md), [ADR-0037](./0037-connectors-hub-and-curated-registry.md)
+**Status:** Accepted (amended 2026-09-09) · **Date:** 2026-09-09 · **Milestone:** Connectors Hub (Phase 4) · **Extends:** [ADR-0028](./0028-m9-federated-knowledge-tiers.md), [ADR-0037](./0037-connectors-hub-and-curated-registry.md)
+
+## Amendment (2026-09-09) — bridge-first, not direct-first
+
+QA on a real desktop install: `dorar.net` now Cloudflare-**hard**-blocks the
+request (HTTP 403 on *every* path including the homepage — a WAF/IP rule, not a
+solvable challenge; no header set clears it) from many residential IPs. The
+"direct in-process fetch" this ADR chose was dead for those users, and the Hub
+card showed a red "server returned 403".
+
+The deployed edge function's datacenter IP is **not** blocked (verified: 200 +
+real grading JSON). So `grade_hadith` is now **bridge-first**: it calls the
+signed-in research bridge (`researchSearch('islamic', text)` → `islamic-search`
+Tier A → `islamic-api-fetch` → `fetchDorar`), filters the result to
+`domain === 'dorar'`, and keeps `citation_ref.grade`. The direct in-process
+`gradeHadith()` adapter (which still carries the matn text) stays as the
+**fallback** — for headless runs and for IPs that *can* reach dorar.net.
+Bridge chunks are `bibliographic: true` (the bridge carries the ref + الحكم, not
+the matn). The connector's `healthKind` becomes `bridged` and its `HEALTH_PROBE`
+entry is removed, so the card reads "checked when used" like the other
+bridge-backed connectors.
 
 ## Context
 
@@ -83,10 +103,14 @@ rules route a *grading* ask to `grade_hadith` and a *topical* hadith search to
 - The parse depends on dorar.net's HTML structure inside `ahadith.result`. If
   they change it the regex yields nothing (a clean "no narrations" note, not a
   crash) — a small, well-understood fix, as history shows.
-- Two code paths reach Dorar. Documented here so it is not "refactored away".
-- `healthKind: 'http'` shows green on a 200 even if Cloudflare served a
-  challenge page; acceptable for a liveness dot (the real call re-checks the
-  JSON shape).
+- Two code paths reach Dorar (bridge + direct fallback). Documented here so it
+  is not "refactored away".
+- Bridge chunks lack the matn, so a `grade_hadith` citation is bibliographic
+  (reference + الحكم, no claim-checked quote) unless the direct fallback ran.
+  The direct path still has the matn.
+- `grade_hadith` now needs a signed-in session for its primary path — same
+  constraint as `search_hadith` / `lookup_narrator` (headless falls back to the
+  direct fetch, which works only where dorar.net is reachable).
 
 ## Follow-ups
 

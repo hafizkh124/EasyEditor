@@ -23,17 +23,10 @@ const log = logger.child('ipc/connectors');
 /** Fixed health probes for `healthKind: 'http'` connectors (a cheap GET). */
 const HEALTH_PROBE: Record<string, { url: string; headers?: Record<string, string> }> = {
   repositories: { url: 'https://archive.org/advancedsearch.php?q=title:test&rows=0&output=json' },
-  dorar: {
-    url: 'https://dorar.net/dorar_api.json?skey=%D8%A7%D9%84%D8%B5%D8%AF%D9%82%D8%A9',
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      Accept: 'application/json, text/plain, */*',
-      'Accept-Language': 'ar,en;q=0.9',
-      Referer: 'https://dorar.net/',
-    },
-  },
   ganjoor: { url: GANJOOR_HEALTH_URL },
+  // NOTE: no `dorar` — dorar.net Cloudflare-blocks a standalone server probe
+  // (403 on every path). `grade_hadith` goes through the research bridge; the
+  // connector is `healthKind: 'bridged'` (ADR-0040 amended).
 };
 
 const HTTP_TIMEOUT_MS = 12_000;

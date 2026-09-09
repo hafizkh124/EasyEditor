@@ -108,6 +108,15 @@ const queryTafseer: ReturnType<typeof vi.fn> = vi.fn(async () => ({
 }));
 vi.mock('../../electron/agent/adapters/tafsir.ts', () => ({ queryTafseer }));
 
+// ADR-0040 (amended) — the direct dorar.net fetch is the fallback path for
+// grade_hadith; mock it so tests never hit the network.
+const gradeHadith: ReturnType<typeof vi.fn> = vi.fn(async () => ({
+  chunks: [] as Array<{ id: string; reference: string; content?: string; grade?: string }>,
+  note: undefined as string | undefined,
+  error: undefined as string | undefined,
+}));
+vi.mock('../../electron/agent/adapters/dorar.ts', () => ({ gradeHadith }));
+
 let createDispatcher: typeof import('../../electron/agent/dispatch.ts').createDispatcher;
 
 beforeEach(async () => {
@@ -211,6 +220,43 @@ describe('agent dispatch', () => {
     const { dispatch } = mk({ researchSearch: null });
     const r = await dispatch('search_hadith', { query: 'x' }) as { error?: string };
     expect(r.error).toMatch(/Agent panel/);
+  });
+
+  // ── ADR-0040 (amended): grade_hadith is bridge-first ─────────────────────
+  it('grade_hadith takes الدرر السنية rows from the research bridge (dorar.net is IP-blocked)', async () => {
+    const researchSearch = vi.fn(async () => ({
+      answer: '…',
+      citations: [
+        { domain: 'dorar', citation_ref: { book: 'التمهيد', hadith_number: '21/270', grade: 'خطأ في إسناده', rawi: 'أبو سعيد', mohdith: 'ابن عبدالبر' }, url: 'https://dorar/1' },
+        { domain: 'hadith', citation_ref: { collection: 'البخاري', hadith_number: 1, grade: 'صحيح' } }, // not dorar → ignored
+      ],
+    }));
+    const { dispatch, ledger } = mk({ researchSearch });
+    const r = await dispatch('grade_hadith', { text: 'إنما الأعمال بالنيات' }) as { count: number; results: Array<{ id: string; grade?: string; reference: string }> };
+    expect(researchSearch).toHaveBeenCalledWith('islamic', 'إنما الأعمال بالنيات');
+    expect(gradeHadith).not.toHaveBeenCalled();          // bridge answered → no direct fetch
+    expect(r.count).toBe(1);
+    expect(r.results[0].id).toMatch(/^dorar:/);
+    expect(r.results[0].grade).toBe('خطأ في إسناده');
+    expect(r.results[0].reference).toMatch(/الدرر السنية/);
+    expect(ledger.size).toBe(1);
+  });
+
+  it('grade_hadith falls back to the direct adapter when the bridge has no dorar rows', async () => {
+    const researchSearch = vi.fn(async () => ({ answer: '…', citations: [{ domain: 'hadith', citation_ref: { collection: 'البخاري', hadith_number: 1 } }] }));
+    gradeHadith.mockResolvedValueOnce({ chunks: [{ id: 'dorar:abc123', reference: 'صحيح البخاري ١ — الحكم: صحيح (الدرر السنية)', content: 'متن', grade: 'صحيح' }], note: undefined, error: undefined });
+    const { dispatch } = mk({ researchSearch });
+    const r = await dispatch('grade_hadith', { text: 'نية' }) as { count: number; results: Array<{ grade?: string }> };
+    expect(gradeHadith).toHaveBeenCalled();
+    expect(r.count).toBe(1);
+    expect(r.results[0].grade).toBe('صحيح');
+  });
+
+  it('grade_hadith with no bridge uses the direct adapter and surfaces its error', async () => {
+    gradeHadith.mockResolvedValueOnce({ chunks: [], error: 'الدرر السنية returned HTTP 403' });
+    const { dispatch } = mk({ researchSearch: null });
+    const r = await dispatch('grade_hadith', { text: 'نية' }) as { error?: string };
+    expect(r.error).toMatch(/403/);
   });
 
   it('lookup_narrator builds a rijāl-shaped query and maps citations to citable chunks (ADR-0041)', async () => {
