@@ -125,6 +125,16 @@ const GATE_GUIDANCE: Record<string, string> = {
     "This request is Qur'anic / lexical. Use query_tafseer together with the local gold-standard search (search_corpus / search_shamela). Do NOT call the hadith connector or any poetry connector.",
   hadith:
     'This request is about hadith. Use search_hadith together with search_shamela. Do NOT call query_tafseer or a lexicon / poetry connector.',
+  dorar:
+    'This request is about a hadith’s authenticity or takhrīj. grade_hadith (الدرر السنية) is the single best tool — report الحكم exactly as it gives it, never your own verdict. Do NOT call query_tafseer, the lexicon, or the poetry connectors.',
+  rijal:
+    'This request is about a narrator (rāwī) — biography, jarḥ wa taʿdīl, teachers/students. Use lookup_narrator (with search_shamela for the printed tarājim). Do NOT grade the whole hadith (grade_hadith) or call query_tafseer / the poetry connectors.',
+  lexicon:
+    'This request is a lexical meaning of an Arabic word. Use lookup_lexicon (and query_tafseer only for a Qur’anic root). Do NOT call the hadith, rijāl, or poetry connectors, and never invent a gloss.',
+  ganjoor:
+    'This request is about Persian poetry. Use search_persian_poetry (Ganjoor). Do NOT call the Urdu-prosody connector, the Arabic source connectors, or query_tafseer.',
+  'urdu-prosody':
+    'This request is Urdu/Persian metre or an Urdu verse lookup. Use scan_urdu_prosody / lookup_urdu_verse — present any scan as a machine reading to check, never a verdict. Do NOT call search_persian_poetry or the Arabic source connectors.',
   repositories:
     'This request is a bibliographic lookup. Use search_repositories (results are bibliographic only — never a claim citation). Do NOT fan out across the tafsir / hadith connectors.',
 };
