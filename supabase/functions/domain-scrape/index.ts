@@ -489,10 +489,12 @@ async function scrapeDomain(
   key: string,
   cfg: DomainConfig,
   query: string,
+  deadline: number,
   diag?: ScrapeDiagnostic[],
 ): Promise<IslamicResult[]> {
-  const urls = await searchSite(cfg.host, query, 2);
-  const pages = await Promise.allSettled(urls.map((u) => fetchAndExtract(u)));
+  const urls = await searchSite(cfg.host, query, 2, deadline);
+  const pages = await Promise.allSettled(urls.map((u) => fetchAndExtract(u, deadline)));
+
   if (diag) {
     diag.push({
       domain: key,
