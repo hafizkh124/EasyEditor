@@ -262,6 +262,31 @@ describe("AgentPanel", () => {
     resolveRun({ answer: "done", stopReason: "done", steps: 1, toolCalls: [] });
   });
 
+  it("queues a message typed mid-run and flushes it when the run finishes (M11 Phase 2)", async () => {
+    let resolveRun: (v: unknown) => void = () => {};
+    agentRun
+      .mockImplementationOnce(() => new Promise((r) => { resolveRun = r as (v: unknown) => void; }))
+      .mockResolvedValueOnce({ answer: "second answer", stopReason: "done", steps: 1, toolCalls: [] });
+    renderPanel();
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
+    fireEvent.change(ta, { target: { value: "first question" } });
+    fireEvent.keyDown(ta, { key: "Enter" });
+    await waitFor(() => expect(agentRun).toHaveBeenCalledTimes(1));
+
+    // The textarea is still usable while the run is in flight.
+    const running = screen.getByPlaceholderText(/Queue your next message/);
+    fireEvent.change(running, { target: { value: "follow-up question" } });
+    fireEvent.keyDown(running, { key: "Enter" });
+    // It is held, not sent.
+    expect(agentRun).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("follow-up question")).toBeInTheDocument();
+
+    resolveRun({ answer: "first answer", stopReason: "done", steps: 1, toolCalls: [] });
+    await waitFor(() => expect(agentRun).toHaveBeenCalledTimes(2));
+    expect(agentRun.mock.calls[1][0]).toBe("follow-up question");
+    expect(await screen.findByText("second answer")).toBeInTheDocument();
+  });
+
   it("opens the playbook picker on '/'", async () => {
     renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/);

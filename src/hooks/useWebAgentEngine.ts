@@ -89,6 +89,7 @@ export function useWebAgentEngine() {
             approvalRef.current = settle;
             onProgress({
               kind: "plan-pending", label: "review the plan and approve it to continue",
+              labelKey: "agent.step.plan_pending",
               artifact: { op: "open", artifactId, title: "Proposed plan", artifactType: "plan" },
             });
             onProgress({

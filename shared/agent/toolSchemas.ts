@@ -454,6 +454,22 @@ export const AGENT_TOOLS: AgentTool[] = [
     required: ['chapter', 'mode'],
     effect: 'write',
   },
+
+  // ── M11 Phase 4: Excel write tool (ADR-0048) ────────────────────────
+  {
+    name: 'build_spreadsheet',
+    description: 'Create or update an Excel spreadsheet with structured data. Use for tabular results, financial calculations, or any data that benefits from a spreadsheet format. Writes to the project export/ folder.',
+    params: {
+      filePath: { type: 'string', description: 'Output file path (relative to project export/ folder, e.g. "zakat.xlsx").' },
+      sheets: {
+        type: 'array',
+        description: 'Array of sheet objects, each with a name and 2D data grid.',
+      },
+      format: { type: 'string', enum: ['xlsx', 'csv', 'pdf'], description: 'Output format (default: xlsx).' },
+    },
+    required: ['filePath', 'sheets'],
+    effect: 'write',
+  },
 ];
 
 /**

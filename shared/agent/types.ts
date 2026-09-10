@@ -107,6 +107,12 @@ export interface AgentProgress {
   step?: number;
   /** A short present-tense phrase: "reading the file", "searching Shamela". */
   label?: string;
+  /**
+   * M11 Phase 2 — the i18n key for `label` (`agent.step.<tool>`). `shared/`
+   * can't translate; the renderer does `t(labelKey, label)`, so `label` stays
+   * the English fallback for any key not in the locale.
+   */
+  labelKey?: string;
   kind:
     | 'thinking' | 'tool' | 'tool-result' | 'done' | 'error'
     | 'clarify' | 'artifact' | 'plan-pending'

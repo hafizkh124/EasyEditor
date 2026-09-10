@@ -55,6 +55,21 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
     };
   }, []);
 
+  // M11 Phase 2 bug fix: listen for rerun events from HistoryPanel
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { kind: string; query: string; filters?: Record<string, unknown> } | undefined;
+      if (!detail || detail.kind !== "shamela") return;
+      const q = detail.query ?? "";
+      const useRoot = Boolean(detail.filters?.root);
+      setQuery(q);
+      setRootMode(useRoot);
+      void runSearch(q, useRoot);
+    };
+    window.addEventListener("workspace-rerun-search", handler);
+    return () => window.removeEventListener("workspace-rerun-search", handler);
+  }, []); // runSearch is stable (no deps that change)
+
   // `useRoot` is an explicit parameter, not a read of the `rootMode` state,
   // because the root-search toggle's own handler calls this in the SAME tick
   // it calls setRootMode(next) — reading `rootMode` there would close over the

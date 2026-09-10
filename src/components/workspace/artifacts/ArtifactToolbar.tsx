@@ -26,7 +26,8 @@ export const ArtifactToolbar: React.FC<{
   const [inserted, setInserted] = useState(false);
 
   const svg = () => bodyRef.current?.querySelector("svg") as SVGSVGElement | null;
-  const isVisual = artifact.type === "sanad-tree" || artifact.type === "matn-diff";
+  // M11 Phase 4: tables get PNG/export (ADR-0048)
+  const isVisual = artifact.type === "sanad-tree" || artifact.type === "matn-diff" || artifact.type === "table";
 
   const htmlForCopy = (): string => {
     if (artifact.html) return artifact.html;

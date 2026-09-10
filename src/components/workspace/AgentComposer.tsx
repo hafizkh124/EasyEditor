@@ -1,10 +1,11 @@
 import React, { useRef } from "react";
-import { Send, Loader2, Square, FolderOpen, ScrollText, Mic, Plus, Paperclip, Plug, Hash, X, Book, User, Layers, CalendarClock, Repeat, AtSign } from "lucide-react";
+import { Send, Loader2, Square, Mic, Plus, X, Book, User, Layers, CalendarClock, Repeat, AtSign, Pencil, Hourglass, ScrollText, FolderOpen, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CONNECTORS, isConnectorOn, connectorsByCategory } from "../../../shared/agent/connectors";
+import { CONNECTORS, isConnectorOn } from "../../../shared/agent/connectors";
 import { useAgentRun, type AgentMode, type ScopeTag } from "@/hooks/useAgentRun";
 import { useClampToViewport } from "@/lib/ui/clampToViewport";
 import { ScopeReviewDialog } from "./ScopeReviewDialog";
+import { ComposerHub } from "@/components/composer/ComposerHub";
 
 /** Icon + accent for a scope chip, keyed by kind (colour is never the only signal). */
 function chipStyle(tag: ScopeTag): { icon: React.ReactNode; cls: string } {
@@ -119,55 +120,22 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
           onChange={(e) => { if (e.target.files?.length) void a.importFiles(e.target.files); e.target.value = ""; }}
         />
         {a.hubOpen && (
-          <div ref={hubRef} style={{ transform: hubTransform }} className="absolute bottom-full start-2 mb-1 w-[min(16rem,80vw)] rounded-md border border-border bg-popover p-1 text-xs shadow-md">
-            <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={() => { a.setHubOpen(false); a.fileInputRef.current?.click(); }}>
-              <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              {t("agent.hub_add_files", "Add recordings, scans, fonts…")}
-            </button>
-            <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={() => { a.setHubOpen(false); a.pf.openFolder(); }}>
-              <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              {t("agent.hub_change_folder", "Change project folder")}
-            </button>
-            <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={() => { a.setHubOpen(false); a.updateInput("/", 1); a.taRef.current?.focus(); }}>
-              <ScrollText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              {t("agent.hub_playbooks", "Playbooks  (/)")}
-            </button>
-            <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={() => { a.setHubOpen(false); a.updateInput(`${a.input}${a.input && !a.input.endsWith(" ") ? " " : ""}#`, a.input.length + (a.input && !a.input.endsWith(" ") ? 2 : 1)); a.taRef.current?.focus(); }}>
-              <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              {t("agent.hub_scope", "Books & sources  (#)")}
-            </button>
-            <div className="my-1 border-t border-border" />
-            <p className="flex items-center gap-1.5 px-2 pb-1 pt-0.5 text-muted-foreground">
-              <Plug className="h-3.5 w-3.5 shrink-0" />
-              {t("agent.hub_connectors", "Source connectors")}
-            </p>
-            {connectorsByCategory().map((group) => (
-              <div key={group.category}>
-                <p className="px-2 pt-1 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground/70">
-                  {t(`connectors.category.${group.category}` as import("@/lib/i18n").TranslationKey)}
-                </p>
-                {group.connectors.map((c) => {
-                  const globallyOn = a.connectorGlobal?.[c.id] ?? !c.defaultOff;
-                  const on = a.connectorState?.[c.id] ?? isConnectorOn(a.connectors, c.id);
-                  return (
-                    <label
-                      key={c.id}
-                      className={`flex items-center justify-between rounded px-2 py-1 ${globallyOn ? "cursor-pointer hover:bg-muted" : "cursor-not-allowed opacity-60"}`}
-                      title={globallyOn ? undefined : t("connectors.enable_in_settings")}
-                    >
-                      <span>{c.label}</span>
-                      <input
-                        type="checkbox"
-                        className="accent-primary"
-                        checked={on && globallyOn}
-                        disabled={!globallyOn}
-                        onChange={(e) => void a.toggleConnector(c.id, e.target.checked)}
-                      />
-                    </label>
-                  );
-                })}
-              </div>
-            ))}
+          <div ref={hubRef} style={{ transform: hubTransform }} className="absolute bottom-full start-2 mb-1 w-[min(16rem,80vw)] rounded-md border border-border bg-popover text-xs shadow-md">
+            <ComposerHub
+              showSources
+              showSkills
+              showConnectors
+              showPrompts={false}
+              connectors={a.connectors}
+              connectorGlobal={a.connectorGlobal}
+              connectorState={a.connectorState}
+              onToggleConnector={(id, on) => void a.toggleConnector(id, on)}
+              onAddFiles={() => a.fileInputRef.current?.click()}
+              onChangeFolder={() => a.pf.openFolder()}
+              onOpenPlaybooks={() => { a.updateInput("/", 1); a.taRef.current?.focus(); }}
+              onOpenScope={() => { a.updateInput(`${a.input}${a.input && !a.input.endsWith(" ") ? " " : ""}#`, a.input.length + (a.input && !a.input.endsWith(" ") ? 2 : 1)); a.taRef.current?.focus(); }}
+              onClose={() => a.setHubOpen(false)}
+            />
           </div>
         )}
         {a.picker && a.pickerItems.length > 0 && (
@@ -263,6 +231,29 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
             </button>
           </div>
         )}
+        {/* M11 Phase 2 — a message typed while the run is in flight, held until it finishes. */}
+        {a.queuedMessage && (
+          <div className="mb-1.5 flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-2 py-1 text-xs">
+            <Hourglass className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <span className="flex-1 truncate" title={a.queuedMessage}>{a.queuedMessage}</span>
+            <button
+              className="shrink-0 rounded p-0.5 hover:bg-background/40"
+              onClick={a.editQueued}
+              aria-label={t("agent.queue_edit", "Edit the queued message")}
+              title={t("agent.queue_edit", "Edit the queued message")}
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+            <button
+              className="shrink-0 rounded p-0.5 hover:bg-background/40"
+              onClick={a.cancelQueued}
+              aria-label={t("agent.queue_cancel", "Cancel the queued message")}
+              title={t("agent.queue_cancel", "Cancel the queued message")}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
         <div className="flex items-end gap-1.5">
           <Button
             size="icon"
@@ -289,8 +280,9 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
               if (e.key === "Escape") a.setPicker(null);
             }}
             rows={2}
-            disabled={a.running}
-            placeholder={t("agent.placeholder", "Ask, or describe a task…  @chapter  /playbook")}
+            placeholder={a.running
+              ? t("agent.placeholder_running", "Queue your next message…")
+              : t("agent.placeholder", "Ask, or describe a task…  @chapter  /playbook")}
             className="flex-1 resize-none rounded-md border border-border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
           />
           {a.voice?.transcribe && (

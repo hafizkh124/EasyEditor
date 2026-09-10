@@ -16,6 +16,8 @@ import {
 import { PLAYBOOKS } from "../../shared/playbooks/registry";
 import { applyArtifactEvent, type ArtifactState } from "@/components/workspace/agentArtifactState";
 import { getShamelaClient } from "@/core/shamela/shamelaClient";
+import { deriveRunStats } from "~shared/agent/runStats";
+import { recommendActions, RECOMMENDATION_PROMPT, type RecommendedAction } from "~shared/agent/recommendations";
 
 const log = logger.child("useAgentRun");
 
@@ -23,7 +25,7 @@ const mkTurnId = (): string =>
   `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
 export type AgentMode = "ask" | "plan" | "auto";
-export interface ProgressLine { step: number; label: string; kind: string; detail?: string }
+export interface ProgressLine { step: number; label: string; labelKey?: string; kind: string; detail?: string }
 /**
  * M11 Phase 1 — one finished exchange in the conversation. `agent.run()` is
  * memory-less, so the renderer keeps the thread: past turns render as bubbles
@@ -104,7 +106,7 @@ export type LibraryPickerRow = {
  * the web path never sends.
  */
 interface ProgressEvent {
-  id?: string; step?: number; label?: string; kind: string; detail?: string;
+  id?: string; step?: number; label?: string; labelKey?: string; kind: string; detail?: string;
   requestId?: string; query?: string; question?: string;
   mode?: "general" | "islamic";
   mediaPath?: string; lang?: string;
@@ -143,6 +145,8 @@ export function useAgentRun() {
   // above describe the CURRENT (or most recent) run; `turns` holds every
   // finished run before it, both to render and to feed back as `history`.
   const [turns, setTurns] = useState<AgentTurn[]>([]);
+  // M11 Phase 2 — a message typed while a run is in flight (one slot).
+  const [queuedMessage, setQueuedMessage] = useState<string | null>(null);
   const lastInstructionRef = useRef<string | null>(null);
   const runIdRef = useRef<string | null>(null);
   const [showTools, setShowTools] = useState(false);
@@ -355,10 +359,10 @@ export function useAgentRun() {
     }
     if (p.kind === "plan-pending") {
       setPlanPending(true);
-      if (p.label) setProgress((prev) => [...prev, { step: 0, label: p.label!, kind: "plan-pending" }]);
+      if (p.label) setProgress((prev) => [...prev, { step: 0, label: p.label!, labelKey: p.labelKey, kind: "plan-pending" }]);
       return;
     }
-    setProgress((prev) => [...prev, { step: p.step ?? 0, label: p.label ?? "", kind: p.kind, detail: p.detail }]);
+    setProgress((prev) => [...prev, { step: p.step ?? 0, label: p.label ?? "", labelKey: p.labelKey, kind: p.kind, detail: p.detail }]);
   }, [handleResearch, handleTranscribe, handleOcr]);
 
   useEffect(() => {
@@ -631,13 +635,20 @@ export function useAgentRun() {
   }, []);
   useEffect(() => { clearConversation(); }, [projectRoot, clearConversation]);
 
-  const send = useCallback(async () => {
-    const typed = input.trim();
+  const send = useCallback(async (override?: string) => {
+    const typed = (override ?? input).trim();
     const desktopReady = Boolean(agent && projectRoot);
     // M10 Phase 2.1 — the web path needs no project folder, only an open
     // document; `webAgent.available` already checks agent is absent so the
     // two paths can never both fire for the same send().
-    if (!typed || running || !(desktopReady || webAgent.available)) return;
+    if (!typed || !(desktopReady || webAgent.available)) return;
+    // M11 Phase 2 — a run is in flight: queue this message and flush it when
+    // the run finishes (the effect below). One slot — a second queued message
+    // replaces the first.
+    if (running) {
+      if (!override) { setQueuedMessage(typed); setInput(""); }
+      return;
+    }
     const instruction = typed;
 
     // M11 Phase 1 — fold the previous finished run into the conversation, then
@@ -711,6 +722,28 @@ export function useAgentRun() {
   }, [input, agent, projectRoot, running, mode, pf, result, turns, webAgent, handleProgress, scopeTags]);
 
   const cancel = useCallback(() => { void agent?.cancel(); webAgent.cancel(); }, [agent, webAgent]);
+
+  // M11 Phase 2 — flush the queued message once the current run finishes.
+  // `send` is deliberately kept OUT of the deps (via a ref): it is recreated on
+  // most renders, and depending on it would fire this effect every render —
+  // an update loop, since the effect also triggers setState through `send`.
+  const sendRef = useRef(send);
+  useEffect(() => { sendRef.current = send; });
+  useEffect(() => {
+    if (running || !queuedMessage) return;
+    const next = queuedMessage;
+    setQueuedMessage(null);
+    void sendRef.current(next);
+  }, [running, queuedMessage]);
+
+  const cancelQueued = useCallback(() => setQueuedMessage(null), []);
+  const editQueued = useCallback(() => {
+    if (queuedMessage) setInput(queuedMessage);
+    setQueuedMessage(null);
+    requestAnimationFrame(() => taRef.current?.focus());
+  }, [queuedMessage]);
+  // A fresh conversation drops any pending message too.
+  useEffect(() => { setQueuedMessage(null); }, [projectRoot]);
 
   // ── Voice dictation (existing local Whisper via electron/voice) ───────────
   const voice = typeof window !== "undefined" ? window.electronAPI?.voice : undefined;
@@ -813,6 +846,35 @@ export function useAgentRun() {
     catch (err) { log.error("grant OCR consent failed", { err }); }
   }, [agent, projectRoot]);
 
+  // M11 Phase 2 — live "⚙️ 3 tools · 2 sources" metrics, derived purely from
+  // the progress lines already in state (no IPC change).
+  const runStats = useMemo(() => deriveRunStats(progress), [progress]);
+
+  // M11 Phase 2 — deterministic "what next?" chips after an answer (ADR-0049).
+  const recommendations = useMemo<RecommendedAction[]>(() => {
+    if (running || !result || result.error) return [];
+    return recommendActions({
+      artifacts: artifacts.map((a) => ({ id: a.id, type: a.type })),
+      toolCalls: result.toolCalls,
+      mode,
+      hasProjectFolder: Boolean(projectRoot),
+      activeArtifactId,
+    });
+  }, [running, result, artifacts, mode, projectRoot, activeArtifactId]);
+
+  const applyRecommendation = useCallback((rec: RecommendedAction) => {
+    if (rec.action === "open-artifact") {
+      if (rec.artifactId) {
+        setActiveArtifactId(rec.artifactId);
+        ws?.setStageCollapsed?.(false);
+      }
+      return;
+    }
+    // Pre-fill only — the scholar reviews and sends.
+    setInput(RECOMMENDATION_PROMPT[rec.action]);
+    requestAnimationFrame(() => taRef.current?.focus());
+  }, [ws]);
+
   return {
     t, language, pf, agent, projectRoot,
     // M10 Phase 2.1 — true when this hook can run a real agent turn on web
@@ -828,6 +890,13 @@ export function useAgentRun() {
     // M11 Phase 1 — the finished conversation before the current run.
     turns,
     clearConversation,
+    // M11 Phase 2 — live metrics + deterministic follow-up chips + message queue.
+    runStats,
+    recommendations,
+    applyRecommendation,
+    queuedMessage,
+    cancelQueued,
+    editQueued,
     artifacts,
     activeArtifactId, setActiveArtifactId,
     dismissArtifact,
@@ -889,6 +958,7 @@ export function useAgentRun() {
 export type AgentRunView = Pick<
   ReturnType<typeof useAgentRun>,
   | "turns" | "clearConversation"
+  | "runStats" | "recommendations" | "applyRecommendation"
   | "progress" | "result" | "artifacts" | "planPending"
   | "activeArtifactId" | "setActiveArtifactId" | "dismissArtifact"
   | "progressExpanded" | "setProgressExpanded"
