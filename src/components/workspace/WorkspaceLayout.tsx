@@ -10,11 +10,13 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { WorkspaceTopBar } from "./WorkspaceTopBar";
-import { LibraryPanel } from "./LibraryPanel";
 import { CanvasPanel } from "./CanvasPanel";
 import { WorkbenchPanel } from "./WorkbenchPanel";
 import { CommandPalette } from "./CommandPalette";
 import { WorkspaceStatusBar } from "./WorkspaceStatusBar";
+import { ActivityRail } from "./rail/ActivityRail";
+import { SidePanelHost } from "./rail/SidePanelHost";
+import { useWorkspaceShortcuts } from "@/core/workspace/useWorkspaceShortcuts";
 import { useDocument } from "@/core/workspace/useDocument";
 import { countWords } from "@/core/workspace/documentService";
 import type { DocChangePayload } from "@/components/editor/RichEditor";
@@ -41,6 +43,8 @@ export const WorkspaceLayout: React.FC = () => {
     setMobileLibraryOpen,
     setDocumentOutline,
   } = useWorkspace();
+
+  useWorkspaceShortcuts();
 
   const { allDocs } = useAllDocuments();
   // SPEC M10 Phase 3 — this used to be its own innerWidth<768 state+resize
@@ -181,36 +185,41 @@ export const WorkspaceLayout: React.FC = () => {
           />
         )}
 
+        {/* Plan §3.1 — the activity rail is a fixed flex child OUTSIDE the
+            resizable group (always visible; the side panel collapses, the rail
+            does not). Hidden on mobile — the Library drawer keeps its own
+            header controls there. */}
+        {!isMobile && <ActivityRail />}
+
         <ResizablePanelGroup
           direction="horizontal"
-          autoSaveId="workspace.layout"
+          autoSaveId="workspace.layout.v2"
           className="h-full relative"
         >
-          {/* Pillar 1: Library — a column on desktop, a start-edge drawer on mobile */}
+          {/* Pillar 1: the active rail panel — a column on desktop, a start-edge
+              drawer on mobile. Collapsed to 0 when no rail panel is active. */}
           <ResizablePanel
+            id="side"
             defaultSize={20}
             minSize={15}
-            maxSize={30}
+            maxSize={32}
             collapsible={true}
             className={cn(
-              // Same reasoning as the Workbench panel below: without this the
-              // collapsed 48px width can't actually win against a long book
-              // title's min-content size.
               "min-w-0 bg-sidebar",
-              !isMobile && libraryCollapsed && "max-w-[48px]",
+              !isMobile && libraryCollapsed && "hidden",
               isMobile && "w-[min(20rem,85vw)] border-e border-border shadow-xl transition-transform duration-300",
             )}
             style={isMobile ? drawerStyle(mobileLibraryOpen, "start") : undefined}
             aria-hidden={isMobile && !mobileLibraryOpen}
           >
-            <LibraryPanel
+            <SidePanelHost
               forceExpanded={isMobile}
               onNavigate={isMobile ? () => setMobileLibraryOpen(false) : undefined}
               activeDocumentWordCount={liveWordCount}
             />
           </ResizablePanel>
 
-          <ResizableHandle withHandle className={isMobile ? "hidden" : ""} />
+          <ResizableHandle withHandle className={cn((isMobile || libraryCollapsed) && "hidden")} />
 
           {/* Pillar 2: Canvas — the only pillar left in the flex flow on mobile,
               so it fills the viewport there (FR-8.1) */}

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { type WorkbenchTab, usePanelState } from "./usePanelState";
+import { type WorkbenchTab, type RailPanel, usePanelState } from "./usePanelState";
 
 /** The page the Shamela reader is currently showing (plain text, for AI). */
 export interface ReaderPageSignal {
@@ -39,6 +39,12 @@ interface WorkspaceContextType {
   setActiveDocumentId: (id: string | null) => void;
   
   // Panel states & controls
+  /** Plan §3.1 — the active start-edge rail panel, or null (collapsed to rail). */
+  activeRailPanel: RailPanel | null;
+  setActiveRailPanel: (panel: RailPanel | null) => void;
+  toggleRailPanel: (panel: RailPanel) => void;
+  /** `openRailPanel(id)` — open a panel (never toggles it shut). */
+  openRailPanel: (panel: RailPanel) => void;
   libraryCollapsed: boolean;
   toggleLibrary: () => void;
   workbenchCollapsed: boolean;
@@ -46,6 +52,11 @@ interface WorkspaceContextType {
   setWorkbenchOpen: (open: boolean) => void;
   workbenchTab: WorkbenchTab;
   setWorkbenchTab: (tab: WorkbenchTab) => void;
+  /** Plan §5.2 — artifact stage (vertical split of the Canvas zone). */
+  stageCollapsed: boolean;
+  setStageCollapsed: (collapsed: boolean) => void;
+  stageMaximized: boolean;
+  setStageMaximized: (maximized: boolean) => void;
   /**
    * Mobile only. The Library is a drawer there, so it must start closed even
    * though the desktop column is expanded by default — hence its own flag,
@@ -160,12 +171,20 @@ export const WorkspaceProvider: React.FC<{
       value={{
         activeDocumentId,
         setActiveDocumentId,
+        activeRailPanel: panelState.activeRailPanel,
+        setActiveRailPanel: panelState.setActiveRailPanel,
+        toggleRailPanel: panelState.toggleRailPanel,
+        openRailPanel: panelState.setActiveRailPanel,
         libraryCollapsed: panelState.libraryCollapsed,
         toggleLibrary: panelState.toggleLibrary,
         workbenchCollapsed: panelState.workbenchCollapsed,
         toggleWorkbench: panelState.toggleWorkbench,
         setWorkbenchOpen: panelState.setWorkbenchOpen,
         workbenchTab: panelState.workbenchTab,
+        stageCollapsed: panelState.stageCollapsed,
+        setStageCollapsed: panelState.setStageCollapsed,
+        stageMaximized: panelState.stageMaximized,
+        setStageMaximized: panelState.setStageMaximized,
         setWorkbenchTab: panelState.setWorkbenchTab,
         mobileLibraryOpen,
         setMobileLibraryOpen,

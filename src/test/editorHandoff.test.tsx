@@ -31,6 +31,10 @@ vi.mock("@/components/workspace/WorkspaceLayout", () => ({
 }));
 vi.mock("@/core/workspace/WorkspaceContext", () => ({
   WorkspaceProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useOptionalWorkspace: () => null,
+}));
+vi.mock("@/core/workspace/AgentRunContext", () => ({
+  AgentRunProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("@/hooks/useSeo", () => ({ useSeo: () => {} }));
 vi.mock("@/contexts/LanguageContext", () => ({

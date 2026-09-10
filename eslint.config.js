@@ -138,6 +138,9 @@ export default tseslint.config(
       "src/hooks/useResearchSources.ts",
       "src/lib/research/persistence.ts",
       "src/lib/research/streamers.ts",
+      // search_history — a cloud table like research_sessions, not a
+      // WorkspaceBackend table; degrades to the local SQLite mirror off-cloud.
+      "src/lib/history/searchHistory.ts",
       // ── translation memory (glossary lookups against a hosted-only table) ─
       "src/lib/translationMemory.ts",
       // ── subscription/billing context, used app-wide for gating ────────────

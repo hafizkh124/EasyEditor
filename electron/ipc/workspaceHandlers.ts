@@ -24,6 +24,7 @@ export const ALLOWED_WORKSPACE_METHODS = new Set<string>([
   'snapshotVersion', 'listDocumentVersions',
   'listItems', 'getItem', 'createItem', 'deleteItem',
   'accessItem', 'getRecentItems', 'getLibraryItemCount',
+  'addSearch', 'listSearches', 'removeSearch', 'clearSearches',
   'searchChunks', 'searchChunksByRoot',
   'saveReadingProgress', 'getReadingProgress', 'listReadingProgress',
   'addBookmark', 'removeBookmark', 'isBookmarked', 'listBookmarks',

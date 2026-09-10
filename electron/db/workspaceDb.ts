@@ -8,6 +8,7 @@ import * as recipes from './workspaceStore/recipes.js';
 import * as customTasks from './workspaceStore/customTasks.js';
 import { getCurrentUserId } from './workspaceStore/identity.js';
 import * as accessLog from './workspaceStore/accessLog.js';
+import * as searchHistory from './workspaceStore/searchHistory.js';
 import { searchChunks, searchChunksByRoot, type ChunkSearchHit } from './workspaceStore/search.js';
 import * as readerState from './workspaceStore/readerState.js';
 import { ingestLibraryItem, type IngestBatchArgs, type IngestBatchResult } from './ingest.js';
@@ -159,6 +160,14 @@ export class WorkspaceDbService {
     return annotations.updateAnnotation(this.db, id, updates);
   }
   public async deleteAnnotation(id: string): Promise<void> { return annotations.deleteAnnotation(this.db, id); }
+
+  // ── Search history (plan §3.4) ────────────────────────────────────────────
+  public async addSearch(entry: { kind: string; query: string; filters?: Record<string, unknown>; resultCount?: number | null }): Promise<void> {
+    searchHistory.addSearch(this.db, entry);
+  }
+  public async listSearches(limit?: number): Promise<searchHistory.SearchHistoryRow[]> { return searchHistory.listSearches(this.db, limit); }
+  public async removeSearch(id: string): Promise<void> { searchHistory.removeSearch(this.db, id); }
+  public async clearSearches(): Promise<void> { searchHistory.clearSearches(this.db); }
 
   // ── Task runs ─────────────────────────────────────────────────────────────
   public async listTaskRuns(documentId?: string): Promise<TaskRun[]> { return taskRuns.listTaskRuns(this.db, documentId); }

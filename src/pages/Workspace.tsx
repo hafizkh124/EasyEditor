@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate, useLocation } from "react-rout
 import { toast } from "sonner";
 import { WorkspaceProvider } from "@/core/workspace/WorkspaceContext";
 import { ProjectFolderProvider } from "@/core/projectFolder/ProjectFolderContext";
+import { AgentRunProvider } from "@/core/workspace/AgentRunContext";
 import { WorkspaceLayout } from "@/components/workspace/WorkspaceLayout";
 import { isWorkbenchTab } from "@/core/workspace/usePanelState";
 import { documentService } from "@/core/workspace/documentService";
@@ -101,7 +102,9 @@ const WorkspacePage: React.FC = () => {
       initialWorkbenchTab={workbenchTabFromUrl}
     >
       <ProjectFolderProvider>
-        <WorkspaceLayout />
+        <AgentRunProvider>
+          <WorkspaceLayout />
+        </AgentRunProvider>
       </ProjectFolderProvider>
     </WorkspaceProvider>
   );

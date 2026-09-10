@@ -16,22 +16,34 @@ export function isWorkbenchTab(value: unknown): value is WorkbenchTab {
   return typeof value === "string" && (WORKBENCH_TABS as readonly string[]).includes(value);
 }
 
+// Plan §3.1 — the start-edge activity rail. JKHSSN is a tab inside "library"
+// (مکتبہ), not its own rail icon (§3.0). `null` = the side panel is collapsed
+// to just the 48px rail.
+export type RailPanel = "files" | "library" | "history" | "settings";
+
+const RAIL_PANELS: readonly RailPanel[] = ["files", "library", "history", "settings"];
+
+export function isRailPanel(value: unknown): value is RailPanel {
+  return typeof value === "string" && (RAIL_PANELS as readonly string[]).includes(value);
+}
+
 interface PanelState {
-  libraryWidth: number;
-  workbenchWidth: number;
-  libraryCollapsed: boolean;
+  activeRailPanel: RailPanel | null;
   workbenchCollapsed: boolean;
   workbenchTab: WorkbenchTab;
+  /** Plan §5.2 — the artifact stage (a vertical split of the Canvas zone). */
+  stageCollapsed: boolean;
+  stageMaximized: boolean;
 }
 
 const STORAGE_KEY = "workspace.panels";
 
 const DEFAULT_STATE: PanelState = {
-  libraryWidth: 260,
-  workbenchWidth: 360,
-  libraryCollapsed: false,
+  activeRailPanel: "library",
   workbenchCollapsed: true, // Default closed per Constitution §1.3 (Workbench on Demand)
   workbenchTab: "research",
+  stageCollapsed: false,
+  stageMaximized: false,
 };
 
 function loadStoredState(): PanelState {
@@ -40,11 +52,17 @@ function loadStoredState(): PanelState {
     if (!raw) return DEFAULT_STATE;
     const parsed = JSON.parse(raw);
     return {
-      libraryWidth: typeof parsed.libraryWidth === "number" ? parsed.libraryWidth : DEFAULT_STATE.libraryWidth,
-      workbenchWidth: typeof parsed.workbenchWidth === "number" ? parsed.workbenchWidth : DEFAULT_STATE.workbenchWidth,
-      libraryCollapsed: Boolean(parsed.libraryCollapsed),
-      workbenchCollapsed: Boolean(parsed.workbenchCollapsed),
+      // Migration: pre-rail state used `libraryCollapsed: boolean`. Honour it
+      // (collapsed → null), otherwise take the new `activeRailPanel`.
+      activeRailPanel: isRailPanel(parsed.activeRailPanel)
+        ? parsed.activeRailPanel
+        : parsed.libraryCollapsed === true
+          ? null
+          : DEFAULT_STATE.activeRailPanel,
+      workbenchCollapsed: Boolean(parsed.workbenchCollapsed ?? DEFAULT_STATE.workbenchCollapsed),
       workbenchTab: isWorkbenchTab(parsed.workbenchTab) ? parsed.workbenchTab : DEFAULT_STATE.workbenchTab,
+      stageCollapsed: Boolean(parsed.stageCollapsed),
+      stageMaximized: Boolean(parsed.stageMaximized),
     };
   } catch {
     return DEFAULT_STATE;
@@ -54,8 +72,6 @@ function loadStoredState(): PanelState {
 export function usePanelState(initialWorkbenchOpenFromUrl = false, initialWorkbenchTab?: WorkbenchTab) {
   const [state, setState] = useState<PanelState>(() => {
     const loaded = loadStoredState();
-    // A specific tab (e.g. `?panel=translate`) implies opening the workbench
-    // on it, regardless of whichever tab localStorage last remembered.
     if (initialWorkbenchTab) {
       return { ...loaded, workbenchCollapsed: false, workbenchTab: initialWorkbenchTab };
     }
@@ -73,8 +89,12 @@ export function usePanelState(initialWorkbenchOpenFromUrl = false, initialWorkbe
     }
   }, [state]);
 
-  const toggleLibrary = useCallback(() => {
-    setState((prev) => ({ ...prev, libraryCollapsed: !prev.libraryCollapsed }));
+  const setActiveRailPanel = useCallback((panel: RailPanel | null) => {
+    setState((prev) => ({ ...prev, activeRailPanel: panel }));
+  }, []);
+
+  const toggleRailPanel = useCallback((panel: RailPanel) => {
+    setState((prev) => ({ ...prev, activeRailPanel: prev.activeRailPanel === panel ? null : panel }));
   }, []);
 
   const toggleWorkbench = useCallback(() => {
@@ -89,15 +109,34 @@ export function usePanelState(initialWorkbenchOpenFromUrl = false, initialWorkbe
     setState((prev) => ({ ...prev, workbenchTab: tab, workbenchCollapsed: false }));
   }, []);
 
+  const setStageCollapsed = useCallback((collapsed: boolean) => {
+    setState((prev) => ({ ...prev, stageCollapsed: collapsed, stageMaximized: collapsed ? false : prev.stageMaximized }));
+  }, []);
+
+  const setStageMaximized = useCallback((maximized: boolean) => {
+    setState((prev) => ({ ...prev, stageMaximized: maximized, stageCollapsed: maximized ? false : prev.stageCollapsed }));
+  }, []);
+
+  // Back-compat aliases while callers migrate off the "library" naming.
+  const libraryCollapsed = state.activeRailPanel === null;
+  const toggleLibrary = useCallback(() => {
+    setState((prev) => ({ ...prev, activeRailPanel: prev.activeRailPanel === null ? "library" : null }));
+  }, []);
+
   return {
-    libraryWidth: state.libraryWidth,
-    workbenchWidth: state.workbenchWidth,
-    libraryCollapsed: state.libraryCollapsed,
-    workbenchCollapsed: state.workbenchCollapsed,
-    workbenchTab: state.workbenchTab,
+    activeRailPanel: state.activeRailPanel,
+    setActiveRailPanel,
+    toggleRailPanel,
+    libraryCollapsed,
     toggleLibrary,
+    workbenchCollapsed: state.workbenchCollapsed,
     toggleWorkbench,
     setWorkbenchOpen,
+    workbenchTab: state.workbenchTab,
     setWorkbenchTab,
+    stageCollapsed: state.stageCollapsed,
+    setStageCollapsed,
+    stageMaximized: state.stageMaximized,
+    setStageMaximized,
   };
 }
