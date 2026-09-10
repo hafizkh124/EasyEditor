@@ -13,6 +13,7 @@
 import { existsSync, readFileSync, copyFileSync, mkdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(ROOT, 'electron', 'host', 'wordBridge.ps1');
@@ -46,6 +47,21 @@ for (const banned of [/\bInvoke-Expression\b/i, /\biex\b/i]) {
 if (!code.includes('switch ($cmd.op)')) fail('wordBridge.ps1 has no op switch — wrong file?');
 for (const marker of ['ownedWordPid', 'ownedExcelPid', 'ownedPptPid']) {
   if (!code.includes(marker)) fail(`wordBridge.ps1 is missing ${marker} ownership tracking (SPEC-M8 §6 constraint 1).`);
+}
+
+// A syntax error anywhere in this single script is a whole-file parse failure
+// that takes the entire Word/Excel/PowerPoint bridge offline at runtime, and
+// nothing in the mocked test suite catches it. Refuse to package a broken host.
+for (const exe of ['pwsh', 'powershell']) {
+  const probe = spawnSync(exe, ['-NoProfile', '-Command', 'exit 0'], { encoding: 'utf8', timeout: 20_000 });
+  if (probe.status !== 0) continue;
+  const lit = `'${SRC.replace(/'/g, "''")}'`;
+  const r = spawnSync(exe, ['-NoProfile', '-Command',
+    `$e=$null;$t=$null;[System.Management.Automation.Language.Parser]::ParseFile(${lit},[ref]$t,[ref]$e)|Out-Null;` +
+    `if($e -and $e.Count -gt 0){$e|ForEach-Object{Write-Output ("{0}: {1}" -f $_.Extent.StartLineNumber,$_.Message)};exit 1};exit 0`,
+  ], { encoding: 'utf8', timeout: 30_000 });
+  if (r.status !== 0) fail(`wordBridge.ps1 has PowerShell syntax errors:\n${(r.stdout || '').trim()}`);
+  break;
 }
 
 mkdirSync(dirname(STAGED), { recursive: true });
