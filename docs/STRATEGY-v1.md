@@ -1,6 +1,9 @@
 # EasyEditor Strategic Plan v1
 
-**Status:** Draft for discussion · **Version:** 1.0.0-draft · **Date:** 2026-08-11
+**Status:** ⚠️ **SUPERSEDED (2026-09-10 review)** — most items shipped, redirected,
+or dropped by M8–M10 + Connectors Hub + JKHSSN/Workspace. Kept for historical
+context. **Only P1, P3, P4 are carried forward — see [§10](#10-2026-09-10-review-outcome).**
+· **Version:** 1.0.0-draft · **Date:** 2026-08-11
 **Owner:** Research & Strategy · **Author:** Engineering
 **Scope:** Islamic research credibility line (research modes, citations, verification)
 **Sister docs:** `docs/SPEC-v2.md` (product spec), `docs/adr/` (accepted decisions)
@@ -194,3 +197,44 @@ and prompt discipline in our stack; we do not vendor their Python/API-bound code
 2. Land P1 skeleton (`eval/` + takhrij gold subset) — smallest provable step.
 3. Revisit PENDING decisions #5 and #8 after the first P1 baseline report.
 4. Revisit §4 after first P1 baseline report.
+
+> The list above is the **original** 2026-08-11 plan. See §10 for what actually
+> happened and what is still live.
+
+---
+
+## 10. 2026-09-10 review outcome
+
+This document predates M8 (Word bridge), M9 (agentic studio), M10 (web parity),
+the Connectors Hub, and the JKHSSN/Workspace milestone. The project's centre of
+gravity moved from "Islamic citation tool + eval" to "agentic research +
+book-production studio." Each item was re-checked against the current codebase.
+
+### Done / absorbed elsewhere — no action
+
+| Item | Where it landed |
+|---|---|
+| **P2 — epistemic labels** (مصحح/موثق/ضعیف/مکذوب) | Shipped as grading chips: `RetrievedChunk.grade`, `classifyHadithGrade` / `GRADE_FAMILY_STYLE`, Dorar `grade_hadith` (ADR-0040), the P2 citation-integrity work |
+| **M5.9 gates 4/5** (local `electron/db/ingest.ts`) | File now exists; local library-ingest + `vectorSearch.ts` both work |
+| **M7.4 — local OCR** | Deliberately reversed by **ADR-0023** — `ocr_document` is a consent-gated renderer→cloud bridge; local OCR stays blocked; OCR output is never a citation |
+| **M7 cost motivation** ("every call on our dime") | Superseded by BYOK (desktop + web, ADR-0036) + multi-provider routing (Groq/OpenRouter, ADR-0031) |
+| Local voice (transcribe / TTS) | Shipped — Piper ONNX + Whisper, ADR-0008 / ADR-0009 |
+
+### Dropped — stale or reachable another way
+
+| Item | Why dropped |
+|---|---|
+| **P5 — Mufti-verification gate** | Assumed a multi-user *platform* with junior→senior review. EasyEditor is a single-user authoring tool. "Don't publish unreviewed AI output" is already covered by tracked-changes + open-before-accept + the AI-disclosure ledger (ADR-0033). |
+| **Decision #5 — Sufi/Occultism privacy lane** | Gated on "first P1 baseline report," which never happened. Desktop/local mode (M5) addresses the privacy concern structurally. |
+| **M7.2 — desktop local LLM (`llama.cpp`)** | Large build, uncertain demand. BYOK + multi-provider removed ~90% of the rationale; only the "fully offline, nothing leaves the machine" motive remains (niche). |
+| **M7.1 / M7.3 / M7.5 — local tashkeel / local embeddings / تمييز flag** | Not built. Local embeddings (M7.3) is the one piece with standalone value (fully-offline personal corpus — embedding generation still calls `geminiClient`), but it stays deferred until there is real demand. |
+| **Decision #8 — `mawsuah` domain** (الموسوعة الفقهية) | It is a standard Shamela 4 book, already reachable through the `search_shamela` / dual-Shamela connector. No separate corpus-ingest warranted. |
+| **P7 — Itqan integration** | Never defined in this doc (no link, no dataset name, no code). Not a plan — an unfinished thought. Drop unless a specific "Itqan" corpus is named. |
+
+### Carried forward — still useful
+
+| Item | Current-architecture note | Priority |
+|---|---|---|
+| **P1 — retrieval-quality gold-set eval** | The M9 live-model eval (`src/test/agentEval.live.test.ts`, ADR-0030) tests *agent behaviour* against a **mocked** corpus (`fixtures/agentEval/world.ts`). Nothing measures whether the **real** `islamic-search` returns the correct āyah/hadith for a known question (recall@k). Every Corpus Atlas fix, citation remap, cross-tier dedup and Arabic-matn filter was verified by hand. A ~100-question gold set run against the live corpus in CI would catch retrieval regressions automatically. Infra to extend already exists (`fixtures/agentEval/score.ts` + baseline-threshold pattern). Scope is just "known answer in top-k," **not** the original blinded-LLM-judge. | **High** |
+| **P4 — conflict / variant resolver** | Now feasible: JKHSSN shipped `axisMatnCompare`, `MatnDiff.tsx`, `wordDiff.ts` and the isnād/takhrij axes. `docs/BACKLOG-jkhssn-workspace.md` §2 ("matn-diff artifact — agent emission") is the first step. P4 extends it: when two sources give contradictory transmissions, surface both with their gradings rather than silently picking one. | **Medium** |
+| **P3 — Methods & takhrij transparency page** | A standing user-facing page: which channels/connectors are searched, where grading comes from ("graded by X, not by us"), and a reproducible search-recipe per answer. The per-answer mechanisms already exist (provenance chips, disclosure ledger ADR-0033, citation artifacts, Connectors Hub) — what's missing is one page documenting the overall method and its known limits. Documentation/credibility work, not a feature; matters most when presenting the app externally. | **Low** (after P1, P4) |
