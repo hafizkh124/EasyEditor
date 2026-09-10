@@ -49,12 +49,25 @@ export interface BookRoute {
 
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
-export async function routeShamelaSearch(query: string, limit: number, opts: RouteOpts): Promise<SearchRoute> {
+export async function routeShamelaSearch(
+  query: string,
+  limit: number,
+  opts: RouteOpts,
+  /** Plan §4.5 — restrict results to these Shamela book ids ("best effort":
+   *  the Lucene helper has no bookId filter, so this over-fetches then filters). */
+  bookIds?: number[],
+): Promise<SearchRoute> {
+  const scoped = (bookIds ?? []).filter(Number.isFinite);
+  const fetchLimit = scoped.length ? Math.min(limit * 6, 90) : limit;
+  const applyScope = (hits: ShamelaSearchResult[]): ShamelaSearchResult[] =>
+    scoped.length ? hits.filter((h) => scoped.includes(Number(h.bookId))).slice(0, limit) : hits;
+  const scopeNote = scoped.length ? 'دائرہ: نتائج منتخب کتب تک محدود (تخمینی)۔' : undefined;
+
   let localErr: unknown;
   if (opts.localEnabled) {
     try {
-      const hits = await searchShamelaNative(query, limit);
-      return { hits, transport: 'local' }; // success — even 0 hits — wins
+      const hits = applyScope(await searchShamelaNative(query, fetchLimit));
+      return { hits, transport: 'local', note: scopeNote }; // success — even 0 hits — wins
     } catch (e) {
       localErr = e;
       log.warn('local Shamela search failed', { message: errMsg(e) });
@@ -62,11 +75,11 @@ export async function routeShamelaSearch(query: string, limit: number, opts: Rou
   }
   if (opts.cloudEnabled) {
     try {
-      const hits = await searchCloud(query, limit);
+      const hits = applyScope(await searchCloud(query, fetchLimit));
       return {
         hits,
         transport: 'cloud',
-        note: localErr ? 'المكتبة المحلية غير متاحة — تم البحث في شامله لنک' : undefined,
+        note: localErr ? 'المكتبة المحلية غير متاحة — تم البحث في شامله لنک' : scopeNote,
       };
     } catch (e) {
       const both = localErr ? `${errMsg(localErr)} / ${errMsg(e)}` : errMsg(e);

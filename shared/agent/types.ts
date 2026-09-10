@@ -110,8 +110,12 @@ export interface AgentProgress {
   kind:
     | 'thinking' | 'tool' | 'tool-result' | 'done' | 'error'
     | 'clarify' | 'artifact' | 'plan-pending'
-    | 'general-search-request' | 'transcribe-request' | 'ocr-request';
+    | 'general-search-request' | 'transcribe-request' | 'ocr-request'
+    // Plan §4.6 — one sticky determinate row for a batch (per-book/per-author) run.
+    | 'batch-item';
   detail?: string;
+  /** `kind: 'batch-item'` — the batch's total item count (for the progress bar). */
+  total?: number;
   /** `kind: 'artifact'` — the artifact event. */
   artifact?: AgentArtifactEvent;
   /** `kind: 'clarify'` — the question the agent needs answered. */

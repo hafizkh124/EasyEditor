@@ -79,6 +79,8 @@ export interface WebAgentSession {
   /** This platform's ModelFn — passed through for research_topic's bounded sub-run. */
   model?: ModelFn | null;
   isCancelled?: (() => boolean) | null;
+  /** Plan §4.5 — corpus refs (`corpus:<uuid>`) search_corpus is restricted to. */
+  bookScope?: string[];
 }
 
 export interface WebDispatcher {
@@ -163,8 +165,15 @@ export function createWebDispatcher(session: WebAgentSession): WebDispatcher {
         const query = str(args.query, "query");
         const limit = Math.min(num(args.limit, 8), 12);
 
+        // Plan §4.5 — a `#corpus:<uuid>` scope restricts search_corpus to those items.
+        const scopedItemIds = new Set(
+          (session.bookScope ?? [])
+            .filter((r) => r.startsWith("corpus:"))
+            .map((r) => r.slice("corpus:".length)),
+        );
         let hits: Awaited<ReturnType<typeof libraryItemService.searchChunks>> = [];
-        try { hits = await libraryItemService.searchChunks(query, limit); } catch { /* degrade to zero */ }
+        try { hits = await libraryItemService.searchChunks(query, scopedItemIds.size ? limit * 4 : limit); } catch { /* degrade to zero */ }
+        if (scopedItemIds.size) hits = hits.filter((h) => scopedItemIds.has(h.itemId)).slice(0, limit);
         const chunks: RetrievedChunk[] = hits.map((h) => ({
           id: `corpus:${h.itemId}:${h.pageNumber ?? 0}`,
           reference: h.pageNumber ? `${h.title}, p. ${h.pageNumber}` : h.title,

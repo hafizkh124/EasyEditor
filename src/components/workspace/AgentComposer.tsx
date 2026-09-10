@@ -1,8 +1,20 @@
-import React from "react";
-import { Send, Loader2, Square, FolderOpen, ScrollText, Mic, Plus, Paperclip, Plug } from "lucide-react";
+import React, { useRef } from "react";
+import { Send, Loader2, Square, FolderOpen, ScrollText, Mic, Plus, Paperclip, Plug, Hash, X, Book, User, Layers, CalendarClock, Repeat, AtSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CONNECTORS, isConnectorOn, connectorsByCategory } from "../../../shared/agent/connectors";
-import { useAgentRun, type AgentMode } from "@/hooks/useAgentRun";
+import { useAgentRun, type AgentMode, type ScopeTag } from "@/hooks/useAgentRun";
+import { useClampToViewport } from "@/lib/ui/clampToViewport";
+import { ScopeReviewDialog } from "./ScopeReviewDialog";
+
+/** Icon + accent for a scope chip, keyed by kind (colour is never the only signal). */
+function chipStyle(tag: ScopeTag): { icon: React.ReactNode; cls: string } {
+  if (tag.kind === "/") return { icon: <ScrollText className="h-3 w-3 shrink-0" />, cls: "bg-accent text-accent-foreground" };
+  if (tag.kind === "@") return { icon: <AtSign className="h-3 w-3 shrink-0" />, cls: "bg-muted text-muted-foreground" };
+  const map = { author: <User className="h-3 w-3 shrink-0" />, category: <Layers className="h-3 w-3 shrink-0" />, century: <CalendarClock className="h-3 w-3 shrink-0" /> } as const;
+  return { icon: tag.scopeType && tag.scopeType !== "book" ? map[tag.scopeType] : <Book className="h-3 w-3 shrink-0" />, cls: "bg-primary/10 text-primary" };
+}
+
+const SECTION_ICON = { book: Book, author: User, category: Layers, century: CalendarClock } as const;
 
 /**
  * SPEC M10 §1.2 — everything AgentPanel.tsx owned that ISN'T the run timeline
@@ -20,6 +32,20 @@ import { useAgentRun, type AgentMode } from "@/hooks/useAgentRun";
  */
 export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; children: React.ReactNode }> = ({ agent: a, children }) => {
   const { t } = a;
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const hubRef = useRef<HTMLDivElement>(null);
+  const [overflowOpen, setOverflowOpen] = React.useState(false);
+  const { transform: pickerTransform } = useClampToViewport(pickerRef, [a.picker, a.pickerItems.length]);
+  const { transform: hubTransform } = useClampToViewport(hubRef, [a.hubOpen]);
+
+  const chips = a.scopeTags;
+  const visibleChips = chips.slice(0, 4);
+  const hiddenChips = chips.slice(4);
+
+  const applyActivePicker = () => {
+    const it = a.pickerItems[a.pickerActiveIndex] ?? a.pickerItems[0];
+    it?.apply();
+  };
 
   return (
     <div
@@ -28,6 +54,11 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
       onDragLeave={a.onDragLeave}
       onDrop={a.onDrop}
     >
+      <ScopeReviewDialog
+        request={a.scopeReview}
+        onConfirm={a.confirmScopeReview}
+        onClose={() => a.setScopeReview(null)}
+      />
       {(a.isDragOver || a.importing) && (
         <div className="absolute inset-0 z-30 m-1 flex items-center justify-center rounded border border-dashed border-primary bg-primary/10 text-sm font-medium text-primary">
           {a.importing
@@ -78,7 +109,7 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
       <div className="flex-1 min-h-0">{children}</div>
 
       {/* Input */}
-      <div className="relative border-t border-border p-2 shrink-0">
+      <div className="relative border-t border-border p-2 shrink-0" data-workspace-composer>
         <input
           ref={a.fileInputRef}
           type="file"
@@ -88,7 +119,7 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
           onChange={(e) => { if (e.target.files?.length) void a.importFiles(e.target.files); e.target.value = ""; }}
         />
         {a.hubOpen && (
-          <div className="absolute bottom-full start-2 mb-1 w-[min(16rem,80vw)] rounded-md border border-border bg-popover p-1 text-xs shadow-md">
+          <div ref={hubRef} style={{ transform: hubTransform }} className="absolute bottom-full start-2 mb-1 w-[min(16rem,80vw)] rounded-md border border-border bg-popover p-1 text-xs shadow-md">
             <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={() => { a.setHubOpen(false); a.fileInputRef.current?.click(); }}>
               <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               {t("agent.hub_add_files", "Add recordings, scans, fonts…")}
@@ -100,6 +131,10 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
             <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={() => { a.setHubOpen(false); a.updateInput("/", 1); a.taRef.current?.focus(); }}>
               <ScrollText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               {t("agent.hub_playbooks", "Playbooks  (/)")}
+            </button>
+            <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={() => { a.setHubOpen(false); a.updateInput(`${a.input}${a.input && !a.input.endsWith(" ") ? " " : ""}#`, a.input.length + (a.input && !a.input.endsWith(" ") ? 2 : 1)); a.taRef.current?.focus(); }}>
+              <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              {t("agent.hub_scope", "Books & sources  (#)")}
             </button>
             <div className="my-1 border-t border-border" />
             <p className="flex items-center gap-1.5 px-2 pb-1 pt-0.5 text-muted-foreground">
@@ -136,13 +171,96 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
           </div>
         )}
         {a.picker && a.pickerItems.length > 0 && (
-          <div className="absolute bottom-full start-2 end-2 mb-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
-            {a.pickerItems.map((it, i) => (
-              <button key={i} className="flex w-full items-center gap-2 px-2 py-1.5 text-start text-xs hover:bg-muted" onClick={it.apply}>
-                {it.kind === "command" ? <ScrollText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <span className="text-muted-foreground">@</span>}
-                <span className="truncate">{it.label}</span>
-              </button>
-            ))}
+          <div
+            ref={pickerRef}
+            style={{ transform: pickerTransform }}
+            role="listbox"
+            aria-label={t("agent.picker_label", "Suggestions")}
+            className="absolute bottom-full start-2 end-2 mb-1 max-h-52 overflow-y-auto rounded-md border border-border bg-popover shadow-md"
+          >
+            {a.pickerItems.map((it, i) => {
+              const prev = a.pickerItems[i - 1];
+              const showHeader = it.kind === "library" && it.section && it.section !== prev?.section;
+              const SectionIcon = it.section ? SECTION_ICON[it.section as keyof typeof SECTION_ICON] : null;
+              return (
+                <React.Fragment key={i}>
+                  {showHeader && (
+                    <p className="flex items-center gap-1.5 border-t border-border/50 bg-muted px-2 pt-1 pb-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground first:border-t-0">
+                      {SectionIcon ? <SectionIcon className="h-3 w-3" /> : null}
+                      {t(`scope.section_${it.section}` as never, it.section ?? "")}
+                    </p>
+                  )}
+                  <button
+                    role="option"
+                    aria-selected={i === a.pickerActiveIndex}
+                    className={`flex w-full items-center gap-2 px-2 py-1.5 text-start text-xs ${i === a.pickerActiveIndex ? "bg-muted" : "hover:bg-muted"}`}
+                    onMouseEnter={() => a.setPickerActiveIndex(i)}
+                    onClick={it.apply}
+                  >
+                    {it.kind === "command" ? <ScrollText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      : it.kind === "library" ? <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      : <span className="text-muted-foreground">@</span>}
+                    <span className="truncate">{it.label}</span>
+                    {it.sublabel ? <span className="ms-auto shrink-0 truncate text-muted-foreground/70">{it.sublabel}</span> : null}
+                  </button>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
+        {/* Plan §4.4 — removable scope chips. Chips are authoritative; the inline
+            token in the textarea is cosmetic. */}
+        {chips.length > 0 && (
+          <div className="mb-1.5 flex flex-wrap items-center gap-1">
+            {visibleChips.map((tag) => {
+              const { icon, cls } = chipStyle(tag);
+              const isGroup = tag.kind === "#" && tag.scopeType && tag.scopeType !== "book";
+              return (
+                <span
+                  key={tag.id}
+                  className={`inline-flex max-w-[14rem] items-center gap-1 rounded ps-1.5 pe-1 py-0.5 text-xs ${cls} ${isGroup ? "cursor-pointer" : ""}`}
+                  onClick={isGroup ? () => a.setScopeReview({ scopeType: tag.scopeType as "author" | "category" | "century", ref: tag.ref, label: tag.label.split(" · ")[0], filter: tag.sourceFilter ?? {} }) : undefined}
+                  title={isGroup ? t("scope.chip_edit", "Click to edit this set") : tag.label}
+                >
+                  {icon}
+                  <span className="truncate">{tag.label}</span>
+                  {tag.execMode && tag.execMode !== "search" ? <Repeat className="h-3 w-3 shrink-0 opacity-70" /> : null}
+                  <button
+                    className="ms-0.5 shrink-0 rounded p-0.5 hover:bg-background/40"
+                    onClick={(e) => { e.stopPropagation(); a.removeScopeTag(tag.id); }}
+                    aria-label={t("scope.remove_chip", "Remove {label}").replace("{label}", tag.label)}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              );
+            })}
+            {hiddenChips.length > 0 && (
+              <span className="relative">
+                <button
+                  className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted"
+                  onClick={() => setOverflowOpen((v) => !v)}
+                >
+                  +{hiddenChips.length}
+                </button>
+                {overflowOpen && (
+                  <div className="absolute bottom-full end-0 mb-1 w-56 rounded-md border border-border bg-popover p-1 shadow-md">
+                    {hiddenChips.map((tag) => (
+                      <div key={tag.id} className="flex items-center gap-1 rounded px-1.5 py-1 text-xs hover:bg-muted">
+                        {chipStyle(tag).icon}
+                        <span className="flex-1 truncate">{tag.label}</span>
+                        <button className="shrink-0 rounded p-0.5 hover:bg-background/40" onClick={() => a.removeScopeTag(tag.id)} aria-label={t("scope.remove_chip", "Remove {label}").replace("{label}", tag.label)}>
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </span>
+            )}
+            <button className="ms-1 text-xs text-muted-foreground hover:text-foreground hover:underline" onClick={a.clearScope}>
+              {t("scope.clear", "Clear scope")}
+            </button>
           </div>
         )}
         <div className="flex items-end gap-1.5">
@@ -162,6 +280,11 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
             value={a.input}
             onChange={(e) => a.updateInput(e.target.value, e.target.selectionStart ?? e.target.value.length)}
             onKeyDown={(e) => {
+              if (a.picker && a.pickerItems.length > 0) {
+                if (e.key === "ArrowDown") { e.preventDefault(); a.setPickerActiveIndex((a.pickerActiveIndex + 1) % a.pickerItems.length); return; }
+                if (e.key === "ArrowUp") { e.preventDefault(); a.setPickerActiveIndex((a.pickerActiveIndex - 1 + a.pickerItems.length) % a.pickerItems.length); return; }
+                if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); applyActivePicker(); return; }
+              }
               if (e.key === "Enter" && !e.shiftKey && !a.picker) { e.preventDefault(); void a.send(); }
               if (e.key === "Escape") a.setPicker(null);
             }}

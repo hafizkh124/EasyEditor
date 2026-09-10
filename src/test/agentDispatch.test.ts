@@ -159,6 +159,19 @@ describe('agent dispatch', () => {
     expect(r.note).toMatch(/Nothing matched/);
   });
 
+  it('a #corpus scope passes libraryItemIds through to searchChunks (plan §4.5)', async () => {
+    const { dispatch } = mk({ bookScope: ['corpus:aaa', 'corpus:bbb', 'shamela:12'] });
+    await dispatch('search_corpus', { query: 'برکت', limit: 3 });
+    expect(searchChunks).toHaveBeenCalledWith('برکت', 3, { libraryItemIds: ['aaa', 'bbb'] });
+  });
+
+  it('a #shamela scope forwards the book ids to the Shamela router (plan §4.5)', async () => {
+    shamelaRouterMock.routeShamelaSearch.mockResolvedValueOnce({ hits: [], transport: 'local' });
+    const { dispatch } = mk({ bookScope: ['shamela:1681', 'corpus:x'] });
+    await dispatch('search_shamela', { query: 'الهلال' });
+    expect(shamelaRouterMock.routeShamelaSearch).toHaveBeenLastCalledWith('الهلال', expect.any(Number), expect.anything(), [1681]);
+  });
+
   it('search_repositories feeds the ledger with bibliographic chunks; insert_footnote refuses one + a claim (M9 Phase 9)', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ response: { docs: [{ identifier: 'A1', title: 'Ihya', creator: 'Ghazali', year: 1990 }] } }) })

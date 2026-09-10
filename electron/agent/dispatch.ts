@@ -179,6 +179,12 @@ export function createDispatcher(session: AgentSession): Dispatcher {
   const ocrConsent = session.ocrConsent === true;
   const emitArtifact: EmitArtifactFn = (ev) => { try { session.emitArtifact?.(ev); } catch { /* non-fatal */ } };
 
+  // Plan §4.5 — a `#` scope splits into three id spaces the search tools filter by.
+  const scopeRefs = session.bookScope ?? [];
+  const scopedShamelaIds = scopeRefs.filter((r) => r.startsWith('shamela:')).map((r) => Number(r.slice(8))).filter(Number.isFinite);
+  const scopedCorpusIds = scopeRefs.filter((r) => r.startsWith('corpus:')).map((r) => r.slice(7)).filter(Boolean);
+  const scopedJkhssnIds = scopeRefs.filter((r) => r.startsWith('jkhssn:')).map((r) => Number(r.slice(7))).filter(Number.isFinite);
+
   /** Snapshot any in-project write (chapter or not) into the task checkpoint. */
   const guardWrite = (relPath: string): void => {
     if (checkpointId) recordWrite(root, checkpointId, relPath);
@@ -224,7 +230,10 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         // (a) the imported personal corpus (FTS over library chunks)
         const svc = await getWorkspaceDbService();
         let hits: Awaited<ReturnType<typeof svc.searchChunks>> = [];
-        try { hits = await svc.searchChunks(query, limit); } catch (err) { log.warn('corpus FTS failed', { message: (err as Error).message }); }
+        const corpusOpts = scopedCorpusIds.length ? [{ libraryItemIds: scopedCorpusIds }] as const : [] as const;
+        try {
+          hits = await svc.searchChunks(query, limit, ...corpusOpts);
+        } catch (err) { log.warn('corpus FTS failed', { message: (err as Error).message }); }
         const chunks: RetrievedChunk[] = hits.map((h) => ({
           id: `corpus:${h.itemId}:${h.pageNumber ?? 0}`,
           reference: h.pageNumber ? `${h.title}, p. ${h.pageNumber}` : h.title,
@@ -253,7 +262,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
       case 'search_shamela': {
         const query = str(args.query, 'query');
         const limit = Math.min(num(args.limit, 8), 12); // ADR-0027 F4 — hard cap
-        const r = await routeShamelaSearch(query, limit, shamelaRouteOpts(session));
+        const r = await routeShamelaSearch(query, limit, shamelaRouteOpts(session), scopedShamelaIds.length ? scopedShamelaIds : undefined);
         if (r.transport === 'none' && r.error) return { error: r.error, transport: 'none' };
         const prefix = r.transport === 'cloud' ? 'shamela-cloud' : 'shamela';
         const chunks: RetrievedChunk[] = r.hits.map((h) => ({
@@ -904,7 +913,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
       case 'jkhssn_takhrij': {
         if (session.jkhssnEnabled === false) return { error: 'جوامع الكلم کنیکٹر بند ہے۔' };
-        const r = await jkhssnAdapter.jkhssnTakhrij({ hadithMainId: num(args.hadith_main_id, 0) || undefined, hadithText: typeof args.hadith_text === 'string' ? args.hadith_text : undefined });
+        const r = await jkhssnAdapter.jkhssnTakhrij({ hadithMainId: num(args.hadith_main_id, 0) || undefined, hadithText: typeof args.hadith_text === 'string' ? args.hadith_text : undefined, bookIds: scopedJkhssnIds.length ? scopedJkhssnIds : undefined });
         if (r.error) return { error: r.error };
         return { note: r.note, takhrij: r.data };
       }

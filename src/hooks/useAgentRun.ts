@@ -9,9 +9,13 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useWebAgentEngine } from "@/hooks/useWebAgentEngine";
 import type { CitationItem } from "~shared/research/citationTypes";
 import type { AgentArtifactEvent } from "~shared/agent/types";
-import { buildMentions, filterMentions, activeMentionQuery, applyMention, type Mention } from "../../shared/mentions";
+import {
+  buildMentions, filterMentions, activeTriggerQuery, applyMention, applyLibraryTag,
+  type Mention, type ScopeKind,
+} from "../../shared/mentions";
 import { PLAYBOOKS } from "../../shared/playbooks/registry";
 import { applyArtifactEvent, type ArtifactState } from "@/components/workspace/agentArtifactState";
+import { getShamelaClient } from "@/core/shamela/shamelaClient";
 
 const log = logger.child("useAgentRun");
 
@@ -30,7 +34,50 @@ export interface RunResult {
 }
 export interface OptionConsent { needsConsent?: boolean; option?: string; value?: string; current?: string; message?: string }
 export interface OcrConsent { needsConsent?: boolean; scanPath?: string; message?: string }
-export type PickerItem = { kind: "mention" | "command"; label: string; apply: () => void };
+export type PickerItem = { kind: "mention" | "command" | "library"; label: string; sublabel?: string; section?: string; apply: () => void };
+
+/** Plan §4.4 — a removable scope chip. Multi-book (`#` group) chips carry the
+ *  concrete pruned book list; `/` and `@` chips carry a single ref. */
+export interface ScopeTag {
+  kind: "#" | "/" | "@";
+  id: string;
+  label: string;
+  ref: string;
+  scopeType?: ScopeKind;
+  /** '#' author/category/century — every concrete book ref after review. */
+  resolvedBookRefs?: string[];
+  /** So the review dialog can re-open on the same filter. */
+  sourceFilter?: { authorId?: number; categoryId?: number; century?: number; query?: string };
+  /** null | 'per-book' | 'per-author' — chosen in the review dialog. */
+  execMode?: "search" | "per-book" | "per-author";
+}
+
+/** What `send()` hands the engine (plan §4.4). `scope` is optional everywhere. */
+export interface AgentScope {
+  books: string[];
+  groups: Array<{ type: ScopeKind; ref: string; label: string; bookRefs: string[] }>;
+  playbook: string | null;
+  mentions: string[];
+  batch: { granularity: "per-book" | "per-author" } | null;
+}
+
+/** A pending "review this group's books" request the composer opens a dialog for. */
+export interface ScopeReviewRequest {
+  scopeType: Exclude<ScopeKind, "book">;
+  ref: string;
+  label: string;
+  filter: { authorId?: number; categoryId?: number; century?: number };
+}
+
+export type LibraryPickerRow = {
+  section: "book" | "author" | "category" | "century";
+  label: string;
+  sublabel?: string;
+  ref: string;
+  source: "shamela" | "jkhssn" | "corpus";
+  /** For author/category/century — opens the review dialog instead of applying. */
+  review?: ScopeReviewRequest;
+};
 
 /**
  * The progress-callback shape both platforms deliver: desktop's
@@ -77,8 +124,12 @@ export function useAgentRun() {
   const runIdRef = useRef<string | null>(null);
   const [showTools, setShowTools] = useState(false);
   const [caps, setCaps] = useState<string | null>(null);
-  const [picker, setPicker] = useState<{ kind: "mention" | "command"; query: string } | null>(null);
+  const [picker, setPicker] = useState<{ kind: "mention" | "command" | "library"; query: string } | null>(null);
+  const [pickerActiveIndex, setPickerActiveIndex] = useState(0);
   const [shamelaBooks, setShamelaBooks] = useState<Array<{ id: string; title: string }>>([]);
+  const [libraryRows, setLibraryRows] = useState<LibraryPickerRow[]>([]);
+  const [scopeTags, setScopeTags] = useState<ScopeTag[]>([]);
+  const [scopeReview, setScopeReview] = useState<ScopeReviewRequest | null>(null);
   const [assets, setAssets] = useState<Array<{ name: string; kind: "media" | "scan" | "asset" }>>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -371,13 +422,97 @@ export function useAgentRun() {
 
   const updateInput = useCallback((text: string, caret: number) => {
     setInput(text);
+    setPickerActiveIndex(0);
     if (text.startsWith("/")) {
       setPicker({ kind: "command", query: text.slice(1) });
       return;
     }
-    const active = activeMentionQuery(text, caret);
-    setPicker(active ? { kind: "mention", query: active.query } : null);
+    // `#` (mid-text, like `@`) opens the library scope picker — checked first.
+    const hash = activeTriggerQuery(text, caret, "#");
+    if (hash) { setPicker({ kind: "library", query: hash.query }); return; }
+    const at = activeTriggerQuery(text, caret, "@");
+    setPicker(at ? { kind: "mention", query: at.query } : null);
   }, []);
+
+  // ── `#` library scope lookup (plan §4.1) — books + authors + categories +
+  //    centuries, from Shamela + JKHSSN + the personal corpus. Debounced.
+  const CENTURY_LABELS = useMemo(
+    () => ["الأول", "الثاني", "الثالث", "الرابع", "الخامس", "السادس", "السابع", "الثامن", "التاسع", "العاشر"],
+    [],
+  );
+  useEffect(() => {
+    if (picker?.kind !== "library") { setLibraryRows([]); return; }
+    const q = picker.query.trim();
+    if (q.length < 2) { setLibraryRows([]); return; }
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      const rows: LibraryPickerRow[] = [];
+      const client = getShamelaClient();
+      try {
+        const [books, authors, cats] = await Promise.all([
+          client.searchBooks(q, 6).catch(() => []),
+          client.searchAuthors(q, 5).catch(() => []),
+          client.listCategories().catch(() => []),
+        ]);
+        for (const b of books) rows.push({ section: "book", label: b.title, sublabel: b.author ?? undefined, ref: `shamela:${b.id}`, source: "shamela" });
+        for (const a of authors) {
+          rows.push({
+            section: "author", label: a.name, sublabel: a.bookCount ? `${a.bookCount}` : undefined,
+            ref: `author:${a.id}`, source: "shamela",
+            review: { scopeType: "author", ref: `author:${a.id}`, label: a.name, filter: { authorId: a.id } },
+          });
+        }
+        for (const c of cats.filter((x) => x.name.includes(q)).slice(0, 4)) {
+          rows.push({
+            section: "category", label: c.name, sublabel: `${c.bookCount}`, ref: `category:${c.id}`, source: "shamela",
+            review: { scopeType: "category", ref: `category:${c.id}`, label: c.name, filter: { categoryId: c.id } },
+          });
+        }
+        // Century: match the Arabic ordinal in the label (never a bare digit).
+        CENTURY_LABELS.forEach((label, i) => {
+          if (label.includes(q) || `القرن ${label}`.includes(q)) {
+            rows.push({
+              section: "century", label: `القرن ${label}`, ref: `century:${i + 1}`, source: "shamela",
+              review: { scopeType: "century", ref: `century:${i + 1}`, label: `القرن ${label}`, filter: { century: i + 1 } },
+            });
+          }
+        });
+      } catch (err) {
+        log.debug("library scope lookup failed", { err });
+      }
+      // JKHSSN authors (desktop) as extra `book`-ish entries.
+      try {
+        const jk = typeof window !== "undefined" ? window.electronAPI?.jkhssn : undefined;
+        if (jk?.searchBooks) {
+          const hits = await jk.searchBooks(q, 4);
+          for (const h of hits) rows.push({ section: "book", label: h.title, sublabel: "جوامع الكلم", ref: `jkhssn:${h.id}`, source: "jkhssn" });
+        }
+      } catch { /* jkhssn optional */ }
+      if (!cancelled) setLibraryRows(rows);
+    }, 250);
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [picker, CENTURY_LABELS]);
+
+  const addScopeTag = useCallback((tag: Omit<ScopeTag, "id">) => {
+    setScopeTags((prev) => {
+      if (prev.some((t) => t.kind === tag.kind && t.ref === tag.ref)) return prev;
+      return [...prev, { ...tag, id: `${tag.kind}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}` }];
+    });
+  }, []);
+
+  const removeScopeTag = useCallback((id: string) => {
+    setScopeTags((prev) => {
+      const tag = prev.find((t) => t.id === id);
+      if (tag) {
+        // Strip the cosmetic inline token from the input (chips are authoritative).
+        const token = `${tag.kind === "@" ? "@" : tag.kind === "/" ? "/" : "#"}${tag.label}`;
+        setInput((val) => val.replace(token, "").replace(/\s{2,}/g, " ").replace(/^\s+/, ""));
+      }
+      return prev.filter((t) => t.id !== id);
+    });
+  }, []);
+
+  const clearScope = useCallback(() => setScopeTags([]), []);
 
   const pickerItems = useMemo<PickerItem[]>(() => {
     if (!picker) return [];
@@ -388,8 +523,39 @@ export function useAgentRun() {
         .map((p) => ({
           kind: "command" as const,
           label: p.trigger ? `/${p.trigger} — ${p.title}` : p.title,
-          apply: () => { setInput(p.trigger ? `/${p.trigger} ` : `${p.title} `); setPicker(null); taRef.current?.focus(); },
+          apply: () => {
+            setInput(p.trigger ? `/${p.trigger} ` : `${p.title} `);
+            addScopeTag({ kind: "/", label: p.trigger ?? p.id, ref: p.id });
+            setPicker(null);
+            taRef.current?.focus();
+          },
         }));
+    }
+    if (picker.kind === "library") {
+      const sectionOrder = { book: 0, author: 1, category: 2, century: 3 } as const;
+      const sorted = [...libraryRows].sort((a, b) => sectionOrder[a.section] - sectionOrder[b.section]);
+      return sorted.map((row) => ({
+        kind: "library" as const,
+        section: row.section,
+        label: row.label,
+        sublabel: row.sublabel,
+        apply: () => {
+          if (row.review) {
+            setScopeReview(row.review);
+            setPicker(null);
+            return;
+          }
+          // A single book — apply immediately.
+          const ta = taRef.current;
+          const value = ta?.value ?? input;
+          const caret = ta?.selectionStart ?? value.length;
+          const next = applyLibraryTag(value, caret, row.label);
+          setInput(next.text);
+          addScopeTag({ kind: "#", label: row.label, ref: row.ref, scopeType: "book" });
+          setPicker(null);
+          requestAnimationFrame(() => { ta?.focus(); ta?.setSelectionRange(next.caret, next.caret); });
+        },
+      }));
     }
     return filterMentions(mentions, picker.query).map((m) => ({
       kind: "mention" as const,
@@ -400,11 +566,26 @@ export function useAgentRun() {
         const caret = ta?.selectionStart ?? value.length;
         const next = applyMention(value, caret, m);
         setInput(next.text);
+        addScopeTag({ kind: "@", label: m.label, ref: m.ref });
         setPicker(null);
         requestAnimationFrame(() => { ta?.focus(); ta?.setSelectionRange(next.caret, next.caret); });
       },
     }));
-  }, [picker, mentions, input]);
+  }, [picker, mentions, input, libraryRows, addScopeTag]);
+
+  /** Called by the ScopeReviewDialog on confirm — creates the multi-book chip. */
+  const confirmScopeReview = useCallback((tag: Omit<ScopeTag, "id">) => {
+    setInput((val) => {
+      const ta = taRef.current;
+      const caret = ta?.selectionStart ?? val.length;
+      // If the `#` token is still in the box, swap it for the label; else append.
+      const hash = activeTriggerQuery(val, caret, "#");
+      return hash ? applyLibraryTag(val, caret, tag.label).text : `${val}${val && !val.endsWith(" ") ? " " : ""}#${tag.label} `;
+    });
+    addScopeTag(tag);
+    setScopeReview(null);
+    requestAnimationFrame(() => taRef.current?.focus());
+  }, [addScopeTag]);
 
   // Each agent.run() is a fresh, memory-less run — there is no session-level
   // history. When a run stops with `needs-input`, the scholar's next message
@@ -434,15 +615,42 @@ export function useAgentRun() {
     setProgressExpanded(false);
     setHubOpen(false);
     setPicker(null);
+
+    // Plan §4.4 — the structured scope the chips describe.
+    const hashTags = scopeTags.filter((t) => t.kind === "#");
+    const bookRefsOf = (t: ScopeTag): string[] => t.resolvedBookRefs ?? (t.scopeType === "book" || !t.scopeType ? [t.ref] : []);
+    // Batch granularity comes off the chip's own execMode (chosen in the review
+    // dialog), not a composer control (plan §4.2).
+    const batchExec = hashTags.map((t) => t.execMode).find((m) => m === "per-book" || m === "per-author");
+    const scope: AgentScope = {
+      books: [...new Set(hashTags.flatMap(bookRefsOf))],
+      groups: hashTags
+        .filter((t) => t.scopeType && t.scopeType !== "book")
+        .map((t) => ({ type: t.scopeType!, ref: t.ref, label: t.label, bookRefs: t.resolvedBookRefs ?? [] })),
+      playbook: scopeTags.find((t) => t.kind === "/")?.ref ?? null,
+      mentions: scopeTags.filter((t) => t.kind === "@").map((t) => t.ref),
+      batch:
+        desktopReady && batchExec && hashTags.some((t) => t.scopeType && t.scopeType !== "book")
+          ? { granularity: batchExec as "per-book" | "per-author" }
+          : null,
+    };
+    const hasScope = Boolean(scope.books.length || scope.groups.length || scope.playbook || scope.mentions.length || scope.batch);
+
     try {
       const res = desktopReady
-        ? await agent!.run(instruction, mode, projectRoot!)
-        : await webAgent.run(instruction, mode, handleProgress);
+        ? hasScope
+          ? await agent!.run(instruction, mode, projectRoot!, scope)
+          : await agent!.run(instruction, mode, projectRoot!)
+        : hasScope
+          ? await webAgent.run(instruction, mode, handleProgress, scope)
+          : await webAgent.run(instruction, mode, handleProgress);
       setResult(res as RunResult);
-      setPendingClarification(
-        res.stopReason === "needs-input" && res.question ? { instruction, question: res.question } : null,
-      );
-      setInput("");
+      const needsInput = res.stopReason === "needs-input" && res.question;
+      setPendingClarification(needsInput ? { instruction, question: res.question! } : null);
+      if (!needsInput) {
+        setInput("");
+        setScopeTags([]);
+      }
       if (desktopReady) void pf.refresh();
     } catch (err) {
       log.error("agent run failed", { err });
@@ -452,7 +660,7 @@ export function useAgentRun() {
       setRunning(false);
       setPlanPending(false);
     }
-  }, [input, agent, projectRoot, running, mode, pf, pendingClarification, webAgent, handleProgress]);
+  }, [input, agent, projectRoot, running, mode, pf, pendingClarification, webAgent, handleProgress, scopeTags]);
 
   const cancel = useCallback(() => { void agent?.cancel(); webAgent.cancel(); }, [agent, webAgent]);
 
@@ -575,6 +783,14 @@ export function useAgentRun() {
     caps,
     picker, setPicker,
     pickerItems,
+    pickerActiveIndex, setPickerActiveIndex,
+    // Plan §4 — the `#` / `/` / `@` scope chips + the review dialog + batch mode.
+    scopeTags,
+    removeScopeTag,
+    clearScope,
+    scopeReview,
+    setScopeReview,
+    confirmScopeReview,
     isDragOver,
     importing,
     hubOpen, setHubOpen,

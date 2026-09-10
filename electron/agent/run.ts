@@ -87,12 +87,31 @@ export interface AgentRunInput {
   ocrDocument?: ((scanPath: string, lang: string, pages?: string) => Promise<import('./ocrBridge.js').OcrResult>) | null;
   /** Plan mode — resolves once the scholar approves (or rejects) the plan. */
   waitForApproval?: WaitForApprovalFn;
+  /** Plan §4.4 — the `#` scope: book refs the search tools are restricted to. */
+  scope?: {
+    books: string[];
+    groups: Array<{ type: string; ref: string; label: string; bookRefs: string[] }>;
+    playbook: string | null;
+    mentions: string[];
+    batch: { granularity: 'per-book' | 'per-author'; resumeFrom?: string } | null;
+  };
 }
 
 export type AgentRunOutput = AgentRunResult & { playbook?: string; checkpointId?: string };
 
 export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
-  const { instruction, mode, projectRoot } = input;
+  const { mode, projectRoot } = input;
+  // Plan §4.4 — a `#`-scoped run tells the model up front what it is limited to.
+  const scopeGroups = input.scope?.groups ?? [];
+  const scopeNote =
+    input.scope && (input.scope.books.length || scopeGroups.length)
+      ? `\n\n[دائرہ] یہ کام صرف ان مصادر تک محدود ہے: ` +
+        (scopeGroups.length
+          ? scopeGroups.map((g) => `${g.label} (${g.bookRefs.length} کتب)`).join('، ')
+          : `${input.scope.books.length} منتخب کتب`) +
+        `۔ تلاش کے اوزار انہی کتب میں چلائیں؛ باہر کے مصادر استعمال نہ کریں۔`
+      : '';
+  const instruction = input.instruction + scopeNote;
 
   const caps = detectTools();
   const chapters = (() => {
@@ -210,6 +229,8 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     shamelaCloudEnabled: connectors['shamela-cloud'] === true,
     // ADR-0045 — the جوامع الكلم engine.
     jkhssnEnabled: connectors['jkhssn'] !== false,
+    // Plan §4.5 — restrict the search tools to the scoped book refs.
+    bookScope: input.scope?.books?.length ? input.scope.books : undefined,
   };
   const { dispatch } = createDispatcher(session);
 

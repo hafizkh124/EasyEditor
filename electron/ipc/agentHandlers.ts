@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto';
 import { ALLOWED_IPC_CHANNELS } from './registry.js';
 import { logger } from '../lib/logger.js';
 import { runAgent } from '../agent/run.js';
+import { runBatch } from '../agent/batch.js';
 import { undoCheckpoint, listCheckpoints } from '../agent/checkpoint.js';
 import { applyGlobalOption, revertGlobalOptions, readLog as readGlobalOptionLog } from '../agent/globalOptions.js';
 import { requestGeneralSearch, resolveGeneralSearch } from '../agent/generalSearch.js';
@@ -129,6 +130,30 @@ export function registerAgentHandlers(): void {
           if (!instruction) throw new Error('instruction is required');
           if (!projectRoot) throw new Error('open a project folder first');
 
+          // Plan §4.4 — validate the optional structured scope.
+          const rawScope = (payload.scope && typeof payload.scope === 'object' ? payload.scope : null) as
+            | { books?: unknown; groups?: unknown; playbook?: unknown; mentions?: unknown; batch?: unknown }
+            | null;
+          const scope = rawScope
+            ? {
+                books: Array.isArray(rawScope.books) ? (rawScope.books as unknown[]).filter((x): x is string => typeof x === 'string') : [],
+                groups: Array.isArray(rawScope.groups)
+                  ? (rawScope.groups as Array<Record<string, unknown>>)
+                      .filter((g) => g && typeof g.ref === 'string' && Array.isArray(g.bookRefs))
+                      .map((g) => ({ type: String(g.type ?? ''), ref: String(g.ref), label: String(g.label ?? ''), bookRefs: (g.bookRefs as unknown[]).filter((x): x is string => typeof x === 'string') }))
+                  : [],
+                playbook: typeof rawScope.playbook === 'string' ? rawScope.playbook : null,
+                mentions: Array.isArray(rawScope.mentions) ? (rawScope.mentions as unknown[]).filter((x): x is string => typeof x === 'string') : [],
+                batch:
+                  rawScope.batch && typeof rawScope.batch === 'object' && 'granularity' in rawScope.batch
+                    ? {
+                        granularity: (rawScope.batch as { granularity: string }).granularity === 'per-author' ? ('per-author' as const) : ('per-book' as const),
+                        resumeFrom: typeof (rawScope.batch as Record<string, unknown>).resumeFrom === 'string' ? (rawScope.batch as Record<string, string>).resumeFrom : undefined,
+                      }
+                    : null,
+              }
+            : null;
+
           const id = randomUUID();
           let cancelled = false;
           acquireAgentSlot(id, () => { cancelled = true; });
@@ -154,16 +179,22 @@ export function registerAgentHandlers(): void {
               log.warn('could not open a task_run for the agent', { message: (err as Error).message });
             }
 
-            const result = await runAgent({
+            const runOpts = {
               instruction, mode, projectRoot,
+              scope: scope ?? undefined,
               onProgress: emit,
               isCancelled: () => cancelled,
-              generalSearch: (query) => requestGeneralSearch(id, query, win?.webContents),
-              researchSearch: (mode, query) => requestResearch(id, query, win?.webContents, mode),
-              transcribeMedia: (mediaPath, lang) => requestTranscription(id, mediaPath, lang, win?.webContents),
-              ocrDocument: (scanPath, lang, pages) => requestOcr(id, scanPath, lang, pages, win?.webContents),
-              waitForApproval: (plan) => requestPlanApproval(id, plan, win?.webContents),
-            });
+              generalSearch: (query: string) => requestGeneralSearch(id, query, win?.webContents),
+              researchSearch: (m: 'general' | 'islamic', query: string) => requestResearch(id, query, win?.webContents, m),
+              transcribeMedia: (mediaPath: string, lang: string) => requestTranscription(id, mediaPath, lang, win?.webContents),
+              ocrDocument: (scanPath: string, lang: string, pages?: string) => requestOcr(id, scanPath, lang, pages, win?.webContents),
+              waitForApproval: (plan: { steps: string[]; summary: string }) => requestPlanApproval(id, plan, win?.webContents),
+            } as Parameters<typeof runAgent>[0];
+
+            const result =
+              scope?.batch
+                ? await runBatch(runOpts, scope, { onProgress: emit, isCancelled: () => cancelled, resumeFrom: scope.batch?.resumeFrom })
+                : await runAgent(runOpts);
 
             if (runId) {
               await svc.updateTaskRunStatus(
