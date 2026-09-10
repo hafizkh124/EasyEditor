@@ -85,21 +85,21 @@ export const FilesPanel: React.FC = () => {
       if (node.openAs === "editor-docx") {
         const html = await pf.importChapter(node.name);
         if (html == null) return;
-        if (!activeDocumentId) { toast.info(t("files.open_a_doc_first", "پہلے ایک دستاویز کھولیں، پھر فائل داخل ہوگی")); return; }
+        if (!activeDocumentId) { toast.info(t("files.open_a_doc_first", "Open a document first, then the file is inserted")); return; }
         insertIntoCanvas(html);
         toast.success(t("projectfolder.imported", "“{name}” inserted into the document").replace("{name}", node.base));
       } else if (node.openAs === "editor-text") {
         const { text } = await api!.readText!(root, node.name);
-        if (!activeDocumentId) { toast.info(t("files.open_a_doc_first", "پہلے ایک دستاویز کھولیں، پھر فائل داخل ہوگی")); return; }
+        if (!activeDocumentId) { toast.info(t("files.open_a_doc_first", "Open a document first, then the file is inserted")); return; }
         insertIntoCanvas(node.ext === ".md" ? markdownToHtml(text) : `<p>${text.replace(/\n/g, "</p><p>")}</p>`);
         toast.success(t("projectfolder.imported", "“{name}” inserted into the document").replace("{name}", node.base));
       } else {
         // An in-app PDF reader / generic file preview is a follow-up (plan §3.3).
-        toast.info(t("files.no_preview", "اس فائل کی جھلک ابھی دستیاب نہیں — فائل ایکسپلورر سے کھولیں"));
+        toast.info(t("files.no_preview", "No preview yet — open it from your file explorer"));
       }
     } catch (err) {
       log.warn("openFile failed", { err });
-      toast.error(t("files.open_failed", "فائل نہیں کھل سکی"));
+      toast.error(t("files.open_failed", "Could not open the file"));
     } finally {
       setBusyPath(null);
     }
@@ -117,7 +117,7 @@ export const FilesPanel: React.FC = () => {
   const del = useCallback(async (node: ProjectTreeNode) => {
     if (!api?.trash || !root) return;
     if (!window.confirm(t("files.delete_confirm", "“{name}” کو ردی میں بھیجیں؟").replace("{name}", node.base))) return;
-    try { await api.trash(root, node.name); await refreshTree(); toast.success(t("files.trashed", "ردی میں منتقل")); }
+    try { await api.trash(root, node.name); await refreshTree(); toast.success(t("files.trashed", "Moved to trash")); }
     catch (err) { toast.error((err as Error).message); }
   }, [api, root, refreshTree, t]);
 
