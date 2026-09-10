@@ -8,6 +8,19 @@ import type { AgentArtifactEvent } from '../../shared/agent/types';
 
 const run = (evs: AgentArtifactEvent[]) => evs.reduce(applyArtifactEvent, [] as ReturnType<typeof applyArtifactEvent>);
 
+describe('applyArtifactEvent — data payload (plan §5.3)', () => {
+  it('folds op:"data" onto the artifact and keeps it across a close', () => {
+    const s = run([
+      { op: 'open', artifactId: 's1', title: 'شجرۂ اسناد', artifactType: 'sanad-tree' },
+      { op: 'data', artifactId: 's1', payload: { chains: [], rawyIds: [1, 2] } },
+      { op: 'close', artifactId: 's1', status: 'final' },
+    ]);
+    expect(s[0].type).toBe('sanad-tree');
+    expect(s[0].data).toEqual({ chains: [], rawyIds: [1, 2] });
+    expect(s[0].status).toBe('final');
+  });
+});
+
 describe('applyArtifactEvent', () => {
   it('open then replace-delta builds a document artifact', () => {
     const s = run([

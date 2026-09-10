@@ -141,6 +141,9 @@ export default tseslint.config(
       // search_history — a cloud table like research_sessions, not a
       // WorkspaceBackend table; degrades to the local SQLite mirror off-cloud.
       "src/lib/history/searchHistory.ts",
+      // JKHSSN narrator-name resolution — reads scholarly_documents (the shared
+      // rijāl corpus, not a WorkspaceBackend table); ADR-0045, plan §2.3.
+      "src/lib/jkhssn/resolveNames.ts",
       // ── translation memory (glossary lookups against a hosted-only table) ─
       "src/lib/translationMemory.ts",
       // ── subscription/billing context, used app-wide for gating ────────────

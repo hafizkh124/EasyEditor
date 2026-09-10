@@ -16,6 +16,8 @@ import { CommandPalette } from "./CommandPalette";
 import { WorkspaceStatusBar } from "./WorkspaceStatusBar";
 import { ActivityRail } from "./rail/ActivityRail";
 import { SidePanelHost } from "./rail/SidePanelHost";
+import { ArtifactStage } from "./artifacts/ArtifactStage";
+import { useOptionalSharedAgentRun } from "@/core/workspace/useSharedAgentRun";
 import { useWorkspaceShortcuts } from "@/core/workspace/useWorkspaceShortcuts";
 import { useDocument } from "@/core/workspace/useDocument";
 import { countWords } from "@/core/workspace/documentService";
@@ -42,6 +44,8 @@ export const WorkspaceLayout: React.FC = () => {
     mobileLibraryOpen,
     setMobileLibraryOpen,
     setDocumentOutline,
+    stageCollapsed,
+    stageMaximized,
   } = useWorkspace();
 
   useWorkspaceShortcuts();
@@ -52,6 +56,10 @@ export const WorkspaceLayout: React.FC = () => {
   // second). use-mobile.tsx's matchMedia-based hook is the one already
   // shared elsewhere in the app.
   const isMobile = useIsMobile();
+
+  // Plan §5.2 — the artifact stage shares the Canvas zone as a vertical split.
+  const sharedAgent = useOptionalSharedAgentRun();
+  const showStage = !isMobile && (sharedAgent?.artifacts.length ?? 0) > 0 && !stageCollapsed;
 
   const shamelaBook = useShamelaBook(activeDocumentId);
 
@@ -222,41 +230,64 @@ export const WorkspaceLayout: React.FC = () => {
           <ResizableHandle withHandle className={cn((isMobile || libraryCollapsed) && "hidden")} />
 
           {/* Pillar 2: Canvas — the only pillar left in the flex flow on mobile,
-              so it fills the viewport there (FR-8.1) */}
+              so it fills the viewport there (FR-8.1). Plan §5.2 — a nested
+              VERTICAL split: editor on top, artifact stage below (only rendered
+              once the agent has produced an artifact, so the column count never
+              changes). */}
           <ResizablePanel defaultSize={55} minSize={35} className="min-w-0">
-            {shamelaBook.bookId ? (
-              splitSecondary ? (
-                <SplitReader
-                  primary={{
-                    bookId: shamelaBook.bookId,
-                    title: shamelaBook.title || shamelaBook.bookId,
-                    author: shamelaBook.author,
-                  }}
-                  secondary={splitSecondary}
-                  onClose={handleCloseReader}
-                  onCloseSecondary={handleCloseSplit}
-                />
-              ) : (
-                <ShamelaReader
-                  bookId={shamelaBook.bookId}
-                  title={shamelaBook.title || shamelaBook.bookId}
-                  subtitle={shamelaBook.author}
-                  onClose={handleCloseReader}
-                  initialPage={initialReaderPage}
-                  onRequestSplit={() => setSplitPickerOpen(true)}
-                />
-              )
-            ) : (
-              <CanvasPanel
-                doc={doc}
-                docLoading={docLoading}
-                contentRevision={contentRevision}
-                restoredContent={restoredContent}
-                onDirectionChange={syncDocDirection}
-                onEditorChange={handleEditorChange}
-                onDocChange={handleDocChange}
-              />
-            )}
+            <ResizablePanelGroup direction="vertical" autoSaveId="workspace.canvas.v1" className="h-full">
+              {!(showStage && stageMaximized) && (
+              <ResizablePanel
+                id="canvas-editor"
+                order={1}
+                defaultSize={showStage ? 55 : 100}
+                minSize={20}
+                className="min-h-0"
+              >
+                {shamelaBook.bookId ? (
+                  splitSecondary ? (
+                    <SplitReader
+                      primary={{
+                        bookId: shamelaBook.bookId,
+                        title: shamelaBook.title || shamelaBook.bookId,
+                        author: shamelaBook.author,
+                      }}
+                      secondary={splitSecondary}
+                      onClose={handleCloseReader}
+                      onCloseSecondary={handleCloseSplit}
+                    />
+                  ) : (
+                    <ShamelaReader
+                      bookId={shamelaBook.bookId}
+                      title={shamelaBook.title || shamelaBook.bookId}
+                      subtitle={shamelaBook.author}
+                      onClose={handleCloseReader}
+                      initialPage={initialReaderPage}
+                      onRequestSplit={() => setSplitPickerOpen(true)}
+                    />
+                  )
+                ) : (
+                  <CanvasPanel
+                    doc={doc}
+                    docLoading={docLoading}
+                    contentRevision={contentRevision}
+                    restoredContent={restoredContent}
+                    onDirectionChange={syncDocDirection}
+                    onEditorChange={handleEditorChange}
+                    onDocChange={handleDocChange}
+                  />
+                )}
+              </ResizablePanel>
+              )}
+              {showStage && (
+                <>
+                  {!stageMaximized && <ResizableHandle withHandle />}
+                  <ResizablePanel id="canvas-stage" order={2} defaultSize={stageMaximized ? 100 : 45} minSize={20} className="min-h-0">
+                    <ArtifactStage />
+                  </ResizablePanel>
+                </>
+              )}
+            </ResizablePanelGroup>
           </ResizablePanel>
 
           {/* Pillar 3: Workbench — hidden by CSS, never unmounted, so a running
