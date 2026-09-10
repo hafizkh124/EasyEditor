@@ -180,8 +180,12 @@ export const WorkspaceLayout: React.FC = () => {
         onCreateSnapshot={createSnapshot}
       />
 
-      {/* Main 3-Pillar Workspace Area — one tree at every viewport size */}
-      <div className="flex-1 min-h-0 relative overflow-hidden">
+      {/* Main 3-Pillar Workspace Area — one tree at every viewport size.
+          `flex` so the activity rail (a 48px shrink-0 child) and the resizable
+          group sit in a row; under dir="rtl" the row reverses, putting the rail
+          on the right (react-resizable-panels v2 negates its own drag delta for
+          rtl, so the panels mirror correctly with no [...panels].reverse()). */}
+      <div className="flex flex-1 min-h-0 relative overflow-hidden">
         {/* Mobile scrim behind an open drawer */}
         {isMobile && (mobileLibraryOpen || !workbenchCollapsed) && (
           <div
@@ -202,7 +206,7 @@ export const WorkspaceLayout: React.FC = () => {
         <ResizablePanelGroup
           direction="horizontal"
           autoSaveId="workspace.layout.v2"
-          className="h-full relative"
+          className="h-full min-w-0 flex-1 relative"
         >
           {/* Pillar 1: the active rail panel — a column on desktop, a start-edge
               drawer on mobile. Collapsed to 0 when no rail panel is active. */}
