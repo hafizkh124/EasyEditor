@@ -23,8 +23,6 @@ import { ProjectFolderSection } from "./ProjectFolderSection";
 
 const log = logger.child("LibraryPanel");
 import { LibrarySourcesTab } from "./LibrarySourcesTab";
-import { KnowledgeGraphTab } from "./KnowledgeGraphTab";
-import { RecipesTab } from "./RecipesTab";
 import { HomeTab } from "./HomeTab";
 import { ShamelaTab } from "./ShamelaTab";
 import { ShamelaImportDialog } from "@/components/shamela/ShamelaImportDialog";
@@ -55,10 +53,6 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
   const [activeTab, setActiveTab] = useState("home");
   const [shamelaInitialSubTab, setShamelaInitialSubTab] = useState<"browse" | "search" | "favorites">("browse");
 
-  // M4 pillars ship independently; each tab exists only when its flag is on.
-  // M6 adds Home tab as the first tab.
-  const graphEnabled = import.meta.env.VITE_KNOWLEDGE_GRAPH !== "false";
-  const recipesEnabled = import.meta.env.VITE_RECIPES !== "false";
   // Browse/Search/Favorites are backed entirely by a native Shamela install
   // today (BrowseTab and SearchTab call window.electronAPI.shamela.* directly;
   // FavoritesTab's cloud backend is a stub that returns nothing). Showing them
@@ -203,6 +197,9 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
           {/* A grid that squeezes up to 6 columns truncated labels illegibly on a
               narrow viewport (Phase 3 follow-up); scrolling horizontally instead
               keeps every label intact, matching Admin.tsx's tab strip. */}
+          {/* Plan §3.0 — Knowledge Graph & Recipes moved to ⚙️ ترتیبات; the
+              Library panel is now just: Home · My Documents · Shamela · Personal
+              Library (JKHSSN's own browse surface lands with Phase 5). */}
           <TabsList className="w-full justify-start overflow-x-auto h-11 md:h-7 bg-muted p-0.5">
             <TabsTrigger value="home" className="text-xs h-full py-0 px-2 shrink-0">
               <Home className="h-3.5 w-3.5 me-1" />
@@ -216,12 +213,6 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
               </TabsTrigger>
             )}
             <TabsTrigger value="sources" className="text-xs h-full py-0 px-2 shrink-0">{t("library.tab_sources", "Sources")}</TabsTrigger>
-            {graphEnabled && (
-              <TabsTrigger value="graph" className="text-xs h-full py-0 px-2 shrink-0">{t("library.tab_graph", "Graph")}</TabsTrigger>
-            )}
-            {recipesEnabled && (
-              <TabsTrigger value="recipes" className="text-xs h-full py-0 px-2 shrink-0">{t("library.tab_recipes", "Recipes")}</TabsTrigger>
-            )}
           </TabsList>
         </div>
 
@@ -297,18 +288,6 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
         <TabsContent value="sources" className="flex-1 min-h-0 m-0">
           <LibrarySourcesTab />
         </TabsContent>
-
-        {graphEnabled && (
-          <TabsContent value="graph" className="flex-1 min-h-0 m-0">
-            <KnowledgeGraphTab />
-          </TabsContent>
-        )}
-
-        {recipesEnabled && (
-          <TabsContent value="recipes" className="flex-1 min-h-0 m-0">
-            <RecipesTab />
-          </TabsContent>
-        )}
       </Tabs>
 
       <LibraryNewProjectDialog
