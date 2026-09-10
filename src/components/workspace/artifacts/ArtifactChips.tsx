@@ -23,7 +23,7 @@ export const ArtifactChips: React.FC<{
           <button
             key={a.id}
             onClick={() => onOpen(a.id)}
-            className={`flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs ${a.id === activeId ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted"}`}
+            className={`flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-ring ${a.id === activeId ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted"}`}
           >
             <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <span className="flex-1 truncate text-start">{a.title}</span>

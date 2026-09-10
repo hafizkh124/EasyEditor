@@ -56,16 +56,18 @@ export const ArtifactStage: React.FC = () => {
           {ws && (
             <>
               <button
-                className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground"
+                className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 onClick={() => ws.setStageMaximized(!ws.stageMaximized)}
                 title={ws.stageMaximized ? t("artifact.restore", "Restore") : t("artifact.maximize", "Maximize")}
+                aria-label={ws.stageMaximized ? t("artifact.restore", "Restore") : t("artifact.maximize", "Maximize")}
               >
                 {ws.stageMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
               </button>
               <button
-                className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground"
+                className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 onClick={() => ws.setStageCollapsed(true)}
                 title={t("artifact.collapse", "Collapse stage")}
+                aria-label={t("artifact.collapse", "Collapse stage")}
               >
                 <ChevronsDownUp className="h-3.5 w-3.5" />
               </button>
@@ -75,14 +77,16 @@ export const ArtifactStage: React.FC = () => {
       </header>
 
       {artifacts.length > 1 && (
-        <div className="flex gap-0.5 overflow-x-auto border-b border-border bg-muted/60 px-1 py-0.5">
+        <div role="tablist" className="flex gap-0.5 overflow-x-auto border-b border-border bg-muted px-1 py-0.5">
           {artifacts.map((a) => {
             const TabIcon = ARTIFACT_ICON[a.type] ?? FileText;
             return (
               <button
                 key={a.id}
+                role="tab"
+                aria-selected={a.id === active.id}
                 onClick={() => agent?.setActiveArtifactId(a.id)}
-                className={`flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs ${a.id === active.id ? "bg-background font-medium" : "text-muted-foreground hover:bg-background/60"}`}
+                className={`flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-ring ${a.id === active.id ? "bg-background font-medium" : "text-muted-foreground hover:bg-background"}`}
               >
                 <TabIcon className="h-3 w-3" />
                 <span className="max-w-[10rem] truncate">{a.title}</span>

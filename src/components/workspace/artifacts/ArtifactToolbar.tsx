@@ -57,35 +57,40 @@ export const ArtifactToolbar: React.FC<{
     downloadBlob(blob, name);
   };
 
-  const btn = "inline-flex h-7 items-center gap-1 rounded px-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground";
+  const btn = "inline-flex h-7 items-center gap-1 rounded px-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+  const insertLabel = t("artifact.insert", "Insert into editor");
+  const fsLabel = t("artifact.fullscreen", "Fullscreen");
+  const copyLabel = t("artifact.copy", "Copy formatted");
+  const dismissLabel = t("artifact.dismiss", "Dismiss");
 
   return (
     <div className="flex items-center gap-0.5">
       {ws && (
-        <button className={btn} onClick={doInsert} title={t("artifact.insert", "Insert into editor")}>
+        <button className={btn} onClick={doInsert} title={insertLabel} aria-label={insertLabel}>
           {inserted ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <FileInput className="h-3.5 w-3.5" />}
         </button>
       )}
       {isVisual && (
         <>
-          <button className={btn} onClick={() => void exportAs("png")} title={t("artifact.export_png", "Export PNG")}>
+          <button className={btn} onClick={() => void exportAs("png")} title={t("artifact.export_png", "Export PNG")} aria-label={t("artifact.export_png", "Export PNG")}>
             <Download className="h-3.5 w-3.5" /> {t("artifact.fmt_png", "PNG")}
           </button>
-          <button className={btn} onClick={() => void exportAs("svg")} title={t("artifact.export_svg", "Export SVG")}>
+          <button className={btn} onClick={() => void exportAs("svg")} title={t("artifact.export_svg", "Export SVG")} aria-label={t("artifact.export_svg", "Export SVG")}>
             {t("artifact.fmt_svg", "SVG")}
           </button>
         </>
       )}
       {onFullscreen && (
-        <button className={btn} onClick={onFullscreen} title={t("artifact.fullscreen", "Fullscreen")}>
+        <button className={btn} onClick={onFullscreen} title={fsLabel} aria-label={fsLabel}>
           <Maximize2 className="h-3.5 w-3.5" />
         </button>
       )}
-      <button className={btn} onClick={() => void doCopy()} title={t("artifact.copy", "Copy formatted")}>
+      <button className={btn} onClick={() => void doCopy()} title={copyLabel} aria-label={copyLabel}>
         {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <ClipboardCopy className="h-3.5 w-3.5" />}
       </button>
       {onDismiss && (
-        <button className={btn} onClick={onDismiss} title={t("artifact.dismiss", "Dismiss")}>
+        <button className={btn} onClick={onDismiss} title={dismissLabel} aria-label={dismissLabel}>
           <X className="h-3.5 w-3.5" />
         </button>
       )}
