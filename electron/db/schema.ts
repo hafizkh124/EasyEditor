@@ -248,6 +248,20 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
       result_count INTEGER,
       created_at TEXT NOT NULL
     );
+
+    -- Plan §3.5 — offline mirror of Supabase research_sessions, so a
+    -- logged-out desktop scholar's chat survives a restart.
+    CREATE TABLE IF NOT EXISTS research_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      mode TEXT NOT NULL DEFAULT 'islamic',
+      messages TEXT NOT NULL DEFAULT '[]',
+      citations TEXT NOT NULL DEFAULT '[]',
+      selected_domains TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 
   // Create indexes separately (IF NOT INDEX is not standard SQLite)
@@ -255,6 +269,7 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
     db.exec(`CREATE INDEX IF NOT EXISTS idx_access_log_item ON document_access_log(item_id);`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_access_log_time ON document_access_log(accessed_at DESC);`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_search_history_time ON search_history(user_id, created_at DESC);`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_research_sessions_time ON research_sessions(user_id, updated_at DESC);`);
   } catch {
     // Indexes may already exist
   }

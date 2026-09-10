@@ -8,12 +8,7 @@ import type { CitationItem } from "@/components/research/CitationPanel";
 import { streamIslamicQuery, assistResearchQuery } from "@/lib/research/streamers";
 import { toSelectedDomains } from "@/lib/research/sources";
 import type { ResearchAssistMode } from "@/lib/prompts";
-import {
-  upsertResearchSession,
-  loadLatestResearchSession,
-  loadResearchSession,
-  deleteResearchSession,
-} from "@/lib/research/persistence";
+import { getSessionStore } from "@/lib/sessions/store";
 import { callRefineText, isRefineTextAction } from "@/lib/editor/aiActions";
 import { renderCitedAnswer } from "@/lib/research/citedAnswer";
 import { logger } from "@/lib/logger";
@@ -85,13 +80,12 @@ export function useResearchChat(args: UseResearchChatArgs) {
     updatedMessages: ChatMessage[],
     updatedCitations: CitationItem[],
   ) => {
-    if (!userId || updatedMessages.length === 0) return;
+    if (updatedMessages.length === 0) return;
     try {
       const firstUser = updatedMessages.find((m) => m.role === "user");
       const title = firstUser?.content.slice(0, 80) ?? "Research Session";
-      const newId = await upsertResearchSession({
+      const newId = await getSessionStore(userId ?? null).upsert({
         id: sessionIdRef.current,
-        userId,
         title,
         // SPEC M10 §1.1 — every query now goes through islamic-search
         // (which auto-derives strict vs. referenced itself), so there is no
@@ -125,15 +119,15 @@ export function useResearchChat(args: UseResearchChatArgs) {
   const requestedSessionId = searchParams.get("session");
 
   const loadRequestedOrLatest = useCallback(async () => {
-    if (!userId) return;
+    const store = getSessionStore(userId ?? null);
     try {
       if (requestedSessionId) {
-        const data = await loadResearchSession(requestedSessionId, userId);
+        const data = await store.load(requestedSessionId);
         if (data) {
           sessionIdRef.current = data.id;
           setActiveSessionId(data.id);
-          setMessages(data.messages ?? []);
-          setCitations(data.citations ?? []);
+          setMessages((data.messages ?? []) as ChatMessage[]);
+          setCitations((data.citations ?? []) as CitationItem[]);
           return;
         }
         // Requested id wasn't found — fall through to "latest" so the page
@@ -142,12 +136,12 @@ export function useResearchChat(args: UseResearchChatArgs) {
         next.delete("session");
         setSearchParams(next, { replace: true });
       }
-      const data = await loadLatestResearchSession(userId, "islamic");
+      const data = await store.loadLatest("islamic");
       if (data) {
         sessionIdRef.current = data.id;
         setActiveSessionId(data.id);
-        setMessages(data.messages ?? []);
-        setCitations(data.citations ?? []);
+        setMessages((data.messages ?? []) as ChatMessage[]);
+        setCitations((data.citations ?? []) as CitationItem[]);
       }
     } catch {
       log.debug("research_sessions table not available yet");
@@ -337,9 +331,9 @@ export function useResearchChat(args: UseResearchChatArgs) {
   };
 
   const handleClearChat = async () => {
-    if (user && sessionIdRef.current) {
+    if (sessionIdRef.current) {
       try {
-        await deleteResearchSession(sessionIdRef.current, user.id);
+        await getSessionStore(userId ?? null).remove(sessionIdRef.current);
       } catch { /* table may not be migrated */ }
     }
     sessionIdRef.current = null;
@@ -371,17 +365,16 @@ export function useResearchChat(args: UseResearchChatArgs) {
 
   // Phase 10.5: load a specific past session into the active chat (sidebar click).
   const handleLoadSession = async (id: string) => {
-    if (!user) return;
     try {
-      const data = await loadResearchSession(id, user.id);
+      const data = await getSessionStore(userId ?? null).load(id);
       if (!data) {
         toast.error(t("research.session_not_found", "Session not found"));
         return;
       }
       sessionIdRef.current = data.id;
       setActiveSessionId(data.id);
-      setMessages(data.messages ?? []);
-      setCitations(data.citations ?? []);
+      setMessages((data.messages ?? []) as ChatMessage[]);
+      setCitations((data.citations ?? []) as CitationItem[]);
       setSourcesReadyInfo(null);
     } catch {
       toast.error(t("research.session_load_failed", "Failed to load session"));
@@ -390,9 +383,8 @@ export function useResearchChat(args: UseResearchChatArgs) {
 
   // Phase 10.5: delete a specific session from the sidebar (not necessarily the active one).
   const handleDeleteSession = async (id: string) => {
-    if (!user) return;
     try {
-      await deleteResearchSession(id, user.id);
+      await getSessionStore(userId ?? null).remove(id);
       // If we deleted the currently-active session, reset the chat too.
       if (sessionIdRef.current === id) {
         sessionIdRef.current = null;
