@@ -5,7 +5,7 @@
 // when the caret is inside it and the `@` starts a word; applying a mention
 // replaces just that token and leaves a trailing space.
 import { describe, it, expect } from 'vitest';
-import { buildMentions, filterMentions, activeMentionQuery, applyMention } from '../../shared/mentions';
+import { buildMentions, filterMentions, activeMentionQuery, activeTriggerQuery, applyMention, applyLibraryTag } from '../../shared/mentions';
 
 describe('buildMentions', () => {
   it('turns chapters, outline headings, and Shamela books into mentions', () => {
@@ -79,6 +79,37 @@ describe('activeMentionQuery', () => {
   });
   it('is null with no @ at all', () => {
     expect(activeMentionQuery('just text', 4)).toBeNull();
+  });
+});
+
+describe('activeTriggerQuery — # (plan §4.1)', () => {
+  it('finds a mid-text #token the caret is inside', () => {
+    const text = 'مسئلہ #فتح پر';
+    expect(activeTriggerQuery(text, 10, '#')).toEqual({ query: 'فتح', start: 6 });
+  });
+  it('activeMentionQuery is the @-bound wrapper', () => {
+    expect(activeMentionQuery('x @in', 5)).toEqual(activeTriggerQuery('x @in', 5, '@'));
+  });
+  it('is null once a space ends the # token', () => {
+    expect(activeTriggerQuery('#فتح الباري', 11, '#')).toBeNull();
+  });
+});
+
+describe('applyLibraryTag', () => {
+  it('replaces the active #query with #label and a trailing space', () => {
+    const SP = String.fromCharCode(32);
+    const HASH = String.fromCharCode(35);
+    const input = ['x', SP, HASH, 'a'].join('');
+    const res = applyLibraryTag(input, input.length, ['foo', SP, 'bar'].join(''));
+    expect(res.text).toBe(['x', SP, HASH, 'foo', SP, 'bar', SP].join(''));
+    expect(res.caret).toBe(res.text.length);
+  });
+  it('collapses inner whitespace in the label', () => {
+    const SP = String.fromCharCode(32);
+    const HASH = String.fromCharCode(35);
+    const input = ['x', SP, HASH, 'a'].join('');
+    const res = applyLibraryTag(input, input.length, ['foo', '\t\t', 'bar'].join(''));
+    expect(res.text).toBe(['x', SP, HASH, 'foo', SP, 'bar', SP].join(''));
   });
 });
 

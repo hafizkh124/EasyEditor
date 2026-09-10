@@ -10,6 +10,7 @@ import { getCurrentUserId } from './workspaceStore/identity.js';
 import * as accessLog from './workspaceStore/accessLog.js';
 import * as searchHistory from './workspaceStore/searchHistory.js';
 import * as sessions from './workspaceStore/sessions.js';
+import * as batchRuns from './workspaceStore/batchRuns.js';
 import { searchChunks, searchChunksByRoot, type ChunkSearchHit } from './workspaceStore/search.js';
 import * as readerState from './workspaceStore/readerState.js';
 import { ingestLibraryItem, type IngestBatchArgs, type IngestBatchResult } from './ingest.js';
@@ -80,8 +81,8 @@ export class WorkspaceDbService {
     return accessLog.getLibraryItemCount(this.db);
   }
   /** SPEC-M6 Phase 5: FTS5 keyword search over imported chunks. */
-  public async searchChunks(query: string, limit = 50): Promise<ChunkSearchHit[]> {
-    return searchChunks(this.db, query, limit);
+  public async searchChunks(query: string, limit = 50, opts?: { libraryItemIds?: string[] }): Promise<ChunkSearchHit[]> {
+    return searchChunks(this.db, query, limit, opts);
   }
 
   /** SPEC-M6 Phase 6: root-expanded keyword search over imported chunks. */
@@ -178,6 +179,17 @@ export class WorkspaceDbService {
   public async loadLatestResearchSession(mode: string): Promise<sessions.LocalResearchSession | null> { return sessions.loadLatestResearchSession(this.db, mode); }
   public async listResearchSessions(limit?: number): Promise<sessions.LocalResearchSummary[]> { return sessions.listResearchSessions(this.db, limit); }
   public async deleteResearchSession(id: string): Promise<void> { sessions.deleteResearchSession(this.db, id); }
+
+  // ── Batch agent runs — offline, resumable (plan §4.6) ─────────────────────
+  public async createBatchRun(p: { id: string; instruction: string; scopeJson: string; granularity: string; aggregate: string; itemsTotal: number }): Promise<void> {
+    batchRuns.createBatchRun(this.db, p);
+  }
+  public async updateBatchRun(id: string, updates: { itemsDone?: unknown[]; status?: string }): Promise<void> {
+    batchRuns.updateBatchRun(this.db, id, updates);
+  }
+  public async loadBatchRun(id: string): Promise<batchRuns.BatchRunRow | null> { return batchRuns.loadBatchRun(this.db, id); }
+  public async latestUnfinishedBatchRun(): Promise<batchRuns.BatchRunRow | null> { return batchRuns.latestUnfinishedBatchRun(this.db); }
+  public async deleteBatchRun(id: string): Promise<void> { batchRuns.deleteBatchRun(this.db, id); }
 
   // ── Task runs ─────────────────────────────────────────────────────────────
   public async listTaskRuns(documentId?: string): Promise<TaskRun[]> { return taskRuns.listTaskRuns(this.db, documentId); }

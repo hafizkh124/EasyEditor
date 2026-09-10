@@ -432,6 +432,14 @@ const electronAPI = {
       instruction: string,
       mode: 'ask' | 'plan' | 'auto' | 'do',
       projectRoot: string,
+      // Plan §4.4 — book/author/century scope + playbook + batch. Optional.
+      scope?: {
+        books: string[];
+        groups: Array<{ type: string; ref: string; label: string; bookRefs: string[] }>;
+        playbook: string | null;
+        mentions: string[];
+        batch: { granularity: 'per-book' | 'per-author' } | null;
+      },
     ): Promise<{
       id: string;
       answer: string;
@@ -443,7 +451,7 @@ const electronAPI = {
       question?: string;
       error?: string;
     }> =>
-      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'run', instruction, mode, projectRoot }),
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'run', instruction, mode, projectRoot, scope }),
     // M9 — the renderer's decision on a Plan-mode plan (ADR-0026).
     approvePlan: (runId: string, decision: 'approved' | 'rejected'): Promise<{ ok: boolean }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'approvePlan', runId, decision }),

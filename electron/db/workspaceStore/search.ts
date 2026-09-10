@@ -58,6 +58,7 @@ export function searchChunks(
   db: SqliteDatabase,
   query: string,
   limit = 50,
+  opts?: { libraryItemIds?: string[] },
 ): ChunkSearchHit[] {
   const userId = getCurrentUserId(db);
   const raw = query.trim();
@@ -66,6 +67,10 @@ export function searchChunks(
   const normalized = normalizeArabicForSearch(raw);
   const words = normalized.split(/\s+/).filter(Boolean);
   const ftsExpr = words.map((w) => `"${w.replace(/"/g, '""')}"`).join(' ');
+
+  // Plan §4.5 — an optional `#` scope restricting the search to specific items.
+  const ids = (opts?.libraryItemIds ?? []).filter(Boolean);
+  const idClause = ids.length ? ` AND li.id IN (${ids.map(() => '?').join(',')})` : '';
 
   try {
     const rows = db.prepare(`
@@ -77,10 +82,10 @@ export function searchChunks(
              bm25(library_chunks_fts) AS rank
       FROM library_chunks_fts f
       JOIN library_items li ON li.id = f.library_item_id AND li.user_id = ?
-      WHERE library_chunks_fts MATCH ?
+      WHERE library_chunks_fts MATCH ?${idClause}
       ORDER BY rank
       LIMIT ?
-    `).all(userId, ftsExpr, limit) as Array<{
+    `).all(userId, ftsExpr, ...ids, limit) as Array<{
       search_text: string;
       page_number: number | null;
       itemId: string;
@@ -109,10 +114,10 @@ export function searchChunks(
              li.source_ref
       FROM library_chunks c
       JOIN library_items li ON li.id = c.library_item_id AND li.user_id = ?
-      WHERE c.content LIKE ?
+      WHERE c.content LIKE ?${idClause}
       ORDER BY c.created_at DESC
       LIMIT ?
-    `).all(userId, pattern, limit) as Array<{
+    `).all(userId, pattern, ...ids, limit) as Array<{
       content: string;
       page_number: number | null;
       itemId: string;

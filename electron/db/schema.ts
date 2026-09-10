@@ -262,6 +262,22 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    -- Plan §4.6 — a resumable per-book/per-author batch agent run. Desktop-only,
+    -- no Supabase mirror (batch is a desktop-agent flow).
+    CREATE TABLE IF NOT EXISTS batch_runs (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      instruction TEXT NOT NULL,
+      scope_json TEXT NOT NULL DEFAULT '{}',
+      granularity TEXT NOT NULL DEFAULT 'per-book',
+      aggregate TEXT NOT NULL DEFAULT 'document',
+      items_total INTEGER NOT NULL DEFAULT 0,
+      items_done_json TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL DEFAULT 'running',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 
   // Create indexes separately (IF NOT INDEX is not standard SQLite)
@@ -270,6 +286,7 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
     db.exec(`CREATE INDEX IF NOT EXISTS idx_access_log_time ON document_access_log(accessed_at DESC);`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_search_history_time ON search_history(user_id, created_at DESC);`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_research_sessions_time ON research_sessions(user_id, updated_at DESC);`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_batch_runs_time ON batch_runs(user_id, updated_at DESC);`);
   } catch {
     // Indexes may already exist
   }

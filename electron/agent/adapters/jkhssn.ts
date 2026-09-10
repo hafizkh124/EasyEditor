@@ -99,16 +99,20 @@ export async function jkhssnSanadTree(args: { hadithMainId?: number; hadithText?
 
 // ── takhrīj ──────────────────────────────────────────────────────────────────
 
-export async function jkhssnTakhrij(args: { hadithMainId?: number; hadithText?: string }): Promise<JkhssnAdapterResult> {
+export async function jkhssnTakhrij(args: { hadithMainId?: number; hadithText?: string; bookIds?: number[] }): Promise<JkhssnAdapterResult> {
   if (!(await ensureIndex())) return { chunks: [], ...unavailable('grade_hadith') };
   if (args.hadithMainId == null) {
     return { chunks: [], note: 'تخریج کے لیے حدیث کی مجموعہ + مطبوعہ نمبر درکار ہے۔' };
   }
-  const t = axisTakhrij(args.hadithMainId);
+  const full = axisTakhrij(args.hadithMainId);
+  const scope = (args.bookIds ?? []).filter((n) => Number.isFinite(n));
+  const t = scope.length
+    ? { ...full, entries: full.entries.filter((e) => e.bookId != null && scope.includes(e.bookId)), bookIds: full.bookIds.filter((b) => scope.includes(b)) }
+    : full;
   return {
     chunks: [],
     data: t,
-    note: `${t.entries.length} مواضع، ${t.bookIds.length} کتب${t.serviceState?.degree != null ? `، درجہ کوڈ ${t.serviceState.degree}` : ''}۔`,
+    note: `${t.entries.length} مواضع، ${t.bookIds.length} کتب${scope.length ? ' (دائرہ محدود)' : ''}${full.serviceState?.degree != null ? `، درجہ کوڈ ${full.serviceState.degree}` : ''}۔`,
   };
 }
 

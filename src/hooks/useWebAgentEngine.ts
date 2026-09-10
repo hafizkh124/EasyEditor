@@ -49,6 +49,9 @@ export function useWebAgentEngine() {
       instruction: string,
       mode: AgentMode,
       onProgress: (p: AgentProgress) => void,
+      // Plan §4.5 — the `#` scope. Web mirrors `books` for search_corpus only
+      // (batch mode and Shamela/JKHSSN scoping are desktop-agent flows).
+      scope?: { books?: string[] },
     ): Promise<AgentRunResult> => {
       cancelledRef.current = false;
       approvalRef.current = null;
@@ -59,6 +62,7 @@ export function useWebAgentEngine() {
         emitArtifact: (ev) => onProgress({ kind: "artifact", artifact: ev }),
         model: webAgentModel,
         isCancelled: () => cancelledRef.current,
+        bookScope: scope?.books?.length ? scope.books : undefined,
       };
       const { dispatch } = createWebDispatcher(session);
 

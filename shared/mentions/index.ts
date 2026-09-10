@@ -65,18 +65,28 @@ export function filterMentions(mentions: Mention[], query: string): Mention[] {
 }
 
 /**
- * Given the chat text and the caret position, return the active `@token`
- * (the run of non-space chars after the last `@` that the caret is inside),
- * or null. Used to drive the picker.
+ * Given the chat text and the caret position, return the active trigger token
+ * (the run of non-space chars after the last `trigger` char that the caret is
+ * inside), or null. `trigger` is `'@'` for mentions or `'#'` for the library
+ * scope picker (plan §4.1). Used to drive the picker.
  */
-export function activeMentionQuery(text: string, caret: number): { query: string; start: number } | null {
+export function activeTriggerQuery(
+  text: string,
+  caret: number,
+  trigger: '@' | '#',
+): { query: string; start: number } | null {
   const upto = text.slice(0, caret);
-  const at = upto.lastIndexOf('@');
+  const at = upto.lastIndexOf(trigger);
   if (at === -1) return null;
   const between = upto.slice(at + 1);
-  if (/\s/.test(between)) return null; // the @token ended before the caret
-  if (at > 0 && !/\s/.test(text[at - 1])) return null; // @ must start a word
+  if (/\s/.test(between)) return null; // the token ended before the caret
+  if (at > 0 && !/\s/.test(text[at - 1])) return null; // must start a word
   return { query: between, start: at };
+}
+
+/** `@`-mention flavour of {@link activeTriggerQuery}. */
+export function activeMentionQuery(text: string, caret: number): { query: string; start: number } | null {
+  return activeTriggerQuery(text, caret, '@');
 }
 
 /**
@@ -95,5 +105,33 @@ export function applyMention(text: string, caret: number, mention: Mention): { t
   const after = text.slice(caret);
   const token = mention.kind === 'shamela-book' ? mention.label : mention.ref;
   const insert = `@${token} `;
+  return { text: before + insert + after, caret: (before + insert).length };
+}
+
+// ── Plan §4 — library scope (`#`) ────────────────────────────────────────────
+
+export type ScopeKind = 'book' | 'author' | 'category' | 'century';
+
+/** One `#` scope: a single book, or a group that resolves to many books. */
+export interface LibraryScopeRef {
+  scopeKind: ScopeKind;
+  /** 'shamela:1681' | 'jkhssn:55' | 'corpus:<uuid>' | 'author:12' | 'category:7' | 'century:5' */
+  ref: string;
+  /** Picker + chip label (e.g. "فتح الباري", "ابن تیمیہ"). */
+  label: string;
+  source: 'shamela' | 'jkhssn' | 'corpus';
+}
+
+/**
+ * Replace the active `#query` with `#<label> ` and return the new text + caret.
+ * The visible token is the LABEL (readable); the structured ref travels on the
+ * chip, not in the text (plan §4.4).
+ */
+export function applyLibraryTag(text: string, caret: number, label: string): { text: string; caret: number } {
+  const active = activeTriggerQuery(text, caret, '#');
+  if (!active) return { text, caret };
+  const before = text.slice(0, active.start);
+  const after = text.slice(caret);
+  const insert = `#${label.replace(/\s+/g, ' ')} `;
   return { text: before + insert + after, caret: (before + insert).length };
 }
