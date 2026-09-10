@@ -26,6 +26,8 @@ export const CommandPalette: React.FC = () => {
     setCommandPaletteOpen,
     setActiveDocumentId,
     toggleWorkbench,
+    stageCollapsed,
+    setStageCollapsed,
     setWorkbenchTab,
     openRailPanel,
   } = useWorkspace();
@@ -199,6 +201,17 @@ export const CommandPalette: React.FC = () => {
               <span>{t(`rail.${panel}` as never, panel)}</span>
             </CommandItem>
           ))}
+
+          <CommandItem
+            onSelect={() => {
+              setStageCollapsed(!stageCollapsed);
+              handleOpenChange(false);
+            }}
+            className="cursor-pointer gap-2"
+          >
+            <PanelRight className="h-4 w-4 text-primary" />
+            <span>{t("artifact.stage", "Artifact stage")}</span>
+          </CommandItem>
 
           <CommandItem
             onSelect={() => {

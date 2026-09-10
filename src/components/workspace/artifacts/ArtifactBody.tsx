@@ -1,0 +1,109 @@
+import React from "react";
+import { ExternalLink } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { cn } from "@/lib/utils";
+import { classifyHadithGrade, GRADE_FAMILY_STYLE } from "@/lib/citations/hadithGrade";
+import type { ArtifactState } from "../agentArtifactState";
+import { SanadTree } from "./SanadTree";
+import { NarratorCard } from "./NarratorCard";
+import { MatnDiff, type MatnDiffPayload } from "./MatnDiff";
+import type { SanadTreePayload, NarratorCardPayload } from "../../../../shared/jkhssn/types";
+
+/**
+ * Plan §5.2 — the artifact body renderer, shared by the compact timeline chip
+ * (small) and the full stage (large). Switches on `artifact.type`: the three
+ * ADR-0045 visualisations render from `artifact.data`, everything else uses the
+ * document/table/citation-list render lifted from `AgentArtifactPanel`.
+ */
+export const ArtifactBody: React.FC<{ artifact: ArtifactState; compact?: boolean }> = ({ artifact: a, compact }) => {
+  const { t } = useLanguage();
+
+  if (a.type === "sanad-tree" && a.data) {
+    return <SanadTree payload={a.data as SanadTreePayload} />;
+  }
+  if (a.type === "narrator-card") {
+    return <NarratorCard variant="stage" payload={(a.data as NarratorCardPayload) ?? null} />;
+  }
+  if (a.type === "matn-diff" && a.data) {
+    return <MatnDiff payload={a.data as MatnDiffPayload} />;
+  }
+
+  if (a.table) {
+    return (
+      <div className={cn("overflow-x-auto", !compact && "max-h-full")}>
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr>{a.table.columns.map((c, i) => <th key={i} className="border border-border px-1 py-0.5 text-start font-medium">{c}</th>)}</tr>
+          </thead>
+          <tbody>
+            {a.table.rows.map((r, i) => (
+              <tr key={i}>{r.map((cell, j) => <td key={j} className="border border-border px-1 py-0.5 align-top">{cell}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (a.citations) {
+    return (
+      <ul className="space-y-1 text-xs">
+        {a.citations.map((c, i) => {
+          const head = (
+            <>
+              <span className="font-mono text-muted-foreground">{c.marker}</span>
+              <span className="flex-1">{c.reference}</span>
+              {c.supported === true && <span className="text-emerald-600" title={t("agent.artifact_supported", "supported")}>✓</span>}
+              {c.supported === false && <span className="text-amber-600" title={t("agent.artifact_unverified", "unverified")}>?</span>}
+              {c.grade && (() => {
+                const fam = classifyHadithGrade(c.grade);
+                const style = fam ? GRADE_FAMILY_STYLE[fam] : null;
+                return (
+                  <span
+                    className={cn("rounded-full border px-1.5 leading-none", style ? style.chip : "border-border bg-muted text-muted-foreground")}
+                    title={t("citations.grade_disclaimer", "{source}: {grade} — graded by the source, not by us").replace("{source}", "الدرر السنية").replace("{grade}", c.grade)}
+                  >
+                    {style ? style.label : c.grade}
+                  </span>
+                );
+              })()}
+            </>
+          );
+          const expandable = Boolean(c.excerpt || c.claim || c.url);
+          if (!expandable) return <li key={i} className="flex items-start gap-1.5">{head}</li>;
+          return (
+            <li key={i}>
+              <details className="group">
+                <summary className="flex cursor-pointer list-none items-start gap-1.5 [&::-webkit-details-marker]:hidden">
+                  {head}
+                  <span className="text-muted-foreground transition-transform group-open:rotate-90">›</span>
+                </summary>
+                <div className="mt-1 space-y-1.5 border-s-2 border-border ps-2">
+                  {c.claim && (
+                    <p className="text-muted-foreground" dir="auto">
+                      <span className="font-medium">{t("agent.artifact_claim", "Claim")}: </span>{c.claim}
+                    </p>
+                  )}
+                  {c.excerpt && (
+                    <blockquote className="whitespace-pre-wrap leading-relaxed text-foreground/80" dir="auto">{c.excerpt}</blockquote>
+                  )}
+                  {c.url && (
+                    <a href={c.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                      {t("agent.artifact_open_source", "Open the source")}
+                    </a>
+                  )}
+                </div>
+              </details>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
+  if (a.html) {
+    return <div className="prose prose-sm max-w-none dark:prose-invert [&_*]:text-xs" dangerouslySetInnerHTML={{ __html: a.html }} />;
+  }
+  return <pre className="whitespace-pre-wrap font-sans text-xs">{a.text ?? ""}</pre>;
+};

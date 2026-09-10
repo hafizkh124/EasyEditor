@@ -120,6 +120,8 @@ export function useAgentRun() {
   const [progress, setProgress] = useState<ProgressLine[]>([]);
   const [result, setResult] = useState<RunResult | null>(null);
   const [artifacts, setArtifacts] = useState<ArtifactState[]>([]);
+  // Plan §5.1 — which artifact the stage is showing (defaults to last-opened).
+  const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null);
   const [planPending, setPlanPending] = useState(false);
   const runIdRef = useRef<string | null>(null);
   const [showTools, setShowTools] = useState(false);
@@ -324,7 +326,10 @@ export function useAgentRun() {
       return;
     }
     if (p.kind === "artifact" && p.artifact) {
-      setArtifacts((prev) => applyArtifactEvent(prev, p.artifact!));
+      const ev = p.artifact;
+      setArtifacts((prev) => applyArtifactEvent(prev, ev));
+      // A freshly opened artifact becomes the active one on the stage.
+      if (ev.op === "open") setActiveArtifactId(ev.artifactId);
       return;
     }
     if (p.kind === "plan-pending") {
@@ -514,6 +519,12 @@ export function useAgentRun() {
 
   const clearScope = useCallback(() => setScopeTags([]), []);
 
+  // Plan §5.1 — drop one artifact from the stage.
+  const dismissArtifact = useCallback((id: string) => {
+    setArtifacts((prev) => prev.filter((a) => a.id !== id));
+    setActiveArtifactId((cur) => (cur === id ? null : cur));
+  }, []);
+
   const pickerItems = useMemo<PickerItem[]>(() => {
     if (!picker) return [];
     if (picker.kind === "command") {
@@ -611,6 +622,7 @@ export function useAgentRun() {
     setProgress([]);
     setResult(null);
     setArtifacts([]);
+    setActiveArtifactId(null);
     setPlanPending(false);
     setProgressExpanded(false);
     setHubOpen(false);
@@ -778,6 +790,8 @@ export function useAgentRun() {
     progress,
     result,
     artifacts,
+    activeArtifactId, setActiveArtifactId,
+    dismissArtifact,
     planPending,
     showTools, setShowTools,
     caps,
@@ -836,6 +850,7 @@ export function useAgentRun() {
 export type AgentRunView = Pick<
   ReturnType<typeof useAgentRun>,
   | "progress" | "result" | "artifacts" | "planPending"
+  | "activeArtifactId" | "setActiveArtifactId" | "dismissArtifact"
   | "progressExpanded" | "setProgressExpanded"
   | "showTools" | "setShowTools"
   | "decidePlan"

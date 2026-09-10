@@ -28,6 +28,8 @@ import { DocumentBox } from "./chat/DocumentBox";
 import { SourcesReadyIndicator, TypingDots, UserAvatar, AiAvatar } from "./chat/ChatAtoms";
 import { renderCitedAnswer } from "@/lib/research/citedAnswer";
 import { AgentArtifactPanel } from "@/components/workspace/AgentArtifactPanel";
+import { ArtifactChips } from "@/components/workspace/artifacts/ArtifactChips";
+import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { ProvenanceChips } from "@/components/workspace/ProvenanceChip";
 import { connectorsUsed } from "~shared/agent/connectors";
 import type { AgentRunView } from "@/hooks/useAgentRun";
@@ -94,6 +96,10 @@ const ChatDisplay = ({
   composer,
 }: ChatDisplayProps) => {
   const navigate = useNavigate();
+  // Plan §5.2 — when the workspace shell (and thus the artifact stage) is
+  // present, the timeline shows a compact chip; otherwise the full inline card.
+  const workspace = useOptionalWorkspace();
+  const stageAvailable = workspace !== null;
   // Presence, not truthiness — `composer={null}` is a valid "render nothing
   // here, AgentComposer already supplies the real one around me" signal,
   // and a falsy check would wrongly fall through to the built-in composer.
@@ -318,7 +324,15 @@ const ChatDisplay = ({
       const collapsed = !isQuerying && !!agent.result && stepLines.length > 3 && !agent.progressExpanded;
       content = (
         <div className="max-w-3xl mx-auto space-y-3">
-          {agent.artifacts.length > 0 && <AgentArtifactPanel artifacts={agent.artifacts} />}
+          {agent.artifacts.length > 0 && (
+            stageAvailable
+              ? <ArtifactChips
+                  artifacts={agent.artifacts}
+                  activeId={agent.activeArtifactId}
+                  onOpen={(id) => { agent.setActiveArtifactId(id); workspace?.setStageCollapsed(false); }}
+                />
+              : <AgentArtifactPanel artifacts={agent.artifacts} />
+          )}
 
           {agent.planPending && (
             <div className="rounded border border-primary/40 bg-primary/5 p-2 text-xs space-y-2">
