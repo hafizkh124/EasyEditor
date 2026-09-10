@@ -2,6 +2,52 @@ import { motion } from "framer-motion";
 import { CheckCircle2, User, Bot } from "lucide-react";
 import type { Translator } from "@/lib/i18n";
 
+/**
+ * M11 Phase 5 — brand logo animation (teal spinner → pulse → green check).
+ * Respects prefers-reduced-motion. Replaces TypingDots in the agent timeline.
+ */
+export const BrandSpinner: React.FC<{ state?: "loading" | "thinking" | "done" }> = ({ state = "loading" }) => {
+  // Respect prefers-reduced-motion: show static dots instead of animation
+  const prefersReduced = typeof window !== "undefined"
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (prefersReduced) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="h-1.5 w-1.5 rounded-full bg-primary opacity-60" />
+        ))}
+      </span>
+    );
+  }
+
+  if (state === "done") {
+    return (
+      <motion.span
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="inline-flex items-center"
+      >
+        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+      </motion.span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: "#0d9488" }}
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+        />
+      ))}
+    </span>
+  );
+};
+
 /** Long source ids shortened for the "sources ready" strip. */
 const DOMAIN_SHORT: Record<string, string> = {
   dorar: "Dorar", sunnah: "Sunnah", "hadith-index": "Hadith Index",

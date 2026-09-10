@@ -292,6 +292,12 @@ export function openProjectFolder(root: string): ProjectFolder {
   const chapters = listChapterFiles(resolved, manifest.chapterOrder);
   // Keep the manifest's order list in step with what's actually on disk.
   manifest.chapterOrder = chapters.map((c) => c.name);
+  // M11 Phase 2 bug fix — `createProjectFolder` scaffolds these, but a plain
+  // pre-existing folder of `.docx` files (a supported path, ADR-0018) never
+  // got them. `convert_document` writes to `<root>/export/`, and
+  // `assertSafeOutputPath` requires the parent dir to already exist — so it
+  // threw on every such project until now.
+  for (const sub of PROJECT_SUBDIRS) fs.mkdirSync(path.join(resolved, sub), { recursive: true });
   fs.mkdirSync(backupDir(resolved), { recursive: true });
   writeManifest(resolved, manifest);
 

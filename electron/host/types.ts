@@ -55,6 +55,10 @@ export type HostCommand =
   | { op: 'excelOpen'; path: string }
   | { op: 'excelExport'; path: string; format: 'xlsx' | 'csv' | 'pdf' }
   | { op: 'excelReadSheet'; sheet?: string; maxRows?: number; maxCols?: number }
+  | { op: 'excelCreate' }
+  | { op: 'excelWriteRange'; sheet?: string; startCell?: string; data: unknown[][] }
+  | { op: 'excelSetFormula'; sheet?: string; row: number; col: number; formula: string }
+  | { op: 'excelFormat'; sheet?: string; range: string; bold?: boolean; fontSize?: number; fontColor?: string; numberFormat?: string; horizontalAlign?: number; autoFit?: boolean; bgColor?: string }
   | { op: 'excelPid' }
   | { op: 'excelClose' }
   // ── P9: PowerPoint ────────────────────────────────────────────────────

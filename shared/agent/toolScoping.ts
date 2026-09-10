@@ -181,6 +181,8 @@ export const NATIVE_ONLY_TOOLS = new Set<string>([
   'compare_manuscript_variants',
   // ADR-0045 — the جوامع الكلم engine is a bundled local SQLite index, desktop only.
   'jkhssn_sanad_tree', 'jkhssn_narrator', 'jkhssn_takhrij', 'jkhssn_judgments', 'jkhssn_thematic',
+  // M11 Phase 4 — Excel write requires Excel COM on desktop (ADR-0048).
+  'build_spreadsheet',
 ]);
 
 export interface ScopeContext {

@@ -31,6 +31,7 @@ import { AgentArtifactPanel } from "@/components/workspace/AgentArtifactPanel";
 import { ArtifactChips } from "@/components/workspace/artifacts/ArtifactChips";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { ProvenanceChips } from "@/components/workspace/ProvenanceChip";
+import { RunStatsBar } from "@/components/workspace/RunStatsBar";
 import { connectorsUsed } from "~shared/agent/connectors";
 import type { AgentRunView, AgentTurn } from "@/hooks/useAgentRun";
 
@@ -391,6 +392,8 @@ const ChatDisplay = ({
       const collapsed = !isQuerying && !!agent.result && stepLines.length > 3 && !agent.progressExpanded;
       content = (
         <div className="max-w-3xl mx-auto space-y-3">
+          <RunStatsBar stats={agent.runStats} running={isQuerying} t={t} />
+
           {agent.artifacts.length > 0 && (
             stageAvailable
               ? <ArtifactChips
@@ -436,7 +439,7 @@ const ChatDisplay = ({
                       ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500 mt-0.5" />
                       : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />}
                   <span className={p.kind === "error" ? "text-amber-700 dark:text-amber-400" : "text-foreground"}>
-                    {p.label}{p.detail ? ` — ${p.detail}` : ""}
+                    {p.labelKey ? t(p.labelKey as Parameters<typeof t>[0], p.label) : p.label}{p.detail ? ` — ${p.detail}` : ""}
                   </span>
                 </div>
               ))}
@@ -530,6 +533,24 @@ const ChatDisplay = ({
                   {agent.undone ? t("agent.undone", "Task reverted") : t("agent.undo_task", "Undo this task")}
                 </Button>
               )}
+            </div>
+          )}
+
+          {/* M11 Phase 2 — deterministic "what next?" chips (ADR-0049). */}
+          {!isQuerying && agent.recommendations.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">{t("agent.rec_title", "💡 اگلے ممکنہ اقدامات")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {agent.recommendations.map((rec) => (
+                  <button
+                    key={rec.id}
+                    onClick={() => agent.applyRecommendation(rec)}
+                    className="rounded-full border border-border bg-card px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {t(rec.labelKey as Parameters<typeof t>[0], rec.action)}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

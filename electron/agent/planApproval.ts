@@ -38,6 +38,7 @@ export function requestPlanApproval(
       id: runId,
       kind: 'plan-pending',
       label: 'review the plan and approve it to continue',
+      labelKey: 'agent.step.plan_pending',
       artifact: { op: 'open', artifactId: `plan-${runId}`, title: 'Proposed plan', artifactType: 'plan' },
     });
     sender.send(ALLOWED_IPC_CHANNELS.AGENT_PROGRESS, {

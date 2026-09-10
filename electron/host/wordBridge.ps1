@@ -528,6 +528,74 @@ public static class WordBridgeFontApi {
                 Write-Result @{ ok = $true; op = 'excelClose' }
             }
 
+            # ── M11 Phase 4: Excel write operations (ADR-0048) ──────────
+            'excelCreate' {
+                Ensure-Excel
+                $script:wb = $script:excel.Workbooks.Add()
+                # Track the PID of the Excel instance we own
+                try { $script:ownedExcelPid = [int]$script:excel.Hwnd } catch { }
+                $names = @(); foreach ($ws in $script:wb.Worksheets) { $names += $ws.Name }
+                Write-Result @{ ok = $true; op = 'excelCreate'; name = $script:wb.Name; sheets = $names }
+            }
+
+            'excelWriteRange' {
+                Require-Wb
+                if ($cmd.sheet) { $ws = $script:wb.Worksheets.Item("$($cmd.sheet)") }
+                else { $ws = $script:wb.ActiveSheet }
+                $startCell = if ($cmd.startCell) { "$($cmd.startCell)" } else { "A1" }
+                $data = $cmd.data  # expected: 2D array (array of arrays)
+                if ($data -and $data.Count -gt 0) {
+                    $rows = $data.Count
+                    $cols = if ($data[0] -is [array]) { $data[0].Count } else { 1 }
+                    $range = $ws.Range($startCell).Resize($rows, $cols)
+                    # Build a COM-safe 2D array
+                    $arr = New-Object 'object[,]' $rows, $cols
+                    for ($r = 0; $r -lt $rows; $r++) {
+                        $rowData = $data[$r]
+                        if ($rowData -is [array]) {
+                            for ($c = 0; $c -lt $cols; $c++) {
+                                $arr[$r, $c] = if ($c -lt $rowData.Count) { $rowData[$c] } else { $null }
+                            }
+                        } else {
+                            $arr[$r, 0] = $rowData
+                        }
+                    }
+                    $range.Value2 = $arr
+                }
+                Write-Result @{ ok = $true; op = 'excelWriteRange'; sheet = $ws.Name; startCell = $startCell }
+            }
+
+            'excelSetFormula' {
+                Require-Wb
+                if ($cmd.sheet) { $ws = $script:wb.Worksheets.Item("$($cmd.sheet)") }
+                else { $ws = $script:wb.ActiveSheet }
+                $cell = $ws.Cells.Item([int]$cmd.row, [int]$cmd.col)
+                $cell.Formula = "$($cmd.formula)"
+                Write-Result @{ ok = $true; op = 'excelSetFormula'; sheet = $ws.Name; row = $cmd.row; col = $cmd.col }
+            }
+
+            'excelFormat' {
+                Require-Wb
+                if ($cmd.sheet) { $ws = $script:wb.Worksheets.Item("$($cmd.sheet)") }
+                else { $ws = $script:wb.ActiveSheet }
+                $range = $ws.Range("$($cmd.range)")
+                if ($null -ne $cmd.bold) { $range.Font.Bold = [bool]$cmd.bold }
+                if ($null -ne $cmd.fontSize) { $range.Font.Size = [double]$cmd.fontSize }
+                if ($cmd.fontColor) { $range.Font.Color = [System.Drawing.ColorTranslator::FromHtml($cmd.fontColor)] }
+                if ($cmd.numberFormat) { $range.NumberFormat = "$($cmd.numberFormat)" }
+                if ($null -ne $cmd.horizontalAlign) {
+                    # 1=left, 2=center, 3=right (xlHAlign)
+                    $range.HorizontalAlignment = [int]$cmd.horizontalAlign
+                }
+                if ($null -ne $cmd.autoFit) {
+                    if ([bool]$cmd.autoFit) { $range.Columns.AutoFit() | Out-Null }
+                }
+                if ($cmd.bgColor) {
+                    $range.Interior.Color = [System.Drawing.ColorTranslator::FromHtml($cmd.bgColor)
+                }
+                Write-Result @{ ok = $true; op = 'excelFormat'; sheet = $ws.Name; range = "$($cmd.range)" }
+            }
+
             # ── P9: PowerPoint ──────────────────────────────────────────
             'pptOpen' {
                 Ensure-Ppt
@@ -676,6 +744,17 @@ public static class WordBridgeFontApi {
                     foreach ($sec in $script:doc.Sections) {
                         if ($cmd.headerOdd)  { $sec.Headers.Item(1).Range.Text = "" + $cmd.headerOdd }   # wdHeaderFooterPrimary
                         if ($cmd.headerEven) { $sec.Headers.Item(3).Range.Text = "" + $cmd.headerEven }  # wdHeaderFooterEvenPages
+                    }
+                }
+                # M11 Phase 4: configurable margins + line spacing (ADR-0048)
+                if ($null -ne $cmd.marginTopCm)    { $ps.TopMargin    = [double]$cmd.marginTopCm * $cm }
+                if ($null -ne $cmd.marginBottomCm) { $ps.BottomMargin = [double]$cmd.marginBottomCm * $cm }
+                if ($null -ne $cmd.marginLeftCm)   { $ps.LeftMargin   = [double]$cmd.marginLeftCm * $cm }
+                if ($null -ne $cmd.marginRightCm)  { $ps.RightMargin  = [double]$cmd.marginRightCm * $cm }
+                if ($null -ne $cmd.lineSpacingPt) {
+                    foreach ($sec in $script:doc.Sections) {
+                        $sec.Range.ParagraphFormat.LineSpacingRule = 0  # wdLineSpaceExactly
+                        $sec.Range.ParagraphFormat.LineSpacing = [double]$cmd.lineSpacingPt
                     }
                 }
                 Write-Result @{ ok = $true; op = 'setPrintLayout'; pageWidth = $ps.PageWidth; pageHeight = $ps.PageHeight; gutter = $ps.Gutter }

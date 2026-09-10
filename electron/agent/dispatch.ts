@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import { logger } from '../lib/logger.js';
 import { detectTools } from '../host/index.js';
 import * as word from '../adapters/word.js';
+import * as excel from '../adapters/excel.js';
 import { isAllowedOption } from './globalOptions.js';
 import { chapterPath, backupChapter, refreshChapters } from '../fs/projectFolder.js';
 import { getWorkspaceDbService } from '../ipc/workspaceHandlers.js';
@@ -131,6 +132,8 @@ export interface AgentSession {
   model?: ModelFn | null;
   /** Resolves true to abort — passed through to the research sub-run. */
   isCancelled?: (() => boolean) | null;
+  /** M11 Phase 2 — progress callback forwarded to sub-runs (research_topic). */
+  onProgress?: ((p: { step: number; label: string; labelKey?: string; kind: string; detail?: string }) => void) | null;
   /**
    * ADR-0044 — the two Shamela transports' merged connector state, set by
    * `run.ts`. Absent (headless / eval) ⇒ local on, cloud off.
@@ -994,7 +997,12 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           subModel,
           dispatch,
           buildResearchSubagentPrompt(topic, focus),
-          { mode: 'ask', tools: subTools, maxSteps: 6, isCancelled: session.isCancelled ?? undefined },
+          {
+            mode: 'ask', tools: subTools, maxSteps: 6, isCancelled: session.isCancelled ?? undefined,
+            onProgress: session.onProgress
+              ? (p) => session.onProgress!({ step: p.step ?? 0, label: `research: ${p.label}`, labelKey: p.labelKey ? `research.${p.labelKey}` : undefined, kind: p.kind })
+              : undefined,
+          },
         );
 
         const found = ledger.list().filter((c) => !idsBefore.has(c.id) && !c.bibliographic);
@@ -1258,6 +1266,48 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           value,
           current,
           message: `Changing "${option}" affects every document you open in Word. Approve this in the Agent panel to apply it; every applied change is logged and can be reverted.`,
+        };
+      }
+
+      case 'build_spreadsheet': {
+        // M11 Phase 4 — Excel write tool (ADR-0048)
+        const filePath = str(args.filePath, 'filePath');
+        const sheets = Array.isArray(args.sheets) ? args.sheets : [];
+        if (!sheets.length) {
+          return { error: 'build_spreadsheet requires at least one sheet with data.' };
+        }
+        const outPath = path.isAbsolute(filePath)
+          ? filePath
+          : path.join(root, 'export', filePath);
+        const ext = path.extname(outPath).toLowerCase() || '.xlsx';
+        const format = (typeof args.format === 'string' ? args.format : ext.replace('.', '')) as 'xlsx' | 'csv' | 'pdf';
+
+        // Ensure export directory exists
+        const exportDir = path.dirname(outPath);
+        if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
+
+        // Create the spreadsheet using the excel adapter
+        const { path: createdPath } = await excel.createSpreadsheet(outPath);
+
+        // Write each sheet's data
+        for (const sheet of sheets) {
+          const sheetName = typeof sheet.name === 'string' ? sheet.name : 'Sheet1';
+          const data = Array.isArray(sheet.data) ? sheet.data : [];
+          if (data.length > 0) {
+            await excel.writeRange(createdPath, data, { sheet: sheetName, startCell: 'A1' });
+          }
+        }
+
+        // Export to the desired format if not xlsx
+        if (format !== 'xlsx') {
+          await excel.exportSpreadsheet(createdPath, format, outPath);
+        }
+
+        return {
+          path: outPath,
+          format,
+          sheets: sheets.length,
+          note: `Spreadsheet created at ${outPath}`,
         };
       }
 

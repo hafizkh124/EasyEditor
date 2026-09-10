@@ -57,6 +57,16 @@ export function compactMessages(messages: AgentMessage[]): AgentMessage[] {
   );
 }
 
+/**
+ * The i18n key for a step's progress label (M11 Phase 2). `shared/` can't
+ * translate — the renderer does `t(labelKey, label)`, falling back to the
+ * English `label` (from `labelFor`) for any key not in the locale. Every
+ * step-emitting `onProgress` call carries both.
+ */
+function stepLabelKey(name: string): string {
+  return `agent.step.${name}`;
+}
+
 /** A short present-tense label for a tool call, for the live progress line. */
 function labelFor(name: string): string {
   switch (name) {
@@ -133,19 +143,19 @@ export async function runAgentLoop(
       next = await model(compactMessages(messages), tools, systemPrompt);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      opts.onProgress?.({ step, label: 'error', kind: 'error', detail: msg });
+      opts.onProgress?.({ step, label: 'error', labelKey: 'agent.step.error', kind: 'error', detail: msg });
       return finish('error', '', messages, toolCalls, step, msg);
     }
 
     if (next.kind === 'text') {
       messages.push({ role: 'model', text: next.text });
-      opts.onProgress?.({ step, label: 'done', kind: 'done' });
+      opts.onProgress?.({ step, label: 'done', labelKey: 'agent.step.done', kind: 'done' });
       return finish('done', next.text, messages, toolCalls, step);
     }
 
     if (next.kind === 'clarify') {
       messages.push({ role: 'model', text: next.question });
-      opts.onProgress?.({ step, label: 'needs a clarification', kind: 'clarify', question: next.question });
+      opts.onProgress?.({ step, label: 'needs a clarification', labelKey: 'agent.step.needs_clarification', kind: 'clarify', question: next.question });
       return { ...finish('needs-input', '', messages, toolCalls, step), question: next.question };
     }
 
@@ -156,12 +166,12 @@ export async function runAgentLoop(
     const tool = getTool(name);
     if (!tool) {
       messages.push({ role: 'tool', name, result: { error: `unknown tool: ${name}` } });
-      opts.onProgress?.({ step, label: labelFor(name), kind: 'error', detail: `unknown tool: ${name}` });
+      opts.onProgress?.({ step, label: labelFor(name), labelKey: stepLabelKey(name), kind: 'error', detail: `unknown tool: ${name}` });
       continue;
     }
     if (opts.mode === 'ask' && tool.effect === 'write') {
       messages.push({ role: 'tool', name, result: { error: `"${name}" makes changes and is not available in Ask mode` } });
-      opts.onProgress?.({ step, label: labelFor(name), kind: 'error', detail: 'blocked in Ask mode' });
+      opts.onProgress?.({ step, label: labelFor(name), labelKey: stepLabelKey(name), kind: 'error', detail: 'blocked in Ask mode' });
       continue;
     }
 
@@ -173,13 +183,13 @@ export async function runAgentLoop(
         summary: `The agent is ready to start making changes, beginning with: ${labelFor(name)}.`,
       });
       if (decision !== 'approved') {
-        opts.onProgress?.({ step, label: 'plan not approved', kind: 'plan-pending' });
+        opts.onProgress?.({ step, label: 'plan not approved', labelKey: 'agent.step.plan_not_approved', kind: 'plan-pending' });
         return { ...finish('needs-input', '', messages, toolCalls, step), question: 'The plan was not approved — adjust the request and try again.' };
       }
       planApproved = true;
     }
 
-    opts.onProgress?.({ step, label: labelFor(name), kind: 'tool' });
+    opts.onProgress?.({ step, label: labelFor(name), labelKey: stepLabelKey(name), kind: 'tool' });
     let result: unknown;
     try {
       result = await dispatch(name, args);
@@ -191,6 +201,7 @@ export async function runAgentLoop(
     opts.onProgress?.({
       step,
       label: labelFor(name),
+      labelKey: stepLabelKey(name),
       kind: 'tool-result',
       detail: typeof result === 'object' && result && 'error' in result ? String((result as { error: unknown }).error) : undefined,
     });
@@ -210,4 +221,4 @@ function finish(
   return { answer, messages, toolCalls, steps, stopReason, ...(error ? { error } : {}) };
 }
 
-export { labelFor };
+export { labelFor, stepLabelKey };

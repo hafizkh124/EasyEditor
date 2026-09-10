@@ -249,10 +249,10 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     const fast = detectFastPath(instruction, { chapters });
     if (fast) {
       log.info('agent fast path', { task: fast.task, chapter: fast.chapter });
-      input.onProgress?.({ step: 1, kind: 'tool', label: `running ${fast.task}` });
+      input.onProgress?.({ step: 1, kind: 'tool', label: `running ${fast.task}`, labelKey: 'agent.step.run_task' });
       const result = await dispatch('run_task', { chapter: fast.chapter, task: fast.task });
       const errored = typeof result === 'object' && result !== null && 'error' in result;
-      input.onProgress?.({ step: 1, kind: errored ? 'error' : 'done', label: `running ${fast.task}` });
+      input.onProgress?.({ step: 1, kind: errored ? 'error' : 'done', label: `running ${fast.task}`, labelKey: errored ? 'agent.step.error' : 'agent.step.done' });
       const wrote = !errored;
       return finish({
         answer: errored

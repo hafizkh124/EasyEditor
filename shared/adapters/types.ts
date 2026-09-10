@@ -51,7 +51,12 @@ export type AdapterOp =
   | 'addComment'
   | 'compareManuscripts'
   | 'setPrintLayout'
-  | 'buildIndexes';
+  | 'buildIndexes'
+  // M11 Phase 4 — Excel write operations (ADR-0048).
+  | 'createSpreadsheet'
+  | 'writeRange'
+  | 'setFormula'
+  | 'formatCells';
 
 /** What an adapter declares about itself (ADR-0017). */
 export interface AdapterDescriptor {

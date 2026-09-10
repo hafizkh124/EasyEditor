@@ -33,7 +33,7 @@ export const excelDescriptor: AdapterDescriptor = {
     { format: 'pdf', quality: 0.9, lossy: 'A static page rendering; the workbook is no longer editable.' },
     { format: 'csv', quality: 0.6, lossy: 'One sheet, values only — formulas, formatting, and other sheets are dropped.' },
   ],
-  ops: ['exportSpreadsheet', 'readSheet'],
+  ops: ['exportSpreadsheet', 'readSheet', 'createSpreadsheet', 'writeRange', 'setFormula', 'formatCells'],
   platforms: ['win32'],
 };
 
@@ -94,4 +94,112 @@ export async function readSheet(
       await h.send({ op: 'excelClose' });
     }
   });
+}
+
+/**
+ * M11 Phase 4 — Excel write operations (ADR-0048).
+ */
+
+/** Create a new empty workbook. */
+export async function createSpreadsheet(
+  outputPath: string,
+): Promise<{ path: string; ms: number }> {
+  const out = assertSafeOutputPath(outputPath, ['.xlsx']);
+  const started = Date.now();
+  await runExclusive(async () => {
+    const h = getWordHost();
+    await h.sendOk({ op: 'excelCreate' });
+    await refreshOwnedExcel();
+    await h.sendOk({ op: 'excelExport', path: out, format: 'xlsx' });
+    await h.sendOk({ op: 'excelClose' });
+  });
+  log.debug('createSpreadsheet', { out });
+  return { path: out, ms: Date.now() - started };
+}
+
+/** Write a 2D array of values to a sheet range. */
+export async function writeRange(
+  sourcePath: string,
+  data: unknown[][],
+  opts: { sheet?: string; startCell?: string } = {},
+): Promise<{ ms: number }> {
+  const src = assertReadableFile(sourcePath, OPENABLE);
+  const started = Date.now();
+  await runExclusive(async () => {
+    const h = getWordHost();
+    await h.sendOk({ op: 'excelOpen', path: src });
+    await refreshOwnedExcel();
+    await h.sendOk({
+      op: 'excelWriteRange',
+      sheet: opts.sheet,
+      startCell: opts.startCell ?? 'A1',
+      data,
+    });
+    await h.sendOk({ op: 'excelExport', path: src, format: 'xlsx' });
+    await h.sendOk({ op: 'excelClose' });
+  });
+  log.debug('writeRange', { src });
+  return { ms: Date.now() - started };
+}
+
+/** Set a formula in a specific cell. */
+export async function setFormula(
+  sourcePath: string,
+  row: number,
+  col: number,
+  formula: string,
+  opts: { sheet?: string } = {},
+): Promise<{ ms: number }> {
+  const src = assertReadableFile(sourcePath, OPENABLE);
+  const started = Date.now();
+  await runExclusive(async () => {
+    const h = getWordHost();
+    await h.sendOk({ op: 'excelOpen', path: src });
+    await refreshOwnedExcel();
+    await h.sendOk({
+      op: 'excelSetFormula',
+      sheet: opts.sheet,
+      row,
+      col,
+      formula,
+    });
+    await h.sendOk({ op: 'excelExport', path: src, format: 'xlsx' });
+    await h.sendOk({ op: 'excelClose' });
+  });
+  log.debug('setFormula', { src, row, col });
+  return { ms: Date.now() - started };
+}
+
+/** Apply formatting to a cell range. */
+export async function formatCells(
+  sourcePath: string,
+  range: string,
+  opts: {
+    sheet?: string;
+    bold?: boolean;
+    fontSize?: number;
+    fontColor?: string;
+    numberFormat?: string;
+    horizontalAlign?: number;
+    autoFit?: boolean;
+    bgColor?: string;
+  } = {},
+): Promise<{ ms: number }> {
+  const src = assertReadableFile(sourcePath, OPENABLE);
+  const started = Date.now();
+  await runExclusive(async () => {
+    const h = getWordHost();
+    await h.sendOk({ op: 'excelOpen', path: src });
+    await refreshOwnedExcel();
+    await h.sendOk({
+      op: 'excelFormat',
+      sheet: opts.sheet,
+      range,
+      ...opts,
+    });
+    await h.sendOk({ op: 'excelExport', path: src, format: 'xlsx' });
+    await h.sendOk({ op: 'excelClose' });
+  });
+  log.debug('formatCells', { src, range });
+  return { ms: Date.now() - started };
 }

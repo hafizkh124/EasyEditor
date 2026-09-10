@@ -156,6 +156,9 @@ function agentView(overrides: Partial<import("@/hooks/useAgentRun").AgentRunView
   return {
     turns: [],
     clearConversation: vi.fn(),
+    runStats: { toolsRun: 0, toolsFailed: 0, sourcesRead: 0, steps: 0 },
+    recommendations: [],
+    applyRecommendation: vi.fn(),
     progress: [],
     result: null,
     artifacts: [],
@@ -194,6 +197,17 @@ describe("ChatDisplay — agent_run item (SPEC M10 §1.2)", () => {
       agent: agentView({ progress: [{ step: 1, label: "reading the chapter", kind: "tool" }] }),
     });
     expect(screen.getByText("reading the chapter")).toBeInTheDocument();
+  });
+
+  it("resolves a progress line's labelKey through t() (M11 Phase 2)", () => {
+    renderChat({
+      agent: agentView({
+        progress: [{ step: 1, label: "English fallback", labelKey: "agent.step.search_shamela", kind: "tool" }],
+      }),
+    });
+    // The key wins over the English `label` when the locale has it.
+    expect(screen.getByText(en["agent.step.search_shamela"])).toBeInTheDocument();
+    expect(screen.queryByText("English fallback")).not.toBeInTheDocument();
   });
 
   it("renders the finished answer, with tool calls collapsed by default", () => {

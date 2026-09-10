@@ -148,7 +148,7 @@ export async function runBatch(
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     if (opts.isCancelled()) {
-      opts.onProgress({ kind: 'batch-item', step: i, total: items.length, label: 'بیچ منسوخ' });
+      opts.onProgress({ kind: 'batch-item', step: i, total: items.length, label: 'batch cancelled', labelKey: 'agent.step.batch_cancelled' });
       break;
     }
     if (doneKeys.has(item.key)) continue;
@@ -200,7 +200,8 @@ export async function runBatch(
     kind: 'batch-item',
     step: items.length,
     total: items.length,
-    label: `بیچ مکمل — ${results.length - failures.length}/${items.length}${failures.length ? `، ${failures.length} ناکام` : ''}`,
+    label: `batch done — ${results.length - failures.length}/${items.length}${failures.length ? `, ${failures.length} failed` : ''}`,
+    labelKey: 'agent.step.batch_done',
   });
 
   const answer =
