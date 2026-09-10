@@ -19,8 +19,24 @@ import { getShamelaClient } from "@/core/shamela/shamelaClient";
 
 const log = logger.child("useAgentRun");
 
+const mkTurnId = (): string =>
+  `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
 export type AgentMode = "ask" | "plan" | "auto";
 export interface ProgressLine { step: number; label: string; kind: string; detail?: string }
+/**
+ * M11 Phase 1 — one finished exchange in the conversation. `agent.run()` is
+ * memory-less, so the renderer keeps the thread: past turns render as bubbles
+ * in the timeline AND are handed back to the engine as `history` on the next
+ * send (shared/agent/history.ts turns them into user/model messages).
+ */
+export interface AgentTurn {
+  id: string;
+  /** the user's message, verbatim */
+  instruction: string;
+  /** the finished run */
+  result: RunResult;
+}
 export interface RunResult {
   id?: string;
   answer: string;
@@ -123,6 +139,11 @@ export function useAgentRun() {
   // Plan §5.1 — which artifact the stage is showing (defaults to last-opened).
   const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null);
   const [planPending, setPlanPending] = useState(false);
+  // M11 Phase 1 — the conversation so far. `result`/`progress`/`artifacts`
+  // above describe the CURRENT (or most recent) run; `turns` holds every
+  // finished run before it, both to render and to feed back as `history`.
+  const [turns, setTurns] = useState<AgentTurn[]>([]);
+  const lastInstructionRef = useRef<string | null>(null);
   const runIdRef = useRef<string | null>(null);
   const [showTools, setShowTools] = useState(false);
   const [caps, setCaps] = useState<string | null>(null);
@@ -598,15 +619,17 @@ export function useAgentRun() {
     requestAnimationFrame(() => taRef.current?.focus());
   }, [addScopeTag]);
 
-  // Each agent.run() is a fresh, memory-less run — there is no session-level
-  // history. When a run stops with `needs-input`, the scholar's next message
-  // is really a reply to that one clarifying question, not a new topic; the
-  // UI's own "Reply below to continue" promises exactly that. Since the
-  // model itself carries no memory of the question it asked, we compose the
-  // continuation ourselves rather than sending the bare reply text.
-  const [pendingClarification, setPendingClarification] = useState<{ instruction: string; question: string } | null>(null);
-  useEffect(() => { setPendingClarification(null); }, [mode]);
-  useEffect(() => { setPendingClarification(null); }, [projectRoot]);
+  // M11 Phase 1 — a fresh project folder is a fresh conversation.
+  const clearConversation = useCallback(() => {
+    setTurns([]);
+    setResult(null);
+    setProgress([]);
+    setArtifacts([]);
+    setActiveArtifactId(null);
+    setPlanPending(false);
+    lastInstructionRef.current = null;
+  }, []);
+  useEffect(() => { clearConversation(); }, [projectRoot, clearConversation]);
 
   const send = useCallback(async () => {
     const typed = input.trim();
@@ -615,9 +638,26 @@ export function useAgentRun() {
     // document; `webAgent.available` already checks agent is absent so the
     // two paths can never both fire for the same send().
     if (!typed || running || !(desktopReady || webAgent.available)) return;
-    const instruction = pendingClarification
-      ? `Original request: "${pendingClarification.instruction}"\nYou (the agent) asked: "${pendingClarification.question}"\nMy reply: "${typed}"`
-      : typed;
+    const instruction = typed;
+
+    // M11 Phase 1 — fold the previous finished run into the conversation, then
+    // hand the whole thread to the engine as `history`. A `needs-input` run
+    // contributes its clarifying question as the "answer" so the model sees
+    // what it asked (this replaces the old string-concat `pendingClarification`
+    // hack — real turns carry the same context, and more of it).
+    const archived: AgentTurn[] =
+      result && lastInstructionRef.current
+        ? [...turns, { id: mkTurnId(), instruction: lastInstructionRef.current, result }]
+        : turns;
+    if (archived !== turns) setTurns(archived);
+    const history = archived
+      .map((tn) => ({
+        instruction: tn.instruction,
+        answer: (tn.result.question?.trim() || tn.result.answer || "").trim(),
+      }))
+      .filter((h) => h.instruction || h.answer);
+    lastInstructionRef.current = instruction;
+
     setRunning(true);
     setProgress([]);
     setResult(null);
@@ -648,31 +688,27 @@ export function useAgentRun() {
     };
     const hasScope = Boolean(scope.books.length || scope.groups.length || scope.playbook || scope.mentions.length || scope.batch);
 
+    const historyArg = history.length ? history : undefined;
+    const scopeArg = hasScope ? scope : undefined;
     try {
       const res = desktopReady
-        ? hasScope
-          ? await agent!.run(instruction, mode, projectRoot!, scope)
-          : await agent!.run(instruction, mode, projectRoot!)
-        : hasScope
-          ? await webAgent.run(instruction, mode, handleProgress, scope)
-          : await webAgent.run(instruction, mode, handleProgress);
+        ? await agent!.run(instruction, mode, projectRoot!, scopeArg, historyArg)
+        : await webAgent.run(instruction, mode, handleProgress, scopeArg, historyArg);
       setResult(res as RunResult);
-      const needsInput = res.stopReason === "needs-input" && res.question;
-      setPendingClarification(needsInput ? { instruction, question: res.question! } : null);
-      if (!needsInput) {
-        setInput("");
-        setScopeTags([]);
-      }
+      // The turn goes into the conversation on the NEXT send (see `archived`
+      // above) — until then it stays in the singleton `result`, which is what
+      // renders the full interactive card (plan approval, consent, undo).
+      setInput("");
+      setScopeTags([]);
       if (desktopReady) void pf.refresh();
     } catch (err) {
       log.error("agent run failed", { err });
       setResult({ answer: "", stopReason: "error", steps: 0, toolCalls: [], error: err instanceof Error ? err.message : String(err) });
-      setPendingClarification(null);
     } finally {
       setRunning(false);
       setPlanPending(false);
     }
-  }, [input, agent, projectRoot, running, mode, pf, pendingClarification, webAgent, handleProgress, scopeTags]);
+  }, [input, agent, projectRoot, running, mode, pf, result, turns, webAgent, handleProgress, scopeTags]);
 
   const cancel = useCallback(() => { void agent?.cancel(); webAgent.cancel(); }, [agent, webAgent]);
 
@@ -789,6 +825,9 @@ export function useAgentRun() {
     running,
     progress,
     result,
+    // M11 Phase 1 — the finished conversation before the current run.
+    turns,
+    clearConversation,
     artifacts,
     activeArtifactId, setActiveArtifactId,
     dismissArtifact,
@@ -849,6 +888,7 @@ export function useAgentRun() {
  */
 export type AgentRunView = Pick<
   ReturnType<typeof useAgentRun>,
+  | "turns" | "clearConversation"
   | "progress" | "result" | "artifacts" | "planPending"
   | "activeArtifactId" | "setActiveArtifactId" | "dismissArtifact"
   | "progressExpanded" | "setProgressExpanded"

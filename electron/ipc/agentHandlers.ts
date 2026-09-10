@@ -154,6 +154,15 @@ export function registerAgentHandlers(): void {
               }
             : null;
 
+          // M11 Phase 1 — the conversation so far. Each entry is a finished
+          // turn; run.ts turns it into the messages the loop prepends.
+          const history = Array.isArray(payload.history)
+            ? (payload.history as Array<Record<string, unknown>>)
+                .filter((h) => h && typeof h.instruction === 'string' && typeof h.answer === 'string')
+                .map((h) => ({ instruction: String(h.instruction), answer: String(h.answer) }))
+                .slice(-20)
+            : undefined;
+
           const id = randomUUID();
           let cancelled = false;
           acquireAgentSlot(id, () => { cancelled = true; });
@@ -182,6 +191,7 @@ export function registerAgentHandlers(): void {
             const runOpts = {
               instruction, mode, projectRoot,
               scope: scope ?? undefined,
+              history,
               onProgress: emit,
               isCancelled: () => cancelled,
               generalSearch: (query: string) => requestGeneralSearch(id, query, win?.webContents),

@@ -104,7 +104,14 @@ export function formatJournalForPrompt(entries: JournalEntry[]): string | null {
     const bits: string[] = [`[${when}] "${e.instruction.slice(0, 90)}"`];
     if (e.wrote.length) bits.push(`edited ${e.wrote.join(', ')}`);
     if (e.stopReason !== 'done') bits.push(`(${e.stopReason})`);
-    return `- ${bits.join(' — ')}`;
+    let line = `- ${bits.join(' — ')}`;
+    // M11 Phase 1 — `summary` and `sources` were written to every journal
+    // entry but never rendered into the prompt. That is real, already-captured
+    // context (what the task concluded, what it cited) being dropped.
+    const summary = e.summary?.replace(/\s+/g, ' ').trim();
+    if (summary) line += `\n  ↳ ${summary.slice(0, 220)}`;
+    if (e.sources?.length) line += `\n  ↳ sources: ${e.sources.slice(0, 4).join(' · ')}`;
+    return line;
   });
   return (
     '── Recent agent work on this project (context only — it may be stale; verify with a tool before relying on it) ──\n' +

@@ -154,6 +154,8 @@ describe("ChatDisplay — baseline (SPEC M10 §1.2 pre-merge snapshot)", () => {
  */
 function agentView(overrides: Partial<import("@/hooks/useAgentRun").AgentRunView> = {}) {
   return {
+    turns: [],
+    clearConversation: vi.fn(),
     progress: [],
     result: null,
     artifacts: [],

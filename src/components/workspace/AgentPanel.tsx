@@ -63,7 +63,7 @@ export const AgentPanel: React.FC = () => {
         lastAssistantIdx={-1}
         onRefine={() => {}}
         onCopyOutput={() => {}}
-        onClearChat={() => {}}
+        onClearChat={a.clearConversation}
         onRegenerate={() => {}}
         researchLimitReached={false}
         chatEndRef={{ current: null }}

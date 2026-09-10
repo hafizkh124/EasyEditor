@@ -168,7 +168,7 @@ export const ResearchPanel = () => {
           lastAssistantIdx={-1}
           onRefine={() => {}}
           onCopyOutput={() => {}}
-          onClearChat={() => {}}
+          onClearChat={agentHook.clearConversation}
           onRegenerate={() => {}}
           researchLimitReached={false}
           chatEndRef={{ current: null }}

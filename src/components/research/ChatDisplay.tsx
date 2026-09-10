@@ -32,7 +32,7 @@ import { ArtifactChips } from "@/components/workspace/artifacts/ArtifactChips";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { ProvenanceChips } from "@/components/workspace/ProvenanceChip";
 import { connectorsUsed } from "~shared/agent/connectors";
-import type { AgentRunView } from "@/hooks/useAgentRun";
+import type { AgentRunView, AgentTurn } from "@/hooks/useAgentRun";
 
 const VIRTUALIZE_THRESHOLD = 50;
 
@@ -152,11 +152,13 @@ const ChatDisplay = ({
     | { type: "message"; index: number; msg: ChatMessage }
     | { type: "sources_ready" }
     | { type: "typing" }
-    // SPEC M10 §1.2 — one item for the whole agent run (progress, result,
-    // artifacts, plan-approval, consent cards), not one per section: an
-    // `agent.run()` has no session history of its own (each run is fresh —
-    // see useAgentRun's pendingClarification comment), so it is exactly one
-    // evolving card, the same way AgentPanel rendered it before this merge.
+    // M11 Phase 1 — one bubble pair per FINISHED agent turn (question +
+    // answer). `agent.run()` has no memory of its own, so the renderer keeps
+    // the thread; these also feed back to the engine as `history`.
+    | { type: "agent_turn"; turn: AgentTurn }
+    // The CURRENT (or most-recent) run: the full evolving card — progress,
+    // result, artifacts, plan-approval, consent. It becomes an `agent_turn`
+    // on the next send.
     | { type: "agent_run" }
     | { type: "spacer" };
 
@@ -172,23 +174,37 @@ const ChatDisplay = ({
     ),
   );
 
+  const agentTurns = useMemo(() => agent?.turns ?? [], [agent?.turns]);
+
   const listItems = useMemo(() => {
     const items: ListItem[] = [];
-    if (messages.length === 0 && !hasAgentActivity) items.push({ type: "empty" });
+    if (messages.length === 0 && !hasAgentActivity && agentTurns.length === 0) items.push({ type: "empty" });
     if (citations.length > 0) items.push({ type: "citations" });
     messages.forEach((msg, i) => items.push({ type: "message", index: i, msg }));
+    agentTurns.forEach((turn) => items.push({ type: "agent_turn", turn }));
     if (hasAgentActivity) items.push({ type: "agent_run" });
     if (showSourcesIndicator && isQuerying) items.push({ type: "sources_ready" });
     if (isQuerying && messages[messages.length - 1]?.role !== "assistant") items.push({ type: "typing" });
     items.push({ type: "spacer" });
     return items;
-  }, [messages, citations.length, showSourcesIndicator, isQuerying, hasAgentActivity]);
+  }, [messages, citations.length, showSourcesIndicator, isQuerying, hasAgentActivity, agentTurns]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
+  // M11 Phase 1 — a long agent conversation is now scrollable history; only
+  // auto-follow the newest item when the reader is already near the bottom, so
+  // scrolling up to re-read an earlier turn is not yanked back down.
+  const nearBottomRef = useRef(true);
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  }, []);
 
   useEffect(() => {
-    bottomAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (nearBottomRef.current) {
+      bottomAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
   }, [messages, isQuerying, listItems.length]);
 
   const handleSuggestionClick = (text: string) => {
@@ -315,6 +331,57 @@ const ChatDisplay = ({
         <AnimatePresence>
           <SourcesReadyIndicator count={sourcesReadyInfo!.count} domains={sourcesReadyInfo!.domains} t={t} />
         </AnimatePresence>
+      );
+    } else if (item.type === "agent_turn") {
+      // M11 Phase 1 — a finished turn: the question, then a compact answer.
+      // The live/most-recent run still renders through the full `agent_run`
+      // card below; this is the scrollable history behind it.
+      const turn = item.turn;
+      const answerText =
+        turn.result.error
+          ? turn.result.error
+          : (turn.result.question?.trim() || turn.result.answer || t("agent.no_answer", "(no answer)"));
+      const qRtl = detectRtl(turn.instruction);
+      const aRtl = detectRtl(answerText);
+      content = (
+        <div className="space-y-3">
+          <div className="flex justify-end gap-2">
+            <div className="rounded-2xl rounded-tr-md px-4 py-2.5 max-w-[80%] text-sm bg-primary text-primary-foreground shadow-sm">
+              <div dir={qRtl ? "rtl" : "ltr"} className={cn("whitespace-pre-wrap", qRtl && "text-end")}>
+                {turn.instruction}
+              </div>
+            </div>
+            <UserAvatar />
+          </div>
+          <div className="flex gap-2">
+            <AiAvatar />
+            <div className="flex-1 min-w-0 rounded-md border border-border bg-card p-2.5 text-sm space-y-2">
+              <p
+                dir={aRtl ? "rtl" : "ltr"}
+                className={cn(
+                  "whitespace-pre-wrap",
+                  aRtl && "text-end",
+                  turn.result.error && "text-destructive text-xs",
+                )}
+              >
+                {answerText}
+              </p>
+              {!turn.result.error && (
+                <ProvenanceChips connectorIds={connectorsUsed(turn.result.toolCalls)} />
+              )}
+              {turn.result.playbook && (
+                <p className="text-xs text-muted-foreground">
+                  {t("agent.used_playbook", "Playbook: {id}").replace("{id}", turn.result.playbook)}
+                </p>
+              )}
+              {turn.result.toolCalls.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {t("agent.tool_calls", "{n} tool calls").replace("{n}", String(turn.result.toolCalls.length))}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       );
     } else if (item.type === "agent_run" && agent) {
       // SPEC M10 §1.2 — moved verbatim from AgentPanel.tsx (same order:
@@ -514,7 +581,7 @@ const ChatDisplay = ({
       </div>
 
       {/* Messages */}
-      <div ref={scrollContainerRef} className={cn(
+      <div ref={scrollContainerRef} onScroll={handleScroll} className={cn(
         "flex-1 w-full relative",
         listItems.length > VIRTUALIZE_THRESHOLD ? "overflow-hidden" : "overflow-y-auto",
       )}>
@@ -527,6 +594,7 @@ const ChatDisplay = ({
                 getKey={(i) => {
                   const item = listItems[i];
                   if (item.type === "message") return `m:${item.index}:${item.msg.role}:${item.msg.content.length}`;
+                  if (item.type === "agent_turn") return `turn:${item.turn.id}`;
                   return `${item.type}:${i}`;
                 }}
               />
