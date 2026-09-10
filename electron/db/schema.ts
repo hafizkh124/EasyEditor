@@ -235,12 +235,26 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
       author TEXT,
       created_at TEXT NOT NULL
     );
+
+    -- Plan §3.4 — the workspace search log (offline mirror of the Supabase
+    -- search_history table; the cloud path degrades to available:false until
+    -- that Lovable-managed migration lands).
+    CREATE TABLE IF NOT EXISTS search_history (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      kind TEXT NOT NULL,           -- 'shamela' | 'corpus' | 'jkhssn' | 'resource' | 'hadith'
+      query TEXT NOT NULL,
+      filters TEXT NOT NULL DEFAULT '{}',
+      result_count INTEGER,
+      created_at TEXT NOT NULL
+    );
   `);
 
   // Create indexes separately (IF NOT INDEX is not standard SQLite)
   try {
     db.exec(`CREATE INDEX IF NOT EXISTS idx_access_log_item ON document_access_log(item_id);`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_access_log_time ON document_access_log(accessed_at DESC);`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_search_history_time ON search_history(user_id, created_at DESC);`);
   } catch {
     // Indexes may already exist
   }

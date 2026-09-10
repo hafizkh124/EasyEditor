@@ -10,7 +10,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { translateStored } from "@/lib/i18n";
 import ChatDisplay from "@/components/research/ChatDisplay";
 import { useResearchChat } from "@/hooks/useResearchChat";
-import { useAgentRun } from "@/hooks/useAgentRun";
+import { useSharedAgentRun } from "@/core/workspace/useSharedAgentRun";
 import { AgentComposer } from "@/components/workspace/AgentComposer";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { markdownToHtml } from "@/lib/editor/htmlText";
@@ -66,7 +66,7 @@ export const ResearchPanel = () => {
   const tier = subscription?.tier ?? "free";
 
   const workspaceCtx = useOptionalWorkspace();
-  const agentHook = useAgentRun();
+  const agentHook = useSharedAgentRun();
   // M10 Phase 2.1 — the capability gate (registry.ts, VITE_AGENT_MODE) is
   // shared by both platforms; which run path actually fires is decided by
   // useAgentRun itself (desktop's project folder vs. web's open document).

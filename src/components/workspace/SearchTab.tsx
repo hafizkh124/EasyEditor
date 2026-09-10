@@ -7,6 +7,7 @@ import { libraryItemService } from "@/core/workspace/libraryItemService";
 import { searchShamelaAsChunks } from "@/lib/shamela/localShamelaService";
 import type { ChunkSearchHit } from "@/core/backend/types";
 import { stripHarakat } from "@/utils/arabicUtils";
+import { recordSearch } from "@/lib/history/searchHistory";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SearchTabProps {
@@ -74,6 +75,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
         : await searchShamelaAsChunks(trimmed, 100);
       setResults(hits);
       setSearched(true);
+      void recordSearch({ kind: "shamela", query: trimmed, filters: { root: useRoot }, resultCount: hits.length });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("library.search_failed", "Search failed."));
       setResults([]);

@@ -374,6 +374,19 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'openProject', path }),
     listChapters: (root: string): Promise<import("../shared/fs/projectTypes").ChapterFile[]> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'listChapters', root }),
+    // Plan §3.4 — the Project Explorer tree + editable file ops.
+    listTree: (root: string): Promise<import("../shared/fs/projectTypes").ProjectTreeNode[]> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'listTree', root }),
+    readText: (root: string, name: string): Promise<{ text: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'readText', root, name }),
+    rename: (root: string, from: string, to: string): Promise<{ ok: true }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'rename', root, from, to }),
+    trash: (root: string, name: string): Promise<{ trashed: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'trash', root, name }),
+    mkdir: (root: string, dir: string): Promise<{ ok: true }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'mkdir', root, dir }),
+    createFile: (root: string, name: string, seed?: string): Promise<{ ok: true }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'createFile', root, name, seed }),
     // M9 Phase 3 — non-chapter assets (recordings, scans, fonts, templates).
     listAssets: (root: string): Promise<import("../shared/fs/projectTypes").ProjectAsset[]> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.FS_INVOKE, { action: 'listAssets', root }),

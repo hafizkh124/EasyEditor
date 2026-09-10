@@ -38,6 +38,24 @@ export interface ProjectAsset {
 export const EASYEDITOR_DIR = '.easyeditor';
 export const MANIFEST_FILE = 'project.json';
 export const BACKUP_DIR = 'backups';
+/** Deleted files are moved here, never `fs.rm`'d (plan §3.4). */
+export const TRASH_DIR = 'trash';
+
+/** Plan §3.4 — one node of the Project Explorer tree. */
+export interface ProjectTreeNode {
+  /** Path relative to the project root, `/`-separated. */
+  name: string;
+  /** Just the last segment, for display. */
+  base: string;
+  kind: 'dir' | 'file';
+  /** Lowercase extension incl. the dot (files only). */
+  ext?: string;
+  size?: number;
+  modifiedAt?: string;
+  /** How the explorer opens this file. */
+  openAs?: 'editor-docx' | 'editor-text' | 'reader-pdf' | 'external';
+  children?: ProjectTreeNode[];
+}
 
 export interface ProjectManifest {
   /** Stable id, minted on first open — survives renames of the folder. */

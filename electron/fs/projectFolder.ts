@@ -7,12 +7,14 @@ import {
   EASYEDITOR_DIR,
   MANIFEST_FILE,
   BACKUP_DIR,
+  TRASH_DIR,
   type ProjectManifest,
   type ProjectFolder,
   type ChapterFile,
   type ChapterFormat,
   type ProjectAsset,
   type ProjectAssetKind,
+  type ProjectTreeNode,
 } from '../../shared/fs/projectTypes.js';
 import { CONNECTORS } from '../../shared/agent/connectors.js';
 
@@ -367,6 +369,117 @@ export function setConnector(root: string, id: string, on: boolean): Record<stri
   else { if (defaultOff) delete connectors[id]; else connectors[id] = false; }
   writeManifest(root, { ...manifest, connectors });
   return readConnectors(root);
+}
+
+// ── Plan §3.4: the Project Explorer tree + editable file ops ───────────────
+
+const TREE_MAX_DEPTH = 6;
+const OPEN_AS: Record<string, ProjectTreeNode['openAs']> = {
+  '.docx': 'editor-docx', '.rtf': 'editor-docx',
+  '.md': 'editor-text', '.txt': 'editor-text',
+  '.pdf': 'reader-pdf',
+};
+
+/** Resolve `name` inside the project for a broadened set of editable file types. */
+export function resolveEditableInProject(root: string, name: string): string {
+  if (typeof name !== 'string' || name.trim() === '' || name.includes('\0')) throw new Error('invalid name');
+  const normalized = name.replace(/\\/g, '/');
+  if (normalized.startsWith('/') || /^[a-zA-Z]:/.test(normalized)) throw new Error(`name must be relative: ${name}`);
+  const rootResolved = path.resolve(root);
+  const resolved = path.resolve(rootResolved, normalized);
+  if (resolved !== rootResolved && !resolved.startsWith(rootResolved + path.sep)) {
+    throw new Error(`path escapes the project folder: ${name}`);
+  }
+  return resolved;
+}
+
+/** Full recursive tree of the project folder (dirs + files), depth-capped. */
+export function listProjectTree(root: string): ProjectTreeNode[] {
+  const rootResolved = path.resolve(root);
+  const walk = (dir: string, depth: number): ProjectTreeNode[] => {
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return []; }
+    const out: ProjectTreeNode[] = [];
+    for (const e of entries) {
+      if (e.name.startsWith('~$') || SKIP_DIRS.has(e.name) || e.name.startsWith('.')) continue;
+      const full = path.join(dir, e.name);
+      const rel = path.relative(rootResolved, full).split(path.sep).join('/');
+      if (e.isDirectory()) {
+        out.push({ name: rel, base: e.name, kind: 'dir', children: depth < TREE_MAX_DEPTH ? walk(full, depth + 1) : [] });
+        continue;
+      }
+      if (!e.isFile()) continue;
+      let stat: fs.Stats;
+      try { stat = fs.statSync(full); } catch { continue; }
+      const ext = path.extname(e.name).toLowerCase();
+      out.push({
+        name: rel, base: e.name, kind: 'file', ext,
+        size: stat.size, modifiedAt: stat.mtime.toISOString(),
+        openAs: OPEN_AS[ext] ?? 'external',
+      });
+    }
+    // Dirs first, then files, each alphabetical.
+    out.sort((a, b) => (a.kind === b.kind ? a.base.localeCompare(b.base) : a.kind === 'dir' ? -1 : 1));
+    return out;
+  };
+  return walk(rootResolved, 0);
+}
+
+/** Read a `.md` / `.txt` file's text (cap so a stray huge file cannot blow a prompt). */
+export function readProjectText(root: string, name: string, maxChars = 500_000): string {
+  const abs = resolveEditableInProject(root, name);
+  const ext = path.extname(abs).toLowerCase();
+  if (ext !== '.md' && ext !== '.txt') throw new Error(`not a text file: ${name}`);
+  return fs.readFileSync(abs, 'utf8').slice(0, maxChars);
+}
+
+function trashDir(root: string): string {
+  return path.join(root, EASYEDITOR_DIR, TRASH_DIR);
+}
+
+/** Move a file/dir to `.easyeditor/trash/` — never `fs.rm`. Returns the trash path. */
+export function trashInProject(root: string, name: string): { trashed: string } {
+  const abs = resolveEditableInProject(root, name);
+  if (!fs.existsSync(abs)) throw new Error(`not found: ${name}`);
+  const dir = trashDir(root);
+  fs.mkdirSync(dir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const dest = path.join(dir, `${stamp}__${name.replace(/[\\/]/g, '__')}`);
+  fs.renameSync(abs, dest);
+  return { trashed: path.relative(root, dest).split(path.sep).join('/') };
+}
+
+/** Rename / move a file or dir within the project. A chapter is backed up first. */
+export function renameInProject(root: string, from: string, to: string): { ok: true } {
+  const src = resolveEditableInProject(root, from);
+  const dest = resolveEditableInProject(root, to);
+  if (!fs.existsSync(src)) throw new Error(`not found: ${from}`);
+  if (fs.existsSync(dest)) throw new Error(`already exists: ${to}`);
+  const ext = path.extname(src).toLowerCase();
+  if ((ext === '.docx' || ext === '.rtf') && fs.statSync(src).isFile()) {
+    try { backupChapter(root, from); } catch { /* new-ish chapter, no backup */ }
+  }
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.renameSync(src, dest);
+  return { ok: true };
+}
+
+/** Create an empty subfolder. */
+export function createFolderInProject(root: string, relDir: string): { ok: true } {
+  const abs = resolveEditableInProject(root, relDir);
+  fs.mkdirSync(abs, { recursive: true });
+  return { ok: true };
+}
+
+/** Create a new `.md` / `.txt` file with optional seed text. */
+export function createTextFileInProject(root: string, name: string, seedText = ''): { ok: true } {
+  const abs = resolveEditableInProject(root, name);
+  const ext = path.extname(abs).toLowerCase();
+  if (ext !== '.md' && ext !== '.txt') throw new Error(`only .md / .txt: ${name}`);
+  if (fs.existsSync(abs)) throw new Error(`already exists: ${name}`);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  fs.writeFileSync(abs, seedText, 'utf8');
+  return { ok: true };
 }
 
 // ── M9 Phase 7: consent to cloud OCR (ADR-0023) ───────────────────────────

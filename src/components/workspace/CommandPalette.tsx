@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Plus, Search, PanelRight, Languages, Folder, FolderPlus } from "lucide-react";
+import { FileText, Plus, Search, PanelRight, PanelLeft, Languages, Folder, FolderPlus } from "lucide-react";
 import {
   CommandDialog,
   CommandInput,
@@ -27,6 +27,7 @@ export const CommandPalette: React.FC = () => {
     setActiveDocumentId,
     toggleWorkbench,
     setWorkbenchTab,
+    openRailPanel,
   } = useWorkspace();
 
   const { projects, docsMap, allDocs, refresh: refreshAllDocs } = useAllDocuments();
@@ -184,6 +185,20 @@ export const CommandPalette: React.FC = () => {
             <PanelRight className="h-4 w-4 text-primary" />
             <span>{t("library.cmd_toggle_workbench", "Toggle Workbench")}</span>
           </CommandItem>
+
+          {(["files", "library", "history", "settings"] as const).map((panel) => (
+            <CommandItem
+              key={panel}
+              onSelect={() => {
+                openRailPanel(panel);
+                handleOpenChange(false);
+              }}
+              className="cursor-pointer gap-2"
+            >
+              <PanelLeft className="h-4 w-4 text-primary" />
+              <span>{t(`rail.${panel}` as never, panel)}</span>
+            </CommandItem>
+          ))}
 
           <CommandItem
             onSelect={() => {

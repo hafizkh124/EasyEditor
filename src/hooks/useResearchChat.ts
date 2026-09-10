@@ -353,13 +353,21 @@ export function useResearchChat(args: UseResearchChatArgs) {
   };
 
   // Phase 10.5: start a fresh chat without deleting the current session.
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     sessionIdRef.current = null;
     setActiveSessionId(null);
     setMessages([]);
     setCitations([]);
     setSourcesReadyInfo(null);
-  };
+  }, []);
+
+  // Plan §3.4 — the History panel's "New session" button lives outside this
+  // hook, so it asks over an event.
+  useEffect(() => {
+    const handler = () => handleNewChat();
+    window.addEventListener("research-new-session", handler);
+    return () => window.removeEventListener("research-new-session", handler);
+  }, [handleNewChat]);
 
   // Phase 10.5: load a specific past session into the active chat (sidebar click).
   const handleLoadSession = async (id: string) => {

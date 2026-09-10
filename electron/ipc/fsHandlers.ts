@@ -29,6 +29,12 @@ import {
   resolveAsset,
   readConnectors,
   setConnector,
+  listProjectTree,
+  readProjectText,
+  renameInProject,
+  trashInProject,
+  createFolderInProject,
+  createTextFileInProject,
 } from '../fs/projectFolder.js';
 import * as word from '../adapters/word.js';
 
@@ -138,6 +144,34 @@ export function registerFsHandlers(): void {
           });
           const { bytes } = registerChapter(root, name);
           return { name, backupPath, bytes };
+        }
+
+        // ── Plan §3.4: the Project Explorer tree + editable file ops ──
+        case 'listTree':
+          return listProjectTree(String(payload.root));
+
+        case 'readText':
+          return { text: readProjectText(String(payload.root), String(payload.name ?? '')) };
+
+        case 'rename': {
+          const r = renameInProject(String(payload.root), String(payload.from ?? ''), String(payload.to ?? ''));
+          BrowserWindow.fromWebContents(event.sender)?.webContents.send(ALLOWED_IPC_CHANNELS.FS_CHANGED, { name: String(payload.to ?? ''), kind: 'external' });
+          return r;
+        }
+
+        case 'trash': {
+          const r = trashInProject(String(payload.root), String(payload.name ?? ''));
+          BrowserWindow.fromWebContents(event.sender)?.webContents.send(ALLOWED_IPC_CHANNELS.FS_CHANGED, { name: String(payload.name ?? ''), kind: 'external' });
+          return r;
+        }
+
+        case 'mkdir':
+          return createFolderInProject(String(payload.root), String(payload.dir ?? ''));
+
+        case 'createFile': {
+          const r = createTextFileInProject(String(payload.root), String(payload.name ?? ''), String(payload.seed ?? ''));
+          BrowserWindow.fromWebContents(event.sender)?.webContents.send(ALLOWED_IPC_CHANNELS.FS_CHANGED, { name: String(payload.name ?? ''), kind: 'external' });
+          return r;
         }
 
         case 'watch': {
