@@ -269,21 +269,28 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
       .filter((n) => isToolDisabled(connectors, n)),
   );
 
-  // ── 1b. Direct answer — a plain-editing ask in Ask mode needs no tools ──
+  // ── 1b. Direct answer — a plain-editing ask in Ask mode ────────────────
   // (ADR-0038). The fast path (canWrite only) already handles the write side;
-  // this is the read-only counterpart: rewrite / spelling / translate / summary
-  // with the text in front of the model. Zero retrieval, one model turn.
+  // this is the read-only counterpart: rewrite / spelling / translate / summary.
+  // No external retrieval — but the document tools stay available, otherwise an
+  // ask that POINTS at a chapter ("باب دوم کا خلاصہ") instead of pasting its text
+  // would be answered blind. When the text is already in the instruction the
+  // model simply answers without calling anything.
   if (mode === 'ask' && !playbook && intent.route.kind === 'direct') {
-    log.info('agent run — direct answer (no tools)', { checkpointId });
+    const directTools = scopedTools.filter(
+      (t) => t.name === 'read_document' || t.name === 'search_corpus',
+    );
+    log.info('agent run — direct answer', { checkpointId, tools: directTools.map((t) => t.name) });
     const result = await runAgentLoop(instruction, agentModel.generate, dispatch, systemPrompt, {
       mode,
-      tools: [],
-      maxSteps: 2,
+      tools: directTools,
+      maxSteps: directTools.length ? 4 : 2,
       onProgress: input.onProgress,
       isCancelled: input.isCancelled,
     });
     return finish({ ...result, playbook: undefined, checkpointId: undefined });
   }
+
 
   // ── 2. Playbook — deterministic execution ─────────────────────────────
   const isSlash = instruction.trim().startsWith('/');
