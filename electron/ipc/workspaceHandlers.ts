@@ -25,6 +25,8 @@ export const ALLOWED_WORKSPACE_METHODS = new Set<string>([
   'listItems', 'getItem', 'createItem', 'deleteItem',
   'accessItem', 'getRecentItems', 'getLibraryItemCount',
   'addSearch', 'listSearches', 'removeSearch', 'clearSearches',
+  'upsertResearchSession', 'loadResearchSession', 'loadLatestResearchSession',
+  'listResearchSessions', 'deleteResearchSession',
   'searchChunks', 'searchChunksByRoot',
   'saveReadingProgress', 'getReadingProgress', 'listReadingProgress',
   'addBookmark', 'removeBookmark', 'isBookmarked', 'listBookmarks',

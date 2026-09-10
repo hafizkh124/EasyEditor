@@ -9,6 +9,7 @@ import * as customTasks from './workspaceStore/customTasks.js';
 import { getCurrentUserId } from './workspaceStore/identity.js';
 import * as accessLog from './workspaceStore/accessLog.js';
 import * as searchHistory from './workspaceStore/searchHistory.js';
+import * as sessions from './workspaceStore/sessions.js';
 import { searchChunks, searchChunksByRoot, type ChunkSearchHit } from './workspaceStore/search.js';
 import * as readerState from './workspaceStore/readerState.js';
 import { ingestLibraryItem, type IngestBatchArgs, type IngestBatchResult } from './ingest.js';
@@ -168,6 +169,15 @@ export class WorkspaceDbService {
   public async listSearches(limit?: number): Promise<searchHistory.SearchHistoryRow[]> { return searchHistory.listSearches(this.db, limit); }
   public async removeSearch(id: string): Promise<void> { searchHistory.removeSearch(this.db, id); }
   public async clearSearches(): Promise<void> { searchHistory.clearSearches(this.db); }
+
+  // ── Research sessions — offline mirror (plan §3.5) ────────────────────────
+  public async upsertResearchSession(p: { id: string | null; title: string; mode: string; messages: unknown[]; citations: unknown[]; selectedDomains: string[] }): Promise<string> {
+    return sessions.upsertResearchSession(this.db, p);
+  }
+  public async loadResearchSession(id: string): Promise<sessions.LocalResearchSession | null> { return sessions.loadResearchSession(this.db, id); }
+  public async loadLatestResearchSession(mode: string): Promise<sessions.LocalResearchSession | null> { return sessions.loadLatestResearchSession(this.db, mode); }
+  public async listResearchSessions(limit?: number): Promise<sessions.LocalResearchSummary[]> { return sessions.listResearchSessions(this.db, limit); }
+  public async deleteResearchSession(id: string): Promise<void> { sessions.deleteResearchSession(this.db, id); }
 
   // ── Task runs ─────────────────────────────────────────────────────────────
   public async listTaskRuns(documentId?: string): Promise<TaskRun[]> { return taskRuns.listTaskRuns(this.db, documentId); }
