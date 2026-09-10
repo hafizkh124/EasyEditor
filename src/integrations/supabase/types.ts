@@ -1088,6 +1088,36 @@ export type Database = {
         }
         Relationships: []
       }
+      search_history: {
+        Row: {
+          created_at: string
+          filters: Json
+          id: string
+          kind: string
+          query: string
+          result_count: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          kind: string
+          query: string
+          result_count?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          kind?: string
+          query?: string
+          result_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           activated_at: string | null
