@@ -174,11 +174,11 @@ describe("AgentPanel", () => {
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
     fireEvent.change(ta, { target: { value: "tidy chapter one" } });
     fireEvent.keyDown(ta, { key: "Enter" });
-    await waitFor(() => expect(agentRun).toHaveBeenCalledWith("tidy chapter one", "auto", "C:\\thesis"));
+    await waitFor(() => expect(agentRun).toHaveBeenCalledWith("tidy chapter one", "auto", "C:\\thesis", undefined, undefined));
     expect(await screen.findByText("The chapter has 3 headings.")).toBeInTheDocument();
   });
 
-  it("carries the original request and the agent's question into a clarification reply", async () => {
+  it("carries the conversation so far (incl. a clarifying question) into the next run as `history` (M11 Phase 1, ADR-0046)", async () => {
     agentRun.mockResolvedValueOnce({ answer: "", stopReason: "needs-input", steps: 1, toolCalls: [], question: "Which chapter do you mean?" });
     renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
@@ -190,10 +190,62 @@ describe("AgentPanel", () => {
     fireEvent.change(ta, { target: { value: "the introduction" } });
     fireEvent.keyDown(ta, { key: "Enter" });
     await waitFor(() => expect(agentRun).toHaveBeenCalledTimes(2));
-    const secondInstruction = agentRun.mock.calls[1][0] as string;
-    expect(secondInstruction).toContain("fix the spelling");
-    expect(secondInstruction).toContain("Which chapter do you mean?");
-    expect(secondInstruction).toContain("the introduction");
+    // The next run's instruction is the bare reply — no more string-concat.
+    expect(agentRun.mock.calls[1][0]).toBe("the introduction");
+    // The thread rides along as `history` (5th arg): the previous question +
+    // the clarifying question it stopped on.
+    const history = agentRun.mock.calls[1][4] as Array<{ instruction: string; answer: string }>;
+    expect(history).toEqual([
+      { instruction: "fix the spelling", answer: "Which chapter do you mean?" },
+    ]);
+  });
+
+  it("keeps finished turns on screen and feeds them back as `history` (M11 Phase 1)", async () => {
+    agentRun.mockResolvedValueOnce({ answer: "It makes three points.", stopReason: "done", steps: 1, toolCalls: [] });
+    agentRun.mockResolvedValueOnce({ answer: "The second point is about isnād.", stopReason: "done", steps: 1, toolCalls: [] });
+    renderPanel();
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
+
+    fireEvent.change(ta, { target: { value: "summarise chapter one" } });
+    fireEvent.keyDown(ta, { key: "Enter" });
+    expect(await screen.findByText("It makes three points.")).toBeInTheDocument();
+
+    fireEvent.change(ta, { target: { value: "expand the second point" } });
+    fireEvent.keyDown(ta, { key: "Enter" });
+    await waitFor(() => expect(agentRun).toHaveBeenCalledTimes(2));
+
+    // The first exchange is still visible above the new one.
+    expect(screen.getByText("summarise chapter one")).toBeInTheDocument();
+    expect(screen.getByText("It makes three points.")).toBeInTheDocument();
+    expect(await screen.findByText("The second point is about isnād.")).toBeInTheDocument();
+
+    // The second run received the first turn as `history` (5th arg).
+    expect(agentRun.mock.calls[1][4]).toEqual([
+      { instruction: "summarise chapter one", answer: "It makes three points." },
+    ]);
+
+    // A third run carries both prior turns.
+    agentRun.mockResolvedValueOnce({ answer: "done", stopReason: "done", steps: 1, toolCalls: [] });
+    fireEvent.change(ta, { target: { value: "and the third?" } });
+    fireEvent.keyDown(ta, { key: "Enter" });
+    await waitFor(() => expect(agentRun).toHaveBeenCalledTimes(3));
+    expect(agentRun.mock.calls[2][4]).toEqual([
+      { instruction: "summarise chapter one", answer: "It makes three points." },
+      { instruction: "expand the second point", answer: "The second point is about isnād." },
+    ]);
+  });
+
+  it("'New chat' clears the conversation", async () => {
+    agentRun.mockResolvedValueOnce({ answer: "first answer", stopReason: "done", steps: 1, toolCalls: [] });
+    renderPanel();
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
+    fireEvent.change(ta, { target: { value: "first question" } });
+    fireEvent.keyDown(ta, { key: "Enter" });
+    expect(await screen.findByText("first answer")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "common.new_chat" }));
+    await waitFor(() => expect(screen.queryByText("first answer")).not.toBeInTheDocument());
+    expect(screen.queryByText("first question")).not.toBeInTheDocument();
   });
 
   it("renders live progress lines as they arrive", async () => {

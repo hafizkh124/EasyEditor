@@ -156,4 +156,11 @@ export interface AgentRunOptions {
   isCancelled?: () => boolean;
   /** Plan mode — resolves once the scholar approves (or rejects) the plan. */
   waitForApproval?: WaitForApprovalFn;
+  /**
+   * M11 Phase 1 — prior conversation turns, prepended to the run's messages so
+   * a follow-up question has the thread. Built by `shared/agent/history.ts`
+   * (`user` / plain-text `model` messages only — never tool traffic; see that
+   * file). Empty / absent = a cold run, exactly as before.
+   */
+  history?: AgentMessage[];
 }

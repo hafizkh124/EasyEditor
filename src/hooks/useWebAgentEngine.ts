@@ -3,6 +3,7 @@ import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { createWebDispatcher, type WebAgentSession } from "@/core/agent/webDispatch";
 import { webAgentModel } from "@/core/agent/webModel";
 import { runAgentLoop } from "~shared/agent/loop";
+import { buildHistory, type ConversationTurn } from "~shared/agent/history";
 import { toolsFor } from "~shared/agent/toolScoping";
 import { buildWebSystemPrompt } from "~shared/agent/systemPrompt";
 import { classifyIntent, negativeConstraintBlock } from "~shared/agent/intent";
@@ -52,6 +53,8 @@ export function useWebAgentEngine() {
       // Plan §4.5 — the `#` scope. Web mirrors `books` for search_corpus only
       // (batch mode and Shamela/JKHSSN scoping are desktop-agent flows).
       scope?: { books?: string[] },
+      // M11 Phase 1 — the conversation so far, so a follow-up has the thread.
+      history?: ConversationTurn[],
     ): Promise<AgentRunResult> => {
       cancelledRef.current = false;
       approvalRef.current = null;
@@ -110,7 +113,9 @@ export function useWebAgentEngine() {
       const systemPrompt = buildWebSystemPrompt({ mode, toolGating: negativeConstraintBlock(intent.route) });
 
       return runAgentLoop(instruction, webAgentModel, dispatch, systemPrompt, {
-        mode, tools, onProgress, waitForApproval, isCancelled: () => cancelledRef.current,
+        mode, tools, onProgress, waitForApproval,
+        isCancelled: () => cancelledRef.current,
+        history: history?.length ? buildHistory(history) : undefined,
       });
     },
     [activeDocumentId, ws],

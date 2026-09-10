@@ -36,6 +36,29 @@ describe('runAgentLoop', () => {
     expect(res.messages.map((m: AgentMessage) => m.role)).toEqual(['user', 'model', 'tool', 'model']);
   });
 
+  it('prepends opts.history so a follow-up run has the thread (M11 Phase 1, ADR-0046)', async () => {
+    // Snapshot inside the mock — the loop passes its live `messages` array by
+    // reference (compactMessages is a no-op below the tool-result threshold),
+    // and it mutates it after this call returns.
+    let seenRoles: string[] = [];
+    let seenTexts: string[] = [];
+    const model = vi.fn(async (msgs: AgentMessage[]): Promise<ModelStep> => {
+      seenRoles = msgs.map((m) => m.role);
+      seenTexts = msgs.map((m) => ("text" in m ? m.text ?? "" : ""));
+      return { kind: "text", text: "the third point is X" };
+    });
+    const history: AgentMessage[] = [
+      { role: "user", text: "summarise chapter one" },
+      { role: "model", text: "It makes three points." },
+    ];
+    const res = await runAgentLoop("open the third point", model, vi.fn(), "sys", opts({ history }));
+
+    expect(seenRoles).toEqual(["user", "model", "user"]);
+    expect(seenTexts[0]).toBe("summarise chapter one");
+    expect(seenTexts[2]).toBe("open the third point");
+    expect(res.answer).toBe("the third point is X");
+  });
+
   it('feeds an unknown tool name back as an error instead of dispatching it', async () => {
     const model = scriptedModel([
       { kind: 'toolCall', name: 'delete_everything', args: {} },

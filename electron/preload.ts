@@ -440,6 +440,9 @@ const electronAPI = {
         mentions: string[];
         batch: { granularity: 'per-book' | 'per-author' } | null;
       },
+      // M11 Phase 1 — the conversation so far (finished turns), so a follow-up
+      // question reaches the model with the thread. Optional.
+      history?: Array<{ instruction: string; answer: string }>,
     ): Promise<{
       id: string;
       answer: string;
@@ -451,7 +454,7 @@ const electronAPI = {
       question?: string;
       error?: string;
     }> =>
-      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'run', instruction, mode, projectRoot, scope }),
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'run', instruction, mode, projectRoot, scope, history }),
     // M9 — the renderer's decision on a Plan-mode plan (ADR-0026).
     approvePlan: (runId: string, decision: 'approved' | 'rejected'): Promise<{ ok: boolean }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'approvePlan', runId, decision }),

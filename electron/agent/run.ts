@@ -28,6 +28,7 @@ import { runCritique } from './critic.js';
 import { checkClaim } from './claimCheck.js';
 import { beginCheckpoint } from './checkpoint.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
+import { buildHistory, type ConversationTurn } from '../../shared/agent/history.js';
 import { buildSystemPrompt } from '../../shared/agent/systemPrompt.js';
 import { AUTHOR_VOICE_FILES } from '../../shared/agent/authorVoice.js';
 import { toolsFor } from '../../shared/agent/toolScoping.js';
@@ -87,6 +88,12 @@ export interface AgentRunInput {
   ocrDocument?: ((scanPath: string, lang: string, pages?: string) => Promise<import('./ocrBridge.js').OcrResult>) | null;
   /** Plan mode — resolves once the scholar approves (or rejects) the plan. */
   waitForApproval?: WaitForApprovalFn;
+  /**
+   * M11 Phase 1 — the conversation so far (finished turns). Prepended to the
+   * loop's messages so a follow-up question has the thread. Not used by the
+   * deterministic playbook runner (a `/trigger` flow is self-contained).
+   */
+  history?: ConversationTurn[];
   /** Plan §4.4 — the `#` scope: book refs the search tools are restricted to. */
   scope?: {
     books: string[];
@@ -119,6 +126,9 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   })();
   const rules = readProjectRules(projectRoot);
   const authorVoice = readAuthorVoice(projectRoot);
+  // M11 Phase 1 — prior turns → the messages the loop prepends (user/model
+  // text only). Playbook runs skip this: a `/trigger` flow is self-contained.
+  const history = input.history?.length ? buildHistory(input.history) : undefined;
   const playbook = selectPlaybook(instruction);
   const agentModel = await resolveAgentModel();
   if (agentModel.provider.id !== 'gemini') log.info('agent model provider', { provider: agentModel.provider.id });
@@ -287,6 +297,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
       maxSteps: directTools.length ? 4 : 2,
       onProgress: input.onProgress,
       isCancelled: input.isCancelled,
+      history,
     });
     return finish({ ...result, playbook: undefined, checkpointId: undefined });
   }
@@ -343,6 +354,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     onProgress: input.onProgress,
     isCancelled: input.isCancelled,
     waitForApproval,
+    history,
   });
 
   return finish({ ...result, playbook: playbook?.id, checkpointId: taskWrote(result) ? checkpointId : undefined });

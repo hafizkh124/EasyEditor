@@ -109,7 +109,12 @@ export async function runAgentLoop(
 ): Promise<AgentRunResult> {
   const maxSteps = opts.maxSteps ?? DEFAULT_MAX_STEPS;
   const tools = opts.tools ?? toolsForMode(opts.mode);
-  const messages: AgentMessage[] = [{ role: 'user', text: userInstruction }];
+  // M11 Phase 1 — `opts.history` (prior turns, `user`/`model`-text only — see
+  // shared/agent/history.ts) is prepended so a follow-up has the thread.
+  const messages: AgentMessage[] = [
+    ...(opts.history ?? []),
+    { role: 'user', text: userInstruction },
+  ];
   const toolCalls: AgentRunResult['toolCalls'] = [];
 
   // Plan mode: the first write is gated on the scholar approving the plan.
