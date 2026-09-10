@@ -155,6 +155,19 @@ function Require-Pres {
     if ($null -eq $script:pres) { throw 'no presentation open' }
 }
 
+# `#RRGGBB` / `#RGB` -> Excel/Office OLE colour Long (BGR-ordered). Avoids
+# System.Drawing, which is a separate package on .NET Core / pwsh.
+function ConvertTo-OleColor([string]$hex) {
+    if (-not $hex) { return $null }
+    $h = $hex.TrimStart('#')
+    if ($h.Length -eq 3) { $h = "$($h[0])$($h[0])$($h[1])$($h[1])$($h[2])$($h[2])" }
+    if ($h.Length -ne 6) { throw "bad colour: $hex" }
+    $r = [Convert]::ToInt32($h.Substring(0, 2), 16)
+    $g = [Convert]::ToInt32($h.Substring(2, 2), 16)
+    $b = [Convert]::ToInt32($h.Substring(4, 2), 16)
+    return ($b -shl 16) -bor ($g -shl 8) -bor $r
+}
+
 while ($true) {
     $line = [Console]::In.ReadLine()
     if ($null -eq $line) { break }
@@ -581,7 +594,7 @@ public static class WordBridgeFontApi {
                 $range = $ws.Range("$($cmd.range)")
                 if ($null -ne $cmd.bold) { $range.Font.Bold = [bool]$cmd.bold }
                 if ($null -ne $cmd.fontSize) { $range.Font.Size = [double]$cmd.fontSize }
-                if ($cmd.fontColor) { $range.Font.Color = [System.Drawing.ColorTranslator::FromHtml($cmd.fontColor)] }
+                if ($cmd.fontColor) { $range.Font.Color = ConvertTo-OleColor $cmd.fontColor }
                 if ($cmd.numberFormat) { $range.NumberFormat = "$($cmd.numberFormat)" }
                 if ($null -ne $cmd.horizontalAlign) {
                     # 1=left, 2=center, 3=right (xlHAlign)
@@ -591,7 +604,7 @@ public static class WordBridgeFontApi {
                     if ([bool]$cmd.autoFit) { $range.Columns.AutoFit() | Out-Null }
                 }
                 if ($cmd.bgColor) {
-                    $range.Interior.Color = [System.Drawing.ColorTranslator::FromHtml($cmd.bgColor)
+                    $range.Interior.Color = ConvertTo-OleColor $cmd.bgColor
                 }
                 Write-Result @{ ok = $true; op = 'excelFormat'; sheet = $ws.Name; range = "$($cmd.range)" }
             }
