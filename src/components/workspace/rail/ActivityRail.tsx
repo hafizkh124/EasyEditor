@@ -21,10 +21,10 @@ interface RailItem {
 }
 
 const ITEMS: RailItem[] = [
-  { id: "files", icon: FolderTree, labelKey: "rail.files", labelFallback: "فائلیں", desktopOnly: true },
-  { id: "library", icon: Library, labelKey: "rail.library", labelFallback: "مکتبہ" },
-  { id: "history", icon: History, labelKey: "rail.history", labelFallback: "تاریخ" },
-  { id: "settings", icon: Settings, labelKey: "rail.settings", labelFallback: "ترتیبات" },
+  { id: "files", icon: FolderTree, labelKey: "rail.files", labelFallback: "Files", desktopOnly: true },
+  { id: "library", icon: Library, labelKey: "rail.library", labelFallback: "Library" },
+  { id: "history", icon: History, labelKey: "rail.history", labelFallback: "History" },
+  { id: "settings", icon: Settings, labelKey: "rail.settings", labelFallback: "Settings" },
 ];
 
 export const ActivityRail: React.FC = () => {
@@ -36,7 +36,7 @@ export const ActivityRail: React.FC = () => {
 
   return (
     <nav
-      aria-label={t("rail.aria_label", "ورک اسپیس نیویگیشن")}
+      aria-label={t("rail.aria_label", "Workspace navigation")}
       className="flex w-12 shrink-0 flex-col items-center gap-1 border-e border-sidebar-border bg-sidebar py-2"
     >
       {items.map(({ id, icon: Icon, labelKey, labelFallback }) => {
