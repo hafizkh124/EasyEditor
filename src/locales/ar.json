@@ -1105,6 +1105,7 @@
   "agent.rec.build_indexes": "ابنِ الفهارس",
   "agent.rec.transcript_to_chapter": "حوّل التفريغ إلى فصل",
   "agent.rec.compare_variants": "قارن متون الطرق",
+  "agent.rec.build_spreadsheet": "حوّل هذا إلى ورقة إكسل",
   "editor.audiobook_cancelled": "أُلغي تصدير الكتاب الصوتي.",
   "editor.audiobook_done": "الكتاب الصوتي جاهز.",
   "editor.audiobook_empty": "لا يوجد نص لتحويله إلى كتاب صوتي.",

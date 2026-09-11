@@ -168,6 +168,118 @@ function ConvertTo-OleColor([string]$hex) {
     return ($b -shl 16) -bor ($g -shl 8) -bor $r
 }
 
+# M12 Phase D — pick a real installed font rather than silently handing Excel
+# a name nothing on the machine renders. System.Drawing is already an accepted
+# dependency here (installFont/installFontCheck use it); Excel itself never
+# errors on an unknown Font.Name (it just substitutes for display), so a
+# lookup failure degrades to "hand the name through as-is", never a throw.
+function Resolve-FontName([string]$preferred, [string]$fallback) {
+    if (-not $preferred) { return $null }
+    try {
+        Add-Type -AssemblyName System.Drawing -ErrorAction Stop
+        $installed = @((New-Object System.Drawing.Text.InstalledFontCollection).Families | ForEach-Object { $_.Name })
+        if ($installed -contains $preferred) { return $preferred }
+        if ($fallback -and ($installed -contains $fallback)) { return $fallback }
+        return $preferred
+    } catch {
+        return $preferred
+    }
+}
+
+# M12 Phase D — the shared body behind excelAddSheet / excelWriteRange /
+# excelSetFormula / excelFormat. Both the direct ops below AND excelBatch
+# (which runs several of these against the SAME already-open workbook, no
+# per-sub-command save) call this, so the two paths cannot drift apart.
+function Invoke-ExcelSubCommand($sub) {
+    switch ($sub.op) {
+        'excelAddSheet' {
+            Require-Wb
+            $last = $script:wb.Worksheets.Item($script:wb.Worksheets.Count)
+            $newWs = $script:wb.Worksheets.Add([System.Type]::Missing, $last)
+            if ($sub.name) { $newWs.Name = "$($sub.name)" }
+            $names = @(); foreach ($ws in $script:wb.Worksheets) { $names += $ws.Name }
+            return @{ ok = $true; op = 'excelAddSheet'; sheet = $newWs.Name; sheets = $names }
+        }
+
+        'excelRenameSheet' {
+            Require-Wb
+            if ($sub.sheet) { $ws = $script:wb.Worksheets.Item("$($sub.sheet)") } else { $ws = $script:wb.ActiveSheet }
+            $ws.Name = "$($sub.name)"
+            return @{ ok = $true; op = 'excelRenameSheet'; sheet = $ws.Name }
+        }
+
+        'excelWriteRange' {
+            Require-Wb
+            if ($sub.sheet) { $ws = $script:wb.Worksheets.Item("$($sub.sheet)") } else { $ws = $script:wb.ActiveSheet }
+            $startCell = if ($sub.startCell) { "$($sub.startCell)" } else { "A1" }
+            $data = $sub.data  # expected: 2D array (array of arrays)
+            if ($data -and $data.Count -gt 0) {
+                $rows = $data.Count
+                $cols = if ($data[0] -is [array]) { $data[0].Count } else { 1 }
+                $range = $ws.Range($startCell).Resize($rows, $cols)
+                # Build a COM-safe 2D array
+                $arr = New-Object 'object[,]' $rows, $cols
+                for ($r = 0; $r -lt $rows; $r++) {
+                    $rowData = $data[$r]
+                    if ($rowData -is [array]) {
+                        for ($c = 0; $c -lt $cols; $c++) {
+                            $arr[$r, $c] = if ($c -lt $rowData.Count) { $rowData[$c] } else { $null }
+                        }
+                    } else {
+                        $arr[$r, 0] = $rowData
+                    }
+                }
+                $range.Value2 = $arr
+            }
+            return @{ ok = $true; op = 'excelWriteRange'; sheet = $ws.Name; startCell = $startCell }
+        }
+
+        'excelSetFormula' {
+            Require-Wb
+            if ($sub.sheet) { $ws = $script:wb.Worksheets.Item("$($sub.sheet)") } else { $ws = $script:wb.ActiveSheet }
+            # A1 notation (`cell: "B9"`) is preferred — the natural way to
+            # write "=SUM(B2:B8)" style formulas; row/col ints still work.
+            if ($sub.cell) { $cellObj = $ws.Range("$($sub.cell)") }
+            else { $cellObj = $ws.Cells.Item([int]$sub.row, [int]$sub.col) }
+            $cellObj.Formula = "$($sub.formula)"
+            return @{ ok = $true; op = 'excelSetFormula'; sheet = $ws.Name; cell = "$($cellObj.Address($false, $false))" }
+        }
+
+        'excelFormat' {
+            Require-Wb
+            if ($sub.sheet) { $ws = $script:wb.Worksheets.Item("$($sub.sheet)") } else { $ws = $script:wb.ActiveSheet }
+            $range = $ws.Range("$($sub.range)")
+            if ($null -ne $sub.bold) { $range.Font.Bold = [bool]$sub.bold }
+            if ($null -ne $sub.fontSize) { $range.Font.Size = [double]$sub.fontSize }
+            if ($sub.fontColor) { $range.Font.Color = ConvertTo-OleColor $sub.fontColor }
+            if ($sub.fontName) {
+                $resolved = Resolve-FontName "$($sub.fontName)" 'Amiri'
+                if ($resolved) { $range.Font.Name = $resolved }
+            }
+            if ($sub.numberFormat) { $range.NumberFormat = "$($sub.numberFormat)" }
+            if ($null -ne $sub.horizontalAlign) {
+                # 1=left, 2=center, 3=right (xlHAlign)
+                $range.HorizontalAlignment = [int]$sub.horizontalAlign
+            }
+            if ($null -ne $sub.autoFit) {
+                if ([bool]$sub.autoFit) { $range.Columns.AutoFit() | Out-Null }
+            }
+            if ($sub.bgColor) {
+                $range.Interior.Color = ConvertTo-OleColor $sub.bgColor
+            }
+            # M12 Phase D — RTL: sheet-level reading direction + this range's
+            # own ReadingOrder (XlReadingOrder: xlRTL=-5004, xlLTR=-5001).
+            if ($null -ne $sub.rtl) {
+                $ws.DisplayRightToLeft = [bool]$sub.rtl
+                $range.ReadingOrder = if ([bool]$sub.rtl) { -5004 } else { -5001 }
+            }
+            return @{ ok = $true; op = 'excelFormat'; sheet = $ws.Name; range = "$($sub.range)" }
+        }
+
+        default { throw "unsupported excel sub-op: '$($sub.op)'" }
+    }
+}
+
 while ($true) {
     $line = [Console]::In.ReadLine()
     if ($null -eq $line) { break }
@@ -547,66 +659,48 @@ public static class WordBridgeFontApi {
                 $script:wb = $script:excel.Workbooks.Add()
                 # Track the PID of the Excel instance we own
                 try { $script:ownedExcelPid = [int]$script:excel.Hwnd } catch { }
+                # M12 Phase D — a new workbook's default sheet count depends on
+                # the user's own Excel setting (SheetsInNewWorkbook), not
+                # something this script controls. Normalise to exactly one so
+                # excelBatch's "first sheet renames it, every other is added"
+                # convention never leaves unwanted blank extra sheets behind.
+                # DisplayAlerts is already off (Ensure-Excel), so no prompt.
+                while ($script:wb.Worksheets.Count -gt 1) {
+                    $script:wb.Worksheets.Item($script:wb.Worksheets.Count).Delete()
+                }
                 $names = @(); foreach ($ws in $script:wb.Worksheets) { $names += $ws.Name }
                 Write-Result @{ ok = $true; op = 'excelCreate'; name = $script:wb.Name; sheets = $names }
             }
 
-            'excelWriteRange' {
+            # M12 Phase D — excelAddSheet is new; the other three now delegate
+            # to Invoke-ExcelSubCommand (shared with excelBatch below) instead
+            # of carrying their own copy of this logic.
+            'excelAddSheet' { Write-Result (Invoke-ExcelSubCommand $cmd) }
+            'excelWriteRange' { Write-Result (Invoke-ExcelSubCommand $cmd) }
+            'excelSetFormula' { Write-Result (Invoke-ExcelSubCommand $cmd) }
+            'excelFormat' { Write-Result (Invoke-ExcelSubCommand $cmd) }
+
+            # M12 Phase D — run several add-sheet/write/formula/format
+            # sub-commands against the ALREADY-OPEN workbook in one message,
+            # so a multi-sheet build is one open -> [batch] -> export -> close
+            # cycle instead of N full open/SaveAs/close COM sessions (the
+            # original `build_spreadsheet` shape, which was also silently
+            # broken for any sheet beyond the workbook's own default one — a
+            # second sheet name that did not already exist made
+            # `Worksheets.Item(name)` throw).
+            'excelBatch' {
                 Require-Wb
-                if ($cmd.sheet) { $ws = $script:wb.Worksheets.Item("$($cmd.sheet)") }
-                else { $ws = $script:wb.ActiveSheet }
-                $startCell = if ($cmd.startCell) { "$($cmd.startCell)" } else { "A1" }
-                $data = $cmd.data  # expected: 2D array (array of arrays)
-                if ($data -and $data.Count -gt 0) {
-                    $rows = $data.Count
-                    $cols = if ($data[0] -is [array]) { $data[0].Count } else { 1 }
-                    $range = $ws.Range($startCell).Resize($rows, $cols)
-                    # Build a COM-safe 2D array
-                    $arr = New-Object 'object[,]' $rows, $cols
-                    for ($r = 0; $r -lt $rows; $r++) {
-                        $rowData = $data[$r]
-                        if ($rowData -is [array]) {
-                            for ($c = 0; $c -lt $cols; $c++) {
-                                $arr[$r, $c] = if ($c -lt $rowData.Count) { $rowData[$c] } else { $null }
-                            }
-                        } else {
-                            $arr[$r, 0] = $rowData
-                        }
+                $subCommands = @($cmd.commands)
+                $results = @()
+                for ($i = 0; $i -lt $subCommands.Count; $i++) {
+                    $sub = $subCommands[$i]
+                    try {
+                        $results += (Invoke-ExcelSubCommand $sub)
+                    } catch {
+                        throw "excelBatch: sub-command #$($i + 1) ('$($sub.op)') failed: $($_.Exception.Message)"
                     }
-                    $range.Value2 = $arr
                 }
-                Write-Result @{ ok = $true; op = 'excelWriteRange'; sheet = $ws.Name; startCell = $startCell }
-            }
-
-            'excelSetFormula' {
-                Require-Wb
-                if ($cmd.sheet) { $ws = $script:wb.Worksheets.Item("$($cmd.sheet)") }
-                else { $ws = $script:wb.ActiveSheet }
-                $cell = $ws.Cells.Item([int]$cmd.row, [int]$cmd.col)
-                $cell.Formula = "$($cmd.formula)"
-                Write-Result @{ ok = $true; op = 'excelSetFormula'; sheet = $ws.Name; row = $cmd.row; col = $cmd.col }
-            }
-
-            'excelFormat' {
-                Require-Wb
-                if ($cmd.sheet) { $ws = $script:wb.Worksheets.Item("$($cmd.sheet)") }
-                else { $ws = $script:wb.ActiveSheet }
-                $range = $ws.Range("$($cmd.range)")
-                if ($null -ne $cmd.bold) { $range.Font.Bold = [bool]$cmd.bold }
-                if ($null -ne $cmd.fontSize) { $range.Font.Size = [double]$cmd.fontSize }
-                if ($cmd.fontColor) { $range.Font.Color = ConvertTo-OleColor $cmd.fontColor }
-                if ($cmd.numberFormat) { $range.NumberFormat = "$($cmd.numberFormat)" }
-                if ($null -ne $cmd.horizontalAlign) {
-                    # 1=left, 2=center, 3=right (xlHAlign)
-                    $range.HorizontalAlignment = [int]$cmd.horizontalAlign
-                }
-                if ($null -ne $cmd.autoFit) {
-                    if ([bool]$cmd.autoFit) { $range.Columns.AutoFit() | Out-Null }
-                }
-                if ($cmd.bgColor) {
-                    $range.Interior.Color = ConvertTo-OleColor $cmd.bgColor
-                }
-                Write-Result @{ ok = $true; op = 'excelFormat'; sheet = $ws.Name; range = "$($cmd.range)" }
+                Write-Result @{ ok = $true; op = 'excelBatch'; count = $results.Count; results = $results }
             }
 
             # ── P9: PowerPoint ──────────────────────────────────────────

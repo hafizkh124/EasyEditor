@@ -36,6 +36,20 @@ const wordMock = {
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMock);
 
+const excelMock = {
+  buildWorkbook: vi.fn(async (outputPath: string, sheets: unknown[], opts?: { format?: string }) => ({ path: outputPath, ms: 1, sheetsSeen: sheets, opts })),
+  createSpreadsheet: vi.fn(async (out: string) => ({ path: out, ms: 1 })),
+  addSheet: vi.fn(async () => ({ sheet: 'Data', sheets: ['Sheet1', 'Data'], ms: 1 })),
+  writeRange: vi.fn(async () => ({ ms: 1 })),
+  setFormula: vi.fn(async () => ({ ms: 1 })),
+  formatCells: vi.fn(async () => ({ ms: 1 })),
+  exportSpreadsheet: vi.fn(async (_s: string, _to: string, out: string) => ({ outputPath: out, ms: 1 })),
+  readSheet: vi.fn(async () => ({ sheet: 'Sheet1', sheets: ['Sheet1'], rows: [], truncated: false })),
+  excelDescriptor: { id: 'excel', label: 'Microsoft Excel', reads: [], writes: [], ops: [], platforms: ['win32'] },
+  available: vi.fn(() => ({ available: true, version: '16.0' })),
+};
+vi.mock('../../electron/adapters/excel.ts', () => excelMock);
+
 const generateContentStream = vi.fn(async () => 'باب دو میں برکت کا ذکر ہے — درست شدہ متن۔');
 vi.mock('../../electron/ai/geminiClient.ts', () => ({ generateContentStream }));
 
@@ -647,6 +661,63 @@ describe('calculate_zakat / calculate_faraid (M12 Phase C — pure compute, ADR-
   it('calculate_faraid rejects malformed JSON without throwing', async () => {
     const { dispatch } = mk();
     expect(await dispatch('calculate_faraid', { input: 'nope' })).toMatchObject({ error: expect.stringMatching(/JSON/) });
+  });
+});
+
+describe('build_spreadsheet (M12 Phase D — multi-sheet, formulas, formatting, RTL)', () => {
+  const sheets = JSON.stringify([
+    {
+      name: 'زکوٰۃ',
+      data: [['مد', 'رقم'], ['نقد', 100000]],
+      formulas: [{ cell: 'B4', formula: '=B2*0.025' }],
+      format: [{ range: 'A1:B1', bold: true, rtl: true, fontName: 'Jameel Noori Nastaleeq' }],
+    },
+    { name: 'خلاصہ', data: [['کل', 100000]] },
+  ]);
+
+  it('parses "sheets" as JSON and calls buildWorkbook once with every sheet, format defaulted from the extension', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('build_spreadsheet', { filePath: 'zakat.xlsx', sheets }) as { path: string; format: string; sheets: number; note: string };
+    expect(excelMock.buildWorkbook).toHaveBeenCalledTimes(1);
+    const [outPath, sheetSpecs, opts] = excelMock.buildWorkbook.mock.calls[0] as [string, Array<{ name: string }>, { format?: string }];
+    expect(outPath).toBe('C:\\p\\export\\zakat.xlsx');
+    expect(sheetSpecs.map((s) => s.name)).toEqual(['زکوٰۃ', 'خلاصہ']);
+    expect(opts.format).toBe('xlsx');
+    expect(r.sheets).toBe(2);
+    expect(r.note).toMatch(/live formulas/);
+  });
+
+  it('passes formulas and format (incl. rtl/fontName) straight through per sheet', async () => {
+    const { dispatch } = mk();
+    await dispatch('build_spreadsheet', { filePath: 'zakat.xlsx', sheets });
+    const [, sheetSpecs] = excelMock.buildWorkbook.mock.calls[0] as [string, Array<{ formulas?: unknown; format?: unknown }>];
+    expect(sheetSpecs[0].formulas).toEqual([{ cell: 'B4', formula: '=B2*0.025' }]);
+    expect(sheetSpecs[0].format).toEqual([{ range: 'A1:B1', bold: true, rtl: true, fontName: 'Jameel Noori Nastaleeq' }]);
+  });
+
+  it('an explicit format:"pdf" reaches buildWorkbook — no path-extension throw before the export step', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('build_spreadsheet', { filePath: 'zakat.pdf', sheets, format: 'pdf' }) as { format: string; note: string };
+    expect(r.format).toBe('pdf');
+    expect(r.note).toMatch(/exported to PDF/);
+    const [, , opts] = excelMock.buildWorkbook.mock.calls[0] as [string, unknown, { format?: string }];
+    expect(opts.format).toBe('pdf');
+  });
+
+  it('rejects malformed JSON without throwing', async () => {
+    const { dispatch } = mk();
+    expect(await dispatch('build_spreadsheet', { filePath: 'x.xlsx', sheets: '{not json' }))
+      .toMatchObject({ error: expect.stringMatching(/valid JSON/) });
+    expect(excelMock.buildWorkbook).not.toHaveBeenCalled();
+  });
+
+  it('rejects an empty array and a sheet missing a name, without calling buildWorkbook', async () => {
+    const { dispatch } = mk();
+    expect(await dispatch('build_spreadsheet', { filePath: 'x.xlsx', sheets: '[]' }))
+      .toMatchObject({ error: expect.stringMatching(/non-empty JSON array/) });
+    expect(await dispatch('build_spreadsheet', { filePath: 'x.xlsx', sheets: '[{"data":[[1]]}]' }))
+      .toMatchObject({ error: expect.stringMatching(/missing a "name"/) });
+    expect(excelMock.buildWorkbook).not.toHaveBeenCalled();
   });
 });
 

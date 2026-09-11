@@ -44,6 +44,14 @@ describe("recommendActions", () => {
     expect(actions(ctx({ toolCalls: [{ name: "transcribe_media" }] }))).toContain("transcript-to-chapter");
   });
 
+  it("M12 Phase D — offers a spreadsheet chip after calculate_zakat/calculate_faraid, write-capable only, and not if already built", () => {
+    expect(actions(ctx({ toolCalls: [{ name: "calculate_zakat" }] }))).toContain("build-spreadsheet");
+    expect(actions(ctx({ toolCalls: [{ name: "calculate_faraid" }] }))).toContain("build-spreadsheet");
+    expect(actions(ctx({ toolCalls: [{ name: "calculate_zakat" }], mode: "ask" }))).not.toContain("build-spreadsheet");
+    expect(actions(ctx({ toolCalls: [{ name: "calculate_zakat" }], hasProjectFolder: false }))).not.toContain("build-spreadsheet");
+    expect(actions(ctx({ toolCalls: [{ name: "calculate_zakat" }, { name: "build_spreadsheet" }] }))).not.toContain("build-spreadsheet");
+  });
+
   it("caps at 4 chips", () => {
     const many = ctx({
       artifacts: [{ id: "a1", type: "table" }],

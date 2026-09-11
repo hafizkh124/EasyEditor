@@ -16,7 +16,8 @@ export type RecommendationAction =
   | "typeset-print"
   | "build-indexes"
   | "transcript-to-chapter"
-  | "compare-variants";
+  | "compare-variants"
+  | "build-spreadsheet";
 
 export interface RecommendedAction {
   id: string;
@@ -85,6 +86,13 @@ export function recommendActions(ctx: RecommendContext): RecommendedAction[] {
     out.push({ id: "compare-variants", labelKey: "agent.rec.compare_variants", action: "compare-variants" });
   }
 
+  // M12 Phase D — a zakat/farā'iḍ result (a table artifact) → offer to turn
+  // it into a live-formula workbook (closes ADR-0049's deferred xlsx chip,
+  // now that build_spreadsheet's table->file path actually works).
+  if (canWrite && (called.has("calculate_zakat") || called.has("calculate_faraid")) && !called.has("build_spreadsheet")) {
+    out.push({ id: "build-spreadsheet", labelKey: "agent.rec.build_spreadsheet", action: "build-spreadsheet" });
+  }
+
   return out.slice(0, MAX);
 }
 
@@ -95,4 +103,5 @@ export const RECOMMENDATION_PROMPT: Record<Exclude<RecommendationAction, "open-a
   "build-indexes": "/generate-indexes",
   "transcript-to-chapter": "اس ٹرانسکرپٹ کو ایک نئے باب کی صورت میں مرتب کریں۔",
   "compare-variants": "اس روایت کے مختلف طرق کے متون کا تقابل کر کے فرق واضح کریں۔",
+  "build-spreadsheet": "اس نتیجے کو لائیو فارمولوں کے ساتھ ایکسل شیٹ میں تبدیل کریں (export/ فولڈر میں)۔",
 };

@@ -476,14 +476,22 @@ export const AGENT_TOOLS: AgentTool[] = [
   // ── M11 Phase 4: Excel write tool (ADR-0048) ────────────────────────
   {
     name: 'build_spreadsheet',
-    description: 'Create or update an Excel spreadsheet with structured data. Use for tabular results, financial calculations, or any data that benefits from a spreadsheet format. Writes to the project export/ folder.',
+    description: "Create an Excel workbook — one or more sheets, each with data, LIVE formulas, and cell formatting — in a single COM session (M12 Phase D). Use for tabular results, financial calculations (e.g. a zakat/farā'iḍ breakdown), or any data that benefits from a real, re-editable spreadsheet rather than a flat table. Writes to the project export/ folder. `ToolParam` cannot express a nested object, so `sheets` is a JSON-encoded array — see the parameter description for its exact shape. A formula's `cell` is A1 notation (e.g. \"C9\") and `formula` is exactly what a person would type into Excel (e.g. \"=SUM(B2:B8)\", \"=C9*0.025\") — write REAL formulas, not their computed values, so the sheet stays live when the scholar edits an input. Do NOT use for a one-off table in the chat (that is the agent's own table artifact) or to re-export an existing spreadsheet to PDF/CSV (that is a file-conversion task, not this tool).",
     params: {
-      filePath: { type: 'string', description: 'Output file path (relative to project export/ folder, e.g. "zakat.xlsx").' },
+      filePath: { type: 'string', description: 'Output file path (relative to the project export/ folder, e.g. "zakat.xlsx").' },
       sheets: {
-        type: 'array',
-        description: 'Array of sheet objects, each with a name and 2D data grid.',
+        type: 'string',
+        description:
+          'JSON-encoded array of sheet objects: [{ name: string, data?: unknown[][], ' +
+          'formulas?: [{ cell: string, formula: string }], ' +
+          'format?: [{ range: string, bold?: boolean, fontSize?: number, fontColor?: string, ' +
+          "fontName?: string, numberFormat?: string, horizontalAlign?: 1|2|3, autoFit?: boolean, " +
+          'bgColor?: string, rtl?: boolean }] }, ...]. The first sheet renames the workbook\'s own ' +
+          'default sheet; every other one is added. Set `rtl: true` in a format entry (with `fontName: ' +
+          '"Jameel Noori Nastaleeq"`, falling back to Amiri automatically if that face is not installed) ' +
+          'for an Urdu/Arabic sheet.',
       },
-      format: { type: 'string', enum: ['xlsx', 'csv', 'pdf'], description: 'Output format (default: xlsx).' },
+      format: { type: 'string', enum: ['xlsx', 'csv', 'pdf'], description: 'Output format (default: xlsx — csv/pdf drop formulas and every sheet but the first).' },
     },
     required: ['filePath', 'sheets'],
     effect: 'write',

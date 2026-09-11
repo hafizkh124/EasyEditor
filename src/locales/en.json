@@ -1105,6 +1105,7 @@
   "agent.rec.build_indexes": "Build the indexes",
   "agent.rec.transcript_to_chapter": "Turn the transcript into a chapter",
   "agent.rec.compare_variants": "Compare the variant matns",
+  "agent.rec.build_spreadsheet": "Turn this into an Excel sheet",
   "editor.audiobook_cancelled": "Audiobook export was cancelled.",
   "editor.audiobook_done": "Audiobook is ready.",
   "editor.audiobook_empty": "There is no text to turn into an audiobook.",
