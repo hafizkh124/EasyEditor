@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LibraryBig, BookOpenText, ScrollText, Globe, Database,
-  Scale, Network, BookA, Feather, Music2, Users, Plug, Loader2,
+  Scale, Network, BookA, Feather, Music2, Users, Plug, Loader2, Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -24,6 +24,7 @@ const ICONS: Record<string, LucideIcon> = {
   feather: Feather,
   "music-2": Music2,
   users: Users,
+  calculator: Calculator,
 };
 
 type Health = HealthResult | "checking" | undefined;

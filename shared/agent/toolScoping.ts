@@ -163,6 +163,24 @@ const DOMAIN_RULES: DomainRule[] = [
     tools: ['scan_urdu_prosody', 'lookup_urdu_verse'],
     connector: 'urdu-prosody',
   },
+  {
+    // M12 Phase C — the zakat compute engine (ADR-0048).
+    keywords: [
+      'زکوٰۃ', 'زکاۃ', 'زكاة', 'نصاب', 'حول', 'صدقۃ الفطر', 'صدقة الفطر', 'فطرانہ', 'فدیہ', 'کفارہ', 'كفارة',
+      'zakat', 'zakah', 'nisab', 'nisaab', 'hawl', 'sadaqat al-fitr', 'fidya', 'kaffara', 'kaffarah',
+    ],
+    tools: ['calculate_zakat'],
+    connector: 'zakat',
+  },
+  {
+    // M12 Phase B/C — the fara'id (inheritance) compute engine.
+    keywords: [
+      'وراثت', 'میراث', 'ترکہ', 'فرائض', 'مواریث', 'عصبہ', 'ذوی الفروض', 'حصے وراثت', 'وارث', 'ورثاء',
+      'inheritance', 'faraid', 'faraaid', "fara'id", 'estate share', 'islamic inheritance', 'heirs share',
+    ],
+    tools: ['calculate_faraid'],
+    connector: 'faraid',
+  },
 ];
 
 /**

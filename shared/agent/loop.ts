@@ -87,6 +87,8 @@ function labelFor(name: string): string {
     case 'search_persian_poetry': return 'searching Persian poetry (Ganjoor)';
     case 'scan_urdu_prosody': return 'scanning the metre';
     case 'lookup_urdu_verse': return 'looking up the verse';
+    case 'calculate_zakat': return 'calculating the zakat due';
+    case 'calculate_faraid': return 'calculating the inheritance shares';
     case 'insert_footnote': return 'inserting the footnote';
     case 'add_document_comment': return 'adding a margin comment';
     case 'set_page_layout': return 'setting the page layout';

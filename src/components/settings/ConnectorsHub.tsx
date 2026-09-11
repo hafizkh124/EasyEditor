@@ -17,7 +17,7 @@ import { ConnectorCard } from "./ConnectorCard";
 const log = logger.child("ConnectorsHub");
 
 const CATEGORY_ORDER: ConnectorCategory[] = [
-  "islamic-sciences", "hadith-rijal", "quranic-lexicon", "persian-adab", "urdu-adab",
+  "islamic-sciences", "hadith-rijal", "quranic-lexicon", "persian-adab", "urdu-adab", "islamic-finance",
 ];
 
 /**

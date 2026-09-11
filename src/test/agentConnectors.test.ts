@@ -23,6 +23,8 @@ describe('connectors', () => {
     expect(connectorForTool('search_persian_poetry')).toBe('ganjoor');
     expect(connectorForTool('scan_urdu_prosody')).toBe('urdu-prosody');
     expect(connectorForTool('lookup_urdu_verse')).toBe('urdu-prosody');
+    expect(connectorForTool('calculate_zakat')).toBe('zakat');
+    expect(connectorForTool('calculate_faraid')).toBe('faraid');
     expect(connectorForTool('search_general')).toBe('web');
   });
 
@@ -64,7 +66,7 @@ describe('connectors', () => {
 
 describe('connector registry model (Connectors Hub)', () => {
   const CATEGORIES = new Set([
-    'islamic-sciences', 'hadith-rijal', 'quranic-lexicon', 'persian-adab', 'urdu-adab',
+    'islamic-sciences', 'hadith-rijal', 'quranic-lexicon', 'persian-adab', 'urdu-adab', 'islamic-finance',
   ]);
   const HEALTH_KINDS = new Set(['mcp', 'http', 'local-native', 'local-file', 'bridged', 'compute']);
 
@@ -161,5 +163,19 @@ describe('mergeConnectorState (global under project)', () => {
     const merged = mergeConnectorState({ tafsir: false }, {});
     expect(isToolDisabled(merged, 'query_tafseer')).toBe(true);
     expect(isToolDisabled(merged, 'search_shamela')).toBe(false);
+  });
+});
+
+describe('M12 — zakat and faraid compute connectors (ADR-0048)', () => {
+  it('both ship ON by default (pure compute, no network/download unlike ganjoor/lexicon/repositories)', () => {
+    expect(isConnectorOn(undefined, 'zakat')).toBe(true);
+    expect(isConnectorOn(undefined, 'faraid')).toBe(true);
+  });
+
+  it('are grouped under the islamic-finance category with a compute health kind', () => {
+    expect(connectorById('zakat')?.category).toBe('islamic-finance');
+    expect(connectorById('faraid')?.category).toBe('islamic-finance');
+    expect(connectorById('zakat')?.healthKind).toBe('compute');
+    expect(connectorById('faraid')?.healthKind).toBe('compute');
   });
 });
