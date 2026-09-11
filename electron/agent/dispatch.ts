@@ -59,6 +59,9 @@ import { buildLexiconQuery, almaanyUrl } from '../../shared/agent/lexiconQuery.j
 import { printedPageCitation } from './adapters/lexicon.js';
 import { searchPersianPoetry } from './adapters/ganjoor.js';
 import { scanUrduProsody, lookupUrduVerse } from './adapters/urduProsody.js';
+import { calculateZakat } from '../../shared/zakat/calculator.js';
+import type { ZakatInput } from '../../shared/zakat/types.js';
+import { calculateFaraid, type FaraidInput } from '../../shared/faraid/calculator.js';
 import { buildIndexExtractionInstruction, parseIndexEntries, INDEX_KINDS, type IndexKind } from '../../shared/ai/prompts/indexEntries.js';
 import type { DispatchFn, EmitArtifactFn } from '../../shared/agent/types.js';
 import type { GeneralSearchResult } from './generalSearch.js';
@@ -726,6 +729,53 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           note: r.note,
           results: r.chunks.map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 300) })),
         };
+      }
+
+      case 'calculate_zakat': {
+        // M12 Phase C — pure compute (ADR-0048): the model never does this
+        // arithmetic, only supplies the JSON the scholar described.
+        const raw = str(args.input, 'input');
+        let parsed: ZakatInput;
+        try { parsed = JSON.parse(raw) as ZakatInput; } catch {
+          return { error: 'calculate_zakat: "input" درست JSON نہیں — ZakatInput کی شکل میں دیں۔' };
+        }
+        let result: ReturnType<typeof calculateZakat>;
+        try { result = calculateZakat(parsed); } catch (err) {
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
+        const artifactId = `zakat-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: 'حساب زکوٰۃ', artifactType: 'table' });
+        emitArtifact({
+          op: 'table', artifactId,
+          columns: ['مد', 'رقم', 'قابلِ زکوٰۃ', 'دلیل'],
+          rows: result.lines.map((l) => [l.label, String(l.value), String(l.zakatable), l.dalil]),
+          caption: `نصاب: ${result.nisabThreshold} (${result.nisabStandardUsed === 'gold' ? 'سونا' : 'چاندی'}) — واجب الادا زکوٰۃ: ${result.zakatDue}${result.currency ? ` ${result.currency}` : ''}`,
+        });
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+        return result;
+      }
+
+      case 'calculate_faraid': {
+        // M12 Phase B/C — from-scratch Jumhūr fara'id engine, pure compute.
+        const raw = str(args.input, 'input');
+        let parsed: FaraidInput;
+        try { parsed = JSON.parse(raw) as FaraidInput; } catch {
+          return { error: 'calculate_faraid: "input" درست JSON نہیں — FaraidInput کی شکل میں دیں۔' };
+        }
+        let result: ReturnType<typeof calculateFaraid>;
+        try { result = calculateFaraid(parsed); } catch (err) {
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
+        const artifactId = `faraid-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: 'حساب فرائض', artifactType: 'table' });
+        emitArtifact({
+          op: 'table', artifactId,
+          columns: ['وارث', 'تعداد', 'حصہ (کل)', 'فی کس', 'دلیل'],
+          rows: result.lines.map((l) => [l.label, String(l.count), l.fraction, l.perPerson ?? l.fraction, l.dalil]),
+          caption: `اصل المسئلہ: ${result.asl}${result.awlApplied ? ' (عول لاگو)' : ''}${result.raddApplied ? ' (رد لاگو)' : ''}`,
+        });
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+        return result;
       }
 
       case 'lookup_lexicon': {

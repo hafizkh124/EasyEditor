@@ -24,7 +24,9 @@ export type ConnectorCategory =
   | 'hadith-rijal'
   | 'quranic-lexicon'
   | 'persian-adab'
-  | 'urdu-adab';
+  | 'urdu-adab'
+  // M12 — the zakat and fara'id compute engines (ADR-0048).
+  | 'islamic-finance';
 
 /**
  * How the Hub checks a connector is alive:
@@ -200,6 +202,26 @@ export const CONNECTORS: Connector[] = [
     healthKind: 'compute',
     tools: ['scan_urdu_prosody', 'lookup_urdu_verse'],
   },
+  {
+    // M12 Phase C — from-scratch, deterministic (ADR-0048). No network, no
+    // file, always healthy — same `compute` kind as urdu-prosody.
+    id: 'zakat',
+    label: 'حسابِ زکوٰۃ و صدقات',
+    category: 'islamic-finance',
+    descriptionKey: 'connectors.zakat.desc',
+    icon: 'calculator',
+    healthKind: 'compute',
+    tools: ['calculate_zakat'],
+  },
+  {
+    id: 'faraid',
+    label: 'علم الفرائض والمواریث',
+    category: 'islamic-finance',
+    descriptionKey: 'connectors.faraid.desc',
+    icon: 'scale',
+    healthKind: 'compute',
+    tools: ['calculate_faraid'],
+  },
 ];
 
 const BY_ID = new Map(CONNECTORS.map((c) => [c.id, c]));
@@ -225,6 +247,8 @@ export const CONNECTOR_PROVENANCE_LABEL: Record<string, string> = {
   'urdu-prosody': 'اردو عروض',
   web: 'ویب',
   repositories: 'مکتبات',
+  zakat: 'حسابِ زکوٰۃ',
+  faraid: 'علم الفرائض',
 };
 
 /** The connector a tool belongs to, or null when the tool is always available. */
@@ -240,7 +264,7 @@ export function connectorById(id: string): Connector | undefined {
 /** Connectors grouped by category, in registry order, categories in enum order. */
 export function connectorsByCategory(): Array<{ category: ConnectorCategory; connectors: Connector[] }> {
   const order: ConnectorCategory[] = [
-    'islamic-sciences', 'hadith-rijal', 'quranic-lexicon', 'persian-adab', 'urdu-adab',
+    'islamic-sciences', 'hadith-rijal', 'quranic-lexicon', 'persian-adab', 'urdu-adab', 'islamic-finance',
   ];
   return order
     .map((category) => ({ category, connectors: CONNECTORS.filter((c) => c.category === category) }))

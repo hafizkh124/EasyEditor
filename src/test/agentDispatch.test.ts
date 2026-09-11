@@ -606,6 +606,50 @@ describe('agent dispatch', () => {
   });
 });
 
+describe('calculate_zakat / calculate_faraid (M12 Phase C — pure compute, ADR-0048)', () => {
+  const zakatInput = JSON.stringify({
+    hawlMet: true,
+    nisab: { goldPricePerGram: 20000, silverPricePerGram: 250, standard: 'silver' },
+    cash: 1_000_000,
+  });
+  const faraidInput = JSON.stringify({ heirs: { wife: 1, son: 1 } });
+
+  it('calculate_zakat runs the real (unmocked) engine and emits a table artifact', async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const { dispatch } = mk({ emitArtifact: (ev) => events.push(ev as Record<string, unknown>) });
+    const r = await dispatch('calculate_zakat', { input: zakatInput }) as { zakatDue: number; nisabMet: boolean; note: string };
+    expect(r.nisabMet).toBe(true);
+    expect(r.zakatDue).toBe(25_000);
+    expect(r.note).toMatch(/فتویٰ نہیں/);
+    const table = events.find((e) => e.op === 'table') as { columns: string[]; rows: string[][] } | undefined;
+    expect(table?.columns).toContain('دلیل');
+    expect(table?.rows[0][0]).toBe('نقد و بینک');
+    expect(events.find((e) => e.op === 'close')).toBeDefined();
+  });
+
+  it('calculate_zakat rejects malformed JSON without throwing', async () => {
+    const { dispatch } = mk();
+    expect(await dispatch('calculate_zakat', { input: '{not json' })).toMatchObject({ error: expect.stringMatching(/JSON/) });
+  });
+
+  it('calculate_faraid runs the real (unmocked) engine and emits a table artifact', async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const { dispatch } = mk({ emitArtifact: (ev) => events.push(ev as Record<string, unknown>) });
+    const r = await dispatch('calculate_faraid', { input: faraidInput }) as { asl: number; lines: Array<{ heir: string; fraction: string }>; note: string };
+    expect(r.lines.find((l) => l.heir === 'wife')?.fraction).toBe('1/8');
+    expect(r.lines.find((l) => l.heir === 'son')?.fraction).toBe('7/8');
+    expect(r.note).toMatch(/فتویٰ نہیں/);
+    const table = events.find((e) => e.op === 'table') as { columns: string[]; rows: string[][] } | undefined;
+    expect(table?.columns).toContain('دلیل');
+    expect(events.find((e) => e.op === 'close')).toBeDefined();
+  });
+
+  it('calculate_faraid rejects malformed JSON without throwing', async () => {
+    const { dispatch } = mk();
+    expect(await dispatch('calculate_faraid', { input: 'nope' })).toMatchObject({ error: expect.stringMatching(/JSON/) });
+  });
+});
+
 describe('author voice (طرز_تحریر.md — M9 Phase A)', () => {
   const VOICE = 'میرا اسلوب: مختصر، باوقار جملے۔ اصطلاح "فریضہ"۔';
 

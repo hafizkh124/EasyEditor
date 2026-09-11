@@ -203,6 +203,24 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'read',
   },
   {
+    name: 'calculate_zakat',
+    description: "Compute the zakat due on the scholar's own declared assets, liabilities, and metal prices — 100% deterministic arithmetic (shared/zakat/RULES.md); the model NEVER does this maths itself, only assembles the JSON. Pass a single JSON object as `input` matching ZakatInput: { hawlMet: boolean, currency?: string, nisab: { goldPricePerGram: number, silverPricePerGram: number, standard: 'gold'|'silver'|'lower', silverNisabGrams?: number }, jewelleryRuling?: 'hanafi-all'|'personal-exempt', cash?: number, gold?: [{ grams, purity?: '24K'|'22K'|'21K'|'18K', use?: 'regular'|'occasional'|'investment' }], silver?: [{ grams, use? }], tradeGoods?: number, investments?: number, receivables?: number, rentalIncomeNet?: number, propertyForSale?: number, vacantLand?: number, debtsDue?: number, longTermDebtAnnual?: number }. Prices and the jewellery ruling must come from the scholar/mufti — this tool NEVER fetches a live metal or currency price. The result's `note` is a non-fatwā disclaimer; present it that way. Do NOT use for inheritance shares (calculate_faraid).",
+    params: {
+      input: { type: 'string', description: 'A JSON-encoded ZakatInput object — see the tool description for its exact shape.' },
+    },
+    required: ['input'],
+    effect: 'read',
+  },
+  {
+    name: 'calculate_faraid',
+    description: "Compute the Islamic inheritance (farāʾiḍ) shares for a declared set of heirs, following the Jumhūr view — 100% deterministic arithmetic (shared/faraid/RULES.md); the model NEVER does this maths itself. Pass a single JSON object as `input` matching FaraidInput: { heirs: { <heirType>: count, ... }, estateValue?: number, currency?: string }. `heirs` keys are from this CLOSED set only: husband, wife, son, daughter, father, mother, paternalGrandfather, paternalGrandmother, maternalGrandmother, grandson, granddaughter, fullBrother, fullSister, paternalBrother, paternalSister, maternalBrother, maternalSister, fullNephew, paternalNephew, fullUncle, paternalUncle, fullCousin, paternalCousin, paternalCousinsGrandson — each a headcount (0 or 1 for a singular heir; a real count for a plural one, e.g. daughter: 2). Every result carries a non-fatwā disclaimer and each heir's Qur'anic dalīl — present the whole thing as a computation for a mufti to check, never as a fatwā itself. Distant kindred (ذوو الأرحام) are out of this closed set; the result says so plainly when no listed heir qualifies. Do NOT use for zakat (calculate_zakat), and do NOT invent a heir type outside this list.",
+    params: {
+      input: { type: 'string', description: 'A JSON-encoded FaraidInput object — see the tool description for its exact shape.' },
+    },
+    required: ['input'],
+    effect: 'read',
+  },
+  {
     name: 'search_repositories',
     description: "Search the global scholarly repositories — the Internet Archive (scanned editions) and OpenAlex (journal articles, theses, monographs) — for WORKS on a topic. Returns bibliographic references only: author, title, year, link. You can cite a work with insert_footnote but WITHOUT a `claim` — you have not read it. To quote a passage, find it in search_shamela or search_corpus. Do NOT use for a source you can read directly, and do NOT use it as a first resort. Needs an internet connection; off by default per project.",
     params: {

@@ -135,6 +135,10 @@ const GATE_GUIDANCE: Record<string, string> = {
     'This request is about Persian poetry. Use search_persian_poetry (Ganjoor). Do NOT call the Urdu-prosody connector, the Arabic source connectors, or query_tafseer.',
   'urdu-prosody':
     'This request is Urdu/Persian metre or an Urdu verse lookup. Use scan_urdu_prosody / lookup_urdu_verse — present any scan as a machine reading to check, never a verdict. Do NOT call search_persian_poetry or the Arabic source connectors.',
+  zakat:
+    'This request is a zakat calculation. Use calculate_zakat with the figures and prices the scholar gave you — NEVER estimate or invent a metal/currency price yourself, and never do the arithmetic in your own head. Present the result as a computation on their own numbers, not a fatwā. Do NOT call calculate_faraid or any source connector for the maths itself.',
+  faraid:
+    'This request is an inheritance (farāʾiḍ) calculation. Use calculate_faraid with the heirs the scholar described, mapped onto its closed heir-type list — NEVER do the share arithmetic yourself. Present the result as a computation to check with a mufti, with its Qur\'anic dalīl, not as a fatwā. Do NOT call calculate_zakat or any source connector for the maths itself.',
   repositories:
     'This request is a bibliographic lookup. Use search_repositories (results are bibliographic only — never a claim citation). Do NOT fan out across the tafsir / hadith connectors.',
 };

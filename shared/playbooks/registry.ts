@@ -300,6 +300,37 @@ export const PLAYBOOKS: Playbook[] = [
     ],
   },
   {
+    // M12 Phase C — the zakat compute engine (ADR-0048). `draft_section` uses
+    // 'outline' for now — Phase E adds a dedicated `mode: 'fatwa'` template.
+    id: 'zakat-assessment-workflow',
+    title: 'Assess and calculate zakat due (زکوٰۃ کا حساب)',
+    trigger: 'zakat',
+    keywords: ['zakat', 'zakah', 'nisab', 'زکوٰۃ', 'زکاۃ', 'زكاة', 'نصاب', 'حول', 'صدقۃ الفطر', 'فطرانہ'],
+    guidance:
+      'Assemble every declared asset, liability, and metal price into ONE calculate_zakat call — never split it across several calls, and never estimate a missing price yourself; ask the scholar for it instead. State which jewelleryRuling was applied and why, and which silver nisāb standard was used. Present the tool\'s figures exactly as returned; the model never re-derives or "checks" the arithmetic. Ground the 2.5% rate and the nisāb rule in query_tafseer/search_hadith when the scholar wants the underlying dalīl, not as a substitute for the calculation itself.',
+    steps: [
+      { tool: 'calculate_zakat', bind: ['input'], note: 'Compute the zakat due from the assets, liabilities, and prices given.' },
+      { tool: 'query_tafseer', args: { reference: '9:103', mode: 'tafsir' }, optional: true, note: 'Retrieve the zakat āyah (9:103) and its tafsīr for the dalīl.' },
+      { tool: 'search_hadith', bind: ['query'], optional: true, note: 'Retrieve the supporting hadith (e.g. nisāb thresholds) with grades.' },
+      { tool: 'draft_section', args: { mode: 'outline' }, bind: ['chapter', 'section_heading'], optional: true, note: 'Lay out the assessment as a sourced outline in the chapter.' },
+    ],
+  },
+  {
+    // M12 Phase B/C — the from-scratch Jumhūr fara'id engine.
+    id: 'faraid-fatwa-workflow',
+    title: "Calculate inheritance (farā'iḍ) shares (وراثت کا حساب)",
+    trigger: 'faraid',
+    keywords: ['inheritance', 'faraid', "fara'id", 'faraaid', 'estate share', 'heirs share', 'وراثت', 'میراث', 'ترکہ', 'فرائض', 'مواریث', 'عصبہ'],
+    guidance:
+      'First identify and confirm every heir the scholar names, mapped onto the engine\'s closed heir-type list — ask if a relationship is ambiguous rather than guessing. Pass the whole heir set to ONE calculate_faraid call; never compute a share by hand. Present the result in a dignified fatwā style: each heir\'s share alongside its Qur\'anic dalīl (4:11–12, 4:176) and rule reference, exactly as the tool returns them, followed by the non-fatwā disclaimer. A distant-kindred (ذوو الأرحام) case the tool cannot resolve must be said plainly, not guessed at.',
+    steps: [
+      { tool: 'calculate_faraid', bind: ['input'], note: "Compute each heir's share from the confirmed heir set." },
+      { tool: 'query_tafseer', args: { reference: '4:11', mode: 'tafsir' }, optional: true, note: 'Retrieve the primary inheritance āyah (4:11) and its tafsīr for the dalīl.' },
+      { tool: 'search_shamela', bind: ['query'], optional: true, note: "Survey the madhāhib's positions on any special case (e.g. الجد مع الإخوة) in the classical works." },
+      { tool: 'draft_section', args: { mode: 'outline' }, bind: ['chapter', 'section_heading'], optional: true, note: 'Lay out the shares as a sourced outline in the chapter.' },
+    ],
+  },
+  {
     id: 'digitize-book',
     title: 'Digitise a scanned book into a chapter (اسکین شدہ کتاب سے باب)',
     trigger: 'digitize-book',

@@ -297,6 +297,46 @@ describe("webDispatch — query_tafseer", () => {
   });
 });
 
+describe("webDispatch — calculate_zakat / calculate_faraid (M12 Phase C, full web parity)", () => {
+  it("calculate_zakat runs the real engine and emits a table artifact", async () => {
+    const emitted: Array<Record<string, unknown>> = [];
+    const { dispatch } = createWebDispatcher(session({ activeDocumentId: null, emitArtifact: (ev) => emitted.push(ev as Record<string, unknown>) }));
+    const input = JSON.stringify({
+      hawlMet: true,
+      nisab: { goldPricePerGram: 20000, silverPricePerGram: 250, standard: "silver" },
+      cash: 1_000_000,
+    });
+    const r = await dispatch("calculate_zakat", { input }) as { zakatDue: number; nisabMet: boolean; note: string };
+    expect(r.nisabMet).toBe(true);
+    expect(r.zakatDue).toBe(25_000);
+    expect(r.note).toMatch(/فتویٰ نہیں/);
+    expect(emitted.some((e) => e.op === "table")).toBe(true);
+  });
+
+  it("calculate_zakat rejects malformed JSON without throwing", async () => {
+    const { dispatch } = createWebDispatcher(session({ activeDocumentId: null }));
+    const r = await dispatch("calculate_zakat", { input: "{not json" }) as { error?: string };
+    expect(r.error).toMatch(/JSON/);
+  });
+
+  it("calculate_faraid runs the real engine and emits a table artifact", async () => {
+    const emitted: Array<Record<string, unknown>> = [];
+    const { dispatch } = createWebDispatcher(session({ activeDocumentId: null, emitArtifact: (ev) => emitted.push(ev as Record<string, unknown>) }));
+    const input = JSON.stringify({ heirs: { wife: 1, son: 1 } });
+    const r = await dispatch("calculate_faraid", { input }) as { lines: Array<{ heir: string; fraction: string }>; note: string };
+    expect(r.lines.find((l) => l.heir === "wife")?.fraction).toBe("1/8");
+    expect(r.lines.find((l) => l.heir === "son")?.fraction).toBe("7/8");
+    expect(r.note).toMatch(/فتویٰ نہیں/);
+    expect(emitted.some((e) => e.op === "table")).toBe(true);
+  });
+
+  it("calculate_faraid rejects malformed JSON without throwing", async () => {
+    const { dispatch } = createWebDispatcher(session({ activeDocumentId: null }));
+    const r = await dispatch("calculate_faraid", { input: "nope" }) as { error?: string };
+    expect(r.error).toMatch(/JSON/);
+  });
+});
+
 describe("webDispatch — not-yet-available-on-web tools degrade gracefully", () => {
   it.each(["transcribe_media", "ocr_document", "extract_author_voice", "compile_ai_disclosure", "run_playbook"])(
     "%s returns a clear error, never throws",

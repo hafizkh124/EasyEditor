@@ -83,6 +83,25 @@ describe('playbook registry', () => {
     expect(selectPlaybook('اس باب کی فہارس بنا دو')?.id).toBe('generate-indexes');
   });
 
+  it('matches the M12 zakat/faraid playbooks (EN + UR)', () => {
+    expect(selectPlaybook('/zakat')?.id).toBe('zakat-assessment-workflow');
+    expect(selectPlaybook('میری زکوٰۃ کا حساب لگا دیں، نصاب کیا بنتا ہے')?.id).toBe('zakat-assessment-workflow');
+    expect(selectPlaybook('/faraid')?.id).toBe('faraid-fatwa-workflow');
+    expect(selectPlaybook('میری وراثت کے حصص نکال دیں')?.id).toBe('faraid-fatwa-workflow');
+  });
+
+  it('zakat/faraid playbooks seed their calculate_* step via bind, never a hand-computed arg', () => {
+    const zakat = getPlaybook('zakat-assessment-workflow')!;
+    expect(zakat.steps[0].tool).toBe('calculate_zakat');
+    expect(zakat.steps[0].bind).toContain('input');
+    expect(zakat.steps[0].args).toBeUndefined();
+
+    const faraid = getPlaybook('faraid-fatwa-workflow')!;
+    expect(faraid.steps[0].tool).toBe('calculate_faraid');
+    expect(faraid.steps[0].bind).toContain('input');
+    expect(faraid.steps[0].args).toBeUndefined();
+  });
+
   it('audio-to-chapter never pastes the transcript through a tool call — it seeds via from_source', () => {
     const pb = getPlaybook('audio-to-chapter')!;
     const create = pb.steps.find((s) => s.tool === 'create_chapter')!;
