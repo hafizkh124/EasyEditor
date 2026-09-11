@@ -56,7 +56,10 @@ export type AdapterOp =
   | 'createSpreadsheet'
   | 'writeRange'
   | 'setFormula'
-  | 'formatCells';
+  | 'formatCells'
+  // M12 Phase D — multi-sheet build in one COM session (ADR-0050).
+  | 'addSheet'
+  | 'buildWorkbook';
 
 /** What an adapter declares about itself (ADR-0017). */
 export interface AdapterDescriptor {

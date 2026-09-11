@@ -8,6 +8,35 @@
  * PowerShell side.
  */
 
+/**
+ * M12 Phase D — one Excel sheet-building step. Sent either as its own
+ * top-level `HostCommand` (op + fields at the top level) or nested,
+ * unwrapped, inside an `excelBatch`'s `commands` array — both paths run the
+ * exact same PowerShell body (`Invoke-ExcelSubCommand`).
+ */
+export type ExcelSheetSubCommand =
+  | { op: 'excelAddSheet'; name?: string }
+  | { op: 'excelRenameSheet'; sheet?: string; name: string }
+  | { op: 'excelWriteRange'; sheet?: string; startCell?: string; data: unknown[][] }
+  // Either `cell` (A1 notation, e.g. "B9" — preferred) or `row`+`col` (1-based ints).
+  | { op: 'excelSetFormula'; sheet?: string; cell?: string; row?: number; col?: number; formula: string }
+  | {
+      op: 'excelFormat';
+      sheet?: string;
+      range: string;
+      bold?: boolean;
+      fontSize?: number;
+      fontColor?: string;
+      /** Falls back to Amiri when the preferred face is not installed (never a throw). */
+      fontName?: string;
+      numberFormat?: string;
+      horizontalAlign?: number;
+      autoFit?: boolean;
+      bgColor?: string;
+      /** Sheet-level `DisplayRightToLeft` + this range's `ReadingOrder`. */
+      rtl?: boolean;
+    };
+
 /** A command sent to wordBridge.ps1 — one JSON object per stdin line. */
 export type HostCommand =
   | { op: 'ping' }
@@ -56,9 +85,11 @@ export type HostCommand =
   | { op: 'excelExport'; path: string; format: 'xlsx' | 'csv' | 'pdf' }
   | { op: 'excelReadSheet'; sheet?: string; maxRows?: number; maxCols?: number }
   | { op: 'excelCreate' }
-  | { op: 'excelWriteRange'; sheet?: string; startCell?: string; data: unknown[][] }
-  | { op: 'excelSetFormula'; sheet?: string; row: number; col: number; formula: string }
-  | { op: 'excelFormat'; sheet?: string; range: string; bold?: boolean; fontSize?: number; fontColor?: string; numberFormat?: string; horizontalAlign?: number; autoFit?: boolean; bgColor?: string }
+  | ExcelSheetSubCommand
+  // M12 Phase D — several ExcelSheetSubCommand's against the ALREADY-OPEN
+  // workbook in one message: one open -> [batch] -> export -> close cycle
+  // instead of N full open/SaveAs/close COM sessions.
+  | { op: 'excelBatch'; commands: ExcelSheetSubCommand[] }
   | { op: 'excelPid' }
   | { op: 'excelClose' }
   // ── P9: PowerPoint ────────────────────────────────────────────────────
@@ -168,6 +199,28 @@ export interface ExcelReadSheetReply extends HostReply {
   truncated: boolean;
 }
 
+export interface ExcelAddSheetReply extends HostReply {
+  ok: true;
+  op: 'excelAddSheet';
+  sheet: string;
+  sheets: string[];
+}
+
+/** One `ExcelSheetSubCommand`'s own reply shape, as it comes back nested inside `ExcelBatchReply.results`. */
+export type ExcelSubCommandReply =
+  | ExcelAddSheetReply
+  | (HostReply & { ok: true; op: 'excelRenameSheet'; sheet: string })
+  | (HostReply & { ok: true; op: 'excelWriteRange'; sheet: string; startCell: string })
+  | (HostReply & { ok: true; op: 'excelSetFormula'; sheet: string; cell: string })
+  | (HostReply & { ok: true; op: 'excelFormat'; sheet: string; range: string });
+
+export interface ExcelBatchReply extends HostReply {
+  ok: true;
+  op: 'excelBatch';
+  count: number;
+  results: ExcelSubCommandReply[];
+}
+
 export interface PptOpenReply extends HostReply {
   ok: true;
   op: 'pptOpen';
@@ -257,6 +310,9 @@ export const OP_TIMEOUT_MS: Partial<Record<HostOp, number>> & { default: number 
   excelOpen: 60_000,
   excelExport: 120_000,
   excelReadSheet: 60_000,
+  // M12 Phase D — a whole multi-sheet build (add sheets, write, formulas,
+  // formatting) runs as one message; a large workbook needs real headroom.
+  excelBatch: 90_000,
   pptOpen: 60_000,
   pptExport: 120_000,
   pptReadOutline: 60_000,

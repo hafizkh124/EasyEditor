@@ -1320,12 +1320,40 @@ export function createDispatcher(session: AgentSession): Dispatcher {
       }
 
       case 'build_spreadsheet': {
-        // M11 Phase 4 — Excel write tool (ADR-0048)
+        // M12 Phase D — Excel write tool, fixed (ADR-0048/0050): multi-sheet,
+        // live formulas, formatting and RTL, one batched COM session, and the
+        // format:'pdf'/'csv' path no longer throws before it is reached (the
+        // build step always targets a real .xlsx; only the final export
+        // targets the requested format).
         const filePath = str(args.filePath, 'filePath');
-        const sheets = Array.isArray(args.sheets) ? args.sheets : [];
-        if (!sheets.length) {
-          return { error: 'build_spreadsheet requires at least one sheet with data.' };
+        const sheetsRaw = str(args.sheets, 'sheets');
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(sheetsRaw);
+        } catch (err) {
+          return { error: `build_spreadsheet: "sheets" must be valid JSON — ${err instanceof Error ? err.message : String(err)}` };
         }
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+          return { error: 'build_spreadsheet: "sheets" must be a non-empty JSON array.' };
+        }
+        let sheets: excel.SheetSpec[];
+        try {
+          sheets = parsed.map((s, i) => {
+            const sheet = s as { name?: unknown; data?: unknown; formulas?: unknown; format?: unknown };
+            if (typeof sheet.name !== 'string' || !sheet.name.trim()) {
+              throw new Error(`sheet #${i + 1} is missing a "name"`);
+            }
+            return {
+              name: sheet.name,
+              data: Array.isArray(sheet.data) ? sheet.data as unknown[][] : undefined,
+              formulas: Array.isArray(sheet.formulas) ? sheet.formulas as excel.SheetSpec['formulas'] : undefined,
+              format: Array.isArray(sheet.format) ? sheet.format as excel.SheetSpec['format'] : undefined,
+            };
+          });
+        } catch (err) {
+          return { error: `build_spreadsheet: ${err instanceof Error ? err.message : String(err)}` };
+        }
+
         const outPath = path.isAbsolute(filePath)
           ? filePath
           : path.join(root, 'export', filePath);
@@ -1336,28 +1364,15 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const exportDir = path.dirname(outPath);
         if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
 
-        // Create the spreadsheet using the excel adapter
-        const { path: createdPath } = await excel.createSpreadsheet(outPath);
-
-        // Write each sheet's data
-        for (const sheet of sheets) {
-          const sheetName = typeof sheet.name === 'string' ? sheet.name : 'Sheet1';
-          const data = Array.isArray(sheet.data) ? sheet.data : [];
-          if (data.length > 0) {
-            await excel.writeRange(createdPath, data, { sheet: sheetName, startCell: 'A1' });
-          }
-        }
-
-        // Export to the desired format if not xlsx
-        if (format !== 'xlsx') {
-          await excel.exportSpreadsheet(createdPath, format, outPath);
-        }
+        const { path: builtPath } = await excel.buildWorkbook(outPath, sheets, { format });
 
         return {
-          path: outPath,
+          path: builtPath,
           format,
           sheets: sheets.length,
-          note: `Spreadsheet created at ${outPath}`,
+          note: format === 'xlsx'
+            ? `Spreadsheet created at ${builtPath}, with live formulas — editing an input cell recalculates the rest.`
+            : `Spreadsheet built with live formulas, then exported to ${format.toUpperCase()} at ${builtPath} (a static snapshot — ${format} cannot hold formulas or more than one sheet).`,
         };
       }
 

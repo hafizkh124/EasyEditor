@@ -57,6 +57,8 @@ untouched — the queue is renderer-side, one slot, replace-not-append.
   `convert_document` threw on it — `assertSafeOutputPath` needs the parent dir).
 - Tests: `agentStepKeys` (5), `agentRunStats` (4), `agentRecommendations` (7),
   labelKey + queue cases in `chatDisplay` / `agentPanel`.
-- Deferred: the export chips (xlsx / png / copy-table) — they need the
-  table→file path from M11 Phase 4; only the open-artifact and instruction
-  chips are wired now.
+- Deferred: the export chips (xlsx / png / copy-table) — they needed the
+  table→file path from M11 Phase 4, which was itself broken until M12 Phase D
+  (ADR-0050) fixed it. The **xlsx** chip (`build-spreadsheet`, offered after
+  `calculate_zakat`/`calculate_faraid`) is now wired; PNG and copy-table stay
+  deferred to M12 Phase F.
