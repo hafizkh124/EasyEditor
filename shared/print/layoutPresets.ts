@@ -1,8 +1,9 @@
 /**
- * M11 Phase 4 — layout presets for Word output (ADR-0048).
- * Combines trim size + margins + gutter + line spacing + header into
- * a single unit. Each preset maps to a set of `setPrintLayout` and
- * `setRtlPageSetup` parameters.
+ * M11 Phase 4 / M12 Phase E — layout presets for Word output (ADR-0048,
+ * ADR-0050). Combines trim size + margins + gutter + line spacing + header
+ * into a single unit, resolved by `typeset_print_ready`'s `preset` param
+ * into `setPrintLayout` PowerShell op arguments. Was orphaned (defined,
+ * never called from anywhere) until M12 Phase E wired it in.
  */
 
 export interface LayoutPreset {
@@ -32,7 +33,7 @@ export type LayoutPresetId =
   | "a5-booklet"
   | "waziri"
   | "digest"
-  | "fatwa-pad";
+  | "fatwa";
 
 export const LAYOUT_PRESETS: Record<LayoutPresetId, LayoutPreset> = {
   "a4-essay": {
@@ -87,19 +88,22 @@ export const LAYOUT_PRESETS: Record<LayoutPresetId, LayoutPreset> = {
     mirrorMargins: false,
     lineSpacingPt: 18,
   },
-  "fatwa-pad": {
-    id: "fatwa-pad",
-    label: "Fatwa Pad",
+  // M12 Phase E — the formal fatwā letterhead layout: A4, generous single-sided
+  // margins for a signed printout, no gutter/mirroring (a fatwā is read as
+  // single loose sheets, not bound). `fatwaTemplate.ts` supplies its own
+  // in-document letterhead/header, so this preset carries none.
+  fatwa: {
+    id: "fatwa",
+    label: "Fatwa Letterhead",
     trimWidthCm: 21.0,
     trimHeightCm: 29.7,
-    marginTopCm: 2.54,
+    marginTopCm: 3.0,
     marginBottomCm: 2.54,
-    marginLeftCm: 3.0,     // wider left for binding
-    marginRightCm: 2.0,
+    marginLeftCm: 2.54,
+    marginRightCm: 2.54,
     gutterCm: 0,
     mirrorMargins: false,
-    lineSpacingPt: 24,
-    headerOdd: ".Fatwa",
+    lineSpacingPt: 22,
   },
 };
 

@@ -251,6 +251,37 @@ describe("webDispatch — draft_section", () => {
     expect(r.error).toBeTruthy();
     expect(generateWebAgentText).not.toHaveBeenCalled();
   });
+
+  it("mode 'fatwa' requires question, and never calls the model without it (M12 Phase E)", async () => {
+    vi.spyOn(documentService, "getDocument").mockResolvedValue(doc());
+    const { dispatch } = createWebDispatcher(session());
+    const r = await dispatch("draft_section", { chapter: "باب اول", mode: "fatwa" }) as { error?: string };
+    expect(r.error).toMatch(/question/);
+    expect(generateWebAgentText).not.toHaveBeenCalled();
+  });
+
+  it("mode 'fatwa' wraps the model's ruling in the deterministic shell, with the calc result's own figures verbatim", async () => {
+    vi.spyOn(documentService, "getDocument").mockResolvedValue(doc());
+    vi.mocked(generateWebAgentText).mockResolvedValue("<p>یہ زکوٰۃ واجب ہے۔</p>");
+    const insertSpy = vi.fn();
+    const { dispatch } = createWebDispatcher(session({ insertIntoCanvas: insertSpy }));
+    const resultJson = JSON.stringify({ lines: [{ label: "نقد", value: 100000, zakatable: 100000, dalil: "x" }], zakatDue: 2500, note: "یہ فتویٰ نہیں۔" });
+    await dispatch("draft_section", { chapter: "باب اول", mode: "fatwa", question: "کیا زکوٰۃ واجب ہے؟", result_json: resultJson });
+    expect(insertSpy).toHaveBeenCalledTimes(1);
+    const written = insertSpy.mock.calls[0][0] as string;
+    expect(written).toContain("بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ");
+    expect(written).toContain("کیا زکوٰۃ واجب ہے؟");
+    expect(written).toContain("2500");
+    expect(written).toContain("یہ زکوٰۃ واجب ہے۔");
+  });
+
+  it("mode 'fatwa' rejects malformed result_json without throwing", async () => {
+    vi.spyOn(documentService, "getDocument").mockResolvedValue(doc());
+    const { dispatch } = createWebDispatcher(session());
+    const r = await dispatch("draft_section", { chapter: "باب اول", mode: "fatwa", question: "س", result_json: "{nope" }) as { error?: string };
+    expect(r.error).toMatch(/JSON/);
+    expect(generateWebAgentText).not.toHaveBeenCalled();
+  });
 });
 
 describe("webDispatch — search_hadith / search_general (direct client calls, no bridge)", () => {

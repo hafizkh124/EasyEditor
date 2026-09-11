@@ -42,6 +42,7 @@ import { buildResearchSubagentPrompt } from "~shared/agent/systemPrompt";
 import { AGENT_TOOLS } from "~shared/agent/toolSchemas";
 import { buildCritiqueInstruction, buildCritiqueInput, CRITIQUE_KINDS, type CritiqueKind } from "~shared/ai/prompts/critique";
 import { getDraftMode, buildDraftInput, type DraftMode } from "~shared/ai/prompts/draftSection";
+import { buildFatwaHtml, resolveResultTable, resolveDisclaimer } from "~shared/print/fatwaTemplate";
 import { generateWebAgentText } from "@/core/agent/webModel";
 import { normaliseArchive, normaliseOpenAlex } from "~shared/research/repositories";
 import { calculateZakat } from "~shared/zakat/calculator";
@@ -433,6 +434,23 @@ export function createWebDispatcher(session: WebAgentSession): WebDispatcher {
         const mode = str(args.mode, "mode") as DraftMode;
         const spec = getDraftMode(mode);
         if (!spec) return { error: `نامعلوم draft mode "${mode}"` };
+
+        // M12 Phase E — mode 'fatwa' needs the verbatim question up front;
+        // result_json is validated NOW, before spending a model call on a
+        // request that would error anyway.
+        const question = typeof args.question === "string" && args.question.trim() ? args.question.trim() : undefined;
+        if (mode === "fatwa" && !question) {
+          return { error: 'draft_section mode "fatwa" کو "question" چاہیے — سائل کا اصل سوال۔' };
+        }
+        let parsedResult: unknown;
+        if (mode === "fatwa" && typeof args.result_json === "string" && args.result_json.trim()) {
+          try {
+            parsedResult = JSON.parse(args.result_json);
+          } catch {
+            return { error: 'draft_section: "result_json" درست JSON نہیں — calculate_zakat/calculate_faraid کا نتیجہ بعینہ دیں۔' };
+          }
+        }
+
         const sourceIds = Array.isArray(args.source_ids) ? args.source_ids.filter((s): s is string => typeof s === "string") : [];
         if (spec.grounded && sourceIds.length === 0) return { error: `draft_section mode "${mode}" کو مصادر چاہییں — پہلے search_corpus/search_shamela چلائیں۔` };
 
@@ -445,7 +463,7 @@ export function createWebDispatcher(session: WebAgentSession): WebDispatcher {
         const doc = await resolveChapter(chapter);
         if ("error" in doc) return doc;
         const sectionHeading = typeof args.section_heading === "string" ? args.section_heading : undefined;
-        const content = buildDraftInput({ mode, sectionHeading, chapterExcerpt: (doc.plain_text ?? "").slice(0, 3000), sources: sources.length ? sources : undefined });
+        const content = buildDraftInput({ mode, sectionHeading, chapterExcerpt: (doc.plain_text ?? "").slice(0, 3000), sources: sources.length ? sources : undefined, question });
 
         let draft: string;
         try {
@@ -455,10 +473,23 @@ export function createWebDispatcher(session: WebAgentSession): WebDispatcher {
         }
         if (!draft) return { error: "ماڈل نے کچھ نہیں لوٹایا۔" };
 
+        // M12 Phase E — wrap the model's ruling prose in the deterministic
+        // fatwā shell; every figure comes from result_json, never re-typed.
+        let finalHtml = draft;
+        if (mode === "fatwa") {
+          const resultTable = resolveResultTable(parsedResult) ?? undefined;
+          const disclaimer = resolveDisclaimer(parsedResult);
+          const muftiNames = Array.isArray(args.mufti_names)
+            ? args.mufti_names.filter((n): n is string => typeof n === "string" && n.trim() !== "")
+            : undefined;
+          const instituteName = typeof args.institute_name === "string" && args.institute_name.trim() ? args.institute_name.trim() : undefined;
+          finalHtml = buildFatwaHtml({ instituteName, question: question!, resultTable, rulingHtml: draft, disclaimer, muftiNames });
+        }
+
         const artifactId = `draft-${doc.id}-${Date.now().toString(36)}`;
         emitArtifact({ op: "open", artifactId, title: `Draft — ${sectionHeading ?? doc.title}`, artifactType: "document" });
-        const labelledHtml = spec.html ? `<p><em>[DRAFT — ہر دعویٰ کا جائزہ لیں]</em></p>\n${draft}` : paragraphsToHtml(`[DRAFT — ہر دعویٰ کا جائزہ لیں]\n${draft}`);
-        emitArtifact({ op: "delta", artifactId, mode: "replace", html: spec.html ? draft : undefined, text: spec.html ? undefined : draft });
+        const labelledHtml = spec.html ? `<p><em>[DRAFT — ہر دعویٰ کا جائزہ لیں]</em></p>\n${finalHtml}` : paragraphsToHtml(`[DRAFT — ہر دعویٰ کا جائزہ لیں]\n${finalHtml}`);
+        emitArtifact({ op: "delta", artifactId, mode: "replace", html: spec.html ? finalHtml : undefined, text: spec.html ? undefined : finalHtml });
         await writeInto(doc, labelledHtml, "append");
         emitArtifact({ op: "close", artifactId, status: "final", targetChapter: doc.title });
         return { chapter: doc.title, mode, grounded: spec.grounded, sourcesUsed: sources.length, note: "طرز_تحریر (author voice) ابھی ویب پر لاگو نہیں — بنیادی ٹیمپلیٹ سے تحریر کی گئی۔" };

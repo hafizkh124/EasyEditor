@@ -19,7 +19,7 @@ const wordMock = {
   installTemplate: vi.fn(async () => ({ templateName: 'thesis', installedTo: 'C:\\t\\thesis.dotx', ms: 1 })),
   getWordOption: vi.fn(async () => 'true'),
   setWordOption: vi.fn(async () => 'false'),
-  applyTextTask: vi.fn(async () => ({ revisions: 4, ms: 1 })),
+  applyTextTask: vi.fn(async (_dest: string, _html: string, _opts?: { isHtml: boolean }) => ({ revisions: 4, ms: 1 })),
   addComment: vi.fn(async (_p: string, o: { anchorText: string }) => ({ added: o.anchorText !== 'nope', notFound: o.anchorText === 'nope', ms: 1 })),
   createChapter: vi.fn(async (dest: string, _opts?: { html?: string; rtl?: boolean }) => ({ outputPath: dest, name: dest.split('\\').pop() ?? dest, ms: 1 })),
   compareManuscripts: vi.fn(async () => ({
@@ -426,6 +426,28 @@ describe('agent dispatch', () => {
     expect(wordMock.setPrintLayout).not.toHaveBeenCalled();
   });
 
+  it('typeset_print_ready(preset:"fatwa") applies A4 + the preset\'s own margins/lineSpacing/gutter, no trim needed (M12 Phase E — layoutPresets.ts wired in)', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('typeset_print_ready', { chapter: '01.docx', preset: 'fatwa' }) as { preset: string; trim: string };
+    expect(wordMock.setPrintLayout).toHaveBeenCalledWith('C:\\p\\01.docx', expect.objectContaining({
+      trimWidthCm: 21.0, trimHeightCm: 29.7, gutterCm: 0, mirrorMargins: false,
+      marginTopCm: 3.0, marginBottomCm: 2.54, marginLeftCm: 2.54, marginRightCm: 2.54, lineSpacingPt: 22,
+    }));
+    expect(r.preset).toBe('fatwa');
+  });
+
+  it('typeset_print_ready(preset) lets an explicit override win over the preset\'s own value', async () => {
+    const { dispatch } = mk();
+    await dispatch('typeset_print_ready', { chapter: '01.docx', preset: 'fatwa', margin_top_cm: 5, gutter_cm: 0.8 });
+    expect(wordMock.setPrintLayout).toHaveBeenCalledWith('C:\\p\\01.docx', expect.objectContaining({ marginTopCm: 5, gutterCm: 0.8 }));
+  });
+
+  it('typeset_print_ready rejects an unknown preset, and requires one of trim/preset', async () => {
+    const { dispatch } = mk();
+    expect(await dispatch('typeset_print_ready', { chapter: '01.docx', preset: 'nope' }) as { error?: string }).toMatchObject({ error: expect.stringMatching(/unknown layout preset/) });
+    await expect(dispatch('typeset_print_ready', { chapter: '01.docx' })).rejects.toThrow(/trim/);
+  });
+
   it('compare_manuscript_variants collates two chapters into an apparatus, changing neither (M9 Phase 6)', async () => {
     const { dispatch } = mk();
     const r = await dispatch('compare_manuscript_variants', { base_chapter: '01.docx', witness_chapter: '02-body.docx', siglum: 'ح' }) as {
@@ -718,6 +740,61 @@ describe('build_spreadsheet (M12 Phase D — multi-sheet, formulas, formatting, 
     expect(await dispatch('build_spreadsheet', { filePath: 'x.xlsx', sheets: '[{"data":[[1]]}]' }))
       .toMatchObject({ error: expect.stringMatching(/missing a "name"/) });
     expect(excelMock.buildWorkbook).not.toHaveBeenCalled();
+  });
+});
+
+describe("draft_section mode 'fatwa' (M12 Phase E — the deterministic fatwā shell)", () => {
+  const zakatResultJson = JSON.stringify({
+    lines: [{ label: 'نقد', value: 100000, zakatable: 100000, dalil: 'x' }],
+    zakatDue: 2500,
+    note: 'یہ فتویٰ نہیں، حساب ہے۔',
+  });
+
+  it('requires "question"', async () => {
+    const { dispatch } = mk();
+    expect(await dispatch('draft_section', { chapter: '01.docx', mode: 'fatwa' }) as { error?: string })
+      .toMatchObject({ error: expect.stringMatching(/requires "question"/) });
+    expect(wordMock.applyTextTask).not.toHaveBeenCalled();
+  });
+
+  it('wraps the model\'s ruling in the fatwā shell — the written HTML carries the bismillah, the verbatim question, and the calc result\'s own table + disclaimer, never the model\'s raw output alone', async () => {
+    const { dispatch } = mk();
+    const r = await dispatch('draft_section', {
+      chapter: '01.docx', mode: 'fatwa', question: 'کیا میری آمدنی پر زکوٰۃ واجب ہے؟', result_json: zakatResultJson,
+    }) as { mode: string };
+    expect(r.mode).toBe('fatwa');
+    const [, writtenHtml] = wordMock.applyTextTask.mock.calls[0] as [string, string];
+    expect(writtenHtml).toContain('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ');
+    expect(writtenHtml).toContain('کیا میری آمدنی پر زکوٰۃ واجب ہے؟');
+    expect(writtenHtml).toContain('100000'); // the calc result's own figure, verbatim
+    expect(writtenHtml).toContain('2500'); // zakatDue, verbatim
+    expect(writtenHtml).toContain('یہ فتویٰ نہیں، حساب ہے۔'); // the engine's own disclaimer
+    expect(writtenHtml).toContain('باب دو میں برکت کا ذکر ہے'); // the mocked model output, embedded as the ruling
+  });
+
+  it('with no result_json, still produces a valid document — just without a computed table', async () => {
+    const { dispatch } = mk();
+    await dispatch('draft_section', { chapter: '01.docx', mode: 'fatwa', question: 'س' });
+    const [, writtenHtml] = wordMock.applyTextTask.mock.calls[0] as [string, string];
+    expect(writtenHtml).toContain('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ');
+    expect(writtenHtml).not.toContain('<table');
+  });
+
+  it('rejects malformed result_json without throwing', async () => {
+    const { dispatch } = mk();
+    expect(await dispatch('draft_section', { chapter: '01.docx', mode: 'fatwa', question: 'س', result_json: '{nope' }) as { error?: string })
+      .toMatchObject({ error: expect.stringMatching(/valid JSON/) });
+    expect(wordMock.applyTextTask).not.toHaveBeenCalled();
+  });
+
+  it('mufti_names and institute_name reach the document', async () => {
+    const { dispatch } = mk();
+    await dispatch('draft_section', {
+      chapter: '01.docx', mode: 'fatwa', question: 'س', mufti_names: ['مفتی احمد'], institute_name: 'دار الافتاء، جامعہ فلاں',
+    });
+    const [, writtenHtml] = wordMock.applyTextTask.mock.calls[0] as [string, string];
+    expect(writtenHtml).toContain('مفتی احمد');
+    expect(writtenHtml).toContain('دار الافتاء، جامعہ فلاں');
   });
 });
 

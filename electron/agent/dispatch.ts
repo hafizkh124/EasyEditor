@@ -44,6 +44,7 @@ import { AI_DISCLOSURE_FILE, buildDisclosureStatement } from '../../shared/agent
 import { readDisclosureEntries } from './disclosure.js';
 import { recordWrite } from './checkpoint.js';
 import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
+import { buildFatwaHtml, resolveResultTable, resolveDisclaimer } from '../../shared/print/fatwaTemplate.js';
 import { queryTafseer, type TafseerMode } from './adapters/tafsir.js';
 import { saveTranscript, transcriptPathFor } from './adapters/transcribe.js';
 import { saveOcrText, ocrTextPathFor } from './adapters/ocr.js';
@@ -51,6 +52,7 @@ import { readAssetText, writeAssetText, registerChapter } from '../fs/projectFol
 import { formatScholarlyRef } from '../../shared/research/citationTypes.js';
 import { buildApparatus, apparatusTable } from '../../shared/research/apparatus.js';
 import { resolveTrim, PRINT_LAYOUT_LOSS } from '../../shared/print/trimSizes.js';
+import { resolveLayoutPreset, LAYOUT_PRESET_IDS } from '../../shared/print/layoutPresets.js';
 import { searchRepositories, type RepositoryQuery } from './adapters/repositories.js';
 import { gradeHadith } from './adapters/dorar.js';
 import * as jkhssnAdapter from './adapters/jkhssn.js';
@@ -484,31 +486,48 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
       case 'typeset_print_ready': {
         const chapter = str(args.chapter, 'chapter');
-        const trim = str(args.trim, 'trim');
-        const size = resolveTrim(
-          trim,
-          typeof args.trim_width_cm === 'number' ? args.trim_width_cm : undefined,
-          typeof args.trim_height_cm === 'number' ? args.trim_height_cm : undefined,
-        );
+
+        // M12 Phase E (ADR-0050) — `preset` bundles trim + margins + gutter +
+        // line spacing + header in one named choice (layoutPresets.ts, wired
+        // in here for the first time — it shipped in M11 Phase 4 but nothing
+        // ever called it). `trim` still works alone for a bare trim size.
+        const presetId = typeof args.preset === 'string' ? args.preset : undefined;
+        const preset = presetId ? resolveLayoutPreset(presetId) : undefined;
+        if (presetId && !preset) {
+          return { error: `unknown layout preset "${presetId}" — one of: ${LAYOUT_PRESET_IDS.join(', ')}` };
+        }
+        const size = preset
+          ? { w: preset.trimWidthCm, h: preset.trimHeightCm, label: preset.label }
+          : resolveTrim(
+              str(args.trim, 'trim'),
+              typeof args.trim_width_cm === 'number' ? args.trim_width_cm : undefined,
+              typeof args.trim_height_cm === 'number' ? args.trim_height_cm : undefined,
+            );
         if (!size) {
-          return { error: `unknown trim "${trim}" — one of: a5, b5, 6x9, waziri, digest, or custom with trim_width_cm + trim_height_cm` };
+          return { error: 'unknown trim — one of: a5, b5, 6x9, waziri, digest, or custom with trim_width_cm + trim_height_cm (or pass "preset" instead of "trim")' };
         }
         const backedUp = guardEdit(chapter);
         const r = await word.setPrintLayout(chapterPath(root, chapter), {
           trimWidthCm: size.w,
           trimHeightCm: size.h,
-          gutterCm: typeof args.gutter_cm === 'number' ? args.gutter_cm : 1.2,
-          mirrorMargins: args.mirror_margins !== false,
+          gutterCm: typeof args.gutter_cm === 'number' ? args.gutter_cm : (preset?.gutterCm ?? 1.2),
+          mirrorMargins: typeof args.mirror_margins === 'boolean' ? args.mirror_margins : (preset?.mirrorMargins ?? true),
           oddEvenHeaders: args.odd_even_headers !== false,
           differentFirstPage: true,
           startRecto: Boolean(args.start_recto),
-          headerOdd: typeof args.header_odd === 'string' ? args.header_odd : undefined,
-          headerEven: typeof args.header_even === 'string' ? args.header_even : undefined,
+          headerOdd: typeof args.header_odd === 'string' ? args.header_odd : preset?.headerOdd,
+          headerEven: typeof args.header_even === 'string' ? args.header_even : preset?.headerEven,
+          marginTopCm: typeof args.margin_top_cm === 'number' ? args.margin_top_cm : preset?.marginTopCm,
+          marginBottomCm: typeof args.margin_bottom_cm === 'number' ? args.margin_bottom_cm : preset?.marginBottomCm,
+          marginLeftCm: typeof args.margin_left_cm === 'number' ? args.margin_left_cm : preset?.marginLeftCm,
+          marginRightCm: typeof args.margin_right_cm === 'number' ? args.margin_right_cm : preset?.marginRightCm,
+          lineSpacingPt: typeof args.line_spacing_pt === 'number' ? args.line_spacing_pt : preset?.lineSpacingPt,
         });
         const cm = 28.3464567;
         return {
           chapter,
           trim: size.label,
+          preset: preset?.id,
           pageSizeCm: { width: +(r.pageWidth / cm).toFixed(2), height: +(r.pageHeight / cm).toFixed(2), gutter: +(r.gutter / cm).toFixed(2) },
           backedUp,
           loss: PRINT_LAYOUT_LOSS,
@@ -1234,7 +1253,24 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const chapter = str(args.chapter, 'chapter');
         const mode = str(args.mode, 'mode') as DraftMode;
         const spec = getDraftMode(mode);
-        if (!spec) return { error: `unknown draft mode "${mode}" — one of: outline, prose, column, translation, summary, literary-urdu` };
+        if (!spec) return { error: `unknown draft mode "${mode}" — one of: outline, prose, column, translation, summary, literary-urdu, fatwa` };
+
+        // M12 Phase E — mode 'fatwa' needs the verbatim question up front;
+        // everything else about its shape is optional. result_json is
+        // validated NOW, before spending a model call on a request that
+        // would error anyway.
+        const question = typeof args.question === 'string' && args.question.trim() ? args.question.trim() : undefined;
+        if (mode === 'fatwa' && !question) {
+          return { error: 'draft_section mode "fatwa" requires "question" — the scholar\'s own verbatim istiftāʾ.' };
+        }
+        let parsedResult: unknown;
+        if (mode === 'fatwa' && typeof args.result_json === 'string' && args.result_json.trim()) {
+          try {
+            parsedResult = JSON.parse(args.result_json);
+          } catch {
+            return { error: 'draft_section: "result_json" must be valid JSON — pass the calculate_zakat/calculate_faraid result verbatim.' };
+          }
+        }
 
         const sourceIds = Array.isArray(args.source_ids) ? args.source_ids.filter((s): s is string => typeof s === 'string') : [];
         if (spec.grounded && sourceIds.length === 0) {
@@ -1252,18 +1288,36 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         try { chapterExcerpt = (await chapterText(chapter)).slice(0, 3000); } catch { /* new/empty chapter */ }
 
         const sectionHeading = typeof args.section_heading === 'string' ? args.section_heading : undefined;
-        const content = buildDraftInput({ mode, sectionHeading, chapterExcerpt, sources: sources.length ? sources : undefined });
+        const content = buildDraftInput({ mode, sectionHeading, chapterExcerpt, sources: sources.length ? sources : undefined, question });
         const draft = (await generateAgentText({ prompt: content, systemInstruction: withAuthorVoice(spec.instruction, authorVoice) })).trim();
         if (!draft) return { error: 'the model returned nothing' };
 
+        // M12 Phase E — mode 'fatwa': wrap the model's ruling prose in the
+        // deterministic fatwā shell. Every figure on the page comes from
+        // `result_json` (the calculate_zakat/calculate_faraid JSON the model
+        // already has verbatim, copied through — never re-typed here or by
+        // the model), not from the drafted prose.
+        let finalHtml = draft;
+        if (mode === 'fatwa') {
+          const resultTable = resolveResultTable(parsedResult) ?? undefined;
+          const disclaimer = resolveDisclaimer(parsedResult);
+          const muftiNames = Array.isArray(args.mufti_names)
+            ? args.mufti_names.filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+            : undefined;
+          const instituteName = typeof args.institute_name === 'string' && args.institute_name.trim() ? args.institute_name.trim() : undefined;
+          finalHtml = buildFatwaHtml({
+            instituteName, question: question!, resultTable, rulingHtml: draft, disclaimer, muftiNames,
+          });
+        }
+
         const artifactId = `draft-${chapter}-${Date.now().toString(36)}`;
         emitArtifact({ op: 'open', artifactId, title: `Draft — ${sectionHeading ?? chapter}`, artifactType: 'document' });
-        emitArtifact({ op: 'delta', artifactId, mode: 'replace', html: spec.html ? draft : undefined, text: spec.html ? undefined : draft });
+        emitArtifact({ op: 'delta', artifactId, mode: 'replace', html: spec.html ? finalHtml : undefined, text: spec.html ? undefined : finalHtml });
 
         const backedUp = guardEdit(chapter);
         const labelled = spec.html
-          ? `<p><em>[DRAFT — review every claim]</em></p>\n${draft}`
-          : `[DRAFT — review every claim]\n${draft}`;
+          ? `<p><em>[DRAFT — review every claim]</em></p>\n${finalHtml}`
+          : `[DRAFT — review every claim]\n${finalHtml}`;
         const res = await word.applyTextTask(dest, labelled, { isHtml: spec.html });
         emitArtifact({ op: 'close', artifactId, status: 'final', targetChapter: chapter });
         return {

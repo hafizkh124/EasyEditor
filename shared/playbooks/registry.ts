@@ -59,7 +59,11 @@ export const PLAYBOOKS: Playbook[] = [
     keywords: ['thesis', 'university', 'format', 'مقالہ', 'یونیورسٹی', 'جامعہ', 'رسالہ'],
     steps: [
       { tool: 'read_document', bind: ['chapter'], note: 'Read the chapter to see its current structure.' },
-      { tool: 'set_page_layout', bind: ['chapter'], note: 'Apply the RTL page setup (margins + reading order).' },
+      { tool: 'set_page_layout', bind: ['chapter'], note: 'Apply the RTL page setup (reading order).' },
+      // M12 Phase E — wires the previously-orphaned layoutPresets.ts in:
+      // set_page_layout only sets RTL reading order, never margins/line
+      // spacing, so this adds a real A4 essay layout on top of it.
+      { tool: 'typeset_print_ready', args: { preset: 'a4-essay' }, bind: ['chapter'], note: 'Apply A4 margins and line spacing for a standard submission layout.' },
       { tool: 'run_task', args: { task: 'auto-format' }, bind: ['chapter'], note: 'Normalise headings and spacing.' },
       { tool: 'search_corpus', bind: ['query'], optional: true, note: 'Retrieve a page-precise source for each claim that needs one.' },
       { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id'], optional: true, note: 'Turn each retrieved source into a real footnote.' },
@@ -296,7 +300,15 @@ export const PLAYBOOKS: Playbook[] = [
       { tool: 'query_tafseer', bind: ['reference', 'mode'], optional: true, note: 'Retrieve the relevant āyah(s) and their tafsīr.' },
       { tool: 'search_hadith', bind: ['query'], optional: true, note: 'Retrieve the relevant hadith, with grades.' },
       { tool: 'search_shamela', bind: ['query'], note: 'Survey the fiqh positions in the classical works.' },
-      { tool: 'draft_section', args: { mode: 'outline' }, bind: ['chapter', 'section_heading'], optional: true, note: 'Lay out the 5-stage answer as a sourced outline in the chapter.' },
+      {
+        tool: 'draft_section',
+        args: { mode: 'fatwa' },
+        bind: ['chapter', 'section_heading', 'question'],
+        optional: true,
+        note: 'Write the 5-stage answer as the ruling section of a formal fatwā document (M12 Phase E template — bismillah, the question, the ruling, signature lines).',
+      },
+      { tool: 'typeset_print_ready', args: { preset: 'fatwa' }, bind: ['chapter'], optional: true, note: 'Apply the fatwā letterhead page layout (A4, formal margins).' },
+      { tool: 'convert_document', args: { to: 'pdf' }, bind: ['chapter'], optional: true, note: 'Export the finished fatwā as a PDF.' },
     ],
   },
   {
@@ -312,7 +324,15 @@ export const PLAYBOOKS: Playbook[] = [
       { tool: 'calculate_zakat', bind: ['input'], note: 'Compute the zakat due from the assets, liabilities, and prices given.' },
       { tool: 'query_tafseer', args: { reference: '9:103', mode: 'tafsir' }, optional: true, note: 'Retrieve the zakat āyah (9:103) and its tafsīr for the dalīl.' },
       { tool: 'search_hadith', bind: ['query'], optional: true, note: 'Retrieve the supporting hadith (e.g. nisāb thresholds) with grades.' },
-      { tool: 'draft_section', args: { mode: 'outline' }, bind: ['chapter', 'section_heading'], optional: true, note: 'Lay out the assessment as a sourced outline in the chapter.' },
+      {
+        tool: 'draft_section',
+        args: { mode: 'fatwa' },
+        bind: ['chapter', 'section_heading', 'question', 'result_json'],
+        optional: true,
+        note: "Write the fatwā's ruling discussion; the template wraps it around the calculate_zakat result verbatim (result_json = that call's own JSON, copied through, never re-typed).",
+      },
+      { tool: 'typeset_print_ready', args: { preset: 'fatwa' }, bind: ['chapter'], optional: true, note: 'Apply the fatwā letterhead page layout (A4, formal margins).' },
+      { tool: 'convert_document', args: { to: 'pdf' }, bind: ['chapter'], optional: true, note: 'Export the finished fatwā as a PDF.' },
     ],
   },
   {
@@ -327,7 +347,15 @@ export const PLAYBOOKS: Playbook[] = [
       { tool: 'calculate_faraid', bind: ['input'], note: "Compute each heir's share from the confirmed heir set." },
       { tool: 'query_tafseer', args: { reference: '4:11', mode: 'tafsir' }, optional: true, note: 'Retrieve the primary inheritance āyah (4:11) and its tafsīr for the dalīl.' },
       { tool: 'search_shamela', bind: ['query'], optional: true, note: "Survey the madhāhib's positions on any special case (e.g. الجد مع الإخوة) in the classical works." },
-      { tool: 'draft_section', args: { mode: 'outline' }, bind: ['chapter', 'section_heading'], optional: true, note: 'Lay out the shares as a sourced outline in the chapter.' },
+      {
+        tool: 'draft_section',
+        args: { mode: 'fatwa' },
+        bind: ['chapter', 'section_heading', 'question', 'result_json'],
+        optional: true,
+        note: "Write the fatwā's ruling discussion; the template wraps it around the calculate_faraid result verbatim (result_json = that call's own JSON, copied through, never re-typed).",
+      },
+      { tool: 'typeset_print_ready', args: { preset: 'fatwa' }, bind: ['chapter'], optional: true, note: 'Apply the fatwā letterhead page layout (A4, formal margins).' },
+      { tool: 'convert_document', args: { to: 'pdf' }, bind: ['chapter'], optional: true, note: 'Export the finished fatwā as a PDF.' },
     ],
   },
   {
