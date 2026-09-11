@@ -12,7 +12,7 @@
  * Pure — no runtime globals.
  */
 
-export type DraftMode = 'outline' | 'prose' | 'column' | 'translation' | 'summary' | 'literary-urdu';
+export type DraftMode = 'outline' | 'prose' | 'column' | 'translation' | 'summary' | 'literary-urdu' | 'fatwa';
 
 export interface DraftModeSpec {
   /** The fixed system instruction for this mode. */
@@ -74,6 +74,19 @@ HARD RULES:
 6. Preserve the working language and script (Urdu stays Urdu Nastaliq, Arabic quotations stay Arabic).
 7. Output ONLY a clean HTML fragment (<h2>, <h3>, <p>, <blockquote>) — no commentary, no markdown fences.`,
   },
+  // M12 Phase E — `shared/print/fatwaTemplate.ts` supplies the bismillah,
+  // letterhead, the verbatim question, any computed results TABLE (from
+  // calculate_zakat/calculate_faraid, inserted verbatim — never re-typed),
+  // the disclaimer, and the signature lines around whatever this mode
+  // produces. NOT grounded, matching `outline`'s role in the shariah-fatwa
+  // playbook — the evidentiary gathering happens in earlier steps
+  // (query_tafseer / search_hadith / search_shamela); this is the final
+  // write-up of the ruling itself.
+  fatwa: {
+    grounded: false,
+    html: true,
+    instruction: `You are drafting ONLY the RULING (جواب) section of a formal fatwā — a fixed template supplies the bismillah, the letterhead, the question restated, any computed results table, and the mufti's signature lines around what you write here; do not reproduce any of those yourself. Write the ruling and its evidentiary discussion: state the position clearly, ground it in the Qur'anic āyāt / hadith / madhhab positions given as SOURCE EXCERPTS or CURRENT CHAPTER TEXT context, and close with a measured, non-absolute recommendation where scholars differ. If a computed calculation (zakat or farā'iḍ) is described in the context, refer to it in your discussion but do NOT re-type or restate its exact figures yourself — they are inserted separately, verbatim, from the calculation engine, and a transcribed figure that drifts from the real one is a serious error. Output ONLY a clean HTML fragment (<p>, <h3>, <blockquote>) in a dignified fatwā register — no heading repeating "جواب" (the template already provides it), no commentary, no markdown fences.${COMMON_TAIL}`,
+  },
 };
 
 export function getDraftMode(mode: string): DraftModeSpec | undefined {
@@ -93,10 +106,13 @@ export function buildDraftInput(opts: {
   targetLanguage?: string;
   chapterExcerpt?: string;
   sources?: Array<{ marker: string; reference: string; excerpt: string }>;
+  /** mode 'fatwa' — the verbatim question, for context only (the template restates it; do not echo it back). */
+  question?: string;
 }): string {
   const parts: string[] = [];
   if (opts.sectionHeading) parts.push(`SECTION: ${opts.sectionHeading}`);
   if (opts.targetLanguage) parts.push(`TARGET LANGUAGE: ${opts.targetLanguage}`);
+  if (opts.question) parts.push(`QUESTION (context only — the template already restates this verbatim; do not repeat it in your output):\n${opts.question}`);
   if (opts.chapterExcerpt) parts.push(`CURRENT CHAPTER TEXT (for context / continuity):\n${opts.chapterExcerpt}`);
   if (opts.sources?.length) {
     parts.push(

@@ -71,6 +71,14 @@ export type HostCommand =
       startRecto?: boolean;
       headerOdd?: string;
       headerEven?: string;
+      // M12 Phase E (ADR-0050) — wordBridge.ps1's setPrintLayout has read
+      // these since M11 Phase 4, but this type (and so every TS caller) never
+      // carried them until now.
+      marginTopCm?: number;
+      marginBottomCm?: number;
+      marginLeftCm?: number;
+      marginRightCm?: number;
+      lineSpacingPt?: number;
     }
   | { op: 'markIndexEntries'; entries: Array<{ find: string; entry: string }> }
   | { op: 'appendIndex'; field: 'INDEX' | 'TOC'; heading?: string }

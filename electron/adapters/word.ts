@@ -530,6 +530,13 @@ export interface PrintLayoutOptions {
   startRecto?: boolean;
   headerOdd?: string;
   headerEven?: string;
+  // M12 Phase E (ADR-0050) — the PowerShell op has always accepted these
+  // (setPrintLayout, M11 Phase 4); nothing on the TS side ever sent them.
+  marginTopCm?: number;
+  marginBottomCm?: number;
+  marginLeftCm?: number;
+  marginRightCm?: number;
+  lineSpacingPt?: number;
 }
 
 /** Apply print-ready page geometry to a chapter, in place. Not a tracked change (page setup is not a revision). */
@@ -554,6 +561,11 @@ export async function setPrintLayout(chapterPathArg: string, opts: PrintLayoutOp
         startRecto: opts.startRecto,
         headerOdd: opts.headerOdd,
         headerEven: opts.headerEven,
+        marginTopCm: opts.marginTopCm,
+        marginBottomCm: opts.marginBottomCm,
+        marginLeftCm: opts.marginLeftCm,
+        marginRightCm: opts.marginRightCm,
+        lineSpacingPt: opts.lineSpacingPt,
       });
       out = { pageWidth: r.pageWidth ?? 0, pageHeight: r.pageHeight ?? 0, gutter: r.gutter ?? 0 };
       await h.sendOk({ op: 'save' });
