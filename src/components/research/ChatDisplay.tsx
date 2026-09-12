@@ -700,7 +700,11 @@ const ChatDisplay = ({
                     <div
                       role="dialog"
                       aria-label={t("research.hub_open", "ذرائع، حوالہ جات اور علمی پرامپٹس")}
-                      className="absolute bottom-full start-0 z-50 mb-1 w-[min(21rem,calc(100vw-2rem))] space-y-1 rounded-lg border border-border bg-popover p-2 text-xs shadow-md"
+                      // QA finding: no cap on this popover's own height meant a
+                      // narrow/short viewport could push its bottom off-screen
+                      // with no way to reach it (same class of bug as the
+                      // agent composer's hub — see ComposerHub.tsx).
+                      className="absolute bottom-full start-0 z-50 mb-1 w-[min(21rem,calc(100vw-2rem))] max-h-[min(28rem,70vh)] overflow-y-auto overscroll-contain space-y-1 rounded-lg border border-border bg-popover p-2 text-xs shadow-md"
                     >
                       {onSelectedDomainsChange && (
                         <div className="flex items-center justify-between gap-2 rounded-md px-1 py-1">

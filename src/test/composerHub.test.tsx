@@ -17,9 +17,19 @@ import { ComposerHub } from "@/components/composer/ComposerHub";
 
 describe("ComposerHub", () => {
   it("hides a row when its handler prop is absent, even if its show* flag is on", () => {
-    render(<ComposerHub showPrompts showAssistModes />);
+    render(<ComposerHub showPrompts showScholarlyPrompts showAssistModes />);
     expect(screen.queryByText("Custom prompts")).not.toBeInTheDocument();
+    expect(screen.queryByText(/14/)).not.toBeInTheDocument();
     expect(screen.queryByText("Assist modes")).not.toBeInTheDocument();
+  });
+
+  it("shows the Scholarly prompts row (the 14-template library) and wires it, closing the hub", () => {
+    const onOpenScholarlyPrompts = vi.fn();
+    const onClose = vi.fn();
+    render(<ComposerHub showScholarlyPrompts onOpenScholarlyPrompts={onOpenScholarlyPrompts} onClose={onClose} />);
+    fireEvent.click(screen.getByText(/14/));
+    expect(onOpenScholarlyPrompts).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("shows the Prompts row through t() and wires it to onOpenPrompts, closing the hub", () => {

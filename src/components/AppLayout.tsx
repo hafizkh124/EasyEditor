@@ -30,7 +30,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navItems: NavItem[] = isAdmin && adminNavItem ? [...sectionNav, adminNavItem] : sectionNav;
 
   return (
-    <div className="flex min-h-screen bg-background" dir={direction}>
+    <div className="flex min-h-screen bg-background app-shell" dir={direction}>
       {/* Skip-to-main link (Phase 6 a11y) — visible only when focused via keyboard. */}
       <a
         href="#main-content"
