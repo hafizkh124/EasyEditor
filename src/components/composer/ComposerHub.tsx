@@ -1,5 +1,5 @@
 import React from "react";
-import { Paperclip, FolderOpen, ScrollText, Hash, Plug, Mic, Pencil } from "lucide-react";
+import { Paperclip, FolderOpen, ScrollText, Hash, Plug, Mic, Pencil, Sparkles } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { isConnectorOn, connectorsByCategory } from "~shared/agent/connectors";
 
@@ -21,6 +21,8 @@ export interface ComposerHubProps {
   showConnectors?: boolean;
   /** Whether to show the "Prompts" row. */
   showPrompts?: boolean;
+  /** Whether to show the "Scholarly prompts" row (the 14-template library). */
+  showScholarlyPrompts?: boolean;
   /** Whether to show the "Assist modes" row. */
   showAssistModes?: boolean;
 
@@ -43,6 +45,8 @@ export interface ComposerHubProps {
   onOpenScope?: () => void;
   /** Open custom prompts. */
   onOpenPrompts?: () => void;
+  /** Open the 14-template scholarly prompts library. */
+  onOpenScholarlyPrompts?: () => void;
   /** Open assist mode selector. */
   onOpenAssistModes?: () => void;
 
@@ -55,6 +59,7 @@ export const ComposerHub: React.FC<ComposerHubProps> = ({
   showSkills = true,
   showConnectors = true,
   showPrompts = false,
+  showScholarlyPrompts = false,
   showAssistModes = false,
   connectors = {},
   connectorGlobal,
@@ -65,6 +70,7 @@ export const ComposerHub: React.FC<ComposerHubProps> = ({
   onOpenPlaybooks,
   onOpenScope,
   onOpenPrompts,
+  onOpenScholarlyPrompts,
   onOpenAssistModes,
   onClose,
 }) => {
@@ -113,6 +119,18 @@ export const ComposerHub: React.FC<ComposerHubProps> = ({
         </button>
       )}
 
+      {/* Scholarly prompts — the pre-M11 14-template library (fiqh/hadith/
+          tafsir/authoring/lexicon/general). Was only ever wired into
+          ChatDisplay's own built-in composer, which the agent composer
+          replaces wholesale (`composer={null}`) — QA finding: this made the
+          library completely unreachable from the Agent tab. */}
+      {showScholarlyPrompts && onOpenScholarlyPrompts && (
+        <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start text-primary hover:bg-primary/10" onClick={handleAction(onOpenScholarlyPrompts)}>
+          <Sparkles className="h-3.5 w-3.5 shrink-0" />
+          {t("research.scholarly_prompts", "14 علمی پرامپٹس")}
+        </button>
+      )}
+
       {/* Prompts */}
       {showPrompts && onOpenPrompts && (
         <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={handleAction(onOpenPrompts)}>
@@ -148,13 +166,17 @@ export const ComposerHub: React.FC<ComposerHubProps> = ({
                 return (
                   <label
                     key={c.id}
-                    className={`flex items-center justify-between rounded px-2 py-1 ${globallyOn ? "cursor-pointer hover:bg-muted" : "cursor-not-allowed opacity-60"}`}
-                    title={globallyOn ? undefined : t("connectors.enable_in_settings")}
+                    className={`flex items-center justify-between gap-2 rounded px-2 py-1 ${globallyOn ? "cursor-pointer hover:bg-muted" : "cursor-not-allowed opacity-60"}`}
+                    title={globallyOn ? c.label : t("connectors.enable_in_settings")}
                   >
-                    <span>{c.label}</span>
+                    {/* QA finding: an unconstrained span next to a fixed-size
+                        checkbox let a long connector name (e.g. "Global
+                        repositories (Archive.org, OpenAlex)") wrap raggedly
+                        or crowd the checkbox in this ~256px-wide popover. */}
+                    <span className="min-w-0 flex-1 truncate">{c.label}</span>
                     <input
                       type="checkbox"
-                      className="accent-primary"
+                      className="accent-primary shrink-0"
                       checked={on && globallyOn}
                       disabled={!globallyOn}
                       onChange={(e) => onToggleConnector?.(c.id, e.target.checked)}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FileText, Download, Copy, CheckCircle2, Loader2, AlertCircle,
+  FileText, Download, CheckCircle2, Loader2, AlertCircle,
   ChevronDown, FileType, FileCode, File, Search, PanelRight, PanelLeft,
   Languages, MoreHorizontal, ArrowLeft, History, AudioLines, X, Sparkles
 } from "lucide-react";
@@ -97,11 +97,6 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
     } finally {
       setAudiobookProgress(null);
     }
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(currentText);
-    toast.success(t("editor.copied", "Copied to clipboard"));
   };
 
   const handleDownload = async (format: "word" | "pdf" | "html" | "txt") => {
@@ -214,12 +209,6 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           />
         )}
 
-        {/* Copy — h-4 glyph to match this bar's other icon-only h-8 w-8 buttons
-            (back arrow, library toggle, language toggle, overflow menu). */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0 hidden sm:flex" aria-label={t("editor.copy_text", "Copy text")} onClick={handleCopy}>
-          <Copy className="h-4 w-4" />
-        </Button>
-
         {/* Export dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -275,17 +264,18 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           <Languages className="h-4 w-4" />
         </Button>
 
-        {/* Workbench Toggle */}
+        {/* Workbench Toggle — icon-only (QA finding: the label was redundant
+            noise next to a self-explanatory panel-toggle glyph; the icon
+            state (filled vs outline) already shows open/closed). */}
         <Button
           variant={workbenchCollapsed ? "outline" : "default"}
-          size="sm"
+          size="icon"
           onClick={toggleWorkbench}
-          className="h-8 text-xs gap-1.5 px-2.5"
+          className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0 shrink-0"
           title={t("workbench.toggle", "Toggle Workbench")}
           aria-label={t("workbench.toggle", "Toggle Workbench")}
         >
           <PanelRight className="h-4 w-4" />
-          <span className="hidden md:inline">{t("workbench.title", "Workbench")}</span>
         </Button>
 
         {/* Mobile Overflow Menu (360px) */}
@@ -299,9 +289,6 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => setCommandPaletteOpen(true)} className="gap-2">
                 <Search className="h-4 w-4" /> {t("common.search", "Search")} {`(${modifierKeyLabel()}K)`}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleCopy} className="gap-2">
-                <Copy className="h-4 w-4" /> {t("editor.copy", "Copy Text")}
               </DropdownMenuItem>
               {doc?.id && (
                 <DropdownMenuItem onClick={() => setVersionsOpen(true)} className="gap-2">

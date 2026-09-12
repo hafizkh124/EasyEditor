@@ -377,3 +377,16 @@ All colors MUST be HSL.
 .electron-win-titlebar .app-topbar-drag input {
   -webkit-app-region: no-drag;
 }
+
+/* AppLayout (Dashboard/Transcribe/Speak/Settings/Profile/…): its sidebar is
+   the first flex child of a `dir`-mirrored row, so under RTL it lands at the
+   window's PHYSICAL right — exactly where the caption buttons sit — and,
+   collapsed, is only 64px wide: too narrow for a horizontal padding
+   reservation (`.app-topbar`'s trick above) to have anywhere to go. Push the
+   whole shell down by the overlay's height instead. Vertical padding needs
+   no RTL/LTR split — the caption strip spans the full top of the window
+   regardless of which side has content there, so this fixes both directions
+   at once with no per-column logic. */
+.electron-win-titlebar .app-shell {
+  padding-top: 36px;
+}

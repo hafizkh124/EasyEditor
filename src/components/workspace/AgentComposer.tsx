@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
 import { Send, Loader2, Square, Mic, Plus, X, Book, User, Layers, CalendarClock, Repeat, AtSign, Pencil, Hourglass, ScrollText, FolderOpen, Hash } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CONNECTORS, isConnectorOn } from "../../../shared/agent/connectors";
 import { useAgentRun, type AgentMode, type ScopeTag } from "@/hooks/useAgentRun";
@@ -7,6 +8,7 @@ import { useClampToViewport } from "@/lib/ui/clampToViewport";
 import { ScopeReviewDialog } from "./ScopeReviewDialog";
 import { ComposerHub } from "@/components/composer/ComposerHub";
 import { CustomPromptsPicker } from "@/components/composer/CustomPromptsPicker";
+import { ScholarlyPromptModal } from "@/components/research/ScholarlyPromptModal";
 
 /** Icon + accent for a scope chip, keyed by kind (colour is never the only signal). */
 function chipStyle(tag: ScopeTag): { icon: React.ReactNode; cls: string } {
@@ -38,6 +40,7 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
   const hubRef = useRef<HTMLDivElement>(null);
   const [overflowOpen, setOverflowOpen] = React.useState(false);
   const [promptsOpen, setPromptsOpen] = React.useState(false);
+  const [scholarlyPromptsOpen, setScholarlyPromptsOpen] = React.useState(false);
   const promptsRef = useRef<HTMLDivElement>(null);
   const { transform: pickerTransform } = useClampToViewport(pickerRef, [a.picker, a.pickerItems.length]);
   const { transform: hubTransform } = useClampToViewport(hubRef, [a.hubOpen]);
@@ -124,12 +127,17 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
           onChange={(e) => { if (e.target.files?.length) void a.importFiles(e.target.files); e.target.value = ""; }}
         />
         {a.hubOpen && (
-          <div ref={hubRef} style={{ transform: hubTransform }} className="absolute bottom-full start-2 mb-1 w-[min(16rem,80vw)] rounded-md border border-border bg-popover text-xs shadow-md">
+          // QA finding: the connector list alone can run to a dozen+ rows —
+          // useClampToViewport only translates position, it cannot shrink a
+          // box taller than the viewport, so a fixed-height cap + its own
+          // scroll is required or the bottom of the menu renders off-screen.
+          <div ref={hubRef} style={{ transform: hubTransform }} className="absolute bottom-full start-2 mb-1 w-[min(16rem,80vw)] max-h-[min(28rem,70vh)] overflow-y-auto overscroll-contain rounded-md border border-border bg-popover text-xs shadow-md">
             <ComposerHub
               showSources
               showSkills
               showConnectors
               showPrompts
+              showScholarlyPrompts
               connectors={a.connectors}
               connectorGlobal={a.connectorGlobal}
               connectorState={a.connectorState}
@@ -139,18 +147,28 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
               onOpenPlaybooks={() => { a.updateInput("/", 1); a.taRef.current?.focus(); }}
               onOpenScope={() => { a.updateInput(`${a.input}${a.input && !a.input.endsWith(" ") ? " " : ""}#`, a.input.length + (a.input && !a.input.endsWith(" ") ? 2 : 1)); a.taRef.current?.focus(); }}
               onOpenPrompts={() => setPromptsOpen(true)}
+              onOpenScholarlyPrompts={() => setScholarlyPromptsOpen(true)}
               onClose={() => a.setHubOpen(false)}
             />
           </div>
         )}
         {promptsOpen && (
-          <div ref={promptsRef} style={{ transform: promptsTransform }} className="absolute bottom-full start-2 mb-1 w-[min(20rem,80vw)] rounded-md border border-border bg-popover text-xs shadow-md">
+          <div ref={promptsRef} style={{ transform: promptsTransform }} className="absolute bottom-full start-2 mb-1 w-[min(20rem,80vw)] max-h-[min(24rem,70vh)] overflow-y-auto overscroll-contain rounded-md border border-border bg-popover text-xs shadow-md">
             <CustomPromptsPicker
               onInsert={(text) => { a.updateInput(text, text.length); a.taRef.current?.focus(); }}
               onClose={() => setPromptsOpen(false)}
             />
           </div>
         )}
+        <ScholarlyPromptModal
+          isOpen={scholarlyPromptsOpen}
+          onClose={() => setScholarlyPromptsOpen(false)}
+          onSelectPrompt={(promptText, prompt) => {
+            a.updateInput(promptText, promptText.length);
+            if (!prompt.corpusReady) toast.warning(t("research.prompt_corpus_pending"));
+            setTimeout(() => a.taRef.current?.focus(), 50);
+          }}
+        />
         {a.picker && a.pickerItems.length > 0 && (
           <div
             ref={pickerRef}
@@ -330,8 +348,13 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
           {(() => { const off = CONNECTORS.filter((c) => !(a.connectorState?.[c.id] ?? isConnectorOn(a.connectors, c.id))).length; return off > 0 ? (
             <><span className="opacity-40">·</span><span className="shrink-0 text-amber-600">{t("agent.pill_connectors_off", "{n} source off").replace("{n}", String(off))}</span></>
           ) : null; })()}
-          <span className="opacity-40">·</span>
-          <span className="truncate">{a.caps ?? t("agent.pill_word_off", "Word off")}</span>
+          <span className="opacity-40 shrink-0">·</span>
+          {/* QA finding: `truncate` alone does nothing on a flex item — a
+              flex child's default min-width is its own content size, which
+              blocks the shrink truncate depends on and pushed this row past
+              its container instead of ellipsing (e.g. "Word 16.0 · Excel
+              16.0 · PowerPoint 16.0" in a narrow workbench panel). */}
+          <span className="min-w-0 flex-1 truncate">{a.caps ?? t("agent.pill_word_off", "Word off")}</span>
         </div>
       </div>
     </div>
