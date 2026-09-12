@@ -100,7 +100,10 @@ const ChatDisplay = ({
   // Plan §5.2 — when the workspace shell (and thus the artifact stage) is
   // present, the timeline shows a compact chip; otherwise the full inline card.
   const workspace = useOptionalWorkspace();
-  const stageAvailable = workspace !== null;
+  // The stage only mounts on desktop (WorkspaceLayout gates it on !isMobile),
+  // so on a phone the chip would point at nothing — fall back to the inline card.
+  const isMobileViewport = useIsMobile();
+  const stageAvailable = workspace !== null && !isMobileViewport;
   // Presence, not truthiness — `composer={null}` is a valid "render nothing
   // here, AgentComposer already supplies the real one around me" signal,
   // and a falsy check would wrongly fall through to the built-in composer.
