@@ -226,6 +226,7 @@ export const WorkspaceLayout: React.FC = () => {
           >
             <SidePanelHost
               forceExpanded={isMobile}
+              forcePanel={isMobile ? "library" : undefined}
               onNavigate={isMobile ? () => setMobileLibraryOpen(false) : undefined}
               activeDocumentWordCount={liveWordCount}
             />
