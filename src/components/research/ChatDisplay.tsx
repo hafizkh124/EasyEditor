@@ -30,6 +30,7 @@ import { renderCitedAnswer } from "@/lib/research/citedAnswer";
 import { AgentArtifactPanel } from "@/components/workspace/AgentArtifactPanel";
 import { ArtifactChips } from "@/components/workspace/artifacts/ArtifactChips";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ProvenanceChips } from "@/components/workspace/ProvenanceChip";
 import { RunStatsBar } from "@/components/workspace/RunStatsBar";
 import { connectorsUsed } from "~shared/agent/connectors";
