@@ -1841,6 +1841,8 @@
   "artifact.fmt_png": "PNG",
   "artifact.fmt_svg": "SVG",
   "artifact.export_svg": "SVG برآمد کریں",
+  "artifact.share_card": "شیئر کارڈ (PNG)",
+  "artifact.share_card_footer": "EasyEditor سے تیار — تصدیق کے لیے مفتی صاحب سے رجوع کریں",
   "artifact.fullscreen": "پوری اسکرین",
   "artifact.copy": "فارمیٹ شدہ کاپی",
   "artifact.dismiss": "ہٹا دیں",
