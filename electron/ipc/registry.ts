@@ -59,6 +59,10 @@ export const ALLOWED_IPC_CHANNELS = {
   // health/ping keyed by each connector's `healthKind`.
   CONNECTORS_INVOKE: 'connectors:invoke',
 
+  // SkillsPanel (M11 Phase 3 / M12 Phase H, ADR-0047) — the playbook registry
+  // plus the same two-tier (global/project) on-off switch as Connectors Hub.
+  SKILLS_INVOKE: 'skills:invoke',
+
   // Cloud Shamela (Connectors Hub Phase 8, ADR-0044) — OAuth BYOA to shamela.link/mcp.
   SHAMELA_CLOUD_INVOKE: 'shamela:cloud-invoke',
 

@@ -32,13 +32,14 @@ import { buildHistory, type ConversationTurn } from '../../shared/agent/history.
 import { buildSystemPrompt } from '../../shared/agent/systemPrompt.js';
 import { AUTHOR_VOICE_FILES } from '../../shared/agent/authorVoice.js';
 import { toolsFor } from '../../shared/agent/toolScoping.js';
-import { selectPlaybook, resolvePlaybook } from '../../shared/playbooks/registry.js';
+import { selectPlaybook, resolvePlaybook, mergeSkillState } from '../../shared/playbooks/registry.js';
 import { detectFastPath } from '../../shared/agent/fastPath.js';
 import { classifyIntent, negativeConstraintBlock } from '../../shared/agent/intent.js';
 import { classifyIntentLLM } from './intentClassifier.js';
 import { isToolDisabled, mergeConnectorState } from '../../shared/agent/connectors.js';
-import { readConnectors, readOcrConsent } from '../fs/projectFolder.js';
+import { readConnectors, readOcrConsent, readSkills } from '../fs/projectFolder.js';
 import { readGlobalConnectors } from '../connectors/globalStore.js';
+import { readGlobalSkills } from '../skills/globalStore.js';
 import type {
   AgentMode,
   AgentProgress,
@@ -70,6 +71,28 @@ function readProjectRules(root: string): string | null {
 /** طرز_تحریر.md — the author's writing voice (a STYLE brief, M9 Phase A). */
 function readAuthorVoice(root: string): string | null {
   return readRootDoc(root, AUTHOR_VOICE_FILES);
+}
+
+/**
+ * M11 Phase 2 / M12 Phase H — adapts `AgentRunInput.onProgress` (typed on the
+ * narrow `AgentProgress.kind` union) into `AgentSession.onProgress`'s looser
+ * shape (`kind: string`), so a bounded sub-run's (`research_topic`) progress
+ * can relay through `dispatch.ts` back to the caller. Exported standalone so
+ * this small but easy-to-silently-break piece of wiring has its own test,
+ * independent of `runAgent`'s many other dependencies.
+ *
+ * Returns `null` when there is nothing to relay to (a headless/eval caller
+ * that never passed `onProgress` at all) — `AgentSession.onProgress` is
+ * optional and every caller already guards it with `session.onProgress?.(…)`.
+ */
+export function adaptProgressForSession(
+  onProgress: ((p: AgentProgress) => void) | undefined,
+): AgentSession['onProgress'] {
+  if (!onProgress) return null;
+  return (p) => onProgress({
+    step: p.step, label: p.label, labelKey: p.labelKey,
+    kind: p.kind as AgentProgress['kind'], detail: p.detail,
+  });
 }
 
 export interface AgentRunInput {
@@ -129,7 +152,17 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   // M11 Phase 1 — prior turns → the messages the loop prepends (user/model
   // text only). Playbook runs skip this: a `/trigger` flow is self-contained.
   const history = input.history?.length ? buildHistory(input.history) : undefined;
-  const playbook = selectPlaybook(instruction);
+  // M11 Phase 3 / M12 Phase H (ADR-0047) — per-project skill switches merged
+  // with the per-machine SkillsPanel layer, the same two-tier shape as
+  // connectors below. A switched-off skill is invisible to BOTH the
+  // automatic keyword match here and the explicit `run_playbook` tool
+  // further down (session.runPlaybookRef) — this was previously read-only
+  // (SkillsPanel.tsx listed playbooks with no toggle at all).
+  const skills = (() => {
+    try { return mergeSkillState(readGlobalSkills(), readSkills(projectRoot)); }
+    catch { return {}; }
+  })();
+  const playbook = selectPlaybook(instruction, skills);
   const agentModel = await resolveAgentModel();
   if (agentModel.provider.id !== 'gemini') log.info('agent model provider', { provider: agentModel.provider.id });
 
@@ -234,6 +267,13 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     ocrDocument: input.ocrDocument ?? null,
     ocrConsent: (() => { try { return readOcrConsent(projectRoot); } catch { return false; } })(),
     emitArtifact,
+    // M11 Phase 2 / M12 Phase H — relay progress into a bounded sub-run
+    // (research_topic), so its steps show up live instead of the parent run
+    // going silent for however long the sub-run takes. This was previously
+    // never set here at all: dispatch.ts's `session.onProgress` relay
+    // (research_topic) existed but had nothing to call — dead code since the
+    // field this session object never populated it.
+    onProgress: adaptProgressForSession(input.onProgress),
     // ADR-0044 — the local-first Shamela router reads these.
     shamelaLocalEnabled: connectors['shamela'] !== false,
     shamelaCloudEnabled: connectors['shamela-cloud'] === true,
@@ -307,7 +347,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   const isSlash = instruction.trim().startsWith('/');
   if (playbook && (isSlash || playbookMatchIsStrong(instruction, playbook.keywords))) {
     session.runPlaybookRef = async (ref, chapter) => {
-      const pb = resolvePlaybook(ref);
+      const pb = resolvePlaybook(ref, skills);
       if (!pb) return { error: `unknown playbook: ${ref}` };
       const r = await runPlaybook({
         playbook: pb, instruction, mode,
@@ -334,7 +374,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
 
   // ── 3. Free agentic loop ─────────────────────────────────────────────
   session.runPlaybookRef = async (ref, chapter) => {
-    const pb = resolvePlaybook(ref);
+    const pb = resolvePlaybook(ref, skills);
     if (!pb) return { error: `unknown playbook: ${ref}` };
     const r = await runPlaybook({
       playbook: pb, instruction, mode,

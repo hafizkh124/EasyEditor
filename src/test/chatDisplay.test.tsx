@@ -266,3 +266,41 @@ describe("ChatDisplay — agent_run item (SPEC M10 §1.2)", () => {
     expect(grantOcr).toHaveBeenCalled();
   });
 });
+
+describe("ChatDisplay — typing indicator (M12 Phase H)", () => {
+  // BrandSpinner replaced the plain TypingDots it was built to replace but
+  // was never wired to (M11 Phase 5 scaffold → M12 Phase H integration).
+  // These pin the actual swap: the indicator still appears exactly when
+  // expected, and its label still tracks showSourcesIndicator.
+  const pendingMessages: ChatMessage[] = [{ role: "user", content: "q" }];
+
+  it("shows the plain thinking label while querying with no sources yet", () => {
+    renderChat({ messages: pendingMessages, isQuerying: true, sourcesReadyInfo: null });
+    expect(screen.getByText(en["research.thinking"])).toBeInTheDocument();
+    expect(screen.queryByText(en["research.generating_with_sources"])).not.toBeInTheDocument();
+  });
+
+  it("switches to the sources-aware label once sourcesReadyInfo has a nonzero count", () => {
+    renderChat({
+      messages: pendingMessages, isQuerying: true,
+      sourcesReadyInfo: { count: 2, domains: ["tanzil"] },
+    });
+    expect(screen.getByText(en["research.generating_with_sources"])).toBeInTheDocument();
+    expect(screen.queryByText(en["research.thinking"])).not.toBeInTheDocument();
+  });
+
+  it("hides the typing indicator once the last message is the assistant's turn", () => {
+    const messages: ChatMessage[] = [
+      { role: "user", content: "q" },
+      { role: "assistant", content: "answered" },
+    ];
+    renderChat({ messages, isQuerying: true, lastAssistantIdx: 1 });
+    expect(screen.queryByText(en["research.thinking"])).not.toBeInTheDocument();
+    expect(screen.queryByText(en["research.generating_with_sources"])).not.toBeInTheDocument();
+  });
+
+  it("hides the typing indicator entirely when not querying", () => {
+    renderChat({ messages: pendingMessages, isQuerying: false });
+    expect(screen.queryByText(en["research.thinking"])).not.toBeInTheDocument();
+  });
+});

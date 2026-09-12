@@ -14,6 +14,7 @@ import { initDocBridge, shutdownDocBridgeSync } from './host/index.js';
 import { registerFsHandlers, terminateFsWatch } from './ipc/fsHandlers.js';
 import { registerAgentHandlers } from './ipc/agentHandlers.js';
 import { registerConnectorsHandlers } from './ipc/connectorsHandlers.js';
+import { registerSkillsHandlers } from './ipc/skillsHandlers.js';
 import { registerShamelaCloudHandlers } from './ipc/shamelaCloudHandlers.js';
 import { terminateCloudClientSync } from './shamela/cloudClient.js';
 import { isAllowedExternalUrl } from './lib/urlAllowlist.js';
@@ -289,6 +290,7 @@ if (!gotSingleInstanceLock) {
     registerFsHandlers();
     registerAgentHandlers();
     registerConnectorsHandlers();
+    registerSkillsHandlers();
     registerShamelaCloudHandlers();
     createWindow();
     checkForUpdates();

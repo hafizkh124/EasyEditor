@@ -117,7 +117,7 @@ export const ComposerHub: React.FC<ComposerHubProps> = ({
       {showPrompts && onOpenPrompts && (
         <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={handleAction(onOpenPrompts)}>
           <Pencil className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          {"Custom prompts"}
+          {t("agent.hub_prompts", "Custom prompts")}
         </button>
       )}
 
@@ -125,7 +125,7 @@ export const ComposerHub: React.FC<ComposerHubProps> = ({
       {showAssistModes && onOpenAssistModes && (
         <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={handleAction(onOpenAssistModes)}>
           <Mic className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          {"Assist modes"}
+          {t("agent.hub_assist_modes", "Assist modes")}
         </button>
       )}
 

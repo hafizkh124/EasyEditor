@@ -13,6 +13,7 @@ import AppVersionBadge from "@/components/AppVersionBadge";
 import { cn } from "@/lib/utils";
 
 import { SkillsPanel } from "@/components/settings/SkillsPanel";
+import { MethodsPanel } from "@/components/settings/MethodsPanel";
 import { ConnectorsHub } from "@/components/settings/ConnectorsHub";
 import { ShamelaConnectors } from "@/components/mcp/ShamelaConnectors";
 import { TafsirConnector } from "@/components/mcp/TafsirConnector";
@@ -181,20 +182,7 @@ const Settings = () => {
             {activeSection === "keys" && <ByokKeyPanel />}
 
             {/* ── Methods ── */}
-            {activeSection === "methods" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-primary" />
-                    {"Research Methods"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 text-sm text-muted-foreground">
-                  <p>{"Documentation of how the agent searches, grades, and cites sources."}</p>
-                  <p className="text-xs">{"Full methods page coming in a future update."}</p>
-                </CardContent>
-              </Card>
-            )}
+            {activeSection === "methods" && <MethodsPanel />}
           </div>
         </div>
       </div>
