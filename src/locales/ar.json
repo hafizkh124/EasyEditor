@@ -1841,6 +1841,8 @@
   "artifact.fmt_png": "PNG",
   "artifact.fmt_svg": "SVG",
   "artifact.export_svg": "تصدير SVG",
+  "artifact.share_card": "بطاقة مشاركة (PNG)",
+  "artifact.share_card_footer": "أُعِدّ بواسطة EasyEditor — يُرجى التحقق من مفتٍ مؤهَّل",
   "artifact.fullscreen": "ملء الشاشة",
   "artifact.copy": "نسخ منسّق",
   "artifact.dismiss": "إزالة",

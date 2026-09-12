@@ -1841,6 +1841,8 @@
   "artifact.fmt_png": "PNG",
   "artifact.fmt_svg": "SVG",
   "artifact.export_svg": "Export SVG",
+  "artifact.share_card": "Share card (PNG)",
+  "artifact.share_card_footer": "Prepared with EasyEditor — please verify with a qualified mufti",
   "artifact.fullscreen": "Fullscreen",
   "artifact.copy": "Copy formatted",
   "artifact.dismiss": "Dismiss",
