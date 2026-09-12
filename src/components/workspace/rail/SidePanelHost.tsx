@@ -1,5 +1,6 @@
 import React from "react";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
+import type { RailPanel } from "@/core/workspace/usePanelState";
 import { LibraryPanel } from "@/components/workspace/LibraryPanel";
 import { FilesPanel } from "./FilesPanel";
 import { HistoryPanel } from "./HistoryPanel";
@@ -13,12 +14,17 @@ import { WorkspaceSettingsPanel } from "./WorkspaceSettingsPanel";
 interface SidePanelHostProps {
   /** Inside the mobile drawer, `LibraryPanel` must stay expanded. */
   forceExpanded?: boolean;
+  /** Mobile drawer: the activity rail (the only panel switcher) is hidden
+   *  there, so the drawer pins itself to one panel instead of following a
+   *  persisted `activeRailPanel` that may be null or point elsewhere. */
+  forcePanel?: RailPanel;
   onNavigate?: () => void;
   activeDocumentWordCount?: number | null;
 }
 
-export const SidePanelHost: React.FC<SidePanelHostProps> = ({ forceExpanded, onNavigate, activeDocumentWordCount }) => {
-  const { activeRailPanel } = useWorkspace();
+export const SidePanelHost: React.FC<SidePanelHostProps> = ({ forceExpanded, forcePanel, onNavigate, activeDocumentWordCount }) => {
+  const { activeRailPanel: persistedPanel } = useWorkspace();
+  const activeRailPanel = forcePanel ?? persistedPanel;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
