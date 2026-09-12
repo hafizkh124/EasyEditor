@@ -545,6 +545,25 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.CONNECTORS_INVOKE, { action: 'ping', id }),
   },
 
+  // SkillsPanel (M11 Phase 3 / M12 Phase H, ADR-0047) — the playbook registry
+  // plus the same two-tier (global/project) on-off switch as Connectors Hub.
+  skills: {
+    list: (projectRoot?: string): Promise<{
+      playbooks: import('../shared/playbooks/registry.js').Playbook[];
+      global: Record<string, boolean>;
+      project: Record<string, boolean>;
+      merged: Record<string, boolean>;
+    }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SKILLS_INVOKE, { action: 'list', projectRoot }),
+    setEnabled: (
+      id: string,
+      on: boolean,
+      scope: 'global' | 'project',
+      projectRoot?: string,
+    ): Promise<{ global?: Record<string, boolean>; project?: Record<string, boolean> }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SKILLS_INVOKE, { action: 'setEnabled', id, on, scope, projectRoot }),
+  },
+
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

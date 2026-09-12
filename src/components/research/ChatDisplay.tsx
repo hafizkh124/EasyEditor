@@ -25,7 +25,7 @@ import type { ResearchAssistMode } from "@/lib/prompts";
 import SourcePicker from "./SourcePicker";
 import { editorRoute } from "@/lib/routes";
 import { DocumentBox } from "./chat/DocumentBox";
-import { SourcesReadyIndicator, TypingDots, UserAvatar, AiAvatar } from "./chat/ChatAtoms";
+import { SourcesReadyIndicator, BrandSpinner, UserAvatar, AiAvatar } from "./chat/ChatAtoms";
 import { renderCitedAnswer } from "@/lib/research/citedAnswer";
 import { AgentArtifactPanel } from "@/components/workspace/AgentArtifactPanel";
 import { ArtifactChips } from "@/components/workspace/artifacts/ArtifactChips";
@@ -564,7 +564,14 @@ const ChatDisplay = ({
         >
           <AiAvatar />
           <div className="rounded-2xl rounded-tl-md px-4 py-3 bg-muted border border-border/50 flex items-center gap-2.5 shadow-sm">
-            <TypingDots />
+            {/* M11 Phase 5 / M12 Phase H — BrandSpinner replaces the plain
+                TypingDots it was built to replace but was never wired to. Its
+                real win here: it respects prefers-reduced-motion (TypingDots
+                never did — a genuine, if small, accessibility gap). The
+                `state` mirrors the label below; "loading"/"thinking" render
+                identically today, a `done` checkmark state exists for a
+                future caller that has one. */}
+            <BrandSpinner state={showSourcesIndicator ? "thinking" : "loading"} />
             <span className="text-xs text-muted-foreground">
               {showSourcesIndicator ? t("research.generating_with_sources") : t("research.thinking")}
             </span>

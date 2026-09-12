@@ -72,6 +72,13 @@ export interface ProjectManifest {
    */
   connectors?: Record<string, boolean>;
   /**
+   * Per-project skill (playbook) switches (M11 Phase 3 / M12 Phase H, ADR-0047).
+   * A playbook absent from the map is ON; `false` turns it off — `selectPlaybook`/
+   * `resolvePlaybook` then skip it (both the `/trigger` and keyword match), and
+   * the free loop handles the request step by step instead.
+   */
+  skills?: Record<string, boolean>;
+  /**
    * The scholar has consented, for this project, to `ocr_document` sending page
    * images to the cloud OCR service (M9 Phase 7, ADR-0023). Absent / false =
    * not consented; `ocr_document` then returns a consent request and uploads

@@ -389,10 +389,48 @@ export function getPlaybook(id: string): Playbook | undefined {
   return BY_ID.get(id);
 }
 
-/** Resolve a `/trigger` or an id to a playbook. */
-export function resolvePlaybook(ref: string): Playbook | undefined {
+/**
+ * M11 Phase 3 / M12 Phase H (ADR-0047) — a skill (playbook) is on unless the
+ * merged switch map says otherwise; every playbook defaults on (unlike
+ * connectors, none currently need a `defaultOff`).
+ */
+export function isSkillOn(skills: Record<string, boolean> | undefined, id: string): boolean {
+  const v = skills?.[id];
+  return typeof v === 'boolean' ? v : true;
+}
+
+/**
+ * Fold the global ("this machine") and project ("this project") skill switch
+ * maps into one explicit id -> boolean map covering every playbook, the same
+ * shape `mergeConnectorState` produces for connectors. Precedence: an
+ * explicit project value wins, then global, then on-by-default.
+ */
+export function mergeSkillState(
+  global: Record<string, boolean> | undefined,
+  project: Record<string, boolean> | undefined,
+): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const pb of PLAYBOOKS) {
+    const p = project?.[pb.id];
+    const g = global?.[pb.id];
+    out[pb.id] = typeof p === 'boolean' ? p : typeof g === 'boolean' ? g : true;
+  }
+  return out;
+}
+
+/**
+ * Resolve a `/trigger` or an id to a playbook. `enabled`, when given, hides a
+ * switched-off skill even from an explicit `/trigger` — that is what "off"
+ * means (ADR-0047), the same as a switched-off connector's tools disappearing
+ * from every path, not just automatic ones. Omitted `enabled` = old
+ * behaviour, every playbook eligible (a headless/eval caller, or a test that
+ * does not care about the toggle).
+ */
+export function resolvePlaybook(ref: string, enabled?: Record<string, boolean>): Playbook | undefined {
   const clean = ref.trim().replace(/^\//, '');
-  return BY_TRIGGER.get(clean) ?? BY_ID.get(clean);
+  const pb = BY_TRIGGER.get(clean) ?? BY_ID.get(clean);
+  if (pb && enabled && !isSkillOn(enabled, pb.id)) return undefined;
+  return pb;
 }
 
 /**
@@ -400,19 +438,20 @@ export function resolvePlaybook(ref: string): Playbook | undefined {
  *
  * An exact leading `/trigger` wins outright (M9). Otherwise fall back to the
  * keyword-hit count; returns null when nothing matches — the agent then just
- * works step by step.
+ * works step by step. `enabled` — see {@link resolvePlaybook}.
  */
-export function selectPlaybook(ask: string): Playbook | null {
+export function selectPlaybook(ask: string, enabled?: Record<string, boolean>): Playbook | null {
   const trimmed = ask.trim();
   if (trimmed.startsWith('/')) {
     const token = trimmed.slice(1).split(/\s/)[0];
     const exact = BY_TRIGGER.get(token) ?? BY_ID.get(token);
-    if (exact) return exact;
+    if (exact && (!enabled || isSkillOn(enabled, exact.id))) return exact;
   }
 
   const lower = trimmed.toLowerCase();
   let best: { p: Playbook; hits: number } | null = null;
   for (const p of PLAYBOOKS) {
+    if (enabled && !isSkillOn(enabled, p.id)) continue;
     const hits = p.keywords.reduce((n, k) => (lower.includes(k.toLowerCase()) ? n + 1 : n), 0);
     if (hits > 0 && (!best || hits > best.hits)) best = { p, hits };
   }

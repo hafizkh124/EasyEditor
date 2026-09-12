@@ -19,6 +19,8 @@ import {
   resolveInProject,
   readConnectors,
   setConnector,
+  readSkills,
+  setSkill,
   readOcrConsent,
   setOcrConsent,
 } from '../../electron/fs/projectFolder';
@@ -173,6 +175,31 @@ describe('connectors (M9 Phase 1b)', () => {
     openProjectFolder(root);
     expect(readConnectors(root)).toEqual({ repositories: true });
     expect(setConnector(root, 'repositories', false)).toEqual({}); // back to default-off
+  });
+});
+
+describe('skills (M11 Phase 3 / M12 Phase H, ADR-0047)', () => {
+  it('round-trips a skill switch through the manifest, default all-on — no defaultOff concept, unlike connectors', () => {
+    createProjectFolder(root, 'P');
+    expect(readSkills(root)).toEqual({});
+
+    expect(setSkill(root, 'shariah-fatwa', false)).toEqual({ 'shariah-fatwa': false });
+    expect(readSkills(root)).toEqual({ 'shariah-fatwa': false });
+
+    // survives a re-open (which rewrites the manifest)
+    openProjectFolder(root);
+    expect(readSkills(root)).toEqual({ 'shariah-fatwa': false });
+
+    // turning it back on deletes the key rather than storing `true`
+    expect(setSkill(root, 'shariah-fatwa', true)).toEqual({});
+  });
+
+  it('skills and connectors are independent maps in the same manifest', () => {
+    createProjectFolder(root, 'P');
+    setConnector(root, 'shamela', false);
+    setSkill(root, 'shariah-fatwa', false);
+    expect(readConnectors(root)).toEqual({ shamela: false });
+    expect(readSkills(root)).toEqual({ 'shariah-fatwa': false });
   });
 });
 

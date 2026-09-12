@@ -3,10 +3,14 @@ import type { CustomTaskBackend } from "@/core/backend";
 import type { TaskDefinition } from "./types";
 
 /**
- * M11 Phase 3 — custom prompts for the `+` hub (ADR-0047).
- * User-authored prompts with local text + {{placeholders}} — no network,
- * no code execution. Reuses the existing customTasks infrastructure
- * (shared pattern from src/lib/tasks/customTasks.ts).
+ * M11 Phase 3 / M12 Phase H — custom prompts for the `+` hub (ADR-0047).
+ * Rows are plain instruction text, optionally with {{placeholders}} the
+ * user fills in by hand after insertion — nothing here parses or executes
+ * a placeholder, it is inserted as literal text into the composer. Storage
+ * reuses the same `ai_tasks` rows customTasks.ts already authors (see
+ * `CustomPromptsPicker.tsx`, wired into AgentComposer.tsx): one table, one
+ * authoring surface (Settings → Task Library), read here as canned prompts
+ * to drop into a message rather than run as a text-refinement task.
  */
 
 export interface CustomPromptRow {

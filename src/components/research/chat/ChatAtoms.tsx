@@ -4,7 +4,10 @@ import type { Translator } from "@/lib/i18n";
 
 /**
  * M11 Phase 5 — brand logo animation (teal spinner → pulse → green check).
- * Respects prefers-reduced-motion. Replaces TypingDots in the agent timeline.
+ * Respects prefers-reduced-motion. Replaces the plain `TypingDots` this file
+ * used to also export — defined in M11 but never actually wired into
+ * ChatDisplay.tsx until M12 Phase H; the old export is gone now that nothing
+ * uses it.
  */
 export const BrandSpinner: React.FC<{ state?: "loading" | "thinking" | "done" }> = ({ state = "loading" }) => {
   // Respect prefers-reduced-motion: show static dots instead of animation
@@ -86,19 +89,6 @@ export const SourcesReadyIndicator = ({ count, domains, t }: SourcesReadyIndicat
     </motion.div>
   );
 };
-
-export const TypingDots = () => (
-  <span className="inline-flex items-center gap-1">
-    {[0, 1, 2].map((i) => (
-      <motion.span
-        key={i}
-        className="h-1.5 w-1.5 rounded-full bg-primary"
-        animate={{ opacity: [0.3, 1, 0.3] }}
-        transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
-      />
-    ))}
-  </span>
-);
 
 export const UserAvatar = () => (
   <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">

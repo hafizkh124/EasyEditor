@@ -179,12 +179,16 @@ function readManifest(root: string): ProjectManifest | null {
     const connectors = m.connectors && typeof m.connectors === 'object'
       ? Object.fromEntries(Object.entries(m.connectors).filter(([, v]) => typeof v === 'boolean'))
       : undefined;
+    const skills = m.skills && typeof m.skills === 'object'
+      ? Object.fromEntries(Object.entries(m.skills).filter(([, v]) => typeof v === 'boolean'))
+      : undefined;
     return {
       id: m.id,
       title: typeof m.title === 'string' ? m.title : path.basename(root),
       createdAt: typeof m.createdAt === 'string' ? m.createdAt : new Date().toISOString(),
       chapterOrder: Array.isArray(m.chapterOrder) ? m.chapterOrder.filter((c) => typeof c === 'string') : [],
       ...(connectors && Object.keys(connectors).length ? { connectors: connectors as Record<string, boolean> } : {}),
+      ...(skills && Object.keys(skills).length ? { skills: skills as Record<string, boolean> } : {}),
       ...(m.ocrConsent === true ? { ocrConsent: true } : {}),
       version: 1,
     };
@@ -375,6 +379,32 @@ export function setConnector(root: string, id: string, on: boolean): Record<stri
   else { if (defaultOff) delete connectors[id]; else connectors[id] = false; }
   writeManifest(root, { ...manifest, connectors });
   return readConnectors(root);
+}
+
+// ── M11 Phase 3 / M12 Phase H: per-project skill (playbook) switches ───────
+// Same two-tier shape as connectors (ADR-0047), but every skill defaults ON —
+// there is no `defaultOff` concept for playbooks.
+
+/** Read the skill switch map (absent = all on). */
+export function readSkills(root: string): Record<string, boolean> {
+  const m = readManifest(root);
+  const s = m?.skills;
+  if (!s || typeof s !== 'object') return {};
+  const out: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(s)) if (typeof v === 'boolean') out[k] = v;
+  return out;
+}
+
+/** Flip one skill on/off and persist it. Absent = on; turning back on drops the key. */
+export function setSkill(root: string, id: string, on: boolean): Record<string, boolean> {
+  const manifest = readManifest(root) ?? {
+    id: randomUUID(), title: path.basename(root), createdAt: new Date().toISOString(), chapterOrder: [], version: 1 as const,
+  };
+  const skills = { ...(manifest.skills ?? {}) };
+  if (on) delete skills[id];
+  else skills[id] = false;
+  writeManifest(root, { ...manifest, skills });
+  return readSkills(root);
 }
 
 // ── Plan §3.4: the Project Explorer tree + editable file ops ───────────────

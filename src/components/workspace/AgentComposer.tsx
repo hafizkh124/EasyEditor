@@ -6,6 +6,7 @@ import { useAgentRun, type AgentMode, type ScopeTag } from "@/hooks/useAgentRun"
 import { useClampToViewport } from "@/lib/ui/clampToViewport";
 import { ScopeReviewDialog } from "./ScopeReviewDialog";
 import { ComposerHub } from "@/components/composer/ComposerHub";
+import { CustomPromptsPicker } from "@/components/composer/CustomPromptsPicker";
 
 /** Icon + accent for a scope chip, keyed by kind (colour is never the only signal). */
 function chipStyle(tag: ScopeTag): { icon: React.ReactNode; cls: string } {
@@ -36,8 +37,11 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
   const pickerRef = useRef<HTMLDivElement>(null);
   const hubRef = useRef<HTMLDivElement>(null);
   const [overflowOpen, setOverflowOpen] = React.useState(false);
+  const [promptsOpen, setPromptsOpen] = React.useState(false);
+  const promptsRef = useRef<HTMLDivElement>(null);
   const { transform: pickerTransform } = useClampToViewport(pickerRef, [a.picker, a.pickerItems.length]);
   const { transform: hubTransform } = useClampToViewport(hubRef, [a.hubOpen]);
+  const { transform: promptsTransform } = useClampToViewport(promptsRef, [promptsOpen]);
 
   const chips = a.scopeTags;
   const visibleChips = chips.slice(0, 4);
@@ -125,7 +129,7 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
               showSources
               showSkills
               showConnectors
-              showPrompts={false}
+              showPrompts
               connectors={a.connectors}
               connectorGlobal={a.connectorGlobal}
               connectorState={a.connectorState}
@@ -134,7 +138,16 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
               onChangeFolder={() => a.pf.openFolder()}
               onOpenPlaybooks={() => { a.updateInput("/", 1); a.taRef.current?.focus(); }}
               onOpenScope={() => { a.updateInput(`${a.input}${a.input && !a.input.endsWith(" ") ? " " : ""}#`, a.input.length + (a.input && !a.input.endsWith(" ") ? 2 : 1)); a.taRef.current?.focus(); }}
+              onOpenPrompts={() => setPromptsOpen(true)}
               onClose={() => a.setHubOpen(false)}
+            />
+          </div>
+        )}
+        {promptsOpen && (
+          <div ref={promptsRef} style={{ transform: promptsTransform }} className="absolute bottom-full start-2 mb-1 w-[min(20rem,80vw)] rounded-md border border-border bg-popover text-xs shadow-md">
+            <CustomPromptsPicker
+              onInsert={(text) => { a.updateInput(text, text.length); a.taRef.current?.focus(); }}
+              onClose={() => setPromptsOpen(false)}
             />
           </div>
         )}

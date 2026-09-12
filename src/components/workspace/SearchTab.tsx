@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Search, FileText, Loader2, Languages, BookOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -55,27 +55,21 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
     };
   }, []);
 
-  // M11 Phase 2 bug fix: listen for rerun events from HistoryPanel
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { kind: string; query: string; filters?: Record<string, unknown> } | undefined;
-      if (!detail || detail.kind !== "shamela") return;
-      const q = detail.query ?? "";
-      const useRoot = Boolean(detail.filters?.root);
-      setQuery(q);
-      setRootMode(useRoot);
-      void runSearch(q, useRoot);
-    };
-    window.addEventListener("workspace-rerun-search", handler);
-    return () => window.removeEventListener("workspace-rerun-search", handler);
-  }, []); // runSearch is stable (no deps that change)
-
   // `useRoot` is an explicit parameter, not a read of the `rootMode` state,
   // because the root-search toggle's own handler calls this in the SAME tick
   // it calls setRootMode(next) — reading `rootMode` there would close over the
   // pre-toggle value (a real bug this fixed: enabling root search with a
   // query already typed searched in the OLD mode, not the new one).
-  const runSearch = async (q: string, useRoot: boolean) => {
+  //
+  // useCallback (M11/M12 cleanup): this used to be a plain function, recreated
+  // fresh every render, while the rerun-events effect below captured it ONCE
+  // ([] deps) at mount — a genuine stale-closure bug, not just a lint nag: if
+  // `s2DbPath` arrived AFTER mount (it always does — it's detected async in
+  // the effect above), root search from a rerun event stayed permanently
+  // closed over `s2DbPath = null` and could never actually root-search.
+  // useCallback + listing it in that effect's deps re-registers the listener
+  // whenever s2DbPath (or t) actually changes, closing the gap.
+  const runSearch = useCallback(async (q: string, useRoot: boolean) => {
     const trimmed = q.trim();
     if (!trimmed) {
       setResults([]);
@@ -98,7 +92,22 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
     } finally {
       setSearching(false);
     }
-  };
+  }, [s2DbPath, t]);
+
+  // M11 Phase 2 bug fix: listen for rerun events from HistoryPanel
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { kind: string; query: string; filters?: Record<string, unknown> } | undefined;
+      if (!detail || detail.kind !== "shamela") return;
+      const q = detail.query ?? "";
+      const useRoot = Boolean(detail.filters?.root);
+      setQuery(q);
+      setRootMode(useRoot);
+      void runSearch(q, useRoot);
+    };
+    window.addEventListener("workspace-rerun-search", handler);
+    return () => window.removeEventListener("workspace-rerun-search", handler);
+  }, [runSearch]);
 
   const handleSelect = (hit: ChunkSearchHit) => {
     onNavigate?.();

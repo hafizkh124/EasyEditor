@@ -4,7 +4,7 @@
 // never invents; every step names a tool from the closed registry. Ask mode
 // exposes only read tools.
 import { describe, it, expect } from 'vitest';
-import { PLAYBOOKS, getPlaybook, selectPlaybook, resolvePlaybook } from '../../shared/playbooks/registry';
+import { PLAYBOOKS, getPlaybook, selectPlaybook, resolvePlaybook, isSkillOn, mergeSkillState } from '../../shared/playbooks/registry';
 import { validatePlaybook } from '../../shared/playbooks/executor';
 import { AGENT_TOOLS, toolsForMode, getTool } from '../../shared/agent/toolSchemas';
 
@@ -140,5 +140,42 @@ describe('tool registry', () => {
         expect(Object.keys(t.params), `${t.name} requires ${r}`).toContain(r);
       }
     }
+  });
+});
+
+describe('skill (playbook) on/off — M11 Phase 3 / M12 Phase H, ADR-0047', () => {
+  it('isSkillOn: absent = on, explicit false/true respected', () => {
+    expect(isSkillOn(undefined, 'shariah-fatwa')).toBe(true);
+    expect(isSkillOn({}, 'shariah-fatwa')).toBe(true);
+    expect(isSkillOn({ 'shariah-fatwa': false }, 'shariah-fatwa')).toBe(false);
+    expect(isSkillOn({ 'shariah-fatwa': true }, 'shariah-fatwa')).toBe(true);
+  });
+
+  it('mergeSkillState: project wins over global wins over on-by-default, one entry per playbook', () => {
+    const merged = mergeSkillState({ 'shariah-fatwa': false }, { 'shariah-fatwa': true });
+    expect(merged['shariah-fatwa']).toBe(true);
+    expect(Object.keys(mergeSkillState(undefined, undefined)).sort()).toEqual(PLAYBOOKS.map((p) => p.id).sort());
+    for (const v of Object.values(mergeSkillState(undefined, undefined))) expect(v).toBe(true);
+  });
+
+  it('selectPlaybook hides a switched-off skill from keyword matching', () => {
+    expect(selectPlaybook('اس مسئلہ پر فتویٰ درکار ہے')?.id).toBe('shariah-fatwa');
+    expect(selectPlaybook('اس مسئلہ پر فتویٰ درکار ہے', { 'shariah-fatwa': false })).toBeNull();
+  });
+
+  it('selectPlaybook hides a switched-off skill from an explicit /trigger too — off means off everywhere', () => {
+    expect(selectPlaybook('/shariah-fatwa')?.id).toBe('shariah-fatwa');
+    expect(selectPlaybook('/shariah-fatwa', { 'shariah-fatwa': false })).toBeNull();
+  });
+
+  it('resolvePlaybook (used by the run_playbook tool) is gated the same way', () => {
+    expect(resolvePlaybook('shariah-fatwa')?.id).toBe('shariah-fatwa');
+    expect(resolvePlaybook('shariah-fatwa', { 'shariah-fatwa': false })).toBeUndefined();
+    expect(resolvePlaybook('/shariah-fatwa', { 'shariah-fatwa': true })?.id).toBe('shariah-fatwa');
+  });
+
+  it('omitting `enabled` entirely keeps the old behaviour — every playbook eligible', () => {
+    expect(selectPlaybook('/shariah-fatwa')?.id).toBe('shariah-fatwa');
+    expect(resolvePlaybook('shariah-fatwa')?.id).toBe('shariah-fatwa');
   });
 });
