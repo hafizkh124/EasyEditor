@@ -66,8 +66,15 @@ export async function pollDeviceLinkStatus(
   return data as { status: DeviceLinkStatus; email?: string; tokenHash?: string };
 }
 
-/** Redeem the server-minted token to establish the real Supabase session. */
-export async function completeDeviceLinkSignIn(email: string, tokenHash: string): Promise<{ error: Error | null }> {
-  const { error } = await supabase.auth.verifyOtp({ email, token_hash: tokenHash, type: "magiclink" });
+/**
+ * Redeem the server-minted token to establish the real Supabase session.
+ * `email` isn't passed to `verifyOtp` — auth-js's token_hash variant rejects
+ * the call outright ("Only the token_hash and type should be provided") if
+ * `email` is present alongside it; the two are mutually exclusive verify
+ * modes, not a pair. Kept as a parameter here only because callers already
+ * have it from {@link pollDeviceLinkStatus} and may want it for a message.
+ */
+export async function completeDeviceLinkSignIn(_email: string, tokenHash: string): Promise<{ error: Error | null }> {
+  const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
   return { error: error ?? null };
 }
