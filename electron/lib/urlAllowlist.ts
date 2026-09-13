@@ -27,12 +27,12 @@ const ALLOWED_EXTERNAL_HOSTS = new Set([
   'console.groq.com',
   'openrouter.ai',
   'huggingface.co',
-  // Optional cloud sign-in: the OAuth consent page opens in the user's real
-  // browser (Google refuses to authenticate inside an embedded window, and a
-  // file:// renderer has no origin to redirect back to). Supabase issues the
-  // authorize URL on its own host and redirects on from there, so both hosts
-  // have to be openable.
-  'accounts.google.com',
+  // Optional cloud sign-in (device-link flow, 2026-09-13): the project's
+  // Google OAuth provider only works through Lovable's managed web broker,
+  // which a file:// renderer has no origin to use directly. Desktop instead
+  // opens the web app's own /connect-device page in the user's real browser
+  // to confirm a short-lived code — see src/lib/desktopDeviceLink.ts.
+  'editor.alulama.org',
   ...(supabaseHost ? [supabaseHost] : []),
 ]);
 

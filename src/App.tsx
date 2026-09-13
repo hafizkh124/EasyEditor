@@ -48,6 +48,7 @@ const Refund = lazy(() => import("./pages/legal/Refund"));
 const PricingInfo = lazy(() => import("./pages/legal/PricingInfo"));
 const MaktabaShamilaGuide = lazy(() => import("./pages/guides/MaktabaShamila"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const ConnectDevice = lazy(() => import("./pages/ConnectDevice"));
 
 const queryClient = new QueryClient();
 
@@ -180,6 +181,10 @@ const App = () => (
                   <Route path="/admin" element={<CapabilityRoute id="admin"><ProtectedRoute><Admin /></ProtectedRoute></CapabilityRoute>} />
                   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+                  {/* Not ProtectedRoute: like /.lovable/oauth/consent, this page must
+                      preserve its own ?code= across the sign-in redirect, which
+                      ProtectedRoute's generic "/login" redirect does not carry. */}
+                  <Route path="/connect-device" element={<ConnectDevice />} />
                   <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>

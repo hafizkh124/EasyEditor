@@ -104,7 +104,11 @@ export default tseslint.config(
       // Desktop in-app optional sign-in — same cloud-only auth surface as Login,
       // reached from inside the offline app rather than a public landing page.
       "src/components/auth/DesktopAccountMenu.tsx",
-      "src/lib/desktopOauth.ts",
+      // Device-link sign-in (2026-09-13, replaces desktopOauth.ts) — desktop's
+      // half of the flow (polling + the final verifyOtp hand-off) and the
+      // web page that confirms a code. Same cloud-only auth surface as Login.
+      "src/lib/desktopDeviceLink.ts",
+      "src/pages/ConnectDevice.tsx",
       // ── admin ───────────────────────────────────────────────────────────
       "src/pages/Admin.tsx",
       "src/lib/admin/corpus-rpc.ts",

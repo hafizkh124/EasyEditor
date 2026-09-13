@@ -93,6 +93,16 @@ export interface FakeSupabaseConfig {
   >;
   /** What `storage.from(bucket).download(path)` resolves with. */
   storageDownload?: { data?: Blob | null; error?: FakeError };
+  /** `auth.admin.getUserById(id)` results, keyed by user id. */
+  adminUsers?: Record<string, { email?: string } | FakeError>;
+  /**
+   * `auth.admin.generateLink(opts)` result. A function form receives the
+   * call's `opts` — needed when a test wants the hand-off to fail only on a
+   * later call, or to assert what `email` was actually requested.
+   */
+  adminGenerateLink?:
+    | { data?: { properties?: { hashed_token?: string } }; error?: FakeError }
+    | ((opts: { type: string; email: string }) => { data?: { properties?: { hashed_token?: string } }; error?: FakeError });
 }
 
 export interface FakeClient {
@@ -101,7 +111,16 @@ export interface FakeClient {
   auth: {
     getClaims(token?: string): Promise<{ data: unknown; error: FakeError | null }>;
     getUser(token?: string): Promise<{ data: { user: unknown }; error: FakeError | null }>;
+    admin: {
+      getUserById(id: string): Promise<{ data: { user: { id: string; email?: string } | null }; error: FakeError | null }>;
+      generateLink(opts: { type: string; email: string }): Promise<{
+        data: { properties?: { hashed_token?: string } } | null;
+        error: FakeError | null;
+      }>;
+    };
   };
+  /** Every `auth.admin.generateLink` call, in order — for asserting which email was requested. */
+  adminGenerateLinkCalls: Array<{ type: string; email: string }>;
   storage: { from(bucket: string): { download(path: string): Promise<unknown> } };
   /** Every mutation, in the order the function issued it. */
   writes: RecordedWrite[];
@@ -260,6 +279,7 @@ export function createFakeClient(config: FakeSupabaseConfig = {}): FakeClient {
     reads: [],
     rpcCalls: [],
     storageDownloads: [],
+    adminGenerateLinkCalls: [],
 
     from(table: string) {
       return new FakeBuilder(table, config, client);
@@ -285,6 +305,20 @@ export function createFakeClient(config: FakeSupabaseConfig = {}): FakeClient {
       getUser() {
         if (config.getUserError) return Promise.resolve({ data: { user: null }, error: config.getUserError });
         return Promise.resolve({ data: { user: config.user ?? null }, error: null });
+      },
+      admin: {
+        getUserById(id: string) {
+          const configured = config.adminUsers?.[id];
+          if (!configured) return Promise.resolve({ data: { user: null }, error: { message: "not found" } });
+          if ("message" in configured) return Promise.resolve({ data: { user: null }, error: configured });
+          return Promise.resolve({ data: { user: { id, email: configured.email } }, error: null });
+        },
+        generateLink(opts: { type: string; email: string }) {
+          client.adminGenerateLinkCalls.push(opts);
+          const configured = config.adminGenerateLink;
+          const result = typeof configured === "function" ? configured(opts) : configured;
+          return Promise.resolve({ data: result?.data ?? null, error: result?.error ?? null });
+        },
       },
     },
 
