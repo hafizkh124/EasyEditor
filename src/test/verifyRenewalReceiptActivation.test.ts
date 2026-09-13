@@ -70,10 +70,15 @@ const cleanVerdict = (over: Record<string, unknown> = {}) => ({
  * fakeSupabase.ts) — without it, the tier lookup's `.eq("user_id", userId)`
  * would filter this row out and every test would 400 on "no active plan".
  */
+/** Always 7 days out from whenever the suite actually runs — a fixed
+ * calendar date here goes stale and starts reading as "already lapsed"
+ * once real time catches up to it. */
+const FUTURE_EXPIRY = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
 const activeSub = (over: Record<string, unknown> = {}) => ({
   user_id: USER_ID,
   tier: "pro",
-  expires_at: "2026-09-10T00:00:00.000Z", // in the future relative to "now" below
+  expires_at: FUTURE_EXPIRY, // in the future relative to "now" below
   renewal_count: 2,
   ...over,
 });
@@ -172,7 +177,7 @@ describe("expiry math — the part unique to renewal", () => {
   it("extends from the current expiry when the plan has not lapsed", async () => {
     const client = arrange({
       tables: {
-        subscriptions: [activeSub({ expires_at: "2026-09-10T00:00:00.000Z" })],
+        subscriptions: [activeSub({ expires_at: FUTURE_EXPIRY })],
         admin_payments: [],
       },
     });
@@ -180,7 +185,7 @@ describe("expiry math — the part unique to renewal", () => {
 
     const payload = client.writesTo("subscriptions")[0].payload as Record<string, string>;
     const newExpiry = Date.parse(payload.expires_at);
-    const oldExpiry = Date.parse("2026-09-10T00:00:00.000Z");
+    const oldExpiry = Date.parse(FUTURE_EXPIRY);
 
     expect(newExpiry - oldExpiry).toBe(30 * 24 * 60 * 60 * 1000);
   });

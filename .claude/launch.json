@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 8080
+    },
+    {
+      "name": "easyeditor-dev-desktop",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:electron"],
+      "port": 8080
     }
   ]
 }

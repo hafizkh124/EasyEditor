@@ -356,7 +356,7 @@ const PendingApproval = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="pa-txid">Transaction ID</Label>
+              <Label htmlFor="pa-txid">{direction === "rtl" ? "ٹرانزیکشن آئی ڈی" : "Transaction ID"}</Label>
               <Input
                 id="pa-txid"
                 value={txId}

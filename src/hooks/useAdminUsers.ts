@@ -474,11 +474,11 @@ export function useAdminUsers(enabled: boolean) {
       .single<{ user_id: string; token_amount: number; status: string }>();
 
     if (fetchErr || !req) {
-      toast.error("Top-up request not found");
+      toast.error(t("admin.topup_not_found"));
       return;
     }
     if (req.status !== "pending") {
-      toast.error("Request already processed");
+      toast.error(t("admin.topup_already_processed"));
       return;
     }
 
@@ -510,7 +510,7 @@ export function useAdminUsers(enabled: boolean) {
       `Your top-up of ${req.token_amount} tokens has been approved and credited to your account.`,
     );
 
-    toast.success("Top-up approved and tokens credited");
+    toast.success(t("admin.topup_approved"));
   };
 
   const rejectTopup = async (requestId: string) => {
@@ -539,7 +539,7 @@ export function useAdminUsers(enabled: boolean) {
       );
     }
 
-    toast.success("Top-up request rejected");
+    toast.success(t("admin.topup_rejected"));
   };
 
   const tierLabel = (tier: string) => {

@@ -150,7 +150,7 @@ const Settings = () => {
                 )}
 
                 <div className="flex items-center justify-between pt-4 border-t border-border/40">
-                  <span className="text-xs text-muted-foreground font-medium">App Version & Build:</span>
+                  <span className="text-xs text-muted-foreground font-medium">{t("settings.app_version_label")}</span>
                   <AppVersionBadge />
                 </div>
               </>

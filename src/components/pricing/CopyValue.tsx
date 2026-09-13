@@ -8,12 +8,12 @@ import { toast } from "sonner";
  */
 
 /** Local to this module — both controls below are the only callers. */
-const copyToClipboard = async (value: string, copiedLabel: string) => {
+const copyToClipboard = async (value: string, copiedLabel: string, failedLabel: string) => {
   try {
     await navigator.clipboard.writeText(value);
     toast.success(copiedLabel);
   } catch {
-    toast.error("Copy failed");
+    toast.error(failedLabel);
   }
 };
 
@@ -27,9 +27,10 @@ interface CopyValueProps {
   label: string;
   copyLabel: string;
   copiedLabel: string;
+  copyFailedLabel: string;
 }
 
-export const CopyValue = ({ value, mono, small, label, copyLabel, copiedLabel }: CopyValueProps) => (
+export const CopyValue = ({ value, mono, small, label, copyLabel, copiedLabel, copyFailedLabel }: CopyValueProps) => (
   // `dir="ltr"` regardless of page direction: an IBAN or till id is a Latin
   // string and reverses into nonsense under RTL.
   <div className="flex items-center gap-2 min-w-0" dir="ltr">
@@ -38,7 +39,7 @@ export const CopyValue = ({ value, mono, small, label, copyLabel, copiedLabel }:
     </span>
     <button
       type="button"
-      onClick={() => copyToClipboard(value, copiedLabel)}
+      onClick={() => copyToClipboard(value, copiedLabel, copyFailedLabel)}
       aria-label={`${copyLabel} ${label}`}
       className={copyButtonClass}
     >
@@ -53,17 +54,18 @@ interface PhoneValueProps {
   wa?: string;
   copyLabel: string;
   copiedLabel: string;
+  copyFailedLabel: string;
   waLabel?: string;
 }
 
-export const PhoneValue = ({ display, raw, wa, copyLabel, copiedLabel, waLabel }: PhoneValueProps) => (
+export const PhoneValue = ({ display, raw, wa, copyLabel, copiedLabel, copyFailedLabel, waLabel }: PhoneValueProps) => (
   <div className="flex items-center gap-2 min-w-0 flex-wrap" dir="ltr">
     <a href={`tel:${raw}`} className="font-mono font-medium text-primary underline-offset-2 hover:underline">
       {display}
     </a>
     <button
       type="button"
-      onClick={() => copyToClipboard(raw, copiedLabel)}
+      onClick={() => copyToClipboard(raw, copiedLabel, copyFailedLabel)}
       aria-label={`${copyLabel} ${display}`}
       className={copyButtonClass}
     >

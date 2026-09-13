@@ -25,7 +25,7 @@ const ForgotPassword = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Check your email for a password reset link!");
+      toast.success(t("auth.check_email_reset"));
     }
     setIsLoading(false);
   };

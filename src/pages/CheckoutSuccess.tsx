@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useSeo } from "@/hooks/useSeo";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const CheckoutSuccess = () => {
   useSeo({
@@ -12,6 +13,7 @@ const CheckoutSuccess = () => {
     description: "Your payment was received. Your Easy Editor account is being activated.",
     path: "/checkout/success",
   });
+  const { t } = useLanguage();
   const { refetch } = useSubscription();
 
   useEffect(() => {
@@ -25,16 +27,16 @@ const CheckoutSuccess = () => {
           <div className="mx-auto rounded-full bg-emerald-500/10 p-4 w-fit">
             <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Payment received</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("checkout.payment_received")}</h1>
           <p className="text-muted-foreground text-sm">
-            Thank you! Your account has been activated.
+            {t("checkout.thank_you")}
           </p>
           <div className="flex gap-2 justify-center pt-2">
             <Button asChild>
-              <Link to="/dashboard">Go to Dashboard</Link>
+              <Link to="/dashboard">{t("nav.dashboard")}</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link to="/settings">View Plan</Link>
+              <Link to="/settings">{t("checkout.view_plan")}</Link>
             </Button>
           </div>
         </CardContent>

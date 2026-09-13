@@ -10,7 +10,7 @@ const log = logger.child("NotFound");
 
 const NotFound = () => {
   const location = useLocation();
-  const { direction } = useLanguage();
+  const { direction, t } = useLanguage();
 
   useSeo({ title: "Page not found — Al-Ulama Easy Editor", description: "This page could not be found.", noindex: true });
 
@@ -22,14 +22,14 @@ const NotFound = () => {
     <div className="flex min-h-screen items-center justify-center bg-background p-4" dir={direction}>
       <div className="text-center space-y-4">
         <h1 className="text-7xl font-bold text-primary">404</h1>
-        <p className="text-xl text-muted-foreground">Page not found</p>
+        <p className="text-xl text-muted-foreground">{t("notfound.title")}</p>
         <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-          The page you're looking for doesn't exist or has been moved.
+          {t("notfound.description")}
         </p>
         <Link to="/">
           <Button className="gap-2 mt-2">
             <Home className="h-4 w-4" />
-            Return to Home
+            {t("notfound.return_home")}
           </Button>
         </Link>
       </div>
