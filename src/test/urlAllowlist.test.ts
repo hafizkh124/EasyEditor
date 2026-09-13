@@ -20,7 +20,7 @@ describe("isAllowedExternalUrl — allowed hosts", () => {
     ["https://github.com/hafizkh124/EasyEditor", "github.com"],
     ["https://aistudio.google.com/app/apikey", "aistudio.google.com"],
     ["https://huggingface.co/ggerganov/whisper.cpp", "huggingface.co"],
-    ["https://accounts.google.com/o/oauth2/v2/auth?client_id=x", "accounts.google.com"],
+    ["https://editor.alulama.org/connect-device?code=ABCDEFGH", "editor.alulama.org"],
   ])("allows %s", (url, hostname) => {
     const parsed = isAllowedExternalUrl(url);
     expect(parsed).not.toBeNull();
@@ -72,7 +72,7 @@ describe("isAllowedExternalUrl — host spoofing", () => {
     // Suffix: an `endsWith` implementation would let all of these through.
     "https://shamela.ws.evil.com/x",
     "https://github.com.evil.com/x",
-    "https://accounts.google.com.evil.com/x",
+    "https://editor.alulama.org.evil.com/x",
     // Prefix / infix.
     "https://evil-shamela.ws/x",
     "https://evilshamela.ws/x",

@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogIn, User, LayoutDashboard, ChevronDown, Loader2, LogOut } from "lucide-react";
+import { LogIn, User, LayoutDashboard, ChevronDown, Loader2, LogOut, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
-import { startDesktopOauth } from "@/lib/desktopOauth";
+import {
+  CONNECT_DEVICE_URL, createDeviceLinkCode, pollDeviceLinkStatus, completeDeviceLinkSignIn,
+} from "@/lib/desktopDeviceLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { isDesktop } from "@/utils/environment";
@@ -35,11 +36,95 @@ import { GoogleIcon } from "@/components/icons/GoogleIcon";
 
 type SignInMode = "password" | "google" | null;
 
+const POLL_INTERVAL_MS = 2500;
+
+/**
+ * Desktop can't use the project's Google OAuth provider directly — see
+ * `src/lib/desktopDeviceLink.ts`'s header for the full story. This shows the
+ * device code and polls until the user confirms it on the (already-working)
+ * web sign-in page, then completes the session here.
+ */
+const GoogleDeviceLinkWait: React.FC<{
+  code: string;
+  expiresAt: string;
+  onDone: () => void;
+  onCancel: () => void;
+}> = ({ code, expiresAt, onDone, onCancel }) => {
+  const { t } = useLanguage();
+  const [expired, setExpired] = useState(false);
+  const cancelledRef = useRef(false);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    const expiresAtMs = new Date(expiresAt).getTime();
+
+    const tick = async () => {
+      if (cancelledRef.current) return;
+      if (Date.now() >= expiresAtMs) {
+        setExpired(true);
+        return;
+      }
+      const result = await pollDeviceLinkStatus(code);
+      if (cancelledRef.current) return;
+      if ("error" in result) return; // transient — the next tick retries
+      if (result.status === "expired" || result.status === "not_found") {
+        setExpired(true);
+        return;
+      }
+      if (result.status === "confirmed" && result.email && result.tokenHash) {
+        const { error } = await completeDeviceLinkSignIn(result.email, result.tokenHash);
+        if (cancelledRef.current) return;
+        if (error) {
+          toast.error(error.message);
+          setExpired(true);
+          return;
+        }
+        onDone();
+        return;
+      }
+      timer = window.setTimeout(tick, POLL_INTERVAL_MS);
+    };
+
+    let timer = window.setTimeout(tick, POLL_INTERVAL_MS);
+    return () => {
+      cancelledRef.current = true;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- code/expiresAt are stable for this component's lifetime (a fresh code = a fresh mount via `key`)
+  }, []);
+
+  if (expired) {
+    return (
+      <div className="space-y-3 text-center">
+        <p className="text-sm text-muted-foreground">{t("device_link.expired")}</p>
+        <Button variant="outline" className="w-full" onClick={onCancel}>{t("common.retry")}</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 text-center">
+      <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />
+      <p className="text-sm font-medium text-foreground">{t("device_link.waiting_title")}</p>
+      <p className="text-xs text-muted-foreground">
+        {t("device_link.waiting_desc").replace("{url}", CONNECT_DEVICE_URL)}
+      </p>
+      <p className="font-mono text-lg tracking-widest text-foreground" dir="ltr">{code}</p>
+      <p className="text-xs text-muted-foreground">{t("device_link.code_label")}</p>
+      <Button variant="ghost" size="sm" className="gap-1.5" onClick={onCancel}>
+        <X className="h-3.5 w-3.5" />
+        {t("common.cancel")}
+      </Button>
+    </div>
+  );
+};
+
 const SignInForm: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   const { t, direction } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busyMode, setBusyMode] = useState<SignInMode>(null);
+  const [deviceLink, setDeviceLink] = useState<{ code: string; expiresAt: string } | null>(null);
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,16 +141,37 @@ const SignInForm: React.FC<{ onDone: () => void }> = ({ onDone }) => {
 
   const handleGoogle = async () => {
     setBusyMode("google");
-    // Desktop cannot use the shared `lovable` helper: it redirects the current
-    // window, which Electron's navigation guard intercepts. See desktopOauth.ts.
-    const { error } = isDesktop()
-      ? await startDesktopOauth("google")
-      : await lovable.auth.signInWithOAuth("google", {
-          redirect_uri: window.location.origin + "/login",
-        });
+    // This component only ever renders on desktop (the parent bails out with
+    // `if (!isDesktop()) return null`) — the project's Google OAuth provider
+    // only works through Lovable's managed web broker, unreachable from a
+    // file://-loaded renderer, so desktop signs in via a device-link code
+    // confirmed on the (already-working) web page instead. See
+    // src/lib/desktopDeviceLink.ts.
+    const result = await createDeviceLinkCode();
     setBusyMode(null);
-    if (error) toast.error(error.message);
+    if ("error" in result) {
+      toast.error(t("device_link.error_create_failed"));
+      return;
+    }
+    const opened = await window.electronAPI?.openExternal(`${CONNECT_DEVICE_URL}?code=${result.code}`);
+    if (!opened) toast.error(t("device_link.error_open_failed"));
+    setDeviceLink(result);
   };
+
+  if (deviceLink) {
+    return (
+      <GoogleDeviceLinkWait
+        key={deviceLink.code}
+        code={deviceLink.code}
+        expiresAt={deviceLink.expiresAt}
+        onDone={() => {
+          toast.success(t("auth.login_success"));
+          onDone();
+        }}
+        onCancel={() => setDeviceLink(null)}
+      />
+    );
+  }
 
   return (
     <div dir={direction} className="space-y-4">
