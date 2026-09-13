@@ -71,11 +71,18 @@ const GoogleDeviceLinkWait: React.FC<{
         setExpired(true);
         return;
       }
+      // "claimed" with no token here means the one-time hand-off already
+      // happened (or failed) on a previous poll — this code can never make
+      // progress again, so stop waiting on it the same as an expired one.
+      if (result.status === "claimed") {
+        setExpired(true);
+        return;
+      }
       if (result.status === "confirmed" && result.email && result.tokenHash) {
         const { error } = await completeDeviceLinkSignIn(result.email, result.tokenHash);
         if (cancelledRef.current) return;
         if (error) {
-          toast.error(error.message);
+          toast.error(t("device_link.error_sign_in_failed"));
           setExpired(true);
           return;
         }

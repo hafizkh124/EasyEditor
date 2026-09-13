@@ -113,8 +113,16 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
       )}
 
       {/* The timeline (ChatDisplay, showing the agent_run item) fills the
-          remaining space between the shell above and the input below. */}
-      <div className="flex-1 min-h-0">{children}</div>
+          remaining space between the shell above and the input below.
+          `flex flex-col` + `overflow-hidden` are load-bearing, not
+          decorative: without them this box has no determinate height for
+          ChatDisplay's `h-full`-less root to inherit, so ChatDisplay's own
+          `overflow-y-auto` messages area never had a bounded height to
+          scroll within — its content (e.g. EmptyState's suggestion list)
+          just grew past this box's edge and visually overlapped the
+          composer below instead of scrolling. Matches the same wrapper
+          shape ResearchPanel.tsx's plain (non-agent) path already uses. */}
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden">{children}</div>
 
       {/* Input */}
       <div className="relative border-t border-border p-2 shrink-0" data-workspace-composer>

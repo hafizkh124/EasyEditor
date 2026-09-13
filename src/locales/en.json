@@ -421,6 +421,7 @@
   "device_link.expired": "This code expired. Try again.",
   "device_link.error_open_failed": "Could not open your browser.",
   "device_link.error_create_failed": "Could not start sign-in. Try again.",
+  "device_link.error_sign_in_failed": "Could not finish signing in. Try again.",
   "connect_device.title": "Connect this device to your account?",
   "connect_device.description": "Approving this will sign your Easy Editor desktop app in as you.",
   "connect_device.confirm": "Confirm",

@@ -421,6 +421,7 @@
   "device_link.expired": "یہ کوڈ ختم ہو گیا۔ دوبارہ کوشش کریں۔",
   "device_link.error_open_failed": "آپ کا براؤزر نہیں کھل سکا۔",
   "device_link.error_create_failed": "سائن اِن شروع نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
+  "device_link.error_sign_in_failed": "سائن اِن مکمل نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
   "connect_device.title": "کیا اس ڈیوائس کو اپنے اکاؤنٹ سے جوڑنا چاہتے ہیں؟",
   "connect_device.description": "اس کی منظوری سے آپ کی ایزی ایڈیٹر ڈیسک ٹاپ ایپ آپ کے طور پر سائن اِن ہو جائے گی۔",
   "connect_device.confirm": "تصدیق کریں",

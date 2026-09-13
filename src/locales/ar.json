@@ -421,6 +421,7 @@
   "device_link.expired": "انتهت صلاحية هذا الرمز. حاول مرة أخرى.",
   "device_link.error_open_failed": "تعذر فتح متصفحك.",
   "device_link.error_create_failed": "تعذر بدء تسجيل الدخول. حاول مرة أخرى.",
+  "device_link.error_sign_in_failed": "تعذر إكمال تسجيل الدخول. حاول مرة أخرى.",
   "connect_device.title": "هل تريد ربط هذا الجهاز بحسابك؟",
   "connect_device.description": "الموافقة على هذا ستُسجّل دخول تطبيق Easy Editor لسطح المكتب كحسابك.",
   "connect_device.confirm": "تأكيد",
