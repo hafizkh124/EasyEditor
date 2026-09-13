@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { applyPendingReferral, consumePendingReferralCode } from "@/lib/referral";
 import { logger } from "@/lib/logger";
+import { consumeImplicitAuthHash } from "@/lib/authHashSession";
 
 const log = logger.child("AuthContext");
 
@@ -75,7 +76,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Lovable's managed Google OAuth returns an implicit #access_token hash,
+    // which auth-js refuses to consume while the client runs in PKCE mode.
+    // Adopt it manually before reading the stored session.
+    consumeImplicitAuthHash(supabase)
+      .catch(() => false)
+      .then(() => supabase.auth.getSession())
+      .then(({ data: { session } }) => {
       setSession((prev) =>
         prev?.access_token === session?.access_token && prev?.user?.id === session?.user?.id
           ? prev : session);
