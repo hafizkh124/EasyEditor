@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { applyPendingReferral, consumePendingReferralCode } from "@/lib/referral";
 import { logger } from "@/lib/logger";
+import { consumeImplicitAuthHash } from "@/lib/authHashSession";
 
 const log = logger.child("AuthContext");
 
