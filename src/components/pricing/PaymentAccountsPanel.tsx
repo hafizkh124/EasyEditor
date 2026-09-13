@@ -38,6 +38,7 @@ export const PaymentAccountsPanel = ({ t }: { t: Translator }) => (
                     wa={row.whatsapp}
                     copyLabel={t("pricing.copy")}
                     copiedLabel={t("pricing.copied")}
+                    copyFailedLabel={t("referral.copy_failed")}
                     waLabel={t("pricing.manual_note_whatsapp_label")}
                   />
                 ) : (
@@ -48,6 +49,7 @@ export const PaymentAccountsPanel = ({ t }: { t: Translator }) => (
                     label={label}
                     copyLabel={t("pricing.copy")}
                     copiedLabel={t("pricing.copied")}
+                    copyFailedLabel={t("referral.copy_failed")}
                   />
                 )}
               </div>

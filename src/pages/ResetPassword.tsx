@@ -32,7 +32,7 @@ const ResetPassword = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Password updated successfully!");
+      toast.success(t("auth.password_updated"));
       navigate("/dashboard");
     }
     setIsLoading(false);
@@ -43,7 +43,7 @@ const ResetPassword = () => {
       <div className="flex min-h-screen items-center justify-center bg-background p-4" dir={direction}>
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center text-muted-foreground">
-            Invalid or expired reset link.
+            {t("auth.invalid_reset_link")}
           </CardContent>
         </Card>
       </div>

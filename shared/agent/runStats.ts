@@ -41,6 +41,17 @@ function toolName(labelKey?: string): string | null {
   return labelKey.slice("agent.step.".length);
 }
 
+/**
+ * A step reads as failed either directly (`kind: "error"`) or as a tool call
+ * that came back with a `detail` (the error text) rather than a real result.
+ * Shared so the run stats bar and the step-list renderer never drift apart —
+ * they did once: the renderer's own failure check only looked at `"error"`
+ * and missed every `tool-result` failure this counts.
+ */
+export function isFailedStep(p: Pick<RunStepLike, "kind" | "detail">): boolean {
+  return p.kind === "error" || (p.kind === "tool-result" && Boolean(p.detail));
+}
+
 export function deriveRunStats(progress: RunStepLike[]): RunStats {
   let toolsRun = 0;
   let toolsFailed = 0;
@@ -51,11 +62,10 @@ export function deriveRunStats(progress: RunStepLike[]): RunStats {
     if (p.kind === "thinking") continue;
     steps += 1;
     if (p.kind === "tool") toolsRun += 1;
-    if (p.kind === "error") toolsFailed += 1;
-    if (p.kind === "tool-result") {
-      if (p.detail) toolsFailed += 1;
+    if (isFailedStep(p)) toolsFailed += 1;
+    if (p.kind === "tool-result" && !p.detail) {
       const name = toolName(p.labelKey);
-      if (!p.detail && name && RETRIEVAL_KEYS.has(name)) sourcesRead += 1;
+      if (name && RETRIEVAL_KEYS.has(name)) sourcesRead += 1;
     }
   }
 

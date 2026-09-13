@@ -28,7 +28,7 @@ export function useAdminPayments() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Not authenticated");
+        toast.error(t("admin.not_authenticated"));
         return false;
       }
 

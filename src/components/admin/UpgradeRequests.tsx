@@ -8,6 +8,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { UserRow } from "./types";
+import type { Translator } from "@/lib/i18n";
 
 interface UpgradeRequestsProps {
   requests: UserRow[];
@@ -17,13 +18,13 @@ interface UpgradeRequestsProps {
   tierLabel: (tier: string) => string;
 }
 
-const AiStatusBadge = ({ status, score }: { status: string | null; score: number | null }) => {
+const AiStatusBadge = ({ status, score, t }: { status: string | null; score: number | null; t: Translator }) => {
   if (!status || status === "none") return null;
   if (status === "auto_approved") {
     return (
       <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 gap-1">
         <Sparkles className="h-3 w-3" />
-        AI auto-approved {score !== null && `(${score}%)`}
+        {t("admin.ai_auto_approved")} {score !== null && `(${score}%)`}
       </Badge>
     );
   }
@@ -31,17 +32,17 @@ const AiStatusBadge = ({ status, score }: { status: string | null; score: number
     return (
       <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 gap-1">
         <AlertTriangle className="h-3 w-3" />
-        Manual review {score !== null && `(AI: ${score}%)`}
+        {t("admin.ai_manual_review")} {score !== null && `(AI: ${score}%)`}
       </Badge>
     );
   }
   if (status === "rejected") {
-    return <Badge variant="destructive">AI rejected</Badge>;
+    return <Badge variant="destructive">{t("admin.ai_rejected")}</Badge>;
   }
   return null;
 };
 
-const ReceiptButton = ({ path }: { path: string | null }) => {
+const ReceiptButton = ({ path, t }: { path: string | null; t: Translator }) => {
   const [loading, setLoading] = useState(false);
   if (!path) return null;
   const handleClick = async () => {
@@ -51,7 +52,7 @@ const ReceiptButton = ({ path }: { path: string | null }) => {
       .createSignedUrl(path, 300);
     setLoading(false);
     if (error || !data?.signedUrl) {
-      toast.error("Could not open receipt");
+      toast.error(t("admin.could_not_open_receipt"));
       return;
     }
     window.open(data.signedUrl, "_blank", "noopener");
@@ -59,7 +60,7 @@ const ReceiptButton = ({ path }: { path: string | null }) => {
   return (
     <Button size="sm" variant="outline" onClick={handleClick} disabled={loading}>
       {loading ? <Loader2 className="h-4 w-4 me-1 animate-spin" /> : <ImageIcon className="h-4 w-4 me-1" />}
-      View receipt
+      {t("admin.view_receipt")}
     </Button>
   );
 };
@@ -98,7 +99,7 @@ const UpgradeRequests = ({ requests, loading, onApprove, onReject, tierLabel }: 
                           <p className="font-medium text-foreground">
                             {u.display_name || t("admin.unnamed")}
                           </p>
-                          <AiStatusBadge status={u.ai_verification_status} score={u.ai_confidence_score} />
+                          <AiStatusBadge status={u.ai_verification_status} score={u.ai_confidence_score} t={t} />
                         </div>
                         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                           <span>
@@ -126,7 +127,7 @@ const UpgradeRequests = ({ requests, loading, onApprove, onReject, tierLabel }: 
                                 type="button"
                                 className="text-xs text-amber-700 dark:text-amber-400 underline-offset-2 hover:underline"
                               >
-                                {reasons.length} AI flag{reasons.length === 1 ? "" : "s"} — hover for detail
+                                {t("admin.ai_flags_hover").replace("{n}", String(reasons.length))}
                               </button>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
@@ -145,7 +146,7 @@ const UpgradeRequests = ({ requests, loading, onApprove, onReject, tierLabel }: 
                         )}
                       </div>
                       <div className="flex flex-wrap gap-2 flex-shrink-0">
-                        <ReceiptButton path={u.payment_proof_url} />
+                        <ReceiptButton path={u.payment_proof_url} t={t} />
                         <Button
                           size="sm"
                           onClick={() => onApprove(u.user_id, u.pending_tier || "pro")}

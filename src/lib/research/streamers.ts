@@ -2,6 +2,12 @@ import { supabase } from "@/integrations/supabase/client";
 import type { ChatMessage, Source } from "@/components/research/types";
 import type { CitationItem } from "@/components/research/CitationPanel";
 import type { ResearchAssistMode } from "@/lib/prompts";
+import { translateStored } from "@/lib/i18n";
+
+/** Outside React — reads the persisted language preference directly, same as ErrorBoundary. */
+function signInRequiredMessage(): string {
+  return translateStored("research.sign_in_required", "Sign in to send research questions — use the \"Sign in\" button at the top right.");
+}
 
 export type SpellingChange = { start: number; end: number; original: string; corrected: string };
 export type StructuredCitation = {
@@ -89,7 +95,7 @@ export async function streamResearchQuery({
   try {
     const accessToken = await getSessionToken();
     if (!accessToken) {
-      onError("Please sign in to use research.");
+      onError(signInRequiredMessage());
       return;
     }
 
@@ -156,7 +162,7 @@ export async function streamIslamicQuery({
   try {
     const accessToken = await getSessionToken();
     if (!accessToken) {
-      onError("Please sign in to use research.");
+      onError(signInRequiredMessage());
       return;
     }
 
@@ -316,7 +322,7 @@ export async function assistResearchQuery({
   if (modes.length === 0) throw new Error("assistResearchQuery requires at least one mode");
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/research-query`;
   const accessToken = await getSessionToken();
-  if (!accessToken) throw new Error("Please sign in to use research.");
+  if (!accessToken) throw new Error(signInRequiredMessage());
 
   const resp = await fetch(url, {
     method: "POST",

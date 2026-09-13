@@ -240,7 +240,7 @@ const Speak = () => {
 
     // Cloud TTS path
     if (!session?.access_token) {
-      toast.error("Please sign in to use TTS");
+      toast.error(t("tts.sign_in_required"));
       return null;
     }
     const response = await fetch(

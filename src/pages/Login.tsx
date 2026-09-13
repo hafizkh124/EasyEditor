@@ -58,7 +58,7 @@ const Login = () => {
           <div className="rounded-2xl bg-primary/10 p-3">
             <img src={`${import.meta.env.BASE_URL}favicon.webp`} alt="Easy Editor" width={40} height={40} className="rounded-lg" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Log in to Easy Editor</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">{t("auth.login_heading")}</h1>
           <p className="text-sm text-muted-foreground">{t("auth.login")}</p>
         </div>
 
@@ -76,7 +76,7 @@ const Login = () => {
                 <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">or</span>
+                <span className="bg-card px-2 text-muted-foreground">{t("auth.or")}</span>
               </div>
             </div>
 

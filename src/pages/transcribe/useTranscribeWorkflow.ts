@@ -245,7 +245,7 @@ export function useTranscribeWorkflow() {
             persistTranscript(newText, "");
           }
         } catch (err: unknown) {
-          toast.error(err instanceof Error ? err.message : "Transcription failed");
+          toast.error(err instanceof Error ? err.message : t("stt.transcription_failed"));
         }
         setIsProcessing(false);
       };
@@ -253,7 +253,7 @@ export function useTranscribeWorkflow() {
       mediaRecorder.start();
       setIsRecording(true);
     } catch {
-      toast.error("Microphone access denied");
+      toast.error(t("stt.mic_access_denied"));
     }
     // Same reasoning as the upload handler: `persistTranscript` closes over
     // `originalText`, so leaving it out saves the session with a stale value.

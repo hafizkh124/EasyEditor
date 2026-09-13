@@ -34,6 +34,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ProvenanceChips } from "@/components/workspace/ProvenanceChip";
 import { RunStatsBar } from "@/components/workspace/RunStatsBar";
 import { connectorsUsed } from "~shared/agent/connectors";
+import { isFailedStep } from "~shared/agent/runStats";
 import type { AgentRunView, AgentTurn } from "@/hooks/useAgentRun";
 
 const VIRTUALIZE_THRESHOLD = 50;
@@ -425,7 +426,7 @@ const ChatDisplay = ({
             >
               <ChevronRight className="h-3.5 w-3.5 shrink-0" />
               {t("agent.ran_steps", "Ran {n} steps").replace("{n}", String(stepLines.length))}
-              {stepLines.some((p) => p.kind === "error") && <span className="text-amber-600">· {stepLines.filter((p) => p.kind === "error").length}</span>}
+              {stepLines.some(isFailedStep) && <span className="text-amber-600">· {stepLines.filter(isFailedStep).length}</span>}
             </button>
           ) : (
             <div className="space-y-1.5">
@@ -437,12 +438,12 @@ const ChatDisplay = ({
               )}
               {stepLines.map((p, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs">
-                  {p.kind === "error"
+                  {isFailedStep(p)
                     ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500 mt-0.5" />
                     : p.kind === "done"
                       ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500 mt-0.5" />
                       : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />}
-                  <span className={p.kind === "error" ? "text-amber-700 dark:text-amber-400" : "text-foreground"}>
+                  <span className={isFailedStep(p) ? "text-amber-700 dark:text-amber-400" : "text-foreground"}>
                     {p.labelKey ? t(p.labelKey as Parameters<typeof t>[0], p.label) : p.label}{p.detail ? ` — ${p.detail}` : ""}
                   </span>
                 </div>
