@@ -77,7 +77,13 @@ native OS protocol registration was out of scope for this fix.
   own-user_id binding on confirm, expiry, validation). `fakeSupabase.ts`
   gained `auth.admin.getUserById`/`auth.admin.generateLink` support (nobody
   had called either yet).
-- **Not yet live-verified end to end** — needs a deployed edge function/
-  migration (Lovable-applied, this repo cannot push either directly) plus a
-  real desktop build to open a real system browser. Recommend one real
-  device-link sign-in before considering this fully closed.
+- **Deployed 2026-09-13** (Lovable-applied migration + function). Smoke-verified:
+  `npm run smoke:functions` 31/31 (`device-link` cors=200/invoke=400 on an
+  empty probe body, same shape as every other function); the unauthenticated
+  `create` action independently confirmed returning a real code + 10-minute
+  expiry against production. **Not yet live-verified**: the full round trip
+  (`status` polling, `confirm`'s auth wall against a real session, the
+  `admin.generateLink`/`verifyOtp` hand-off, and the real desktop app opening
+  the real system browser) — none of these are exercised by a boot-time
+  smoke check. Recommend one real end-to-end device-link sign-in before
+  considering this fully closed.
