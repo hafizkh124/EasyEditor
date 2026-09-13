@@ -347,6 +347,39 @@ export type Database = {
           },
         ]
       }
+      device_link_codes: {
+        Row: {
+          claimed_at: string | null
+          code: string
+          confirmed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          claimed_at?: string | null
+          code: string
+          confirmed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          claimed_at?: string | null
+          code?: string
+          confirmed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       document_versions: {
         Row: {
           content_json: Json
