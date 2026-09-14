@@ -165,6 +165,12 @@ export function writeSyntheticHadithDb(root: string): string {
   int32(subj, 'LeftValue', [1, 2, 4]);
   int32(subj, 'RightValue', [6, 3, 5]);
   bool(subj, 'IsLeaf', [0, 1, 1]);
+  // Real Catalog.xml marks SubjectTitle CustomType="1" (compressed), so
+  // C() here matches production and buildIndex.ts's loadOneTable() will
+  // skip decoding it and store NULL, regardless of the bytes written below —
+  // this population exists only so the fixture's on-disk bytes resemble a
+  // real HadithDB, not because the built index will expose this text.
+  text(subj, 'SubjectTitle', ['كتاب الإيمان', 'باب النية', 'باب الإخلاص']);
   catalog(subj, [I('ID'), C('SubjectTitle'), I('ParentID'), B('IsLeaf'), I('LeftValue'), I('RightValue')].join(''), 'SELECT * FROM Subject');
 
   const sh = T2('SubjectHit');
