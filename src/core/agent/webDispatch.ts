@@ -32,6 +32,7 @@ import { libraryItemService } from "@/core/workspace/libraryItemService";
 import { searchLocalShamela } from "@/lib/shamela/localShamelaService";
 import { tafsirCall } from "@/lib/tafsir/tafsirService";
 import { streamIslamicQuery, streamResearchQuery } from "@/lib/research/streamers";
+import { toSelectedDomains } from "@/lib/research/sources";
 import type { Document } from "@/core/workspace/types";
 import type { CitationItem } from "~shared/research/citationTypes";
 import { formatScholarlyRef } from "~shared/research/citationTypes";
@@ -85,6 +86,8 @@ export interface WebAgentSession {
   isCancelled?: (() => boolean) | null;
   /** Plan §4.5 — corpus refs (`corpus:<uuid>`) search_corpus is restricted to. */
   bookScope?: string[];
+  /** M11 — source/domain narrowing + Arabic-matn filter (`search_hadith` only). */
+  researchFilter?: { selectedDomains?: string[]; requireArabicMatn?: boolean };
 }
 
 export interface WebDispatcher {
@@ -244,7 +247,7 @@ export function createWebDispatcher(session: WebAgentSession): WebDispatcher {
 
       case "search_hadith": {
         const query = str(args.query, "query");
-        const { answer, citations, error } = await runIslamicQuery(query);
+        const { answer, citations, error } = await runIslamicQuery(query, session.researchFilter);
         if (error) return { error };
         const chunks: RetrievedChunk[] = [];
         for (const c of citations) {
@@ -617,12 +620,17 @@ async function webQueryTafseer(q: { reference: string; mode: string; sources?: s
 // ── search_hadith / search_general — direct client calls (no bridge needed:
 // the web dispatcher already runs in the browser). Mirrors the accumulation
 // pattern useAgentRun.ts's handleResearch already uses for the desktop IPC path.
-async function runIslamicQuery(query: string): Promise<{ answer: string; citations: CitationItem[]; error?: string }> {
+async function runIslamicQuery(
+  query: string,
+  filter?: { selectedDomains?: string[]; requireArabicMatn?: boolean },
+): Promise<{ answer: string; citations: CitationItem[]; error?: string }> {
   return new Promise((resolve) => {
     const acc = { text: "" };
     let citations: CitationItem[] = [];
     streamIslamicQuery({
       query, strictMode: false, chatHistory: [], tier: "free",
+      selectedDomains: toSelectedDomains(filter?.selectedDomains ?? []),
+      requireArabicMatn: filter?.requireArabicMatn ?? false,
       onDelta: (chunk) => { acc.text += chunk; },
       onSourcesReady: (_c, _d, fetched) => { citations = fetched; },
       onDone: () => resolve({ answer: acc.text, citations }),

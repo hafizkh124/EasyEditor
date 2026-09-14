@@ -22,6 +22,17 @@ const log = logger.child('agent/researchBridge');
 
 export type ResearchMode = 'general' | 'islamic';
 
+/**
+ * M11 — the domain/source narrowing + Arabic-matn requirement the old plain-
+ * chat composer offered (`SourcePicker`), now reachable from Ask mode's
+ * `search_hadith` tool. `islamic` mode only — the General channel has no
+ * domain concept.
+ */
+export interface ResearchFilter {
+  selectedDomains?: string[];
+  requireArabicMatn?: boolean;
+}
+
 export interface ResearchResult {
   answer?: string;
   channel?: string;
@@ -55,6 +66,7 @@ export function requestResearch(
   query: string,
   sender: WebContents | null | undefined,
   mode: ResearchMode = 'general',
+  filter?: ResearchFilter,
 ): Promise<ResearchResult> {
   if (!sender || sender.isDestroyed()) {
     return Promise.resolve({ error: 'Research is unavailable — the app window is gone.' });
@@ -73,6 +85,8 @@ export function requestResearch(
       requestId,
       query,
       mode,
+      selectedDomains: filter?.selectedDomains,
+      requireArabicMatn: filter?.requireArabicMatn,
     });
   });
 }

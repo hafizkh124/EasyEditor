@@ -113,6 +113,11 @@ export function parseModelStep(msg: OpenAiResponseMessage): ModelStep {
       const q = String(args.question ?? '').trim();
       if (q) return { kind: 'clarify', question: q };
     }
+    if (call.function.name === 'request_mode_upgrade') {
+      const targetMode = args.target_mode === 'auto' ? 'auto' : 'plan';
+      const reason = String(args.reason ?? '').trim();
+      if (reason) return { kind: 'modeUpgrade', targetMode, reason };
+    }
     return { kind: 'toolCall', name: call.function.name, args };
   }
   const text = stripThink(msg.content ?? '');

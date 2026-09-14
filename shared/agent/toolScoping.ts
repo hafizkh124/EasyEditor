@@ -14,7 +14,7 @@
  * Pure — no runtime globals.
  */
 import type { AgentMode, AgentTool } from './types.js';
-import { toolsForMode, getTool, CLARIFY_TOOL } from './toolSchemas.js';
+import { toolsForMode, getTool, CLARIFY_TOOL, MODE_UPGRADE_TOOL } from './toolSchemas.js';
 import { connectorForTool } from './connectors.js';
 import type { Playbook } from '../playbooks/registry.js';
 
@@ -278,8 +278,9 @@ export function toolsFor(mode: AgentMode, ctx: ScopeContext = {}): AgentTool[] {
     allowed.add('run_playbook');
   }
 
-  // No narrowing rule fired — the full mode set stands (+ the clarify pseudo-tool).
-  if (!allowed) return [...base, CLARIFY_TOOL];
+  // No narrowing rule fired — the full mode set stands (+ the clarify
+  // pseudo-tool, + the mode-upgrade one in Ask — M11).
+  if (!allowed) return mode === 'ask' ? [...base, CLARIFY_TOOL, MODE_UPGRADE_TOOL] : [...base, CLARIFY_TOOL];
 
   // CITATION CLOSURE — retrieval must always be citable.
   if (writeCapable) {
@@ -310,5 +311,8 @@ export function toolsFor(mode: AgentMode, ctx: ScopeContext = {}): AgentTool[] {
     }
   }
   out.push(CLARIFY_TOOL);
+  // M11 — offered in Ask only: Plan/Auto already have the write tools, so
+  // this would just invite a pointless round trip there.
+  if (mode === 'ask') out.push(MODE_UPGRADE_TOOL);
   return out;
 }

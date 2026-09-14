@@ -300,6 +300,20 @@ describe("webDispatch — search_hadith / search_general (direct client calls, n
     expect(ledger.size).toBe(1);
   });
 
+  it("search_hadith forwards the session's researchFilter (source narrowing + Arabic-matn) to streamIslamicQuery (M11)", async () => {
+    vi.mocked(streamIslamicQuery).mockImplementation(async (opts) => {
+      opts.onDelta("...");
+      opts.onDone();
+      return undefined as never;
+    });
+    const researchFilter = { selectedDomains: ["islamqa"], requireArabicMatn: true };
+    const { dispatch } = createWebDispatcher(session({ activeDocumentId: null, researchFilter }));
+    await dispatch("search_hadith", { query: "نیت" });
+    expect(streamIslamicQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ selectedDomains: ["islamqa"], requireArabicMatn: true }),
+    );
+  });
+
   it("search_general never adds to the ledger, even with a real answer", async () => {
     vi.mocked(streamResearchQuery).mockImplementation(async (opts) => {
       opts.onDelta("عمومی جواب");

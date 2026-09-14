@@ -17,7 +17,8 @@ export type RecommendationAction =
   | "build-indexes"
   | "transcript-to-chapter"
   | "compare-variants"
-  | "build-spreadsheet";
+  | "build-spreadsheet"
+  | "insert-into-canvas";
 
 export interface RecommendedAction {
   id: string;
@@ -36,6 +37,13 @@ export interface RecommendContext {
   hasProjectFolder: boolean;
   /** The artifact the stage is already showing — no "open" chip for it. */
   activeArtifactId?: string | null;
+  /**
+   * M11 — a Canvas is mounted to insert into (`WorkspaceContext`'s
+   * `insertIntoCanvas`; absent on the standalone `/research` page).
+   */
+  hasWorkspace?: boolean;
+  /** M11 — the run produced a non-empty final answer. */
+  hasAnswer?: boolean;
 }
 
 const CITABLE = new Set([
@@ -93,11 +101,22 @@ export function recommendActions(ctx: RecommendContext): RecommendedAction[] {
     out.push({ id: "build-spreadsheet", labelKey: "agent.rec.build_spreadsheet", action: "build-spreadsheet" });
   }
 
+  // M11 — a Canvas is mounted and the answer has real text to hand it. Not
+  // gated on `canWrite`/mode: Ask's own answer is exactly as insertable.
+  if (ctx.hasWorkspace && ctx.hasAnswer) {
+    out.push({ id: "insert-into-canvas", labelKey: "agent.rec.insert_into_canvas", action: "insert-into-canvas" });
+  }
+
   return out.slice(0, MAX);
 }
 
-/** The follow-up instruction each non-artifact chip pre-fills (renderer-side). */
-export const RECOMMENDATION_PROMPT: Record<Exclude<RecommendationAction, "open-artifact">, string> = {
+/**
+ * The follow-up instruction each pre-fill chip pre-fills (renderer-side).
+ * `open-artifact` and `insert-into-canvas` are the two chips that DO
+ * something directly instead of pre-filling a follow-up — see
+ * `useAgentRun.ts`'s `applyRecommendation`.
+ */
+export const RECOMMENDATION_PROMPT: Record<Exclude<RecommendationAction, "open-artifact" | "insert-into-canvas">, string> = {
   "insert-footnote": "ابھی جو مآخذ ملے ہیں، اُن سے متعلقہ مقامات پر حوالہ جات (فٹ نوٹ) داخل کریں۔",
   "typeset-print": "/typeset-print",
   "build-indexes": "/generate-indexes",

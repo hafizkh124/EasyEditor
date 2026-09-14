@@ -431,7 +431,9 @@ const electronAPI = {
     run: (
       instruction: string,
       mode: 'ask' | 'plan' | 'auto' | 'do',
-      projectRoot: string,
+      // M11 — Ask mode may run with no project folder open; Plan/Auto still
+      // need one (the main process rejects those with `null`).
+      projectRoot: string | null,
       // Plan §4.4 — book/author/century scope + playbook + batch. Optional.
       scope?: {
         books: string[];
@@ -439,6 +441,8 @@ const electronAPI = {
         playbook: string | null;
         mentions: string[];
         batch: { granularity: 'per-book' | 'per-author' } | null;
+        /** M11 — source/domain narrowing + Arabic-matn filter (`search_hadith` only). */
+        researchFilter?: { selectedDomains?: string[]; requireArabicMatn?: boolean };
       },
       // M11 Phase 1 — the conversation so far (finished turns), so a follow-up
       // question reaches the model with the thread. Optional.
@@ -452,6 +456,8 @@ const electronAPI = {
       playbook?: string;
       checkpointId?: string;
       question?: string;
+      /** M11 — Ask mode asked to switch to Plan/Auto (`request_mode_upgrade`). */
+      modeUpgrade?: { targetMode: 'plan' | 'auto'; reason: string };
       error?: string;
     }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'run', instruction, mode, projectRoot, scope, history }),
@@ -499,6 +505,9 @@ const electronAPI = {
       id: string; step?: number; label?: string; kind: string; detail?: string;
       requestId?: string; query?: string; question?: string;
       mode?: 'general' | 'islamic';
+      // M11 — `kind: 'general-search-request'`, `mode: 'islamic'` only: the
+      // source/domain narrowing + Arabic-matn filter to apply.
+      selectedDomains?: string[]; requireArabicMatn?: boolean;
       mediaPath?: string; lang?: string;
       scanPath?: string; pages?: string;
       artifact?: import('../shared/agent/types.js').AgentArtifactEvent;

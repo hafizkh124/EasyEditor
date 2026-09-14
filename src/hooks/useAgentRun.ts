@@ -5,6 +5,7 @@ import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { logger } from "@/lib/logger";
 import { decodeAudioFile, encodeChunkToWav, chunkAudioBuffer } from "@/lib/audio/chunker";
 import { streamResearchQuery, streamIslamicQuery } from "@/lib/research/streamers";
+import { toSelectedDomains } from "@/lib/research/sources";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useWebAgentEngine } from "@/hooks/useWebAgentEngine";
 import type { CitationItem } from "~shared/research/citationTypes";
@@ -18,6 +19,11 @@ import { applyArtifactEvent, type ArtifactState } from "@/components/workspace/a
 import { getShamelaClient } from "@/core/shamela/shamelaClient";
 import { deriveRunStats } from "~shared/agent/runStats";
 import { recommendActions, RECOMMENDATION_PROMPT, type RecommendedAction } from "~shared/agent/recommendations";
+import { markdownToHtml } from "@/lib/editor/htmlText";
+import { toast } from "sonner";
+import { translateStored } from "@/lib/i18n";
+import { useAuth } from "@/contexts/AuthContext";
+import { callRefineText, isRefineTextAction } from "@/lib/editor/aiActions";
 
 const log = logger.child("useAgentRun");
 
@@ -48,6 +54,8 @@ export interface RunResult {
   playbook?: string;
   checkpointId?: string;
   question?: string;
+  /** M11 — Ask mode asked to switch to Plan/Auto (`request_mode_upgrade`). */
+  modeUpgrade?: { targetMode: "plan" | "auto"; reason: string };
   error?: string;
 }
 export interface OptionConsent { needsConsent?: boolean; option?: string; value?: string; current?: string; message?: string }
@@ -77,6 +85,8 @@ export interface AgentScope {
   playbook: string | null;
   mentions: string[];
   batch: { granularity: "per-book" | "per-author" } | null;
+  /** M11 — source/domain narrowing + Arabic-matn filter (`search_hadith` only, both platforms). */
+  researchFilter?: { selectedDomains?: string[]; requireArabicMatn?: boolean };
 }
 
 /** A pending "review this group's books" request the composer opens a dialog for. */
@@ -109,6 +119,8 @@ interface ProgressEvent {
   id?: string; step?: number; label?: string; labelKey?: string; kind: string; detail?: string;
   requestId?: string; query?: string; question?: string;
   mode?: "general" | "islamic";
+  /** `kind: "general-search-request"`, `mode: "islamic"` only (M11). */
+  selectedDomains?: string[]; requireArabicMatn?: boolean;
   mediaPath?: string; lang?: string;
   scanPath?: string; pages?: string;
   artifact?: AgentArtifactEvent;
@@ -127,6 +139,7 @@ export function useAgentRun() {
   const pf = useProjectFolderContext();
   const ws = useOptionalWorkspace();
   const { subscription } = useSubscription();
+  const { session } = useAuth();
   const agent = typeof window !== "undefined" ? window.electronAPI?.agent : undefined;
   // M10 Phase 2.1 — the web counterpart of `agent` above. Mutually exclusive
   // by construction: `available` is false whenever `agent` exists.
@@ -156,6 +169,15 @@ export function useAgentRun() {
   const [shamelaBooks, setShamelaBooks] = useState<Array<{ id: string; title: string }>>([]);
   const [libraryRows, setLibraryRows] = useState<LibraryPickerRow[]>([]);
   const [scopeTags, setScopeTags] = useState<ScopeTag[]>([]);
+  // M11 — source/domain narrowing + Arabic-matn filter, synced in from the
+  // composer's `SourcePicker` state (AgentComposer's props are owned by
+  // ResearchPanel, one level up from this shared hook instance — see
+  // `setResearchFilter`'s callers). A ref, not state: it only needs to be
+  // read at send() time, never drives a re-render on its own.
+  const researchFilterRef = useRef<{ selectedDomains?: string[]; requireArabicMatn?: boolean }>({});
+  const setResearchFilter = useCallback((f: { selectedDomains?: string[]; requireArabicMatn?: boolean }) => {
+    researchFilterRef.current = f;
+  }, []);
   const [scopeReview, setScopeReview] = useState<ScopeReviewRequest | null>(null);
   const [assets, setAssets] = useState<Array<{ name: string; kind: "media" | "scan" | "asset" }>>([]);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -225,7 +247,10 @@ export function useAgentRun() {
   // The agent asks the renderer to run a research query (it can't reach the
   // signed-in edge functions from the main process — ADR-0019 #7 / ADR-0022).
   // `islamic` also returns page-precise citations the agent can cite.
-  const handleResearch = useCallback(async (requestId: string, query: string, mode: "general" | "islamic") => {
+  const handleResearch = useCallback(async (
+    requestId: string, query: string, mode: "general" | "islamic",
+    filter?: { selectedDomains?: string[]; requireArabicMatn?: boolean },
+  ) => {
     if (!agent?.submitGeneralSearch) return;
     const acc = { value: "" };
     try {
@@ -233,6 +258,8 @@ export function useAgentRun() {
         let citations: CitationItem[] = [];
         await streamIslamicQuery({
           query, strictMode: false, chatHistory: [], tier: subscription?.tier ?? "free",
+          selectedDomains: toSelectedDomains(filter?.selectedDomains ?? []),
+          requireArabicMatn: filter?.requireArabicMatn ?? false,
           onDelta: (chunk) => { acc.value += chunk; },
           onSourcesReady: (_c, _d, fetched) => { citations = fetched; },
           onDone: () => { void agent.submitGeneralSearch!(requestId, { answer: acc.value.trim(), channel: "islamic", citations }); },
@@ -339,7 +366,9 @@ export function useAgentRun() {
   const handleProgress = useCallback((p: ProgressEvent) => {
     if (p.id) runIdRef.current = p.id;
     if (p.kind === "general-search-request" && p.requestId && typeof p.query === "string") {
-      void handleResearch(p.requestId, p.query, p.mode === "islamic" ? "islamic" : "general");
+      void handleResearch(p.requestId, p.query, p.mode === "islamic" ? "islamic" : "general", {
+        selectedDomains: p.selectedDomains, requireArabicMatn: p.requireArabicMatn,
+      });
       return;
     }
     if (p.kind === "transcribe-request" && p.requestId && typeof p.mediaPath === "string") {
@@ -623,7 +652,13 @@ export function useAgentRun() {
     requestAnimationFrame(() => taRef.current?.focus());
   }, [addScopeTag]);
 
-  // M11 Phase 1 — a fresh project folder is a fresh conversation.
+  // M11 Phase 1 — switching to a DIFFERENT project folder is a fresh
+  // conversation. Opening a folder from a no-folder start (null → a path)
+  // does NOT clear it any more — with Ask mode now able to run with nothing
+  // open (M11), that transition is the common "open a folder mid-chat to
+  // unlock Plan/Auto" flow, and wiping the thread there would be data loss,
+  // not a reset.
+  const prevProjectRootRef = useRef<string | null>(null);
   const clearConversation = useCallback(() => {
     setTurns([]);
     setResult(null);
@@ -633,15 +668,30 @@ export function useAgentRun() {
     setPlanPending(false);
     lastInstructionRef.current = null;
   }, []);
-  useEffect(() => { clearConversation(); }, [projectRoot, clearConversation]);
+  useEffect(() => {
+    const prev = prevProjectRootRef.current;
+    prevProjectRootRef.current = projectRoot;
+    if (prev !== null && projectRoot !== null && prev !== projectRoot) clearConversation();
+  }, [projectRoot, clearConversation]);
 
-  const send = useCallback(async (override?: string) => {
+  const send = useCallback(async (override?: string, modeOverride?: AgentMode, opts?: { discardCurrentResult?: boolean }) => {
     const typed = (override ?? input).trim();
+    // M11 — `approveModeUpgrade` needs the run itself to use the NEW mode
+    // immediately: `setMode()` + a synchronous `send()` right after would
+    // otherwise still close over this render's (stale) `mode`, since the
+    // state update hasn't been applied yet.
+    const runMode = modeOverride ?? mode;
+    const hasElectronAgent = Boolean(agent);
     const desktopReady = Boolean(agent && projectRoot);
-    // M10 Phase 2.1 — the web path needs no project folder, only an open
-    // document; `webAgent.available` already checks agent is absent so the
-    // two paths can never both fire for the same send().
-    if (!typed || !(desktopReady || webAgent.available)) return;
+    // M11 — Ask mode needs no project folder (desktop) or open document
+    // (web); Plan/Auto still write into one and require it before a run
+    // starts. `webAgent.available`/`webAgent.askAvailable` already check
+    // `agent` is absent, so the desktop and web paths can never both fire
+    // for the same send().
+    const canRun = runMode === "ask"
+      ? (hasElectronAgent || webAgent.askAvailable)
+      : (desktopReady || webAgent.available);
+    if (!typed || !canRun) return;
     // M11 Phase 2 — a run is in flight: queue this message and flush it when
     // the run finishes (the effect below). One slot — a second queued message
     // replaces the first.
@@ -656,8 +706,11 @@ export function useAgentRun() {
     // contributes its clarifying question as the "answer" so the model sees
     // what it asked (this replaces the old string-concat `pendingClarification`
     // hack — real turns carry the same context, and more of it).
+    // M11 — `regenerateLast()` passes `discardCurrentResult` so the stale
+    // answer it's replacing is dropped, not archived as a duplicate turn
+    // (matches the old plain-chat `handleRegenerate`'s behavior).
     const archived: AgentTurn[] =
-      result && lastInstructionRef.current
+      result && lastInstructionRef.current && !opts?.discardCurrentResult
         ? [...turns, { id: mkTurnId(), instruction: lastInstructionRef.current, result }]
         : turns;
     if (archived !== turns) setTurns(archived);
@@ -696,15 +749,28 @@ export function useAgentRun() {
         desktopReady && batchExec && hashTags.some((t) => t.scopeType && t.scopeType !== "book")
           ? { granularity: batchExec as "per-book" | "per-author" }
           : null,
+      researchFilter:
+        researchFilterRef.current.selectedDomains?.length || researchFilterRef.current.requireArabicMatn
+          ? researchFilterRef.current
+          : undefined,
     };
-    const hasScope = Boolean(scope.books.length || scope.groups.length || scope.playbook || scope.mentions.length || scope.batch);
+    const hasScope = Boolean(
+      scope.books.length || scope.groups.length || scope.playbook || scope.mentions.length || scope.batch || scope.researchFilter,
+    );
 
     const historyArg = history.length ? history : undefined;
     const scopeArg = hasScope ? scope : undefined;
     try {
-      const res = desktopReady
-        ? await agent!.run(instruction, mode, projectRoot!, scopeArg, historyArg)
-        : await webAgent.run(instruction, mode, handleProgress, scopeArg, historyArg);
+      // M11 — desktop always uses its own native agent when present (the
+      // full tool set — local Shamela, جوامع الكلم, Word — over IPC), even
+      // in Ask mode with no folder open; `agent.run()` now accepts a null
+      // `projectRoot`. Falling back to `webAgent` here would silently swap
+      // in the web dispatcher, which strips every NATIVE_ONLY_TOOLS entry —
+      // exactly the source-breadth regression Ask-with-nothing-open must not
+      // have.
+      const res = hasElectronAgent
+        ? await agent!.run(instruction, runMode, projectRoot, scopeArg, historyArg)
+        : await webAgent.run(instruction, runMode, handleProgress, scopeArg, historyArg);
       setResult(res as RunResult);
       // The turn goes into the conversation on the NEXT send (see `archived`
       // above) — until then it stays in the singleton `result`, which is what
@@ -846,6 +912,68 @@ export function useAgentRun() {
     catch (err) { log.error("grant OCR consent failed", { err }); }
   }, [agent, projectRoot]);
 
+  // M11 — Ask mode asked to switch to Plan/Auto (`request_mode_upgrade`, or
+  // the loop's own defensive block for a hallucinated write attempt). The
+  // approval card reads this; declining just dismisses it for this result.
+  const [modeUpgradeDismissed, setModeUpgradeDismissed] = useState(false);
+  useEffect(() => { setModeUpgradeDismissed(false); }, [result]);
+  const modeUpgradeRequest = modeUpgradeDismissed ? null : (result?.modeUpgrade ?? null);
+  const approveModeUpgrade = useCallback(() => {
+    const req = result?.modeUpgrade;
+    const instruction = lastInstructionRef.current;
+    if (!req || !instruction) return;
+    setMode(req.targetMode);
+    const hasTarget = Boolean(agent && projectRoot) || webAgent.available;
+    if (!hasTarget) {
+      // Nothing open yet — Plan/Auto need a target, and `send()` would just
+      // no-op silently. Prompt the desktop folder picker instead of
+      // pretending to retry; on web, opening a document is a Workspace-level
+      // action outside this hook's reach, so the composer's own "open a
+      // folder or a document" hint (already visible once `mode` switches)
+      // is the next step.
+      if (pf.supported) void pf.openFolder();
+      return;
+    }
+    // `modeOverride` (not the `setMode` above) is what the re-run actually
+    // uses — `setMode` alone wouldn't take effect until the next render, one
+    // tick too late for this synchronous re-send.
+    void send(instruction, req.targetMode);
+  }, [result, send, agent, projectRoot, webAgent.available, pf]);
+  const declineModeUpgrade = useCallback(() => { setModeUpgradeDismissed(true); }, []);
+
+  // M11 Phase 6 — Regenerate: re-run the last instruction, discarding the
+  // stale answer rather than archiving it as a duplicate turn (matches the
+  // old plain-chat `handleRegenerate`).
+  const regenerateLast = useCallback(() => {
+    const instruction = lastInstructionRef.current;
+    if (!instruction) return;
+    void send(instruction, undefined, { discardCurrentResult: true });
+  }, [send]);
+
+  // M11 Phase 6 — Refine: reshapes only the CURRENT answer's text in place
+  // (matches `useResearchChat`'s own `handleRefine` — last message only, no
+  // scope increase to archived turns).
+  const [refiningAnswer, setRefiningAnswer] = useState(false);
+  const refineLastAnswer = useCallback(async (action: string) => {
+    const sourceText = (result?.answer ?? "").trim();
+    if (!sourceText || !session?.access_token || !isRefineTextAction(action)) {
+      toast.error(t("research.refine_error"));
+      return;
+    }
+    setRefiningAnswer(true);
+    try {
+      const refined = await callRefineText(sourceText, action, session.access_token);
+      if (refined) {
+        setResult((prev) => (prev ? { ...prev, answer: refined } : prev));
+        toast.success(t(`research.${action}_done` as import("@/lib/i18n").TranslationKey));
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("research.refine_error"));
+    } finally {
+      setRefiningAnswer(false);
+    }
+  }, [result, session, t]);
+
   // M11 Phase 2 — live "⚙️ 3 tools · 2 sources" metrics, derived purely from
   // the progress lines already in state (no IPC change).
   const runStats = useMemo(() => deriveRunStats(progress), [progress]);
@@ -859,8 +987,12 @@ export function useAgentRun() {
       mode,
       hasProjectFolder: Boolean(projectRoot),
       activeArtifactId,
+      // M11 — Insert-into-Canvas: only where there's a Canvas to insert into
+      // (absent on the standalone /research page) and something to insert.
+      hasWorkspace: Boolean(ws),
+      hasAnswer: Boolean(result.answer?.trim()),
     });
-  }, [running, result, artifacts, mode, projectRoot, activeArtifactId]);
+  }, [running, result, artifacts, mode, projectRoot, activeArtifactId, ws]);
 
   const applyRecommendation = useCallback((rec: RecommendedAction) => {
     if (rec.action === "open-artifact") {
@@ -870,18 +1002,30 @@ export function useAgentRun() {
       }
       return;
     }
+    if (rec.action === "insert-into-canvas") {
+      const answer = result?.answer?.trim();
+      if (!ws || !answer) return;
+      ws.insertIntoCanvas(markdownToHtml(answer));
+      toast.success(t("research.inserted_into_canvas") || translateStored("toast.canvas.inserted"));
+      return;
+    }
     // Pre-fill only — the scholar reviews and sends.
-    setInput(RECOMMENDATION_PROMPT[rec.action]);
+    setInput(RECOMMENDATION_PROMPT[rec.action as Exclude<RecommendedAction["action"], "open-artifact" | "insert-into-canvas">]);
     requestAnimationFrame(() => taRef.current?.focus());
-  }, [ws]);
+  }, [ws, result, t]);
 
   return {
     t, language, pf, agent, projectRoot,
     // M10 Phase 2.1 — true when this hook can run a real agent turn on web
     // (no electronAPI.agent, and a document is open in the Canvas). The
-    // capability's own on/off switch (registry.ts's wb.agent, VITE_AGENT_MODE)
-    // is a separate, coarser gate the caller checks first.
+    // capability's own on/off switch (registry.ts's wb.agent, unconditional
+    // since M11) is a separate, coarser gate the caller checks first.
     webAgentAvailable: webAgent.available,
+    // M11 — true once there's something for Plan/Auto to write into (a
+    // project folder on desktop, an open document on web). Ask never needs
+    // this — it only reads/searches. Drives AgentComposer's disabled state
+    // on the Plan/Auto mode buttons.
+    hasWriteTarget: Boolean(agent && projectRoot) || webAgent.available,
     mode, setMode,
     input, setInput,
     running,
@@ -901,6 +1045,12 @@ export function useAgentRun() {
     activeArtifactId, setActiveArtifactId,
     dismissArtifact,
     planPending,
+    // M11 — Ask-to-Plan/Auto escalation (`request_mode_upgrade`).
+    modeUpgradeRequest, approveModeUpgrade, declineModeUpgrade,
+    // M11 Phase 6 — Regenerate / Refine for the live agent_run card.
+    regenerateLast, refineLastAnswer, refiningAnswer,
+    // M11 — source/domain narrowing + Arabic-matn filter (AgentComposer syncs its props in).
+    setResearchFilter,
     showTools, setShowTools,
     caps,
     picker, setPicker,
@@ -957,9 +1107,11 @@ export function useAgentRun() {
  */
 export type AgentRunView = Pick<
   ReturnType<typeof useAgentRun>,
-  | "turns" | "clearConversation"
+  | "turns" | "clearConversation" | "hasWriteTarget"
   | "runStats" | "recommendations" | "applyRecommendation"
   | "progress" | "result" | "artifacts" | "planPending"
+  | "modeUpgradeRequest" | "approveModeUpgrade" | "declineModeUpgrade"
+  | "regenerateLast" | "refineLastAnswer" | "refiningAnswer"
   | "activeArtifactId" | "setActiveArtifactId" | "dismissArtifact"
   | "progressExpanded" | "setProgressExpanded"
   | "showTools" | "setShowTools"

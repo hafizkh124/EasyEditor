@@ -52,6 +52,13 @@ describe("recommendActions", () => {
     expect(actions(ctx({ toolCalls: [{ name: "calculate_zakat" }, { name: "build_spreadsheet" }] }))).not.toContain("build-spreadsheet");
   });
 
+  it("M11 — offers Insert-into-Canvas only with a mounted Canvas AND a non-empty answer, regardless of mode", () => {
+    expect(actions(ctx({ hasWorkspace: true, hasAnswer: true }))).toContain("insert-into-canvas");
+    expect(actions(ctx({ hasWorkspace: false, hasAnswer: true }))).not.toContain("insert-into-canvas");
+    expect(actions(ctx({ hasWorkspace: true, hasAnswer: false }))).not.toContain("insert-into-canvas");
+    expect(actions(ctx({ hasWorkspace: true, hasAnswer: true, mode: "ask" }))).toContain("insert-into-canvas");
+  });
+
   it("caps at 4 chips", () => {
     const many = ctx({
       artifacts: [{ id: "a1", type: "table" }],
@@ -65,7 +72,7 @@ describe("recommendActions", () => {
       artifacts: [{ id: "a1", type: "sanad-tree" }],
       toolCalls: [{ name: "search_shamela" }, { name: "draft_section" }, { name: "transcribe_media" }, { name: "jkhssn_takhrij" }],
     }))) {
-      if (a === "open-artifact") continue;
+      if (a === "open-artifact" || a === "insert-into-canvas") continue;
       expect(RECOMMENDATION_PROMPT[a]).toBeTruthy();
     }
   });

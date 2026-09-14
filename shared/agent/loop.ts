@@ -161,6 +161,16 @@ export async function runAgentLoop(
       return { ...finish('needs-input', '', messages, toolCalls, step), question: next.question };
     }
 
+    // M11 — Ask mode asked to switch to Plan/Auto (`request_mode_upgrade`).
+    // Stop here rather than feeding a tool result back: there is nothing
+    // more Ask can usefully do until the scholar decides, and looping would
+    // just invite the model to try again or give a half-answer.
+    if (next.kind === 'modeUpgrade') {
+      messages.push({ role: 'model', text: next.reason });
+      opts.onProgress?.({ step, label: 'needs a different mode', labelKey: 'agent.step.needs_mode_upgrade', kind: 'clarify', question: next.reason });
+      return { ...finish('needs-input', '', messages, toolCalls, step), question: next.reason, modeUpgrade: { targetMode: next.targetMode, reason: next.reason } };
+    }
+
     // A tool call.
     const { name, args } = next;
     messages.push({ role: 'model', toolCall: { name, args } });
@@ -171,10 +181,16 @@ export async function runAgentLoop(
       opts.onProgress?.({ step, label: labelFor(name), labelKey: stepLabelKey(name), kind: 'error', detail: `unknown tool: ${name}` });
       continue;
     }
+    // Defensive: Ask mode is never GIVEN a write tool (toolsForMode), so this
+    // only fires if the model hallucinates a call outside its own schema.
+    // M11 — treat it the same as a polite `request_mode_upgrade` call rather
+    // than erroring and looping: there's equally nothing useful Ask can do
+    // next, and the UI gets one consistent signal either way.
     if (opts.mode === 'ask' && tool.effect === 'write') {
+      const reason = `attempted "${name}", which needs Plan or Auto mode`;
       messages.push({ role: 'tool', name, result: { error: `"${name}" makes changes and is not available in Ask mode` } });
       opts.onProgress?.({ step, label: labelFor(name), labelKey: stepLabelKey(name), kind: 'error', detail: 'blocked in Ask mode' });
-      continue;
+      return { ...finish('needs-input', '', messages, toolCalls, step), question: reason, modeUpgrade: { targetMode: 'plan', reason } };
     }
 
     // Plan mode — hold at the first write until the scholar approves.

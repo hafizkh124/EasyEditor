@@ -12,6 +12,15 @@ vi.mock("@/contexts/LanguageContext", () => ({
   useLanguage: () => ({ t: (k: string, f?: string) => f ?? k, language: "ur", setLanguage: vi.fn(), direction: "rtl" }),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
+// M11 Phase 6 — Refine needs a signed-in session (its access_token).
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { id: "u1" }, session: { access_token: "tok_test" } }),
+}));
+const { callRefineText } = vi.hoisted(() => ({ callRefineText: vi.fn(async () => "formalized answer") }));
+vi.mock("@/lib/editor/aiActions", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/editor/aiActions")>("@/lib/editor/aiActions");
+  return { ...actual, callRefineText };
+});
 
 const pf = {
   supported: true,
@@ -176,6 +185,34 @@ describe("AgentPanel", () => {
     fireEvent.keyDown(ta, { key: "Enter" });
     await waitFor(() => expect(agentRun).toHaveBeenCalledWith("tidy chapter one", "auto", "C:\\thesis", undefined, undefined));
     expect(await screen.findByText("The chapter has 3 headings.")).toBeInTheDocument();
+  });
+
+  it("M11 Phase 6 — Regenerate re-sends the same instruction, discarding (not archiving) the stale answer", async () => {
+    renderPanel();
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
+    fireEvent.change(ta, { target: { value: "summarize chapter one" } });
+    fireEvent.keyDown(ta, { key: "Enter" });
+    await waitFor(() => expect(agentRun).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("The chapter has 3 headings.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Regenerate/i }));
+    await waitFor(() => expect(agentRun).toHaveBeenCalledTimes(2));
+    expect(agentRun.mock.calls[1][0]).toBe("summarize chapter one");
+    // Discarded, not archived: still exactly one answer bubble on screen,
+    // not two stacked "The chapter has 3 headings." turns.
+    expect(screen.getAllByText("The chapter has 3 headings.")).toHaveLength(1);
+  });
+
+  it("M11 Phase 6 — a refine action (e.g. Formalize) updates the answer in place via callRefineText", async () => {
+    renderPanel();
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
+    fireEvent.change(ta, { target: { value: "summarize chapter one" } });
+    fireEvent.keyDown(ta, { key: "Enter" });
+    expect(await screen.findByText("The chapter has 3 headings.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Formalize/i }));
+    expect(callRefineText).toHaveBeenCalledWith("The chapter has 3 headings.", "formalize", "tok_test");
+    expect(await screen.findByText("formalized answer")).toBeInTheDocument();
   });
 
   it("carries the conversation so far (incl. a clarifying question) into the next run as `history` (M11 Phase 1, ADR-0046)", async () => {

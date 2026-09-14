@@ -89,6 +89,14 @@ export async function generateWithTools(
       const q = String((call.args ?? {}).question ?? '').trim();
       if (q) return { kind: 'clarify', question: q };
     }
+    // The mode-upgrade pseudo-tool (M11, Ask mode only): the model asks to
+    // switch to Plan/Auto instead of refusing a write it can't do.
+    if (call.name === 'request_mode_upgrade') {
+      const args = call.args ?? {};
+      const targetMode = args.target_mode === 'auto' ? 'auto' : 'plan';
+      const reason = String(args.reason ?? '').trim();
+      if (reason) return { kind: 'modeUpgrade', targetMode, reason };
+    }
     return { kind: 'toolCall', name: call.name, args: call.args ?? {} };
   }
   const text = parts.map((p) => p.text).filter(Boolean).join('').trim();

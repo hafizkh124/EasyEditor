@@ -70,6 +70,10 @@ export const AgentPanel: React.FC = () => {
         t={t}
         isQuerying={a.running}
         agent={a}
+        onSuggestionSelect={(text) => {
+          a.updateInput(text, text.length);
+          requestAnimationFrame(() => a.taRef.current?.focus());
+        }}
         composer={null}
       />
     </AgentComposer>

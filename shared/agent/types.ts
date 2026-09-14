@@ -48,13 +48,15 @@ export type AgentMessage =
   | { role: 'tool'; name: string; result: unknown };
 
 /**
- * What a model call returns: a final answer, a tool call to run, or — when the
- * ask is ambiguous — one short clarifying question (M9 ADR-0027 F6).
+ * What a model call returns: a final answer, a tool call to run, one short
+ * clarifying question (M9 ADR-0027 F6), or — Ask mode only, M11 — a request
+ * to switch to Plan/Auto because the task needs a write Ask doesn't have.
  */
 export type ModelStep =
   | { kind: 'text'; text: string }
   | { kind: 'toolCall'; name: string; args: Record<string, unknown> }
-  | { kind: 'clarify'; question: string };
+  | { kind: 'clarify'; question: string }
+  | { kind: 'modeUpgrade'; targetMode: 'plan' | 'auto'; reason: string };
 
 /** Injected into the loop — the real one calls Gemini; tests pass a fake. */
 export type ModelFn = (messages: AgentMessage[], tools: AgentTool[], systemPrompt: string) => Promise<ModelStep>;
@@ -147,6 +149,13 @@ export interface AgentRunResult {
   stopReason: 'done' | 'step-limit' | 'cancelled' | 'error' | 'needs-input';
   /** `stopReason: 'needs-input'` — the clarifying question to surface. */
   question?: string;
+  /**
+   * `stopReason: 'needs-input'` — Ask mode asked (via `request_mode_upgrade`,
+   * or the loop's own defensive block when the model attempts a write tool
+   * it wasn't given) to switch to Plan/Auto. The UI offers an approve/decline
+   * card; approving re-sends the same instruction under `targetMode` (M11).
+   */
+  modeUpgrade?: { targetMode: 'plan' | 'auto'; reason: string };
   error?: string;
 }
 

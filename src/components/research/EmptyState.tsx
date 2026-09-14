@@ -1,25 +1,39 @@
-import { BookOpen, Search, MessageCircle, Sparkles } from "lucide-react";
+import { BookOpen, Search, MessageCircle, Sparkles, FileSearch, Quote, BookMarked } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface EmptyStateProps {
   onSuggestionClick: (text: string) => void;
   t: import("@/lib/i18n").Translator;
+  /** True once there's an open project folder/document for the agent to
+   * read from (`useAgentRun`'s `hasWriteTarget`) — it can then summarize
+   * chapters and verify citations, so it gets its own suggestion set.
+   * With nothing open yet (Ask mode runs that way too, M11) the plain
+   * research suggestions apply instead — the agent ones would point at a
+   * project that isn't there. */
+  isAgentMode?: boolean;
 }
 
 /**
  * SPEC M10 §1.1 — the اسلامی/عمومی mode is gone, so there is only ever one
- * suggestion set now (islamic-search's own auto-strictness handles a
- * genuinely general question — see useResearchChat's runQuery). The old
- * "general" suggestions/welcome copy are dead: nothing calls this with a
- * different mode anymore.
+ * plain-research suggestion set now (islamic-search's own auto-strictness
+ * handles a genuinely general question — see useResearchChat's runQuery).
+ * The old "general" suggestions/welcome copy are dead: nothing calls this
+ * with a different mode anymore.
  */
-const SUGGESTIONS = [
+const RESEARCH_SUGGESTIONS = [
   { icon: BookOpen, labelKey: "research.suggestion_islamic_1", queryKey: "research.suggestion_islamic_1_query" },
   { icon: Search, labelKey: "research.suggestion_islamic_2", queryKey: "research.suggestion_islamic_2_query" },
   { icon: MessageCircle, labelKey: "research.suggestion_islamic_3", queryKey: "research.suggestion_islamic_3_query" },
 ] as const;
 
-const EmptyState = ({ onSuggestionClick, t }: EmptyStateProps) => {
+const AGENT_SUGGESTIONS = [
+  { icon: BookMarked, labelKey: "research.suggestion_agent_1", queryKey: "research.suggestion_agent_1_query" },
+  { icon: Quote, labelKey: "research.suggestion_agent_2", queryKey: "research.suggestion_agent_2_query" },
+  { icon: FileSearch, labelKey: "research.suggestion_agent_3", queryKey: "research.suggestion_agent_3_query" },
+] as const;
+
+const EmptyState = ({ onSuggestionClick, t, isAgentMode = false }: EmptyStateProps) => {
+  const SUGGESTIONS = isAgentMode ? AGENT_SUGGESTIONS : RESEARCH_SUGGESTIONS;
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       <motion.div
@@ -39,7 +53,7 @@ const EmptyState = ({ onSuggestionClick, t }: EmptyStateProps) => {
         transition={{ delay: 0.1, duration: 0.3 }}
         className="text-xl font-semibold text-foreground mb-2"
       >
-        {t("research.welcome_islamic")}
+        {isAgentMode ? t("research.welcome_agent") : t("research.welcome_islamic")}
       </motion.h3>
 
       <motion.p
@@ -48,7 +62,7 @@ const EmptyState = ({ onSuggestionClick, t }: EmptyStateProps) => {
         transition={{ delay: 0.2, duration: 0.3 }}
         className="text-sm text-muted-foreground max-w-md mb-8"
       >
-        {t("research.welcome_islamic_hint")}
+        {isAgentMode ? t("research.welcome_agent_hint") : t("research.welcome_islamic_hint")}
       </motion.p>
 
       <motion.div
