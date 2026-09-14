@@ -98,7 +98,13 @@ export function adaptProgressForSession(
 export interface AgentRunInput {
   instruction: string;
   mode: AgentMode;
-  projectRoot: string;
+  /**
+   * The open project folder, or `null` when Ask mode is running with nothing
+   * open (M11). Only Ask can run without one — Plan/Auto write into a
+   * project and are gated on having one before a run even starts
+   * (useAgentRun.ts's `send()`).
+   */
+  projectRoot: string | null;
   onProgress?: (p: AgentProgress) => void;
   isCancelled?: () => boolean;
   /** Runs a General-channel search via the renderer (ADR-0019 item 7). */
@@ -124,6 +130,8 @@ export interface AgentRunInput {
     playbook: string | null;
     mentions: string[];
     batch: { granularity: 'per-book' | 'per-author'; resumeFrom?: string } | null;
+    /** M11 — source/domain narrowing + Arabic-matn filter (`search_hadith` only). */
+    researchFilter?: { selectedDomains?: string[]; requireArabicMatn?: boolean };
   };
 }
 
@@ -144,11 +152,11 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   const instruction = input.instruction + scopeNote;
 
   const caps = detectTools();
-  const chapters = (() => {
+  const chapters = projectRoot ? (() => {
     try { return refreshChapters(projectRoot).map((c) => c.name); } catch { return []; }
-  })();
-  const rules = readProjectRules(projectRoot);
-  const authorVoice = readAuthorVoice(projectRoot);
+  })() : [];
+  const rules = projectRoot ? readProjectRules(projectRoot) : null;
+  const authorVoice = projectRoot ? readAuthorVoice(projectRoot) : null;
   // M11 Phase 1 — prior turns → the messages the loop prepends (user/model
   // text only). Playbook runs skip this: a `/trigger` flow is self-contained.
   const history = input.history?.length ? buildHistory(input.history) : undefined;
@@ -159,7 +167,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   // further down (session.runPlaybookRef) — this was previously read-only
   // (SkillsPanel.tsx listed playbooks with no toggle at all).
   const skills = (() => {
-    try { return mergeSkillState(readGlobalSkills(), readSkills(projectRoot)); }
+    try { return mergeSkillState(readGlobalSkills(), projectRoot ? readSkills(projectRoot) : undefined); }
     catch { return {}; }
   })();
   const playbook = selectPlaybook(instruction, skills);
@@ -170,7 +178,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   // Hub layer (ADR-0037): the model sees a connector's tools only when BOTH
   // layers say on.
   const connectors = (() => {
-    try { return mergeConnectorState(readGlobalConnectors(), readConnectors(projectRoot)); }
+    try { return mergeConnectorState(readGlobalConnectors(), projectRoot ? readConnectors(projectRoot) : undefined); }
     catch { return {}; }
   })();
   const connectorsOn = Object.entries(connectors).filter(([, v]) => v).map(([k]) => k);
@@ -198,14 +206,20 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     capabilities: { ...caps },
     projectRules: rules,
     authorVoice,
-    recentWork: formatJournalForPrompt(readRecentJournal(projectRoot)),
+    recentWork: formatJournalForPrompt(projectRoot ? readRecentJournal(projectRoot) : []),
     chapters,
     playbookGuidance: playbook?.guidance ?? null,
     toolGating: playbook ? null : negativeConstraintBlock(intent.route),
   });
 
-  /** Append one journal line (M9 Phase E) and return the output unchanged. */
+  /**
+   * Append one journal line (M9 Phase E) and return the output unchanged.
+   * Both the journal and the disclosure ledger are per-project files — a
+   * no-op when Ask mode is running with nothing open (there is nowhere to
+   * write them, and nothing was written to disclose either).
+   */
   const finish = (output: AgentRunOutput): AgentRunOutput => {
+    if (!projectRoot) return output;
     const { wrote, sources } = digestRun(output);
     appendJournalEntry(projectRoot, {
       ts: new Date().toISOString(),
@@ -232,7 +246,11 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   // A "plan"/"auto" task may edit files — open a checkpoint so the whole task
   // can be undone at once. "Ask" mode never writes.
   const canWrite = mode !== 'ask';
-  const checkpointId = canWrite ? beginCheckpoint(projectRoot, instruction) : undefined;
+  // `projectRoot` is always set here in practice — Plan/Auto (the only modes
+  // with `canWrite`) are gated on having an open project before a run even
+  // starts (useAgentRun.ts's `send()`) — the `&& projectRoot` is defense in
+  // depth, not a path that's expected to fire.
+  const checkpointId = canWrite && projectRoot ? beginCheckpoint(projectRoot, instruction) : undefined;
 
   const emitArtifact: EmitArtifactFn = (ev) => input.onProgress?.({ kind: 'artifact', artifact: ev });
 
@@ -263,9 +281,10 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     claimCheck: checkClaim,
     generalSearch: input.generalSearch ?? null,
     researchSearch: input.researchSearch ?? null,
+    researchFilter: input.scope?.researchFilter ?? null,
     transcribeMedia: input.transcribeMedia ?? null,
     ocrDocument: input.ocrDocument ?? null,
-    ocrConsent: (() => { try { return readOcrConsent(projectRoot); } catch { return false; } })(),
+    ocrConsent: projectRoot ? (() => { try { return readOcrConsent(projectRoot); } catch { return false; } })() : false,
     emitArtifact,
     // M11 Phase 2 / M12 Phase H — relay progress into a bounded sub-run
     // (research_topic), so its steps show up live instead of the parent run

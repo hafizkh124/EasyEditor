@@ -6,8 +6,10 @@
  * One task at a time (./agent/queue.ts). The full transcript is written to
  * `task_runs` so the Trust tab shows every tool call (ADR-0016 control 4).
  *
- * Gated in the renderer by `isDesktop()` + `VITE_AGENT_MODE`; the handler is
- * always registered but every path needs an open project folder.
+ * Gated in the renderer by `isDesktop()` (the `wb.agent` capability is
+ * unconditionally on for both runtimes — M11); the handler is always
+ * registered. Ask mode runs without an open project folder; Plan/Auto still
+ * need one to have something to write into.
  */
 import { ipcMain, BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
@@ -126,13 +128,19 @@ export function registerAgentHandlers(): void {
             payload.mode === 'auto' || payload.mode === 'do' ? 'auto'
             : payload.mode === 'plan' ? 'plan'
             : 'ask';
-          const projectRoot = String(payload.projectRoot ?? '');
+          // M11 — Ask mode may run with no project folder open; Plan/Auto
+          // still need one (they write into it).
+          const rawProjectRoot = typeof payload.projectRoot === 'string' ? payload.projectRoot : '';
+          const projectRoot: string | null = rawProjectRoot || null;
           if (!instruction) throw new Error('instruction is required');
-          if (!projectRoot) throw new Error('open a project folder first');
+          if (!projectRoot && mode !== 'ask') throw new Error('open a project folder first');
 
           // Plan §4.4 — validate the optional structured scope.
           const rawScope = (payload.scope && typeof payload.scope === 'object' ? payload.scope : null) as
-            | { books?: unknown; groups?: unknown; playbook?: unknown; mentions?: unknown; batch?: unknown }
+            | { books?: unknown; groups?: unknown; playbook?: unknown; mentions?: unknown; batch?: unknown; researchFilter?: unknown }
+            | null;
+          const rawFilter = (rawScope?.researchFilter && typeof rawScope.researchFilter === 'object' ? rawScope.researchFilter : null) as
+            | { selectedDomains?: unknown; requireArabicMatn?: unknown }
             | null;
           const scope = rawScope
             ? {
@@ -151,6 +159,14 @@ export function registerAgentHandlers(): void {
                         resumeFrom: typeof (rawScope.batch as Record<string, unknown>).resumeFrom === 'string' ? (rawScope.batch as Record<string, string>).resumeFrom : undefined,
                       }
                     : null,
+                researchFilter: rawFilter
+                  ? {
+                      selectedDomains: Array.isArray(rawFilter.selectedDomains)
+                        ? (rawFilter.selectedDomains as unknown[]).filter((x): x is string => typeof x === 'string')
+                        : undefined,
+                      requireArabicMatn: typeof rawFilter.requireArabicMatn === 'boolean' ? rawFilter.requireArabicMatn : undefined,
+                    }
+                  : undefined,
               }
             : null;
 
@@ -195,7 +211,8 @@ export function registerAgentHandlers(): void {
               onProgress: emit,
               isCancelled: () => cancelled,
               generalSearch: (query: string) => requestGeneralSearch(id, query, win?.webContents),
-              researchSearch: (m: 'general' | 'islamic', query: string) => requestResearch(id, query, win?.webContents, m),
+              researchSearch: (m: 'general' | 'islamic', query: string, filter?: { selectedDomains?: string[]; requireArabicMatn?: boolean }) =>
+                requestResearch(id, query, win?.webContents, m, filter),
               transcribeMedia: (mediaPath: string, lang: string) => requestTranscription(id, mediaPath, lang, win?.webContents),
               ocrDocument: (scanPath: string, lang: string, pages?: string) => requestOcr(id, scanPath, lang, pages, win?.webContents),
               waitForApproval: (plan: { steps: string[]; summary: string }) => requestPlanApproval(id, plan, win?.webContents),

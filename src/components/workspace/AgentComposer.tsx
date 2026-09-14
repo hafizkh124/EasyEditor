@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { Send, Loader2, Square, Mic, Plus, X, Book, User, Layers, CalendarClock, Repeat, AtSign, Pencil, Hourglass, ScrollText, FolderOpen, Hash } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -34,8 +34,38 @@ const SECTION_ICON = { book: Book, author: User, category: Layers, century: Cale
  * the exact same pair. ChatDisplay's own built-in composer is suppressed via
  * its `composer` override prop — this bar replaces it, not sits beside it.
  */
-export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; children: React.ReactNode }> = ({ agent: a, children }) => {
+export interface AgentComposerProps {
+  agent: ReturnType<typeof useAgentRun>;
+  children: React.ReactNode;
+  /**
+   * M11 — the free-tier search quota. UX consistency with the old plain-chat
+   * badge/warning, not a security gate (the server already meters every
+   * search regardless of which UI reached it). Optional so AgentPanel.tsx —
+   * which has no quota context of its own — keeps compiling unchanged.
+   */
+  islamicLimitReached?: boolean;
+  islamicQueriesUsed?: number;
+  islamicQueriesLimit?: number;
+  isSignedIn?: boolean;
+  /** M11 Phase 3 — source/domain narrowing + Arabic-matn filter, surfaced in the `+` hub. */
+  selectedDomains?: string[];
+  onSelectedDomainsChange?: (next: string[]) => void;
+  requireArabicMatn?: boolean;
+  onRequireArabicMatnChange?: (next: boolean) => void;
+}
+
+export const AgentComposer: React.FC<AgentComposerProps> = ({
+  agent: a, children,
+  islamicLimitReached = false, islamicQueriesUsed, islamicQueriesLimit, isSignedIn = true,
+  selectedDomains, onSelectedDomainsChange, requireArabicMatn, onRequireArabicMatnChange,
+}) => {
   const { t } = a;
+  const blocked = !isSignedIn || islamicLimitReached;
+  // M11 Phase 3 — sync the composer's own SourcePicker state into the shared
+  // agent hook, which reads it (via a ref, not a prop) when a run starts.
+  useEffect(() => {
+    a.setResearchFilter({ selectedDomains, requireArabicMatn });
+  }, [a.setResearchFilter, selectedDomains, requireArabicMatn]);
   const pickerRef = useRef<HTMLDivElement>(null);
   const hubRef = useRef<HTMLDivElement>(null);
   const [overflowOpen, setOverflowOpen] = React.useState(false);
@@ -74,20 +104,32 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
             : t("agent.drop_files", "Drop recordings, scans, fonts, or templates to add them")}
         </div>
       )}
-      {/* Mode toggle — Ask (read-only) / Plan (approve first) / Auto (M9 ADR-0026) */}
+      {/* Mode toggle — Ask (read-only) / Plan (approve first) / Auto (M9 ADR-0026).
+          M11 — Plan/Auto need something to write into (a project folder on
+          desktop, an open document on web); with nothing open yet they're
+          disabled rather than hidden, so the door to them stays visible. */}
       <div className="flex items-center gap-1 border-b border-border p-2 shrink-0">
-        {(["ask", "plan", "auto"] as AgentMode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => a.setMode(m)}
-            disabled={a.running}
-            className={`rounded px-2.5 py-1 text-xs font-medium ${a.mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-          >
-            {m === "ask" ? t("agent.mode_ask", "Ask") : m === "plan" ? t("agent.mode_plan", "Plan") : t("agent.mode_auto", "Auto")}
-          </button>
-        ))}
+        {(["ask", "plan", "auto"] as AgentMode[]).map((m) => {
+          const needsTarget = m !== "ask" && !a.hasWriteTarget;
+          return (
+            <button
+              key={m}
+              onClick={() => a.setMode(m)}
+              disabled={a.running || needsTarget}
+              title={needsTarget ? t("agent.mode_needs_target", "Open a project folder or a document first") : undefined}
+              className={`rounded px-2.5 py-1 text-xs font-medium ${a.mode === m ? "bg-primary text-primary-foreground" : needsTarget ? "text-muted-foreground/50 cursor-not-allowed" : "text-muted-foreground hover:bg-muted"}`}
+            >
+              {m === "ask" ? t("agent.mode_ask", "Ask") : m === "plan" ? t("agent.mode_plan", "Plan") : t("agent.mode_auto", "Auto")}
+            </button>
+          );
+        })}
+        {islamicQueriesLimit != null && islamicQueriesLimit > 0 && (
+          <span className={`rounded border px-1.5 py-0.5 text-xs font-medium whitespace-nowrap ${islamicLimitReached ? "border-destructive/40 bg-destructive/5 text-destructive" : "border-border bg-muted text-muted-foreground"}`}>
+            {islamicQueriesUsed} / {islamicQueriesLimit}
+          </span>
+        )}
         <button
-          className="ms-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground truncate max-w-[55%] disabled:opacity-60"
+          className="ms-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground truncate max-w-[45%] disabled:opacity-60"
           title={`${a.pf.folder?.path ?? ""} — ${t("projectfolder.change", "Change folder")}`}
           onClick={a.pf.openFolder}
           disabled={a.running || a.pf.busy}
@@ -95,20 +137,46 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
           <FolderOpen className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{a.pf.folder?.manifest.title}</span>
         </button>
+        {/* QA finding: once any project folder was ever opened, this panel
+            stayed in agent/project mode for every future chat with no way
+            back — a user who just wants a plain question felt forced through
+            a project. `closeFolder` already existed (used by
+            ProjectFolderSection) but was never reachable from here. */}
+        <button
+          className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-60"
+          title={t("agent.close_project", "Close project — chat without a project")}
+          aria-label={t("agent.close_project", "Close project — chat without a project")}
+          onClick={a.pf.closeFolder}
+          disabled={a.running || a.pf.busy}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      {a.pf.chapters.length === 0 && (
+      {/* M11 — this only means something once a folder IS open; with nothing
+          open `a.pf.chapters` is also empty, but that isn't "an empty
+          folder", it's "no folder yet" (the hint below already covers that). */}
+      {a.pf.folder && a.pf.chapters.length === 0 && (
         <div className="flex items-center gap-1.5 rounded border border-amber-500/40 bg-amber-500/5 p-2 m-3 mb-0 text-xs text-amber-700 dark:text-amber-400 shrink-0">
           {t("agent.no_chapters", "This folder has no .docx or .rtf files yet — the agent has nothing to read. Add chapter files, or pick a different folder.")}
         </div>
       )}
+      {(!isSignedIn || islamicLimitReached) && (
+        <p className="px-3 pt-3 text-xs text-center text-muted-foreground shrink-0">
+          {!isSignedIn
+            ? t("research.sign_in_required", "تحقیقی سوالات بھیجنے کے لیے سائن اِن کریں — اوپر دائیں طرف \"سائن اِن\" بٹن دبائیں۔")
+            : t("research.islamic_limit_reached", "اس عمل کے لیے آپ کے پاس کافی ٹوکنز نہیں ہیں۔ براہ کرم ٹاپ اپ کریں یا پلان اپ گریڈ کریں۔")}
+        </p>
+      )}
       {a.progress.length === 0 && !a.result && (
         <p className="px-3 pt-3 text-xs text-muted-foreground shrink-0">
-          {a.mode === "ask"
-            ? t("agent.hint_ask", "Ask about a chapter or a source. The agent reads and searches — it changes nothing.")
-            : a.mode === "plan"
-              ? t("agent.hint_plan", "Describe a task. The agent lays out its steps and waits for your approval before changing anything.")
-              : t("agent.hint_auto", "Describe a task. Every edit lands as a tracked change you review in Word.")}
+          {a.mode !== "ask" && !a.hasWriteTarget
+            ? t("agent.hint_plan_no_target", "Open a project folder or a document to let the agent make changes. Ask still works.")
+            : a.mode === "ask"
+              ? t("agent.hint_ask", "Ask about a chapter or a source. The agent reads and searches — it changes nothing.")
+              : a.mode === "plan"
+                ? t("agent.hint_plan", "Describe a task. The agent lays out its steps and waits for your approval before changing anything.")
+                : t("agent.hint_auto", "Describe a task. Every edit lands as a tracked change you review in Word.")}
         </p>
       )}
 
@@ -146,6 +214,10 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
               showConnectors
               showPrompts
               showScholarlyPrompts
+              selectedDomains={selectedDomains}
+              onSelectedDomainsChange={onSelectedDomainsChange}
+              requireArabicMatn={requireArabicMatn}
+              onRequireArabicMatnChange={onRequireArabicMatnChange}
               connectors={a.connectors}
               connectorGlobal={a.connectorGlobal}
               connectorState={a.connectorState}
@@ -315,7 +387,7 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
                 if (e.key === "ArrowUp") { e.preventDefault(); a.setPickerActiveIndex((a.pickerActiveIndex - 1 + a.pickerItems.length) % a.pickerItems.length); return; }
                 if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); applyActivePicker(); return; }
               }
-              if (e.key === "Enter" && !e.shiftKey && !a.picker) { e.preventDefault(); void a.send(); }
+              if (e.key === "Enter" && !e.shiftKey && !a.picker) { e.preventDefault(); if (!blocked) void a.send(); }
               if (e.key === "Escape") a.setPicker(null);
             }}
             rows={2}
@@ -342,7 +414,7 @@ export const AgentComposer: React.FC<{ agent: ReturnType<typeof useAgentRun>; ch
               <Square className="h-4 w-4" />
             </Button>
           ) : (
-            <Button size="icon" className="h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0 shrink-0" onClick={() => void a.send()} disabled={!a.input.trim()} aria-label={t("agent.send", "Send")}>
+            <Button size="icon" className="h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0 shrink-0" onClick={() => void a.send()} disabled={!a.input.trim() || blocked} aria-label={t("agent.send", "Send")}>
               {a.running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           )}

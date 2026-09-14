@@ -235,12 +235,22 @@ describe('agent dispatch', () => {
     }));
     const { dispatch, ledger } = mk({ researchSearch });
     const r = await dispatch('search_hadith', { query: 'إنما الأعمال' }) as { count: number; results: Array<{ id: string; reference: string }> };
-    expect(researchSearch).toHaveBeenCalledWith('islamic', 'إنما الأعمال');
+    // M11 — a third `researchFilter` arg is now always passed (undefined when
+    // the session sets none, as here).
+    expect(researchSearch).toHaveBeenCalledWith('islamic', 'إنما الأعمال', undefined);
     expect(r.count).toBe(1);
     expect(r.results[0].reference).toMatch(/صحيح البخاري 1.*صحيح/);
     expect(ledger.size).toBe(1);
     const foot = await dispatch('insert_footnote', { chapter: '01.docx', marker: '[1]', source_id: r.results[0].id }) as { reference: string };
     expect(foot.reference).toMatch(/صحيح البخاري/);
+  });
+
+  it('search_hadith forwards the session\'s researchFilter (source narrowing + Arabic-matn) to researchSearch (M11)', async () => {
+    const researchSearch = vi.fn(async () => ({ answer: '', citations: [] }));
+    const researchFilter = { selectedDomains: ['islamqa'], requireArabicMatn: true };
+    const { dispatch } = mk({ researchSearch, researchFilter });
+    await dispatch('search_hadith', { query: 'صلاة الوتر' });
+    expect(researchSearch).toHaveBeenCalledWith('islamic', 'صلاة الوتر', researchFilter);
   });
 
   it('search_hadith without a renderer bridge returns a clear message', async () => {

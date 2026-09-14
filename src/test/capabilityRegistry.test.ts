@@ -84,17 +84,11 @@ describe("capability registry", () => {
       expect(isCapabilityAvailable("tokens.meter")).toBe(true);
     });
 
-    // M10 Phase 2.1 (ADR-0034 follow-up) — the agent reached web too, gated
-    // by the SAME VITE_AGENT_MODE flag desktop already used, not a new
-    // per-platform knob.
-    it("hides the Agent tab with VITE_AGENT_MODE off", () => {
-      vi.stubEnv("VITE_AGENT_MODE", "false");
-      expect(isCapabilityAvailable("wb.agent")).toBe(false);
-      expect(availableCapabilities("workbench-tab").map((c) => c.id)).not.toContain("wb.agent");
-    });
-
-    it("offers the Agent tab once VITE_AGENT_MODE is on", () => {
-      vi.stubEnv("VITE_AGENT_MODE", "true");
+    // M10 Phase 2.1 (ADR-0034 follow-up) brought the agent to web too; M11
+    // retired the VITE_AGENT_MODE rollout flag entirely — ResearchPanel.tsx
+    // no longer has a separate plain-chat fallback UI to fall back to, so
+    // the capability is unconditionally on for both runtimes.
+    it("always offers the Agent tab", () => {
       expect(isCapabilityAvailable("wb.agent")).toBe(true);
       expect(availableCapabilities("workbench-tab").map((c) => c.id)).toContain("wb.agent");
     });
@@ -135,16 +129,9 @@ describe("capability registry", () => {
     });
 
     it("still offers the workspace and the local workbench tabs", () => {
-      vi.stubEnv("VITE_AGENT_MODE", "false");
       expect(isCapabilityAvailable("workspace")).toBe(true);
       const tabs = availableCapabilities("workbench-tab").map((c) => c.id);
-      expect(tabs).toEqual(["wb.aiReader", "wb.research"]);
-    });
-
-    it("adds the Agent tab on desktop once VITE_AGENT_MODE is on", () => {
-      vi.stubEnv("VITE_AGENT_MODE", "true");
-      const tabs = availableCapabilities("workbench-tab").map((c) => c.id);
-      expect(tabs).toContain("wb.agent");
+      expect(tabs).toEqual(["wb.aiReader", "wb.research", "wb.agent"]);
     });
   });
 

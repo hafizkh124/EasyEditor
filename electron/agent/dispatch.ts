@@ -67,7 +67,7 @@ import { calculateFaraid, type FaraidInput } from '../../shared/faraid/calculato
 import { buildIndexExtractionInstruction, parseIndexEntries, INDEX_KINDS, type IndexKind } from '../../shared/ai/prompts/indexEntries.js';
 import type { DispatchFn, EmitArtifactFn } from '../../shared/agent/types.js';
 import type { GeneralSearchResult } from './generalSearch.js';
-import type { ResearchMode, ResearchResult } from './researchBridge.js';
+import type { ResearchMode, ResearchResult, ResearchFilter } from './researchBridge.js';
 
 const log = logger.child('agent/dispatch');
 
@@ -83,8 +83,15 @@ const capResult = (text: string): string =>
   text.length <= MAX_TOOL_RESULT_CHARS ? text : `${text.slice(0, MAX_TOOL_RESULT_CHARS)}\n…[truncated]`;
 
 export interface AgentSession {
-  /** Absolute path to the open project folder. */
-  projectRoot: string;
+  /**
+   * Absolute path to the open project folder, or `null` — Ask mode may run
+   * with nothing open (M11). Plan/Auto always have one (gated upstream,
+   * useAgentRun.ts's `send()`), so every write-tool case below may treat
+   * `root` as present; only the read-tool cases that touch chapters
+   * (`read_document`, `search_corpus`, `check_consistency`,
+   * `compare_manuscript_variants`) check `hasRoot` explicitly.
+   */
+  projectRoot: string | null;
   /** Task checkpoint id — every edit is snapshotted under it (ADR-0019 item 5). */
   checkpointId?: string;
   /**
@@ -106,7 +113,16 @@ export interface AgentSession {
    * page-precise citations (M9 Phase 1, ADR-0022). Absent in a headless
    * context — `search_hadith` then returns a clear message.
    */
-  researchSearch?: ((mode: ResearchMode, query: string) => Promise<ResearchResult>) | null;
+  researchSearch?: ((mode: ResearchMode, query: string, filter?: ResearchFilter) => Promise<ResearchResult>) | null;
+  /**
+   * M11 — source/domain narrowing + the Arabic-matn requirement, set once
+   * from the composer's `SourcePicker` state (`run.ts`, from `AgentScope`).
+   * Only `search_hadith` applies it — the other `researchSearch('islamic', …)`
+   * callers here (lookup_lexicon, lookup_narrator, grade_hadith) target one
+   * specific entity, not a topical corpus search, so narrowing by domain
+   * doesn't apply to them.
+   */
+  researchFilter?: ResearchFilter | null;
   /**
    * Decodes + transcribes an in-project recording via the renderer's Whisper
    * pipeline (M9 Phase 5). Absent in a headless context — `transcribe_media`
@@ -167,7 +183,12 @@ export interface Dispatcher {
 
 export function createDispatcher(session: AgentSession): Dispatcher {
   const ledger = new RetrievalLedger();
-  const root = session.projectRoot;
+  // `root` is asserted non-null: every consumer below except the four
+  // `hasRoot`-guarded read cases is a write-tool case, which is
+  // structurally unreachable with no project open (see AgentSession.projectRoot's
+  // doc comment). `hasRoot` is the real (nullable-aware) check those four use.
+  const hasRoot = session.projectRoot !== null;
+  const root = session.projectRoot as string;
   const checkpointId = session.checkpointId;
   const claimCheck = session.claimCheck ?? null;
   const authorVoice = session.authorVoice ?? null;
@@ -181,6 +202,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
     'jkhssn_narrator', 'jkhssn_sanad_tree', 'jkhssn_takhrij', 'jkhssn_judgments', 'jkhssn_thematic',
   ]);
   const generalSearch = session.generalSearch ?? null;
+  const researchFilter = session.researchFilter ?? undefined;
   const researchSearch = session.researchSearch ?? null;
   const transcribeMedia = session.transcribeMedia ?? null;
   const ocrDocument = session.ocrDocument ?? null;
@@ -227,6 +249,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
       }
 
       case 'read_document': {
+        if (!hasRoot) return { error: 'No project folder is open — open one to read a chapter.' };
         const chapter = str(args.chapter, 'chapter');
         return word.readStructure(chapterPath(root, chapter));
       }
@@ -250,13 +273,16 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
         // (b) the open project folder's OWN chapters — a lexical scan, so the
         // agent can answer questions about the document even before anything
-        // has been imported into the corpus DB.
-        for (const name of refreshChapters(root).map((c) => c.name)) {
-          const text = await chapterText(name).catch(() => '');
-          const idx = text.toLowerCase().indexOf(query.toLowerCase());
-          if (idx === -1) continue;
-          const excerpt = text.slice(Math.max(0, idx - 120), idx + query.length + 280).replace(/\s+/g, ' ').trim();
-          chunks.push({ id: `chapter:${name}`, reference: name, content: excerpt });
+        // has been imported into the corpus DB. Skipped with nothing open
+        // (Ask mode may run that way, M11) — (a) above still runs.
+        if (hasRoot) {
+          for (const name of refreshChapters(root).map((c) => c.name)) {
+            const text = await chapterText(name).catch(() => '');
+            const idx = text.toLowerCase().indexOf(query.toLowerCase());
+            if (idx === -1) continue;
+            const excerpt = text.slice(Math.max(0, idx - 120), idx + query.length + 280).replace(/\s+/g, ' ').trim();
+            chunks.push({ id: `chapter:${name}`, reference: name, content: excerpt });
+          }
         }
 
         ledger.add(chunks);
@@ -536,6 +562,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
       }
 
       case 'compare_manuscript_variants': {
+        if (!hasRoot) return { error: 'No project folder is open — open one to compare chapters.' };
         const baseChapter = str(args.base_chapter, 'base_chapter');
         const witnessChapter = str(args.witness_chapter, 'witness_chapter');
         const siglum = typeof args.siglum === 'string' && args.siglum.trim() ? args.siglum.trim() : 'ب';
@@ -609,6 +636,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
       case 'check_consistency': {
         const term = str(args.term, 'term');
+        if (!hasRoot) return { term, appearsIn: [], suggestion: 'No project folder is open.' };
         const exclude = typeof args.exclude_chapter === 'string' ? args.exclude_chapter : null;
         const names = refreshChapters(root).map((c) => c.name).filter((n) => n !== exclude);
         const found: Array<{ chapter: string; count: number; snippet: string }> = [];
@@ -665,7 +693,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         if (!researchSearch) {
           return { error: 'search_hadith is only available from the Agent panel (it uses your signed-in research session).' };
         }
-        const r = await researchSearch('islamic', query);
+        const r = await researchSearch('islamic', query, researchFilter);
         if (r.error) return { error: r.error };
         const chunks: RetrievedChunk[] = [];
         for (const c of r.citations ?? []) {
@@ -972,7 +1000,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
       case 'jkhssn_sanad_tree': {
         if (session.jkhssnEnabled === false) return { error: 'جوامع الكلم کنیکٹر بند ہے۔' };
-        const r = await jkhssnAdapter.jkhssnSanadTree({ hadithMainId: num(args.hadith_main_id, 0) || undefined, hadithText: typeof args.hadith_text === 'string' ? args.hadith_text : undefined });
+        const r = await jkhssnAdapter.jkhssnSanadTree({ hadithMainId: num(args.hadith_main_id, 0) || undefined });
         if (r.error) return { error: r.error };
         if (r.data) {
           const artifactId = `jkhssn-sanad-${Date.now().toString(36)}`;
@@ -985,14 +1013,14 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
       case 'jkhssn_takhrij': {
         if (session.jkhssnEnabled === false) return { error: 'جوامع الكلم کنیکٹر بند ہے۔' };
-        const r = await jkhssnAdapter.jkhssnTakhrij({ hadithMainId: num(args.hadith_main_id, 0) || undefined, hadithText: typeof args.hadith_text === 'string' ? args.hadith_text : undefined, bookIds: scopedJkhssnIds.length ? scopedJkhssnIds : undefined });
+        const r = await jkhssnAdapter.jkhssnTakhrij({ hadithMainId: num(args.hadith_main_id, 0) || undefined, bookIds: scopedJkhssnIds.length ? scopedJkhssnIds : undefined });
         if (r.error) return { error: r.error };
         return { note: r.note, takhrij: r.data };
       }
 
       case 'jkhssn_judgments': {
         if (session.jkhssnEnabled === false) return { error: 'جوامع الكلم کنیکٹر بند ہے۔' };
-        const r = await jkhssnAdapter.jkhssnJudgments({ hadithMainId: num(args.hadith_main_id, 0) || undefined, hadithText: typeof args.hadith_text === 'string' ? args.hadith_text : undefined });
+        const r = await jkhssnAdapter.jkhssnJudgments({ hadithMainId: num(args.hadith_main_id, 0) || undefined });
         if (r.error) return { error: r.error };
         ledger.add(r.chunks);
         if (r.chunks.length) {

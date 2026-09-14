@@ -32,6 +32,11 @@ export function useWebAgentEngine() {
 
   /** Only meaningful when desktop's own agent IPC is absent — never double-run. */
   const available = !hasElectronAgent && Boolean(activeDocumentId);
+  // M11 — Ask mode needs no open document (it never writes); Plan/Auto still
+  // need one, so `available` above is unchanged for them. `search_corpus`'s
+  // web case and `activeDoc()` (webDispatch.ts) already tolerate a null
+  // `activeDocumentId`.
+  const askAvailable = !hasElectronAgent;
 
   const cancelledRef = useRef(false);
   const approvalRef = useRef<((decision: "approved" | "rejected") => void) | null>(null);
@@ -52,7 +57,8 @@ export function useWebAgentEngine() {
       onProgress: (p: AgentProgress) => void,
       // Plan §4.5 — the `#` scope. Web mirrors `books` for search_corpus only
       // (batch mode and Shamela/JKHSSN scoping are desktop-agent flows).
-      scope?: { books?: string[] },
+      // M11 — plus `researchFilter` (`search_hadith`'s domain/matn narrowing).
+      scope?: { books?: string[]; researchFilter?: { selectedDomains?: string[]; requireArabicMatn?: boolean } },
       // M11 Phase 1 — the conversation so far, so a follow-up has the thread.
       history?: ConversationTurn[],
     ): Promise<AgentRunResult> => {
@@ -66,6 +72,7 @@ export function useWebAgentEngine() {
         model: webAgentModel,
         isCancelled: () => cancelledRef.current,
         bookScope: scope?.books?.length ? scope.books : undefined,
+        researchFilter: scope?.researchFilter,
       };
       const { dispatch } = createWebDispatcher(session);
 
@@ -122,5 +129,8 @@ export function useWebAgentEngine() {
     [activeDocumentId, ws],
   );
 
-  return useMemo(() => ({ available, run, cancel, decidePlan }), [available, run, cancel, decidePlan]);
+  return useMemo(
+    () => ({ available, askAvailable, run, cancel, decidePlan }),
+    [available, askAvailable, run, cancel, decidePlan],
+  );
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Send, Loader2, Copy, Sparkles, MessageSquarePlus, RefreshCw, Plus,
   Wrench, ChevronRight, ChevronDown, AlertTriangle, CheckCircle2, Undo2,
+  PenLine, MessageSquare, Minimize2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ProvenanceChips } from "@/components/workspace/ProvenanceChip";
 import { RunStatsBar } from "@/components/workspace/RunStatsBar";
 import { connectorsUsed } from "~shared/agent/connectors";
+import { citationsFromToolCalls } from "~shared/agent/citationsFromToolCalls";
 import { isFailedStep } from "~shared/agent/runStats";
 import type { AgentRunView, AgentTurn } from "@/hooks/useAgentRun";
 
@@ -77,6 +79,14 @@ interface ChatDisplayProps {
    */
   agent?: AgentRunView;
   /**
+   * Fills the REAL composer with a suggestion's text. Required whenever
+   * `agent` is set: `onQueryChange` is an inert placeholder in that mode
+   * (see `composer` below), so without this the built-in EmptyState
+   * suggestions would silently do nothing when clicked. Plain research mode
+   * doesn't need it — `onQueryChange` already works.
+   */
+  onSuggestionSelect?: (text: string) => void;
+  /**
    * SPEC M10 §1.2 — replaces ChatDisplay's own built-in composer (Textarea,
    * Send, SourcePicker, assist-mode chips, the scholarly-prompts modal —
    * all research-only concepts) with AgentComposer when the agent branch is
@@ -96,6 +106,7 @@ const ChatDisplay = ({
   selectedDomains = [], onSelectedDomainsChange,
   requireArabicMatn = false, onRequireArabicMatnChange, onContinue,
   agent,
+  onSuggestionSelect,
   composer,
 }: ChatDisplayProps) => {
   const navigate = useNavigate();
@@ -214,6 +225,10 @@ const ChatDisplay = ({
   }, [messages, isQuerying, listItems.length]);
 
   const handleSuggestionClick = (text: string) => {
+    if (onSuggestionSelect) {
+      onSuggestionSelect(text);
+      return;
+    }
     onQueryChange(text);
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
@@ -223,7 +238,11 @@ const ChatDisplay = ({
     let content: React.ReactNode = null;
 
     if (item.type === "empty") {
-      content = <EmptyState onSuggestionClick={handleSuggestionClick} t={t} />;
+      // M11 — the agent-specific suggestions ("Summarize the project's
+      // chapters", "Verify the citations") assume an open project/document;
+      // with nothing open yet (Ask now runs that way) they'd point at
+      // nothing, so fall back to the plain research suggestions instead.
+      content = <EmptyState onSuggestionClick={handleSuggestionClick} t={t} isAgentMode={Boolean(agent?.hasWriteTarget)} />;
     } else if (item.type === "citations") {
       content = <CitationPanel citations={citations} t={t} />;
     } else if (item.type === "message") {
@@ -380,6 +399,9 @@ const ChatDisplay = ({
                   {t("agent.used_playbook", "Playbook: {id}").replace("{id}", turn.result.playbook)}
                 </p>
               )}
+              {/* M11 — which sources this turn actually retrieved, as the
+                  primary surface (CitationPanel renders nothing when empty). */}
+              <CitationPanel citations={citationsFromToolCalls(turn.result.toolCalls)} t={t} />
               {turn.result.toolCalls.length > 0 && (
                 <p className="text-xs text-muted-foreground">
                   {t("agent.tool_calls", "{n} tool calls").replace("{n}", String(turn.result.toolCalls.length))}
@@ -395,6 +417,13 @@ const ChatDisplay = ({
       // instead of a local `a.*` hook return.
       const stepLines = agent.progress.filter((p) => p.label && p.kind !== "thinking");
       const collapsed = !isQuerying && !!agent.result && stepLines.length > 3 && !agent.progressExpanded;
+      // M11 Phase 6 — the "real answer" case (not an error, not a mode-upgrade
+      // ask, not a clarifying question): the only case Copy/Regenerate/Refine
+      // apply to.
+      const isFinalAnswer = Boolean(
+        agent.result && !agent.result.error && !agent.modeUpgradeRequest
+        && !(agent.result.stopReason === "needs-input" && agent.result.question),
+      );
       content = (
         <div className="max-w-3xl mx-auto space-y-3">
           <RunStatsBar stats={agent.runStats} running={isQuerying} t={t} />
@@ -455,6 +484,18 @@ const ChatDisplay = ({
             <div className="rounded-md border border-border bg-card p-2.5 space-y-2 text-sm">
               {agent.result.error ? (
                 <p className="text-destructive text-xs">{agent.result.error}</p>
+              ) : agent.modeUpgradeRequest ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-primary">
+                    {t(
+                      agent.modeUpgradeRequest.targetMode === "auto" ? "agent.mode_upgrade_prompt_auto" : "agent.mode_upgrade_prompt_plan",
+                      agent.modeUpgradeRequest.targetMode === "auto"
+                        ? "This needs Auto mode to make changes:"
+                        : "This needs Plan mode to make changes:",
+                    )}
+                  </p>
+                  <p className="whitespace-pre-wrap">{agent.modeUpgradeRequest.reason}</p>
+                </div>
               ) : agent.result.stopReason === "needs-input" && agent.result.question ? (
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-primary">{t("agent.needs_input", "The agent needs a clarification:")}</p>
@@ -464,10 +505,41 @@ const ChatDisplay = ({
               ) : (
                 <p className="whitespace-pre-wrap">{agent.result.answer || t("agent.no_answer", "(no answer)")}</p>
               )}
+              {/* M11 Phase 6 — Copy/Regenerate/Refine, the same three quick
+                  refine actions DocumentBox offers the plain-chat answer.
+                  A lighter inline row rather than adopting DocumentBox
+                  wholesale — its own bordered chrome would double-box inside
+                  this card, which already hosts plan-approval/consent/undo. */}
+              {isFinalAnswer && (
+                <div className="flex flex-wrap items-center gap-1 border-t border-border/50 pt-1.5">
+                  {(["formalize", "humanize", "shorten"] as const).map((action) => (
+                    <Button
+                      key={action}
+                      variant="ghost" size="sm" className="h-7 gap-1 text-xs"
+                      disabled={agent.refiningAnswer}
+                      onClick={() => void agent.refineLastAnswer(action)}
+                    >
+                      {action === "formalize" ? <PenLine className="h-3 w-3" /> : action === "humanize" ? <MessageSquare className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+                      {t(`research.${action}` as Parameters<typeof t>[0])}
+                    </Button>
+                  ))}
+                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs ms-auto" disabled={agent.refiningAnswer} onClick={agent.regenerateLast}>
+                    {agent.refiningAnswer ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                    {t("research.regenerate")}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => copyMessage(agent.result?.answer ?? "")}>
+                    <Copy className="h-3 w-3" />
+                    {t("research.copy")}
+                  </Button>
+                </div>
+              )}
               {!agent.result.error && <ProvenanceChips connectorIds={connectorsUsed(agent.result.toolCalls)} />}
               {agent.result.playbook && (
                 <p className="text-xs text-muted-foreground">{t("agent.used_playbook", "Playbook: {id}").replace("{id}", agent.result.playbook)}</p>
               )}
+              {/* M11 — the primary, discoverable "which sources" surface;
+                  the raw tool-call list below stays as a debug toggle. */}
+              <CitationPanel citations={citationsFromToolCalls(agent.result.toolCalls)} t={t} />
               {agent.result.toolCalls.length > 0 && (
                 <div>
                   <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => agent.setShowTools((s) => !s)}>
@@ -488,6 +560,21 @@ const ChatDisplay = ({
               )}
               {agent.result.stopReason === "step-limit" && (
                 <p className="text-xs text-amber-700 dark:text-amber-400">{t("agent.step_limit", "Stopped at the step limit — ask a narrower question.")}</p>
+              )}
+              {agent.modeUpgradeRequest && (
+                <div className="rounded border border-primary/40 bg-primary/5 p-2 text-xs space-y-2">
+                  <div className="flex gap-2">
+                    <Button size="sm" className="h-7 text-xs" onClick={() => agent.approveModeUpgrade()}>
+                      {t(
+                        agent.modeUpgradeRequest.targetMode === "auto" ? "agent.mode_upgrade_approve_auto" : "agent.mode_upgrade_approve_plan",
+                        agent.modeUpgradeRequest.targetMode === "auto" ? "Switch to Auto & retry" : "Switch to Plan & retry",
+                      )}
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => agent.declineModeUpgrade()}>
+                      {t("agent.mode_upgrade_decline", "Not now")}
+                    </Button>
+                  </div>
+                </div>
               )}
               {agent.pendingOptions.length > 0 && (
                 <div className="rounded border border-amber-500/40 bg-amber-500/5 p-2 text-xs space-y-1.5">

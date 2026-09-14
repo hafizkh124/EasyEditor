@@ -83,9 +83,21 @@ describe('run', () => {
     await first;
   });
 
-  it('rejects an empty instruction or missing project folder', async () => {
+  it('rejects an empty instruction', async () => {
     await expect(invoke({ action: 'run', instruction: '  ', mode: 'ask', projectRoot: 'C:\\p' })).rejects.toThrow(/instruction/);
-    await expect(invoke({ action: 'run', instruction: 'x', mode: 'ask', projectRoot: '' })).rejects.toThrow(/project folder/);
+  });
+
+  it('rejects a missing project folder in Plan/Auto (they write into one)', async () => {
+    await expect(invoke({ action: 'run', instruction: 'x', mode: 'plan', projectRoot: '' })).rejects.toThrow(/project folder/);
+    await expect(invoke({ action: 'run', instruction: 'x', mode: 'auto', projectRoot: '' })).rejects.toThrow(/project folder/);
+  });
+
+  it('M11 — Ask mode runs with no project folder (passes null through to runAgent, not empty string)', async () => {
+    const p = invoke({ action: 'run', instruction: 'what does islamqa say about X', mode: 'ask', projectRoot: '' });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(runAgent).toHaveBeenCalledWith(expect.objectContaining({ mode: 'ask', projectRoot: null }));
+    resolveRun({ answer: 'x', stopReason: 'done', steps: 1, toolCalls: [] });
+    await expect(p).resolves.toMatchObject({ answer: 'x' });
   });
 });
 

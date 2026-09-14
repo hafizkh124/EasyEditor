@@ -2,6 +2,7 @@ import React from "react";
 import { Paperclip, FolderOpen, ScrollText, Hash, Plug, Mic, Pencil, Sparkles } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { isConnectorOn, connectorsByCategory } from "~shared/agent/connectors";
+import SourcePicker from "@/components/research/SourcePicker";
 
 /**
  * M11 Phase 3 — unified `+` hub for both agent and research composers.
@@ -25,6 +26,14 @@ export interface ComposerHubProps {
   showScholarlyPrompts?: boolean;
   /** Whether to show the "Assist modes" row. */
   showAssistModes?: boolean;
+
+  /** M11 Phase 3 — source/domain narrowing + the Arabic-matn filter (the
+   *  same control ChatDisplay's own research composer used). Shown when
+   *  `onSelectedDomainsChange` is supplied. */
+  selectedDomains?: string[];
+  onSelectedDomainsChange?: (next: string[]) => void;
+  requireArabicMatn?: boolean;
+  onRequireArabicMatnChange?: (next: boolean) => void;
 
   /** Agent connector state (global + project merged). */
   connectors?: Record<string, boolean>;
@@ -61,6 +70,10 @@ export const ComposerHub: React.FC<ComposerHubProps> = ({
   showPrompts = false,
   showScholarlyPrompts = false,
   showAssistModes = false,
+  selectedDomains = [],
+  onSelectedDomainsChange,
+  requireArabicMatn = false,
+  onRequireArabicMatnChange,
   connectors = {},
   connectorGlobal,
   connectorState,
@@ -117,6 +130,22 @@ export const ComposerHub: React.FC<ComposerHubProps> = ({
           <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           {t("agent.hub_scope", "Books & sources  (#)")}
         </button>
+      )}
+
+      {/* Source/domain narrowing + Arabic-matn filter — M11 Phase 3, ported
+          from ChatDisplay's own (now-agent-only) research composer so Ask
+          mode keeps this retrieval-quality control. */}
+      {onSelectedDomainsChange && (
+        <div className="flex items-center justify-between gap-2 rounded px-2 py-1.5">
+          <span className="text-muted-foreground">{t("research.sources_label")}</span>
+          <SourcePicker
+            selected={selectedDomains}
+            onSelectedChange={onSelectedDomainsChange}
+            requireArabicMatn={requireArabicMatn}
+            onRequireArabicMatnChange={onRequireArabicMatnChange ?? (() => {})}
+            t={t}
+          />
+        </div>
       )}
 
       {/* Scholarly prompts — the pre-M11 14-template library (fiqh/hadith/

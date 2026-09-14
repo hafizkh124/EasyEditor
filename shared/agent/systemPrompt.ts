@@ -106,7 +106,7 @@ export function buildWebSystemPrompt(input: WebSystemPromptInput): string {
 
   parts.push(
     input.mode === 'ask'
-      ? '\nMode: ASK — read-only. You may search and read, but no tool that changes the document is available to you.'
+      ? '\nMode: ASK — read-only. You may search and read, but no tool that changes the document is available to you. If the scholar\'s request genuinely needs a write, call request_mode_upgrade instead of refusing in prose or trying to work around it.'
       : input.mode === 'plan'
         ? '\nMode: PLAN — you will lay out the full sequence of steps and the scholar approves it before anything is written. Read and search freely first so the plan is concrete.'
         : '\nMode: AUTO — you may write into the document. Read before you write.',
@@ -129,7 +129,7 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
 
   parts.push(
     input.mode === 'ask'
-      ? '\nMode: ASK — read-only. You may search and read, but no tool that changes a file is available to you.'
+      ? '\nMode: ASK — read-only. You may search and read, but no tool that changes a file is available to you. If the scholar\'s request genuinely needs a write, call request_mode_upgrade instead of refusing in prose or trying to work around it.'
       : input.mode === 'plan'
         ? '\nMode: PLAN — you will lay out the full sequence of steps and the scholar approves it before any file is changed. Read and search freely first so the plan is concrete.'
         : '\nMode: AUTO — you may make tracked-change edits. Read before you write.',

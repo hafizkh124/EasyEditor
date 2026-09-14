@@ -156,6 +156,13 @@ function agentView(overrides: Partial<import("@/hooks/useAgentRun").AgentRunView
   return {
     turns: [],
     clearConversation: vi.fn(),
+    hasWriteTarget: true,
+    modeUpgradeRequest: null,
+    approveModeUpgrade: vi.fn(),
+    declineModeUpgrade: vi.fn(),
+    regenerateLast: vi.fn(),
+    refineLastAnswer: vi.fn(),
+    refiningAnswer: false,
     runStats: { toolsRun: 0, toolsFailed: 0, sourcesRead: 0, steps: 0 },
     recommendations: [],
     applyRecommendation: vi.fn(),

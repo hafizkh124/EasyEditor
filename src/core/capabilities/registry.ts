@@ -35,7 +35,7 @@ export type Runtime = "web" | "desktop";
 export type Availability =
   | { on: "always" }
   | { on: "never"; reason: string }
-  | { on: "flag"; flag: "VITE_LOCAL_VOICE" | "VITE_AGENT_MODE" };
+  | { on: "flag"; flag: "VITE_LOCAL_VOICE" };
 
 export type Surface =
   | "sidebar"
@@ -178,14 +178,18 @@ export const CAPABILITIES: readonly Capability[] = [
     // SPEC-M8 Layer 6 / ADR-0016; M10 Phase 2.1 (ADR-0034 follow-up) brought
     // the agent to web too — cloud tools only (search/draft/comment/cite),
     // Word/Shamela-bound tools stay desktop-only (shared/agent/toolScoping.ts's
-    // NATIVE_ONLY_TOOLS, platform:'web'). Same flag both runtimes: one switch
-    // for "agent mode", not a per-platform rollout knob.
+    // NATIVE_ONLY_TOOLS, platform:'web').
+    //
+    // M11 — the VITE_AGENT_MODE rollout flag is retired. ResearchPanel.tsx no
+    // longer has a separate plain-chat fallback UI to fall back to (it was
+    // deleted when Ask/Plan/Auto became the only research surface), so a flag
+    // that could switch this capability off would leave the app with no
+    // research UI at all wherever the flag isn't set (it only ever lived in
+    // the uncommitted .env.local on one machine — every other build had it
+    // off by default per vite.config.ts's `env.VITE_AGENT_MODE || "false"`).
     id: "wb.agent", route: null, labelKey: "workbench.agent", fallbackLabel: "Agent",
     icon: Bot,
-    runtimes: {
-      web: { on: "flag", flag: "VITE_AGENT_MODE" },
-      desktop: { on: "flag", flag: "VITE_AGENT_MODE" },
-    },
+    runtimes: { web: ALWAYS, desktop: ALWAYS },
     surfaces: ["workbench-tab"],
   },
 ];
@@ -202,12 +206,10 @@ function currentRuntime(): Runtime {
  * would never be replaced and the desktop build would silently read undefined.
  * Evaluated per call so tests can `vi.stubEnv` between cases.
  */
-function flagEnabled(flag: "VITE_LOCAL_VOICE" | "VITE_AGENT_MODE"): boolean {
+function flagEnabled(flag: "VITE_LOCAL_VOICE"): boolean {
   switch (flag) {
     case "VITE_LOCAL_VOICE":
       return import.meta.env.VITE_LOCAL_VOICE === "true";
-    case "VITE_AGENT_MODE":
-      return import.meta.env.VITE_AGENT_MODE === "true";
   }
 }
 

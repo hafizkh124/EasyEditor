@@ -136,30 +136,27 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'jkhssn_sanad_tree',
-    description: "Build the isnād (sanad) tree for a hadith from the LOCAL جوامع الكلم engine — the chain(s) of narrators from the Companion down to the collector, with each link tagged marfūʿ / mawqūf / maqṭūʿ. Structural, not textual. Prefer a hadith_main_id from a prior jkhssn_takhrij; free text is best-effort — if it can't resolve, ask the scholar for the collection + printed number. Do NOT use for a narrator biography (jkhssn_narrator) or a grading (grade_hadith).",
+    description: "Build the isnād (sanad) tree for a hadith from the LOCAL جوامع الكلم engine — the chain(s) of narrators from the Companion down to the collector, with each link tagged marfūʿ / mawqūf / maqṭūʿ. Structural, not textual. REQUIRES a hadith_main_id — this engine has no local hadith-text index, so hadith_text is NOT resolved to anything (a known gap, not yet built). Get the id from jkhssn_thematic (browse the fiqh topic tree to its hadith ids) or a prior jkhssn_takhrij call. If you only have the hadith's wording, use search_hadith / grade_hadith instead — this tool cannot look up by text. Do NOT use for a narrator biography (jkhssn_narrator) or a grading (grade_hadith).",
     params: {
-      hadith_main_id: { type: 'number', description: 'The جوامع الكلم hadith id (from jkhssn_takhrij / jkhssn_thematic).' },
-      hadith_text: { type: 'string', description: 'A distinctive Arabic phrase — best-effort fallback when no id is known.' },
+      hadith_main_id: { type: 'number', description: 'The جوامع الكلم hadith id (from jkhssn_takhrij / jkhssn_thematic) — required, nothing else resolves.' },
     },
     required: [],
     effect: 'read',
   },
   {
     name: 'jkhssn_takhrij',
-    description: "Takhrīj from the LOCAL جوامع الكلم engine: every place a hadith (and the others sharing its matn group) appears, which books, and جوامع الكلم's own service flags (has isnād analysis, has ʿilal, is gharīb, degree). Offline, citable. Takes a hadith_main_id, or a book + printed number, or best-effort free text. Complements grade_hadith (which gives الدرر السنية's verdict) — this gives the cross-collection map.",
+    description: "Takhrīj from the LOCAL جوامع الكلم engine: every place a hadith (and the others sharing its matn group) appears, which books, and جوامع الكلم's own service flags (has isnād analysis, has ʿilal, is gharīb, degree). Offline, citable. REQUIRES a hadith_main_id — this engine has no local hadith-text index, so a book + printed number or free text does NOT resolve to anything (a known gap, not yet built). Get the id from jkhssn_thematic (browse the fiqh topic tree to its hadith ids). If you only have the hadith's wording, use search_hadith / grade_hadith instead for its cross-collection takhrīj. Complements grade_hadith (which gives الدرر السنية's verdict) — this gives the cross-collection map, once you have an id.",
     params: {
-      hadith_main_id: { type: 'number', description: 'The جوامع الكلم hadith id.' },
-      hadith_text: { type: 'string', description: 'A distinctive Arabic phrase — best-effort fallback.' },
+      hadith_main_id: { type: 'number', description: 'The جوامع الكلم hadith id — required, nothing else resolves.' },
     },
     required: [],
     effect: 'read',
   },
   {
     name: 'jkhssn_judgments',
-    description: "The imams' rulings and ʿilal notes on a specific hadith from the LOCAL جوامع الكلم engine — each scholar's verbatim words (e.g. \"هذا إسناد منقطع\", \"صحيح على شرط الشيخين\"). Offline, citable. Complements grade_hadith: grade_hadith gives الدرر السنية's summary verdict, this gives the classical critics' full statements. Needs a hadith_main_id (from jkhssn_takhrij) or best-effort free text.",
+    description: "The imams' rulings and ʿilal notes on a specific hadith from the LOCAL جوامع الكلم engine — each scholar's verbatim words (e.g. \"هذا إسناد منقطع\", \"صحيح على شرط الشيخين\"). Offline, citable. REQUIRES a hadith_main_id — this engine has no local hadith-text index, so free text does NOT resolve to anything (a known gap, not yet built). Get the id from jkhssn_thematic or a prior jkhssn_takhrij call. Complements grade_hadith: grade_hadith gives الدرر السنية's summary verdict, this gives the classical critics' full statements.",
     params: {
-      hadith_main_id: { type: 'number', description: 'The جوامع الكلم hadith id.' },
-      hadith_text: { type: 'string', description: 'A distinctive Arabic phrase — best-effort fallback.' },
+      hadith_main_id: { type: 'number', description: 'The جوامع الكلم hadith id — required, nothing else resolves.' },
     },
     required: [],
     effect: 'read',
@@ -519,6 +516,27 @@ export const CLARIFY_TOOL: AgentTool = {
   description: 'Ask the scholar ONE short clarifying question, and only when the request is genuinely ambiguous (a one-word topic, an unclear target, no way to choose a sensible default). Never use it to stall or to avoid doing straightforward work.',
   params: { question: { type: 'string', description: 'The single question to ask, in the scholar\'s language.' } },
   required: ['question'],
+  effect: 'read',
+};
+
+/**
+ * M11 — a pseudo-tool offered ONLY in Ask mode (`toolsFor()` appends it
+ * alongside `CLARIFY_TOOL`, after all narrowing, so a domain match can never
+ * drop it). Like `CLARIFY_TOOL` it is never dispatched — the model layer
+ * turns the call into a `modeUpgrade` step and the loop stops the run so the
+ * UI can offer the scholar an approve-and-retry card. Not part of
+ * `AGENT_TOOLS`. Ask mode has no write tools to attempt in the first place
+ * (they are filtered out of its tool set entirely), so this is how the model
+ * asks for one instead of refusing in prose or trying to work around it.
+ */
+export const MODE_UPGRADE_TOOL: AgentTool = {
+  name: 'request_mode_upgrade',
+  description: "Call this — never guess, never try to work around it — when the scholar's request genuinely needs a write (editing/creating a chapter, a footnote, page layout, etc.) while you are in Ask mode. Pick target_mode 'plan' for a few reviewable edits (the default), or 'auto' only when the scholar clearly wants a hands-off batch task with no per-step review.",
+  params: {
+    target_mode: { type: 'string', enum: ['plan', 'auto'], description: "'plan' (default) or 'auto'." },
+    reason: { type: 'string', description: 'One short sentence, in the scholar\'s language, on what the write would do.' },
+  },
+  required: ['target_mode', 'reason'],
   effect: 'read',
 };
 

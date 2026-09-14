@@ -238,6 +238,7 @@ async function runOneItem(
       playbook: base.scope?.playbook ?? null,
       mentions: base.scope?.mentions ?? [],
       batch: null,
+      researchFilter: base.scope?.researchFilter,
     },
   });
 
