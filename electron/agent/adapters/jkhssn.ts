@@ -25,6 +25,15 @@ function unavailable(alt: string): { error: string } {
   return { error: `جوامع الكلم کا مقامی انڈیکس دستیاب نہیں (${alt} استعمال کریں یا ترتیبات → کنیکٹرز سے انڈیکس بنائیں)` };
 }
 
+/**
+ * جوامع الكلم has no local hadith-text index (only structure: isnād, takhrīj
+ * cross-references, judgments — see schema.ts) — there is nothing in this
+ * engine a free-text or book+number query could resolve against. The real
+ * ways to a hadithMainId are jkhssn_thematic's topic tree, or search_hadith /
+ * grade_hadith for a text-known hadith (a different corpus entirely).
+ */
+const NEEDS_ID_NOTE = 'اس کے لیے جوامع الكلم کا hadith_main_id درکار ہے — یہ مقامی انڈیکس متن سے تلاش نہیں کر سکتا۔ jkhssn_thematic سے موضوع کے تحت حدیث کی شناخت حاصل کریں، یا اگر آپ کے پاس صرف حدیث کا متن ہے تو search_hadith / grade_hadith استعمال کریں۔';
+
 async function ensureIndex(): Promise<boolean> {
   try {
     const s = await detectJkhssnInstallation();
@@ -83,10 +92,10 @@ export async function jkhssnNarrator(
 
 // ── sanad tree ───────────────────────────────────────────────────────────────
 
-export async function jkhssnSanadTree(args: { hadithMainId?: number; hadithText?: string }): Promise<JkhssnAdapterResult> {
+export async function jkhssnSanadTree(args: { hadithMainId?: number }): Promise<JkhssnAdapterResult> {
   if (!(await ensureIndex())) return { chunks: [], ...unavailable('search_hadith') };
   if (args.hadithMainId == null) {
-    return { chunks: [], note: 'شجرۂ اسناد کے لیے حدیث کی مجموعہ + مطبوعہ نمبر درکار ہے (پہلے jkhssn_takhrij چلائیں)۔' };
+    return { chunks: [], note: NEEDS_ID_NOTE };
   }
   const tree = axisSanadTree({ hadithMainId: args.hadithMainId });
   if (!tree.chains.length) return { chunks: [], note: 'اس حدیث کے لیے جوامع الكلم میں کوئی سند درج نہیں۔' };
@@ -99,10 +108,10 @@ export async function jkhssnSanadTree(args: { hadithMainId?: number; hadithText?
 
 // ── takhrīj ──────────────────────────────────────────────────────────────────
 
-export async function jkhssnTakhrij(args: { hadithMainId?: number; hadithText?: string; bookIds?: number[] }): Promise<JkhssnAdapterResult> {
+export async function jkhssnTakhrij(args: { hadithMainId?: number; bookIds?: number[] }): Promise<JkhssnAdapterResult> {
   if (!(await ensureIndex())) return { chunks: [], ...unavailable('grade_hadith') };
   if (args.hadithMainId == null) {
-    return { chunks: [], note: 'تخریج کے لیے حدیث کی مجموعہ + مطبوعہ نمبر درکار ہے۔' };
+    return { chunks: [], note: NEEDS_ID_NOTE };
   }
   const full = axisTakhrij(args.hadithMainId);
   const scope = (args.bookIds ?? []).filter((n) => Number.isFinite(n));
@@ -118,9 +127,9 @@ export async function jkhssnTakhrij(args: { hadithMainId?: number; hadithText?: 
 
 // ── judgments / ʿilal ────────────────────────────────────────────────────────
 
-export async function jkhssnJudgments(args: { hadithMainId?: number; hadithText?: string }): Promise<JkhssnAdapterResult> {
+export async function jkhssnJudgments(args: { hadithMainId?: number }): Promise<JkhssnAdapterResult> {
   if (!(await ensureIndex())) return { chunks: [], ...unavailable('grade_hadith') };
-  if (args.hadithMainId == null) return { chunks: [], note: 'احکامِ ائمہ کے لیے حدیث کی شناخت (hadithMainId) درکار ہے۔' };
+  if (args.hadithMainId == null) return { chunks: [], note: NEEDS_ID_NOTE };
   const j = axisJudgments(args.hadithMainId);
   if (!j.judgments.length) return { chunks: [], note: 'اس حدیث پر جوامع الكلم میں کوئی حکم درج نہیں — grade_hadith آزمائیں۔' };
   const chunks: RetrievedChunk[] = j.judgments.map((jd, i) => ({

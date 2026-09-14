@@ -69,11 +69,20 @@ describe('agent jkhssn adapter', () => {
     expect(tree.rawyIds).toEqual(expect.arrayContaining([11, 22, 33]));
   });
 
-  it('jkhssnSanadTree without an id asks for the collection + number', async () => {
+  // QA finding: jkhssnSanadTree/jkhssnTakhrij/jkhssnJudgments used to accept a
+  // `hadithText` fallback that the tool schema documented as "best-effort" —
+  // but nothing in this local engine's schema stores hadith matn text (only
+  // isnād/takhrīj/judgment structure), so the param was silently ignored and
+  // every such call just fell through to "need an id" anyway. Removed the
+  // param; this asserts the honest no-id path instead, pointing at the two
+  // real ways to get an id (jkhssn_thematic, or search_hadith/grade_hadith
+  // for a text-known hadith).
+  it('jkhssnSanadTree without an id points at jkhssn_thematic / search_hadith, not a nonexistent text lookup', async () => {
     const { jkhssnSanadTree } = await adapter();
-    const r = await jkhssnSanadTree({ hadithText: 'إنما الأعمال بالنيات' });
+    const r = await jkhssnSanadTree({});
     expect(r.data).toBeUndefined();
-    expect(r.note).toMatch(/نمبر/);
+    expect(r.note).toMatch(/jkhssn_thematic/);
+    expect(r.note).toMatch(/search_hadith/);
   });
 
   it('jkhssnJudgments yields citable chunks from the local rulings', async () => {
@@ -81,5 +90,19 @@ describe('agent jkhssn adapter', () => {
     const r = await jkhssnJudgments({ hadithMainId: 10 });
     expect(r.chunks[0].content).toContain('صحيح على شرط الشيخين');
     expect(r.chunks[0].reference).toContain('جوامع الكلم');
+  });
+
+  it('jkhssnJudgments without an id points at jkhssn_thematic / search_hadith', async () => {
+    const { jkhssnJudgments } = await adapter();
+    const r = await jkhssnJudgments({});
+    expect(r.chunks).toEqual([]);
+    expect(r.note).toMatch(/jkhssn_thematic/);
+  });
+
+  it('jkhssnTakhrij without an id points at jkhssn_thematic / search_hadith', async () => {
+    const { jkhssnTakhrij } = await adapter();
+    const r = await jkhssnTakhrij({});
+    expect(r.data).toBeUndefined();
+    expect(r.note).toMatch(/jkhssn_thematic/);
   });
 });

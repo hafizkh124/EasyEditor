@@ -86,6 +86,14 @@ describe('jkhssn axes (against a synthetic index)', () => {
     const root = axisThematic({ subjectId: 1 });
     expect(root.matches.map((m) => m.id).sort()).toEqual([2, 3]);
     expect(root.matches.find((m) => m.id === 2)!.hitCount).toBe(2);
+    // subject.title is always '' today: SubjectTitle is a CustomType=1
+    // (compressed) column, which buildIndex.ts's loadOneTable() deliberately
+    // skips and stores NULL for (ADR-0045) — regardless of the SELECT above
+    // naming the column. This is the documented current limitation, not a
+    // bug; drill-through relies on id/parentId/hitCount until a real decoder
+    // for compressed columns exists.
+    expect(root.matches.find((m) => m.id === 2)!.title).toBe('');
+    expect(root.matches.find((m) => m.id === 3)!.title).toBe('');
     const leaf = axisThematic({ subjectId: 2 });
     expect(leaf.hadithIds).toEqual(expect.arrayContaining([10, 20]));
   });

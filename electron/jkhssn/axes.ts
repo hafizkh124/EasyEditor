@@ -285,13 +285,21 @@ export function axisJudgments(hadithMainId: number): JudgmentsPayload {
 export function axisThematic(q: { subjectId?: number; query?: string }): ThematicPayload {
   const conn = db();
   if (q.subjectId != null) {
+    // `subject.title` is selected here for forward-compatibility, but it is
+    // currently always NULL: buildIndex.ts's loadOneTable() deliberately
+    // skips CustomType=1 (compressed) columns, and SubjectTitle is marked
+    // CustomType=1 in Catalog.xml (ADR-0045). So browsed nodes come back with
+    // an empty title today — only their numeric id and hit count are
+    // reliable. Callers needing real labels should use the free-text-search
+    // fallback below, which reads book_toc.section_text via a different
+    // (heuristic-based) decode path that isn't subject to this gate.
     const children = conn
       .prepare(
-        `SELECT s.id, s.parent_id, s.is_leaf,
+        `SELECT s.id, s.parent_id, s.is_leaf, s.title,
                 (SELECT COUNT(*) FROM subject_hit h WHERE h.subject_id = s.id) AS hits
          FROM subject s WHERE s.parent_id = ? ORDER BY s.left_val LIMIT 200`,
       )
-      .all(q.subjectId) as Array<{ id: number; parent_id: number | null; is_leaf: number; hits: number }>;
+      .all(q.subjectId) as Array<{ id: number; parent_id: number | null; is_leaf: number; title: string | null; hits: number }>;
     const self = conn.prepare('SELECT id, parent_id, is_leaf FROM subject WHERE id = ?').get(q.subjectId) as
       | { id: number; parent_id: number | null; is_leaf: number }
       | undefined;
@@ -299,7 +307,7 @@ export function axisThematic(q: { subjectId?: number; query?: string }): Themati
       ? (conn.prepare('SELECT hadith_main_id FROM subject_hit WHERE subject_id = ? LIMIT 500').all(q.subjectId) as Array<{ hadith_main_id: number }>).map((r) => r.hadith_main_id)
       : undefined;
     return {
-      matches: children.map((c) => ({ id: c.id, parentId: c.parent_id ?? null, title: '', isLeaf: !!c.is_leaf, hitCount: c.hits })),
+      matches: children.map((c) => ({ id: c.id, parentId: c.parent_id ?? null, title: c.title ?? '', isLeaf: !!c.is_leaf, hitCount: c.hits })),
       hadithIds,
     };
   }
