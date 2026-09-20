@@ -71,6 +71,9 @@ export interface IslamicResult {
    * verified ones, not a source of unknown language.
    */
   has_matn?: boolean;
+  score?: number;
+  rerank_score?: number;
+  reason?: string;
 }
 
 // ── Arabic normalizer (mirrors src/utils/arabicUtils.ts) ─────────────────────
