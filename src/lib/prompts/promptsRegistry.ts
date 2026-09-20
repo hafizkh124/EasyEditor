@@ -198,24 +198,24 @@ const RAW_PROMPTS: Omit<ScholarlyPromptDef, "grounded" | "corpusReady">[] = [
  * - grounded: route through the grounded Islamic engine (islamic-search) so
  *   citations come from the corpus, not a general LLM.
  * - corpusReady: whether the corpus this prompt cites from is already ingested.
- *   Quran (6,236) + 17 hadith collections ARE loaded; fiqh / fatawa / tafsir /
- *   lughat / rijal corpora are NOT yet (see Master Plan Phase 3-corpus), so
- *   prompts depending on them are marked unverified until then.
+ *   Quran (6,236) + 17 hadith collections are loaded in local/cloud tables;
+ *   fiqh / fatawa / tafsir / lughat / rijal / seerat corpora are live and backed
+ *   by Turath.io (~8,500 classical works) via Tier T and desktop Shamela router.
  */
 const GROUNDING: Record<string, { grounded: boolean; corpusReady: boolean }> = {
-  study_masala:       { grounded: true,  corpusReady: false }, // fiqh corpus pending
-  compare_madhahib:   { grounded: true,  corpusReady: false }, // fiqh corpus pending
-  trace_hadith:       { grounded: true,  corpusReady: true  }, // hadith loaded
-  tafsir_aya_muqaran: { grounded: true,  corpusReady: false }, // tafsir corpus pending
-  nazila_muasira:     { grounded: true,  corpusReady: false }, // fiqh corpus pending
+  study_masala:       { grounded: true,  corpusReady: true  }, // classical fiqh backed by Turath.io
+  compare_madhahib:   { grounded: true,  corpusReady: true  }, // comparative fiqh backed by Turath.io
+  trace_hadith:       { grounded: true,  corpusReady: true  }, // hadith collections loaded
+  tafsir_aya_muqaran: { grounded: true,  corpusReady: true  }, // classical tafsir backed by Turath.io
+  nazila_muasira:     { grounded: true,  corpusReady: true  }, // modern/classical fiqh backed by Turath.io
   khittat_bahth:      { grounded: false, corpusReady: true  }, // authoring aid
   kitabat_maqal:      { grounded: false, corpusReady: true  }, // authoring aid
   tarjama_muqaran:    { grounded: true,  corpusReady: true  }, // Quran translations loaded
-  takhrij_fatwa:      { grounded: true,  corpusReady: false }, // fatawa corpus pending
-  lughat_w_irab:      { grounded: true,  corpusReady: false }, // lughat corpus pending
+  takhrij_fatwa:      { grounded: true,  corpusReady: true  }, // classical fatawa backed by Turath.io
+  lughat_w_irab:      { grounded: true,  corpusReady: true  }, // classical lughat/nahw backed by Turath.io
   tahqeeq_texts:      { grounded: false, corpusReady: true  }, // editing aid
-  tarjama_rawi:       { grounded: true,  corpusReady: false }, // rijal corpus pending
-  seerat_alam:        { grounded: true,  corpusReady: false }, // biographies corpus pending
+  tarjama_rawi:       { grounded: true,  corpusReady: true  }, // classical rijal backed by Turath.io
+  seerat_alam:        { grounded: true,  corpusReady: true  }, // classical biographies backed by Turath.io
   tabsira_kitab:      { grounded: false, corpusReady: true  }, // authoring aid
 };
 
