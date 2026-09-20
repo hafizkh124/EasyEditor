@@ -115,6 +115,20 @@ export interface LibraryBackend {
   searchChunks(query: string, limit?: number): Promise<ChunkSearchHit[]>;
   /** SPEC-M6 Phase 6: keyword search expanded to all morphological forms sharing the query's Arabic root. */
   searchChunksByRoot(s2DbPath: string | null, query: string, limit?: number): Promise<ChunkSearchHit[]>;
+  /** ADR 0055 Phase 3b: List imported chunks for an item with structural metadata. */
+  listChunks(itemId: string, limit?: number, offset?: number): Promise<LibraryChunkInfo[]>;
+}
+
+export interface LibraryChunkInfo {
+  id: string;
+  chunk_index: number;
+  content: string;
+  char_start: number;
+  char_end: number;
+  page_number?: number | null;
+  part_number?: number | null;
+  meta?: Record<string, unknown>;
+  created_at?: string;
 }
 
 export interface ChunkSearchHit {

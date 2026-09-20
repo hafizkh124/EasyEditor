@@ -1,4 +1,4 @@
-import type { WorkspaceBackend, RecentItem, ChunkSearchHit, ReadingProgress, ReaderBookmark, ReaderFavorite } from './types';
+import type { WorkspaceBackend, RecentItem, ChunkSearchHit, ReadingProgress, ReaderBookmark, ReaderFavorite, LibraryChunkInfo } from './types';
 import type {
   Project,
   ProjectKind,
@@ -139,6 +139,10 @@ export const localBackend: WorkspaceBackend = {
 
     async searchChunksByRoot(s2DbPath: string | null, query: string, limit = 50): Promise<ChunkSearchHit[]> {
       return invokeWorkspace<ChunkSearchHit[]>('searchChunksByRoot', s2DbPath, query, limit);
+    },
+
+    async listChunks(itemId: string, limit = 50, offset = 0): Promise<LibraryChunkInfo[]> {
+      return invokeWorkspace<LibraryChunkInfo[]>('listChunks', itemId, limit, offset);
     },
   },
 

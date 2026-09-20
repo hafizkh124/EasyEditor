@@ -40,7 +40,7 @@ export default defineTool({
 
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      structuredContent: result,
+      structuredContent: result as unknown as Record<string, unknown>,
     };
   },
 });

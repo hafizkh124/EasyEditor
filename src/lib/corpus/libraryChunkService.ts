@@ -4,6 +4,7 @@
  */
 import { backendFacade } from "@/core/backend";
 import type { LibraryItem } from "@/core/workspace/types";
+import type { LibraryChunkInfo } from "@/core/backend/types";
 
 const library = backendFacade("library");
 
@@ -12,4 +13,6 @@ export const libraryChunkService = {
     library.uploadLibraryFile(file, kind),
   deleteLibraryItem: (itemId: string) => library.deleteLibraryItem(itemId),
   listLibraryItems: (): Promise<LibraryItem[]> => library.listLibraryItems(),
+  listChunks: (itemId: string, limit?: number, offset?: number): Promise<LibraryChunkInfo[]> =>
+    library.listChunks(itemId, limit, offset),
 };

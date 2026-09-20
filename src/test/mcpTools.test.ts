@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import easyEditorMcp from "../lib/mcp/index";
 import calculateFaraidTool from "../lib/mcp/tools/calculate-faraid";
 import searchIslamicCorpusTool from "../lib/mcp/tools/search-islamic-corpus";

@@ -70,3 +70,43 @@ export function deleteItem(db: SqliteDatabase, id: string): void {
 
   if (row?.storage_path) deleteLibraryFile(row.storage_path);
 }
+
+export interface LibraryChunkRow {
+  id: string;
+  chunk_index: number;
+  content: string;
+  char_start: number;
+  char_end: number;
+  page_number: number | null;
+  part_number: number | null;
+  meta: Record<string, unknown>;
+  created_at: string;
+}
+
+export function listChunks(
+  db: SqliteDatabase,
+  itemId: string,
+  limit = 50,
+  offset = 0,
+): LibraryChunkRow[] {
+  const userId = getCurrentUserId(db);
+  const rows = db.prepare(`
+    SELECT id, chunk_index, content, char_start, char_end, page_number, part_number, meta, created_at
+    FROM library_chunks
+    WHERE user_id = ? AND library_item_id = ?
+    ORDER BY chunk_index ASC
+    LIMIT ? OFFSET ?
+  `).all(userId, itemId, limit, offset) as any[];
+
+  return rows.map((r) => ({
+    id: r.id,
+    chunk_index: r.chunk_index,
+    content: r.content,
+    char_start: r.char_start,
+    char_end: r.char_end,
+    page_number: r.page_number ?? null,
+    part_number: r.part_number ?? null,
+    meta: typeof r.meta === 'string' ? JSON.parse(r.meta || '{}') : (r.meta || {}),
+    created_at: r.created_at,
+  }));
+}

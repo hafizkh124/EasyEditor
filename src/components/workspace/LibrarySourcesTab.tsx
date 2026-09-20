@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
-import { BookOpen, FileText, Database, Music, FileCheck, Bookmark, Plus, Trash2, Loader2, CheckCircle2, RefreshCw } from "lucide-react";
+import { BookOpen, FileText, Database, Music, FileCheck, Bookmark, Plus, Trash2, Loader2, CheckCircle2, RefreshCw, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { libraryChunkService } from "@/lib/corpus/libraryChunkService";
 import { runLibraryIngest } from "@/lib/corpus/ingestOrchestrator";
 import { SourceUploadDialog } from "./SourceUploadDialog";
+import { ChunkInspectorDialog } from "./ChunkInspectorDialog";
 import { EmptyState } from "./EmptyState";
 import type { LibraryItem } from "@/core/workspace/types";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ export function LibrarySourcesTab() {
   const [loading, setLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [resuming, setResuming] = useState<string | null>(null);
+  const [inspectItem, setInspectItem] = useState<LibraryItem | null>(null);
 
   const corpusEnabled = import.meta.env.VITE_PERSONAL_CORPUS !== "false";
 
@@ -183,6 +185,17 @@ export function LibrarySourcesTab() {
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="h-6 w-6 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setInspectItem(item)}
+                      title={t("library.inspect_chunks", "Inspect Chunks")}
+                      aria-label={t("library.inspect_chunks_aria", "Inspect chunks for '{title}'").replace("{title}", item.title)}
+                    >
+                      <Layers className="h-3.5 w-3.5" />
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       className="h-6 w-6 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => handleDelete(item.id, item.title)}
                       title={t("library.delete_book", "Delete book")}
@@ -202,6 +215,12 @@ export function LibrarySourcesTab() {
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         onSuccess={refresh}
+      />
+
+      <ChunkInspectorDialog
+        item={inspectItem}
+        open={!!inspectItem}
+        onOpenChange={(open) => !open && setInspectItem(null)}
       />
     </div>
   );

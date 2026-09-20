@@ -28,7 +28,7 @@ import { isRateLimited, rateLimitResponse } from "../_shared/rateLimit.ts";
 import { calculateCost, checkAndDeductTokens, refundTokens, insufficientTokensResponse } from "../_shared/tokenGuard.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 import { decryptKey } from "../_shared/providerKeyCrypto.ts";
-import { PROVIDERS, type ProviderId } from "../_shared/providerRegistry.ts";
+import { PROVIDERS, PROVIDER_IDS, type ProviderId } from "../_shared/providerRegistry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

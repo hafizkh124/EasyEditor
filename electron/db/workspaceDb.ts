@@ -69,6 +69,9 @@ export class WorkspaceDbService {
     return library.createItem(this.db, item);
   }
   public async deleteItem(id: string): Promise<void> { return library.deleteItem(this.db, id); }
+  public async listChunks(itemId: string, limit = 50, offset = 0): Promise<library.LibraryChunkRow[]> {
+    return library.listChunks(this.db, itemId, limit, offset);
+  }
 
   // ── Access Log (SPEC-M6 Home Screen) ──────────────────────────────────────
   public async accessItem(itemId: string): Promise<void> {

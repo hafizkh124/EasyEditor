@@ -1689,6 +1689,8 @@
   "library.resume_process_aria": "استئناف معالجة '{title}'",
   "library.delete_book": "حذف الكتاب",
   "library.delete_book_aria": "حذف '{title}'",
+  "library.inspect_chunks": "فحص المقاطع",
+  "library.inspect_chunks_aria": "فحص مقاطع '{title}'",
   "library.upload_title": "رفع كتاب/مستند إلى مكتبتك الشخصية",
   "library.upload_desc": "اختر ملف PDF أو DOCX أو TXT أو MD. سيُستخرج النص ويُجهز للبحث الآمن في المكتبة.",
   "library.select_file": "اختر الملف",

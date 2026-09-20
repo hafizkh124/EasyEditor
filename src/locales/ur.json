@@ -1689,6 +1689,8 @@
   "library.resume_process_aria": "'{title}' کا پروسیس جاری رکھیں",
   "library.delete_book": "کتاب حذف کریں",
   "library.delete_book_aria": "'{title}' حذف کریں",
+  "library.inspect_chunks": "چنکس کا معائنہ",
+  "library.inspect_chunks_aria": "'{title}' کے چنکس کا معائنہ",
   "library.upload_title": "ذاتی کتب خانے میں کتاب / دستاویز اپلوڈ کریں",
   "library.upload_desc": "PDF, DOCX, TXT, یا MD فائل منتخب کریں۔ متن نکال کر کتب خانے کی محفوظ تلاش کے لیے تیار کیا جائے گا۔",
   "library.select_file": "فائل منتخب کریں",

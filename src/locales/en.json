@@ -1689,6 +1689,8 @@
   "library.resume_process_aria": "Resume process for '{title}'",
   "library.delete_book": "Delete book",
   "library.delete_book_aria": "Delete '{title}'",
+  "library.inspect_chunks": "Inspect chunks",
+  "library.inspect_chunks_aria": "Inspect chunks for '{title}'",
   "library.upload_title": "Upload a book/document to your personal library",
   "library.upload_desc": "Select a PDF, DOCX, TXT, or MD file. Text will be extracted and prepared for safe library search.",
   "library.select_file": "Select file",

@@ -6,7 +6,7 @@
  * concern split across two files; the interface reunites them.
  */
 import { supabase } from "@/integrations/supabase/client";
-import type { LibraryBackend, RecentItem, ChunkSearchHit } from "../types";
+import type { LibraryBackend, RecentItem, ChunkSearchHit, LibraryChunkInfo } from "../types";
 import type { LibraryItem } from "@/core/workspace/types";
 import { logger } from "@/lib/logger";
 
@@ -173,5 +173,19 @@ export const cloudLibrary: LibraryBackend = {
   async searchChunksByRoot(_s2DbPath: string | null, _query: string, _limit = 50): Promise<ChunkSearchHit[]> {
     // Cloud mode: S2.db is local to the desktop app.
     return [];
+  },
+
+  async listChunks(itemId: string, limit = 50, offset = 0): Promise<LibraryChunkInfo[]> {
+    const { data, error } = await (supabase.from("library_chunks" as any) as any)
+      .select("id, chunk_index, content, char_start, char_end, page_number, part_number, meta, created_at")
+      .eq("library_item_id", itemId)
+      .order("chunk_index", { ascending: true })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      log.warn("listChunks error", { error });
+      return [];
+    }
+    return (data as LibraryChunkInfo[]) || [];
   },
 };
