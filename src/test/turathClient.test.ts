@@ -456,6 +456,23 @@ describe('turathClient', () => {
       await expect(searchTurath('استدلال', 5)).rejects.toThrow(/HTTP 503/);
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
+
+    it('configures 12-second request timeout and passes abort signal to fetch', async () => {
+      expect(TURATH_REQUEST_TIMEOUT_MS).toBe(12_000);
+
+      global.fetch = vi.fn().mockImplementation((_url, init) => {
+        expect(init?.signal).toBeDefined();
+        expect(init?.signal?.aborted).toBe(false);
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => searchFixture,
+        } as unknown as Response);
+      });
+
+      await searchTurath('طهارة', 5);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('concurrency limiter', () => {
