@@ -12,6 +12,8 @@ import { personalVectorChannel, personalLexicalChannel, classicalChannel } from 
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 import { searchTurathCloud } from "../_shared/turath.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
+import { fuseAndRerank } from "../_shared/rerank.ts";
+import { decryptKey } from "../_shared/providerKeyCrypto.ts";
 
 // Query-time diacritic normalization now lives in the `search_documents_smart`
 // Postgres RPC (migration 20260517000000). Tier C (live-scraped sites) was
@@ -1073,6 +1075,42 @@ export async function handle(req: Request): Promise<Response> {
         });
       }
     }
+
+    // ADR 0055: Hybrid Reranking with Cohere Multilingual v3.5 (BYOK)
+    // Executed AFTER requireArabicMatn filter and BEFORE deriveStrictMode.
+    // Anchors are pinned and score (RRF) is preserved for Kifayat Gate.
+    const rerankStart = since();
+    let cohereKey: string | undefined;
+    try {
+      const providerKeySecret = Deno.env.get("PROVIDER_KEY_SECRET");
+      if (providerKeySecret) {
+        const { data: cohereRows } = await supabase
+          .from("user_provider_keys")
+          .select("encrypted_key")
+          .eq("user_id", user.id)
+          .eq("provider", "cohere")
+          .limit(1);
+        if (cohereRows && cohereRows.length > 0) {
+          cohereKey = await decryptKey(cohereRows[0].encrypted_key, providerKeySecret);
+        }
+      }
+    } catch {
+      // Non-fatal: key lookup/decrypt failure falls back to RRF ordering
+    }
+
+    allResults = await fuseAndRerank(query, allResults, {
+      cohereApiKey: cohereKey,
+      maxResults: 10,
+      timeoutMs: 2500,
+    });
+
+    stages.push({
+      stage: `rerank(cohere:${cohereKey ? "byok" : "rrf-fallback"}): top-${allResults.length}`,
+      startMs: rerankStart,
+      endMs: since(),
+      ms: since() - rerankStart,
+      count: allResults.length,
+    });
 
     const effectiveStrictMode = deriveStrictMode(strictMode, allResults.length);
 
