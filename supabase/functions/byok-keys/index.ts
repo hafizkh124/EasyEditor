@@ -29,12 +29,35 @@ const corsHeaders = {
 };
 
 // ── testing a key (a cheap, one-shot ping — never saves anything) ───────
-// All three providers speak the same OpenAI-compatible /chat/completions
-// shape with `Authorization: Bearer <key>` — including Gemini's own
-// compat endpoint (the same one _shared/aiGateway.ts's callChatCompletions
-// already uses for our own paid calls) — so one code path covers all three.
-async function testProviderKey(provider: ProviderId, key: string): Promise<{ success: boolean; message: string }> {
-  const spec = PROVIDERS[provider];
+// Chat providers speak the same OpenAI-compatible /chat/completions
+// shape with `Authorization: Bearer <key>`. Cohere speaks the /v2/rerank shape.
+async function testProviderKey(provider: string, key: string): Promise<{ success: boolean; message: string }> {
+  if (provider === "cohere") {
+    try {
+      const res = await fetch("https://api.cohere.com/v2/rerank", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: "rerank-v3.5",
+          query: "test",
+          documents: ["test document"],
+          top_n: 1,
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        return { success: false, message: `Cohere key قبول نہیں ہوئی (${res.status}): ${text.slice(0, 150)}` };
+      }
+      return { success: true, message: "Cohere Rerank key کام کر رہی ہے" };
+    } catch (e) {
+      return { success: false, message: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  const spec = PROVIDERS[provider as ProviderId];
+  if (!spec) {
+    return { success: false, message: `نامعلوم provider: ${provider}` };
+  }
   try {
     const res = await fetch(`${spec.baseUrl}/chat/completions`, {
       method: "POST",
@@ -53,9 +76,11 @@ async function testProviderKey(provider: ProviderId, key: string): Promise<{ suc
 
 // ── request/response ──────────────────────────────────────────────────────
 
+const ALL_BYOK_PROVIDERS = [...PROVIDER_IDS, "cohere"] as const;
+
 const RequestSchema = z.object({
   action: z.enum(["save", "status", "delete", "test"]),
-  provider: z.enum(["gemini", "groq", "openrouter"]).optional(),
+  provider: z.enum(["gemini", "groq", "openrouter", "cohere"]).optional(),
   key: z.string().min(10).max(500).optional(),
 });
 
@@ -109,7 +134,7 @@ export async function handle(req: Request): Promise<Response> {
     const body = parsed.data;
 
     if (body.action === "status") {
-      const providers = body.provider ? [body.provider] : PROVIDER_IDS;
+      const providers = body.provider ? [body.provider] : (ALL_BYOK_PROVIDERS as readonly string[]);
       const { data, error } = await supabase
         .from("user_provider_keys")
         .select("provider, last_four")

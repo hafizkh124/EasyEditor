@@ -125,16 +125,19 @@ export async function handle(req: Request): Promise<Response> {
     // (loop/text/critic) selection, so there is nothing else to disambiguate
     // on. Retrieval (islamic-search, search_corpus, …) is never affected —
     // this only ever substitutes the model CALL.
+    // ADR 0055 Phase 2b: Restrict query strictly to chat generation providers (PROVIDER_IDS)
+    // to prevent non-chat keys (such as 'cohere' reranker) from ever being loaded here.
     const { data: byokRows } = await supabase
       .from("user_provider_keys")
       .select("provider, encrypted_key")
       .eq("user_id", user.id)
+      .in("provider", PROVIDER_IDS)
       .order("updated_at", { ascending: false })
       .limit(1);
     const byokRow = byokRows?.[0] as { provider: ProviderId; encrypted_key: string } | undefined;
     const providerKeySecret = Deno.env.get("PROVIDER_KEY_SECRET");
 
-    if (byokRow && providerKeySecret) {
+    if (byokRow && providerKeySecret && PROVIDERS[byokRow.provider]) {
       const spec = PROVIDERS[byokRow.provider];
       try {
         const plainKey = await decryptKey(byokRow.encrypted_key, providerKeySecret);
