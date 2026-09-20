@@ -103,6 +103,18 @@ export const CONNECTORS: Connector[] = [
     docsHref: 'https://shamela.link',
   },
   {
+    // ADR-0054 — Turath.io classical library connector.
+    // Backs the multi-owner shamela tools (tools: []).
+    id: 'turath',
+    label: 'تراث — Turath.io',
+    category: 'islamic-sciences',
+    descriptionKey: 'connectors.turath.desc',
+    icon: 'globe',
+    healthKind: 'http',
+    tools: [],
+    docsHref: 'https://turath.io',
+  },
+  {
     id: 'tafsir',
     label: 'باحوث — مركز تفسير',
     category: 'quranic-lexicon',
