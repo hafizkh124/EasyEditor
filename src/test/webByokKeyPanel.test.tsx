@@ -118,4 +118,11 @@ describe("WebByokKeyPanel", () => {
     fireEvent.click(screen.getByText(/^Delete$|^حذف$/));
     await waitFor(() => expect(calls.some((c) => c.action === "delete" && c.provider === "gemini")).toBe(true));
   });
+
+  it("handles cohere rerank provider in status map without crashing", async () => {
+    mockStatus({ ...ALL_UNSET, cohere: { hasKey: true, lastFour: "9999" } });
+    render(<WebByokKeyPanel />);
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("byok-keys", { action: "status" }));
+    expect(screen.getByText(/Get a key|کلید حاصل کریں/)).toBeInTheDocument();
+  });
 });

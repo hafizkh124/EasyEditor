@@ -11,21 +11,24 @@ import { logger } from "@/lib/logger";
 
 const log = logger.child("WebByokKeyPanel");
 
-type ProviderId = "gemini" | "groq" | "openrouter";
+type ProviderId = "gemini" | "groq" | "openrouter" | "cohere";
 
 interface WebProviderInfo {
   id: ProviderId;
   label: string;
   placeholder: string;
   getKeyUrl: string;
+  category: "chat" | "rerank";
+  descriptionUr?: string;
 }
 
 // Display-only — the server (_shared/providerRegistry.ts) is the source of
 // truth for what actually gets called; this is just labels/links/hints.
 const WEB_PROVIDERS: WebProviderInfo[] = [
-  { id: "gemini", label: "Google Gemini", placeholder: "AIzaSy…", getKeyUrl: "https://aistudio.google.com/apikey" },
-  { id: "groq", label: "Groq", placeholder: "gsk_…", getKeyUrl: "https://console.groq.com/keys" },
-  { id: "openrouter", label: "OpenRouter", placeholder: "sk-or-v1-…", getKeyUrl: "https://openrouter.ai/keys" },
+  { id: "gemini", label: "Google Gemini", placeholder: "AIzaSy…", getKeyUrl: "https://aistudio.google.com/apikey", category: "chat" },
+  { id: "groq", label: "Groq", placeholder: "gsk_…", getKeyUrl: "https://console.groq.com/keys", category: "chat" },
+  { id: "openrouter", label: "OpenRouter", placeholder: "sk-or-v1-…", getKeyUrl: "https://openrouter.ai/keys", category: "chat" },
+  { id: "cohere", label: "Cohere (Rerank v3.5)", placeholder: "coh_…", getKeyUrl: "https://dashboard.cohere.com/api-keys", category: "rerank", descriptionUr: "ری رینکنگ ماڈل برائے اعلیٰ ترین سرچ درستگی" },
 ];
 
 interface KeyStatus { hasKey: boolean; lastFour: string | null }
@@ -35,6 +38,7 @@ const EMPTY_STATUS: StatusMap = {
   gemini: { hasKey: false, lastFour: null },
   groq: { hasKey: false, lastFour: null },
   openrouter: { hasKey: false, lastFour: null },
+  cohere: { hasKey: false, lastFour: null },
 };
 
 /**
@@ -137,7 +141,7 @@ export const WebByokKeyPanel: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <Select value={provider} onValueChange={(v) => { setProvider(v as ProviderId); setFeedback(null); setDraft(""); }}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-56">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -162,6 +166,10 @@ export const WebByokKeyPanel: React.FC = () => {
             </a>
           )}
         </div>
+
+        {info.descriptionUr && (
+          <p className="text-xs text-muted-foreground">{info.descriptionUr}</p>
+        )}
 
         <div className="relative">
           <Input
