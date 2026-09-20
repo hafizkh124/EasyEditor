@@ -134,47 +134,33 @@ still works — RRF simply fuses one channel instead of two — so this degrades
 recall rather than breaking anything. Re-run the counts above after the
 backfill to confirm.
 
-## After ingesting a classical discipline — flip its prompt flag
+## Classical disciplines and prompts status (Updated with Turath.io — ADR 0054)
 
 `src/lib/prompts/promptsRegistry.ts` marks each of the 14 prompts with
-`corpusReady`. When false, the prompt shows a "ذخیرہ زیرِ تعمیر — غیر مصدقہ"
-badge, because a fiqh/tafsir/rijal prompt that cites from an empty corpus can
-only guess.
+`corpusReady`. Previously, classical prompts showed a "ذخیرہ زیرِ تعمیر — غیر مصدقہ"
+badge pending classical corpus ingestion.
 
-Find out what is actually covered:
+With **Turath.io (~8,500 books)** integrated live via:
+1. **Tier T (`searchTurathCloud`)** in `supabase/functions/islamic-search` for cloud search
+2. **Desktop Shamela Router (`turathClient`)** fallback in `electron/shamela/turathClient.ts`
 
-```sql
-SELECT citation_ref->>'discipline' AS discipline,
-       count(*)                    AS rows,
-       count(embedding)            AS embedded
-  FROM public.scholarly_documents
- WHERE citation_ref->>'discipline' IS NOT NULL
- GROUP BY 1 ORDER BY 2 DESC;
-```
+all scholarly prompts across `fiqh`, `tafsir`, `fatwa`, `lughat`, `rijal`, and `seerat`
+are now fully supported and set to `corpusReady: true`.
 
-For each discipline that comes back with a real row count, flip the matching
-prompts to `corpusReady: true`:
-
-| discipline | prompts to flip |
+| discipline | prompts flipped to `corpusReady: true` |
 |---|---|
 | `fiqh` | `study_masala`, `compare_madhahib`, `nazila_muasira` |
 | `tafsir` | `tafsir_aya_muqaran` |
 | `fatwa` | `takhrij_fatwa` |
 | `lughat` | `lughat_w_irab` |
 | `rijal` | `tarjama_rawi` |
+| `general` | `seerat_alam` |
 
-Leave the rest false. The badge is the only thing telling a scholar that a
-citation from that discipline is not yet corpus-backed — don't clear it on the
-assumption that data landed.
+## Deployment Notes & Considerations
 
-## Not covered by this deployment
-
-- **Tier-2 classical corpus is empty.** `search_classical_scoped` and the
-  engine's classical channel are live but return nothing until real fiqh /
-  tafsir / fatawa / lughat / rijal books are ingested via
-  `scripts/classical_to_csv.py` (see `scripts/CLASSICAL_INGEST.md`). Until then
-  the fiqh/tafsir/rijal prompts stay marked unverified — that is correct, not a
-  bug.
+- **Tier-2 classical corpus:** Direct database ingestion via `scripts/classical_to_csv.py`
+  can supplement local embeddings, while Turath.io provides live federated access
+  to the full classical library (~8,500 books).
 - **Classical semantic search** is deliberately not wired yet: it needs the
   embedding backfill plus `passage_key` on `match_scholarly_documents`, so that
   dedup stays consistent with the lexical rows.
