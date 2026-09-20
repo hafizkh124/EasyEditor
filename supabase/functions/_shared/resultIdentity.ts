@@ -25,6 +25,10 @@ export interface IdentifiableResult {
     surah_number?: number;
     verse?: number;
     url?: string;
+    book_id?: string | number;
+    page?: string | number;
+    shamela_id?: string | number;
+    page_number?: string | number;
     [key: string]: unknown;
   };
 }
@@ -85,6 +89,27 @@ export function resultIdentity(r: IdentifiableResult): string | null {
   // same string whether the row came back from Tier K or Tier D.
   if (typeof c.url === "string" && c.url.trim() !== "") {
     return `url:${c.url.trim()}`;
+  }
+
+  // Classical book passages (e.g. Turath.io Tier T and classical corpus Tier D)
+  // carry no URL, but have a stable book_id and page number. Both tiers produce
+  // these fields (or shamela_id / page_number aliases) so they deduplicate cleanly
+  // without colliding or dropping.
+  const rawBookId = c.book_id ?? c.shamela_id;
+  const rawPage = c.page ?? c.page_number;
+
+  const isUsableId = (v: unknown): boolean => {
+    if (v == null) return false;
+    if (typeof v === "number") return !Number.isNaN(v);
+    const s = String(v).trim();
+    if (s === "" || s.toLowerCase() === "nan" || s.toLowerCase() === "null" || s.toLowerCase() === "undefined") {
+      return false;
+    }
+    return true;
+  };
+
+  if (isUsableId(rawBookId) && isUsableId(rawPage)) {
+    return `classical:${String(rawBookId).trim()}:${String(rawPage).trim()}`;
   }
 
   // No trustworthy identity — the caller keeps the row.

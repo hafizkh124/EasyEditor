@@ -1,0 +1,13 @@
+{
+  "book_id": 2166,
+  "cat_id": 1,
+  "author_id": 12,
+  "name": "المبسوط",
+  "book_name": "المبسوط",
+  "author_name": "السرخسي",
+  "author": "محمد بن أحمد بن أبي سهل السرخسي",
+  "category_name": "الفقه الحنفي",
+  "vol_count": 30,
+  "page_count": 12450,
+  "meta": "{\"book_name\":\"المبسوط\",\"author_name\":\"السرخسي\",\"author_death\":483,\"category\":\"الفقه الحنفي\",\"publisher\":\"دار المعرفة\",\"year\":1414}"
+}

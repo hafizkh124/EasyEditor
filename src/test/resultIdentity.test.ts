@@ -79,6 +79,41 @@ describe("resultIdentity", () => {
     const corpus = row({ collection: "bukhari", hadith_number: 1 });
     expect(resultIdentity(dorar)).not.toBe(resultIdentity(corpus));
   });
+
+  it("identifies a classical or Turath book passage by book_id and page", () => {
+    expect(resultIdentity(row({ book_id: 2166, page: 12 }))).toBe("classical:2166:12");
+  });
+
+  it("treats string and numeric book_id/page as the same passage", () => {
+    const a = resultIdentity(row({ book_id: 2166, page: 12 }));
+    const b = resultIdentity(row({ book_id: "2166", page: "12" }));
+    expect(a).toBe("classical:2166:12");
+    expect(a).toBe(b);
+  });
+
+  it("refuses a half-identity: book_id without page, or page without book_id", () => {
+    expect(resultIdentity(row({ book_id: 2166 }))).toBeNull();
+    expect(resultIdentity(row({ page: 12 }))).toBeNull();
+  });
+
+  it("ignores blank book_id or page strings", () => {
+    expect(resultIdentity(row({ book_id: "   ", page: 12 }))).toBeNull();
+    expect(resultIdentity(row({ book_id: 2166, page: "   " }))).toBeNull();
+  });
+
+  it("refuses NaN or sentinel strings for book_id or page", () => {
+    expect(resultIdentity(row({ book_id: NaN, page: 12 }))).toBeNull();
+    expect(resultIdentity(row({ book_id: 2166, page: NaN }))).toBeNull();
+    expect(resultIdentity(row({ book_id: "NaN", page: 12 }))).toBeNull();
+    expect(resultIdentity(row({ book_id: "null", page: 12 }))).toBeNull();
+    expect(resultIdentity(row({ book_id: 2166, page: "undefined" }))).toBeNull();
+  });
+
+  it("identifies classical passages via shamela_id and page_number aliases", () => {
+    expect(resultIdentity(row({ shamela_id: 2166, page_number: 12 }))).toBe("classical:2166:12");
+    expect(resultIdentity(row({ book_id: 2166, page_number: 12 }))).toBe("classical:2166:12");
+    expect(resultIdentity(row({ shamela_id: "2166", page: "12" }))).toBe("classical:2166:12");
+  });
 });
 
 describe("dedupeResults", () => {
@@ -111,6 +146,16 @@ describe("dedupeResults", () => {
     const tierK = row({ discipline: "fatwa", fatwa_number: "1234", url: "https://urdufatwa.com/q/1234" });
     const tierD = row({ discipline: "fatwa", fatwa_number: "1234", url: "https://urdufatwa.com/q/1234", scholar: "…" });
     expect(dedupeResults([tierK, tierD])).toHaveLength(1);
+  });
+
+  it("de-dupes a classical book passage arriving from both Tier D and Tier T", () => {
+    // Tier D retrieves classical chunk from local pgvector; Tier T retrieves
+    // the same book page from Turath.io API.
+    const tierD = row({ book_id: 2166, page: 12, book_name: "المبسوط", author: "السرخسي" });
+    const tierT = row({ book_id: "2166", page: "12", book_name: "المبسوط", author: "السرخسي", snip: "..." });
+    const out = dedupeResults([tierD, tierT]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toBe(tierD);
   });
 
   it("handles an empty list", () => {
