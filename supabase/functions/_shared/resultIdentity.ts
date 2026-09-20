@@ -84,17 +84,11 @@ export function resultIdentity(r: IdentifiableResult): string | null {
     return `hadith:${book.trim().toLowerCase()}:${String(num).trim()}`;
   }
 
-  // Fatwa and classical rows carry neither. Their canonical URL is the stable
-  // per-ruling identity — urdufatwa writes one on every row, and it is the
-  // same string whether the row came back from Tier K or Tier D.
-  if (typeof c.url === "string" && c.url.trim() !== "") {
-    return `url:${c.url.trim()}`;
-  }
-
   // Classical book passages (e.g. Turath.io Tier T and classical corpus Tier D)
-  // carry no URL, but have a stable book_id and page number. Both tiers produce
-  // these fields (or shamela_id / page_number aliases) so they deduplicate cleanly
-  // without colliding or dropping.
+  // have a stable book_id and page number. Both tiers produce these fields
+  // (or shamela_id / page_number aliases). Checking this before url guarantees
+  // that a Tier T row with a generated url (e.g. turath.io/book/...) still
+  // collapses with an ingested Tier D row lacking an external URL.
   const rawBookId = c.book_id ?? c.shamela_id;
   const rawPage = c.page ?? c.page_number;
 
@@ -110,6 +104,13 @@ export function resultIdentity(r: IdentifiableResult): string | null {
 
   if (isUsableId(rawBookId) && isUsableId(rawPage)) {
     return `classical:${String(rawBookId).trim()}:${String(rawPage).trim()}`;
+  }
+
+  // Fatwa and web rows carry neither. Their canonical URL is the stable
+  // per-ruling identity — urdufatwa writes one on every row, and it is the
+  // same string whether the row came back from Tier K or Tier D.
+  if (typeof c.url === "string" && c.url.trim() !== "") {
+    return `url:${c.url.trim()}`;
   }
 
   // No trustworthy identity — the caller keeps the row.

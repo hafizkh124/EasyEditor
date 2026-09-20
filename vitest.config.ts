@@ -67,6 +67,7 @@ export default defineConfig({
     // whole suite ran in parallel — a scheduling artefact reported as a test
     // failure. A genuinely hung test still fails here, just 25s later.
     testTimeout: 30_000,
+    hookTimeout: 30_000,
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     // jsdom costs roughly 30s of construction per worker and most of this suite
     // never touches the DOM, so pure-logic files opt out with a

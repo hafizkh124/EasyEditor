@@ -5,7 +5,7 @@
 // insert_footnote REFUSES a source_id that wasn't retrieved (the integrity
 // gate), every edit backs the chapter up first, and run_task fails loudly
 // rather than pretending.
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 
 import fs from 'node:fs';
 
@@ -133,9 +133,12 @@ vi.mock('../../electron/agent/adapters/dorar.ts', () => ({ gradeHadith }));
 
 let createDispatcher: typeof import('../../electron/agent/dispatch.ts').createDispatcher;
 
-beforeEach(async () => {
-  vi.clearAllMocks();
+beforeAll(async () => {
   ({ createDispatcher } = await import('../../electron/agent/dispatch.ts'));
+}, 30_000);
+
+beforeEach(() => {
+  vi.clearAllMocks();
 });
 
 const mk = (over: Partial<Parameters<typeof createDispatcher>[0]> = {}) =>
@@ -589,6 +592,25 @@ describe('agent dispatch', () => {
     expect(r.results[0].id).toMatch(/^shamela-cloud:/);
   });
 
+  it('search_shamela: turath transport → turath:… ids, carries transport', async () => {
+    shamelaRouterMock.routeShamelaSearch.mockResolvedValueOnce({
+      hits: [{ bookId: '123', bookTitle: 'المبسوط', pageNumber: 5, snippet: 'متن', score: 1 }],
+      transport: 'turath',
+    });
+    const { dispatch, ledger } = mk();
+    const r = await dispatch('search_shamela', { query: 'نية' }) as { transport: string; results: Array<{ id: string; reference: string }> };
+    expect(r.transport).toBe('turath');
+    expect(r.results[0].id).toBe('turath:123:5');
+    expect(r.results[0].reference).toContain('المبسوط');
+    expect(ledger.size).toBe(1);
+  });
+
+  it('search_shamela: passes turathEnabled from session to routeShamelaSearch', async () => {
+    const { dispatch } = mk({ turathEnabled: false });
+    await dispatch('search_shamela', { query: 'نية' });
+    expect(shamelaRouterMock.routeShamelaSearch).toHaveBeenCalledWith('نية', 8, expect.objectContaining({ turathEnabled: false }), undefined);
+  });
+
   it('search_shamela: router transport "none" + error → { error }', async () => {
     shamelaRouterMock.routeShamelaSearch.mockResolvedValueOnce({ hits: [], transport: 'none', error: 'both off' });
     const { dispatch } = mk();
@@ -601,6 +623,19 @@ describe('agent dispatch', () => {
     const r = await dispatch('read_shamela_page', { source_id: 'shamela-cloud:55:40' }) as { text: string; transport: string };
     expect(shamelaRouterMock.routeShamelaReadPage).toHaveBeenCalledWith('55', 40, expect.objectContaining({ preferTransport: 'cloud' }));
     expect(r.text).toContain('نص الصفحة');
+    expect(ledger.size).toBe(1);
+  });
+
+  it('read_shamela_page: parses turath prefix and sets preferTransport: turath', async () => {
+    shamelaRouterMock.routeShamelaReadPage.mockResolvedValueOnce({
+      page: { bookId: '123', pageNumber: 5, text: 'نص صفحة تراث', footnotes: undefined },
+      transport: 'turath',
+    });
+    const { dispatch, ledger } = mk();
+    const r = await dispatch('read_shamela_page', { source_id: 'turath:123:5' }) as { text: string; transport: string };
+    expect(shamelaRouterMock.routeShamelaReadPage).toHaveBeenCalledWith('123', 5, expect.objectContaining({ preferTransport: 'turath' }));
+    expect(r.text).toContain('نص صفحة تراث');
+    expect(r.transport).toBe('turath');
     expect(ledger.size).toBe(1);
   });
 
