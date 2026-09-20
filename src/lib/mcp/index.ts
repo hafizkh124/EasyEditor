@@ -3,6 +3,9 @@ import whoamiTool from "./tools/whoami";
 import listRecentSessionsTool from "./tools/list-recent-sessions";
 import listResearchSessionsTool from "./tools/list-research-sessions";
 import tokenBalanceTool from "./tools/token-balance";
+import searchIslamicCorpusTool from "./tools/search-islamic-corpus";
+import takhrijHadithTool from "./tools/takhrij-hadith";
+import calculateFaraidTool from "./tools/calculate-faraid";
 
 // The OAuth issuer MUST be the direct Supabase host, built from the project ref
 // (VITE_SUPABASE_PROJECT_ID is inlined by Vite at build time, so this stays
@@ -15,9 +18,9 @@ const projectRef =
 export default defineMcp({
   name: "easy-editor-mcp",
   title: "Easy Editor",
-  version: "0.1.0",
+  version: "0.2.0",
   instructions:
-    "Tools for Al-Ulama Easy Editor. Use `whoami` to confirm the signed-in user, `list_recent_sessions` to browse recent Transcribe/OCR/Speak/Editor/Translate sessions, `list_research_sessions` for Islamic Research chats, and `token_balance` to check the user's token wallet.",
+    "Tools for Al-Ulama Easy Editor. Use `whoami` to confirm the signed-in user, `list_recent_sessions` for user activity, `token_balance` for token wallet, `search_islamic_corpus` for multi-tier Islamic knowledge retrieval, `takhrij_hadith` for canonical narration cross-referencing, and `calculate_faraid` for deterministic Islamic inheritance computation.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
@@ -27,5 +30,8 @@ export default defineMcp({
     listRecentSessionsTool,
     listResearchSessionsTool,
     tokenBalanceTool,
+    searchIslamicCorpusTool,
+    takhrijHadithTool,
+    calculateFaraidTool,
   ],
 });
