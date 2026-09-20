@@ -13,7 +13,6 @@ export interface CandidateWithScore {
     _is_anchor?: boolean;
     [key: string]: unknown;
   };
-  [key: string]: unknown;
 }
 
 /**

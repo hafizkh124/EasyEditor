@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SCHOLARLY_PROMPTS, ScholarlyPromptDef } from '../lib/prompts/promptsRegistry';
+import { SCHOLARLY_PROMPTS } from '../lib/prompts/promptsRegistry';
 import { pickPromptKey } from '../lib/prompts/index';
 
 describe('SCHOLARLY_PROMPTS Registry', () => {

@@ -22,7 +22,7 @@ export const ALLOWED_WORKSPACE_METHODS = new Set<string>([
   'listDocuments', 'getDocument', 'findBlankDocument',
   'createDocument', 'updateDocument', 'deleteDocument',
   'snapshotVersion', 'listDocumentVersions',
-  'listItems', 'getItem', 'createItem', 'deleteItem',
+  'listItems', 'getItem', 'createItem', 'deleteItem', 'listChunks',
   'accessItem', 'getRecentItems', 'getLibraryItemCount',
   'addSearch', 'listSearches', 'removeSearch', 'clearSearches',
   'upsertResearchSession', 'loadResearchSession', 'loadLatestResearchSession',
