@@ -185,3 +185,238 @@ export function normalizeTurathBook(book: TurathRawBook): TurathNormalizedBook {
     page_count: pageCount,
   };
 }
+
+// ─── Cloud Tier T Implementation ────────────────────────────────────────────
+
+export interface IslamicResult {
+  domain: string;
+  content: string;
+  citation_ref: {
+    book?: string;
+    collection?: string;
+    hadith_number?: string | number;
+    grade?: string;
+    rawi?: string;
+    mohdith?: string;
+    takhreej?: string;
+    surah_number?: number;
+    surah_name?: string;
+    surah_name_en?: string;
+    verse?: number;
+    juz?: number;
+    fatwa_number?: string;
+    scholar?: string;
+    title?: string;
+    author?: string;
+    url?: string;
+    volume?: number;
+    page?: number;
+    _is_anchor?: boolean;
+    discipline?: string;
+    book_id?: string | number;
+    shamela_id?: string | number;
+    headings?: string[];
+    [key: string]: unknown;
+  };
+  language: "ar" | "en" | "ur";
+  has_matn?: boolean;
+}
+
+/** Detects discipline for a Turath book (fiqh/tafsir/nahw/rijal/classical). */
+export function detectTurathDiscipline(
+  bookName: string,
+  category = "",
+  headings: string[] = []
+): "fiqh" | "tafsir" | "nahw" | "rijal" | "classical" {
+  const target = `${bookName} ${category} ${headings.join(" ")}`.toLowerCase();
+
+  // Tafsir
+  if (/تفسير|تأويل|معاني القرآن|إعراب القرآن|الدر المنثور|جامع البيان|ابن كثير|القرطبي|الطبري|الكشاف/.test(target)) {
+    return "tafsir";
+  }
+
+  // Fiqh
+  if (/فقه|مبسوط|هداية|مغني|مجموع|منهاج|رد المحتار|الدر المختار|محتار|بدائع الصنائع|كتاب الصلاة|كتاب الطهارة|كتاب الزكاة|كتاب الصيام|كتاب النكاح|كتاب البيوع|أحكام|فتاوى|فتاوي|حنفي|شافعي|مالكي|حنبلي|روضة الطالبين|مختصر خليل|كشاف القناع|الإنصاف|الروض المربع|عمدة الفقه/.test(target)) {
+    return "fiqh";
+  }
+
+  // Nahw / Lughat / Grammar
+  if (/نحو|صرف|إعراب|ألفية|آجرومية|سيبويه|قطر الندى|مفصل|كافية|قاموس|معجم|لسان العرب|الصحاح|لغة/.test(target)) {
+    return "nahw";
+  }
+
+  // Rijal / Biographies
+  if (/رجال|جرح|تعديل|طبقات|تراجم|ثقات|ضعفاء|تهذيب|سير أعلام|وفيات|أنساب/.test(target)) {
+    return "rijal";
+  }
+
+  return "classical";
+}
+
+interface MemoryCacheEntry {
+  results: IslamicResult[];
+  expiresAt: number;
+}
+const MEMORY_CACHE = new Map<string, MemoryCacheEntry>();
+const MAX_MEMORY_CACHE_ENTRIES = 200;
+const CLOUD_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+export function clearTurathCloudCache(): void {
+  MEMORY_CACHE.clear();
+}
+
+export function isTurathEnabled(): boolean {
+  try {
+    // @ts-ignore: Deno global
+    const denoVal = typeof Deno !== "undefined" && Deno.env ? Deno.env.get("TURATH_ENABLED") : undefined;
+    // @ts-ignore: process global
+    const nodeVal = typeof process !== "undefined" && process.env ? process.env.TURATH_ENABLED : undefined;
+    const val = denoVal ?? nodeVal;
+    if (val === undefined || val === null || val === "") return true;
+    return val !== "false" && val !== "0" && String(val).toLowerCase() !== "off";
+  } catch {
+    return true;
+  }
+}
+
+export interface SearchTurathCloudOptions {
+  limit?: number;
+  bookIds?: number[];
+  signal?: AbortSignal;
+  supabase?: any;
+}
+
+/**
+ * Searches Turath.io classical library via pure fetch, returning IslamicResult[]
+ * conforming to islamic-search contracts.
+ */
+export async function searchTurathCloud(
+  query: string,
+  options?: SearchTurathCloudOptions,
+): Promise<IslamicResult[]> {
+  if (!isTurathEnabled()) return [];
+  const cleanQuery = query.trim();
+  if (!cleanQuery) return [];
+
+  const limit = Math.max(1, options?.limit ?? 10);
+  const scoped = (options?.bookIds ?? []).filter(Number.isFinite);
+  const scopedKey = scoped.slice().sort((a, b) => a - b).join(",");
+  const cacheKey = `turath:search:${cleanQuery.toLowerCase()}:${limit}:${scopedKey}`;
+
+  // 1. Check in-memory cache
+  const memCached = MEMORY_CACHE.get(cacheKey);
+  if (memCached) {
+    if (Date.now() < memCached.expiresAt) {
+      return memCached.results;
+    }
+    MEMORY_CACHE.delete(cacheKey);
+  }
+
+  // 2. Check Supabase api_response_cache if available
+  const supabase = options?.supabase;
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from("api_response_cache")
+        .select("response, expires_at")
+        .eq("cache_key", cacheKey)
+        .maybeSingle();
+
+      if (data) {
+        if (new Date(data.expires_at).getTime() > Date.now()) {
+          const cached = data.response as IslamicResult[];
+          MEMORY_CACHE.set(cacheKey, { results: cached, expiresAt: new Date(data.expires_at).getTime() });
+          return cached;
+        } else {
+          // expired
+          supabase.from("api_response_cache").delete().eq("cache_key", cacheKey).then(() => {});
+        }
+      }
+    } catch {
+      // Ignore cache query errors and continue to fetch
+    }
+  }
+
+  // 3. Outbound fetch
+  const url = `https://api.turath.io/search?q=${encodeURIComponent(cleanQuery)}&ver=3`;
+  let rawData: unknown;
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      signal: options?.signal,
+      headers: {
+        "User-Agent": "EasyEditor-CloudTierT/1.0",
+        Accept: "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      return [];
+    }
+
+    rawData = await res.json();
+  } catch (err) {
+    if (options?.signal?.aborted) {
+      throw err;
+    }
+    return [];
+  }
+
+  const rawHits: TurathRawSearchHit[] = Array.isArray(rawData)
+    ? (rawData as TurathRawSearchHit[])
+    : rawData && typeof rawData === "object" && Array.isArray((rawData as { results?: unknown[] }).results)
+    ? ((rawData as { results: TurathRawSearchHit[] }).results)
+    : [];
+
+  let normalized = rawHits.map(normalizeTurathSearchHit);
+  if (scoped.length > 0) {
+    normalized = normalized.filter((h) => scoped.includes(Number(h.book_id)));
+  }
+
+  const results: IslamicResult[] = normalized.slice(0, limit).map((h) => {
+    const discipline = detectTurathDiscipline(h.book_name, h.cat_id ?? "", h.headings);
+    return {
+      domain: "turath",
+      content: h.text || h.snippet,
+      citation_ref: {
+        book: h.book_name,
+        author: h.author_name,
+        book_id: h.book_id,
+        shamela_id: h.book_id,
+        page: h.page,
+        page_number: h.page,
+        volume: h.vol,
+        vol: h.vol,
+        url: `https://turath.io/book/${h.book_id}?page=${h.page}`,
+        headings: h.headings,
+        discipline,
+      },
+      language: "ar",
+      has_matn: true,
+    };
+  });
+
+  // Store in cache
+  const expiresAt = Date.now() + CLOUD_CACHE_TTL_MS;
+  if (MEMORY_CACHE.size >= MAX_MEMORY_CACHE_ENTRIES) {
+    const oldestKey = MEMORY_CACHE.keys().next().value;
+    if (oldestKey) MEMORY_CACHE.delete(oldestKey);
+  }
+  MEMORY_CACHE.set(cacheKey, { results, expiresAt });
+
+  if (supabase && results.length > 0) {
+    try {
+      await supabase.from("api_response_cache").upsert({
+        cache_key: cacheKey,
+        domain: "turath",
+        response: results,
+        expires_at: new Date(expiresAt).toISOString(),
+      }, { onConflict: "cache_key" });
+    } catch {
+      // Ignore cache persistence errors
+    }
+  }
+
+  return results;
+}
+

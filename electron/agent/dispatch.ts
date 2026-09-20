@@ -161,6 +161,8 @@ export interface AgentSession {
    */
   shamelaLocalEnabled?: boolean;
   shamelaCloudEnabled?: boolean;
+  /** ADR-0054 — the Turath.io classical library connector's merged state (absent ⇒ on). */
+  turathEnabled?: boolean;
   /** ADR-0045 — the جوامع الكلم connector's merged state (absent ⇒ on). */
   jkhssnEnabled?: boolean;
   /** Phase 4 — book/author/category/century scope for search tools (refs like
@@ -168,11 +170,12 @@ export interface AgentSession {
   bookScope?: string[];
 }
 
-/** ADR-0044 — the local-first router's options for this run. */
+/** ADR-0044 / ADR-0054 — the local-first router's options for this run. */
 function shamelaRouteOpts(session: AgentSession): RouteOpts {
   return {
     localEnabled: session.shamelaLocalEnabled !== false,
     cloudEnabled: session.shamelaCloudEnabled === true,
+    turathEnabled: session.turathEnabled !== false,
   };
 }
 
@@ -298,10 +301,10 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const limit = Math.min(num(args.limit, 8), 12); // ADR-0027 F4 — hard cap
         const r = await routeShamelaSearch(query, limit, shamelaRouteOpts(session), scopedShamelaIds.length ? scopedShamelaIds : undefined);
         if (r.transport === 'none' && r.error) return { error: r.error, transport: 'none' };
-        const prefix = r.transport === 'cloud' ? 'shamela-cloud' : 'shamela';
+        const prefix = r.transport === 'turath' ? 'turath' : r.transport === 'cloud' ? 'shamela-cloud' : 'shamela';
         const chunks: RetrievedChunk[] = r.hits.map((h) => ({
           id: `${prefix}:${h.bookId}:${h.pageNumber}`,
-          reference: `${h.bookTitle || 'الشاملة'}، ص ${h.pageNumber}`,
+          reference: `${h.bookTitle || (prefix === 'turath' ? 'تراث' : 'الشاملة')}، ص ${h.pageNumber}`,
           content: h.snippet,
           ...(r.transport === 'cloud' && !Number(h.bookId) ? { bibliographic: true } : {}),
         }));
@@ -316,15 +319,15 @@ export function createDispatcher(session: AgentSession): Dispatcher {
 
       case 'read_shamela_page': {
         const sid = str(args.source_id, 'source_id');
-        const m = /^(shamela(?:-cloud)?):([^:]+):(\d+)$/.exec(sid);
-        if (!m) return { error: 'read_shamela_page needs a shamela:<bookId>:<page> id from search_shamela' };
+        const m = /^(shamela(?:-cloud)?|turath):([^:]+):(\d+)$/.exec(sid);
+        if (!m) return { error: 'read_shamela_page needs a shamela:<bookId>:<page> or turath:<bookId>:<page> id from search_shamela' };
         const [, pfx, bookId, pageStr] = m;
         const r = await routeShamelaReadPage(bookId, Number(pageStr), {
           ...shamelaRouteOpts(session),
-          preferTransport: pfx === 'shamela-cloud' ? 'cloud' : 'local',
+          preferTransport: pfx === 'turath' ? 'turath' : pfx === 'shamela-cloud' ? 'cloud' : 'local',
         });
         if (!r.page) return { error: r.error ?? 'could not read the page', transport: r.transport };
-        ledger.add([{ id: sid, reference: `الشاملة، ص ${r.page.pageNumber}`, content: r.page.text }]);
+        ledger.add([{ id: sid, reference: `${pfx === 'turath' ? 'تراث' : 'الشاملة'}، ص ${r.page.pageNumber}`, content: r.page.text }]);
         return {
           transport: r.transport,
           bookId,

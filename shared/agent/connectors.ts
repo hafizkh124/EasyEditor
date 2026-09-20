@@ -249,6 +249,7 @@ for (const c of CONNECTORS) for (const t of c.tools) TOOL_TO_CONNECTOR.set(t, c.
 export const CONNECTOR_PROVENANCE_LABEL: Record<string, string> = {
   shamela: '💻 الشاملة (مقامی)',
   'shamela-cloud': '☁️ شامله لنک',
+  turath: '🌐 تراث',
   tafsir: 'باحوث',
   lexicon: 'اللغۃ',
   hadith: 'حدیث',
@@ -300,9 +301,9 @@ export function isConnectorOn(connectors: Record<string, boolean> | undefined, i
  * still returns the primary owner for provenance / non-disable purposes.
  */
 export const MULTI_OWNER_TOOLS: Record<string, string[]> = {
-  search_shamela: ['shamela', 'shamela-cloud'],
-  read_shamela_page: ['shamela', 'shamela-cloud'],
-  find_shamela_book: ['shamela', 'shamela-cloud'],
+  search_shamela: ['shamela', 'shamela-cloud', 'turath'],
+  read_shamela_page: ['shamela', 'shamela-cloud', 'turath'],
+  find_shamela_book: ['shamela', 'shamela-cloud', 'turath'],
 };
 
 /** True when this tool's connector(s) are switched off. */
@@ -337,6 +338,7 @@ export function connectorsUsed(toolCalls: Array<{ name: string; result: unknown 
         (typeof rec.text === 'string' && rec.text.length > 0);
       if (gave && rec.transport === 'local') pushOnce('shamela');
       else if (gave && rec.transport === 'cloud') pushOnce('shamela-cloud');
+      else if (gave && rec.transport === 'turath') pushOnce('turath');
       continue;
     }
 

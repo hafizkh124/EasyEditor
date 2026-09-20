@@ -49,7 +49,7 @@ describe('connectors', () => {
   });
 
   it('isToolDisabled is true only when the tool has a connector AND it is off', () => {
-    expect(isToolDisabled({ shamela: false }, 'search_shamela')).toBe(true);
+    expect(isToolDisabled({ shamela: false, turath: false }, 'search_shamela')).toBe(true);
     expect(isToolDisabled({ shamela: false }, 'query_tafseer')).toBe(false); // different connector
     expect(isToolDisabled({ tafsir: false }, 'read_document')).toBe(false);  // no connector
     expect(isToolDisabled(undefined, 'search_shamela')).toBe(false);
@@ -58,8 +58,8 @@ describe('connectors', () => {
   it('every connector lists real-looking tool names (a transport-only connector may list none)', () => {
     for (const c of CONNECTORS) {
       expect(c.tools.every((t) => /^[a-z_]+$/.test(t))).toBe(true);
-      // shamela-cloud is a pure transport toggle (ADR-0044) — it owns no tool.
-      if (c.id !== 'shamela-cloud') expect(c.tools.length).toBeGreaterThan(0);
+      // shamela-cloud and turath are pure transport toggles (ADR-0044, ADR-0054) — they own no tool directly.
+      if (c.id !== 'shamela-cloud' && c.id !== 'turath') expect(c.tools.length).toBeGreaterThan(0);
     }
   });
 });
@@ -117,13 +117,14 @@ describe('dual Shamela (ADR-0044)', () => {
     expect(connectorForTool('search_shamela')).toBe('shamela'); // primary owner unchanged
   });
 
-  it('MULTI_OWNER_TOOLS: search_shamela is off only when BOTH transports are off', () => {
+  it('MULTI_OWNER_TOOLS: search_shamela is off only when ALL transports are off', () => {
     for (const tool of Object.keys(MULTI_OWNER_TOOLS)) {
-      expect(isToolDisabled({ shamela: false, 'shamela-cloud': false }, tool)).toBe(true);
-      expect(isToolDisabled({ shamela: false, 'shamela-cloud': true }, tool)).toBe(false);
-      expect(isToolDisabled({ shamela: true, 'shamela-cloud': false }, tool)).toBe(false);
-      expect(isToolDisabled({ shamela: false }, tool)).toBe(true); // cloud is defaultOff
-      expect(isToolDisabled(undefined, tool)).toBe(false);          // local defaults on
+      expect(isToolDisabled({ shamela: false, 'shamela-cloud': false, turath: false }, tool)).toBe(true);
+      expect(isToolDisabled({ shamela: false, 'shamela-cloud': true, turath: false }, tool)).toBe(false);
+      expect(isToolDisabled({ shamela: true, 'shamela-cloud': false, turath: false }, tool)).toBe(false);
+      expect(isToolDisabled({ shamela: false, 'shamela-cloud': false, turath: true }, tool)).toBe(false);
+      expect(isToolDisabled({ shamela: false, turath: false }, tool)).toBe(true); // cloud is defaultOff
+      expect(isToolDisabled(undefined, tool)).toBe(false);          // local and turath default on
     }
   });
 
@@ -135,6 +136,21 @@ describe('dual Shamela (ADR-0044)', () => {
   it('both Shamela transports have a distinct provenance label', () => {
     expect(CONNECTOR_PROVENANCE_LABEL['shamela']).toContain('مقامی');
     expect(CONNECTOR_PROVENANCE_LABEL['shamela-cloud']).toContain('شامله لنک');
+  });
+});
+
+describe('turath connector (ADR-0054)', () => {
+  it('turath is registered, defaultOn, and owns no tool directly (backs multi-owner tools)', () => {
+    const turath = connectorById('turath');
+    expect(turath).toBeDefined();
+    expect(turath!.defaultOff).toBeUndefined();
+    expect(turath!.tools).toEqual([]);
+    expect(turath!.category).toBe('islamic-sciences');
+    expect(turath!.healthKind).toBe('http');
+  });
+
+  it('turath has a provenance label', () => {
+    expect(CONNECTOR_PROVENANCE_LABEL['turath']).toContain('تراث');
   });
 });
 

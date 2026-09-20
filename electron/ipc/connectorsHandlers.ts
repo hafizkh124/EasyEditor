@@ -24,6 +24,7 @@ const log = logger.child('ipc/connectors');
 const HEALTH_PROBE: Record<string, { url: string; headers?: Record<string, string> }> = {
   repositories: { url: 'https://archive.org/advancedsearch.php?q=title:test&rows=0&output=json' },
   ganjoor: { url: GANJOOR_HEALTH_URL },
+  turath: { url: 'https://api.turath.io' },
   // NOTE: no `dorar` — dorar.net Cloudflare-blocks a standalone server probe
   // (403 on every path). `grade_hadith` goes through the research bridge; the
   // connector is `healthKind: 'bridged'` (ADR-0040 amended).

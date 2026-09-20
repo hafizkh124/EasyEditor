@@ -296,6 +296,8 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     // ADR-0044 — the local-first Shamela router reads these.
     shamelaLocalEnabled: connectors['shamela'] !== false,
     shamelaCloudEnabled: connectors['shamela-cloud'] === true,
+    // ADR-0054 — the Turath.io connector.
+    turathEnabled: connectors['turath'] !== false,
     // ADR-0045 — the جوامع الكلم engine.
     jkhssnEnabled: connectors['jkhssn'] !== false,
     // Plan §4.5 — restrict the search tools to the scoped book refs.

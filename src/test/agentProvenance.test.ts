@@ -44,8 +44,11 @@ describe('connectorsUsed', () => {
   it('a search_shamela result tags the transport that served it', () => {
     expect(connectorsUsed([{ name: 'search_shamela', result: { count: 2, results: [], transport: 'local' } }])).toEqual(['shamela']);
     expect(connectorsUsed([{ name: 'search_shamela', result: { count: 2, results: [], transport: 'cloud' } }])).toEqual(['shamela-cloud']);
+    expect(connectorsUsed([{ name: 'search_shamela', result: { count: 2, results: [], transport: 'turath' } }])).toEqual(['turath']);
     expect(connectorsUsed([{ name: 'read_shamela_page', result: { text: '…', transport: 'cloud' } }])).toEqual(['shamela-cloud']);
+    expect(connectorsUsed([{ name: 'read_shamela_page', result: { text: '…', transport: 'turath' } }])).toEqual(['turath']);
     expect(connectorsUsed([{ name: 'find_shamela_book', result: { books: [{ id: 1 }], transport: 'local' } }])).toEqual(['shamela']);
+    expect(connectorsUsed([{ name: 'find_shamela_book', result: { books: [{ id: 1 }], transport: 'turath' } }])).toEqual(['turath']);
   });
 
   it('a Shamela result with transport "none", an error, or zero hits is not counted', () => {

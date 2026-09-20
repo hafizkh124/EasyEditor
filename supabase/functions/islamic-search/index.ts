@@ -10,6 +10,7 @@ import { resultIdentity, dedupeResults } from "../_shared/resultIdentity.ts";
 import { wordByWordChannel } from "../_shared/wordByWord.ts";
 import { personalVectorChannel, personalLexicalChannel, classicalChannel } from "../_shared/citationEngine.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
+import { searchTurathCloud } from "../_shared/turath.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 
 // Query-time diacritic normalization now lives in the `search_documents_smart`
@@ -99,7 +100,17 @@ export const TIER_D_DISCIPLINE: Record<string, string> = {
   "classical-mustalah": "hadith_term",
 };
 
-const ALL_DOMAINS = [...TIER_A_DOMAINS, ...TIER_B_DOMAINS, ...TIER_C_DOMAINS, ...TIER_K_DOMAINS, ...TIER_D_DOMAINS];
+// Tier T: Turath.io live classical library API (ADR-0054).
+export const TIER_T_DOMAINS = ["turath"];
+
+const ALL_DOMAINS = [
+  ...TIER_A_DOMAINS,
+  ...TIER_B_DOMAINS,
+  ...TIER_C_DOMAINS,
+  ...TIER_K_DOMAINS,
+  ...TIER_D_DOMAINS,
+  ...TIER_T_DOMAINS,
+];
 
 // Surah names by number — used to fill a clean reference when a retrieved row
 // (typically a Tier-A API result) has an empty surah_name. The local tanzil
@@ -859,6 +870,37 @@ export async function handle(req: Request): Promise<Response> {
           return merged;
         } catch (e) {
           console.error("Tier L (personal library) error:", e);
+          return [];
+        }
+      })()
+    );
+
+    // Tier T: Turath.io classical library API (ADR-0054).
+    // Indexes ~8,500 classical works across fiqh, tafsir, nahw, lughat, etc.
+    // Triggered when:
+    //  - EXPLICIT: user selected 'turath' in domain picker (selectedDomains).
+    //  - IMPLICIT: planner detected disciplines fiqh, nahw, lughat, or seerah.
+    const explicitTurath = Array.isArray(selectedDomains) && selectedDomains.includes("turath");
+    pushTimed("tierT:turath",
+      (async (): Promise<IslamicResult[]> => {
+        try {
+          const plan = await queryPlanPromise;
+          const planDisciplines = plan?.scope.disciplines ?? [];
+          const matchedImplicit = planDisciplines.some((d) =>
+            ["fiqh", "nahw", "lughat", "seerah"].includes(d)
+          );
+
+          if (!explicitTurath && !matchedImplicit) {
+            return [];
+          }
+
+          return await searchTurathCloud(query, {
+            limit: 10,
+            signal: AbortSignal.timeout(6_000),
+            supabase,
+          });
+        } catch (e) {
+          console.error("Tier T (turath) error:", e);
           return [];
         }
       })()
