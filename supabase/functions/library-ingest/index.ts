@@ -2,8 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { embedBatch } from "../_shared/embed.ts";
 import { fetchAndExtractStorageFile } from "../_shared/fileText.ts";
-// SPEC-M5 FR-1.3: one chunker, shared with the Electron main process.
-import { chunkDocumentText } from "../_shared/mirror/text/documentChunks.ts";
+// SPEC-M5 FR-1.3, ADR 0055: adaptive chunker shared with the Electron main process.
+import {
+  chunkDocumentText,
+  chunkDocumentAdaptive,
+  type DocumentKind,
+} from "../_shared/mirror/text/documentChunks.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,14 +114,21 @@ export async function handle(req: Request): Promise<Response> {
     }
 
     // 2. Chunk text
-    const allChunks = chunkDocumentText(fullText);
+    const ingestKind = (libraryItem.meta?.kind || libraryItem.meta?.discipline || libraryItem.category) as DocumentKind | undefined;
+    const isResumingLegacy = offset > 0 && libraryItem.meta?.ingest?.chunker !== "adaptive-v1";
+    const allChunks = isResumingLegacy
+      ? chunkDocumentText(fullText)
+      : chunkDocumentAdaptive(fullText, { kind: ingestKind });
     const totalChunks = allChunks.length;
 
     if (totalChunks === 0) {
       await serviceClient.from("library_items").update({
         meta: {
           ...libraryItem.meta,
-          ingest: { status: "ready", progress: 100, total_chunks: 0 },
+          ingest: {
+            status: "ready", progress: 100, total_chunks: 0,
+            chunker: isResumingLegacy ? undefined : "adaptive-v1",
+          },
         },
       }).eq("id", item_id);
 
@@ -135,7 +146,10 @@ export async function handle(req: Request): Promise<Response> {
       await serviceClient.from("library_items").update({
         meta: {
           ...libraryItem.meta,
-          ingest: { status: "ready", progress: 100, total_chunks: totalChunks },
+          ingest: {
+            status: "ready", progress: 100, total_chunks: totalChunks,
+            chunker: isResumingLegacy ? undefined : "adaptive-v1",
+          },
         },
       }).eq("id", item_id);
 
@@ -159,7 +173,7 @@ export async function handle(req: Request): Promise<Response> {
       char_start: c.charStart,
       char_end: c.charEnd,
       embedding: embeddings[i],
-      meta: {},
+      meta: c.meta ?? {},
     }));
 
     const { error: insertError } = await serviceClient
@@ -186,6 +200,7 @@ export async function handle(req: Request): Promise<Response> {
           progress: progressPercent,
           total_chunks: totalChunks,
           next_offset: nextOffset,
+          chunker: isResumingLegacy ? undefined : "adaptive-v1",
           ...(isDone ? {} : { extracted_text: fullText }),
         },
       },

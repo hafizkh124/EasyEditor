@@ -3,6 +3,8 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   chunkDocumentText,
+  chunkDocumentAdaptive,
+  detectDocumentKind,
   CHUNK_SIZE,
   CHUNK_OVERLAP,
 } from '../../shared/text/documentChunks';
@@ -83,3 +85,81 @@ describe('chunk constants', () => {
     expect(CHUNK_OVERLAP).toBeLessThan(CHUNK_SIZE);
   });
 });
+
+describe('detectDocumentKind', () => {
+  it('detects hadith genre from transmission chains', () => {
+    const text = 'حدثنا عبد الله بن يوسف قال أخبرنا مالك عن نافع عن ابن عمر أن رسول الله صلى الله عليه وسلم قال: بني الإسلام على خمس.';
+    expect(detectDocumentKind(text)).toBe('hadith');
+  });
+
+  it('detects fiqh genre from classical headings', () => {
+    const text = 'كتاب الصلاة\nباب مواقيت الصلاة\nالصلاة واجبة في أوقاتها المحددة.\nفصل في الأذان والإقامة';
+    expect(detectDocumentKind(text)).toBe('fiqh');
+  });
+
+  it('defaults to prose when no specialized markers are present', () => {
+    const text = 'یہ ایک معلوماتی مقالہ ہے جو مختلف موضوعات پر گفتگو کرتا ہے۔ اس میں عام بیانات شامل ہیں۔';
+    expect(detectDocumentKind(text)).toBe('prose');
+  });
+});
+
+describe('chunkDocumentAdaptive (ADR 0055)', () => {
+  it('returns empty array for empty input', () => {
+    expect(chunkDocumentAdaptive('')).toEqual([]);
+    expect(chunkDocumentAdaptive('   \n  ')).toEqual([]);
+  });
+
+  it('keeps isnad and matn intact in hadith mode when within size limit', () => {
+    const hadith1 = '1 - حدثنا الحميدي عبد الله بن الزبير قال حدثنا سفيان قال حدثنا يحيى بن سعيد الأنصاري قال أخبرني محمد بن إبراهيم التيمي أنه سمع علقمة بن وقاص الليثي يقول سمعت عمر بن الخطاب رضي الله عنه على المنبر قال سمعت رسول الله صلى الله عليه وسلم يقول: إنما الأعمال بالنيات، وإنما لكل امرئ ما نوى.';
+    const hadith2 = '2 - حدثنا عبد الله بن يوسف قال أخبرنا مالك عن هشام بن عروة عن أبيه عن عائشة أم المؤمنين رضي الله عنها أن الحارث بن هشام رضي الله عنه سأل رسول الله صلى الله عليه وسلم فقال: يا رسول الله كيف يأتيك الوحي؟';
+    const corpus = `${hadith1}\n\n${hadith2}`;
+
+    const chunks = chunkDocumentAdaptive(corpus, { kind: 'hadith' });
+    expect(chunks).toHaveLength(2);
+    expect(chunks[0].index).toBe(0);
+    expect(chunks[1].index).toBe(1);
+    expect(chunks[0].meta?.kind).toBe('hadith');
+    expect(chunks[0].meta?.isnad).toBeDefined();
+    expect(chunks[0].content).toContain('إنما الأعمال بالنيات');
+    expect(chunks[1].content).toContain('كيف يأتيك الوحي');
+  });
+
+  it('segments fiqh along headings and builds breadcrumbs', () => {
+    const fiqhText = [
+      'كتاب الطهارة',
+      'باب المياه',
+      'الماء طهور لا ينجسه شيء إلا ما غلب على ريحه أو طعمه أو لونه.',
+      'فصل في سؤر الحيوان',
+      'سؤر الآدمي طاهر وسؤر ما يؤكل لحمه طاهر.'
+    ].join('\n');
+
+    const chunks = chunkDocumentAdaptive(fiqhText, { kind: 'fiqh' });
+    expect(chunks.length).toBeGreaterThanOrEqual(2);
+    for (const c of chunks) {
+      expect(c.meta?.kind).toBe('fiqh');
+      expect(c.meta?.heading).toBeDefined();
+    }
+    const lastChunk = chunks[chunks.length - 1];
+    expect(lastChunk.meta?.heading).toContain('كتاب الطهارة');
+    expect(lastChunk.meta?.heading).toContain('فصل');
+  });
+
+  it('preserves accurate charStart and charEnd slice ranges', () => {
+    const text = 'كتاب الصلاة\nباب الأذان\nالأذان سنة مؤكدة للصلوات الخمس.\nباب الإقامة\nالإقامة تقام عند الشروع في الصلاة.';
+    const chunks = chunkDocumentAdaptive(text, { kind: 'fiqh' });
+    expect(chunks.length).toBeGreaterThan(0);
+    for (const chunk of chunks) {
+      const sliced = text.slice(chunk.charStart, chunk.charEnd).trim();
+      expect(sliced).toBe(chunk.content);
+    }
+  });
+
+  it('falls back to sentence-aware prose chunking when kind is prose', () => {
+    const text = 'ایک لمبا مضمون جو اردو میں تحریر کیا گیا ہے۔ یہ جملہ اول ہے۔ یہ جملہ دوم ہے۔';
+    const chunks = chunkDocumentAdaptive(text, { kind: 'prose' });
+    expect(chunks.length).toBe(1);
+    expect(chunks[0].meta?.kind).toBe('prose');
+    expect(chunks[0].content).toBe(text);
+  });
+});
+

@@ -20,7 +20,12 @@ import { getCurrentUserId, genId } from './workspaceStore/identity.js';
 import { upsertChunkVector } from './vectorSearch.js';
 import { readLibraryFile } from './fileStore.js';
 import { embedTextContent } from '../ai/geminiClient.js';
-import { chunkDocumentText, type DocumentChunk } from '../../shared/text/documentChunks.js';
+import {
+  chunkDocumentText,
+  chunkDocumentAdaptive,
+  type DocumentChunk,
+  type DocumentKind,
+} from '../../shared/text/documentChunks.js';
 import { extractTextFromBuffer } from '../../shared/text/fileText.js';
 import { normalizeArabicForSearch } from '../../shared/text/arabicSearch.js';
 
@@ -54,6 +59,7 @@ type IngestMeta = {
   next_offset?: number;
   extracted_text?: string;
   error?: string;
+  chunker?: string;
 };
 
 function readItem(db: SqliteDatabase, itemId: string, userId: string): ItemRow {
@@ -131,11 +137,18 @@ export async function ingestLibraryItem(
     throw new Error(fullText);
   }
 
-  const allChunks = chunkDocumentText(fullText);
+  const ingestKind = (meta.kind || meta.discipline || meta.category) as DocumentKind | undefined;
+  const isResumingLegacy = offset > 0 && (meta.ingest as IngestMeta | undefined)?.chunker !== 'adaptive-v1';
+  const allChunks = isResumingLegacy
+    ? chunkDocumentText(fullText)
+    : chunkDocumentAdaptive(fullText, { kind: ingestKind });
   const totalChunks = allChunks.length;
 
   if (totalChunks === 0) {
-    writeIngestMeta(db, itemId, meta, { status: 'ready', progress: 100, total_chunks: 0 });
+    writeIngestMeta(db, itemId, meta, {
+      status: 'ready', progress: 100, total_chunks: 0,
+      chunker: isResumingLegacy ? undefined : 'adaptive-v1',
+    });
     return { item_id: itemId, inserted: 0, next_offset: 0, done: true, total_chunks: 0, progress: 100 };
   }
 
@@ -143,7 +156,10 @@ export async function ingestLibraryItem(
   const batch = allChunks.slice(currentOffset, currentOffset + batchSize);
 
   if (batch.length === 0) {
-    writeIngestMeta(db, itemId, meta, { status: 'ready', progress: 100, total_chunks: totalChunks });
+    writeIngestMeta(db, itemId, meta, {
+      status: 'ready', progress: 100, total_chunks: totalChunks,
+      chunker: isResumingLegacy ? undefined : 'adaptive-v1',
+    });
     return {
       item_id: itemId, inserted: 0, next_offset: totalChunks,
       done: true, total_chunks: totalChunks, progress: 100,
@@ -167,6 +183,7 @@ export async function ingestLibraryItem(
     progress,
     total_chunks: totalChunks,
     next_offset: nextOffset,
+    chunker: isResumingLegacy ? undefined : 'adaptive-v1',
     // Carried only while unfinished, so a completed item does not keep a
     // second full copy of the book in its metadata.
     ...(isDone ? {} : { extracted_text: fullText }),
@@ -200,16 +217,18 @@ export function storeChunk({
   db.prepare(`
     INSERT INTO library_chunks
       (id, user_id, library_item_id, chunk_index, content, language, char_start, char_end, page_number, part_number, meta, created_at)
-    VALUES (?, ?, ?, ?, ?, 'ur', ?, ?, ?, ?, '{}', ?)
+    VALUES (?, ?, ?, ?, ?, 'ur', ?, ?, ?, ?, ?, ?)
     ON CONFLICT (library_item_id, chunk_index) DO UPDATE SET
       content = excluded.content,
       char_start = excluded.char_start,
       char_end = excluded.char_end,
       page_number = excluded.page_number,
-      part_number = excluded.part_number
+      part_number = excluded.part_number,
+      meta = excluded.meta
   `).run(
     chunkId, userId, itemId, chunk.index, chunk.content,
     chunk.charStart, chunk.charEnd, pageNumber, partNumber,
+    JSON.stringify(chunk.meta || {}),
     new Date().toISOString(),
   );
 
