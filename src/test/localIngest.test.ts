@@ -9,6 +9,8 @@ import { EMBED_DIMS } from '../../shared/ai/embedConstants';
 const files = new Map<string, Buffer>();
 let embedCalls = 0;
 let embedFails = false;
+/** Fail every embed call after this many have succeeded (null = never). */
+let embedFailAfter: number | null = null;
 
 vi.mock('../../electron/db/fileStore.js', () => ({
   readLibraryFile: (p: string) => files.get(p) ?? null,
@@ -19,7 +21,7 @@ vi.mock('../../electron/db/fileStore.js', () => ({
 vi.mock('../../electron/ai/geminiClient.js', () => ({
   embedTextContent: async () => {
     embedCalls++;
-    if (embedFails) throw new Error('quota exhausted');
+    if (embedFails || (embedFailAfter !== null && embedCalls > embedFailAfter)) throw new Error('quota exhausted');
     return new Array(EMBED_DIMS).fill(0.01);
   },
 }));
@@ -82,6 +84,7 @@ describe('ingestLibraryItem (SPEC-M5.9 FR-1)', () => {
     files.clear();
     embedCalls = 0;
     embedFails = false;
+    embedFailAfter = null;
   });
 
   it('answers with the same shape the edge function returns', async () => {
@@ -207,5 +210,60 @@ describe('ingestLibraryItem (SPEC-M5.9 FR-1)', () => {
     // The first batch is still committed and still resumable.
     expect(chunkCount(db, id)).toBe(2);
     expect(meta(db, id).ingest.next_offset).toBe(2);
+  });
+
+  // A failed embed used to leave no trace on the item: no `failed` status, no error, no
+  // resume point. The library row kept its default green "saved" over zero chunks (found by
+  // uploading a book in the desktop app with no Gemini key configured).
+  describe('an embedding failure is recorded on the item', () => {
+    const text = 'جملہ۔ '.repeat(2000);
+
+    it('REGRESSION: a failure on the very first chunk marks the item failed, with the reason', async () => {
+      const db = makeDb();
+      const id = addItem(db, text);
+      embedFails = true;
+
+      await expect(ingestLibraryItem(db as any, { itemId: id })).rejects.toThrow(/quota exhausted/);
+
+      const ingest = meta(db, id).ingest;
+      expect(ingest.status).toBe('failed');
+      expect(ingest.error).toMatch(/quota exhausted/);
+      expect(ingest.next_offset).toBe(0);
+      expect(ingest.chunker).toBe('adaptive-v1');
+      expect(chunkCount(db, id)).toBe(0);
+    });
+
+    it('records how far it got when the failure comes part-way through a batch', async () => {
+      const db = makeDb();
+      const id = addItem(db, text);
+      embedFailAfter = 3;
+
+      await expect(ingestLibraryItem(db as any, { itemId: id, batchSize: 10 })).rejects.toThrow(/quota exhausted/);
+
+      expect(chunkCount(db, id)).toBe(3);
+      const ingest = meta(db, id).ingest;
+      expect(ingest.status).toBe('failed');
+      expect(ingest.next_offset).toBe(3);
+      expect(ingest.progress).toBeGreaterThan(0);
+    });
+
+    it('resumes from the recorded point and finishes without re-embedding what is stored', async () => {
+      const db = makeDb();
+      const id = addItem(db, text);
+      embedFailAfter = 3;
+      await expect(ingestLibraryItem(db as any, { itemId: id, batchSize: 100 })).rejects.toThrow();
+      const { next_offset, total_chunks } = meta(db, id).ingest;
+
+      embedFailAfter = null;
+      embedCalls = 0;
+      const res = await ingestLibraryItem(db as any, { itemId: id, offset: next_offset, batchSize: 100 });
+
+      expect(res.done).toBe(true);
+      expect(embedCalls).toBe(total_chunks - next_offset); // only the missing chunks were embedded
+      expect(chunkCount(db, id)).toBe(total_chunks);
+      const ingest = meta(db, id).ingest;
+      expect(ingest.status).toBe('ready');
+      expect(ingest.extracted_text).toBeUndefined(); // the book text is not kept once finished
+    });
   });
 });

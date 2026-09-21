@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from '../open.js';
 import { getCurrentUserId, genId } from './identity.js';
-import { deleteLibraryFile } from '../fileStore.js';
+import { deleteLibraryFile, writeLibraryFile } from '../fileStore.js';
 import type { LibraryItem, LibraryItemKind } from '../../../src/core/workspace/types.js';
 
 function mapLibraryItemRow(r: any): LibraryItem {
@@ -33,7 +33,34 @@ export function listItems(db: SqliteDatabase, projectId?: string): LibraryItem[]
   return rows.map(mapLibraryItemRow);
 }
 
-export function createItem(db: SqliteDatabase, item: Partial<LibraryItem> & { title: string }): LibraryItem {
+/** Largest upload accepted over IPC; the bytes cross the process boundary in one message. */
+export const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
+
+/**
+ * The storage_path for an uploaded file: `<itemId>/<file name>`. The name keeps its
+ * extension (ingest picks the text extractor from it) but never a directory part,
+ * and `..` / empty names collapse to a safe placeholder — fileStore also refuses
+ * anything that escapes its root, this just avoids producing such a path at all.
+ */
+export function storagePathForUpload(id: string, nameHint: string): string {
+  const base = nameHint.replace(/\\/g, '/').split('/').pop() ?? '';
+  // keep the TAIL if it must be shortened, so the extension survives
+  let name = base.replace(/[<>:"|?*\u0000-\u001f]/g, '_').trim().slice(-120);
+  if (!name || /^\.+$/.test(name)) name = 'file';
+  return `${id}/${name}`;
+}
+
+/**
+ * Creates a library item. When `bytes` is given (a desktop upload) the file is stored
+ * under userData/files first and the item points at it — without this the renderer
+ * created an item that named a file nobody ever wrote, so every ingest ended in
+ * "[Could not read file]".
+ */
+export function createItem(
+  db: SqliteDatabase,
+  item: Partial<LibraryItem> & { title: string },
+  bytes?: Uint8Array | ArrayBuffer,
+): LibraryItem {
   const userId = getCurrentUserId(db);
   const id = item.id || genId('lib');
   const now = new Date().toISOString();
@@ -41,14 +68,29 @@ export function createItem(db: SqliteDatabase, item: Partial<LibraryItem> & { ti
   const sourceRef = item.source_ref || {};
   const meta = item.meta || {};
 
-  db.prepare(`
-    INSERT INTO library_items (id, user_id, project_id, kind, title, source_ref, storage_path, meta, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, userId, item.project_id || null, kind, item.title, JSON.stringify(sourceRef), item.storage_path || null, JSON.stringify(meta), now, now);
+  let storagePath = item.storage_path;
+  if (bytes) {
+    const size = bytes.byteLength;
+    if (size > MAX_UPLOAD_BYTES) {
+      throw new Error(`File is too large (${Math.round(size / 1048576)} MB; the limit is ${MAX_UPLOAD_BYTES / 1048576} MB)`);
+    }
+    storagePath = writeLibraryFile(storagePathForUpload(id, item.storage_path || item.title), Buffer.from(bytes as ArrayBuffer));
+  }
+
+  try {
+    db.prepare(`
+      INSERT INTO library_items (id, user_id, project_id, kind, title, source_ref, storage_path, meta, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, userId, item.project_id || null, kind, item.title, JSON.stringify(sourceRef), storagePath || null, JSON.stringify(meta), now, now);
+  } catch (err) {
+    // Do not leave an orphan file behind an item that was never created.
+    if (bytes && storagePath) deleteLibraryFile(storagePath);
+    throw err;
+  }
 
   return {
     id, user_id: userId, project_id: item.project_id, kind, title: item.title,
-    source_ref: sourceRef, storage_path: item.storage_path, created_at: now, meta,
+    source_ref: sourceRef, storage_path: storagePath, created_at: now, meta,
   };
 }
 

@@ -51,6 +51,10 @@ export const IngestProgressCard: React.FC<IngestProgressCardProps> = ({
           <span className="font-semibold text-primary">{progress.progressPercent}%</span>
         </div>
 
+        {progress.status === "failed" && progress.error && (
+          <p role="alert" className="text-xs text-destructive break-words">{progress.error}</p>
+        )}
+
         <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
           <div
             className={`h-full transition-all duration-300 ${

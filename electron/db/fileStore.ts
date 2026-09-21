@@ -59,6 +59,9 @@ export function deleteLibraryFile(storagePath: string): void {
   try {
     const target = resolveWithinRoot(storagePath);
     if (fs.existsSync(target)) fs.unlinkSync(target);
+    // Uploads live in their own `<itemId>/` directory; drop it once empty (never the root).
+    const dir = path.dirname(target);
+    if (dir !== filesRoot() && fs.existsSync(dir) && fs.readdirSync(dir).length === 0) fs.rmdirSync(dir);
   } catch (err) {
     log.warn("delete failed", { err });
   }
