@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "easy-editor-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Easy Editor"
     },
     "tools": [
@@ -97,6 +97,130 @@
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_islamic_corpus",
+        "title": "Search Islamic Corpus",
+        "description": "Keyword search over Easy Editor's local corpus: the Quran with translations, the canonical hadith collections, fatwa and ingested classical books. Lexical (whole-word substring) matching only — not semantic, and it does not include the live Turath.io library. Rows are ranked by how many of the query's words they contain.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Search query in Arabic or Urdu"
+            },
+            "domain": {
+              "type": "string",
+              "enum": [
+                "all",
+                "quran",
+                "hadith",
+                "fatwa",
+                "classical"
+              ],
+              "default": "all",
+              "description": "Restrict to one kind of source (default: all)"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 10,
+              "description": "Maximum number of passages to return"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "takhrij_hadith",
+        "title": "Takhrij Hadith Cross-Reference",
+        "description": "Find other narrations of a hadith across the canonical collections in Easy Editor's corpus, by matching the matn's content words. The best keyword match is treated as the primary narration and the rest are compared against it. Matching is on wording only — a same hadith_number in another collection is never a match, because numbering is per-collection.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "hadithText": {
+              "type": "string",
+              "minLength": 3,
+              "description": "Hadith matn or phrase in Arabic to find cross-references for"
+            },
+            "minOverlapRatio": {
+              "type": "number",
+              "minimum": 0.2,
+              "maximum": 1,
+              "default": 0.5,
+              "description": "Minimum content-word overlap (default 0.5, the same threshold the app uses)"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 25,
+              "default": 10,
+              "description": "Max cross-references to return"
+            }
+          },
+          "required": [
+            "hadithText"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "calculate_faraid",
+        "title": "Calculate Islamic Inheritance (Fara'id)",
+        "description": "Pure deterministic Islamic inheritance calculation adhering to the Jumhūr consensus. Calculates Asl al-Mas'alah, fixed shares, residuary (asaba), Awl, and Radd with Quranic and Hadith proofs.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "heirs": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "description": "Map of surviving heir type to count, e.g. { husband: 1, daughter: 2, mother: 1, fullBrother: 1 }"
+            },
+            "estateValue": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Optional total cash or property value to distribute"
+            },
+            "currency": {
+              "type": "string",
+              "default": "PKR",
+              "description": "Currency symbol/code for estate valuation (default PKR)"
+            }
+          },
+          "required": [
+            "heirs"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
       }
