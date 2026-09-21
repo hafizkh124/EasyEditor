@@ -12,6 +12,9 @@ import { logger } from "@/lib/logger";
 
 const log = logger.child("library");
 
+/** Upper bound for one listChunks page (shared by both backends' contract). */
+const MAX_CHUNK_PAGE = 200;
+
 export const cloudLibrary: LibraryBackend = {
   async listItems(projectId?: string): Promise<LibraryItem[]> {
     let query = (supabase.from("library_items" as any) as any)
@@ -176,16 +179,26 @@ export const cloudLibrary: LibraryBackend = {
   },
 
   async listChunks(itemId: string, limit = 50, offset = 0): Promise<LibraryChunkInfo[]> {
+    // A whole book can be tens of thousands of chunks; never hand them all over at once.
+    const take = Math.min(Math.max(1, Math.trunc(limit) || 50), MAX_CHUNK_PAGE);
+    const from = Math.max(0, Math.trunc(offset) || 0);
+
+    // Only columns Postgres actually has. page_number / part_number exist ONLY in
+    // the desktop SQLite table ("Local-only: not in Postgres" — electron/db/schema.ts);
+    // selecting them here made PostgREST reject the query, and with the error
+    // swallowed the inspector showed an empty list to every web user.
     const { data, error } = await (supabase.from("library_chunks" as any) as any)
-      .select("id, chunk_index, content, char_start, char_end, page_number, part_number, meta, created_at")
+      .select("id, chunk_index, content, char_start, char_end, meta, created_at")
       .eq("library_item_id", itemId)
       .order("chunk_index", { ascending: true })
-      .range(offset, offset + limit - 1);
+      .range(from, from + take - 1);
 
     if (error) {
+      // Throw rather than return []: "the query failed" and "this book has no chunks"
+      // are different answers and the UI has to be able to tell them apart.
       log.warn("listChunks error", { error });
-      return [];
+      throw new Error(error.message ?? "listChunks failed");
     }
-    return (data as LibraryChunkInfo[]) || [];
+    return ((data as LibraryChunkInfo[]) || []).map((c) => ({ ...c, page_number: null, part_number: null }));
   },
 };

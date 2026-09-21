@@ -24,7 +24,7 @@ import {
   chunkDocumentText,
   chunkDocumentAdaptive,
   type DocumentChunk,
-  type DocumentKind,
+  normalizeDocumentKind,
 } from '../../shared/text/documentChunks.js';
 import { extractTextFromBuffer } from '../../shared/text/fileText.js';
 import { normalizeArabicForSearch } from '../../shared/text/arabicSearch.js';
@@ -137,7 +137,12 @@ export async function ingestLibraryItem(
     throw new Error(fullText);
   }
 
-  const ingestKind = (meta.kind || meta.discipline || meta.category) as DocumentKind | undefined;
+  // First field that names a real chunking strategy; otherwise undefined, i.e.
+  // detect from the text (see normalizeDocumentKind).
+  const ingestKind =
+    normalizeDocumentKind(meta.kind) ??
+    normalizeDocumentKind(meta.discipline) ??
+    normalizeDocumentKind(meta.category);
   const isResumingLegacy = offset > 0 && (meta.ingest as IngestMeta | undefined)?.chunker !== 'adaptive-v1';
   const allChunks = isResumingLegacy
     ? chunkDocumentText(fullText)

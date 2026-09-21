@@ -41,8 +41,6 @@ export interface AdaptiveChunkOptions {
   kind?: DocumentKind;
   chunkSize?: number;
   overlap?: number;
-  maxTokens?: number;
-  overlapTokens?: number;
 }
 
 /**
@@ -94,122 +92,210 @@ export function chunkDocumentText(
   return chunks;
 }
 
+// ─── Adaptive structural chunking (ADR 0055) ────────────────────────────────
+//
+// Everything below runs its patterns against a "plain view" of the text: the
+// same characters with tashkeel removed and alif variants folded, plus a map
+// back to offsets in the ORIGINAL text. Two reasons:
+//
+//  1. Classical texts arrive both vowelled and bare (حَدَّثَنَا / حدثنا). One set
+//     of patterns on the plain view covers both, instead of a hand-maintained
+//     list of vowelled spellings that misses every variant nobody listed.
+//  2. `\b` does not work for Arabic. Without the `u` flag JavaScript treats only
+//     [A-Za-z0-9_] as word characters, so `حدثنا\b` can NEVER match — there is
+//     no boundary between two non-word characters. The first version of this
+//     chunker used it, so isnad-initial narrations never split. We use explicit
+//     Arabic-letter lookarounds instead.
+
+/** Arabic letters (base block). A "word boundary" for Arabic text. */
+const AR_LETTER = '\\u0621-\\u064A';
+const NOT_AR_AFTER = `(?![${AR_LETTER}])`;
+
+/** Tashkeel and Quranic annotation marks — removed in the plain view. */
+const MARK_RE = /[ً-ٰٟۖ-ۜ۟-۪ۨ-ۭ]/;
+
+interface PlainView {
+  plain: string;
+  /** map[i] = offset in the original text of plain[i]; map[plain.length] = original length. */
+  map: number[];
+}
+
+function plainView(text: string): PlainView {
+  let plain = '';
+  const map: number[] = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (MARK_RE.test(ch)) continue;
+    map.push(i);
+    // 1:1 folds only, so plain and the map stay aligned
+    plain += ch === 'أ' || ch === 'إ' || ch === 'آ' || ch === 'ٱ' ? 'ا' : ch === 'ى' ? 'ي' : ch;
+  }
+  map.push(text.length);
+  return { plain, map };
+}
+
+/** Isnad transmission verbs, in PLAIN form (hamza folded, so أخبرنا is اخبرنا and أنبأنا is انبانا). */
+const TRANSMISSION = 'حدثنا|حدثني|اخبرنا|اخبرني|انبانا|روى';
+const TRANSMISSION_RE = new RegExp(`(?<![${AR_LETTER}])(?:${TRANSMISSION})${NOT_AR_AFTER}`, 'g');
+
+/** A leading narration number: "12 -", "12.", "[12]", "١٢ -" (Arabic-Indic digits too). */
+const NUM = '(?:\\[\\s*[\\d\\u0660-\\u0669]+\\s*\\]|[\\d\\u0660-\\u0669]+\\s*[-–—.:)])';
+
+/** A line that starts a new narration: numbered, or opening with a transmission verb. */
+const NARRATION_START_RE = new RegExp(
+  `\\r?\\n(?=(?:${NUM}[ \\t]*)?(?:${TRANSMISSION})${NOT_AR_AFTER}|${NUM}[ \\t])`,
+  'g',
+);
+
+/** Fiqh/classical chapter words, in PLAIN form (مسألة becomes مسالة). */
+const HEADING_WORDS = 'كتاب|باب|فصل|مسالة|فرع';
+/** A short line beginning with a heading word. Length-capped so a prose sentence
+ *  that merely starts with "كتاب …" is not mistaken for a chapter heading. */
+const HEADING_LINE = `(?:${HEADING_WORDS})[ \\t]+[^\\r\\n]{1,80}`;
+const HEADING_SPLIT_RE = new RegExp(`\\r?\\n(?=${HEADING_LINE}(?:\\r?\\n|$))`, 'g');
+const HEADING_DETECT_RE = new RegExp(`(?:^|\\n)[ \\t]*${HEADING_LINE}(?=\\r?\\n|$)`, 'g');
+
+/** Kinds a caller may legitimately pass; anything else means "detect it". */
+const VALID_KINDS: ReadonlySet<string> = new Set(['hadith', 'fiqh', 'classical', 'prose']);
+
+/**
+ * Maps a free-form library `kind` / `discipline` / `category` value to a
+ * DocumentKind, or `undefined` meaning "detect from the text".
+ *
+ * Ingest passes `meta.kind || meta.discipline || meta.category`. Those hold
+ * things like "fatwa", "rijal" or "general", which are not chunking strategies;
+ * handing them straight through made every such item silently fall into the
+ * prose branch and skip detection entirely.
+ */
+export function normalizeDocumentKind(raw: unknown): DocumentKind | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const v = raw.trim().toLowerCase();
+  if (VALID_KINDS.has(v)) return v as DocumentKind;
+  if (v === 'fatwa') return 'fiqh';
+  if (v === 'rijal' || v === 'lughat' || v === 'nahw') return 'classical';
+  return undefined;
+}
+
 /**
  * Auto-detects text genre/kind from sample text when not explicitly provided.
+ *
+ * Hadith is recognised by isnad transmission verbs only. It used to also count
+ * the bare word «عن», which appears in nearly every stretch of ordinary Arabic
+ * prose ("about"), so any essay with three of them was chunked as hadith.
  */
 export function detectDocumentKind(text: string): DocumentKind {
-  const sample = text.slice(0, 4000);
-  const hadithMatches = sample.match(/(?:حَدَّثَنَا|حدثنا|أَخْبَرَنَا|اخبرنا|أَنْبَأَنَا|انبانا|حَدَّثَنِي|حدثني|أَخْبَرَنِي|اخبرني|عَنْ|عن\s+)/g);
-  const hadithCount = hadithMatches ? hadithMatches.length : 0;
+  const { plain } = plainView(text.slice(0, 4000));
 
-  const fiqhMatches = sample.match(/(?:^|\n)\s*(?:كتاب|كِتَابُ|باب|بَابُ|فصل|فَصْلٌ|مسألة|مَسْأَلَةٌ|فرع|فَرْعٌ)\s+/g);
-  const fiqhCount = fiqhMatches ? fiqhMatches.length : 0;
+  const transmissionCount = plain.match(TRANSMISSION_RE)?.length ?? 0;
+  if (transmissionCount >= 2) return 'hadith';
 
-  if (hadithCount >= 3) return 'hadith';
-  if (fiqhCount >= 2) return 'fiqh';
+  const headingCount = plain.match(HEADING_DETECT_RE)?.length ?? 0;
+  if (headingCount >= 2) return 'fiqh';
+
   return 'prose';
 }
 
+interface Section { start: number; end: number }
+
 /**
- * Structural chunking for Hadith literature:
- * Treats each narration (isnad + matn) as an indivisible structural unit
- * whenever within token/character limits (ADR 0055).
+ * Cuts `text` at each match of `splitRe` (a newline followed by a lookahead), in
+ * ORIGINAL-text offsets. `splitRe` runs on the plain view and is mapped back.
  */
-function chunkHadithDocument(
-  text: string,
+function sectionsBySplit(text: string, view: PlainView, splitRe: RegExp): Section[] {
+  const cuts: number[] = [];
+  splitRe.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = splitRe.exec(view.plain)) !== null) {
+    const point = view.map[m.index + m[0].length];
+    if (point > 0 && point < text.length && cuts[cuts.length - 1] !== point) cuts.push(point);
+    if (splitRe.lastIndex === m.index) splitRe.lastIndex++;
+  }
+  const sections: Section[] = [];
+  let prev = 0;
+  for (const c of cuts) {
+    if (c > prev) sections.push({ start: prev, end: c });
+    prev = c;
+  }
+  if (prev < text.length) sections.push({ start: prev, end: text.length });
+  return sections;
+}
+
+/** Trims a section and returns its text with offsets that still index the ORIGINAL. */
+function trimmedSection(text: string, sec: Section): { body: string; start: number } | null {
+  const raw = text.slice(sec.start, sec.end);
+  const body = raw.trim();
+  if (!body) return null;
+  return { body, start: sec.start + (raw.length - raw.trimStart().length) };
+}
+
+/** Emits a section whole if it fits, otherwise as overlapping sub-chunks. */
+function emitSection(
+  out: DocumentChunk[],
+  body: string,
+  start: number,
+  limit: number,
   chunkSize: number,
   overlap: number,
-): DocumentChunk[] {
-  // Split on newlines where the next line begins a narration
-  const narrationLineRegex = /\r?\n(?=(?:(?:\d+[\s\-–—.:]+)?(?:حَدَّثَنَا|حدثنا|أَخْبَرَنَا|اخبرنا|أَنْبَأَنَا|انبانا|حَدَّثَنِي|حدثني|أَخْبَرَنِي|اخبرني|رَوَى|روى)\b|\[\s*\d+\s*\]|\d+[\s\-–—.:]+))/g;
-
-  const splitIndices: number[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = narrationLineRegex.exec(text)) !== null) {
-    const splitPoint = m.index + m[0].length;
-    if (!splitIndices.includes(splitPoint)) {
-      splitIndices.push(splitPoint);
-    }
-    if (narrationLineRegex.lastIndex === m.index) {
-      narrationLineRegex.lastIndex++;
-    }
+  meta: DocumentChunkMeta,
+): void {
+  if (body.length <= limit) {
+    out.push({ index: out.length, content: body, charStart: start, charEnd: start + body.length, meta: { ...meta } });
+    return;
   }
-
-  // If no structured narrations found, fall back to prose chunking with hadith tag
-  if (splitIndices.length === 0) {
-    return chunkProseDocument(text, chunkSize, overlap, 'hadith');
+  for (const sc of chunkDocumentText(body, chunkSize, overlap)) {
+    out.push({
+      index: out.length,
+      content: sc.content,
+      charStart: start + sc.charStart,
+      charEnd: start + sc.charEnd,
+      meta: { ...meta },
+    });
   }
-
-  const sections: { start: number; end: number }[] = [];
-  let prev = 0;
-  for (const idx of splitIndices) {
-    if (idx > prev) {
-      sections.push({ start: prev, end: idx });
-      prev = idx;
-    }
-  }
-  if (prev < text.length) {
-    sections.push({ start: prev, end: text.length });
-  }
-
-  const chunks: DocumentChunk[] = [];
-  let chunkIndex = 0;
-  const maxNarrationLimit = Math.round(chunkSize * 1.35);
-
-  for (const sec of sections) {
-    const secText = text.slice(sec.start, sec.end).trim();
-    if (!secText) continue;
-
-    // Extract leading isnad snippet if detectable
-    let isnadSnippet: string | undefined;
-    const cleanForMatch = secText.replace(/[\u064B-\u065F\u0670]/g, '');
-    const mMatch = /(?:^[\s\S]*?(?:رسول\s+الله|النبي)[^:،.؛\n]*[:،.؛\n]?)/i.exec(cleanForMatch);
-    if (mMatch) {
-      isnadSnippet = secText.slice(0, mMatch[0].length).trim();
-    } else {
-      const colonIdx = secText.indexOf(':');
-      if (colonIdx > 20 && colonIdx < 300) {
-        isnadSnippet = secText.slice(0, colonIdx + 1).trim();
-      }
-    }
-
-    if (secText.length <= maxNarrationLimit) {
-      // Narration fits intact! Keep isnad + matn together.
-      chunks.push({
-        index: chunkIndex++,
-        content: secText,
-        charStart: sec.start,
-        charEnd: sec.end,
-        meta: {
-          kind: 'hadith',
-          ...(isnadSnippet ? { isnad: isnadSnippet } : {}),
-        },
-      });
-    } else {
-      // Narration is long; split into subchunks with sentence overlap
-      const subChunks = chunkDocumentText(secText, chunkSize, overlap);
-      for (const sc of subChunks) {
-        chunks.push({
-          index: chunkIndex++,
-          content: sc.content,
-          charStart: sec.start + sc.charStart,
-          charEnd: sec.start + sc.charEnd,
-          meta: {
-            kind: 'hadith',
-            ...(isnadSnippet ? { isnad: isnadSnippet } : {}),
-          },
-        });
-      }
-    }
-  }
-
-  return chunks;
 }
 
 /**
- * Structural chunking for Fiqh / Classical literature:
- * Segments along natural chapter/section boundaries (كتاب, باب, فصل, مسألة)
- * and attaches heading breadcrumbs to each chunk (ADR 0055).
+ * Structural chunking for Hadith literature: each narration (isnad + matn) is one
+ * indivisible unit whenever it fits, so the chain never ends up in a different
+ * chunk from the text it transmits.
+ */
+function chunkHadithDocument(text: string, chunkSize: number, overlap: number): DocumentChunk[] {
+  const view = plainView(text);
+  const sections = sectionsBySplit(text, view, NARRATION_START_RE);
+
+  // No narration boundaries found: nothing structural to keep together.
+  if (sections.length <= 1) return chunkProseDocument(text, chunkSize, overlap, 'hadith');
+
+  const out: DocumentChunk[] = [];
+  const limit = Math.round(chunkSize * 1.35);
+
+  for (const sec of sections) {
+    const t = trimmedSection(text, sec);
+    if (!t) continue;
+
+    const meta: DocumentChunkMeta = { kind: 'hadith' };
+    const isnad = leadingIsnad(t.body);
+    if (isnad) meta.isnad = isnad;
+
+    emitSection(out, t.body, t.start, limit, chunkSize, overlap, meta);
+  }
+  return out;
+}
+
+/** The isnad: everything up to the end of the clause that names the Prophet ﷺ. */
+function leadingIsnad(body: string): string | undefined {
+  const view = plainView(body);
+  const m = /^[\s\S]*?(?:رسول\s+الله|النبي)[^:،.؛\n]*[:،.؛\n]?/.exec(view.plain);
+  if (m) return body.slice(0, view.map[m[0].length]).trim() || undefined;
+
+  // No Prophetic reference (a report from a Companion or Successor): fall back
+  // to the first colon if it sits where an isnad would end.
+  const colon = body.indexOf(':');
+  return colon > 20 && colon < 300 ? body.slice(0, colon + 1).trim() : undefined;
+}
+
+/**
+ * Structural chunking for Fiqh / classical literature: sections follow chapter
+ * headings (كتاب, باب, فصل, مسألة, فرع) and each chunk carries its heading trail.
  */
 function chunkFiqhDocument(
   text: string,
@@ -217,97 +303,38 @@ function chunkFiqhDocument(
   overlap: number,
   kind: 'fiqh' | 'classical' = 'fiqh',
 ): DocumentChunk[] {
-  const headingLineRegex = /\r?\n(?=(?:كتاب|كِتَابُ|باب|بَابُ|فصل|فَصْلٌ|مسألة|مَسْأَلَةٌ|فرع|فَرْعٌ)\s+[^\r\n]+)/g;
+  const view = plainView(text);
+  const sections = sectionsBySplit(text, view, HEADING_SPLIT_RE);
+  if (sections.length <= 1) return chunkProseDocument(text, chunkSize, overlap, kind);
 
-  const splitIndices: number[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = headingLineRegex.exec(text)) !== null) {
-    const splitPoint = m.index + m[0].length;
-    if (!splitIndices.includes(splitPoint)) {
-      splitIndices.push(splitPoint);
-    }
-    if (headingLineRegex.lastIndex === m.index) {
-      headingLineRegex.lastIndex++;
-    }
-  }
-
-  if (splitIndices.length === 0) {
-    return chunkProseDocument(text, chunkSize, overlap, kind);
-  }
-
-  const sections: { start: number; end: number }[] = [];
-  let prev = 0;
-  for (const idx of splitIndices) {
-    if (idx > prev) {
-      sections.push({ start: prev, end: idx });
-      prev = idx;
-    }
-  }
-  if (prev < text.length) {
-    sections.push({ start: prev, end: text.length });
-  }
-
-  const chunks: DocumentChunk[] = [];
-  let chunkIndex = 0;
-  const maxSectionLimit = Math.round(chunkSize * 1.25);
-
-  let currentKitab = '';
-  let currentBab = '';
-  let currentFasl = '';
+  const out: DocumentChunk[] = [];
+  const limit = Math.round(chunkSize * 1.25);
+  let kitab = '';
+  let bab = '';
+  let fasl = '';
 
   for (const sec of sections) {
-    const secText = text.slice(sec.start, sec.end).trim();
-    if (!secText) continue;
+    const t = trimmedSection(text, sec);
+    if (!t) continue;
 
-    // Detect heading in the opening lines of this section
-    const firstLine = secText.split('\n')[0].trim();
-    if (/^(?:كتاب|كِتَابُ)\s+/i.test(firstLine)) {
-      currentKitab = firstLine;
-      currentBab = '';
-      currentFasl = '';
-    } else if (/^(?:باب|بَابُ)\s+/i.test(firstLine)) {
-      currentBab = firstLine;
-      currentFasl = '';
-    } else if (/^(?:فصل|فَصْلٌ|مسألة|مَسْأَلَةٌ|فرع|فَرْعٌ)\s+/i.test(firstLine)) {
-      currentFasl = firstLine;
+    // Heading words are matched on the plain form so vowelled headings count too.
+    const firstLine = t.body.split('\n')[0].trim();
+    const plainFirst = plainView(firstLine).plain;
+    if (/^كتاب\s/.test(plainFirst)) {
+      kitab = firstLine; bab = ''; fasl = '';
+    } else if (/^باب\s/.test(plainFirst)) {
+      bab = firstLine; fasl = '';
+    } else if (/^(?:فصل|مسالة|فرع)\s/.test(plainFirst)) {
+      fasl = firstLine;
     }
 
-    const breadcrumbs = [currentKitab, currentBab, currentFasl].filter(Boolean).join(' > ');
-
-    if (secText.length <= maxSectionLimit) {
-      chunks.push({
-        index: chunkIndex++,
-        content: secText,
-        charStart: sec.start,
-        charEnd: sec.end,
-        meta: {
-          kind,
-          ...(breadcrumbs ? { heading: breadcrumbs } : {}),
-        },
-      });
-    } else {
-      const subChunks = chunkDocumentText(secText, chunkSize, overlap);
-      for (const sc of subChunks) {
-        chunks.push({
-          index: chunkIndex++,
-          content: sc.content,
-          charStart: sec.start + sc.charStart,
-          charEnd: sec.start + sc.charEnd,
-          meta: {
-            kind,
-            ...(breadcrumbs ? { heading: breadcrumbs } : {}),
-          },
-        });
-      }
-    }
+    const heading = [kitab, bab, fasl].filter(Boolean).join(' > ');
+    emitSection(out, t.body, t.start, limit, chunkSize, overlap, { kind, ...(heading ? { heading } : {}) });
   }
-
-  return chunks;
+  return out;
 }
 
-/**
- * Standard prose chunking wrapper with metadata.
- */
+/** Standard sentence-aware prose chunking, tagged with the kind that chose it. */
 function chunkProseDocument(
   text: string,
   chunkSize: number,
@@ -315,7 +342,14 @@ function chunkProseDocument(
   kind: DocumentKind = 'prose',
 ): DocumentChunk[] {
   const chunks = chunkDocumentText(text, chunkSize, overlap);
+  // chunkDocumentText trims first and reports offsets into the TRIMMED text.
+  // Shift by the trimmed-off prefix so these offsets index the text we were
+  // given — `text.slice(charStart, charEnd)` is then the chunk. (The legacy
+  // chunker itself is left as it was: stored offsets depend on it.)
+  const lead = text.length - text.trimStart().length;
   for (const c of chunks) {
+    c.charStart += lead;
+    c.charEnd += lead;
     c.meta = { kind };
   }
   return chunks;
@@ -323,29 +357,33 @@ function chunkProseDocument(
 
 /**
  * Adaptive structural chunker for classical and modern documents (ADR 0055).
- * - 'hadith': keeps narration (isnad + matn) intact as single structural unit when within size limits.
- * - 'fiqh' / 'classical': segments along headings (كتاب, باب, فصل) with heading breadcrumbs.
+ * - 'hadith': keeps each narration (isnad + matn) whole when it fits.
+ * - 'fiqh' / 'classical': segments along chapter headings, carrying a heading trail.
  * - 'prose': sliding sentence-aware window.
+ *
+ * `charStart` / `charEnd` always index the text PASSED IN (untrimmed), so
+ * `text.slice(charStart, charEnd)` is the chunk.
+ * Deterministic: the same text and options always give the same chunks — ingest
+ * resumes by chunk index and depends on that.
  */
 export function chunkDocumentAdaptive(
   text: string,
   options: AdaptiveChunkOptions = {},
 ): DocumentChunk[] {
-  const cleanText = text.trim();
-  if (!cleanText) return [];
+  if (!text || !text.trim()) return [];
 
   const chunkSize = options.chunkSize ?? CHUNK_SIZE;
   const overlap = options.overlap ?? CHUNK_OVERLAP;
-  const kind = options.kind ?? detectDocumentKind(cleanText);
+  const kind = options.kind ?? detectDocumentKind(text);
 
   switch (kind) {
     case 'hadith':
-      return chunkHadithDocument(cleanText, chunkSize, overlap);
+      return chunkHadithDocument(text, chunkSize, overlap);
     case 'fiqh':
     case 'classical':
-      return chunkFiqhDocument(cleanText, chunkSize, overlap, kind);
+      return chunkFiqhDocument(text, chunkSize, overlap, kind);
     case 'prose':
     default:
-      return chunkProseDocument(cleanText, chunkSize, overlap, 'prose');
+      return chunkProseDocument(text, chunkSize, overlap, 'prose');
   }
 }
