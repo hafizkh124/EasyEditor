@@ -80,39 +80,63 @@ describe("resultIdentity", () => {
     expect(resultIdentity(dorar)).not.toBe(resultIdentity(corpus));
   });
 
-  it("identifies a classical or Turath book passage by book_id and page", () => {
-    expect(resultIdentity(row({ book_id: 2166, page: 12 }))).toBe("classical:2166:12");
+  it("identifies a classical or Turath book passage by book, volume and page", () => {
+    expect(resultIdentity(row({ book_id: 2166, volume: 1, page: 12 }))).toBe("classical:2166:v1:p12");
   });
 
-  it("treats string and numeric book_id/page as the same passage", () => {
-    const a = resultIdentity(row({ book_id: 2166, page: 12 }));
-    const b = resultIdentity(row({ book_id: "2166", page: "12" }));
-    expect(a).toBe("classical:2166:12");
+  it("uses the same shape as the corpus passage_key (classical:<book>:v<vol>:p<page>)", () => {
+    // scripts/classical_to_csv.py writes exactly this, so a Tier D row and a
+    // Tier T row for the same passage can only collapse if the shapes agree.
+    expect(resultIdentity(row({ book_id: "hidaya", volume: 0, page: 7 }))).toBe("classical:hidaya:v0:p7");
+  });
+
+  it("treats string and numeric book_id/volume/page as the same passage", () => {
+    const a = resultIdentity(row({ book_id: 2166, volume: 1, page: 12 }));
+    const b = resultIdentity(row({ book_id: "2166", volume: "1", page: "12" }));
+    expect(a).toBe("classical:2166:v1:p12");
     expect(a).toBe(b);
   });
 
+  it("does NOT merge the same page number in different volumes", () => {
+    // Regression: printed page numbers restart in every volume. Keyed on
+    // book + page alone, page 12 of volume 1 and of volume 9 collapsed into one
+    // and the later passage was silently dropped from the answer.
+    const vol1 = resultIdentity(row({ book_id: 2166, volume: 1, page: 12 }));
+    const vol9 = resultIdentity(row({ book_id: 2166, volume: 9, page: 12 }));
+    expect(vol1).not.toBeNull();
+    expect(vol1).not.toBe(vol9);
+    expect(dedupeResults([row({ book_id: 2166, volume: 1, page: 12 }), row({ book_id: 2166, volume: 9, page: 12 })])).toHaveLength(2);
+  });
+
+  it("refuses a book+page with NO volume rather than guessing which volume", () => {
+    // Keeping a possible duplicate is the safe side; inventing a volume would
+    // merge distinct passages of a multi-volume work.
+    expect(resultIdentity(row({ book_id: 2166, page: 12 }))).toBeNull();
+  });
+
   it("refuses a half-identity: book_id without page, or page without book_id", () => {
-    expect(resultIdentity(row({ book_id: 2166 }))).toBeNull();
-    expect(resultIdentity(row({ page: 12 }))).toBeNull();
+    expect(resultIdentity(row({ book_id: 2166, volume: 1 }))).toBeNull();
+    expect(resultIdentity(row({ page: 12, volume: 1 }))).toBeNull();
   });
 
-  it("ignores blank book_id or page strings", () => {
-    expect(resultIdentity(row({ book_id: "   ", page: 12 }))).toBeNull();
-    expect(resultIdentity(row({ book_id: 2166, page: "   " }))).toBeNull();
+  it("ignores blank book_id, page or volume strings", () => {
+    expect(resultIdentity(row({ book_id: "   ", volume: 1, page: 12 }))).toBeNull();
+    expect(resultIdentity(row({ book_id: 2166, volume: 1, page: "   " }))).toBeNull();
+    expect(resultIdentity(row({ book_id: 2166, volume: "  ", page: 12 }))).toBeNull();
   });
 
-  it("refuses NaN or sentinel strings for book_id or page", () => {
-    expect(resultIdentity(row({ book_id: NaN, page: 12 }))).toBeNull();
-    expect(resultIdentity(row({ book_id: 2166, page: NaN }))).toBeNull();
-    expect(resultIdentity(row({ book_id: "NaN", page: 12 }))).toBeNull();
-    expect(resultIdentity(row({ book_id: "null", page: 12 }))).toBeNull();
-    expect(resultIdentity(row({ book_id: 2166, page: "undefined" }))).toBeNull();
+  it("refuses NaN or sentinel strings for book_id, volume or page", () => {
+    expect(resultIdentity(row({ book_id: NaN, volume: 1, page: 12 }))).toBeNull();
+    expect(resultIdentity(row({ book_id: 2166, volume: 1, page: NaN }))).toBeNull();
+    expect(resultIdentity(row({ book_id: "NaN", volume: 1, page: 12 }))).toBeNull();
+    expect(resultIdentity(row({ book_id: "null", volume: 1, page: 12 }))).toBeNull();
+    expect(resultIdentity(row({ book_id: 2166, volume: 1, page: "undefined" }))).toBeNull();
   });
 
-  it("identifies classical passages via shamela_id and page_number aliases", () => {
-    expect(resultIdentity(row({ shamela_id: 2166, page_number: 12 }))).toBe("classical:2166:12");
-    expect(resultIdentity(row({ book_id: 2166, page_number: 12 }))).toBe("classical:2166:12");
-    expect(resultIdentity(row({ shamela_id: "2166", page: "12" }))).toBe("classical:2166:12");
+  it("identifies classical passages via shamela_id, page_number and vol aliases", () => {
+    expect(resultIdentity(row({ shamela_id: 2166, page_number: 12, vol: 1 }))).toBe("classical:2166:v1:p12");
+    expect(resultIdentity(row({ book_id: 2166, page_number: 12, volume: 1 }))).toBe("classical:2166:v1:p12");
+    expect(resultIdentity(row({ shamela_id: "2166", page: "12", vol: "1" }))).toBe("classical:2166:v1:p12");
   });
 });
 
@@ -151,8 +175,8 @@ describe("dedupeResults", () => {
   it("de-dupes a classical book passage arriving from both Tier D and Tier T", () => {
     // Tier D retrieves classical chunk from local pgvector; Tier T retrieves
     // the same book page from Turath.io API.
-    const tierD = row({ book_id: 2166, page: 12, book_name: "المبسوط", author: "السرخسي" });
-    const tierT = row({ book_id: "2166", page: "12", book_name: "المبسوط", author: "السرخسي", snip: "..." });
+    const tierD = row({ book_id: 2166, volume: 1, page: 12, book_name: "المبسوط", author: "السرخسي" });
+    const tierT = row({ book_id: "2166", volume: "1", page: "12", book_name: "المبسوط", author: "السرخسي", snip: "..." });
     const out = dedupeResults([tierD, tierT]);
     expect(out).toHaveLength(1);
     expect(out[0]).toBe(tierD);

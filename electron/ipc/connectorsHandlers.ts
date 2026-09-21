@@ -24,7 +24,9 @@ const log = logger.child('ipc/connectors');
 const HEALTH_PROBE: Record<string, { url: string; headers?: Record<string, string> }> = {
   repositories: { url: 'https://archive.org/advancedsearch.php?q=title:test&rows=0&output=json' },
   ganjoor: { url: GANJOOR_HEALTH_URL },
-  turath: { url: 'https://api.turath.io' },
+  // NOT the bare host: `api.turath.io/` answers HTTP 400, which the probe would
+  // report as "down" forever. /author is a real, cheap, always-200 endpoint.
+  turath: { url: 'https://api.turath.io/author?id=1&ver=3', headers: { 'User-Agent': 'EasyEditor-Agent/1.0 (scholarly research; contact agent@easyeditor.app)' } },
   // NOTE: no `dorar` — dorar.net Cloudflare-blocks a standalone server probe
   // (403 on every path). `grade_hadith` goes through the research bridge; the
   // connector is `healthKind: 'bridged'` (ADR-0040 amended).
