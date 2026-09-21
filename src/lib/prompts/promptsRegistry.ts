@@ -197,25 +197,29 @@ const RAW_PROMPTS: Omit<ScholarlyPromptDef, "grounded" | "corpusReady">[] = [
  * Grounding metadata per prompt (kept separate from templates for clarity).
  * - grounded: route through the grounded Islamic engine (islamic-search) so
  *   citations come from the corpus, not a general LLM.
- * - corpusReady: whether the corpus this prompt cites from is already ingested.
- *   Quran (6,236) + 17 hadith collections are loaded in local/cloud tables;
- *   fiqh / fatawa / tafsir / lughat / rijal / seerat corpora are live and backed
- *   by Turath.io (~8,500 classical works) via Tier T and desktop Shamela router.
+ * - corpusReady: whether the corpus this prompt cites from is VERIFIED to
+ *   return real sources end to end. Quran (6,236) + 17 hadith collections are
+ *   loaded. The eight classical prompts stay `false` until a live check of the
+ *   DEPLOYED path (planner -> Tier T / Tier D -> answer) shows real, relevant
+ *   citations for that prompt — see "Classical prompts: evidence gate" in
+ *   supabase/deploy/README.md for the per-prompt findings and the procedure.
+ *   A green badge tells a scholar the citations are corpus-backed; clearing it
+ *   on the strength of "Turath exists" is what that badge exists to prevent.
  */
 const GROUNDING: Record<string, { grounded: boolean; corpusReady: boolean }> = {
-  study_masala:       { grounded: true,  corpusReady: true  }, // classical fiqh backed by Turath.io
-  compare_madhahib:   { grounded: true,  corpusReady: true  }, // comparative fiqh backed by Turath.io
-  trace_hadith:       { grounded: true,  corpusReady: true  }, // hadith collections loaded
-  tafsir_aya_muqaran: { grounded: true,  corpusReady: true  }, // classical tafsir backed by Turath.io
-  nazila_muasira:     { grounded: true,  corpusReady: true  }, // modern/classical fiqh backed by Turath.io
+  study_masala:       { grounded: true,  corpusReady: false }, // fiqh — Turath Tier T not yet verified end to end
+  compare_madhahib:   { grounded: true,  corpusReady: false }, // fiqh — probe returned only 3 tangential hits
+  trace_hadith:       { grounded: true,  corpusReady: true  }, // hadith loaded
+  tafsir_aya_muqaran: { grounded: true,  corpusReady: false }, // tafsir — local Tier D corpus, not yet verified end to end
+  nazila_muasira:     { grounded: true,  corpusReady: false }, // fiqh — Turath Tier T not yet verified end to end
   khittat_bahth:      { grounded: false, corpusReady: true  }, // authoring aid
   kitabat_maqal:      { grounded: false, corpusReady: true  }, // authoring aid
   tarjama_muqaran:    { grounded: true,  corpusReady: true  }, // Quran translations loaded
-  takhrij_fatwa:      { grounded: true,  corpusReady: true  }, // classical fatawa backed by Turath.io
-  lughat_w_irab:      { grounded: true,  corpusReady: true  }, // classical lughat/nahw backed by Turath.io
+  takhrij_fatwa:      { grounded: true,  corpusReady: false }, // fatwa — Tier D + Turath, not yet verified end to end
+  lughat_w_irab:      { grounded: true,  corpusReady: false }, // lughat/nahw — Turath Tier T not yet verified end to end
   tahqeeq_texts:      { grounded: false, corpusReady: true  }, // editing aid
-  tarjama_rawi:       { grounded: true,  corpusReady: true  }, // classical rijal backed by Turath.io
-  seerat_alam:        { grounded: true,  corpusReady: true  }, // classical biographies backed by Turath.io
+  tarjama_rawi:       { grounded: true,  corpusReady: false }, // rijal — local Tier D corpus, not yet verified end to end
+  seerat_alam:        { grounded: true,  corpusReady: false }, // biographies — no planner discipline routes to Turath
   tabsira_kitab:      { grounded: false, corpusReady: true  }, // authoring aid
 };
 

@@ -134,27 +134,62 @@ still works — RRF simply fuses one channel instead of two — so this degrades
 recall rather than breaking anything. Re-run the counts above after the
 backfill to confirm.
 
-## Classical disciplines and prompts status (Updated with Turath.io — ADR 0054)
+## Classical prompts: evidence gate (Turath.io — ADR 0054)
 
 `src/lib/prompts/promptsRegistry.ts` marks each of the 14 prompts with
-`corpusReady`. Previously, classical prompts showed a "ذخیرہ زیرِ تعمیر — غیر مصدقہ"
-badge pending classical corpus ingestion.
+`corpusReady`. When false, the prompt shows a "ذخیرہ زیرِ تعمیر — غیر مصدقہ"
+badge, because a fiqh/tafsir/rijal prompt that cites from an empty or unrouted
+corpus can only guess. **The eight classical prompts stay `false` until the
+DEPLOYED path is checked for each one.** Turath being integrated is not that
+check: the planner has to route the question to Tier T, and the answer has to
+come back with real, relevant, correctly-linked citations.
 
-With **Turath.io (~8,500 books)** integrated live via:
-1. **Tier T (`searchTurathCloud`)** in `supabase/functions/islamic-search` for cloud search
-2. **Desktop Shamela Router (`turathClient`)** fallback in `electron/shamela/turathClient.ts`
+### Pre-deployment probe — Turath data only (2026-09-20)
 
-all scholarly prompts across `fiqh`, `tafsir`, `fatwa`, `lughat`, `rijal`, and `seerat`
-are now fully supported and set to `corpusReady: true`.
+Live `api.turath.io/search` for a representative question per prompt. This
+proves what Turath *can* return; it does not prove the app routes to it.
 
-| discipline | prompts flipped to `corpusReady: true` |
-|---|---|
-| `fiqh` | `study_masala`, `compare_madhahib`, `nazila_muasira` |
-| `tafsir` | `tafsir_aya_muqaran` |
-| `fatwa` | `takhrij_fatwa` |
-| `lughat` | `lughat_w_irab` |
-| `rijal` | `tarjama_rawi` |
-| `general` | `seerat_alam` |
+| prompt | discipline | representative query | what Turath returned |
+|---|---|---|---|
+| `study_masala` | fiqh | حكم بيع المعاطاة | ✅ 385 hits; relevant fiqh works (فتح العلام، دروس فقهية) |
+| `nazila_muasira` | fiqh | حكم التأمين التجاري | ✅ 1,415 hits; المعاملات المالية أصالة ومعاصرة، فتاوى ابن جبرين |
+| `takhrij_fatwa` | fatwa | فتوى الوضوء من لحم الإبل | ✅ 59 hits; فتاوى الشبكة الإسلامية (Arabic fatawa) |
+| `lughat_w_irab` | lughat/nahw | إعراب إنما الأعمال بالنيات | ✅ 231 hits; hadith commentaries that discuss the i'rab |
+| `compare_madhahib` | fiqh | اختلاف الفقهاء في مس المصحف بغير وضوء | ⚠️ only 3 hits, tangential — a full-sentence query is too specific for raw full-text match |
+| `tafsir_aya_muqaran` | tafsir | تفسير آية الكرسي | ❌ top hits are **manuscript catalogues** (فهرس مخطوطات، معجم المفسرين), not tafsir text |
+| `tarjama_rawi` | rijal | ترجمة سفيان الثوري | ❌ top hits are Tuhfat al-Ashraf hadith entries that merely cite his name, not his biography |
+| `seerat_alam` | — | سيرة الإمام أبي حنيفة النعمان | ✅ relevant (البدور المضية في تراجم الحنفية) — but **no planner discipline** exists for biographies, so nothing routes to Turath implicitly |
+
+Consequences already applied in code:
+
+- Tier T fires implicitly only for `fiqh`, `fatwa`, `lughat`, `nahw`
+  (`TURATH_DISCIPLINES` in `_shared/turath.ts`). **`tafsir` and `rijal` are
+  excluded**: the local Tier D corpus already holds real data for them (6,208
+  tafsir rows, 19,616 rijal biographies), and Turath is noisy there. Picking the
+  `turath` domain explicitly still works for any query.
+- `seerat_alam` has no route to Turath until either the planner gains a
+  `seerah` discipline or the prompt passes `selectedDomains: ["turath"]`.
+
+### Procedure — flip a prompt only after this passes on the deployed app
+
+1. Run the prompt from the UI with its representative query.
+2. Confirm the answer's sources include the expected tier (Tier T → `تراث` /
+   `app.turath.io` links; Tier D → classical-corpus rows) and are on-topic.
+3. Open one citation link: it must land on the book **and** the right page
+   (Turath links use the sequential `page_id`; the printed volume/page is shown
+   as the label).
+4. Only then set that prompt's `corpusReady: true` and record the date here.
+
+| prompt | deployed check | date |
+|---|---|---|
+| `study_masala` | pending | — |
+| `nazila_muasira` | pending | — |
+| `takhrij_fatwa` | pending | — |
+| `lughat_w_irab` | pending | — |
+| `compare_madhahib` | pending (needs a shorter query or a tuned prompt) | — |
+| `tafsir_aya_muqaran` | pending (Tier D, not Turath) | — |
+| `tarjama_rawi` | pending (Tier D, not Turath) | — |
+| `seerat_alam` | blocked (no route) | — |
 
 ## Deployment Notes & Considerations
 
