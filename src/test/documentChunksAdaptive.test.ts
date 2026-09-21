@@ -140,3 +140,58 @@ describe('normalizeDocumentKind', () => {
     expect(chunks).toHaveLength(2);
   });
 });
+
+describe('chunkDocumentAdaptive — stacked chapter headings', () => {
+  // Found by looking at the Chunk Inspector on a real fiqh text: «كتاب الطهارة» on its
+  // own line, straight into «باب المياه», came out as a 20-character chunk holding
+  // nothing but the title — noise that ranks for the heading and answers nothing.
+  const text = [
+    'كتاب الطهارة',
+    'باب المياه',
+    'الماء طهور لا ينجسه شيء إلا ما غلب على ريحه أو طعمه أو لونه.',
+    'فصل في سؤر الحيوان',
+    'سؤر الآدمي طاهر وسؤر ما يؤكل لحمه طاهر.',
+  ].join('\n');
+
+  it('REGRESSION: a heading-only section is merged into the section after it', () => {
+    const chunks = chunkDocumentAdaptive(text, { kind: 'fiqh' });
+    expect(chunks.some((c) => c.content.trim() === 'كتاب الطهارة')).toBe(false);
+    expect(chunks[0].content).toContain('كتاب الطهارة');
+    expect(chunks[0].content).toContain('باب المياه');
+    expect(chunks[0].content).toContain('الماء طهور');
+  });
+
+  it('the heading trail follows every heading in the merged section, in order', () => {
+    const chunks = chunkDocumentAdaptive(text, { kind: 'fiqh' });
+    expect(chunks[0].meta?.heading).toBe('كتاب الطهارة > باب المياه');
+    expect(chunks[1].meta?.heading).toBe('كتاب الطهارة > باب المياه > فصل في سؤر الحيوان');
+  });
+
+  it('no chunk is only a heading', () => {
+    for (const c of chunkDocumentAdaptive(text, { kind: 'fiqh' })) {
+      expect(c.content.includes('\n')).toBe(true);
+    }
+  });
+
+  it('offsets stay exact for merged sections', () => {
+    for (const c of chunkDocumentAdaptive(text, { kind: 'fiqh' })) {
+      expect(text.slice(c.charStart, c.charEnd).trim()).toBe(c.content);
+    }
+  });
+
+  it('never drops text: a trailing heading with nothing after it is still kept', () => {
+    const t = 'كتاب الصلاة\nباب الأذان\nالأذان سنة مؤكدة.\nباب الإقامة';
+    const all = chunkDocumentAdaptive(t, { kind: 'fiqh' }).map((c) => c.content).join('\n');
+    for (const piece of ['كتاب الصلاة', 'باب الأذان', 'الأذان سنة مؤكدة.', 'باب الإقامة']) {
+      expect(all).toContain(piece);
+    }
+  });
+
+  it('merges vowelled headings the same way', () => {
+    const v = 'كِتَابُ الطَّهَارَةِ\nبَابُ الْمِيَاهِ\nالْمَاءُ طَهُورٌ لَا يُنَجِّسُهُ شَيْءٌ.\nفَصْلٌ فِي السُّؤْرِ\nسُؤْرُ الْآدَمِيِّ طَاهِرٌ.';
+    const chunks = chunkDocumentAdaptive(v, { kind: 'fiqh' });
+    expect(chunks).toHaveLength(2);
+    expect(chunks[0].meta?.heading).toContain('كِتَابُ الطَّهَارَةِ');
+    expect(chunks[0].meta?.heading).toContain('بَابُ الْمِيَاهِ');
+  });
+});

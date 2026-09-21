@@ -159,7 +159,10 @@ export const ChunkInspectorDialog: React.FC<ChunkInspectorDialogProps> = ({ item
           />
         </div>
 
-        <ScrollArea className="flex-1 pe-2">
+        {/* Radix wraps the viewport's children in a `display: table` div, which sizes to its widest
+            unwrapped content: one long isnad line made every card wider than the dialog and clipped
+            its text at the edge. Force a normal block so long lines wrap inside the card. */}
+        <ScrollArea className="flex-1 pe-2 [&_[data-radix-scroll-area-viewport]>div]:!block">
           {loading ? (
             <div className="p-12 text-center text-muted-foreground flex flex-col items-center gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -192,7 +195,7 @@ export const ChunkInspectorDialog: React.FC<ChunkInspectorDialogProps> = ({ item
                 return (
                   <div
                     key={chunk.id || chunk.chunk_index}
-                    className="p-3.5 rounded-lg border bg-card/60 hover:bg-card transition-colors space-y-2 border-border/80"
+                    className="p-3.5 rounded-lg border bg-card/60 hover:bg-card transition-colors space-y-2 border-border/80 min-w-0"
                   >
                     <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -247,14 +250,14 @@ export const ChunkInspectorDialog: React.FC<ChunkInspectorDialogProps> = ({ item
                     {heading && (
                       <div className="flex items-center gap-1.5 text-xs text-primary bg-primary/5 px-2 py-1 rounded border border-primary/10 font-medium">
                         <Tag className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{heading}</span>
+                        <span className="break-words min-w-0">{heading}</span>
                       </div>
                     )}
 
                     {isnad && (
                       <div className="text-[11px] text-muted-foreground bg-muted px-2 py-1 rounded border border-border/40">
                         <span className="font-semibold text-foreground/80">{t("library.chunks.isnad", "Isnad")}: </span>
-                        <span className="truncate">{isnad}</span>
+                        <span className="break-words">{isnad}</span>
                       </div>
                     )}
 
