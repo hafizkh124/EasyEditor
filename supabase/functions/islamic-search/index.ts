@@ -10,7 +10,7 @@ import { resultIdentity, dedupeResults } from "../_shared/resultIdentity.ts";
 import { wordByWordChannel } from "../_shared/wordByWord.ts";
 import { personalVectorChannel, personalLexicalChannel, classicalChannel } from "../_shared/citationEngine.ts";
 import type { IslamicResult } from "../islamic-api-fetch/index.ts";
-import { searchTurathCloud } from "../_shared/turath.ts";
+import { searchTurathCloud, shouldQueryTurath } from "../_shared/turath.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 import { fuseAndRerank } from "../_shared/rerank.ts";
 import { decryptKey } from "../_shared/providerKeyCrypto.ts";
@@ -503,7 +503,31 @@ export async function handle(req: Request): Promise<Response> {
     // three tiers was computed here but never read (noUnusedLocals caught it
     // at first-contact typechecking, TESTING-STRATEGY.md P3); removed.
 
+    // The user's Cohere BYOK key (rerank), fetched CONCURRENTLY with the fan-out
+    // rather than after it: it is one DB read plus a decrypt, and doing it in the
+    // tail put that round-trip on every query's critical path — even for users who
+    // have no key. Never rejects: any failure means "no key", i.e. RRF ordering.
+    const cohereKeyPromise: Promise<string | undefined> = (async () => {
+      try {
+        const providerKeySecret = Deno.env.get("PROVIDER_KEY_SECRET");
+        if (!providerKeySecret) return undefined;
+        const { data: cohereRows } = await supabase
+          .from("user_provider_keys")
+          .select("encrypted_key")
+          .eq("user_id", user.id)
+          .eq("provider", "cohere")
+          .limit(1);
+        if (!cohereRows || cohereRows.length === 0) return undefined;
+        return await decryptKey(cohereRows[0].encrypted_key, providerKeySecret);
+      } catch {
+        return undefined;
+      }
+    })();
+
     const fanOutPromises: PromiseLike<IslamicResult[]>[] = [];
+    // Parallel to fanOutPromises: which tier each branch is ("tierA", "tierT", …),
+    // so the merged list can still tell where a row came from once it is flat.
+    const fanOutTiers: string[] = [];
 
     /**
      * Adds a retrieval branch and records its own start/end window. Every tier
@@ -512,6 +536,7 @@ export async function handle(req: Request): Promise<Response> {
      */
     const pushTimed = (stage: string, p: PromiseLike<IslamicResult[]>) => {
       fanOutPromises.push(timed(stage, p, (v) => v.length));
+      fanOutTiers.push(stage.split(":")[0]);
     };
 
     // Tier A: call islamic-api-fetch
@@ -878,21 +903,14 @@ export async function handle(req: Request): Promise<Response> {
     );
 
     // Tier T: Turath.io classical library API (ADR-0054).
-    // Indexes ~8,500 classical works across fiqh, tafsir, nahw, lughat, etc.
-    // Triggered when:
-    //  - EXPLICIT: user selected 'turath' in domain picker (selectedDomains).
-    //  - IMPLICIT: planner detected disciplines fiqh, nahw, lughat, or seerah.
-    const explicitTurath = Array.isArray(selectedDomains) && selectedDomains.includes("turath");
+    // Indexes ~8,500 classical works. Whether to call it is shouldQueryTurath:
+    // the user picked 'turath', or the planner detected one of TURATH_DISCIPLINES
+    // (fiqh, fatwa, tafsir, lughat, rijal, nahw — all real Discipline slugs).
     pushTimed("tierT:turath",
       (async (): Promise<IslamicResult[]> => {
         try {
           const plan = await queryPlanPromise;
-          const planDisciplines = plan?.scope.disciplines ?? [];
-          const matchedImplicit = planDisciplines.some((d) =>
-            ["fiqh", "nahw", "lughat", "seerah"].includes(d)
-          );
-
-          if (!explicitTurath && !matchedImplicit) {
+          if (!shouldQueryTurath(plan?.scope.disciplines ?? [], selectedDomains)) {
             return [];
           }
 
@@ -997,9 +1015,15 @@ export async function handle(req: Request): Promise<Response> {
     ]);
     stages.push({ stage: "fanOut(all tiers)", startMs: fanOutStart, endMs: since(), ms: since() - fanOutStart });
     const rawResults: IslamicResult[] = [];
-    for (const r of settled) {
-      if (r.status === "fulfilled") rawResults.push(...r.value);
-    }
+    // Row -> tier, by object identity. dedupeResults keeps the first occurrence
+    // object itself, so the tag survives it; anchors are added later and are
+    // pinned by rerank, never grouped.
+    const tierOfRow = new Map<IslamicResult, string>();
+    settled.forEach((r, i) => {
+      if (r.status !== "fulfilled") return;
+      for (const row of r.value) tierOfRow.set(row, fanOutTiers[i] ?? "other");
+      rawResults.push(...r.value);
+    });
 
     // Collapse the same passage returned by more than one tier. Tier B
     // (pgvector) and Tier K (lexical) read the same table, as do Tier D and
@@ -1080,28 +1104,18 @@ export async function handle(req: Request): Promise<Response> {
     // Executed AFTER requireArabicMatn filter and BEFORE deriveStrictMode.
     // Anchors are pinned and score (RRF) is preserved for Kifayat Gate.
     const rerankStart = since();
-    let cohereKey: string | undefined;
-    try {
-      const providerKeySecret = Deno.env.get("PROVIDER_KEY_SECRET");
-      if (providerKeySecret) {
-        const { data: cohereRows } = await supabase
-          .from("user_provider_keys")
-          .select("encrypted_key")
-          .eq("user_id", user.id)
-          .eq("provider", "cohere")
-          .limit(1);
-        if (cohereRows && cohereRows.length > 0) {
-          cohereKey = await decryptKey(cohereRows[0].encrypted_key, providerKeySecret);
-        }
-      }
-    } catch {
-      // Non-fatal: key lookup/decrypt failure falls back to RRF ordering
-    }
+    // Started before the fan-out (see cohereKeyPromise), so by now it is
+    // already resolved — a user with no Cohere key pays no extra round-trip here.
+    const cohereKey = await cohereKeyPromise;
 
+    // groupOf: without it the cut keeps the FIRST 10 rows in tier order
+    // (A,B,C,K,D,W,L,T), so Tier B alone could fill every slot and the personal
+    // library, word-by-word, the classical corpus and Turath would never surface.
     allResults = await fuseAndRerank(query, allResults, {
       cohereApiKey: cohereKey,
       maxResults: 10,
       timeoutMs: 2500,
+      groupOf: (r) => tierOfRow.get(r) ?? "other",
     });
 
     stages.push({

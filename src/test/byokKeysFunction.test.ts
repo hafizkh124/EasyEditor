@@ -193,3 +193,41 @@ describe("byok-keys — test (pings the provider, saves nothing)", () => {
     expect(body.success).toBe(false);
   });
 });
+
+describe("byok-keys — cohere (rerank) provider", () => {
+  it("accepts cohere as a provider on save, encrypted like any other key", async () => {
+    const restoreEnv = setDenoEnv("PROVIDER_KEY_SECRET", "test-secret");
+    const client = arrange();
+    const res = await post({ action: "save", provider: "cohere", key: "COHERE_TEST_KEY_aaaaaaaaaaaaaaaaaaaaaaaaaa" });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ hasKey: true, lastFour: "aaaa" });
+    const write = client.writes.find((w) => w.table === "user_provider_keys" && w.op === "upsert");
+    expect(write).toBeTruthy();
+    expect(JSON.stringify(write?.payload)).not.toContain("COHERE_TEST_KEY");
+    restoreEnv();
+  });
+
+  it("still rejects an unknown provider", async () => {
+    arrange();
+    const res = await post({ action: "save", provider: "cohere2", key: "sk-something-long-enough" });
+    expect(res.status).toBe(400);
+  });
+
+  it("includes cohere in the per-provider status map", async () => {
+    arrange();
+    const res = await post({ action: "status" });
+    const body = await res.json();
+    expect(body).toHaveProperty("cohere");
+    expect(body.cohere).toMatchObject({ hasKey: false });
+  });
+
+  it("test action reports failure (not a throw) for a bad cohere key, and writes nothing", async () => {
+    const client = arrange();
+    const res = await post({ action: "test", provider: "cohere", key: "COHERE_BAD_KEY_long_enough_to_validate" });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(client.writes).toHaveLength(0);
+  });
+});

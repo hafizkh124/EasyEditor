@@ -176,3 +176,42 @@ describe("agent-model — BYOK routing", () => {
     expect(client.rpcCalls.find((c) => c.name === "deduct_tokens")).toBeTruthy();
   });
 });
+
+// A Cohere (rerank) key lives in the SAME table as chat keys, and this function
+// takes "the most recently updated row" as the active chat provider. Cohere is
+// not a chat provider (no PROVIDERS entry), so a saved Cohere key used to make
+// `PROVIDERS["cohere"]` undefined and the handler threw on `spec.baseUrl` —
+// and again on `spec.label` in its own catch — breaking chat for that user
+// the moment they saved a rerank key, until they deleted it.
+describe("agent-model — a Cohere rerank key must never break chat", () => {
+  const cohereRow = (updated_at: string) => ({
+    user_id: "user-agent-model-test",
+    provider: "cohere",
+    encrypted_key: "irrelevant-not-a-chat-key",
+    updated_at,
+  });
+
+  it("REGRESSION: a stored cohere key falls through to the normal paid path instead of crashing", async () => {
+    const restoreEnv = setDenoEnv("PROVIDER_KEY_SECRET", "test-secret");
+    const client = arrange({}, { user_provider_keys: [cohereRow("2026-09-20")] });
+
+    const res = await post(VALID_BODY);
+
+    // Chat proceeded on the metered path: tokens were deducted, and the failure
+    // (blocked network / no gateway key) is the gateway's 502 — not an unhandled throw.
+    expect(client.rpcCalls.find((c) => c.name === "deduct_tokens")).toBeTruthy();
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(JSON.stringify(body)).not.toMatch(/Cannot read|undefined|baseUrl|label/i);
+    restoreEnv();
+  });
+
+  it("does not treat a cohere key as an active BYOK chat provider (no BYOK error message)", async () => {
+    const restoreEnv = setDenoEnv("PROVIDER_KEY_SECRET", "test-secret");
+    arrange({}, { user_provider_keys: [cohereRow("2026-09-20")] });
+    const res = await post(VALID_BODY);
+    const body = await res.json();
+    expect(body.error ?? "").not.toMatch(/key ڈکرپٹ|آپ کی اپنی key/);
+    restoreEnv();
+  });
+});

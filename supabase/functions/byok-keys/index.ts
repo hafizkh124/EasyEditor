@@ -43,6 +43,8 @@ async function testProviderKey(provider: string, key: string): Promise<{ success
           documents: ["test document"],
           top_n: 1,
         }),
+        // A key check must not hang the settings screen if Cohere stalls.
+        signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
