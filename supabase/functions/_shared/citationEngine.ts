@@ -22,7 +22,7 @@ import { callChatCompletions } from "./aiGateway.ts";
 import { embedQuery } from "./embed.ts";
 import { planQuery, describeScope, type QueryPlan } from "./queryPlanner.ts";
 import { reciprocalRankFusion, buildMatchKey } from "./rankFusion.ts";
-import { normalizeHamzaAndAlif } from "./arabicRoot.ts";
+import { takhrijTokens, takhrijOverlap, TAKHRIJ_MIN_OVERLAP } from "./mirror/text/takhrij.ts";
 import { resolveCollectionSlugs, scopeHasArabicMatn } from "./collections.ts";
 import { disciplineDomains } from "./disciplines.ts";
 // Tier-2 classical corpus lexical channel is scoped by discipline; see disciplines.ts.
@@ -769,27 +769,6 @@ export interface HadithTakhrijResult {
   }>;
 }
 
-/** Words too common in hadith matn/isnad to be evidence of a shared narration
- *  (قال، رسول، الله، عن، حدثنا …). Overlap on these means nothing. */
-const TAKHRIJ_COMMON_WORDS = new Set([
-  "قال", "قالت", "قالوا", "رسول", "الله", "النبي", "عليه", "وسلم", "صلي",
-  "حدثنا", "حدثني", "اخبرنا", "اخبرني", "سمعت", "روي", "عنه", "عنها",
-  "رضي", "بن", "ابن", "ابي", "عبد", "كان", "كانت", "الذي", "التي", "علي",
-  "الي", "من", "في", "عن", "انه", "انها", "هذا", "هذه", "ذلك",
-]);
-
-/** Content-word set for matn comparison: normalized (tashkeel/hamza/ta-marbuta),
- *  boilerplate removed, short tokens dropped. */
-function takhrijTokens(text: string): Set<string> {
-  const norm = normalizeHamzaAndAlif(text || "");
-  return new Set(
-    norm
-      .split(/[\s،.:؛()«»"'\-]+/)
-      .map((w) => w.trim())
-      .filter((w) => w.length > 3 && !TAKHRIJ_COMMON_WORDS.has(w)),
-  );
-}
-
 /**
  * Hadith takhrij — find other narrations of the SAME hadith across collections.
  *
@@ -808,7 +787,7 @@ export function takhrijHadith(
   primary: EngineCitation,
   candidates: EngineCitation[],
   /** Minimum content-word overlap ratio to accept as the same narration. */
-  minOverlapRatio = 0.5,
+  minOverlapRatio = TAKHRIJ_MIN_OVERLAP,
 ): HadithTakhrijResult {
   const primaryColl = (primary.citation_ref?.collection || primary.citation_ref?.book || "").toLowerCase();
   const primaryNum = String(primary.citation_ref?.hadith_number || "");
@@ -823,14 +802,9 @@ export function takhrijHadith(
     // Skip the primary row itself (same collection AND same number).
     if (coll === primaryColl && num === primaryNum) continue;
 
-    const candTokens = takhrijTokens(c.content_ar || c.content || "");
-    // Too little content on either side to judge — omit rather than guess.
-    if (primaryTokens.size < 3 || candTokens.size < 3) continue;
-
-    let shared = 0;
-    for (const w of candTokens) if (primaryTokens.has(w)) shared++;
-    const ratio = shared / Math.min(primaryTokens.size, candTokens.size);
-    if (ratio >= minOverlapRatio) scored.push({ c, ratio });
+    // null = too little content on either side to judge — omit rather than guess.
+    const ratio = takhrijOverlap(primaryTokens, takhrijTokens(c.content_ar || c.content || ""));
+    if (ratio !== null && ratio >= minOverlapRatio) scored.push({ c, ratio });
   }
 
   // Strongest textual agreement first.
