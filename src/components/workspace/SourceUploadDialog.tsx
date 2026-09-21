@@ -18,6 +18,8 @@ import { runLibraryIngest, type IngestProgress } from "@/lib/corpus/ingestOrches
 import { IngestProgressCard } from "./IngestProgressCard";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { isCapabilityAvailable } from "@/core/capabilities/registry";
+import { cleanIpcError } from "@/lib/ipcError";
 
 interface SourceUploadDialogProps {
   open: boolean;
@@ -44,7 +46,12 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
   const estimatedChunks = file ? Math.max(1, Math.ceil(file.size / 1200)) : 0;
   const estimatedCost = estimatedChunks * 5;
   const available = total ?? 100;
-  const isSolvent = available >= estimatedCost;
+  // Only a runtime with a token wallet meters ingest. Desktop embeds with the
+  // user's own BYOK key and has no balance at all (registry: "tokens.meter"), so
+  // its `total` is a permanent 0 — treating that as "insufficient" made uploading
+  // a book impossible on desktop.
+  const meteredByTokens = isCapabilityAvailable("tokens.meter");
+  const isSolvent = !meteredByTokens || available >= estimatedCost;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -87,13 +94,19 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
         })
         .catch((err) => {
           onSuccess?.();
-          toast.error(translateStoredFormat("toast.library.processing_failed", { error: err.message }));
+          const reason = cleanIpcError(err);
+          // The progress card would otherwise sit at "Extracting… 0%" forever.
+          setIngestProgress((p) => ({
+            itemId: item.id, inserted: 0, totalChunks: 0, progressPercent: 0, done: false,
+            ...p, status: "failed", error: reason,
+          }));
+          toast.error(translateStoredFormat("toast.library.processing_failed", { error: reason }));
         })
         .finally(() => {
           abortRef.current = null;
         });
     } catch (err: any) {
-      toast.error(translateStoredFormat("toast.library.upload_failed", { error: err.message }));
+      toast.error(translateStoredFormat("toast.library.upload_failed", { error: cleanIpcError(err) }));
     } finally {
       setIsUploading(false);
     }
@@ -134,10 +147,12 @@ export const SourceUploadDialog: React.FC<SourceUploadDialogProps> = ({
 
               <div className="flex items-center justify-between pt-1 border-t border-border/50 text-xs">
                 <span className="text-muted-foreground">{t("library.est_chunks", "Estimated chunks: ~{count}").replace("{count}", String(estimatedChunks))}</span>
-                <span className="flex items-center gap-1 font-medium text-primary">
-                  <Coins className="h-3.5 w-3.5" />
-                  {t("library.est_cost", "Estimated cost: {cost} tokens").replace("{cost}", String(estimatedCost))}
-                </span>
+                {meteredByTokens && (
+                  <span className="flex items-center gap-1 font-medium text-primary">
+                    <Coins className="h-3.5 w-3.5" />
+                    {t("library.est_cost", "Estimated cost: {cost} tokens").replace("{cost}", String(estimatedCost))}
+                  </span>
+                )}
               </div>
 
               {!isSolvent && (

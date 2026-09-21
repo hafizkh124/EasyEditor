@@ -172,11 +172,28 @@ export async function ingestLibraryItem(
   }
 
   let inserted = 0;
-  for (const chunk of batch) {
-    if (signal?.aborted) break;
-    const embedding = await embedTextContent(chunk.content);
-    storeChunk({ db, userId, itemId, chunk, embedding });
-    inserted++;
+  try {
+    for (const chunk of batch) {
+      if (signal?.aborted) break;
+      const embedding = await embedTextContent(chunk.content);
+      storeChunk({ db, userId, itemId, chunk, embedding });
+      inserted++;
+    }
+  } catch (err) {
+    // Embedding failed part-way (no Gemini key, quota, network). Record it on the item, so
+    // the library row reads "incomplete" with a resume button instead of a green "saved" over
+    // zero chunks, and remember where to continue — the chunks already stored stay stored.
+    const done = currentOffset + inserted;
+    writeIngestMeta(db, itemId, meta, {
+      status: 'failed',
+      error: err instanceof Error ? err.message : String(err),
+      progress: Math.round((done / totalChunks) * 100),
+      total_chunks: totalChunks,
+      next_offset: done,
+      chunker: isResumingLegacy ? undefined : 'adaptive-v1',
+      extracted_text: fullText,
+    });
+    throw err;
   }
 
   const nextOffset = currentOffset + inserted;

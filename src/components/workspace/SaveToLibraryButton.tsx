@@ -3,6 +3,8 @@ import { Library, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
+import { isCapabilityAvailable } from "@/core/capabilities/registry";
+import { cleanIpcError } from "@/lib/ipcError";
 import { libraryChunkService } from "@/lib/corpus/libraryChunkService";
 import { runLibraryIngest } from "@/lib/corpus/ingestOrchestrator";
 import { translateStored, translateStoredFormat } from "@/lib/i18n";
@@ -40,13 +42,15 @@ export const SaveToLibraryButton: React.FC<SaveToLibraryButtonProps> = ({
 
   const trimmed = text.trim();
   const estimatedCost = 5 * Math.max(1, Math.ceil(trimmed.length / 2000));
+  // Desktop has no token wallet (own BYOK key): no cost to check, and none to advertise.
+  const meteredByTokens = isCapabilityAvailable("tokens.meter");
 
   const handleSave = async () => {
     if (!trimmed) {
       toast.error(translateStored("toast.library.empty"));
       return;
     }
-    if ((total ?? 0) < estimatedCost) {
+    if (meteredByTokens && (total ?? 0) < estimatedCost) {
       toast.error(translateStoredFormat("toast.tokens.insufficient", { required: estimatedCost, available: total ?? 0 }));
       return;
     }
@@ -62,7 +66,7 @@ export const SaveToLibraryButton: React.FC<SaveToLibraryButtonProps> = ({
       const final = await runLibraryIngest({ itemId: item.id });
       if (final.done) toast.success(translateStoredFormat("toast.library.searchable", { title: safeTitle }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : translateStored("toast.library.save_failed"));
+      toast.error(err instanceof Error ? cleanIpcError(err) : translateStored("toast.library.save_failed"));
     } finally {
       setSaving(false);
     }
@@ -75,7 +79,9 @@ export const SaveToLibraryButton: React.FC<SaveToLibraryButtonProps> = ({
       className={className}
       onClick={handleSave}
       disabled={saving || !trimmed}
-      title={t("library.save_to_library_cost", "Save to library (~{cost} tokens)").replace("{cost}", String(estimatedCost))}
+      title={meteredByTokens
+        ? t("library.save_to_library_cost", "Save to library (~{cost} tokens)").replace("{cost}", String(estimatedCost))
+        : t("library.save_to_library", "Save to library")}
       aria-label={t("library.save_to_library", "Save to library")}
     >
       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Library className="h-4 w-4" />}

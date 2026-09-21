@@ -109,11 +109,15 @@ export const localBackend: WorkspaceBackend = {
       file: File,
       kind?: "book" | "ocr" | "audio" | "custom",
     ): Promise<LibraryItem | null> {
+      // The bytes must travel with the item: main stores them under userData/files.
+      // Sending only the name created an item pointing at a file that was never
+      // written, so ingest always failed with "[Could not read file]".
+      const bytes = new Uint8Array(await file.arrayBuffer());
       return invokeWorkspace<LibraryItem | null>('createItem', {
         title: file.name,
         kind: kind === 'custom' ? 'note' : (kind || 'note'),
         storage_path: file.name,
-      });
+      }, bytes);
     },
 
     async deleteLibraryItem(itemId: string): Promise<boolean> {

@@ -65,8 +65,8 @@ export class WorkspaceDbService {
   // ── Library ───────────────────────────────────────────────────────────────
   public async listItems(projectId?: string): Promise<LibraryItem[]> { return library.listItems(this.db, projectId); }
   public async getItem(id: string): Promise<LibraryItem | null> { return library.getItem(this.db, id); }
-  public async createItem(item: Partial<LibraryItem> & { title: string }): Promise<LibraryItem> {
-    return library.createItem(this.db, item);
+  public async createItem(item: Partial<LibraryItem> & { title: string }, bytes?: Uint8Array | ArrayBuffer): Promise<LibraryItem> {
+    return library.createItem(this.db, item, bytes);
   }
   public async deleteItem(id: string): Promise<void> { return library.deleteItem(this.db, id); }
   public async listChunks(itemId: string, limit = 50, offset = 0): Promise<library.LibraryChunkRow[]> {
