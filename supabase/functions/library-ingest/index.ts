@@ -6,7 +6,7 @@ import { fetchAndExtractStorageFile } from "../_shared/fileText.ts";
 import {
   chunkDocumentText,
   chunkDocumentAdaptive,
-  type DocumentKind,
+  normalizeDocumentKind,
 } from "../_shared/mirror/text/documentChunks.ts";
 
 const corsHeaders = {
@@ -114,7 +114,13 @@ export async function handle(req: Request): Promise<Response> {
     }
 
     // 2. Chunk text
-    const ingestKind = (libraryItem.meta?.kind || libraryItem.meta?.discipline || libraryItem.category) as DocumentKind | undefined;
+    // First field that names a real chunking strategy; otherwise undefined, i.e.
+    // detect from the text. Passing "general"/"book" straight through skipped
+    // detection and chunked the item as prose.
+    const ingestKind =
+      normalizeDocumentKind(libraryItem.meta?.kind) ??
+      normalizeDocumentKind(libraryItem.meta?.discipline) ??
+      normalizeDocumentKind(libraryItem.category);
     const isResumingLegacy = offset > 0 && libraryItem.meta?.ingest?.chunker !== "adaptive-v1";
     const allChunks = isResumingLegacy
       ? chunkDocumentText(fullText)

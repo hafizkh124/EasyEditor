@@ -83,12 +83,29 @@ export interface LibraryChunkRow {
   created_at: string;
 }
 
+/** Upper bound for one listChunks page — a book can hold tens of thousands of chunks. */
+const MAX_CHUNK_PAGE = 200;
+
+/** Chunk meta is JSON text; one corrupt row must not take down the whole listing. */
+function parseChunkMeta(raw: unknown): Record<string, unknown> {
+  if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
+  if (typeof raw !== 'string' || !raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
 export function listChunks(
   db: SqliteDatabase,
   itemId: string,
   limit = 50,
   offset = 0,
 ): LibraryChunkRow[] {
+  const take = Math.min(Math.max(1, Math.trunc(limit) || 50), MAX_CHUNK_PAGE);
+  const skip = Math.max(0, Math.trunc(offset) || 0);
   const userId = getCurrentUserId(db);
   const rows = db.prepare(`
     SELECT id, chunk_index, content, char_start, char_end, page_number, part_number, meta, created_at
@@ -96,7 +113,7 @@ export function listChunks(
     WHERE user_id = ? AND library_item_id = ?
     ORDER BY chunk_index ASC
     LIMIT ? OFFSET ?
-  `).all(userId, itemId, limit, offset) as any[];
+  `).all(userId, itemId, take, skip) as any[];
 
   return rows.map((r) => ({
     id: r.id,
@@ -106,7 +123,7 @@ export function listChunks(
     char_end: r.char_end,
     page_number: r.page_number ?? null,
     part_number: r.part_number ?? null,
-    meta: typeof r.meta === 'string' ? JSON.parse(r.meta || '{}') : (r.meta || {}),
+    meta: parseChunkMeta(r.meta),
     created_at: r.created_at,
   }));
 }
