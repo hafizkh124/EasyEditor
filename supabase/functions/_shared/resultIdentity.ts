@@ -27,6 +27,8 @@ export interface IdentifiableResult {
     url?: string;
     book_id?: string | number;
     page?: string | number;
+    volume?: string | number;
+    vol?: string | number;
     shamela_id?: string | number;
     page_number?: string | number;
     [key: string]: unknown;
@@ -84,13 +86,21 @@ export function resultIdentity(r: IdentifiableResult): string | null {
     return `hadith:${book.trim().toLowerCase()}:${String(num).trim()}`;
   }
 
-  // Classical book passages (e.g. Turath.io Tier T and classical corpus Tier D)
-  // have a stable book_id and page number. Both tiers produce these fields
-  // (or shamela_id / page_number aliases). Checking this before url guarantees
-  // that a Tier T row with a generated url (e.g. turath.io/book/...) still
-  // collapses with an ingested Tier D row lacking an external URL.
+  // Classical book passages (Turath.io Tier T, classical corpus Tier D).
+  //
+  // The identity is book + VOLUME + page, in the same shape the corpus already
+  // uses for its own `passage_key` (`classical:<book>:v<vol>:p<page>`, see
+  // scripts/classical_to_csv.py). The volume is not optional: printed page
+  // numbers restart in every volume, so `book + page` alone names N different
+  // passages in an N-volume work. Keyed without it, page 12 of volume 1 and
+  // page 12 of volume 9 collapsed into one and the later was silently dropped.
+  //
+  // A row with a book and page but NO volume gets no identity (null → kept):
+  // for a multi-volume work we cannot tell which volume it is, and keeping a
+  // possible duplicate is the safe side of the trade.
   const rawBookId = c.book_id ?? c.shamela_id;
   const rawPage = c.page ?? c.page_number;
+  const rawVolume = c.volume ?? c.vol;
 
   const isUsableId = (v: unknown): boolean => {
     if (v == null) return false;
@@ -102,8 +112,8 @@ export function resultIdentity(r: IdentifiableResult): string | null {
     return true;
   };
 
-  if (isUsableId(rawBookId) && isUsableId(rawPage)) {
-    return `classical:${String(rawBookId).trim()}:${String(rawPage).trim()}`;
+  if (isUsableId(rawBookId) && isUsableId(rawPage) && isUsableId(rawVolume)) {
+    return `classical:${String(rawBookId).trim()}:v${String(rawVolume).trim()}:p${String(rawPage).trim()}`;
   }
 
   // Fatwa and web rows carry neither. Their canonical URL is the stable

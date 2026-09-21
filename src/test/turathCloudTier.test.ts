@@ -49,23 +49,34 @@ describe('turathCloudTier (Phase 1e)', () => {
         }),
       );
 
-      expect(results).toHaveLength(3);
+      // Regression: the live envelope is {count, data:[…]}. Tier T only looked
+      // for a bare array / .results, so against the real API it returned [] for
+      // EVERY query — the tier was silently dead in production.
+      expect(results).toHaveLength(4);
 
       const first = results[0];
       expect(first.domain).toBe('turath');
       expect(first.language).toBe('ar');
       expect(first.has_matn).toBe(true);
-      expect(first.content).toContain('والأصل في ذلك قوله تعالى');
+      expect(first.content).toContain('المبحث الرابع من يجري بينهم الربا');
+      expect(first.content).not.toMatch(/<[^>]+>/);
 
       // Citation coordinates
-      expect(first.citation_ref.book).toBe('المبسوط');
-      expect(first.citation_ref.author).toBe('السرخسي');
-      expect(first.citation_ref.book_id).toBe('2166');
-      expect(first.citation_ref.page).toBe(12);
-      expect(first.citation_ref.volume).toBe(1);
-      expect(first.citation_ref.url).toBe('https://turath.io/book/2166?page=12');
-      expect(first.citation_ref.headings).toEqual(['كتاب الطهارة', 'باب الوضوء']);
-      expect(first.citation_ref.discipline).toBe('fiqh');
+      expect(first.citation_ref.book).toContain('زاد المستقنع');
+      expect(first.citation_ref.author).toBe('عبد الكريم اللاحم');
+      expect(first.citation_ref.book_id).toBe('127708');
+      expect(first.citation_ref.page).toBe(129);   // printed page
+      expect(first.citation_ref.volume).toBe(2);
+      expect(first.citation_ref.page_id).toBe(724); // sequential index
+      expect(first.citation_ref.headings).toHaveLength(3);
+    });
+
+    it('links to the reader at app.turath.io using page_id (turath.io/book/… 302s to the app root)', async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => searchFixture });
+      const [first] = await searchTurathCloud('الربا', { limit: 5 });
+      expect(first.citation_ref.url).toBe('https://app.turath.io/book/127708?page=724');
+      // printed page 129 must NOT be used as the address
+      expect(first.citation_ref.url).not.toContain('page=129');
     });
 
     it('respects the limit option', async () => {
@@ -84,11 +95,9 @@ describe('turathCloudTier (Phase 1e)', () => {
         json: async () => searchFixture,
       });
 
-      const results = await searchTurathCloud('الوضوء', { bookIds: [512] });
+      const results = await searchTurathCloud('الوضوء', { bookIds: [832] });
       expect(results).toHaveLength(1);
-      expect(results[0].citation_ref.book_id).toBe('512');
-      expect(results[0].citation_ref.book).toBe('جامع البيان عن تأويل آي القرآن');
-      expect(results[0].citation_ref.discipline).toBe('tafsir');
+      expect(results[0].citation_ref.book_id).toBe('832');
     });
 
     it('returns empty array for empty or whitespace query without network call', async () => {
@@ -224,6 +233,11 @@ describe('turathCloudTier (Phase 1e)', () => {
 
       const results = await searchTurathCloud('الوضوء', { limit: 3, supabase: mockSupabase });
       expect(results).toHaveLength(3);
+      // the key is versioned, so rows written under an older row shape are never served
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({ cache_key: expect.stringContaining('turath:v2:search:') }),
+        expect.anything(),
+      );
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
           domain: 'turath',
@@ -262,7 +276,7 @@ describe('turathCloudTier (Phase 1e)', () => {
           book_id: '2166',
           page: 12,
           volume: 1,
-          url: 'https://turath.io/book/2166?page=12',
+          url: 'https://app.turath.io/book/2166?page=10452',
           discipline: 'fiqh',
         },
         language: 'ar',
@@ -270,8 +284,8 @@ describe('turathCloudTier (Phase 1e)', () => {
       };
 
       // Both should yield the same classical identity
-      expect(resultIdentity(tierDResult)).toBe('classical:2166:12');
-      expect(resultIdentity(tierTResult)).toBe('classical:2166:12');
+      expect(resultIdentity(tierDResult)).toBe('classical:2166:v1:p12');
+      expect(resultIdentity(tierTResult)).toBe('classical:2166:v1:p12');
 
       // Deduplication preserves the first occurrence (Tier D wins if first)
       const deduped1 = dedupeResults([tierDResult, tierTResult]);
@@ -288,24 +302,86 @@ describe('turathCloudTier (Phase 1e)', () => {
       const page12: IslamicResult = {
         domain: 'turath',
         content: 'صفحة 12',
-        citation_ref: { book_id: '2166', page: 12 },
+        citation_ref: { book_id: '2166', volume: 1, page: 12 },
         language: 'ar',
       };
       const page13: IslamicResult = {
         domain: 'turath',
         content: 'صفحة 13',
-        citation_ref: { book_id: '2166', page: 13 },
+        citation_ref: { book_id: '2166', volume: 1, page: 13 },
         language: 'ar',
       };
       const book3410: IslamicResult = {
         domain: 'classical-rijal',
         content: 'كتاب آخر',
-        citation_ref: { book_id: '3410', page: 12 },
+        citation_ref: { book_id: '3410', volume: 1, page: 12 },
+        language: 'ar',
+      };
+      // Regression: same book, same printed page number, DIFFERENT volume.
+      // Printed pages restart per volume; these are two passages, not a duplicate.
+      const vol9page12: IslamicResult = {
+        domain: 'turath',
+        content: 'المجلد التاسع صفحة 12',
+        citation_ref: { book_id: '2166', volume: 9, page: 12 },
         language: 'ar',
       };
 
-      const deduped = dedupeResults([page12, page13, book3410]);
-      expect(deduped).toHaveLength(3);
+      const deduped = dedupeResults([page12, page13, book3410, vol9page12]);
+      expect(deduped).toHaveLength(4);
     });
+  });
+});
+
+// ─── Tier T trigger gate ────────────────────────────────────────────────────
+import { shouldQueryTurath, TURATH_DISCIPLINES } from '../../supabase/functions/_shared/turath';
+import { DISCIPLINE_SLUGS } from '../../supabase/functions/_shared/disciplines';
+
+describe('shouldQueryTurath (Tier T trigger)', () => {
+  it('REGRESSION: every trigger discipline is one the planner can actually emit', () => {
+    // The gate once listed "seerah" — not a Discipline slug — so that branch was
+    // dead code: no query could ever match it, and the prompt it was written for
+    // (seerat_alam) never reached Turath. Cross-checking against the real slug
+    // list makes that class of typo fail here instead of silently in production.
+    for (const d of TURATH_DISCIPLINES) {
+      expect(DISCIPLINE_SLUGS as readonly string[]).toContain(d);
+    }
+    expect(TURATH_DISCIPLINES as readonly string[]).not.toContain('seerah');
+  });
+
+  it('fires for each discipline where Turath adds coverage the local corpus lacks', () => {
+    for (const d of ['fiqh', 'fatwa', 'lughat', 'nahw']) {
+      expect(shouldQueryTurath([d], undefined)).toBe(true);
+    }
+  });
+
+  it('does NOT fire implicitly for tafsir or rijal, where the local corpus is real and Turath is noisy', () => {
+    // Live probe: "تفسير آية الكرسي" -> manuscript catalogues; "ترجمة سفيان الثوري"
+    // -> Tuhfat al-Ashraf hadith entries. Rank fusion cannot tell that from a
+    // good hit, so firing here would displace the 6,208 tafsir / 19,616 rijal
+    // rows the local tiers already return.
+    expect(shouldQueryTurath(['tafsir'], undefined)).toBe(false);
+    expect(shouldQueryTurath(['rijal'], undefined)).toBe(false);
+    // ...but a user who asks for Turath by name still gets it:
+    expect(shouldQueryTurath(['tafsir'], ['turath'])).toBe(true);
+    expect(shouldQueryTurath(['rijal'], ['turath'])).toBe(true);
+  });
+
+  it('fires when the user explicitly picks the turath domain, even with no discipline', () => {
+    expect(shouldQueryTurath([], ['turath'])).toBe(true);
+    expect(shouldQueryTurath([], ['dorar', 'turath'])).toBe(true);
+  });
+
+  it('does not fire for a plain Quran/hadith question', () => {
+    expect(shouldQueryTurath([], undefined)).toBe(false);
+    expect(shouldQueryTurath([], ['dorar', 'alquran'])).toBe(false);
+  });
+
+  it('does not fire for hadith_term (covered by the local classical corpus)', () => {
+    expect(shouldQueryTurath(['hadith_term'], undefined)).toBe(false);
+  });
+
+  it('ignores a non-array selectedDomains instead of throwing', () => {
+    expect(shouldQueryTurath([], 'turath')).toBe(false);
+    expect(shouldQueryTurath([], null)).toBe(false);
   });
 });

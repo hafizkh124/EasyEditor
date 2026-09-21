@@ -17,11 +17,15 @@ import { logger } from '../lib/logger.js';
 import type { ShamelaSearchResult, ShamelaPageContent } from './shamelaNative.js';
 import type { CloudBook } from './cloudClient.js';
 import {
-  parseTurathMeta,
+  extractTurathHits,
   normalizeTurathSearchHit,
+  normalizeTurathPage,
   normalizeTurathBook,
-  type TurathRawSearchHit,
+  normalizeTurathAuthor,
+  turathPageLabel,
+  type TurathRawPage,
   type TurathRawBook,
+  type TurathRawAuthor,
 } from '../../supabase/functions/_shared/turath.js';
 
 const log = logger.child('shamela/turathClient');
@@ -33,16 +37,28 @@ export const TURATH_PAGE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 export const TURATH_SEARCH_TTL_MS = 24 * 60 * 60 * 1000;   // 24 hours
 export const TURATH_MAX_CACHE_ENTRIES = 500;
 
+/**
+ * NOTE on `pageNumber`: for Turath it is the SEQUENTIAL page index (`page_id`),
+ * because that is the only coordinate `/page?pg=` accepts — the id
+ * `turath:<book>:<pageNumber>` handed to the model must round-trip through
+ * `read_shamela_page`. The PRINTED volume/page a scholar cites is carried
+ * separately in `volume` / `printedPage` / `pageLabel`.
+ */
 export interface TurathSearchResult extends ShamelaSearchResult {
   id: string;
   author: string;
-  volume: number;
+  volume?: number;
+  printedPage: number;
+  /** Citation label, e.g. "ج2، ص129". */
+  pageLabel: string;
   content: string;
   headings: string[];
 }
 
 export interface TurathPageContent extends ShamelaPageContent {
-  volume: number;
+  volume?: number;
+  printedPage: number;
+  pageLabel: string;
   content: string;
   headings: string[];
 }
@@ -56,8 +72,15 @@ interface CacheEntry<T = unknown> {
   expiresAt: number;
 }
 
+/**
+ * Bump when the cached value SHAPE changes. v1 files were written by a client
+ * whose search parser found nothing against the real API, so they are full of
+ * cached-empty results that would otherwise be served for another 24h.
+ */
+const CACHE_FILE_VERSION = 2;
+
 interface PersistedCacheFile {
-  version: 1;
+  version: number;
   entries: Record<string, CacheEntry>;
 }
 
@@ -90,7 +113,7 @@ function loadCacheIfNeeded(): void {
     if (!fs.existsSync(filePath)) return;
     const raw = fs.readFileSync(filePath, 'utf8');
     const parsed = JSON.parse(raw) as PersistedCacheFile;
-    if (parsed && typeof parsed.entries === 'object') {
+    if (parsed && parsed.version === CACHE_FILE_VERSION && typeof parsed.entries === 'object') {
       const now = Date.now();
       for (const [k, v] of Object.entries(parsed.entries)) {
         if (v && typeof v.expiresAt === 'number' && v.expiresAt > now) {
@@ -113,7 +136,7 @@ function persistCacheToDisk(): void {
         entries[k] = v;
       }
     }
-    const fileContent: PersistedCacheFile = { version: 1, entries };
+    const fileContent: PersistedCacheFile = { version: CACHE_FILE_VERSION, entries };
     const serialized = JSON.stringify(fileContent);
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
@@ -305,6 +328,21 @@ async function turathRequest<T>(url: string): Promise<T> {
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────────
+//
+// Endpoints (community SDK + verified live against api.turath.io, ver=3):
+//   GET /search?q=…&ver=3          → { count, data: [ {book_id, cat_id, author_id, meta, snip, text} ] }
+//   GET /page?book_id=…&pg=…&ver=3 → { meta: "<json>", text }        (pg = SEQUENTIAL page_id)
+//   GET /book?id=…&ver=3           → { meta: { id, name, author_id, cat_id, … } }
+//   GET /author?id=…&ver=3         → { id, name, biography, death }  ({} for an unknown id, HTTP 200)
+// The path forms `/page/<id>/<pg>` and `/book/<id>` that an earlier version
+// called return 404 — they never worked, and mocked-fetch tests hid it.
+
+function turathUrl(endpoint: string, params: Record<string, string | number>): string {
+  const url = new URL(`${TURATH_BASE_URL}/${endpoint}`);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+  url.searchParams.set('ver', '3');
+  return url.toString();
+}
 
 /**
  * Searches Turath.io classical library with optional bookId filtering and limit.
@@ -325,29 +363,24 @@ export async function searchTurath(
   const cached = getCache<TurathSearchResult[]>(cacheKey);
   if (cached) return cached;
 
-  const url = new URL(`${TURATH_BASE_URL}/search`);
-  url.searchParams.set('q', cleanQuery);
-  url.searchParams.set('ver', '3');
+  const rawData = await turathRequest<unknown>(turathUrl('search', { q: cleanQuery }));
 
-  const rawData = await turathRequest<unknown>(url.toString());
-  const rawHits: TurathRawSearchHit[] = Array.isArray(rawData)
-    ? (rawData as TurathRawSearchHit[])
-    : rawData && typeof rawData === 'object' && Array.isArray((rawData as { results?: unknown[] }).results)
-    ? ((rawData as { results: TurathRawSearchHit[] }).results)
-    : [];
-
-  let normalized = rawHits.map(normalizeTurathSearchHit);
+  let normalized = extractTurathHits(rawData).map(normalizeTurathSearchHit);
   if (scoped.length > 0) {
     normalized = normalized.filter((h) => scoped.includes(Number(h.book_id)));
   }
 
   const results: TurathSearchResult[] = normalized.slice(0, safeLimit).map((h) => ({
-    id: `turath:${h.book_id}:${h.page}`,
+    // page_id is the address `read_shamela_page` needs; fall back to the
+    // printed page only if Turath ever omits it (it never has in practice).
+    id: `turath:${h.book_id}:${h.page_id ?? h.page}`,
     bookId: h.book_id,
     bookTitle: h.book_name,
     author: h.author_name,
-    pageNumber: h.page,
+    pageNumber: h.page_id ?? h.page,
     volume: h.vol,
+    printedPage: h.page,
+    pageLabel: turathPageLabel(h.page, h.vol),
     snippet: h.snippet,
     content: h.text,
     score: 1,
@@ -360,14 +393,15 @@ export async function searchTurath(
 
 /**
  * Reads a single page from Turath.io classical library.
+ * `pageNumber` is the sequential page index (`page_id`) — see TurathSearchResult.
  */
 export async function readTurathPage(
   bookId: string | number,
   pageNumber: number,
 ): Promise<TurathPageContent> {
   const cleanBookId = String(bookId).replace(/^turath:/i, '').trim();
-  if (!cleanBookId) {
-    throw new Error('Turath bookId is required');
+  if (!/^\d+$/.test(cleanBookId)) {
+    throw new Error(`Turath bookId must be numeric, got: ${bookId}`);
   }
 
   const cleanPage = Math.trunc(Number(pageNumber));
@@ -379,21 +413,23 @@ export async function readTurathPage(
   const cached = getCache<TurathPageContent>(cacheKey);
   if (cached) return cached;
 
-  const url = `${TURATH_BASE_URL}/page/${encodeURIComponent(cleanBookId)}/${encodeURIComponent(cleanPage)}`;
-  const rawHit = await turathRequest<TurathRawSearchHit>(url);
+  const raw = await turathRequest<TurathRawPage>(turathUrl('page', { book_id: cleanBookId, pg: cleanPage }));
 
-  if (!rawHit || typeof rawHit !== 'object') {
+  // Turath answers an out-of-range page with an empty object, not an error.
+  if (!raw || typeof raw !== 'object' || typeof raw.text !== 'string') {
     throw new Error(`Turath page not found: book ${cleanBookId}, page ${cleanPage}`);
   }
 
-  const normalized = normalizeTurathSearchHit(rawHit);
+  const page = normalizeTurathPage(raw, cleanBookId);
   const result: TurathPageContent = {
     bookId: cleanBookId,
     pageNumber: cleanPage,
-    volume: normalized.vol,
-    text: normalized.text,
-    content: normalized.text,
-    headings: normalized.headings,
+    volume: page.vol,
+    printedPage: page.page,
+    pageLabel: page.label,
+    text: page.text,
+    content: page.text,
+    headings: page.headings,
     footnotes: undefined,
   };
 
@@ -401,8 +437,28 @@ export async function readTurathPage(
   return result;
 }
 
+/** Resolves an author id to name + hijri death year. Never throws: a book is still useful without it. */
+async function lookupAuthor(authorId: string | undefined): Promise<{ name: string | null; deathYear: number | null }> {
+  if (!authorId) return { name: null, deathYear: null };
+  const cacheKey = `author:${authorId}`;
+  const cached = getCache<{ name: string | null; deathYear: number | null }>(cacheKey);
+  if (cached) return cached;
+  try {
+    const a = normalizeTurathAuthor(await turathRequest<TurathRawAuthor>(turathUrl('author', { id: authorId })));
+    const out = { name: a.name || null, deathYear: a.death_year };
+    // An unknown id returns {} (HTTP 200): not worth remembering as a real answer.
+    if (out.name) setCache(cacheKey, out, TURATH_PAGE_TTL_MS);
+    return out;
+  } catch (err) {
+    log.warn('Turath author lookup failed', { authorId, message: (err as Error).message });
+    return { name: null, deathYear: null };
+  }
+}
+
 /**
- * Looks up a book in Turath.io catalogue by ID or query string.
+ * Looks up a book in the Turath.io catalogue: by numeric id (`/book` + `/author`),
+ * or by title/author text (distinct books among the search hits — Turath has no
+ * catalogue-search endpoint).
  */
 export async function findTurathBook(
   query: string,
@@ -417,73 +473,40 @@ export async function findTurathBook(
   const cached = getCache<CloudBook[]>(cacheKey);
   if (cached) return cached;
 
-  const extractDeathYear = (metaRaw: unknown): number | null => {
-    const meta = parseTurathMeta(metaRaw);
-    const death = meta.author_death != null ? Number(meta.author_death) : null;
-    return death && Number.isFinite(death) ? Math.trunc(death) : null;
-  };
-
-  // Try direct /book/:id or /book/:query endpoint first
-  try {
-    const url = `${TURATH_BASE_URL}/book/${encodeURIComponent(cleanQuery)}`;
-    const raw = await turathRequest<unknown>(url);
-
-    let books: TurathRawBook[] = [];
-    if (Array.isArray(raw)) {
-      books = raw as TurathRawBook[];
-    } else if (raw && typeof raw === 'object') {
-      const obj = raw as Record<string, unknown>;
-      if (Array.isArray(obj.books)) {
-        books = obj.books as TurathRawBook[];
-      } else if (obj.book_id != null || obj.name != null || obj.book_name != null) {
-        books = [raw as TurathRawBook];
-      }
-    }
-
-    if (books.length > 0) {
-      const results: CloudBook[] = books.slice(0, safeLimit).map((b) => {
-        const norm = normalizeTurathBook(b);
-        return {
-          id: Number(norm.book_id),
-          title: norm.title,
-          author: norm.author || null,
-          deathYear: extractDeathYear(b.meta),
-        };
-      });
-      setCache(cacheKey, results, TURATH_SEARCH_TTL_MS);
-      return results;
-    }
-  } catch (err) {
-    const is404 = err instanceof Error && /404/.test(err.message);
-    if (/^\d+$/.test(cleanQuery)) {
-      if (is404) return [];
+  // A bare number is a book id.
+  if (/^\d+$/.test(cleanQuery)) {
+    let raw: TurathRawBook;
+    try {
+      raw = await turathRequest<TurathRawBook>(turathUrl('book', { id: cleanQuery }));
+    } catch (err) {
+      // The live API answers an unknown book id with HTTP 404 `{}`. "Not found"
+      // is an answer, not a failure — anything else (5xx, timeout) still throws.
+      if (err instanceof Error && /HTTP 404/.test(err.message)) return [];
       throw err;
     }
+    if (!raw?.meta || raw.meta.id == null) return [];
+    const book = normalizeTurathBook(raw);
+    const author = await lookupAuthor(book.author_id);
+    const results: CloudBook[] = [{
+      id: Number(book.book_id),
+      title: book.title,
+      author: author.name,
+      deathYear: author.deathYear,
+    }];
+    setCache(cacheKey, results, TURATH_SEARCH_TTL_MS);
+    return results;
   }
 
-  // Fallback to searching Turath catalogue via search hits
-  const searchUrl = new URL(`${TURATH_BASE_URL}/search`);
-  searchUrl.searchParams.set('q', cleanQuery);
-  searchUrl.searchParams.set('ver', '3');
-
-  const rawSearch = await turathRequest<unknown>(searchUrl.toString());
-  const rawHits: TurathRawSearchHit[] = Array.isArray(rawSearch)
-    ? (rawSearch as TurathRawSearchHit[])
-    : rawSearch && typeof rawSearch === 'object' && Array.isArray((rawSearch as { results?: unknown[] }).results)
-    ? ((rawSearch as { results: TurathRawSearchHit[] }).results)
-    : [];
-
+  // Otherwise: the distinct books that a text search surfaces.
+  const rawSearch = await turathRequest<unknown>(turathUrl('search', { q: cleanQuery }));
   const booksMap = new Map<number, CloudBook>();
-  for (const hit of rawHits) {
+  for (const hit of extractTurathHits(rawSearch)) {
     const norm = normalizeTurathSearchHit(hit);
     const id = Number(norm.book_id);
     if (id && !booksMap.has(id)) {
-      booksMap.set(id, {
-        id,
-        title: norm.book_name,
-        author: norm.author_name || null,
-        deathYear: extractDeathYear(hit.meta),
-      });
+      // Search hits carry the author NAME but not the death year; leaving it
+      // null is honest, and one /author call per book would multiply latency.
+      booksMap.set(id, { id, title: norm.book_name, author: norm.author_name || null, deathYear: null });
     }
   }
 

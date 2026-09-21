@@ -90,6 +90,18 @@ describe("connectorsHandlers", () => {
     fetchSpy.mockRestore();
   });
 
+  it("ping turath probes a real endpoint — the bare host answers HTTP 400 and would read as 'down' forever", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+    const r = (await invoke({ action: "ping", id: "turath" })) as { ok: boolean };
+    expect(r.ok).toBe(true);
+    const probed = new URL(String(fetchSpy.mock.calls[0][0]));
+    expect(probed.hostname).toBe("api.turath.io");
+    // the live API 400s on "/" — the probe must hit a real path
+    expect(probed.pathname).not.toBe("/");
+    expect(probed.pathname).toBe("/author");
+    fetchSpy.mockRestore();
+  });
+
   it("ping bridged is 'unknown', not a failure", async () => {
     const r = (await invoke({ action: "ping", id: "hadith" })) as { ok: boolean | null };
     expect(r.ok).toBe(null);

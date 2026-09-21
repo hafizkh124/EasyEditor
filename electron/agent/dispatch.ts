@@ -304,7 +304,9 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const prefix = r.transport === 'turath' ? 'turath' : r.transport === 'cloud' ? 'shamela-cloud' : 'shamela';
         const chunks: RetrievedChunk[] = r.hits.map((h) => ({
           id: `${prefix}:${h.bookId}:${h.pageNumber}`,
-          reference: `${h.bookTitle || (prefix === 'turath' ? 'تراث' : 'الشاملة')}، ص ${h.pageNumber}`,
+          // Turath addresses pages by a sequential index, but a scholar cites the
+          // PRINTED volume/page — which the router result carries as `pageLabel`.
+          reference: `${h.bookTitle || (prefix === 'turath' ? 'تراث' : 'الشاملة')}، ${(h as { pageLabel?: string }).pageLabel ?? `ص ${h.pageNumber}`}`,
           content: h.snippet,
           ...(r.transport === 'cloud' && !Number(h.bookId) ? { bibliographic: true } : {}),
         }));
@@ -327,7 +329,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           preferTransport: pfx === 'turath' ? 'turath' : pfx === 'shamela-cloud' ? 'cloud' : 'local',
         });
         if (!r.page) return { error: r.error ?? 'could not read the page', transport: r.transport };
-        ledger.add([{ id: sid, reference: `${pfx === 'turath' ? 'تراث' : 'الشاملة'}، ص ${r.page.pageNumber}`, content: r.page.text }]);
+        ledger.add([{ id: sid, reference: `${pfx === 'turath' ? 'تراث' : 'الشاملة'}، ${(r.page as { pageLabel?: string }).pageLabel ?? `ص ${r.page.pageNumber}`}`, content: r.page.text }]);
         return {
           transport: r.transport,
           bookId,
