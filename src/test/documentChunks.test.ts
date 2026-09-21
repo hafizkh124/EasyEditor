@@ -70,7 +70,7 @@ describe('the Deno mirror stays in sync (risk R2)', () => {
   // an edge deploy bundles only that folder. The copy is manual, so a stale
   // mirror is exactly how the cloud and desktop chunkers drift apart — the
   // failure this file exists to prevent.
-  const MIRRORED = ['text/documentChunks.ts', 'text/fileText.ts', 'text/chunk.ts'];
+  const MIRRORED = ['text/documentChunks.ts', 'text/fileText.ts', 'text/chunk.ts', 'text/takhrij.ts'];
 
   it.each(MIRRORED)('%s matches its shared/ source', (relative) => {
     const source = readFileSync(`shared/${relative}`, 'utf8');

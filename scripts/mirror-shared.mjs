@@ -16,6 +16,7 @@ const FILES = [
   "text/chunk.ts",
   "text/documentChunks.ts",
   "text/fileText.ts",
+  "text/takhrij.ts",
   "search/rankFusion.ts",
 ];
 

@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { z } from "zod";
+import { queryTerms, searchCorpus } from "../corpusSearch";
+import { takhrijOverlap, takhrijTokens, TAKHRIJ_MIN_OVERLAP } from "../../../../shared/text/takhrij";
 
 function supabaseForUser(ctx: ToolContext) {
   return createClient(
@@ -13,62 +15,52 @@ function supabaseForUser(ctx: ToolContext) {
   );
 }
 
-function takhrijTokens(text: string): Set<string> {
-  const STOPWORDS = new Set([
-    "حدثنا", "اخبرنا", "قال", "سمعت", "عن", "ان", "رسول", "الله", "صلى", "عليه", "وسلم",
-    "النبي", "بن", "ابي", "ابن", "في", "من", "على", "الى", "ما", "لا", "انما", "كان",
-  ]);
-  const cleaned = text
-    .replace(/[\u064B-\u065F\u0670]/g, "")
-    .replace(/[\u0622\u0623\u0625\u0671]/g, "\u0627")
-    .replace(/\u0629/g, "\u0647")
-    .replace(/\u0649/g, "\u064A")
-    .replace(/[^\u0621-\u064A\s]/g, " ");
-
-  const tokens = cleaned.split(/\s+/).filter((w) => w.length >= 3 && !STOPWORDS.has(w));
-  return new Set(tokens);
-}
+/** Collection identity of a row, in the same order the app uses (collection, then book). */
+const collectionOf = (r: { citation_ref: Record<string, unknown> | null }): string =>
+  String(r.citation_ref?.collection ?? r.citation_ref?.book ?? "");
 
 export default defineTool({
   name: "takhrij_hadith",
   title: "Takhrij Hadith Cross-Reference",
   description:
-    "Cross-reference and verify a Hadith across canonical collections by matching matn textual overlap.",
+    "Find other narrations of a hadith across the canonical collections in Easy Editor's corpus, by matching the matn's content words. The best keyword match is treated as the primary narration and the rest are compared against it. Matching is on wording only — a same hadith_number in another collection is never a match, because numbering is per-collection.",
   inputSchema: {
     hadithText: z.string().min(3).describe("Hadith matn or phrase in Arabic to find cross-references for"),
-    minOverlapRatio: z.number().min(0.2).max(1.0).default(0.4).optional().describe("Minimum token overlap ratio (default 0.4)"),
-    limit: z.number().int().min(1).max(25).default(10).optional().describe("Max candidates to retrieve"),
+    minOverlapRatio: z.number().min(0.2).max(1.0).default(TAKHRIJ_MIN_OVERLAP).optional()
+      .describe(`Minimum content-word overlap (default ${TAKHRIJ_MIN_OVERLAP}, the same threshold the app uses)`),
+    limit: z.number().int().min(1).max(25).default(10).optional().describe("Max cross-references to return"),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ hadithText, minOverlapRatio = 0.4, limit = 10 }, ctx) => {
+  handler: async ({ hadithText, minOverlapRatio = TAKHRIJ_MIN_OVERLAP, limit = 10 }, ctx) => {
     if (!ctx.isAuthenticated()) {
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
 
-    const { data: rows, error } = await supabase.rpc("search_documents_smart", {
-      patterns: [hadithText],
-      sub_patterns: [],
-      max_results: limit,
+    // Filter to hadith IN the query (source_type), and over-fetch: a candidate
+    // must clear the overlap bar, so `limit` rows would leave few survivors.
+    const { rows: hadithRows, error } = await searchCorpus(supabase, {
+      terms: queryTerms(hadithText),
+      sourceTypes: ["hadith"],
+      limit: Math.min(limit * 4, 60),
     });
 
     if (error) {
-      return { content: [{ type: "text", text: `Retrieval error: ${error.message}` }], isError: true };
+      return { content: [{ type: "text", text: `Retrieval error: ${error}` }], isError: true };
     }
-
-    const hadithRows = ((rows as any[]) || []).filter((r: any) =>
-      r.domain === "hadith" || r.domain === "easyquran-hadith" || r.domain === "hadith-json"
-    );
 
     if (hadithRows.length === 0) {
       return {
         content: [{ type: "text", text: "No matching hadith found in canonical corpus." }],
-        structuredContent: { matches: [] },
+        structuredContent: { primary: null, crossReferencesCount: 0, crossReferences: [] },
       };
     }
 
     const primary = hadithRows[0];
+    const primaryColl = collectionOf(primary).toLowerCase();
+    const primaryNum = String(primary.citation_ref?.hadith_number ?? "");
     const primaryTokens = takhrijTokens(primary.content_ar || primary.content || "");
+
     const matches: Array<{
       collection: string;
       hadith_number: string | number;
@@ -77,36 +69,33 @@ export default defineTool({
       matn_snippet: string;
     }> = [];
 
-    for (let i = 1; i < hadithRows.length; i++) {
-      const cand = hadithRows[i];
-      const candTokens = takhrijTokens(cand.content_ar || cand.content || "");
-      if (primaryTokens.size < 3 || candTokens.size < 3) continue;
+    for (const cand of hadithRows.slice(1)) {
+      // Skip the primary narration itself (same collection AND same number).
+      if (collectionOf(cand).toLowerCase() === primaryColl && String(cand.citation_ref?.hadith_number ?? "") === primaryNum) continue;
 
-      let shared = 0;
-      for (const w of candTokens) if (primaryTokens.has(w)) shared++;
-      const ratio = shared / Math.min(primaryTokens.size, candTokens.size);
+      const ratio = takhrijOverlap(primaryTokens, takhrijTokens(cand.content_ar || cand.content || ""));
+      if (ratio === null || ratio < minOverlapRatio) continue;
 
-      if (ratio >= minOverlapRatio) {
-        matches.push({
-          collection: cand.citation_ref?.collection || cand.citation_ref?.book || "Hadith Book",
-          hadith_number: cand.citation_ref?.hadith_number || "",
-          chapter: cand.citation_ref?.chapter || cand.citation_ref?.bab || undefined,
-          overlap_ratio: Number(ratio.toFixed(2)),
-          matn_snippet: (cand.content_ar || cand.content || "").slice(0, 150),
-        });
-      }
+      matches.push({
+        collection: collectionOf(cand) || "Hadith Book",
+        hadith_number: (cand.citation_ref?.hadith_number as string | number | undefined) ?? "",
+        chapter: (cand.citation_ref?.chapter ?? cand.citation_ref?.bab ?? undefined) as string | undefined,
+        overlap_ratio: Number(ratio.toFixed(2)),
+        matn_snippet: (cand.content_ar || cand.content || "").slice(0, 150),
+      });
     }
 
     matches.sort((a, b) => b.overlap_ratio - a.overlap_ratio);
+    const top = matches.slice(0, limit);
 
     const summary = {
       primary: {
-        collection: primary.citation_ref?.collection || primary.citation_ref?.book || "Primary Collection",
-        hadith_number: primary.citation_ref?.hadith_number || "",
+        collection: collectionOf(primary) || "Primary Collection",
+        hadith_number: (primary.citation_ref?.hadith_number as string | number | undefined) ?? "",
         text: (primary.content_ar || primary.content || "").slice(0, 200),
       },
-      crossReferencesCount: matches.length,
-      crossReferences: matches,
+      crossReferencesCount: top.length,
+      crossReferences: top,
     };
 
     return {
