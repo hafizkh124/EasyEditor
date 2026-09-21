@@ -153,6 +153,8 @@ const HEADING_WORDS = 'كتاب|باب|فصل|مسالة|فرع';
  *  that merely starts with "كتاب …" is not mistaken for a chapter heading. */
 const HEADING_LINE = `(?:${HEADING_WORDS})[ \\t]+[^\\r\\n]{1,80}`;
 const HEADING_SPLIT_RE = new RegExp(`\\r?\\n(?=${HEADING_LINE}(?:\\r?\\n|$))`, 'g');
+/** A whole line that is just a chapter heading. */
+const HEADING_ONLY_RE = new RegExp(`^${HEADING_LINE}$`);
 const HEADING_DETECT_RE = new RegExp(`(?:^|\\n)[ \\t]*${HEADING_LINE}(?=\\r?\\n|$)`, 'g');
 
 /** Kinds a caller may legitimately pass; anything else means "detect it". */
@@ -304,8 +306,25 @@ function chunkFiqhDocument(
   kind: 'fiqh' | 'classical' = 'fiqh',
 ): DocumentChunk[] {
   const view = plainView(text);
-  const sections = sectionsBySplit(text, view, HEADING_SPLIT_RE);
-  if (sections.length <= 1) return chunkProseDocument(text, chunkSize, overlap, kind);
+  const split = sectionsBySplit(text, view, HEADING_SPLIT_RE);
+  if (split.length <= 1) return chunkProseDocument(text, chunkSize, overlap, kind);
+
+  // Classical books stack headings — «كتاب الطهارة» straight into «باب المياه». A
+  // section that is nothing but a heading is not a passage anyone can retrieve
+  // ("كتاب الطهارة" alone, 20 characters, ranks for the title and answers
+  // nothing), so it is carried forward and merged into the section that follows.
+  const sections: Section[] = [];
+  let carryFrom: number | null = null;
+  split.forEach((sec, i) => {
+    const t = trimmedSection(text, sec);
+    const start = carryFrom ?? sec.start;
+    if (t && i < split.length - 1 && HEADING_ONLY_RE.test(plainView(t.body).plain)) {
+      carryFrom = start;
+      return;
+    }
+    sections.push({ start, end: sec.end });
+    carryFrom = null;
+  });
 
   const out: DocumentChunk[] = [];
   const limit = Math.round(chunkSize * 1.25);
@@ -317,15 +336,20 @@ function chunkFiqhDocument(
     const t = trimmedSection(text, sec);
     if (!t) continue;
 
-    // Heading words are matched on the plain form so vowelled headings count too.
-    const firstLine = t.body.split('\n')[0].trim();
-    const plainFirst = plainView(firstLine).plain;
-    if (/^كتاب\s/.test(plainFirst)) {
-      kitab = firstLine; bab = ''; fasl = '';
-    } else if (/^باب\s/.test(plainFirst)) {
-      bab = firstLine; fasl = '';
-    } else if (/^(?:فصل|مسالة|فرع)\s/.test(plainFirst)) {
-      fasl = firstLine;
+    // Walk EVERY heading line in the section (a merged section can hold several),
+    // in order, so the trail ends up as the last one seen. Heading words are matched
+    // on the plain form so vowelled headings count too.
+    for (const line of t.body.split('\n')) {
+      const h = line.trim();
+      const plainLine = plainView(h).plain;
+      if (!HEADING_ONLY_RE.test(plainLine)) continue;
+      if (/^كتاب\s/.test(plainLine)) {
+        kitab = h; bab = ''; fasl = '';
+      } else if (/^باب\s/.test(plainLine)) {
+        bab = h; fasl = '';
+      } else if (/^(?:فصل|مسالة|فرع)\s/.test(plainLine)) {
+        fasl = h;
+      }
     }
 
     const heading = [kitab, bab, fasl].filter(Boolean).join(' > ');
