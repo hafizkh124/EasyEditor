@@ -54,7 +54,19 @@ const Signup = () => {
       options: { emailRedirectTo: window.location.origin },
     });
     if (error) {
-      toast.error(error.message);
+      const code = (error as { code?: string }).code ?? "";
+      const raw = error.message ?? "";
+      const seconds = Number(/after (\d+) seconds?/i.exec(raw)?.[1] ?? 0);
+      if (code === "over_email_send_rate_limit" || /only request this after/i.test(raw)) {
+        toast.error(
+          t("auth.signup_rate_limited", "Too many sign-up attempts right now. Please wait {seconds} seconds and try again.")
+            .replace("{seconds}", String(seconds || 60))
+        );
+      } else if (/already registered|already exists/i.test(raw)) {
+        toast.error(t("auth.email_in_use", "This email is already registered — try signing in instead."));
+      } else {
+        toast.error(raw);
+      }
     } else {
       // If the profile already exists (no email confirmation required), apply
       // the referral immediately. Otherwise it will be applied by AuthContext

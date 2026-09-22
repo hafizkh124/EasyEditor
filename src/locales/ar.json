@@ -404,6 +404,8 @@
   "auth.login_heading": "تسجيل الدخول إلى Easy Editor",
   "auth.signup_heading": "إنشاء حساب في Easy Editor",
   "auth.check_email": "يرجى مراجعة بريدك الإلكتروني للحصول على رابط التأكيد!",
+  "auth.signup_rate_limited": "هناك محاولات تسجيل كثيرة الآن. يرجى الانتظار {seconds} ثانية ثم المحاولة مرة أخرى.",
+  "auth.email_in_use": "هذا البريد الإلكتروني مسجل بالفعل — يرجى تسجيل الدخول.",
   "auth.check_email_reset": "يرجى مراجعة بريدك الإلكتروني للحصول على رابط إعادة تعيين كلمة المرور!",
   "auth.password_updated": "تم تحديث كلمة المرور بنجاح!",
   "auth.invalid_reset_link": "رابط إعادة التعيين غير صالح أو منتهي الصلاحية.",

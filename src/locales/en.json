@@ -404,6 +404,8 @@
   "auth.login_heading": "Log in to Easy Editor",
   "auth.signup_heading": "Sign up for Easy Editor",
   "auth.check_email": "Check your email for a confirmation link!",
+  "auth.signup_rate_limited": "Too many sign-up attempts right now. Please wait {seconds} seconds and try again.",
+  "auth.email_in_use": "This email is already registered — try signing in instead.",
   "auth.check_email_reset": "Check your email for a password reset link!",
   "auth.password_updated": "Password updated successfully!",
   "auth.invalid_reset_link": "Invalid or expired reset link.",
