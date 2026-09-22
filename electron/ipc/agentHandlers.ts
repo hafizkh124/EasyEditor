@@ -247,6 +247,7 @@ export function registerAgentHandlers(): void {
               playbook: result.playbook,
               checkpointId: result.checkpointId,
               question: result.question,
+              modeUpgrade: result.modeUpgrade,
               error: result.error,
             };
           } finally {
