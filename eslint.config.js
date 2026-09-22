@@ -194,6 +194,15 @@ export default tseslint.config(
       //    of them. (Book Studio, which sat here too, was deleted outright —
       //    it had no such second life.) ────────────────────────────────────
       "src/pages/TranslationWorkspace.tsx",
+      // ── Book Translation (M11-ish follow-up): reads/writes the same
+      //    hosted-only translation_projects/translation_chunks tables as the
+      //    two exemptions above, for the same reason. Unlike
+      //    TranslationWorkspace.tsx this one is fully unreachable on desktop
+      //    rather than "known pending leak" — its only entry point,
+      //    /translate-book, is gated `desktop: "never"` in
+      //    core/capabilities/registry.ts (id "translate.book"), so this file
+      //    never even loads there. ─────────────────────────────────────────
+      "src/hooks/useBookTranslation.ts",
 
       // Tests exercise the real Supabase client/mocks directly and are never
       // bundled into the desktop build.

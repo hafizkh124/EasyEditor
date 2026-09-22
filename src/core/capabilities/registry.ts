@@ -46,7 +46,7 @@ export type Surface =
   | "workbench-tab";
 
 export type CapabilityId =
-  | "workspace" | "transcribe" | "ocr" | "speak" | "translate"
+  | "workspace" | "transcribe" | "ocr" | "speak" | "translate" | "translate.book"
   | "research" | "settings" | "dashboard" | "profile" | "admin"
   | "voice.cloning" | "tokens.meter"
   | "wb.aiReader" | "wb.research" | "wb.translate" | "wb.agent";
@@ -109,6 +109,15 @@ export const CAPABILITIES: readonly Capability[] = [
     icon: Languages,
     runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Translation runs on a cloud edge function." } },
     surfaces: ["sidebar", "workspace-menu", "command-palette"], group: "tool",
+  },
+  {
+    // Full-page whole-book translator (PDF upload or a Shamela book), distinct
+    // from the Quick Translate sidebar/workbench tab above it. Same cloud-only
+    // reason, so it gets the same desktop gate.
+    id: "translate.book", route: "/translate-book", labelKey: "nav.translate_book", fallbackLabel: "کتاب کا ترجمہ",
+    icon: Languages,
+    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Translation runs on a cloud edge function." } },
+    surfaces: ["workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
   },
   {
     id: "research", route: "/research", labelKey: "nav.research", fallbackLabel: "تحقیق",

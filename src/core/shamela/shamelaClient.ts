@@ -199,9 +199,11 @@ function createElectronClient(): ShamelaClient {
 
 // ─── Web transport — the tools/shamela-bridge HTTP companion ───────────────
 
-const BRIDGE_TOKEN_KEY = "shamela.bridge_token";
+export const BRIDGE_TOKEN_KEY = "shamela.bridge_token";
 
-function bridgeBaseUrl(): string {
+/** Exported for `shamelaPdf.ts`'s web-transport PDF fetch, which needs the raw
+ *  base URL + token (binary response, not the JSON-only `bridgeFetch` below). */
+export function bridgeBaseUrl(): string {
   const raw = localStorage.getItem("shamela.mcp_url") || "http://127.0.0.1:8000";
   return raw.replace(/\/+$/, "");
 }

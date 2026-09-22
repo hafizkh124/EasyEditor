@@ -16,6 +16,7 @@ import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { isRtlText } from "@/utils/textUtils";
 import { editorRoute } from "@/lib/routes";
+import { setPendingBookFile } from "@/lib/translate/pendingBookFile";
 
 const LANGUAGES = [
   { value: "auto", label: "Auto-detect" },
@@ -58,7 +59,13 @@ export const TranslatePanel = () => {
         toast.error(t("ocr.invalid_file", "Invalid PDF file"));
         return;
       }
-      await trans.loadPdf(file);
+      // A PDF is a whole-book job now, not a single sidebar page — hand it
+      // off to the full-page split view (BookPageViewer + navigation +
+      // Translate All), which is also where the page-1-only bug that a plain
+      // inline load here used to hit is actually fixed.
+      setPendingBookFile(file);
+      navigate("/translate-book/new");
+      return;
     } else if (trans.inputType === "image") {
       if (!file.type.startsWith("image/")) {
         toast.error(t("ocr.invalid_file", "Invalid image file"));

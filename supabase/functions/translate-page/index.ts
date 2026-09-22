@@ -52,11 +52,14 @@ export async function handle(req: Request): Promise<Response> {
     }
     const userId = user.id;
 
-    if (isRateLimited(userId, 10, 60_000)) {
+    // 30/min matches refine-text's limit (chunkOrchestrator.ts paces batch runs
+    // at THROTTLE_MS=2400 against that same ceiling) — a whole-book translation
+    // run is exactly this kind of paced batch and needs the same headroom.
+    if (isRateLimited(userId, 30, 60_000)) {
       return rateLimitResponse(corsHeaders);
     }
 
-    const { text, imageBase64, mimeType, targetLanguage, sourceLanguage, genreInstruction } = await req.json();
+    const { text, imageBase64, mimeType, targetLanguage, sourceLanguage, genreInstruction, bookMode } = await req.json();
 
     if (!text && !imageBase64) {
       return new Response(
@@ -71,9 +74,10 @@ export async function handle(req: Request): Promise<Response> {
       );
     }
 
-    const tokenCost = calculateCost("translate", 1);
+    const action = bookMode === true ? "translate_book" : "translate";
+    const tokenCost = calculateCost(action, 1);
     const tokenResult = await checkAndDeductTokens(
-      supabase, userId, tokenCost, "translate", `translate to ${targetLanguage}`,
+      supabase, userId, tokenCost, action, `translate to ${targetLanguage}`,
     );
     if (!tokenResult.ok) {
       return insufficientTokensResponse(tokenResult, corsHeaders);
@@ -126,7 +130,7 @@ Rules:
     });
 
     if (!aiResponse.ok) {
-      await refundTokens(supabase, userId, tokenCost, "translate", "AI gateway error");
+      await refundTokens(supabase, userId, tokenCost, action, "AI gateway error");
       const errText = await aiResponse.text();
       console.error("AI Gateway error:", aiResponse.status, errText);
 

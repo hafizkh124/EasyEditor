@@ -74,7 +74,8 @@ export const TOKEN_COSTS = {
   tts_google:     50,    // per 1K characters
   tts_elevenlabs: 500,   // per 1K characters
   refine:         5,     // per refinement action
-  translate:      20,    // per page/segment translated
+  translate:      20,    // per page/segment translated (Quick Translate, single-shot)
+  translate_book: 10,    // per page translated inside a whole-book run
   citation_search: 5,    // per Quran/Hadith citation search
   tafsir:         5,     // per Tafsir MCP tool call (web only — desktop's direct connection is free)
   agent_step:     15,    // per model call inside the web agent loop (M10 §2.1) — desktop's own BYOK call is free

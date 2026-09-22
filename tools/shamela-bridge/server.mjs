@@ -508,6 +508,47 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Scanned-page-image PDFs (Book Translation's Shamela source, when a book
+  // has no digitized text — see reader.mjs's "Scanned-page-image PDFs"
+  // section for why this is a direct SQLite port, not backend.catalog).
+  if (req.method === 'GET' && url.pathname === '/reader/pdfInfo') {
+    try {
+      const bookId = url.searchParams.get('bookId');
+      if (!bookId) throw new Error('bookId is required');
+      const info = await reader.getBookPdfInfo(bookId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(info));
+    } catch (err) {
+      console.error('[Bridge] reader/pdfInfo error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message, available: false, files: [], coverPage: null }));
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/reader/pdf') {
+    try {
+      const bookId = url.searchParams.get('bookId');
+      const fileIndex = Number(url.searchParams.get('fileIndex'));
+      if (!bookId || !Number.isFinite(fileIndex) || fileIndex < 0) {
+        throw new Error('bookId and a non-negative fileIndex are required');
+      }
+      const bytes = await reader.readBookPdfFile(bookId, fileIndex);
+      if (!bytes) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'PDF file not found' }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Length': bytes.length });
+      res.end(bytes);
+    } catch (err) {
+      console.error('[Bridge] reader/pdf error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // 404 for unknown endpoints
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Endpoint not found' }));

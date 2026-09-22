@@ -32,17 +32,19 @@ export interface RenderPdfOptions {
  * Each page is converted to a JPEG base64 string.
  */
 export async function* renderPdfPages(
-  file: File,
+  file: File | Uint8Array,
   options?: RenderPdfOptions,
 ): AsyncGenerator<PdfPageResult> {
   const dpi = options?.dpi ?? 216;
   const quality = options?.quality ?? 0.85;
   const signal = options?.signal;
 
-  const arrayBuffer = await file.arrayBuffer();
+  // A scanned-image Shamela book (Book Translation source C) hands over raw
+  // bytes fetched from disk/the bridge rather than a browser File.
+  const data = file instanceof Uint8Array ? file : new Uint8Array(await file.arrayBuffer());
   if (signal?.aborted) return;
 
-  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+  const pdf = await pdfjsLib.getDocument({ data }).promise;
   const totalPages = pdf.numPages;
 
   for (let i = 1; i <= totalPages; i++) {

@@ -22,7 +22,8 @@ export const TOKEN_COSTS = {
   tts_google:     50,    // per 1,000 characters (Google TTS)
   tts_elevenlabs: 500,   // per 1,000 characters (ElevenLabs TTS)
   refine:         5,     // per refinement action (formalize, humanize, etc.)
-  translate:      20,    // per page/segment translated
+  translate:      20,    // per page/segment translated (Quick Translate, single-shot)
+  translate_book: 10,    // per page translated inside a whole-book run (cheaper: no OCR/image overhead for Shamela text pages, and a book run is many pages at once)
   citation_search: 5,    // per Quran/Hadith citation search (kept in line with `refine`)
   tafsir:         5,     // per Tafsir MCP tool call (web only — desktop's direct connection is free)
   agent_step:     15,    // per model call inside the web agent loop (M10 §2.1) — desktop's own BYOK call is free
