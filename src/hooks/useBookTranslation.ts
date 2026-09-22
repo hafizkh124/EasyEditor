@@ -78,6 +78,10 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
   const [isLoadingSource, setIsLoadingSource] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
   const [sourceError, setSourceError] = useState<string | null>(null);
+  // Only meaningful right after `resumeProject` when the source needs the
+  // user to re-supply something — "pdf" (re-upload) vs "text"/"image"/null
+  // (those complete in seconds; not worth a resume prompt, just start over).
+  const [resumeSourceRef, setResumeSourceRef] = useState<string | null>(null);
 
   const [sourceLanguage, setSourceLanguage] = useState("auto");
   const [targetLanguage, setTargetLanguage] = useState("ur");
@@ -379,9 +383,13 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
         const bookId = project.source_ref.slice("shamela:".length);
         await loadShamelaBook(bookId, project.title);
       } else {
-        // 'pdf' or null — the browser can't persist the original file; the
-        // page shows its own "re-upload to continue" prompt (isLoadingSource
-        // stays false with no pages yet, sourceKind stays null).
+        // 'pdf', 'text', 'image', or null — none of these can be re-fetched
+        // from a stored id the way a Shamela book can. "pdf" gets a real
+        // re-upload prompt (isLoadingSource stays false, sourceKind stays
+        // null); "text"/"image"/null get told to start over instead, since
+        // those complete in seconds and a resume prompt for them would just
+        // be confusing ("upload PDF" for a project that was never a PDF).
+        setResumeSourceRef(project.source_ref ?? null);
         setIsLoadingSource(false);
       }
     } catch (err) {
@@ -579,6 +587,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     isLoadingSource,
     loadedCount,
     sourceError,
+    resumeSourceRef,
 
     sourceLanguage,
     targetLanguage,
