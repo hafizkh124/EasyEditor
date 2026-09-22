@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { renderPdfPages } from "@/lib/ocr/pdfRenderer";
+import { translateOnePage } from "@/lib/translate/translatePageApi";
 
 export type TranslationInputType = "text" | "pdf" | "image";
 export type TranslationMode = "ai" | "voice" | "manual";
@@ -125,79 +126,19 @@ export function useTranslation(): UseTranslationReturn {
     abortRef.current = controller;
 
     try {
-      const body: Record<string, unknown> = {
+      const finalText = await translateOnePage({
+        text: page.sourceText,
+        imageBase64: page.imageBase64,
         targetLanguage,
         sourceLanguage: sourceLanguage !== "auto" ? sourceLanguage : undefined,
-      };
+        accessToken: session.access_token,
+        signal: controller.signal,
+        onChunk: setStreamingText,
+      });
 
-      if (page.imageBase64) {
-        body.imageBase64 = page.imageBase64;
-        body.mimeType = "image/jpeg";
-      } else if (page.sourceText) {
-        body.text = page.sourceText;
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-page`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        },
+      setPages((prev) =>
+        prev.map((p) => (p.pageNum === currentPage ? { ...p, translationText: finalText } : p)),
       );
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `Translation failed (${response.status})`);
-      }
-
-      const contentType = response.headers.get("content-type") ?? "";
-
-      if (contentType.includes("text/event-stream")) {
-        const reader = response.body!.getReader();
-        const decoder = new TextDecoder();
-        let accumulated = "";
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const payload = line.slice(6).trim();
-            if (payload === "[DONE]") break;
-            try {
-              const parsed = JSON.parse(payload);
-              const chunk = parsed.choices?.[0]?.delta?.content;
-              if (chunk) {
-                accumulated += chunk;
-                setStreamingText(accumulated);
-              }
-            } catch { /* skip malformed lines */ }
-          }
-        }
-
-        setPages((prev) =>
-          prev.map((p) => (p.pageNum === currentPage ? { ...p, translationText: accumulated } : p)),
-        );
-      } else {
-        const data = await response.json();
-        const text = data.translation || data.text || "";
-        setPages((prev) =>
-          prev.map((p) => (p.pageNum === currentPage ? { ...p, translationText: text } : p)),
-        );
-        setStreamingText(text);
-      }
     } catch (err) {
       if (err instanceof Error && err.name !== "AbortError") {
         throw err;

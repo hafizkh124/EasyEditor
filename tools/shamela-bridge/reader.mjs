@@ -346,3 +346,127 @@ export async function readToc(bookId) {
     db.close();
   }
 }
+
+// ── Scanned-page-image PDFs (Book Translation source C) ─────────────────
+//
+// Some Shamela books are scanned-image PDFs rather than digitized text —
+// `readPage`/`readBook` above return nothing useful for those. This ports
+// `electron/shamela/catalogue.ts`'s `getBookPdfInfo`/`readBookPdfFile`
+// (ADR-0007's same install layout: `pdf_links` on `database/master.db`'s
+// `book` row, files under `<install>/pdf/`) into this bridge so a web
+// session — not just the desktop app — can serve them. It is a direct port,
+// not a call into `backend.catalog` (the vendored shamela-mcp package this
+// bridge otherwise uses for catalogue browsing): `reader.mjs` already reads
+// SQLite directly everywhere else in this file for the same reason (see the
+// header comment) — shamela-mcp's own store is not reliably correct for
+// every real book.
+
+async function openMasterDb(installPath) {
+  const dbPath = path.join(installPath, 'database', 'master.db');
+  if (!fs.existsSync(dbPath)) return null;
+  try {
+    const { DatabaseSync } = await import('node:sqlite');
+    return new DatabaseSync(dbPath, { readOnly: true });
+  } catch {
+    const Database = (await import('better-sqlite3')).default;
+    return new Database(dbPath, { readonly: true });
+  }
+}
+
+const PDF_ROOT = (installPath) => path.join(installPath, 'pdf');
+
+// Basename → absolute path under `pdf/`, built once per install and cached —
+// see catalogue.ts's identical comment for why a basename key is safe here.
+let pdfIndexCache = null;
+
+function getPdfIndex(installPath) {
+  const root = PDF_ROOT(installPath);
+  if (pdfIndexCache && pdfIndexCache.root === root) return pdfIndexCache.map;
+
+  const map = new Map();
+  const walk = (dir) => {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.pdf') && !map.has(entry.name)) {
+        map.set(entry.name, full);
+      }
+    }
+  };
+  if (fs.existsSync(root)) walk(root);
+
+  pdfIndexCache = { root, map };
+  return map;
+}
+
+/** `{available, files: [{fileIndex, name, path, size}], coverPage}` for one book. */
+export async function getBookPdfInfo(bookId) {
+  const install = detectShamelaPath();
+  if (!install) return { available: false, files: [], coverPage: null };
+
+  const db = await openMasterDb(install.path);
+  if (!db) return { available: false, files: [], coverPage: null };
+
+  try {
+    const row = db.prepare('SELECT pdf_links FROM book WHERE book_id = ?').get(Number(bookId));
+    const files = [];
+    let coverPage = null;
+    if (row?.pdf_links) {
+      try {
+        const links = JSON.parse(row.pdf_links);
+        const index = getPdfIndex(install.path);
+        const rawFiles = Array.isArray(links.files) ? links.files : [];
+        let fileIndex = 0;
+        for (const raw of rawFiles) {
+          const name = String(raw).split('/').pop()?.split('|')[0] ?? '';
+          if (!name.toLowerCase().endsWith('.pdf')) continue;
+          const diskPath = index.get(name);
+          if (!diskPath) continue;
+          let size = 0;
+          try {
+            size = fs.statSync(diskPath).size;
+          } catch {
+            /* ignore */
+          }
+          files.push({ fileIndex, name, path: diskPath, size });
+          fileIndex += 1;
+        }
+        if (typeof links.cover === 'number' && links.cover > 0) coverPage = links.cover;
+      } catch {
+        /* malformed pdf_links — treat as no PDF */
+      }
+    }
+    return { available: files.length > 0, files, coverPage };
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Read one on-disk PDF's bytes by the `fileIndex` a prior `getBookPdfInfo`
+ * call reported. The resolved path is re-validated against the install's
+ * `pdf/` root before reading, so a request cannot walk outside it.
+ */
+export async function readBookPdfFile(bookId, fileIndex) {
+  const install = detectShamelaPath();
+  if (!install) return null;
+  const info = await getBookPdfInfo(bookId);
+  const file = info.files.find((f) => f.fileIndex === Number(fileIndex));
+  if (!file) return null;
+
+  const root = path.resolve(PDF_ROOT(install.path));
+  const resolved = path.resolve(file.path);
+  if (resolved !== root && !resolved.startsWith(root + path.sep)) return null;
+  try {
+    return fs.readFileSync(resolved);
+  } catch {
+    return null;
+  }
+}

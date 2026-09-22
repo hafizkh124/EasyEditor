@@ -39,6 +39,7 @@ const About = lazy(() => import("./pages/About"));
 const FaqAiHaram = lazy(() => import("./pages/FaqAiHaram"));
 const Answers = lazy(() => import("./pages/Answers"));
 const Workspace = lazy(() => import("./pages/Workspace"));
+const TranslateBook = lazy(() => import("./pages/TranslateBook"));
 const OcrReview = lazy(() => import("./pages/OcrReview"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
@@ -166,6 +167,12 @@ const App = () => (
                       capability entry (and CapabilityRoute's desktop gate) stays —
                       only the destination changed. */}
                   <Route path="/translate" element={<CapabilityRoute id="translate"><Navigate to="/workspace?panel=translate" replace /></CapabilityRoute>} />
+                  {/* Book Translation (full-page, PDF/Shamela source + AI-translated
+                      side by side) — a real page outside the 3-pillar workspace shell
+                      on purpose, so it gets full window width instead of the Workbench
+                      sidebar's ~40%-max column. Same desktop gate as "translate": the
+                      edge function it calls is cloud-only. */}
+                  <Route path="/translate-book/:projectId?" element={<CapabilityRoute id="translate.book"><ProtectedRoute><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
                   {/* /book-workspace and /translate-workspace are gone. Both
                       predated the three-pillar workspace, which supports
                       `kind: "book"` and `kind: "translation"` natively, and

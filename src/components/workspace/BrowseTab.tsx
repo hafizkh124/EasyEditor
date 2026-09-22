@@ -26,6 +26,10 @@ import type { CatalogueBook, CatalogueAuthor } from "./browse/useCatalogueBrowse
 
 interface BrowseTabProps {
   onSelectBook?: (bookId: string) => void;
+  /** Same selection, plus the book's title — for callers that need it (e.g.
+   *  the Book Translation picker) without changing `onSelectBook`'s existing
+   *  single-argument contract (pinned by browseTab.test.tsx). */
+  onSelectBookWithTitle?: (bookId: string, title: string) => void;
   onNavigate?: () => void;
 }
 
@@ -38,7 +42,7 @@ const alphaLetter = (alpha: number | null): string | null =>
     ? ALPHA_LETTERS[alpha - 1]
     : null;
 
-export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }) => {
+export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onSelectBookWithTitle, onNavigate }) => {
   const { t, direction } = useLanguage();
   const rtl = direction === "rtl";
   const BackIcon = rtl ? ChevronRight : ChevronLeft;
@@ -58,6 +62,7 @@ export const BrowseTab: React.FC<BrowseTabProps> = ({ onSelectBook, onNavigate }
   const handleSelectBook = (book: CatalogueBook) => {
     onNavigate?.();
     onSelectBook?.(String(book.id));
+    onSelectBookWithTitle?.(String(book.id), book.title);
   };
 
   const searching = catalogueQuery.trim().length >= 2;

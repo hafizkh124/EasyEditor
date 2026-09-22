@@ -77,6 +77,8 @@ export default function TokenMeter({ compact = false }: { compact?: boolean }) {
           <span>Research: {TOKEN_COSTS.research}/{t("tokens.per_query", "query")}</span>
           <span>Islamic: {TOKEN_COSTS.islamic}/{t("tokens.per_query", "query")}</span>
           <span>TTS: {TOKEN_COSTS.tts_google}/{t("tokens.per_1k", "1K chars")}</span>
+          <span>{t("nav.translate", "Translate")}: {TOKEN_COSTS.translate}/{t("tokens.per_page", "page")}</span>
+          <span>{t("nav.translate_book", "Book Translation")}: {TOKEN_COSTS.translate_book}/{t("tokens.per_page", "page")}</span>
         </div>
       )}
     </div>
