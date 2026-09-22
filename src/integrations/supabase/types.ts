@@ -1506,6 +1506,7 @@ export type Database = {
           id: string
           project_id: string | null
           source_lang: string
+          source_ref: string | null
           status: string
           target_lang: string
           title: string
@@ -1519,6 +1520,7 @@ export type Database = {
           id?: string
           project_id?: string | null
           source_lang?: string
+          source_ref?: string | null
           status?: string
           target_lang?: string
           title: string
@@ -1532,6 +1534,7 @@ export type Database = {
           id?: string
           project_id?: string | null
           source_lang?: string
+          source_ref?: string | null
           status?: string
           target_lang?: string
           title?: string
