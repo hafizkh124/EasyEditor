@@ -1,0 +1,1 @@
+ALTER TABLE public.translation_projects ADD COLUMN IF NOT EXISTS source_ref text;
