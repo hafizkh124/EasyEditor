@@ -78,7 +78,9 @@ export default function TranslateBook() {
 
   const currentBookPage = book.pages.find((p) => p.pageNum === book.currentPage);
   const hasSource = book.sourceKind !== null;
-  const needsPdfReupload = !hasSource && !!book.projectId && !book.isLoadingSource;
+  const needsResume = !hasSource && !!book.projectId && !book.isLoadingSource;
+  const needsPdfReupload = needsResume && book.resumeSourceRef === "pdf";
+  const needsFreshStart = needsResume && !needsPdfReupload;
 
   const estimate = book.estimateBatch(rangeFrom, rangeTo);
 
@@ -181,6 +183,17 @@ export default function TranslateBook() {
               />
               <Button className="gap-2" onClick={() => reuploadInputRef.current?.click()}>
                 <Upload className="h-4 w-4" />{t("translate.upload_pdf", "Upload PDF")}
+              </Button>
+            </>
+          ) : needsFreshStart ? (
+            <>
+              <Languages className="h-10 w-10 text-muted-foreground" />
+              <p className="text-sm font-medium">{t("translate.resume_unavailable", "یہ ترجمہ دوبارہ نہیں کھولا جا سکتا")}</p>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                {t("translate.resume_unavailable_desc", "متن یا تصویر کے ترجمے فوری مکمل ہو جاتے ہیں، اس لیے انہیں محفوظ کر کے دوبارہ کھولنے کی سہولت نہیں — نیا ترجمہ شروع کریں۔")}
+              </p>
+              <Button className="gap-2" onClick={() => navigate("/translate-book")}>
+                <Languages className="h-4 w-4" />{t("translate.start_new", "نیا ترجمہ شروع کریں")}
               </Button>
             </>
           ) : showTextInput ? (
