@@ -7,8 +7,8 @@
  * body as JSON — silently yields nothing. Callers that only need the finished
  * text should use `collectSseText` instead of re-implementing the loop.
  *
- * Mirrors the reader in `useTranslation.ts`; kept here so new callers don't
- * duplicate (and subtly diverge from) that parsing.
+ * Used by `translatePageApi.ts`; kept here so callers to any of these edge
+ * functions don't duplicate (and subtly diverge from) this parsing.
  */
 
 /**

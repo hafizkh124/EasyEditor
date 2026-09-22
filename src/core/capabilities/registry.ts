@@ -46,10 +46,10 @@ export type Surface =
   | "workbench-tab";
 
 export type CapabilityId =
-  | "workspace" | "transcribe" | "ocr" | "speak" | "translate" | "translate.book"
+  | "workspace" | "transcribe" | "ocr" | "speak" | "translate.book"
   | "research" | "settings" | "dashboard" | "profile" | "admin"
   | "voice.cloning" | "tokens.meter"
-  | "wb.aiReader" | "wb.research" | "wb.translate" | "wb.agent";
+  | "wb.aiReader" | "wb.research" | "wb.agent";
 
 export interface Capability {
   id: CapabilityId;
@@ -105,15 +105,11 @@ export const CAPABILITIES: readonly Capability[] = [
     surfaces: ["sidebar", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
   },
   {
-    id: "translate", route: "/translate", labelKey: "nav.translate", fallbackLabel: "ترجمہ",
-    icon: Languages,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Translation runs on a cloud edge function." } },
-    surfaces: ["sidebar", "workspace-menu", "command-palette"], group: "tool",
-  },
-  {
-    // Full-page whole-book translator (PDF upload or a Shamela book), distinct
-    // from the Quick Translate sidebar/workbench tab above it. Same cloud-only
-    // reason, so it gets the same desktop gate.
+    // Book Translation absorbed Quick Translate's text/image/PDF flows (and
+    // added a Shamela source) into one full-page destination — the "translate"
+    // capability and its sidebar/workbench-tab surfaces were retired with it,
+    // so this is the only translate entry point left. Same cloud-only reason
+    // for the desktop gate Quick Translate always had.
     id: "translate.book", route: "/translate-book", labelKey: "nav.translate_book", fallbackLabel: "کتاب کا ترجمہ",
     icon: Languages,
     runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Translation runs on a cloud edge function." } },
@@ -161,14 +157,19 @@ export const CAPABILITIES: readonly Capability[] = [
     surfaces: [],
   },
 
-  // Workbench tabs. Translate is the same cloud edge function as its
-  // standalone page, so it disappears on desktop for the same reason.
+  // Workbench tabs.
   //
   // M10 Phase 3 §3.6 — this id used to gate a standalone "AI Reader" tab.
   // It now gates "Study", which merges AI Reader + Notes into one tab with
   // an inner segmented control (StudyPanel.tsx) — `wb.notes` was removed as
   // its own capability entirely (it had zero other consumers; grep before
   // removing found only this registration and its old tab-value mapping).
+  //
+  // `wb.translate` (Quick Translate's tab) was removed the same way once
+  // Book Translation absorbed its text/image/PDF flows — grep before
+  // removing found only this registration, its TAB_VALUE_BY_CAPABILITY
+  // mapping in WorkbenchPanel.tsx, and the "translate" WorkbenchTab literal
+  // in usePanelState.ts, all updated together.
   {
     id: "wb.aiReader", route: null, labelKey: "workbench.study", fallbackLabel: "Study",
     icon: Sparkles, runtimes: { web: ALWAYS, desktop: ALWAYS }, surfaces: ["workbench-tab"],
@@ -176,12 +177,6 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "wb.research", route: null, labelKey: "nav.research", fallbackLabel: "Research",
     icon: Search, runtimes: { web: ALWAYS, desktop: ALWAYS }, surfaces: ["workbench-tab"],
-  },
-  {
-    id: "wb.translate", route: null, labelKey: "nav.translate", fallbackLabel: "Translate",
-    icon: Languages,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Translation runs on a cloud edge function." } },
-    surfaces: ["workbench-tab"],
   },
   {
     // SPEC-M8 Layer 6 / ADR-0016; M10 Phase 2.1 (ADR-0034 follow-up) brought

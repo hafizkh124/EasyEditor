@@ -17,9 +17,9 @@ interface BookPageViewerProps {
 }
 
 /**
- * Left pane for a `source: "pdf"` book: the current page's rendered image
- * (`pages[].imageBase64` already existed in `useTranslation.ts` state before
- * this feature — it was simply never displayed anywhere) plus real page
+ * Left pane for a `source: "pdf"` (or single-image) book: the current page's
+ * rendered image (this data already existed in the old Quick Translate
+ * sidebar's state — it was simply never displayed anywhere) plus real page
  * navigation, which is the other half of the bug this feature fixes.
  *
  * The status strip is intentionally text/icon dots, not page thumbnails —
@@ -45,7 +45,7 @@ export const BookPageViewer: React.FC<BookPageViewerProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-muted/30">
+    <div className="flex flex-col h-full min-h-0 bg-muted/60">
       <div className="flex items-center gap-2 px-3 h-11 border-b border-border shrink-0 bg-background">
         <Button
           variant="ghost" size="icon" className="h-8 w-8 shrink-0"

@@ -26,7 +26,7 @@ function selectTab(el: HTMLElement) {
  * `WorkbenchPanel` were rewritten to unmount its children.
  */
 
-const mountCounts = { research: 0, translate: 0 };
+const mountCounts = { research: 0, study: 0 };
 
 /**
  * Counts MOUNTS, not renders. Incrementing in the function body would climb on
@@ -43,7 +43,9 @@ function makeStub(key: keyof typeof mountCounts) {
 }
 
 vi.mock("@/components/research/ResearchPanel", () => ({ ResearchPanel: makeStub("research") }));
-vi.mock("@/components/translate/TranslatePanel", () => ({ TranslatePanel: makeStub("translate") }));
+// Study (not the retired Translate tab) is this file's second example tab —
+// any two Workbench tabs prove the same "never unmount" contract.
+vi.mock("@/components/workspace/StudyPanel", () => ({ StudyPanel: makeStub("study") }));
 
 function renderWorkbench() {
   return render(
@@ -58,13 +60,13 @@ function renderWorkbench() {
 describe("Workbench keep-mounted (FR-4.3 / FR-1.5)", () => {
   it("mounts every tab's panel at once, not just the active one", () => {
     mountCounts.research = 0;
-    mountCounts.translate = 0;
+    mountCounts.study = 0;
 
     renderWorkbench();
 
     // Both exist in the DOM even though only one tab is selected.
     expect(screen.getByTestId("research-panel")).toBeInTheDocument();
-    expect(screen.getByTestId("translate-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("study-panel")).toBeInTheDocument();
   });
 
   it("hides inactive tabs with CSS instead of unmounting them", () => {
@@ -72,8 +74,8 @@ describe("Workbench keep-mounted (FR-4.3 / FR-1.5)", () => {
 
     // The inactive panels' wrappers carry `hidden` — proof the mechanism is a
     // class swap, which is what keeps an SSE stream alive across a tab switch.
-    const translateWrapper = screen.getByTestId("translate-panel").parentElement;
-    expect(translateWrapper).toHaveClass("hidden");
+    const studyWrapper = screen.getByTestId("study-panel").parentElement;
+    expect(studyWrapper).toHaveClass("hidden");
 
     const researchWrapper = screen.getByTestId("research-panel").parentElement;
     expect(researchWrapper).not.toHaveClass("hidden");
@@ -81,15 +83,15 @@ describe("Workbench keep-mounted (FR-4.3 / FR-1.5)", () => {
 
   it("does not remount any panel when the Workbench is switched or closed", () => {
     mountCounts.research = 0;
-    mountCounts.translate = 0;
+    mountCounts.study = 0;
 
     renderWorkbench();
     const afterFirstRender = { ...mountCounts };
 
     // Switch tabs — and actually confirm the switch landed, not just that
     // nothing crashed — then close the panel entirely.
-    selectTab(screen.getByTitle("Translate"));
-    expect(screen.getByTestId("translate-panel").parentElement).not.toHaveClass("hidden");
+    selectTab(screen.getByTitle("Study"));
+    expect(screen.getByTestId("study-panel").parentElement).not.toHaveClass("hidden");
     expect(screen.getByTestId("research-panel").parentElement).toHaveClass("hidden");
 
     act(() => {
@@ -99,6 +101,6 @@ describe("Workbench keep-mounted (FR-4.3 / FR-1.5)", () => {
 
     expect(screen.getByTestId("research-panel")).toBeInTheDocument();
     expect(mountCounts.research).toBe(afterFirstRender.research);
-    expect(mountCounts.translate).toBe(afterFirstRender.translate);
+    expect(mountCounts.study).toBe(afterFirstRender.study);
   });
 });

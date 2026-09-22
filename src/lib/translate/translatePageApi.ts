@@ -1,8 +1,11 @@
+import { collectSseText } from "@/lib/sse";
+
 /**
- * Single-page call to the `translate-page` edge function, shared by Quick
- * Translate (`useTranslation.ts`) and the whole-book translator
- * (`useBookTranslation.ts`). Extracted so the SSE-parsing logic lives in one
- * place instead of being duplicated between the two.
+ * Single-page call to the `translate-page` edge function — the request
+ * shape `useBookTranslation.ts` (and, before it was retired, Quick
+ * Translate's `useTranslation.ts`) needs. Response parsing itself is
+ * `collectSseText` (`src/lib/sse.ts`), the shared reader every SSE-returning
+ * edge function call should use instead of re-implementing the loop.
  */
 
 export interface TranslateOnePageArgs {
@@ -72,42 +75,5 @@ export async function translateOnePage({
     throw err;
   }
 
-  const contentType = response.headers.get("content-type") ?? "";
-
-  if (contentType.includes("text/event-stream")) {
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let accumulated = "";
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const payload = line.slice(6).trim();
-        if (payload === "[DONE]") break;
-        try {
-          const parsed = JSON.parse(payload);
-          const chunk = parsed.choices?.[0]?.delta?.content;
-          if (chunk) {
-            accumulated += chunk;
-            onChunk?.(accumulated);
-          }
-        } catch { /* skip malformed lines */ }
-      }
-    }
-
-    return accumulated;
-  }
-
-  const data = await response.json();
-  const finalText = data.translation || data.text || "";
-  onChunk?.(finalText);
-  return finalText;
+  return collectSseText(response, onChunk);
 }

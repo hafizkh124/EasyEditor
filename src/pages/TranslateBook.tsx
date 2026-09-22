@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Upload, FileText, Library, ArrowRightLeft, FileEdit, Copy, Languages } from "lucide-react";
+import { Upload, FileText, Library, ArrowRightLeft, FileEdit, Copy, Languages, Type, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { isRtlText } from "@/utils/textUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
@@ -44,8 +46,11 @@ export default function TranslateBook() {
   const [solvencyOpen, setSolvencyOpen] = useState(false);
   const [rangeFrom, setRangeFrom] = useState(1);
   const [rangeTo, setRangeTo] = useState(1);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [pastedText, setPastedText] = useState("");
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const reuploadInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const book = useBookTranslation({
     onProjectId: (id) => {
@@ -145,15 +150,17 @@ export default function TranslateBook() {
               <FileEdit className="h-3.5 w-3.5" />
               {t("translate.insert_all", "کینوس میں شامل کریں")}
             </Button>
-            <Button
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              disabled={!!book.batch || book.pages.length === 0}
-              onClick={() => setSolvencyOpen(true)}
-            >
-              <Languages className="h-3.5 w-3.5" />
-              {t("translate.translate_all", "پورا ترجمہ کریں")}
-            </Button>
+            {(book.sourceKind === "pdf" || book.sourceKind === "shamela") && (
+              <Button
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                disabled={!!book.batch || book.pages.length === 0}
+                onClick={() => setSolvencyOpen(true)}
+              >
+                <Languages className="h-3.5 w-3.5" />
+                {t("translate.translate_all", "پورا ترجمہ کریں")}
+              </Button>
+            )}
           </>
         )}
       </header>
@@ -176,22 +183,57 @@ export default function TranslateBook() {
                 <Upload className="h-4 w-4" />{t("translate.upload_pdf", "Upload PDF")}
               </Button>
             </>
+          ) : showTextInput ? (
+            <div className="w-full max-w-xl space-y-3">
+              <Textarea
+                autoFocus
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                dir={isRtlText(pastedText) ? "rtl" : "ltr"}
+                className="min-h-[200px] text-sm resize-none text-start"
+                placeholder={t("translate.text_placeholder", "Enter text to translate...")}
+              />
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={() => setShowTextInput(false)}>
+                  {t("common.back", "واپس")}
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  disabled={!pastedText.trim()}
+                  onClick={() => void book.loadText(pastedText)}
+                >
+                  <Languages className="h-4 w-4" />
+                  {t("translate.start_translation", "Translate")}
+                </Button>
+              </div>
+            </div>
           ) : (
             <>
               <Languages className="h-10 w-10 text-primary" />
               <p className="text-sm text-muted-foreground max-w-sm">
-                {t("translate.book_source_hint", "کتاب کا ترجمہ شروع کرنے کے لیے ایک PDF اپلوڈ کریں یا مکتبہ شاملہ سے کوئی کتاب منتخب کریں۔")}
+                {t("translate.book_source_hint", "متن پیسٹ کریں، تصویر یا PDF اپلوڈ کریں، یا مکتبہ شاملہ سے کوئی کتاب منتخب کریں۔")}
               </p>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button variant="outline" className="gap-2 h-24 w-32 flex-col" onClick={() => setShowTextInput(true)}>
+                  <Type className="h-6 w-6" />{t("translate.input_text", "متن")}
+                </Button>
+                <input
+                  ref={imageInputRef}
+                  type="file" accept="image/*" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void book.loadImage(f); e.target.value = ""; }}
+                />
+                <Button variant="outline" className="gap-2 h-24 w-32 flex-col" onClick={() => imageInputRef.current?.click()}>
+                  <ImageIcon className="h-6 w-6" />{t("translate.input_image", "تصویر")}
+                </Button>
                 <input
                   ref={uploadInputRef}
                   type="file" accept="application/pdf" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) void book.loadPdf(f); e.target.value = ""; }}
                 />
-                <Button variant="outline" className="gap-2 h-24 w-40 flex-col" onClick={() => uploadInputRef.current?.click()}>
-                  <Upload className="h-6 w-6" />{t("translate.upload_pdf", "Upload PDF")}
+                <Button variant="outline" className="gap-2 h-24 w-32 flex-col" onClick={() => uploadInputRef.current?.click()}>
+                  <Upload className="h-6 w-6" />{t("translate.input_pdf", "PDF")}
                 </Button>
-                <Button variant="outline" className="gap-2 h-24 w-40 flex-col" onClick={() => setPickerOpen(true)}>
+                <Button variant="outline" className="gap-2 h-24 w-32 flex-col" onClick={() => setPickerOpen(true)}>
                   <Library className="h-6 w-6" />
                   {t("translate.pick_shamela_book_short", "مکتبہ شاملہ")}
                 </Button>
@@ -203,7 +245,7 @@ export default function TranslateBook() {
       ) : (
         <ResizablePanelGroup direction={isMobile ? "vertical" : "horizontal"} className="flex-1 min-h-0">
           <ResizablePanel defaultSize={50} minSize={25}>
-            {book.sourceKind === "pdf" ? (
+            {book.sourceKind === "pdf" || book.sourceKind === "image" ? (
               <BookPageViewer
                 pages={book.pages}
                 currentPage={book.currentPage}
@@ -212,7 +254,7 @@ export default function TranslateBook() {
                 isLoadingSource={book.isLoadingSource}
                 onPageChange={book.setCurrentPage}
               />
-            ) : (
+            ) : book.sourceKind === "shamela" ? (
               <div className="h-full overflow-auto">
                 <ReaderContent
                   page={readerPage}
@@ -222,6 +264,15 @@ export default function TranslateBook() {
                   pageCount={book.totalPages}
                   reader={null}
                 />
+              </div>
+            ) : (
+              <div className="h-full overflow-auto p-6">
+                <p
+                  dir={isRtlText(currentBookPage?.sourceText ?? "") ? "rtl" : "ltr"}
+                  className="text-sm leading-relaxed whitespace-pre-wrap text-start"
+                >
+                  {currentBookPage?.sourceText}
+                </p>
               </div>
             )}
           </ResizablePanel>

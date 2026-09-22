@@ -76,7 +76,7 @@ describe("capability registry", () => {
   describe("on the web", () => {
     it("offers all standalone tools", () => {
       const ids = availableCapabilities("workspace-menu").map((c) => c.id);
-      expect(ids).toEqual(expect.arrayContaining(["transcribe", "speak", "ocr", "translate"]));
+      expect(ids).toEqual(expect.arrayContaining(["transcribe", "speak", "ocr", "translate.book"]));
     });
 
     it("offers voice cloning and the token meter", () => {
@@ -101,7 +101,7 @@ describe("capability registry", () => {
       vi.stubEnv("VITE_LOCAL_VOICE", "true");
       for (const surface of SURFACES) {
         const ids = availableCapabilities(surface).map((c) => c.id);
-        for (const cloudOnly of ["ocr", "translate", "admin", "wb.translate"]) {
+        for (const cloudOnly of ["ocr", "translate.book", "admin"]) {
           expect(ids, `${cloudOnly} leaked into ${surface}`).not.toContain(cloudOnly);
         }
       }

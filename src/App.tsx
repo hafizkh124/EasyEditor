@@ -161,18 +161,19 @@ const App = () => (
                   <Route path="/editor" element={<RedirectToWorkspace />} />
                   <Route path="/editor/:documentId" element={<RedirectToWorkspace />} />
                   <Route path="/ocr/review" element={<ProtectedRoute><ErrorBoundary><OcrReview /></ErrorBoundary></ProtectedRoute>} />
-                  {/* /translate is a retired page (UX-v1 P3): it mounted
-                      the exact same TranslatePanel as its Workbench tab,
-                      so the standalone page was a second door to the same room. The
-                      capability entry (and CapabilityRoute's desktop gate) stays —
-                      only the destination changed. */}
-                  <Route path="/translate" element={<CapabilityRoute id="translate"><Navigate to="/workspace?panel=translate" replace /></CapabilityRoute>} />
+                  {/* /translate is a retired page (UX-v1 P3, then again when Quick
+                      Translate itself was retired): Book Translation absorbed its
+                      text/image/PDF flows, so an old bookmark lands there now instead
+                      of the gone Workbench tab. /translate-book's own CapabilityRoute
+                      below is what gates it — no need to gate the redirect too. */}
+                  <Route path="/translate" element={<Navigate to="/translate-book" replace />} />
                   {/* Book Translation (full-page, PDF/Shamela source + AI-translated
                       side by side) — a real page outside the 3-pillar workspace shell
                       on purpose, so it gets full window width instead of the Workbench
-                      sidebar's ~40%-max column. Same desktop gate as "translate": the
-                      edge function it calls is cloud-only. */}
-                  <Route path="/translate-book/:projectId?" element={<CapabilityRoute id="translate.book"><ProtectedRoute><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                      sidebar's ~40%-max column. Cloud-only edge function, so it's
+                      gated off desktop the same way Quick Translate always was. */}
+                  <Route path="/translate-book" element={<CapabilityRoute id="translate.book"><ProtectedRoute><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/translate-book/:projectId" element={<CapabilityRoute id="translate.book"><ProtectedRoute><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
                   {/* /book-workspace and /translate-workspace are gone. Both
                       predated the three-pillar workspace, which supports
                       `kind: "book"` and `kind: "translation"` natively, and
