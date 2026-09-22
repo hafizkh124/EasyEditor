@@ -66,7 +66,7 @@ describe("workspace app menu", () => {
   it("lists every standalone tool on the web, so the workspace is not a dead end", async () => {
     open();
     // `t` mirrors the additive API and returns the explicit fallback.
-    for (const label of ["ٹرانسکرائب", "OCR", "بولیں", "ترجمہ"]) {
+    for (const label of ["ٹرانسکرائب", "OCR", "بولیں", "کتاب کا ترجمہ"]) {
       expect(await screen.findByText(label)).toBeInTheDocument();
     }
   });
@@ -91,7 +91,7 @@ describe("workspace app menu", () => {
     it("drops the cloud-only tools", async () => {
       open();
       await screen.findByText("ڈیش بورڈ");
-      for (const label of ["OCR", "استخراج", "ترجمہ"]) {
+      for (const label of ["OCR", "استخراج", "کتاب کا ترجمہ"]) {
         expect(screen.queryByText(label)).not.toBeInTheDocument();
       }
     });

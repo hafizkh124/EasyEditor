@@ -23,6 +23,10 @@ function selectTab(el: HTMLElement) {
  * segmented control keeps both sub-views mounted, the same "never unmount
  * a live SSE/draft" contract workbenchKeepMounted.test.tsx already pins for
  * the outer tabs).
+ *
+ * Down to 3 outer tabs since: Book Translation (/translate-book) absorbed
+ * Quick Translate's text/image/PDF flows into one full-page destination, so
+ * the "Translate" workbench tab was retired with nothing left to show.
  */
 
 const mountCounts = { aiReader: 0, notes: 0, tasks: 0, trust: 0 };
@@ -41,7 +45,6 @@ vi.mock("@/components/reader/NotesPanel", () => ({ NotesPanel: makeStub("notes",
 vi.mock("@/components/workspace/TasksTab", () => ({ TasksTab: makeStub("tasks", "tasks-panel") }));
 vi.mock("@/components/workspace/TrustTab", () => ({ TrustTab: makeStub("trust", "trust-panel") }));
 vi.mock("@/components/research/ResearchPanel", () => ({ ResearchPanel: () => <div data-testid="research-panel" /> }));
-vi.mock("@/components/translate/TranslatePanel", () => ({ TranslatePanel: () => <div data-testid="translate-panel" /> }));
 
 function renderWorkbench() {
   return render(
@@ -54,12 +57,12 @@ function renderWorkbench() {
 }
 
 describe("Workbench tab consolidation (M10 Phase 3 §3.6)", () => {
-  it("shows exactly four outer tabs: Study, Research, Translate, Trust", () => {
+  it("shows exactly three outer tabs: Study, Research, Trust", () => {
     renderWorkbench();
     expect(screen.getByTitle("Study")).toBeInTheDocument();
     expect(screen.getByTitle("Research")).toBeInTheDocument();
-    expect(screen.getByTitle("Translate")).toBeInTheDocument();
     expect(screen.getByTitle("Trust")).toBeInTheDocument();
+    expect(screen.queryByTitle("Translate")).not.toBeInTheDocument();
     // The retired standalone tabs no longer exist at the outer level.
     expect(screen.queryByTitle("AI Reader")).not.toBeInTheDocument();
     expect(screen.queryByTitle("Notes")).not.toBeInTheDocument();

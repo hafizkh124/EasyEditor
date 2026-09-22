@@ -109,7 +109,7 @@ export const WorkspaceProvider: React.FC<{
   /** The document in the URL. Not just an initial value — see the effect below. */
   documentId?: string;
   initialWorkbenchOpenFromUrl?: boolean;
-  /** e.g. `?panel=translate` — opens the workbench on that specific tab. */
+  /** e.g. `?panel=research` — opens the workbench on that specific tab. */
   initialWorkbenchTab?: WorkbenchTab;
 }> = ({ children, documentId, initialWorkbenchOpenFromUrl = false, initialWorkbenchTab }) => {
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(documentId ?? null);

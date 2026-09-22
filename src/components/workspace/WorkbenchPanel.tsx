@@ -3,13 +3,12 @@ import { ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResearchPanel } from "@/components/research/ResearchPanel";
-import { TranslatePanel } from "@/components/translate/TranslatePanel";
 import { StudyPanel } from "./StudyPanel";
 import { TrustPanel } from "./TrustPanel";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { type WorkbenchTab } from "@/core/workspace/usePanelState";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { availableCapabilities, isCapabilityAvailable } from "@/core/capabilities/registry";
+import { availableCapabilities } from "@/core/capabilities/registry";
 import type { Capability, CapabilityId } from "@/core/capabilities/registry";
 
 /** Written out so Tailwind's class scanner can see every value it must emit. */
@@ -18,8 +17,11 @@ const GRID_COLS: Record<number, string> = {
 };
 
 /**
- * Translate is a paid cloud edge function, so on desktop the tab goes with it.
- * The remaining tabs simply redistribute across the grid.
+ * Quick Translate's "wb.translate" tab was retired when Book Translation
+ * (/translate-book) absorbed its text/image/PDF flows into one full-page
+ * destination — no reason left for a narrow-sidebar duplicate. The remaining
+ * tabs simply redistribute across the grid, same as any other capability
+ * disappearing (see `activeTabAvailable` below).
  *
  * SPEC M10 §1.2 — wb.agent is deliberately absent here now. The Research
  * pillar's own panel (ResearchPanel.tsx) decides internally whether to show
@@ -35,7 +37,6 @@ const GRID_COLS: Record<number, string> = {
 const TAB_VALUE_BY_CAPABILITY: Partial<Record<CapabilityId, WorkbenchTab>> = {
   "wb.aiReader": "study",
   "wb.research": "research",
-  "wb.translate": "translate",
 };
 
 interface WorkbenchPanelProps {
@@ -144,14 +145,6 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
         <div className={`h-full ${workbenchTab === "research" ? "block" : "hidden"}`}>
           <ResearchPanel />
         </div>
-        {/* These stay mounted-but-hidden on web for tab-switch speed; on desktop
-            they must not mount at all, since both reach for cloud edge functions
-            on first render. */}
-        {isCapabilityAvailable("wb.translate") && (
-          <div className={`h-full ${workbenchTab === "translate" ? "block" : "hidden"}`}>
-            <TranslatePanel />
-          </div>
-        )}
         {showTaskTabs && (
           <div className={`h-full ${workbenchTab === "trust" ? "block" : "hidden"}`}>
             <TrustPanel />

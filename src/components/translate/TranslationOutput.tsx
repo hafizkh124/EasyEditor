@@ -12,7 +12,8 @@ import { stripHarakat } from "@/utils/arabicUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { callRefineText, type RefineTextAction } from "@/lib/editor/aiActions";
 import ResourceSearchDialog from "@/components/editor/ResourceSearchDialog";
-import type { TranslationMode } from "@/hooks/useTranslation";
+
+export type TranslationMode = "ai" | "voice" | "manual";
 
 interface TranslationOutputProps {
   translationText: string;

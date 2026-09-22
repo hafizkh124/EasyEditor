@@ -13,7 +13,7 @@ import { logger } from "@/lib/logger";
 
 const log = logger.child("useBookTranslation");
 
-export type BookSourceKind = "pdf" | "shamela";
+export type BookSourceKind = "pdf" | "shamela" | "text" | "image";
 export type PageStatus = "pending" | "translating" | "done" | "failed";
 
 export interface BookPage {
@@ -94,6 +94,10 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
   const titleRef = useRef("");
   const projectIdRef = useRef<string | null>(null);
   const sourceMarkerRef = useRef<string>("pdf");
+  // "pdf"/"shamela" charge the cheaper batch rate (translate_book); a single
+  // pasted text or image is the same one-shot job Quick Translate used to be,
+  // so it keeps the regular per-call "translate" rate — see bookMode below.
+  const sourceKindRef = useRef<BookSourceKind>("pdf");
   const existingChunksRef = useRef<Map<number, ExistingChunk>>(new Map());
   const batchAbortRef = useRef<AbortController | null>(null);
   const singleAbortRef = useRef<AbortController | null>(null);
@@ -173,6 +177,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     setIsLoadingSource(true);
     setSourceError(null);
     setSourceKind("pdf");
+    sourceKindRef.current = "pdf";
     setPages([]);
     setCurrentPageState(1);
     setTotalPages(0);
@@ -216,6 +221,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     setIsLoadingSource(true);
     setSourceError(null);
     setSourceKind("shamela");
+    sourceKindRef.current = "shamela";
     setPages([]);
     setCurrentPageState(1);
     sourceMarkerRef.current = `shamela:${bookId}`;
@@ -264,6 +270,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
       // Renders identically to an uploaded PDF (image pages, BookPageViewer) —
       // reuse that source kind rather than adding a third branch in the UI.
       setSourceKind("pdf");
+      sourceKindRef.current = "pdf";
       let count = 0;
       for await (const result of renderPdfPages(bytes, { dpi: 150, quality: 0.8 })) {
         const existing = existingChunksRef.current.get(result.pageNum);
@@ -280,6 +287,56 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
       }
     } catch (err) {
       setSourceError(err instanceof Error ? err.message : "کتاب لوڈ نہیں ہو سکی۔");
+    } finally {
+      setIsLoadingSource(false);
+    }
+  }, [ensureProject]);
+
+  /** A pasted/typed snippet — the one-shot job Quick Translate's "متن" mode used to be. */
+  const loadText = useCallback(async (text: string) => {
+    setIsLoadingSource(false);
+    setSourceError(null);
+    setSourceKind("text");
+    sourceKindRef.current = "text";
+    sourceMarkerRef.current = "text";
+    existingChunksRef.current = new Map();
+    titleRef.current = text.slice(0, 60).trim() || "متن کا ترجمہ";
+    setTitle(titleRef.current);
+    setPages([{ pageNum: 1, sourceText: text, translationText: "", status: "pending" }]);
+    setTotalPages(1);
+    setLoadedCount(1);
+    setCurrentPageState(1);
+    await ensureProject(titleRef.current, "text");
+  }, [ensureProject]);
+
+  /** A single uploaded image — Quick Translate's "تصویر" mode. */
+  const loadImage = useCallback(async (file: File) => {
+    setIsLoadingSource(true);
+    setSourceError(null);
+    setSourceKind("image");
+    sourceKindRef.current = "image";
+    sourceMarkerRef.current = "image";
+    existingChunksRef.current = new Map();
+    titleRef.current = file.name.replace(/\.[a-z0-9]+$/i, "");
+    setTitle(titleRef.current);
+    setPages([]);
+    setTotalPages(0);
+    setLoadedCount(0);
+    setCurrentPageState(1);
+
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      await ensureProject(titleRef.current, "image");
+      setPages([{ pageNum: 1, imageBase64: base64, translationText: "", status: "pending" }]);
+      setTotalPages(1);
+      setLoadedCount(1);
+    } catch (err) {
+      setSourceError(err instanceof Error ? err.message : "تصویر لوڈ نہیں ہو سکی۔");
     } finally {
       setIsLoadingSource(false);
     }
@@ -364,7 +421,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
         targetLanguage,
         sourceLanguage: sourceLanguage !== "auto" ? sourceLanguage : undefined,
         genreInstruction: GENRE_TRANSLATION_PROMPTS[genre]?.prompt,
-        bookMode: true,
+        bookMode: sourceKindRef.current === "pdf" || sourceKindRef.current === "shamela",
         accessToken: session.access_token,
         signal: controller.signal,
         onChunk: setStreamingText,
@@ -387,9 +444,12 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     const targets = pagesRef.current.filter(
       (p) => p.pageNum >= from && p.pageNum <= to && p.status !== "done",
     );
+    const perPageCost = sourceKindRef.current === "pdf" || sourceKindRef.current === "shamela"
+      ? TOKEN_COSTS.translate_book
+      : TOKEN_COSTS.translate;
     return {
       pages: targets.length,
-      tokenCost: targets.length * TOKEN_COSTS.translate_book,
+      tokenCost: targets.length * perPageCost,
       estimatedSeconds: Math.ceil(targets.length * (DISPATCH_INTERVAL_MS / 1000)),
     };
   }, []);
@@ -424,7 +484,8 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
 
     let lastDispatch = 0;
     let remainingTokens = tokenBalance.total;
-    const perPageCost = TOKEN_COSTS.translate_book;
+    const bookMode = sourceKindRef.current === "pdf" || sourceKindRef.current === "shamela";
+    const perPageCost = bookMode ? TOKEN_COSTS.translate_book : TOKEN_COSTS.translate;
 
     try {
       await ensureProject(titleRef.current, sourceMarkerRef.current);
@@ -453,7 +514,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
           targetLanguage,
           sourceLanguage: sourceLanguage !== "auto" ? sourceLanguage : undefined,
           genreInstruction: GENRE_TRANSLATION_PROMPTS[genre]?.prompt,
-          bookMode: true,
+          bookMode,
           accessToken: session.access_token,
           signal: controller.signal,
         };
@@ -528,6 +589,8 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
 
     loadPdf,
     loadShamelaBook,
+    loadText,
+    loadImage,
     resumeProject,
 
     setCurrentPage,

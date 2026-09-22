@@ -4,12 +4,16 @@ import { WorkspaceProvider, useWorkspace } from "@/core/workspace/WorkspaceConte
 import { isWorkbenchTab } from "@/core/workspace/usePanelState";
 
 /**
- * UX-v1 P3 — /translate was retired as a standalone page and now
- * redirects into `/workspace?panel=translate`, the same
- * pattern /research already used. That only works if the workbench actually
+ * UX-v1 P3 — /research was retired as a standalone page and redirects into
+ * `/workspace?panel=research`. That only works if the workbench actually
  * opens on the requested tab rather than whatever tab localStorage last
  * remembered — this pins that contract down, generalized past the single
  * "research" case Workspace.tsx used to hardcode.
+ *
+ * /translate used the same `?panel=translate` pattern until Book Translation
+ * absorbed the Workbench's Translate tab entirely — /translate now redirects
+ * straight to /translate-book instead, so "translate" belongs in the
+ * retired-tab-id list below alongside aiReader/notes/tasks/agent.
  */
 
 function Probe() {
@@ -24,13 +28,15 @@ describe("isWorkbenchTab", () => {
     // M10 Phase 3 §3.6 — "aiReader"/"notes" merged into "study", "tasks" folded
     // into "trust". A stale ?panel=notes (or similar) link is no longer a
     // known tab — see the "rejects a retired tab id" case below.
-    for (const tab of ["study", "research", "translate", "trust"]) {
+    for (const tab of ["study", "research", "trust"]) {
       expect(isWorkbenchTab(tab)).toBe(true);
     }
   });
 
-  it("rejects a retired pre-Phase-3 tab id instead of silently opening something", () => {
-    for (const retired of ["aiReader", "notes", "tasks", "agent"]) {
+  it("rejects a retired tab id instead of silently opening something", () => {
+    // aiReader/notes/tasks/agent: pre-Phase-3. translate: retired once Book
+    // Translation absorbed the Workbench's Translate tab (see file header).
+    for (const retired of ["aiReader", "notes", "tasks", "agent", "translate"]) {
       expect(isWorkbenchTab(retired)).toBe(false);
     }
   });
@@ -45,15 +51,15 @@ describe("isWorkbenchTab", () => {
 describe("WorkspaceProvider — opening on a specific tab from the URL", () => {
   beforeEach(() => localStorage.clear());
 
-  it("opens the workbench on the requested tab, e.g. from /workspace?panel=translate", () => {
+  it("opens the workbench on the requested tab, e.g. from /workspace?panel=trust", () => {
     render(
-      <WorkspaceProvider initialWorkbenchTab="translate">
+      <WorkspaceProvider initialWorkbenchTab="trust">
         <Probe />
       </WorkspaceProvider>,
     );
     const probe = screen.getByTestId("probe");
     expect(probe.dataset.collapsed).toBe("false");
-    expect(probe.dataset.tab).toBe("translate");
+    expect(probe.dataset.tab).toBe("trust");
   });
 
   it("opens on study too — not just the one tab Workspace.tsx used to special-case", () => {

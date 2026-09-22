@@ -3,14 +3,16 @@ import { useState, useEffect, useCallback } from "react";
 // M10 Phase 3 §3.6 — "aiReader"+"notes" merged into "study" (StudyPanel.tsx),
 // "tasks"+"trust" merged into "trust" (TrustPanel.tsx); "agent" was already
 // dead since Phase 1.2 removed the standalone Agent tab (ResearchPanel now
-// decides internally whether to show the agent composer). A stale persisted
-// value from any of the retired names falls through loadStoredState's
-// isWorkbenchTab check below to DEFAULT_STATE — a one-time reset to Research,
-// not a crash.
-export type WorkbenchTab = "study" | "research" | "translate" | "trust";
+// decides internally whether to show the agent composer). "translate" was
+// retired the same way: Book Translation (/translate-book) absorbed Quick
+// Translate's text/image/PDF flows into one full-page destination, so the
+// narrow-sidebar tab has nothing left to show. A stale persisted value from
+// any of the retired names falls through loadStoredState's isWorkbenchTab
+// check below to DEFAULT_STATE — a one-time reset to Research, not a crash.
+export type WorkbenchTab = "study" | "research" | "trust";
 
 export const WORKBENCH_TABS: readonly WorkbenchTab[] =
-  ["study", "research", "translate", "trust"];
+  ["study", "research", "trust"];
 
 export function isWorkbenchTab(value: unknown): value is WorkbenchTab {
   return typeof value === "string" && (WORKBENCH_TABS as readonly string[]).includes(value);
