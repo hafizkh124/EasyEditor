@@ -1505,12 +1505,8 @@ export type Database = {
           genre: string
           id: string
           project_id: string | null
-          // 'shamela:<bookId>' | 'pdf' | null — added by
-          // 20260922000000_translation_book_source_ref.sql for /translate-book
-          // resume. Hand-added here; verify against the real generated types
-          // once Lovable's sync regenerates this file.
-          source_ref: string | null
           source_lang: string
+          source_ref: string | null
           status: string
           target_lang: string
           title: string
@@ -1523,8 +1519,8 @@ export type Database = {
           genre?: string
           id?: string
           project_id?: string | null
-          source_ref?: string | null
           source_lang?: string
+          source_ref?: string | null
           status?: string
           target_lang?: string
           title: string
@@ -1537,8 +1533,8 @@ export type Database = {
           genre?: string
           id?: string
           project_id?: string | null
-          source_ref?: string | null
           source_lang?: string
+          source_ref?: string | null
           status?: string
           target_lang?: string
           title?: string
