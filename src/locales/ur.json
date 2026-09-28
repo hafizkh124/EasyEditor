@@ -2043,5 +2043,6 @@
   "agent.artifact_add_footnote": "حاشیہ لگائیں",
   "agent.step.search_my_computer": "کمپیوٹر میں تلاش ہو رہی ہے",
   "agent.step.read_external_document": "دستاویز پڑھی جا رہی ہے",
-  "agent.step.add_folder_to_library": "فولڈر لائبریری میں شامل ہو رہا ہے"
+  "agent.step.add_folder_to_library": "فولڈر لائبریری میں شامل ہو رہا ہے",
+  "agent.step.extract_web_page": "ویب صفحہ پڑھا جا رہا ہے"
 }

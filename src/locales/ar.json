@@ -2043,5 +2043,6 @@
   "agent.artifact_add_footnote": "أضف حاشية",
   "agent.step.search_my_computer": "جارٍ البحث في هذا الحاسوب",
   "agent.step.read_external_document": "جارٍ قراءة المستند",
-  "agent.step.add_folder_to_library": "جارٍ إضافة المجلد إلى المكتبة"
+  "agent.step.add_folder_to_library": "جارٍ إضافة المجلد إلى المكتبة",
+  "agent.step.extract_web_page": "جارٍ قراءة صفحة الويب"
 }

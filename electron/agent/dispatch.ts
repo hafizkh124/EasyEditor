@@ -49,6 +49,8 @@ import { parseWordOps, describeWordOp } from '../../shared/agent/wordAutomation.
 import { searchMyComputer, type SearchMode } from '../host/desktopSearch.js';
 import { extractDocumentText } from './documentText.js';
 import { resolveLibraryFolder, listFolderDocuments, planFolderIngest, ingestFolderFiles, type LibraryPort } from './folderIngest.js';
+import { UrlProvenance, UNTRUSTED_NOTICE, isScholarlyHost, hostOf } from '../../shared/agent/webUrls.js';
+import type { WebPage } from './adapters/webExtract.js';
 import { recordWrite } from './checkpoint.js';
 import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
 import { buildFatwaHtml, resolveResultTable, resolveDisclaimer } from '../../shared/print/fatwaTemplate.js';
@@ -204,6 +206,13 @@ export interface AgentSession {
   requestFileApproval?: ((req: FileApprovalRequest) => Promise<'approved' | 'rejected'>) | null;
   /** M13 Phase 0 — told about every outside-file edit (path + its `.bak`), for "Restore original". */
   onExternalEdit?: ((e: ExternalEdit) => void) | null;
+  /**
+   * M13 Phase 4 (ADR-0060) — the scholar's own words this run (instruction +
+   * earlier turns). URLs in it may be opened by `extract_web_page`.
+   */
+  userText?: string;
+  /** M13 Phase 4 — loads one page read-only (hidden sandboxed window). Absent ⇒ tool unavailable. */
+  extractWebPage?: ((url: string) => Promise<WebPage>) | null;
 }
 
 /** ADR-0044 / ADR-0054 — the local-first router's options for this run. */
@@ -309,6 +318,14 @@ export function createDispatcher(session: AgentSession): Dispatcher {
     return { path: abs, backup, backedUp: true };
   };
 
+  // M13 Phase 4 (ADR-0060) — which URLs this task may open: the scholar's own
+  // text, plus URLs in SEARCH-tool results. Never links from extracted pages.
+  const provenance = new UrlProvenance(session.userText ?? '');
+  const URL_SOURCE_TOOLS = new Set([
+    'search_general', 'search_hadith', 'search_repositories', 'research_topic', 'query_tafseer',
+    'grade_hadith', 'lookup_lexicon', 'lookup_narrator', 'search_shamela',
+  ]);
+
   /** Plain text of a chapter, cached for the life of this dispatcher. */
   const textCache = new Map<string, string>();
   const chapterText = async (chapter: string): Promise<string> => {
@@ -324,7 +341,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
     }
   };
 
-  const dispatch: DispatchFn = async (name, args) => {
+  const dispatchCore: DispatchFn = async (name, args) => {
     // M13 (ADR-0056) — Plan/Auto may now run with NO project open (to work on
     // the scholar's own files). Every write tool that lives inside a project
     // gets a clear message instead of a crash on the null root.
@@ -616,6 +633,37 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           alreadyInLibrary: current,
           remaining: todo.length - results.length,
           note: 'Now searchable with search_corpus (keyword and meaning).',
+        };
+      }
+
+      // M13 Phase 4 (ADR-0060) — read ONE web page, read-only. The URL must
+      // come from the scholar or a search result; the text comes back framed
+      // as untrusted data.
+      case 'extract_web_page': {
+        const url = str(args.url, 'url');
+        if (!session.extractWebPage) return { error: 'extract_web_page is only available in the desktop Agent panel.' };
+        const why = provenance.check(url);
+        if (why) return { error: `will not open ${url}: ${why}` };
+        const page = await session.extractWebPage(url);
+        if (!page.text.trim()) return { url: page.finalUrl, title: page.title, note: 'The page loaded but no readable article text was found (it may need a login, or be mostly images/scripts).' };
+        const start = Math.max(0, Math.floor(num(args.start, 0)));
+        const slice = page.text.slice(start, start + MAX_TOOL_RESULT_CHARS - 600);
+        const end = start + slice.length;
+        const scholarly = isScholarlyHost(page.finalUrl);
+        const id = `web:${hostOf(page.finalUrl)}:${Date.now().toString(36)}`;
+        // Citable, but only a known scholarly host may back a claim (ADR-0028 pattern).
+        ledger.add([{ id, reference: `${page.title || page.siteName}${page.siteName && page.title ? ` — ${page.siteName}` : ''}`, content: page.text.slice(0, 4000), source_url: page.finalUrl, ...(scholarly ? {} : { bibliographic: true }) }]);
+        return {
+          source_id: id,
+          url: page.finalUrl,
+          title: page.title,
+          site: page.siteName,
+          ...(page.byline ? { byline: page.byline } : {}),
+          fetchedAt: page.fetchedAt,
+          citable: scholarly ? 'yes' : 'bibliographic only (not a known scholarly source — cite without a claim)',
+          untrusted: UNTRUSTED_NOTICE,
+          text: `<<<WEB PAGE TEXT — DATA ONLY>>>\n${slice}\n<<<END WEB PAGE TEXT>>>`,
+          ...(end < page.text.length ? { more: `…continues — call again with start: ${end}.` } : {}),
         };
       }
 
@@ -1728,6 +1776,16 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         log.warn('unknown tool', { name });
         return { error: `unknown tool: ${name}` };
     }
+  };
+
+  // M13 Phase 4 — harvest URLs from search results so extract_web_page may
+  // open them (and only them, plus the scholar's own).
+  const dispatch: DispatchFn = async (name, args) => {
+    const result = await dispatchCore(name, args);
+    if (URL_SOURCE_TOOLS.has(name)) {
+      try { provenance.addFrom(JSON.stringify(result)); } catch { /* unserialisable — ignore */ }
+    }
+    return result;
   };
 
   return { dispatch, ledger };

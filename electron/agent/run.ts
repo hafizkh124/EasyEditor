@@ -29,6 +29,7 @@ import { checkClaim } from './claimCheck.js';
 import { beginCheckpoint } from './checkpoint.js';
 import type { ExternalEdit } from './externalFiles.js';
 import type { FileApprovalRequest } from './fileApproval.js';
+import { extractWebPage } from './adapters/webExtract.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
 import { buildHistory, type ConversationTurn } from '../../shared/agent/history.js';
 import { buildSystemPrompt } from '../../shared/agent/systemPrompt.js';
@@ -319,6 +320,9 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     // M13 (ADR-0056) — outside-project writes: approve each one, remember its `.bak`.
     requestFileApproval: input.requestFileApproval ?? null,
     onExternalEdit: (e) => { externalEdits.push(e); },
+    // M13 Phase 4 (ADR-0060) — URLs the scholar typed (this turn + earlier) may be opened.
+    userText: [input.instruction, ...(input.history ?? []).map((h) => h.instruction)].join('\n'),
+    extractWebPage,
   };
   const { dispatch } = createDispatcher(session);
 

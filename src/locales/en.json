@@ -2043,5 +2043,6 @@
   "agent.artifact_add_footnote": "Add as footnote",
   "agent.step.search_my_computer": "searching this computer",
   "agent.step.read_external_document": "reading the document",
-  "agent.step.add_folder_to_library": "adding the folder to the library"
+  "agent.step.add_folder_to_library": "adding the folder to the library",
+  "agent.step.extract_web_page": "reading the web page"
 }
