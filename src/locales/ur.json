@@ -2040,5 +2040,8 @@
   "agent.external_restored": "اصل حالت بحال ہو گئی",
   "agent.step.file_approval_pending": "پروجیکٹ سے باہر کی فائل میں تبدیلی کی منظوری دیں",
   "agent.step.automate_word_document": "ورڈ دستاویز میں ترمیم ہو رہی ہے",
-  "agent.artifact_add_footnote": "حاشیہ لگائیں"
+  "agent.artifact_add_footnote": "حاشیہ لگائیں",
+  "agent.step.search_my_computer": "کمپیوٹر میں تلاش ہو رہی ہے",
+  "agent.step.read_external_document": "دستاویز پڑھی جا رہی ہے",
+  "agent.step.add_folder_to_library": "فولڈر لائبریری میں شامل ہو رہا ہے"
 }

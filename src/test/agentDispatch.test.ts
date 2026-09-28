@@ -57,7 +57,16 @@ const excelMock = {
 vi.mock('../../electron/adapters/excel.ts', () => excelMock);
 
 const generateContentStream = vi.fn(async () => 'باب دو میں برکت کا ذکر ہے — درست شدہ متن۔');
-vi.mock('../../electron/ai/geminiClient.ts', () => ({ generateContentStream }));
+// M13 — search_corpus embeds the query for the semantic half; default: no key.
+const embedTextContent = vi.fn(async (): Promise<number[]> => { throw new Error('no key'); });
+vi.mock('../../electron/ai/geminiClient.ts', () => ({ generateContentStream, embedTextContent }));
+
+// M13 Phase 2 — the desktop search host is mocked (no PowerShell in unit tests).
+const searchMyComputer = vi.fn(async () => ({
+  hits: [{ path: 'D:\\Fatawa\\فتوی 12.docx', name: 'فتوی 12.docx', ext: '.docx', size: 20480, modified: '2026-09-01T10:00:00.000Z', source: 'windows-search' as const }],
+  source: 'windows-search' as const,
+}));
+vi.mock('../../electron/host/desktopSearch.ts', () => ({ searchMyComputer }));
 
 const runCritique = vi.fn(async () => ({ ok: true, text: 'الحكم: سليم مع إصلاحات.\n1. الفقرة الثانية بلا مصدر.', model: 'gemini:gemini-2.5-flash' }));
 vi.mock('../../electron/agent/critic.ts', () => ({ runCritique }));
@@ -92,8 +101,11 @@ vi.mock('../../electron/fs/projectFolder.ts', () => ({
 const searchChunks = vi.fn(async () => [
   { itemId: 'it1', title: 'Ihya Ulum al-Din', sourceRef: {}, pageNumber: 12, content: 'الحمد لله', rank: 1 },
 ]);
+const searchChunksSemantic = vi.fn(async () => [
+  { itemId: 'it2', title: 'Madarij', sourceRef: {}, pageNumber: 3, content: 'الشكر على النعمة', rank: 0 },
+]);
 vi.mock('../../electron/ipc/workspaceHandlers.ts', () => ({
-  getWorkspaceDbService: vi.fn(async () => ({ searchChunks })),
+  getWorkspaceDbService: vi.fn(async () => ({ searchChunks, searchChunksSemantic })),
 }));
 
 vi.mock('../../electron/shamela/shamelaNative.ts', () => ({
@@ -1181,6 +1193,53 @@ describe('P9 tools — font / template / global options', () => {
       const { dispatch } = mk({ emitArtifact: (ev) => events.push(ev as Record<string, unknown>) });
       await dispatch('search_shamela', { query: 'لا شيء' });
       expect(events).toHaveLength(0);
+    });
+  });
+
+  // ── M13 Phase 2 (ADR-0059) — the scholar's own files + hybrid corpus search ──
+  describe('computer search + hybrid corpus', () => {
+    it('search_my_computer returns paths and emits a file table', async () => {
+      const events: Array<Record<string, unknown>> = [];
+      const { dispatch } = mk({ emitArtifact: (ev) => events.push(ev as Record<string, unknown>) });
+      const r = await dispatch('search_my_computer', { query: 'فتوی', extensions: 'docx, pdf', mode: 'filename' }) as { count: number; files: Array<Record<string, unknown>> };
+      expect(searchMyComputer).toHaveBeenCalledWith(expect.objectContaining({ query: 'فتوی', mode: 'filename', extensions: ['docx', 'pdf'] }));
+      expect(r.count).toBe(1);
+      expect(r.files[0]).toMatchObject({ name: 'فتوی 12.docx', modified: '2026-09-01', sizeKB: 20 });
+      expect(events.some((e) => e.op === 'table')).toBe(true);
+    });
+
+    it('search_my_computer works with no project open (read tool)', async () => {
+      const { dispatch } = mk({ projectRoot: null });
+      const r = await dispatch('search_my_computer', { query: 'x' }) as { count: number };
+      expect(r.count).toBe(1);
+    });
+
+    it('search_corpus adds meaning-based hits when an embedding is available', async () => {
+      embedTextContent.mockResolvedValueOnce(new Array(768).fill(0.01));
+      const { dispatch } = mk();
+      const r = await dispatch('search_corpus', { query: 'gratitude for blessings' }) as { results: Array<{ id: string }> };
+      expect(searchChunksSemantic).toHaveBeenCalled();
+      expect(r.results.map((x) => x.id)).toEqual(expect.arrayContaining(['corpus:it1:12', 'corpus:it2:3']));
+    });
+
+    it('search_corpus falls back to keyword hits when embedding fails', async () => {
+      const { dispatch } = mk();
+      const r = await dispatch('search_corpus', { query: 'الحمد' }) as { results: Array<{ id: string }> };
+      expect(searchChunksSemantic).not.toHaveBeenCalled();
+      expect(r.results.map((x) => x.id)).toContain('corpus:it1:12');
+    });
+
+    it('add_folder_to_library refuses without an approval channel', async () => {
+      const { dispatch } = mk();
+      const dir = path.join(process.cwd(), 'test-results', `lib-${process.pid}`);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'باب '.repeat(100));
+      const findLocalDocumentItem = vi.fn(async () => null);
+      const { getWorkspaceDbService } = await import('../../electron/ipc/workspaceHandlers.ts');
+      (getWorkspaceDbService as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ findLocalDocumentItem });
+      const r = await dispatch('add_folder_to_library', { folder: dir }) as { error: string };
+      expect(r.error).toMatch(/approval/);
+      fs.rmSync(dir, { recursive: true, force: true });
     });
   });
 });

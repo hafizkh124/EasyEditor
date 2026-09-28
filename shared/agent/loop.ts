@@ -93,6 +93,9 @@ function labelFor(name: string): string {
     case 'add_document_comment': return 'adding a margin comment';
     case 'set_page_layout': return 'setting the page layout';
     case 'automate_word_document': return 'editing the Word document';
+    case 'search_my_computer': return 'searching this computer';
+    case 'read_external_document': return 'reading the document';
+    case 'add_folder_to_library': return 'adding the folder to the library';
     case 'convert_document': return 'converting the document';
     case 'run_task': return 'running the text task';
     case 'extract_author_voice': return 'learning your writing voice';

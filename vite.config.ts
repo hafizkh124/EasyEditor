@@ -106,7 +106,9 @@ export default defineConfig(({ mode }) => {
         // electron-updater is CommonJS and reads app-update.yml from the packaged
         // resources at runtime, so it has to stay a real require() rather than be
         // inlined into main.js.
-        external: ["better-sqlite3", "sqlite-vec", "@kutalia/whisper-node-addon", "msedge-tts", "electron-updater"],
+        // pdfjs-dist (M13, documentText.ts) is ESM and loads its fake worker by
+        // relative path — bundling breaks that, so it stays a native import().
+        external: ["better-sqlite3", "sqlite-vec", "@kutalia/whisper-node-addon", "msedge-tts", "electron-updater", /^pdfjs-dist(\/.*)?$/],
       },
     },
   };

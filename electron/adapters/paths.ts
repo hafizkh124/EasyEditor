@@ -17,7 +17,9 @@ export type DocExt =
   // P9 — Excel / PowerPoint.
   | '.xlsx' | '.xls' | '.csv' | '.pptx' | '.ppt'
   // P9 — Word templates.
-  | '.dotx' | '.dotm';
+  | '.dotx' | '.dotm'
+  // M13 — legacy / OpenDocument sources Word can OPEN (never a write target).
+  | '.doc' | '.odt';
 
 const DEFAULT_ALLOWED: DocExt[] = [
   '.docx', '.pdf', '.rtf', '.html', '.htm', '.txt', '.md',
