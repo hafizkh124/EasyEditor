@@ -105,7 +105,17 @@ export type HostCommand =
   | { op: 'pptExport'; path: string; format: 'pptx' | 'pdf' }
   | { op: 'pptReadOutline' }
   | { op: 'pptPid' }
-  | { op: 'pptClose' };
+  | { op: 'pptClose' }
+  // ── M13 Phase 1 (ADR-0057) — automate_word_document ─────────────────
+  | WordAutomationOp;
+
+/** One step of `word.automateDocument` — also a top-level HostCommand. */
+export type WordAutomationOp =
+  | { op: 'insertTable'; headers?: string[]; rows: string[][]; afterText?: string; rtl?: boolean }
+  | { op: 'setFonts'; arabicFont?: string; urduFont?: string; latinFont?: string; sizePt?: number; scope?: 'styles' | 'paragraphs' }
+  | { op: 'setPageSetup'; orientation?: 'portrait' | 'landscape'; pageWidthCm?: number; pageHeightCm?: number }
+  | { op: 'findReplace'; find: string; replace: string; matchCase?: boolean; wholeWord?: boolean; matchDiacritics?: boolean; matchKashida?: boolean; matchAlefHamza?: boolean; maxReplacements?: number }
+  | { op: 'insertPageNumbers'; position?: 'header' | 'footer'; alignment?: 'left' | 'center' | 'right'; numberStyle?: number; firstPage?: boolean };
 
 export type HostOp = HostCommand['op'];
 
@@ -314,6 +324,13 @@ export const OP_TIMEOUT_MS: Partial<Record<HostOp, number>> & { default: number 
   setPrintLayout: 60_000,
   markIndexEntries: 180_000,
   appendIndex: 120_000,
+  // M13 Phase 1 — cell-by-cell table fill, per-paragraph font pass, and a
+  // one-hit-at-a-time tracked find/replace are all O(document) COM loops.
+  insertTable: 90_000,
+  setFonts: 180_000,
+  setPageSetup: 30_000,
+  findReplace: 180_000,
+  insertPageNumbers: 30_000,
   // P9 — Office launch + fixed-format export are as slow as Word's.
   excelOpen: 60_000,
   excelExport: 120_000,

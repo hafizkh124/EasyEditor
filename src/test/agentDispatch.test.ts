@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 
 import fs from 'node:fs';
+import path from 'node:path';
 
 const wordMock = {
   readStructure: vi.fn(async () => ({ headings: ['A'], footnotes: [], trackedChanges: 0, wordCount: 9, readingOrder: 'rtl' })),
@@ -32,6 +33,11 @@ const wordMock = {
   })),
   buildIndexes: vi.fn(async () => ({ marked: 5, ms: 1 })),
   setPrintLayout: vi.fn(async () => ({ pageWidth: 481.89, pageHeight: 680.32, gutter: 34.02, ms: 1 })),
+  automateDocument: vi.fn(async (_p: string, ops: Array<{ op: string }>, o?: { onStep?: (i: number, r: unknown) => void }) => {
+    const steps = ops.map((x) => ({ op: x.op, ok: true, detail: {} }));
+    steps.forEach((st, i) => o?.onStep?.(i, st));
+    return { steps, saved: true, ms: 1 };
+  }),
   ALLOWED_GLOBAL_OPTIONS: { check_spelling: 'CheckSpellingAsYouType', check_grammar: 'CheckGrammarAsYouType', smart_quotes: 'AutoFormatAsYouTypeReplaceQuotes' },
 };
 vi.mock('../../electron/adapters/word.ts', () => wordMock);
@@ -1089,5 +1095,62 @@ describe('P9 tools — font / template / global options', () => {
     const r = await dispatch('set_global_option', { option: 'check_spelling', value: 'false' }) as { needsConsent: boolean; note: string };
     expect(r.needsConsent).toBe(false);
     expect(r.note).toMatch(/already/i);
+  });
+
+  // ── M13 (ADR-0056/0057) — automate_word_document + outside-project files ──
+  describe('automate_word_document', () => {
+    const extDir = path.join(process.cwd(), 'test-results', `dispatch-ext-${process.pid}`);
+    const extFile = path.join(extDir, 'Thesis_Chapter1.docx');
+    const OPS = JSON.stringify([{ op: 'insertTable', headers: ['a', 'b', 'c'], rows: [['1', '2', '3']] }]);
+    beforeEach(() => {
+      fs.rmSync(extDir, { recursive: true, force: true });
+      fs.mkdirSync(extDir, { recursive: true });
+      fs.writeFileSync(extFile, 'original');
+    });
+
+    it('a chapter target goes through the usual checkpoint + backupChapter path', async () => {
+      const { dispatch } = mk();
+      const r = await dispatch('automate_word_document', { chapter: '01.docx', ops: OPS }) as { saved: boolean; chapter: string };
+      expect(r.saved).toBe(true);
+      expect(recordWrite).toHaveBeenCalledWith('C:\\p', 'cp_1', '01.docx');
+      expect(backupChapter).toHaveBeenCalledWith('C:\\p', '01.docx');
+      expect(wordMock.automateDocument).toHaveBeenCalledWith('C:\\p\\01.docx', expect.any(Array), expect.objectContaining({ trackChanges: true }));
+    });
+
+    it('an outside file needs per-write approval and gets a sibling .bak first', async () => {
+      const requestFileApproval = vi.fn(async () => 'approved' as const);
+      const onExternalEdit = vi.fn();
+      const { dispatch } = mk({ requestFileApproval, onExternalEdit });
+      const r = await dispatch('automate_word_document', { path: extFile, ops: OPS }) as { backup: string; saved: boolean };
+      expect(requestFileApproval).toHaveBeenCalledWith(expect.objectContaining({ path: path.resolve(extFile), tool: 'automate_word_document' }));
+      expect(r.saved).toBe(true);
+      expect(r.backup).toMatch(/Thesis_Chapter1\.docx\.\d{8}_\d{6}\.bak$/);
+      expect(fs.readFileSync(r.backup, 'utf8')).toBe('original');
+      expect(onExternalEdit).toHaveBeenCalledWith(expect.objectContaining({ path: path.resolve(extFile), backup: r.backup }));
+      expect(backupChapter).not.toHaveBeenCalled();
+    });
+
+    it('a declined approval changes nothing and makes no backup', async () => {
+      const { dispatch } = mk({ requestFileApproval: vi.fn(async () => 'rejected' as const) });
+      const r = await dispatch('automate_word_document', { path: extFile, ops: OPS }) as { error: string };
+      expect(r.error).toMatch(/declined/);
+      expect(wordMock.automateDocument).not.toHaveBeenCalled();
+      expect(fs.readdirSync(extDir).filter((f) => f.endsWith('.bak'))).toHaveLength(0);
+    });
+
+    it('with no approval channel (headless / web) an outside write is refused', async () => {
+      const { dispatch } = mk();
+      const r = await dispatch('automate_word_document', { path: extFile, ops: OPS }) as { error: string };
+      expect(r.error).toMatch(/approval/);
+      expect(wordMock.automateDocument).not.toHaveBeenCalled();
+    });
+
+    it('with NO project open, chapter write tools explain themselves instead of crashing', async () => {
+      const { dispatch } = mk({ projectRoot: null, requestFileApproval: vi.fn(async () => 'approved' as const) });
+      const r = await dispatch('set_page_layout', { chapter: '01.docx' }) as { error: string };
+      expect(r.error).toMatch(/project folder/);
+      const ok = await dispatch('automate_word_document', { path: extFile, ops: OPS }) as { saved: boolean };
+      expect(ok.saved).toBe(true);
+    });
   });
 });

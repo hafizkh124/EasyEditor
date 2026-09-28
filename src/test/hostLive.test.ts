@@ -451,3 +451,77 @@ describe.runIf(LIVE)('M9 Phase 2 Word ops live (real Word)', () => {
     expect(idx.marked).toBeGreaterThanOrEqual(2);
   });
 });
+
+// M13 Phase 1 (ADR-0057) — the automate_word_document ops against real Word.
+// Each is read back through an independent COM session so a silent no-op
+// (a property Word accepts but ignores) fails the test.
+describe.runIf(LIVE)('M13 automate_word_document ops live (real Word)', () => {
+  const tmpM13 = fs.mkdtempSync(path.join(os.tmpdir(), 'docbridge-live-m13-'));
+
+  afterAll(async () => {
+    const { shutdownDocBridge } = await import('../../electron/host/index.ts');
+    await shutdownDocBridge();
+    fs.rmSync(tmpM13, { recursive: true, force: true });
+  });
+
+  /** Open `doc` in a fresh Word, run `expr` (PowerShell using $d), print its value. */
+  const readBack = (doc: string, expr: string): string => {
+    const r = spawnSync('powershell', ['-NoProfile', '-Command',
+      `[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$w=New-Object -ComObject Word.Application;$w.Visible=$false;` +
+      `$d=$w.Documents.Open('${doc}');try{ ${expr} } finally { $d.Close($false);$w.Quit() }`],
+      { encoding: 'utf8', timeout: 90_000 });
+    return (r.stdout || '').trim();
+  };
+
+  it('insertTable + setFonts + setPageSetup + findReplace + insertPageNumbers in one session', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const doc = path.join(tmpM13, 'thesis.docx');
+    await word.createChapter(doc, {
+      html: '<p>یہ اردو کا پیراگراف ہے جس میں مصنف نے بات کی۔</p><p>قال رسول الله إنما الأعمال بالنيات.</p><p>Latin line.</p>',
+      rtl: true,
+    });
+    const r = await word.automateDocument(doc, [
+      { op: 'insertTable', headers: ['نام', 'کتاب', 'صفحہ'], rows: [['بخاری', 'الصحیح', '1'], ['مسلم', 'الصحیح', '2']], afterText: 'مصنف', rtl: true },
+      { op: 'setFonts', urduFont: 'Times New Roman', arabicFont: 'Arial', sizePt: 14 },
+      { op: 'setPageSetup', orientation: 'landscape', pageWidthCm: 29.7, pageHeightCm: 21 },
+      { op: 'findReplace', find: 'الأعمال', replace: 'الاعمال' },
+      { op: 'insertPageNumbers', numberStyle: 51 },
+    ]);
+    // eslint-disable-next-line no-console
+    console.log('M13 live steps', JSON.stringify(r.steps));
+    expect(r.steps.every((s) => s.ok)).toBe(true);
+    expect(r.saved).toBe(true);
+    expect(r.steps[3].detail?.replaced).toBe(1);
+
+    const out = readBack(doc,
+      `$t=$d.Tables.Item(1);` +
+      `$urdu=($d.Paragraphs | Where-Object { $_.Range.Text -match 'اردو' } | Select-Object -First 1).Range.Font.NameBi;` +
+      `$ar=($d.Paragraphs | Where-Object { $_.Range.Text -match 'رسول' } | Select-Object -First 1).Range.Font.NameBi;` +
+      `Write-Output ('tables=' + $d.Tables.Count + ';rows=' + $t.Rows.Count + ';cols=' + $t.Columns.Count + ';dir=' + $t.TableDirection + ';cell=' + $t.Cell(2,1).Range.Text.Trim([char]13,[char]7) + ';urdu=' + $urdu + ';ar=' + $ar + ';orient=' + $d.PageSetup.Orientation + ';w=' + [math]::Round($d.PageSetup.PageWidth) + ';revs=' + $d.Revisions.Count + ';pn=' + $d.Sections.Item(1).Footers.Item(1).PageNumbers.Count + ';pnstyle=' + $d.Sections.Item(1).Footers.Item(1).PageNumbers.NumberStyle)`);
+    // eslint-disable-next-line no-console
+    console.log('M13 live readback', out);
+    const kv = Object.fromEntries(out.split(';').map((p) => p.split('=')));
+    expect(kv.tables).toBe('1');
+    expect(kv.rows).toBe('3');
+    expect(kv.cols).toBe('3');
+    expect(kv.dir).toBe('0');             // wdTableDirectionRtl
+    expect(kv.cell).toBe('بخاری');
+    expect(kv.urdu).toBe('Times New Roman');
+    expect(kv.ar).toBe('Arial');
+    expect(kv.orient).toBe('1');          // wdOrientLandscape
+    expect(Number(kv.w)).toBeGreaterThan(800); // 29.7 cm ≈ 842 pt
+    expect(Number(kv.revs)).toBeGreaterThan(0); // tracked
+    expect(Number(kv.pn)).toBeGreaterThanOrEqual(1);
+    expect(kv.pnstyle).toBe('51');
+  }, 180_000);
+
+  it('setFonts refuses a font that is not installed (soft failure, document untouched)', async () => {
+    const word = await import('../../electron/adapters/word.ts');
+    const doc = path.join(tmpM13, 'fonts.docx');
+    await word.createChapter(doc, { html: '<p>اردو متن</p>', rtl: true });
+    const r = await word.automateDocument(doc, [{ op: 'setFonts', urduFont: 'No Such Font Zz9' }]);
+    expect(r.steps[0].ok).toBe(false);
+    expect(r.steps[0].detail?.missingFonts).toEqual(['No Such Font Zz9']);
+    expect(r.saved).toBe(false);
+  }, 120_000);
+});

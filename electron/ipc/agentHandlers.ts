@@ -24,6 +24,9 @@ import { requestResearch, requestTranscription, resolveTranscription } from '../
 import { requestOcr, resolveOcr } from '../agent/ocrBridge.js';
 import { setOcrConsent } from '../fs/projectFolder.js';
 import { requestPlanApproval, resolvePlanApproval } from '../agent/planApproval.js';
+import { requestFileApproval, resolveFileApproval, type FileApprovalRequest } from '../agent/fileApproval.js';
+import { restoreFromBackup } from '../agent/externalFiles.js';
+import { openDocument } from '../agent/openFile.js';
 import { acquireAgentSlot, releaseAgentSlot, cancelRunningAgent, runningTask } from '../agent/queue.js';
 import type { AgentMode } from '../../shared/agent/types.js';
 import { getWorkspaceDbService } from './workspaceHandlers.js';
@@ -82,6 +85,25 @@ export function registerAgentHandlers(): void {
           );
           return { ok: true };
         }
+
+        // ── M13 (ADR-0056): per-write approval for an outside-project file ──
+        case 'approveFileWrite': {
+          resolveFileApproval(
+            String(payload.requestId ?? ''),
+            payload.decision === 'approved' ? 'approved' : 'rejected',
+          );
+          return { ok: true };
+        }
+
+        // ── M13 (ADR-0056): "Restore original" — copy the sibling .bak back ──
+        case 'restoreExternalEdit': {
+          if (runningTask()) throw new Error('ایک ایجنٹ ٹاسک چل رہا ہے — پہلے اسے مکمل ہونے دیں');
+          return restoreFromBackup(String(payload.path ?? ''), String(payload.backup ?? ''));
+        }
+
+        // ── M13 (ADR-0056): "Open in Word" — documents only, never executables ──
+        case 'openDocument':
+          return openDocument(payload.path);
 
         // ── M9 Phase 5: the renderer's reply to a transcription request ──
         case 'transcriptionResult': {
@@ -216,6 +238,7 @@ export function registerAgentHandlers(): void {
               transcribeMedia: (mediaPath: string, lang: string) => requestTranscription(id, mediaPath, lang, win?.webContents),
               ocrDocument: (scanPath: string, lang: string, pages?: string) => requestOcr(id, scanPath, lang, pages, win?.webContents),
               waitForApproval: (plan: { steps: string[]; summary: string }) => requestPlanApproval(id, plan, win?.webContents),
+              requestFileApproval: (req: FileApprovalRequest) => requestFileApproval(id, req, win?.webContents),
             } as Parameters<typeof runAgent>[0];
 
             const result =
@@ -248,6 +271,7 @@ export function registerAgentHandlers(): void {
               checkpointId: result.checkpointId,
               question: result.question,
               modeUpgrade: result.modeUpgrade,
+              externalEdits: result.externalEdits,
               error: result.error,
             };
           } finally {

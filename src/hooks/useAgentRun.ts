@@ -56,8 +56,14 @@ export interface RunResult {
   question?: string;
   /** M11 — Ask mode asked to switch to Plan/Auto (`request_mode_upgrade`). */
   modeUpgrade?: { targetMode: "plan" | "auto"; reason: string };
+  /** M13 (ADR-0056) — outside-project files this run edited, each with its sibling `.bak`. */
+  externalEdits?: ExternalEdit[];
   error?: string;
 }
+/** M13 (ADR-0056) — one outside-project file edit and the backup made first. */
+export interface ExternalEdit { path: string; backup: string; ops: string[] }
+/** M13 (ADR-0056) — a pending per-write approval for an outside-project file. */
+export interface FileApproval { requestId: string; path: string; ops: string[]; backup?: string; tool: string }
 export interface OptionConsent { needsConsent?: boolean; option?: string; value?: string; current?: string; message?: string }
 export interface OcrConsent { needsConsent?: boolean; scanPath?: string; message?: string }
 export type PickerItem = { kind: "mention" | "command" | "library"; label: string; sublabel?: string; section?: string; apply: () => void };
@@ -124,6 +130,7 @@ interface ProgressEvent {
   mediaPath?: string; lang?: string;
   scanPath?: string; pages?: string;
   artifact?: AgentArtifactEvent;
+  fileApproval?: FileApproval;
 }
 
 /**
@@ -154,6 +161,8 @@ export function useAgentRun() {
   // Plan §5.1 — which artifact the stage is showing (defaults to last-opened).
   const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null);
   const [planPending, setPlanPending] = useState(false);
+  // M13 (ADR-0056) — the outside-file write waiting for the scholar's yes/no.
+  const [fileApproval, setFileApproval] = useState<FileApproval | null>(null);
   // M11 Phase 1 — the conversation so far. `result`/`progress`/`artifacts`
   // above describe the CURRENT (or most recent) run; `turns` holds every
   // finished run before it, both to render and to feed back as `history`.
@@ -386,6 +395,11 @@ export function useAgentRun() {
       if (ev.op === "open") setActiveArtifactId(ev.artifactId);
       return;
     }
+    if (p.kind === "file-approval-pending" && p.fileApproval) {
+      setFileApproval(p.fileApproval);
+      if (p.label) setProgress((prev) => [...prev, { step: 0, label: p.label!, labelKey: p.labelKey, kind: "plan-pending" }]);
+      return;
+    }
     if (p.kind === "plan-pending") {
       setPlanPending(true);
       if (p.label) setProgress((prev) => [...prev, { step: 0, label: p.label!, labelKey: p.labelKey, kind: "plan-pending" }]);
@@ -405,6 +419,14 @@ export function useAgentRun() {
     if (id && agent?.approvePlan) { try { await agent.approvePlan(id, decision); } catch (err) { log.error("approvePlan failed", { err }); } }
     else webAgent.decidePlan(decision);
   }, [agent, webAgent]);
+
+  const decideFileWrite = useCallback(async (decision: "approved" | "rejected") => {
+    const req = fileApproval;
+    setFileApproval(null);
+    if (req && agent?.approveFileWrite) {
+      try { await agent.approveFileWrite(req.requestId, decision); } catch (err) { log.error("approveFileWrite failed", { err }); }
+    }
+  }, [agent, fileApproval]);
 
   const mentions = useMemo<Mention[]>(
     () => buildMentions({
@@ -688,9 +710,12 @@ export function useAgentRun() {
     // starts. `webAgent.available`/`webAgent.askAvailable` already check
     // `agent` is absent, so the desktop and web paths can never both fire
     // for the same send().
+    // M13 (ADR-0056) — desktop Plan/Auto no longer needs a project: the agent
+    // can work on the scholar's own files by full path (each outside write is
+    // approved separately). Chapter tools report "open a project" themselves.
     const canRun = runMode === "ask"
       ? (hasElectronAgent || webAgent.askAvailable)
-      : (desktopReady || webAgent.available);
+      : (hasElectronAgent || webAgent.available);
     if (!typed || !canRun) return;
     // M11 Phase 2 — a run is in flight: queue this message and flush it when
     // the run finishes (the effect below). One slot — a second queued message
@@ -784,6 +809,7 @@ export function useAgentRun() {
     } finally {
       setRunning(false);
       setPlanPending(false);
+      setFileApproval(null);
     }
   }, [input, agent, projectRoot, running, mode, pf, result, turns, webAgent, handleProgress, scopeTags]);
 
@@ -868,6 +894,22 @@ export function useAgentRun() {
     } catch { /* toast handled by the caller pattern elsewhere; keep quiet here */ }
   }, [agent, projectRoot, result, pf]);
   useEffect(() => { setUndone(false); }, [result]);
+
+  // M13 (ADR-0056) — "Restore original" for each outside-project file (copies
+  // its sibling .bak back) and "Open in Word".
+  const [restoredExternal, setRestoredExternal] = useState<string[]>([]);
+  useEffect(() => { setRestoredExternal([]); }, [result]);
+  const restoreExternal = useCallback(async (e: ExternalEdit) => {
+    if (!agent?.restoreExternalEdit) return;
+    try {
+      await agent.restoreExternalEdit(e.path, e.backup);
+      setRestoredExternal((prev) => [...prev, e.path]);
+    } catch (err) { log.error("restoreExternalEdit failed", { err }); }
+  }, [agent]);
+  const openExternal = useCallback(async (filePath: string) => {
+    if (!agent?.openDocument) return;
+    try { await agent.openDocument(filePath); } catch (err) { log.error("openDocument failed", { err }); }
+  }, [agent]);
 
   // §3 gate #5 — set_global_option never applies itself; it returns a consent
   // request the scholar approves here, and every applied change is revertible.
@@ -1025,7 +1067,9 @@ export function useAgentRun() {
     // project folder on desktop, an open document on web). Ask never needs
     // this — it only reads/searches. Drives AgentComposer's disabled state
     // on the Plan/Auto mode buttons.
-    hasWriteTarget: Boolean(agent && projectRoot) || webAgent.available,
+    // M13 (ADR-0056) — the desktop agent can always write: into the project
+    // when one is open, or to the scholar's own files by path (per-write approval).
+    hasWriteTarget: Boolean(agent) || webAgent.available,
     mode, setMode,
     input, setInput,
     running,
@@ -1045,6 +1089,8 @@ export function useAgentRun() {
     activeArtifactId, setActiveArtifactId,
     dismissArtifact,
     planPending,
+    fileApproval, decideFileWrite,
+    restoredExternal, restoreExternal, openExternal,
     // M11 — Ask-to-Plan/Auto escalation (`request_mode_upgrade`).
     modeUpgradeRequest, approveModeUpgrade, declineModeUpgrade,
     // M11 Phase 6 — Regenerate / Refine for the live agent_run card.
@@ -1116,6 +1162,7 @@ export type AgentRunView = Pick<
   | "progressExpanded" | "setProgressExpanded"
   | "showTools" | "setShowTools"
   | "decidePlan"
+  | "fileApproval" | "decideFileWrite" | "restoredExternal" | "restoreExternal" | "openExternal"
   | "pendingOptions" | "optionsApplied" | "applyOptions" | "revertOptions"
   | "pendingOcr" | "ocrGranted" | "grantOcr"
   | "undone" | "undoTask"

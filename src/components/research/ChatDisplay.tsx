@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Send, Loader2, Copy, Sparkles, MessageSquarePlus, RefreshCw, Plus,
   Wrench, ChevronRight, ChevronDown, AlertTriangle, CheckCircle2, Undo2,
-  PenLine, MessageSquare, Minimize2,
+  PenLine, MessageSquare, Minimize2, FileText,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -438,6 +438,22 @@ const ChatDisplay = ({
               : <AgentArtifactPanel artifacts={agent.artifacts} />
           )}
 
+          {/* M13 (ADR-0056) — per-write approval for a file outside the project. */}
+          {agent.fileApproval && (
+            <div className="rounded border border-amber-500/50 bg-amber-500/5 p-2 text-xs space-y-2" dir="auto">
+              <p className="font-medium">{t("agent.file_approval_title", "مجوزہ اقدامات برائے منظوری")}</p>
+              <p className="font-mono break-all opacity-80" dir="ltr">{agent.fileApproval.path}</p>
+              <ol className="list-decimal ps-5 space-y-0.5">
+                {agent.fileApproval.ops.map((line, i) => <li key={i}>{line}</li>)}
+              </ol>
+              <p className="text-muted-foreground">{t("agent.file_approval_note", "This file is outside the project. A backup copy is saved beside it first; content changes land as tracked changes.")}</p>
+              <div className="flex gap-2">
+                <Button size="sm" className="h-7 text-xs" onClick={() => void agent.decideFileWrite("approved")}>{t("agent.file_approval_approve", "کام شروع کریں")}</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void agent.decideFileWrite("rejected")}>{t("agent.file_approval_reject", "منسوخ کریں")}</Button>
+              </div>
+            </div>
+          )}
+
           {agent.planPending && (
             <div className="rounded border border-primary/40 bg-primary/5 p-2 text-xs space-y-2">
               <p className="font-medium">{t("agent.plan_ready", "Review the plan above, then approve it to continue.")}</p>
@@ -613,6 +629,26 @@ const ChatDisplay = ({
                   )}
                 </div>
               )}
+              {/* M13 (ADR-0056) — outside-project files: open, or restore from the .bak. */}
+              {(agent.result.externalEdits ?? []).map((e) => {
+                const restored = agent.restoredExternal.includes(e.path);
+                return (
+                  <div key={e.path} className="rounded border border-border p-2 text-xs space-y-1.5">
+                    <p className="font-mono break-all" dir="ltr">{e.path}</p>
+                    <p className="text-muted-foreground" dir="ltr">{t("agent.external_backup", "Backup")}: {e.backup.split(/[\\/]/).pop()}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => void agent.openExternal(e.path)}>
+                        <FileText className="h-3.5 w-3.5" />
+                        {t("agent.open_in_word", "ورڈ میں کھولیں")}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => void agent.restoreExternal(e)} disabled={restored}>
+                        <Undo2 className="h-3.5 w-3.5" />
+                        {restored ? t("agent.external_restored", "Original restored") : t("agent.restore_original", "اصل حالت بحال کریں")}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
               {agent.result.checkpointId && (
                 <Button
                   size="sm"

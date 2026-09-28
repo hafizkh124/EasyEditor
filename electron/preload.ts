@@ -458,12 +458,21 @@ const electronAPI = {
       question?: string;
       /** M11 — Ask mode asked to switch to Plan/Auto (`request_mode_upgrade`). */
       modeUpgrade?: { targetMode: 'plan' | 'auto'; reason: string };
+      /** M13 (ADR-0056) — outside-project files edited, each with its `.bak`. */
+      externalEdits?: Array<{ path: string; backup: string; ops: string[] }>;
       error?: string;
     }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'run', instruction, mode, projectRoot, scope, history }),
     // M9 — the renderer's decision on a Plan-mode plan (ADR-0026).
     approvePlan: (runId: string, decision: 'approved' | 'rejected'): Promise<{ ok: boolean }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'approvePlan', runId, decision }),
+    // M13 (ADR-0056) — per-write approval + restore + open for outside-project files.
+    approveFileWrite: (requestId: string, decision: 'approved' | 'rejected'): Promise<{ ok: boolean }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'approveFileWrite', requestId, decision }),
+    restoreExternalEdit: (path: string, backup: string): Promise<{ restored: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'restoreExternalEdit', path, backup }),
+    openDocument: (path: string): Promise<{ opened: string }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'openDocument', path }),
     cancel: (): Promise<{ cancelled: boolean }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'cancel' }),
     undoTask: (projectRoot: string, checkpointId: string): Promise<{ restored: string[]; removed: string[] }> =>
@@ -511,6 +520,8 @@ const electronAPI = {
       mediaPath?: string; lang?: string;
       scanPath?: string; pages?: string;
       artifact?: import('../shared/agent/types.js').AgentArtifactEvent;
+      // M13 — `kind: 'file-approval-pending'`.
+      fileApproval?: { requestId: string; path: string; ops: string[]; backup?: string; tool: string };
     }) => void): (() => void) => {
       const listener = (_e: unknown, data: Parameters<typeof callback>[0]) => callback(data);
       ipcRenderer.on(ALLOWED_IPC_CHANNELS.AGENT_PROGRESS, listener);

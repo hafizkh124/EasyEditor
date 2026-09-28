@@ -2029,5 +2029,15 @@
   "files.new_folder": "مجلد جديد",
   "files.new_file_prompt": "اسم الملف الجديد (‎.md‎ أو ‎.txt‎):",
   "files.new_folder_prompt": "اسم المجلد الجديد:",
-  "nav.sign_in": "تسجيل الدخول"
+  "nav.sign_in": "تسجيل الدخول",
+  "agent.file_approval_title": "الخطوات المقترحة — بانتظار الموافقة",
+  "agent.file_approval_note": "هذا الملف خارج المشروع. تُحفظ نسخة احتياطية بجواره أولًا، وتظهر التعديلات كتغييرات متعقَّبة.",
+  "agent.file_approval_approve": "موافقة وابدأ",
+  "agent.file_approval_reject": "إلغاء",
+  "agent.external_backup": "النسخة الاحتياطية",
+  "agent.open_in_word": "افتح في Word",
+  "agent.restore_original": "استعادة الأصل",
+  "agent.external_restored": "تمت استعادة الأصل",
+  "agent.step.file_approval_pending": "وافق على تعديل ملف خارج المشروع",
+  "agent.step.automate_word_document": "جارٍ تعديل مستند Word"
 }

@@ -923,6 +923,196 @@ public static class WordBridgeFontApi {
                 Write-Result @{ ok = $true; op = 'appendIndex'; field = $cmd.field }
             }
 
+            # -- M13 Phase 1 (ADR-0057) - automate_word_document ops --
+            # Every value below is JSON data written into Word's object model;
+            # nothing is evaluated. Callers turn TrackRevisions on first, so
+            # content changes land as reviewable tracked changes.
+
+            'insertTable' {
+                # A bordered table after the paragraph containing `afterText`,
+                # or at the end of the document. Header row bold + repeats on
+                # each page. `rtl` orders the columns right-to-left.
+                Require-Doc
+                $headers = @($cmd.headers | Where-Object { $null -ne $_ })
+                $rowsData = @($cmd.rows)
+                $cols = $headers.Count
+                foreach ($r in $rowsData) { if (@($r).Count -gt $cols) { $cols = @($r).Count } }
+                if ($cols -lt 1) { throw 'insertTable: the table has no columns' }
+                $hasHeader = $headers.Count -gt 0
+                $nRows = $rowsData.Count + $(if ($hasHeader) { 1 } else { 0 })
+                if ($nRows -lt 1) { throw 'insertTable: the table has no rows' }
+
+                $anchorFound = $true
+                $pos = $script:doc.Content.End - 1
+                if ($cmd.afterText) {
+                    $rng = $script:doc.Content
+                    $f = $rng.Find
+                    $f.ClearFormatting()
+                    $f.Text = "" + $cmd.afterText
+                    $f.Forward = $true
+                    $f.Wrap = 0
+                    $f.MatchWildcards = $false
+                    if ($f.Execute()) { $pos = $rng.Paragraphs.Item(1).Range.End - 1 } else { $anchorFound = $false }
+                }
+                $ip = $script:doc.Range($pos, $pos)
+                $ip.InsertParagraphAfter()
+                $ip.Collapse(0)  # wdCollapseEnd — now inside the new empty paragraph
+                $t = $script:doc.Tables.Add($ip, $nRows, $cols)
+                $t.Borders.Enable = 1
+                $rtl = [bool]$cmd.rtl
+                if ($rtl) {
+                    try { $t.TableDirection = 0 } catch { }  # wdTableDirectionRtl
+                    $t.Range.ParagraphFormat.ReadingOrder = 0  # wdReadingOrderRtl
+                }
+                $row = 1
+                if ($hasHeader) {
+                    for ($c = 0; $c -lt $headers.Count; $c++) { $t.Cell(1, $c + 1).Range.Text = "" + $headers[$c] }
+                    $t.Rows.Item(1).Range.Font.Bold = 1
+                    $t.Rows.Item(1).Range.Font.BoldBi = 1
+                    $t.Rows.Item(1).HeadingFormat = -1  # True
+                    $row = 2
+                }
+                foreach ($r in $rowsData) {
+                    $cells = @($r)
+                    for ($c = 0; $c -lt $cells.Count; $c++) {
+                        if ($null -ne $cells[$c]) { $t.Cell($row, $c + 1).Range.Text = "" + $cells[$c] }
+                    }
+                    $row++
+                }
+                try { $t.AutoFitBehavior(2) } catch { }  # wdAutoFitWindow
+                $dir = try { $t.TableDirection } catch { $null }
+                Write-Result @{ ok = $true; op = 'insertTable'; rows = $nRows; cols = $cols; anchorFound = $anchorFound; tableDirection = $dir; tableCount = $script:doc.Tables.Count }
+            }
+
+            'setFonts' {
+                # Script-aware fonts. Styles (Normal, Headings 1-3, Footnote
+                # Text) carry the base Arabic-script font so it is one clean
+                # style change; when BOTH an Urdu and an Arabic font are given,
+                # paragraphs containing Urdu-only letters get the Urdu font.
+                Require-Doc
+                $installed = @{}
+                foreach ($fn in $script:word.FontNames) { $installed[$fn.ToLower()] = $true }
+                $missing = @()
+                foreach ($want in @($cmd.arabicFont, $cmd.urduFont, $cmd.latinFont)) {
+                    if ($want -and -not $installed.ContainsKey(("" + $want).ToLower())) { $missing += ("" + $want) }
+                }
+                if ($missing.Count -gt 0) {
+                    Write-Result @{ ok = $true; op = 'setFonts'; applied = $false; missingFonts = $missing; stylesSet = 0; paragraphsSet = 0 }
+                } else {
+                    $baseBi = if ($cmd.arabicFont) { "" + $cmd.arabicFont } elseif ($cmd.urduFont) { "" + $cmd.urduFont } else { $null }
+                    $stylesSet = 0
+                    foreach ($sid in @(-1, -2, -3, -4, -30)) {  # Normal, Heading1-3, FootnoteText
+                        try {
+                            $s = $script:doc.Styles.Item($sid)
+                            if ($baseBi) { $s.Font.NameBi = $baseBi }
+                            if ($cmd.latinFont) { $s.Font.Name = "" + $cmd.latinFont }
+                            if ($sid -eq -1 -and $cmd.sizePt) { $s.Font.SizeBi = [double]$cmd.sizePt; $s.Font.Size = [double]$cmd.sizePt }
+                            $stylesSet++
+                        } catch { }
+                    }
+                    $paraSet = 0
+                    $urduRe = '[\u0679\u0688\u0691\u06BA\u06BE\u06C1\u06D2\u06D3]'
+                    $arRe = '[\u0600-\u06FF]'
+                    $perPara = ($cmd.urduFont -and $cmd.arabicFont) -or ("" + $cmd.scope) -eq 'paragraphs'
+                    if ($perPara) {
+                        $paras = @($script:doc.Paragraphs)
+                        foreach ($fnote in $script:doc.Footnotes) { $paras += @($fnote.Range.Paragraphs) }
+                        foreach ($p in $paras) {
+                            $txt = $p.Range.Text
+                            if ($txt -notmatch $arRe) { continue }
+                            $target = if ($cmd.urduFont -and $txt -match $urduRe) { "" + $cmd.urduFont } elseif ($cmd.arabicFont) { "" + $cmd.arabicFont } else { "" + $cmd.urduFont }
+                            if ($p.Range.Font.NameBi -ne $target) { $p.Range.Font.NameBi = $target; $paraSet++ }
+                        }
+                    }
+                    Write-Result @{ ok = $true; op = 'setFonts'; applied = $true; missingFonts = @(); stylesSet = $stylesSet; paragraphsSet = $paraSet }
+                }
+            }
+
+            'setPageSetup' {
+                # Orientation + paper size for every section. Orientation is set
+                # FIRST (Word swaps width/height when it flips), then the
+                # caller's final width/height (already oriented by the adapter).
+                Require-Doc
+                $cm = 28.3464567
+                foreach ($sec in $script:doc.Sections) {
+                    $ps = $sec.PageSetup
+                    if ($cmd.orientation -eq 'landscape') { $ps.Orientation = 1 }      # wdOrientLandscape
+                    elseif ($cmd.orientation -eq 'portrait') { $ps.Orientation = 0 }   # wdOrientPortrait
+                    if ($cmd.pageWidthCm)  { $ps.PageWidth  = [double]$cmd.pageWidthCm * $cm }
+                    if ($cmd.pageHeightCm) { $ps.PageHeight = [double]$cmd.pageHeightCm * $cm }
+                }
+                $ps0 = $script:doc.Sections.Item(1).PageSetup
+                Write-Result @{ ok = $true; op = 'setPageSetup'; orientation = $ps0.Orientation; pageWidth = $ps0.PageWidth; pageHeight = $ps0.PageHeight; sections = $script:doc.Sections.Count }
+            }
+
+            'findReplace' {
+                # Literal (non-wildcard) find & replace over the main story.
+                # Pass 1 COUNTS the hits without touching the document; pass 2
+                # is Word's own ReplaceAll. (A hit-by-hit loop is NOT safe with
+                # TrackRevisions on: the deleted text stays in the story and,
+                # with Arabic alef-hamza-insensitive matching, the inserted
+                # replacement can match the find text again - an endless loop,
+                # confirmed live against Word 16.0.) Over the cap -> no change.
+                Require-Doc
+                $find = "" + $cmd.find
+                if ($find -eq '') { throw 'findReplace: empty find text' }
+                $replace = "" + $cmd.replace
+                $max = if ($cmd.maxReplacements) { [int]$cmd.maxReplacements } else { 2000 }
+                $mc = [bool]$cmd.matchCase
+                $ww = [bool]$cmd.wholeWord
+                function Set-FindOpts($f) {
+                    $f.ClearFormatting()
+                    $f.Text = $find
+                    $f.Forward = $true
+                    $f.Wrap = 0
+                    $f.MatchWildcards = $false
+                    $f.MatchCase = $mc
+                    $f.MatchWholeWord = $ww
+                    if ($null -ne $cmd.matchDiacritics) { try { $f.MatchDiacritics = [bool]$cmd.matchDiacritics } catch { } }
+                    if ($null -ne $cmd.matchKashida)    { try { $f.MatchKashida = [bool]$cmd.matchKashida } catch { } }
+                    if ($null -ne $cmd.matchAlefHamza)  { try { $f.MatchAlefHamza = [bool]$cmd.matchAlefHamza } catch { } }
+                }
+                $count = 0
+                $rng = $script:doc.Range(0, $script:doc.Content.End)
+                while ($count -le $max) {
+                    Set-FindOpts $rng.Find
+                    if (-not $rng.Find.Execute()) { break }
+                    $count++
+                    $next = $rng.End
+                    $docEnd = $script:doc.Content.End
+                    if ($next -ge $docEnd) { break }
+                    $rng = $script:doc.Range($next, $docEnd)
+                }
+                if ($count -gt $max) {
+                    Write-Result @{ ok = $true; op = 'findReplace'; replaced = 0; found = $count; capped = $true }
+                } else {
+                    if ($count -gt 0) {
+                        $all = $script:doc.Content
+                        Set-FindOpts $all.Find
+                        $all.Find.Replacement.ClearFormatting()
+                        $all.Find.Replacement.Text = $replace
+                        $all.Find.Execute([Type]::Missing, [Type]::Missing, [Type]::Missing, [Type]::Missing, [Type]::Missing, [Type]::Missing, [Type]::Missing, [Type]::Missing, [Type]::Missing, [Type]::Missing, 2) | Out-Null  # wdReplaceAll
+                    }
+                    Write-Result @{ ok = $true; op = 'findReplace'; replaced = $count; found = $count; capped = $false }
+                }
+            }
+
+            'insertPageNumbers' {
+                # Page numbers in every section's primary footer (or header).
+                # numberStyle: 0 = 1 2 3, 51 = wdPageNumberStyleHindiArabic (١ ٢ ٣).
+                Require-Doc
+                $align = switch ("" + $cmd.alignment) { 'left' { 0 } 'right' { 2 } default { 1 } }
+                $style = if ($null -ne $cmd.numberStyle) { [int]$cmd.numberStyle } else { 0 }
+                $n = 0
+                foreach ($sec in $script:doc.Sections) {
+                    $hf = if (("" + $cmd.position) -eq 'header') { $sec.Headers.Item(1) } else { $sec.Footers.Item(1) }
+                    $hf.PageNumbers.NumberStyle = $style
+                    $hf.PageNumbers.Add($align, [bool]$cmd.firstPage) | Out-Null
+                    $n++
+                }
+                Write-Result @{ ok = $true; op = 'insertPageNumbers'; sections = $n; numberStyle = $style }
+            }
+
             'close' {
                 if ($null -ne $script:doc) { $script:doc.Close($false); $script:doc = $null }
                 Write-Result @{ ok = $true; op = 'close' }

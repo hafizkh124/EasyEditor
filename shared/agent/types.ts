@@ -117,7 +117,7 @@ export interface AgentProgress {
   labelKey?: string;
   kind:
     | 'thinking' | 'tool' | 'tool-result' | 'done' | 'error'
-    | 'clarify' | 'artifact' | 'plan-pending'
+    | 'clarify' | 'artifact' | 'plan-pending' | 'file-approval-pending'
     | 'general-search-request' | 'transcribe-request' | 'ocr-request'
     // Plan §4.6 — one sticky determinate row for a batch (per-book/per-author) run.
     | 'batch-item';
@@ -138,6 +138,8 @@ export interface AgentProgress {
   /** `kind: 'ocr-request'` — the consent-gated renderer→cloud OCR run (M9 Phase 7, ADR-0023). */
   scanPath?: string;
   pages?: string;
+  /** `kind: 'file-approval-pending'` — M13 (ADR-0056) per-write approval of an outside-project file. */
+  fileApproval?: { requestId: string; path: string; ops: string[]; backup?: string; tool: string };
 }
 
 export interface AgentRunResult {

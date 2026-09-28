@@ -2029,5 +2029,15 @@
   "files.new_folder": "New folder",
   "files.new_file_prompt": "New file name (.md or .txt):",
   "files.new_folder_prompt": "New folder name:",
-  "nav.sign_in": "Sign in"
+  "nav.sign_in": "Sign in",
+  "agent.file_approval_title": "Proposed steps — approval needed",
+  "agent.file_approval_note": "This file is outside the project. A backup copy is saved beside it first; content changes land as tracked changes.",
+  "agent.file_approval_approve": "Approve & start",
+  "agent.file_approval_reject": "Cancel",
+  "agent.external_backup": "Backup",
+  "agent.open_in_word": "Open in Word",
+  "agent.restore_original": "Restore original",
+  "agent.external_restored": "Original restored",
+  "agent.step.file_approval_pending": "approve the change to a file outside the project",
+  "agent.step.automate_word_document": "editing the Word document"
 }
