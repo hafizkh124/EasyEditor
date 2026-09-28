@@ -50,6 +50,16 @@ function blockedUserDirs(): string[] {
   return [...new Set(dirs.map((d) => path.resolve(d).toLowerCase()))];
 }
 
+/** Refuse anything under the user's application-data folders (browser profiles, keys, app state). */
+export function assertNotAppData(abs: string): void {
+  const lower = path.resolve(abs).toLowerCase();
+  for (const blocked of blockedUserDirs()) {
+    if (lower === blocked || lower.startsWith(blocked + path.sep)) {
+      throw new UnsafePathError(`refusing to touch an application-data file: ${abs}`);
+    }
+  }
+}
+
 /**
  * Word's lock ("owner") file for an open document: `~$` + the name, with the
  * first one or two characters dropped for longer names. Any `~$…` file in the
@@ -89,12 +99,7 @@ export function resolveExternalTarget(p: unknown, allowed: readonly DocExt[] = E
   const abs = assertReadableFile(p, allowed as string[]);
   // Re-uses the system-directory + parent-dir checks of the write guard.
   assertSafeOutputPath(abs, allowed);
-  const lower = abs.toLowerCase();
-  for (const blocked of blockedUserDirs()) {
-    if (lower === blocked || lower.startsWith(blocked + path.sep)) {
-      throw new UnsafePathError(`refusing to edit an application-data file: ${abs}`);
-    }
-  }
+  assertNotAppData(abs);
   if (path.basename(abs).startsWith('~$')) {
     throw new UnsafePathError('that is Word\'s temporary lock file, not a document');
   }

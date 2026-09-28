@@ -44,7 +44,7 @@ function journalPath(root: string): string {
 const WRITE_TOOLS = new Set([
   'insert_footnote', 'set_page_layout', 'run_task', 'draft_section', 'add_document_comment',
   'create_chapter', 'build_scholarly_indexes', 'typeset_print_ready', 'transcribe_media', 'ocr_document',
-  'automate_word_document',
+  'automate_word_document', 'add_folder_to_library',
 ]);
 
 const isErr = (r: unknown): boolean =>

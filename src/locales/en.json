@@ -2040,5 +2040,8 @@
   "agent.external_restored": "Original restored",
   "agent.step.file_approval_pending": "approve the change to a file outside the project",
   "agent.step.automate_word_document": "editing the Word document",
-  "agent.artifact_add_footnote": "Add as footnote"
+  "agent.artifact_add_footnote": "Add as footnote",
+  "agent.step.search_my_computer": "searching this computer",
+  "agent.step.read_external_document": "reading the document",
+  "agent.step.add_folder_to_library": "adding the folder to the library"
 }

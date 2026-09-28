@@ -12,6 +12,7 @@ import * as searchHistory from './workspaceStore/searchHistory.js';
 import * as sessions from './workspaceStore/sessions.js';
 import * as batchRuns from './workspaceStore/batchRuns.js';
 import { searchChunks, searchChunksByRoot, type ChunkSearchHit } from './workspaceStore/search.js';
+import { searchVectorChunks } from './vectorSearch.js';
 import * as readerState from './workspaceStore/readerState.js';
 import { ingestLibraryItem, type IngestBatchArgs, type IngestBatchResult } from './ingest.js';
 import {
@@ -86,6 +87,60 @@ export class WorkspaceDbService {
   /** SPEC-M6 Phase 5: FTS5 keyword search over imported chunks. */
   public async searchChunks(query: string, limit = 50, opts?: { libraryItemIds?: string[] }): Promise<ChunkSearchHit[]> {
     return searchChunks(this.db, query, limit, opts);
+  }
+
+  /**
+   * M13 (ADR-0059) — meaning-based search over the imported corpus, using the
+   * sqlite-vec index every ingest already writes (it had no caller before).
+   * The caller supplies the query embedding (this layer never calls a model).
+   * Hits below `minSimilarity` (cosine) are dropped so a small corpus does not
+   * return its nearest-but-unrelated chunks.
+   */
+  public async searchChunksSemantic(
+    queryEmbedding: number[],
+    limit = 10,
+    opts?: { libraryItemIds?: string[]; minSimilarity?: number },
+  ): Promise<ChunkSearchHit[]> {
+    const ids = (opts?.libraryItemIds ?? []).filter(Boolean);
+    const minSim = opts?.minSimilarity ?? 0.5;
+    const raw = searchVectorChunks(this.db, queryEmbedding, ids.length ? Math.min(limit * 5, 100) : limit)
+      .filter((r) => 1 - r.distance >= minSim)
+      .filter((r) => !ids.length || ids.includes(r.libraryItemId))
+      .slice(0, limit);
+    if (!raw.length) return [];
+    const itemIds = [...new Set(raw.map((r) => r.libraryItemId))];
+    const items = this.db
+      .prepare(`SELECT id, title, source_ref FROM library_items WHERE id IN (${itemIds.map(() => '?').join(',')})`)
+      .all(...itemIds) as Array<{ id: string; title: string; source_ref: string | null }>;
+    const byId = new Map(items.map((i) => [i.id, i]));
+    return raw
+      .filter((r) => byId.has(r.libraryItemId))
+      .map((r, i) => {
+        const it = byId.get(r.libraryItemId)!;
+        let sourceRef: Record<string, unknown> = {};
+        try { sourceRef = JSON.parse(it.source_ref || '{}'); } catch { /* keep {} */ }
+        return { itemId: r.libraryItemId, title: it.title, sourceRef, pageNumber: r.pageNumber, content: r.content, rank: i };
+      });
+  }
+
+  /**
+   * M13 (ADR-0059) — the library item a folder-ingested file became, by its
+   * absolute path, with the size/mtime it was ingested at and whether its
+   * embedding finished (folderIngest.ts skips unchanged, finished files).
+   */
+  public async findLocalDocumentItem(localPath: string): Promise<{ id: string; size?: number; mtimeMs?: number; done: boolean } | null> {
+    const userId = getCurrentUserId(this.db);
+    const row = this.db
+      .prepare(`SELECT id, source_ref, meta FROM library_items
+                 WHERE user_id = ? AND json_extract(source_ref, '$.localPath') = ?
+                 ORDER BY created_at DESC LIMIT 1`)
+      .get(userId, localPath) as { id: string; source_ref: string | null; meta: string | null } | undefined;
+    if (!row) return null;
+    let ref: { size?: number; mtimeMs?: number } = {};
+    let meta: { ingest?: { status?: string } } = {};
+    try { ref = JSON.parse(row.source_ref || '{}'); } catch { /* keep {} */ }
+    try { meta = JSON.parse(row.meta || '{}'); } catch { /* keep {} */ }
+    return { id: row.id, size: ref.size, mtimeMs: ref.mtimeMs, done: meta.ingest?.status === 'ready' || meta.ingest?.status === 'done' };
   }
 
   /** SPEC-M6 Phase 6: root-expanded keyword search over imported chunks. */

@@ -503,13 +503,48 @@ export const AGENT_TOOLS: AgentTool[] = [
     required: ['filePath', 'sheets'],
     effect: 'write',
   },
+  // ── M13 Phase 2: the scholar's own files, anywhere on the computer (ADR-0059) ──
+  {
+    name: 'search_my_computer',
+    description: "Find the scholar's OWN files anywhere on this computer — by file NAME (default) or by words INSIDE the file (mode \"content\") — using the Windows Search index. Returns full paths, dates and sizes. Use when the scholar says \"my computer / my files / find the .docx named …\", or before editing or reading a file outside the project. Urdu/Arabic spelling variants (ی/ي, ک/ك, with or without ٰ) are matched. Do NOT use for books in the scholar's research library or Shamela (search_corpus / search_shamela), or for the web.",
+    params: {
+      query: { type: 'string', description: 'Words in the file name (or, for mode content, words in the text).' },
+      mode: { type: 'string', enum: ['filename', 'content', 'both'], description: 'filename (default) · content · both.' },
+      extensions: { type: 'string', description: 'Optional comma list, e.g. "docx,pdf". Documents only (docx doc rtf odt pdf txt md epub xlsx xls csv pptx ppt inp).' },
+      folder: { type: 'string', description: 'Optional full path of a folder to search inside, e.g. "D:\\Books".' },
+      limit: { type: 'number', description: 'Max files (default 25, max 50).' },
+    },
+    required: ['query'],
+    effect: 'read',
+  },
+  {
+    name: 'add_folder_to_library',
+    description: "Add a folder of the scholar's own books/documents (pdf docx doc rtf odt txt md, including sub-folders) to the local research library, so search_corpus can then find passages in them by keyword AND by meaning. The scholar approves each call (the text is sent to Gemini for embeddings; the files themselves are never changed). Up to max_files per call — the result says how many remain; call again to continue. Already-imported unchanged files are skipped. Do NOT use to find one file (search_my_computer) or to read one document (read_external_document).",
+    params: {
+      folder: { type: 'string', description: 'Full path of the folder, e.g. "D:\\Books\\Fiqh".' },
+      max_files: { type: 'number', description: 'How many new files to add in this call (default 10, max 25).' },
+    },
+    required: ['folder'],
+    effect: 'write',
+  },
+  {
+    name: 'read_external_document',
+    description: "Read the TEXT of a document anywhere on this computer by its full path (.docx .doc .rtf .odt .pdf .txt .md .csv) — typically one just found with search_my_computer. Returns up to ~6000 characters at a time; call again with `start` for the next part. Urdu/Arabic PDFs may come out garbled — then suggest ocr_document. Do NOT use for chapters of the open project (search_corpus / read_document) or Shamela pages (read_shamela_page).",
+    params: {
+      path: { type: 'string', description: 'Full path of the document.' },
+      start: { type: 'number', description: 'Character offset to continue from (default 0).' },
+    },
+    required: ['path'],
+    effect: 'read',
+  },
+
   // ── M13 Phase 1: Word automation on a chapter OR any .docx on disk (ADR-0056/0057) ──
   {
     name: 'automate_word_document',
     description: "Edit a Word document in one background Word session: insert a bordered right-to-left TABLE, set FONTS by script (Urdu e.g. \"Jameel Noori Nastaleeq\", Arabic e.g. \"Amiri\"/\"Traditional Arabic\", Latin), set page ORIENTATION / PAPER size, FIND & REPLACE text (each hit a tracked change), or add PAGE NUMBERS. Up to 10 ops per call; content changes land as tracked changes. Target either `chapter` (a file in the open project) or `path` (the full path of any .docx/.rtf on the computer — find it first with search_my_computer). An outside-the-project file is ALWAYS shown to the scholar for approval first and backed up beside itself as <name>.<timestamp>.bak. Do NOT use for margins/gutter/book trim (typeset_print_ready), footnotes (insert_footnote), or rewriting prose (run_task / draft_section). Do NOT use for tashkeel — that is run_task with task \"harakat\".",
     params: {
       chapter: { type: 'string', description: 'A chapter file name in the open project, e.g. "02-body.docx". Give this OR path.' },
-      path: { type: 'string', description: 'Absolute path of a .docx/.rtf anywhere on the computer, e.g. "D:\Fatawa\thesis.docx". Give this OR chapter.' },
+      path: { type: 'string', description: 'Absolute path of a .docx/.rtf anywhere on the computer, e.g. "D:\\Fatawa\\thesis.docx". Give this OR chapter.' },
       ops: {
         type: 'string',
         description:

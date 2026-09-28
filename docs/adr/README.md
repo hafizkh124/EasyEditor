@@ -62,6 +62,7 @@ reconstruct rationale without rereading commits.
 | [0056](./0056-m13-outside-project-file-edits.md) | Agent edits to files outside the project: chapter OR absolute path targets, per-write approval in every mode, sibling `<name>.<yyyyMMdd_HHmmss>.bak` first, Open-in-Word + Restore-original; Plan/Auto usable with no project open (extends 0016, 0018, 0019, 0026) | Accepted |
 | [0057](./0057-m13-word-document-automation.md) | `automate_word_document`: batched Word ops in one session: RTL table, script-aware fonts, orientation/paper, count-then-ReplaceAll find and replace, Arabic-Indic page numbers; live-verified vs Word 16 (extends 0017, 0025, 0056) | Accepted |
 | [0058](./0058-m13-shamela-citation-cards.md) | Shamela citation cards: local hits enriched from master.db + the book's page table (author, death, volume, PRINTED page instead of the internal id), deterministic reference that insert_footnote writes verbatim, card button pre-fills (never inserts); import stores printed page + volume (extends 0033, 0044, 0049) | Accepted |
+| [0059](./0059-m13-computer-search-and-folder-library.md) | search_my_computer via the Windows Search index (OLE DB, sanitised SQL, no IN clause, Urdu spelling variants, walk fallback); read_external_document (docx from the zip, pdfjs with garbled-RTL detection, Word for doc/rtf/odt); add_folder_to_library (approved per call, embedded via the existing ingest); search_corpus fuses FTS with the previously-unused sqlite-vec index (extends 0023, 0027, 0056) | Accepted |
 
 ## When to write a new ADR
 

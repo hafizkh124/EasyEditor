@@ -43,7 +43,7 @@ import { assertSafeOutputPath, assertReadableFile, type DocExt } from './paths.j
 const log = logger.child('adapters/word');
 
 /** Formats Word's `Documents.Open` can actually load as a source. */
-const OPENABLE: DocExt[] = ['.docx', '.rtf', '.html', '.htm', '.txt'];
+const OPENABLE: DocExt[] = ['.docx', '.rtf', '.html', '.htm', '.txt', '.doc', '.odt'];
 
 export const wordDescriptor: AdapterDescriptor = {
   id: 'word',

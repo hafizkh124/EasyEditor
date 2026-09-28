@@ -28,6 +28,7 @@ import {
   type RouteOpts,
 } from './adapters/shamelaRouter.js';
 import { generateAgentText } from './modelRouter.js';
+import { embedTextContent } from '../ai/geminiClient.js';
 import { RetrievalLedger, assertClaimSupported, type RetrievedChunk, type ClaimCheckFn } from '../../shared/agent/grounding.js';
 import { summariseCapabilities } from '../../shared/agent/capabilities.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
@@ -45,6 +46,9 @@ import { readDisclosureEntries } from './disclosure.js';
 import { resolveExternalTarget, backupBeside, backupPathFor, isInsideFolder, type ExternalEdit } from './externalFiles.js';
 import type { FileApprovalRequest } from './fileApproval.js';
 import { parseWordOps, describeWordOp } from '../../shared/agent/wordAutomation.js';
+import { searchMyComputer, type SearchMode } from '../host/desktopSearch.js';
+import { extractDocumentText } from './documentText.js';
+import { resolveLibraryFolder, listFolderDocuments, planFolderIngest, ingestFolderFiles, type LibraryPort } from './folderIngest.js';
 import { recordWrite } from './checkpoint.js';
 import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
 import { buildFatwaHtml, resolveResultTable, resolveDisclaimer } from '../../shared/print/fatwaTemplate.js';
@@ -74,8 +78,25 @@ import type { ResearchMode, ResearchResult, ResearchFilter } from './researchBri
 
 const log = logger.child('agent/dispatch');
 
+/**
+ * M13 (ADR-0059) — reciprocal-rank fusion of two ranked lists (k = 60),
+ * de-duplicated by `key`. Items only in one list still rank by their position.
+ */
+export function fuseRanked<T>(a: T[], b: T[], key: (x: T) => string): T[] {
+  const score = new Map<string, { item: T; s: number }>();
+  const add = (list: T[]) => list.forEach((item, i) => {
+    const k = key(item);
+    const cur = score.get(k);
+    const s = 1 / (60 + i + 1);
+    if (cur) cur.s += s; else score.set(k, { item, s });
+  });
+  add(a);
+  add(b);
+  return [...score.values()].sort((x, y) => y.s - x.s).map((v) => v.item);
+}
+
 /** M13 — write tools that need no open project (they target absolute paths). */
-const WRITES_WITHOUT_PROJECT = new Set(['automate_word_document', 'install_font', 'open_file', 'organize_files', 'convert_document']);
+const WRITES_WITHOUT_PROJECT = new Set(['automate_word_document', 'install_font', 'open_file', 'organize_files', 'convert_document', 'add_folder_to_library']);
 const getToolEffect = (name: string): 'read' | 'write' | undefined => AGENT_TOOLS.find((t) => t.name === name)?.effect;
 
 const str = (v: unknown, name: string): string => {
@@ -333,6 +354,17 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         try {
           hits = await svc.searchChunks(query, limit, ...corpusOpts);
         } catch (err) { log.warn('corpus FTS failed', { message: (err as Error).message }); }
+        // M13 (ADR-0059) — plus meaning-based hits from the sqlite-vec index
+        // (finds a passage that SAYS the thing in other words). Best-effort:
+        // no key / no embeddings / slow embedding call ⇒ keyword hits only.
+        try {
+          const vec = await Promise.race([
+            embedTextContent(query),
+            new Promise<never>((_, rej) => setTimeout(() => rej(new Error('embedding timeout')), 4_000)),
+          ]);
+          const sem = await svc.searchChunksSemantic(vec, limit, scopedCorpusIds.length ? { libraryItemIds: scopedCorpusIds } : undefined);
+          hits = fuseRanked(hits, sem, (h) => `${h.itemId}:${h.pageNumber ?? 0}:${h.content.slice(0, 60)}`).slice(0, limit);
+        } catch (err) { log.debug('semantic corpus search skipped', { message: (err as Error).message }); }
         const chunks: RetrievedChunk[] = hits.map((h) => ({
           id: `corpus:${h.itemId}:${h.pageNumber ?? 0}`,
           reference: h.pageNumber ? `${h.title}, p. ${h.pageNumber}` : h.title,
@@ -498,6 +530,112 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const backedUp = guardEdit(chapter);
         await word.setChapterLayout(chapterPath(root, chapter));
         return { ok: true, chapter, backedUp };
+      }
+
+      // M13 Phase 2 (ADR-0059) — find files anywhere on the machine (Windows
+      // Search index; a bounded folder walk when the index is unavailable).
+      case 'search_my_computer': {
+        const query = str(args.query, 'query');
+        const mode: SearchMode = args.mode === 'content' || args.mode === 'both' ? args.mode : 'filename';
+        const extensions = typeof args.extensions === 'string' && args.extensions.trim()
+          ? args.extensions.split(/[,\s]+/).filter(Boolean)
+          : undefined;
+        const folder = typeof args.folder === 'string' && args.folder.trim() ? args.folder.trim() : undefined;
+        const r = await searchMyComputer({ query, mode, extensions, folder, limit: Math.min(num(args.limit, 25), 50) });
+        const rows = r.hits.map((h) => ({
+          path: h.path,
+          name: h.name,
+          modified: h.modified ? h.modified.slice(0, 10) : null,
+          sizeKB: Math.round(h.size / 1024),
+        }));
+        if (rows.length) {
+          const artifactId = `files-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: `کمپیوٹر میں تلاش — ${query.slice(0, 40)}`, artifactType: 'table' });
+          emitArtifact({
+            op: 'table', artifactId,
+            columns: ['نام', 'فولڈر', 'تاریخ', 'KB'],
+            rows: rows.map((f) => [f.name, path.dirname(f.path), f.modified ?? '', String(f.sizeKB)]),
+            caption: `${rows.length} فائلیں${r.source === 'walk' ? ' (فولڈر اسکین)' : ''}`,
+          });
+          emitArtifact({ op: 'close', artifactId, status: 'final' });
+        }
+        return {
+          count: rows.length,
+          source: r.source,
+          ...(r.note ? { note: r.note } : {}),
+          files: rows,
+        };
+      }
+
+      // M13 Phase 2 (ADR-0059) — a folder of the scholar's books into the local
+      // library (keyword + meaning search via search_corpus). Embedding sends
+      // the text to Gemini, so the scholar approves each call, by file count.
+      case 'add_folder_to_library': {
+        const folder = resolveLibraryFolder(args.folder);
+        const maxFiles = Math.min(Math.max(Math.floor(num(args.max_files, 10)), 1), 25);
+        const svc = await getWorkspaceDbService();
+        const lib = svc as unknown as LibraryPort;
+        const all = listFolderDocuments(folder);
+        const { todo, current } = await planFolderIngest(all, lib);
+        if (!todo.length) {
+          return { folder, files: all.length, alreadyInLibrary: current, added: 0, note: all.length ? 'Every document in this folder is already in the library.' : 'No readable documents (pdf docx doc rtf odt txt md) in this folder.' };
+        }
+        const batch = todo.slice(0, maxFiles);
+        const mb = batch.reduce((n, f) => n + f.size, 0) / 1048576;
+        if (!session.requestFileApproval) {
+          return { error: 'adding a folder to the library needs the desktop Agent panel (per-call approval) — not available here' };
+        }
+        const decision = await session.requestFileApproval({
+          tool: 'add_folder_to_library',
+          path: folder,
+          ops: [
+            `${batch.length} فائلیں لائبریری میں شامل ہوں گی (~${mb.toFixed(1)} MB)${todo.length > batch.length ? ` — باقی ${todo.length - batch.length} اگلی بار` : ''}`,
+            'متن تلاشِ معنی (embeddings) کے لیے Gemini کو بھیجا جائے گا؛ آپ کی فائلوں میں کوئی تبدیلی نہیں ہوگی',
+            ...batch.slice(0, 6).map((f) => path.basename(f.path)),
+            ...(batch.length > 6 ? [`… اور ${batch.length - 6}`] : []),
+          ],
+        });
+        if (decision !== 'approved') return { error: 'the scholar declined adding this folder — nothing was imported.' };
+        const artifactId = `ingest-${Date.now().toString(36)}`;
+        const names = batch.map((f) => path.basename(f.path));
+        const marks = names.map(() => '⏳');
+        emitArtifact({ op: 'open', artifactId, title: `لائبریری — ${path.basename(folder)}`, artifactType: 'plan' });
+        const tick = () => emitArtifact({ op: 'delta', artifactId, mode: 'replace', text: names.map((nm, i) => `${marks[i]} ${nm}`).join('\n') });
+        tick();
+        const results = await ingestFolderFiles(batch, lib, {
+          isCancelled: () => session.isCancelled?.() === true,
+          onFile: (i, r) => { marks[i] = r.status === 'added' ? '✅' : r.status === 'skipped' ? '⏭️' : '❌'; tick(); },
+        });
+        emitArtifact({ op: 'close', artifactId, status: 'final' });
+        const added = results.filter((r) => r.status === 'added');
+        return {
+          folder,
+          added: added.length,
+          chunks: added.reduce((n, r) => n + (r.chunks ?? 0), 0),
+          skipped: results.filter((r) => r.status !== 'added').map((r) => ({ file: path.basename(r.path), status: r.status, reason: r.reason })),
+          alreadyInLibrary: current,
+          remaining: todo.length - results.length,
+          note: 'Now searchable with search_corpus (keyword and meaning).',
+        };
+      }
+
+      // M13 Phase 2 (ADR-0059) — the text of a document found on the machine.
+      case 'read_external_document': {
+        const p = str(args.path, 'path');
+        const start = Math.max(0, Math.floor(num(args.start, 0)));
+        const doc = await extractDocumentText(p);
+        const slice = doc.text.slice(start, start + MAX_TOOL_RESULT_CHARS);
+        const end = start + slice.length;
+        return {
+          path: path.resolve(p),
+          chars: doc.text.length,
+          method: doc.method,
+          ...(doc.pages ? { pages: doc.pages } : {}),
+          ...(doc.note ? { note: doc.note } : {}),
+          start,
+          text: slice,
+          ...(end < doc.text.length ? { more: `…continues — call again with start: ${end} for the next part (${doc.text.length - end} chars left).` } : {}),
+        };
       }
 
       // M13 Phase 1 (ADR-0057) — table / fonts / page setup / find-replace /

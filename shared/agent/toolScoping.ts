@@ -141,7 +141,21 @@ const DOMAIN_RULES: DomainRule[] = [
       'landscape', 'portrait', 'اورینٹیشن', 'افقی', 'پیج سائز', 'page size', 'paper size', 'صفحہ نمبر', 'page number',
       'find and replace', 'replace all', 'بدل دو', 'تبدیل کر دو', 'کی جگہ',
     ],
-    tools: ['automate_word_document', 'install_font'],
+    tools: ['automate_word_document', 'install_font', 'search_my_computer', 'read_external_document'],
+  },
+  {
+    // M13 Phase 2 (ADR-0059) — the scholar's own files on this machine.
+    keywords: [
+      'میرے کمپیوٹر', 'کمپیوٹر میں', 'کمپیوٹر سے', 'میری فائل', 'فائلیں', 'فائل تلاش', 'فولڈر', 'ڈرائیو',
+      'my computer', 'my files', 'on my pc', 'on my laptop', 'find the file', 'find file', 'folder', 'drive',
+      'جهازي', 'ملفاتي', 'حاسوبي',
+    ],
+    tools: ['search_my_computer', 'read_external_document', 'automate_word_document', 'add_folder_to_library'],
+  },
+  {
+    // M13 Phase 2 — a folder of books into the searchable library.
+    keywords: ['لائبریری میں شامل', 'لائبریری میں ڈال', 'کتابوں کا فولڈر', 'add folder', 'index my books', 'import folder', 'import my books', 'مکتبة', 'أضف المجلد'],
+    tools: ['add_folder_to_library', 'search_corpus', 'search_my_computer'],
   },
   {
     keywords: ['مخطوط', 'مخطوطة', 'نسخ', 'فروق النسخ', 'apparatus', 'collate', 'critical edition', 'witness', 'نسخہ', 'تدوین'],
@@ -211,8 +225,8 @@ export const NATIVE_ONLY_TOOLS = new Set<string>([
   'jkhssn_sanad_tree', 'jkhssn_narrator', 'jkhssn_takhrij', 'jkhssn_judgments', 'jkhssn_thematic',
   // M11 Phase 4 — Excel write requires Excel COM on desktop (ADR-0048).
   'build_spreadsheet',
-  // M13 (ADR-0056/0057) — Word COM + files on this machine.
-  'automate_word_document',
+  // M13 (ADR-0056/0057/0059) — Word COM + files on this machine.
+  'automate_word_document', 'search_my_computer', 'read_external_document', 'add_folder_to_library',
 ]);
 
 export interface ScopeContext {
