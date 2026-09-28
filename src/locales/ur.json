@@ -2029,5 +2029,15 @@
   "files.new_folder": "نیا فولڈر",
   "files.new_file_prompt": "نئی فائل کا نام (.md یا .txt):",
   "files.new_folder_prompt": "نئے فولڈر کا نام:",
-  "nav.sign_in": "سائن اِن"
+  "nav.sign_in": "سائن اِن",
+  "agent.file_approval_title": "مجوزہ اقدامات برائے منظوری",
+  "agent.file_approval_note": "یہ فائل پروجیکٹ سے باہر ہے۔ پہلے اس کے ساتھ ہی ایک بیک اپ نسخہ محفوظ ہوگا؛ مواد کی تبدیلیاں ٹریک شدہ ترامیم کی صورت میں ہوں گی۔",
+  "agent.file_approval_approve": "کام شروع کریں",
+  "agent.file_approval_reject": "منسوخ کریں",
+  "agent.external_backup": "بیک اپ",
+  "agent.open_in_word": "ورڈ میں کھولیں",
+  "agent.restore_original": "اصل حالت بحال کریں",
+  "agent.external_restored": "اصل حالت بحال ہو گئی",
+  "agent.step.file_approval_pending": "پروجیکٹ سے باہر کی فائل میں تبدیلی کی منظوری دیں",
+  "agent.step.automate_word_document": "ورڈ دستاویز میں ترمیم ہو رہی ہے"
 }

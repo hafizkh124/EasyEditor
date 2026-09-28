@@ -131,7 +131,17 @@ const DOMAIN_RULES: DomainRule[] = [
   },
   {
     keywords: ['فونٹ', 'font', 'nastaliq', 'nastaleeq', 'نستعلیق', 'template', 'ٹیمپلیٹ', 'dotx'],
-    tools: ['install_font', 'install_template', 'set_page_layout'],
+    tools: ['install_font', 'install_template', 'set_page_layout', 'automate_word_document'],
+  },
+  {
+    // M13 Phase 1 (ADR-0057) — Word document automation (tables, fonts, page
+    // setup, find & replace, page numbers) on a chapter or any .docx on disk.
+    keywords: [
+      'ٹیبل', 'جدول', 'table', 'ورڈ', 'word file', 'word document', '.docx', 'docx',
+      'landscape', 'portrait', 'اورینٹیشن', 'افقی', 'پیج سائز', 'page size', 'paper size', 'صفحہ نمبر', 'page number',
+      'find and replace', 'replace all', 'بدل دو', 'تبدیل کر دو', 'کی جگہ',
+    ],
+    tools: ['automate_word_document', 'install_font'],
   },
   {
     keywords: ['مخطوط', 'مخطوطة', 'نسخ', 'فروق النسخ', 'apparatus', 'collate', 'critical edition', 'witness', 'نسخہ', 'تدوین'],
@@ -139,7 +149,7 @@ const DOMAIN_RULES: DomainRule[] = [
   },
   {
     keywords: ['typeset', 'کمپوزنگ', 'print', 'press', 'گٹر', 'gutter', 'trim', 'اشاعت', 'کتابت', 'طباعة', 'تنضيد', 'پرنٹ ریڈی'],
-    tools: ['typeset_print_ready', 'set_page_layout', 'convert_document', 'build_scholarly_indexes'],
+    tools: ['typeset_print_ready', 'set_page_layout', 'convert_document', 'build_scholarly_indexes', 'automate_word_document'],
   },
   {
     keywords: ['فہرست', 'اشاریہ', 'index', 'indexes', 'فہارس', 'فهرس', 'فهارس', 'أعلام'],
@@ -201,6 +211,8 @@ export const NATIVE_ONLY_TOOLS = new Set<string>([
   'jkhssn_sanad_tree', 'jkhssn_narrator', 'jkhssn_takhrij', 'jkhssn_judgments', 'jkhssn_thematic',
   // M11 Phase 4 — Excel write requires Excel COM on desktop (ADR-0048).
   'build_spreadsheet',
+  // M13 (ADR-0056/0057) — Word COM + files on this machine.
+  'automate_word_document',
 ]);
 
 export interface ScopeContext {

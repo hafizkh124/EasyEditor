@@ -30,6 +30,7 @@ import type {
   AddCommentReply,
   ReadRevisionsReply,
   MarkIndexEntriesReply,
+  WordAutomationOp,
 } from '../host/types.js';
 import type { CitationFootnote } from '../../shared/convert/citationFootnotes.js';
 import type {
@@ -605,4 +606,82 @@ export async function buildIndexes(
     }
   });
   return { marked, ms: Date.now() - started };
+}
+
+// ── M13 Phase 1 (ADR-0057) — automate_word_document ──────────────────────
+
+export type { WordAutomationOp };
+
+export const WORD_AUTOMATION_OPS = ['insertTable', 'setFonts', 'setPageSetup', 'findReplace', 'insertPageNumbers'] as const;
+
+export interface WordAutomationStepResult {
+  op: WordAutomationOp['op'];
+  ok: boolean;
+  ms?: number;
+  /** The bridge's reply minus the envelope (counts, missingFonts, …). */
+  detail?: Record<string, unknown>;
+  error?: string;
+}
+
+/**
+ * Run a batch of document edits in ONE Word session: open → track changes on →
+ * each op in order → save → close. A failing op is recorded and the rest still
+ * run (the scholar sees exactly which step failed); the document is saved only
+ * if at least one op succeeded. `onStep` fires after each op for live ticks.
+ */
+export async function automateDocument(
+  docPath: string,
+  ops: WordAutomationOp[],
+  opts: { trackChanges?: boolean; onStep?: (index: number, r: WordAutomationStepResult) => void } = {},
+): Promise<{ steps: WordAutomationStepResult[]; saved: boolean; ms: number }> {
+  const dest = assertSafeOutputPath(docPath, ['.docx', '.rtf']);
+  assertReadableFile(docPath, OPENABLE);
+  if (!Array.isArray(ops) || ops.length === 0) throw new Error('automateDocument: no operations');
+  const started = Date.now();
+  const steps: WordAutomationStepResult[] = [];
+  let saved = false;
+  await runExclusive(async () => {
+    const h = getWordHost();
+    await h.sendOk({ op: 'open', path: dest });
+    await refreshOwnedWord();
+    try {
+      await h.sendOk({ op: 'setTrackRevisions', enabled: opts.trackChanges !== false });
+      for (let i = 0; i < ops.length; i++) {
+        const o = ops[i];
+        let r: WordAutomationStepResult;
+        const t0 = Date.now();
+        try {
+          const reply = await h.sendOk<HostReply & Record<string, unknown>>(o);
+          const { ok: _ok, op: _op, ...detail } = reply as Record<string, unknown>;
+          // setFonts reports missing fonts as a soft refusal, not a COM error.
+          const soft = o.op === 'setFonts' && detail.applied === false;
+          r = { op: o.op, ok: !soft, ms: Date.now() - t0, detail, ...(soft ? { error: `fonts not installed: ${(detail.missingFonts as string[] | undefined)?.join(', ')}` } : {}) };
+        } catch (err) {
+          r = { op: o.op, ok: false, error: (err as Error).message };
+          // A timeout kills the host (powershell.ts) — the remaining ops and
+          // the save cannot run on a dead session; report them as skipped.
+          if ((err as { code?: string }).code === 'timeout' || /not running/.test((err as Error).message)) {
+            steps.push(r);
+            try { opts.onStep?.(i, r); } catch { /* UI only */ }
+            for (let j = i + 1; j < ops.length; j++) {
+              const skipped: WordAutomationStepResult = { op: ops[j].op, ok: false, error: 'skipped — Word stopped responding on an earlier step' };
+              steps.push(skipped);
+              try { opts.onStep?.(j, skipped); } catch { /* UI only */ }
+            }
+            throw Object.assign(new Error(`Word stopped responding during ${o.op}: ${(err as Error).message}`), { steps });
+          }
+        }
+        steps.push(r);
+        try { opts.onStep?.(i, r); } catch { /* UI only */ }
+      }
+      if (steps.some((s) => s.ok)) {
+        await h.sendOk({ op: 'save' });
+        saved = true;
+      }
+    } finally {
+      try { await h.send({ op: 'close' }); } catch { /* host already gone */ }
+    }
+  });
+  log.info('automateDocument', { ops: ops.map((o) => o.op), ok: steps.filter((s) => s.ok).length, ms: Date.now() - started });
+  return { steps, saved, ms: Date.now() - started };
 }

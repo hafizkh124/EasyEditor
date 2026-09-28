@@ -503,6 +503,27 @@ export const AGENT_TOOLS: AgentTool[] = [
     required: ['filePath', 'sheets'],
     effect: 'write',
   },
+  // ── M13 Phase 1: Word automation on a chapter OR any .docx on disk (ADR-0056/0057) ──
+  {
+    name: 'automate_word_document',
+    description: "Edit a Word document in one background Word session: insert a bordered right-to-left TABLE, set FONTS by script (Urdu e.g. \"Jameel Noori Nastaleeq\", Arabic e.g. \"Amiri\"/\"Traditional Arabic\", Latin), set page ORIENTATION / PAPER size, FIND & REPLACE text (each hit a tracked change), or add PAGE NUMBERS. Up to 10 ops per call; content changes land as tracked changes. Target either `chapter` (a file in the open project) or `path` (the full path of any .docx/.rtf on the computer — find it first with search_my_computer). An outside-the-project file is ALWAYS shown to the scholar for approval first and backed up beside itself as <name>.<timestamp>.bak. Do NOT use for margins/gutter/book trim (typeset_print_ready), footnotes (insert_footnote), or rewriting prose (run_task / draft_section). Do NOT use for tashkeel — that is run_task with task \"harakat\".",
+    params: {
+      chapter: { type: 'string', description: 'A chapter file name in the open project, e.g. "02-body.docx". Give this OR path.' },
+      path: { type: 'string', description: 'Absolute path of a .docx/.rtf anywhere on the computer, e.g. "D:\Fatawa\thesis.docx". Give this OR chapter.' },
+      ops: {
+        type: 'string',
+        description:
+          'JSON-encoded array (max 10), applied in order. Shapes: ' +
+          '{"op":"insertTable","headers":["…"],"rows":[["…"]],"afterText"?:"text of the paragraph to insert after (default: end)","rtl"?:true} · ' +
+          '{"op":"setFonts","urduFont"?:"Jameel Noori Nastaleeq","arabicFont"?:"Amiri","latinFont"?:"Times New Roman","sizePt"?:14,"scope"?:"styles"|"paragraphs"} · ' +
+          '{"op":"setPageSetup","orientation"?:"portrait"|"landscape","paper"?:"a4"|"a5"|"b5"|"letter"|"legal"|"royal"|"waziri"|"digest","pageWidthCm"?,"pageHeightCm"?} · ' +
+          '{"op":"findReplace","find":"…","replace":"…","matchCase"?,"wholeWord"?,"matchDiacritics"?,"matchKashida"?,"matchAlefHamza"?} · ' +
+          '{"op":"insertPageNumbers","position"?:"footer"|"header","alignment"?:"center"|"left"|"right","numberStyle"?:"western"|"arabic-indic"}.',
+      },
+    },
+    required: ['ops'],
+    effect: 'write',
+  },
 ];
 
 /**

@@ -42,6 +42,9 @@ import { withAuthorVoice, VOICE_SHAPED_TASKS, AUTHOR_VOICE_FILES, AUTHOR_VOICE_P
 import { AUTHOR_VOICE_EXTRACT_INSTRUCTION } from '../../shared/ai/prompts/authorVoiceExtract.js';
 import { AI_DISCLOSURE_FILE, buildDisclosureStatement } from '../../shared/agent/disclosure.js';
 import { readDisclosureEntries } from './disclosure.js';
+import { resolveExternalTarget, backupBeside, backupPathFor, isInsideFolder, type ExternalEdit } from './externalFiles.js';
+import type { FileApprovalRequest } from './fileApproval.js';
+import { parseWordOps, describeWordOp } from '../../shared/agent/wordAutomation.js';
 import { recordWrite } from './checkpoint.js';
 import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
 import { buildFatwaHtml, resolveResultTable, resolveDisclaimer } from '../../shared/print/fatwaTemplate.js';
@@ -70,6 +73,10 @@ import type { GeneralSearchResult } from './generalSearch.js';
 import type { ResearchMode, ResearchResult, ResearchFilter } from './researchBridge.js';
 
 const log = logger.child('agent/dispatch');
+
+/** M13 — write tools that need no open project (they target absolute paths). */
+const WRITES_WITHOUT_PROJECT = new Set(['automate_word_document', 'install_font', 'open_file', 'organize_files', 'convert_document']);
+const getToolEffect = (name: string): 'read' | 'write' | undefined => AGENT_TOOLS.find((t) => t.name === name)?.effect;
 
 const str = (v: unknown, name: string): string => {
   if (typeof v !== 'string' || v.trim() === '') throw new Error(`${name} must be a non-empty string`);
@@ -168,6 +175,14 @@ export interface AgentSession {
   /** Phase 4 — book/author/category/century scope for search tools (refs like
    *  'shamela:1681' | 'jkhssn:55' | 'corpus:<uuid>'). Absent ⇒ unscoped. */
   bookScope?: string[];
+  /**
+   * M13 Phase 0 (ADR-0056) — asks the scholar to approve ONE write to a file
+   * outside the project folder, in every mode. Absent (headless / eval / web)
+   * ⇒ outside-file writes are refused.
+   */
+  requestFileApproval?: ((req: FileApprovalRequest) => Promise<'approved' | 'rejected'>) | null;
+  /** M13 Phase 0 — told about every outside-file edit (path + its `.bak`), for "Restore original". */
+  onExternalEdit?: ((e: ExternalEdit) => void) | null;
 }
 
 /** ADR-0044 / ADR-0054 — the local-first router's options for this run. */
@@ -229,6 +244,50 @@ export function createDispatcher(session: AgentSession): Dispatcher {
     return Boolean(backupChapter(root, chapter));
   };
 
+  /**
+   * M13 Phase 0 (ADR-0056) — resolve the file a document-editing tool targets:
+   * `chapter` (in-project: checkpoint + backupChapter, as always) or `path`
+   * (anywhere on the machine). A path inside the open project is treated as
+   * an in-project write; one outside it needs the scholar's per-write
+   * approval and gets a sibling `.bak` before anything touches it.
+   */
+  const resolveEditTarget = async (
+    args: Record<string, unknown>,
+    tool: string,
+    opLines: string[],
+  ): Promise<{ path: string; chapter?: string; backup?: string; backedUp: boolean } | { error: string }> => {
+    const chapter = typeof args.chapter === 'string' && args.chapter.trim() ? args.chapter.trim() : null;
+    const rawPath = typeof args.path === 'string' && args.path.trim() ? args.path.trim() : null;
+    if (chapter && rawPath) return { error: 'give either chapter or path, not both' };
+    if (chapter) {
+      if (!hasRoot) return { error: 'no project folder is open — pass the full file path as `path` instead of a chapter name' };
+      const backedUp = guardEdit(chapter);
+      return { path: chapterPath(root, chapter), chapter, backedUp };
+    }
+    if (!rawPath) return { error: 'give the chapter name, or the full path of a file found with search_my_computer' };
+    const abs = resolveExternalTarget(rawPath);
+    if (hasRoot && isInsideFolder(root, abs)) {
+      const rel = path.relative(root, abs);
+      guardWrite(rel);
+      return { path: abs, chapter: rel, backedUp: false };
+    }
+    if (!session.requestFileApproval) {
+      return { error: 'editing a file outside the project needs the desktop Agent panel (per-file approval) — not available here' };
+    }
+    const decision = await session.requestFileApproval({
+      tool,
+      path: abs,
+      ops: [`بیک اپ: ${path.basename(backupPathFor(abs))}`, ...opLines],
+      backup: backupPathFor(abs),
+    });
+    if (decision !== 'approved') {
+      return { error: `the scholar declined the change to ${path.basename(abs)} — nothing was modified. Do not retry unless they ask.` };
+    }
+    const backup = backupBeside(abs);
+    try { session.onExternalEdit?.({ path: abs, backup, ops: opLines }); } catch { /* UI only */ }
+    return { path: abs, backup, backedUp: true };
+  };
+
   /** Plain text of a chapter, cached for the life of this dispatcher. */
   const textCache = new Map<string, string>();
   const chapterText = async (chapter: string): Promise<string> => {
@@ -245,6 +304,12 @@ export function createDispatcher(session: AgentSession): Dispatcher {
   };
 
   const dispatch: DispatchFn = async (name, args) => {
+    // M13 (ADR-0056) — Plan/Auto may now run with NO project open (to work on
+    // the scholar's own files). Every write tool that lives inside a project
+    // gets a clear message instead of a crash on the null root.
+    if (!hasRoot && getToolEffect(name) === 'write' && !WRITES_WITHOUT_PROJECT.has(name)) {
+      return { error: `${name} works inside a project folder and none is open. Open or create a project first — or, for a file elsewhere on the computer, use automate_word_document with its full path.` };
+    }
     switch (name) {
       case 'list_capabilities': {
         const t = detectTools();
@@ -407,6 +472,38 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const backedUp = guardEdit(chapter);
         await word.setChapterLayout(chapterPath(root, chapter));
         return { ok: true, chapter, backedUp };
+      }
+
+      // M13 Phase 1 (ADR-0057) — table / fonts / page setup / find-replace /
+      // page numbers in one Word session, on a chapter or any .docx on disk.
+      case 'automate_word_document': {
+        const ops = parseWordOps(args.ops);
+        const lines = ops.map(describeWordOp);
+        const target = await resolveEditTarget(args, 'automate_word_document', lines);
+        if ('error' in target) return target;
+        const artifactId = `word-ops-${Date.now().toString(36)}`;
+        emitArtifact({ op: 'open', artifactId, title: `ورڈ — ${path.basename(target.path)}`, artifactType: 'plan' });
+        emitArtifact({ op: 'delta', artifactId, mode: 'replace', text: lines.map((l) => `⏳ ${l}`).join('\n') });
+        const marks = lines.map(() => '⏳');
+        const r = await word.automateDocument(target.path, ops, {
+          trackChanges: true,
+          onStep: (i, step) => {
+            marks[i] = step.ok ? '✅' : '❌';
+            emitArtifact({ op: 'delta', artifactId, mode: 'replace', text: lines.map((l, j) => `${marks[j]} ${l}`).join('\n') });
+          },
+        });
+        emitArtifact({ op: 'close', artifactId, status: r.saved ? 'final' : 'aborted', ...(target.chapter && !target.backup ? { targetChapter: target.chapter } : {}) });
+        const missing = r.steps.flatMap((st) => (st.detail?.missingFonts as string[] | undefined) ?? []);
+        return {
+          path: target.path,
+          ...(target.chapter ? { chapter: target.chapter } : {}),
+          ...(target.backup ? { backup: target.backup } : {}),
+          backedUp: target.backedUp,
+          saved: r.saved,
+          steps: r.steps.map((st, i) => ({ step: lines[i], ok: st.ok, ...(st.error ? { error: st.error } : {}), ...(st.detail ? { detail: st.detail } : {}) })),
+          ...(missing.length ? { note: `Not installed on this machine: ${missing.join(', ')}. Offer install_font (needs the .ttf file) or choose an installed font.` } : {}),
+          ...(r.saved ? {} : { error: 'no step succeeded — the document was not changed' }),
+        };
       }
 
       case 'transcribe_media': {

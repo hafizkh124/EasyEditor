@@ -27,6 +27,8 @@ import { digestDisclosure, appendDisclosureEntries } from './disclosure.js';
 import { runCritique } from './critic.js';
 import { checkClaim } from './claimCheck.js';
 import { beginCheckpoint } from './checkpoint.js';
+import type { ExternalEdit } from './externalFiles.js';
+import type { FileApprovalRequest } from './fileApproval.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
 import { buildHistory, type ConversationTurn } from '../../shared/agent/history.js';
 import { buildSystemPrompt } from '../../shared/agent/systemPrompt.js';
@@ -117,6 +119,8 @@ export interface AgentRunInput {
   ocrDocument?: ((scanPath: string, lang: string, pages?: string) => Promise<import('./ocrBridge.js').OcrResult>) | null;
   /** Plan mode — resolves once the scholar approves (or rejects) the plan. */
   waitForApproval?: WaitForApprovalFn;
+  /** M13 (ADR-0056) — per-write approval for a file outside the project, every mode. */
+  requestFileApproval?: ((req: FileApprovalRequest) => Promise<'approved' | 'rejected'>) | null;
   /**
    * M11 Phase 1 — the conversation so far (finished turns). Prepended to the
    * loop's messages so a follow-up question has the thread. Not used by the
@@ -135,7 +139,12 @@ export interface AgentRunInput {
   };
 }
 
-export type AgentRunOutput = AgentRunResult & { playbook?: string; checkpointId?: string };
+export type AgentRunOutput = AgentRunResult & {
+  playbook?: string;
+  checkpointId?: string;
+  /** M13 (ADR-0056) — outside-project files this run edited, each with its sibling `.bak`. */
+  externalEdits?: ExternalEdit[];
+};
 
 export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   const { mode, projectRoot } = input;
@@ -201,6 +210,9 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
         ? []
         : undefined;
 
+  const noProjectNote = !projectRoot && mode !== 'ask'
+    ? `\n\nNo project folder is open. You can still work on the scholar's own files by FULL PATH: find them with search_my_computer, read them with read_external_document, and edit a .docx with automate_word_document (the scholar approves each outside file and a .bak copy is made first). Chapter tools are unavailable until a project is opened.`
+    : '';
   const systemPrompt = buildSystemPrompt({
     mode,
     capabilities: { ...caps },
@@ -210,7 +222,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     chapters,
     playbookGuidance: playbook?.guidance ?? null,
     toolGating: playbook ? null : negativeConstraintBlock(intent.route),
-  });
+  }) + noProjectNote;
 
   /**
    * Append one journal line (M9 Phase E) and return the output unchanged.
@@ -218,7 +230,9 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
    * no-op when Ask mode is running with nothing open (there is nowhere to
    * write them, and nothing was written to disclose either).
    */
-  const finish = (output: AgentRunOutput): AgentRunOutput => {
+  const externalEdits: ExternalEdit[] = [];
+  const finish = (raw: AgentRunOutput): AgentRunOutput => {
+    const output: AgentRunOutput = externalEdits.length ? { ...raw, externalEdits: [...externalEdits] } : raw;
     if (!projectRoot) return output;
     const { wrote, sources } = digestRun(output);
     appendJournalEntry(projectRoot, {
@@ -302,6 +316,9 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     jkhssnEnabled: connectors['jkhssn'] !== false,
     // Plan §4.5 — restrict the search tools to the scoped book refs.
     bookScope: input.scope?.books?.length ? input.scope.books : undefined,
+    // M13 (ADR-0056) — outside-project writes: approve each one, remember its `.bak`.
+    requestFileApproval: input.requestFileApproval ?? null,
+    onExternalEdit: (e) => { externalEdits.push(e); },
   };
   const { dispatch } = createDispatcher(session);
 
@@ -433,7 +450,7 @@ function taskWrote(result: AgentRunResult): boolean {
       const r = c.result;
       const inert = typeof r === 'object' && r !== null && ('error' in r || 'needsConsent' in r);
       return (
-        (['insert_footnote', 'set_page_layout', 'run_task', 'draft_section', 'add_document_comment', 'transcribe_media', 'ocr_document', 'create_chapter', 'build_scholarly_indexes', 'typeset_print_ready', 'extract_author_voice', 'compile_ai_disclosure'].includes(c.name)
+        (['insert_footnote', 'set_page_layout', 'run_task', 'draft_section', 'add_document_comment', 'transcribe_media', 'ocr_document', 'create_chapter', 'build_scholarly_indexes', 'typeset_print_ready', 'extract_author_voice', 'compile_ai_disclosure', 'automate_word_document'].includes(c.name)
           && !inert)
         || (c.name === 'install_template' && Boolean((c.args as { chapter?: unknown }).chapter))
       );
