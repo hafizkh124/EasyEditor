@@ -369,18 +369,43 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const prefix = r.transport === 'turath' ? 'turath' : r.transport === 'cloud' ? 'shamela-cloud' : 'shamela';
         const chunks: RetrievedChunk[] = r.hits.map((h) => ({
           id: `${prefix}:${h.bookId}:${h.pageNumber}`,
-          // Turath addresses pages by a sequential index, but a scholar cites the
-          // PRINTED volume/page — which the router result carries as `pageLabel`.
-          reference: `${h.bookTitle || (prefix === 'turath' ? 'تراث' : 'الشاملة')}، ${(h as { pageLabel?: string }).pageLabel ?? `ص ${h.pageNumber}`}`,
+          // M13 (ADR-0058) — a local hit carries the deterministic full reference
+          // (author (death), title, volume, PRINTED page). Turath addresses pages
+          // by a sequential index, but a scholar cites the printed volume/page —
+          // which the router result carries as `pageLabel`.
+          reference: h.citation ?? `${h.bookTitle || (prefix === 'turath' ? 'تراث' : 'الشاملة')}، ${h.pageLabel ?? `ص ${h.pageNumber}`}`,
           content: h.snippet,
           ...(r.transport === 'cloud' && !Number(h.bookId) ? { bibliographic: true } : {}),
         }));
         ledger.add(chunks);
+        // M13 (ADR-0058) — the scholar sees the hits as citation cards, each with
+        // a ready-made footnote they can ask the agent to insert (never auto-inserted).
+        if (chunks.length) {
+          const artifactId = `shamela-${Date.now().toString(36)}`;
+          emitArtifact({ op: 'open', artifactId, title: `شاملہ — ${query.slice(0, 40)}`, artifactType: 'citation-list' });
+          emitArtifact({
+            op: 'citations', artifactId,
+            entries: chunks.slice(0, 8).map((c, i) => ({
+              marker: String(i + 1), reference: c.reference, sourceId: c.id, tier: c.bibliographic ? 2 : 1,
+              excerpt: (c.content ?? '').slice(0, 500) || undefined,
+              footnote: c.bibliographic ? undefined : c.reference,
+            })),
+          });
+          emitArtifact({ op: 'close', artifactId, status: 'final' });
+        }
         return {
           count: chunks.length,
           transport: r.transport,        // non-model-facing — read by connectorsUsed (ADR-0044)
           note: r.note,
-          results: chunks.map((c) => ({ id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 350) })),
+          results: chunks.map((c, i) => {
+            const h = r.hits[i];
+            return {
+              id: c.id, reference: c.reference, excerpt: (c.content ?? '').slice(0, 350),
+              ...(h.author ? { author: h.author } : {}),
+              ...(h.volume ? { volume: h.volume } : {}),
+              ...(h.printedPage ? { printedPage: h.printedPage } : {}),
+            };
+          }),
         };
       }
 
@@ -394,10 +419,11 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           preferTransport: pfx === 'turath' ? 'turath' : pfx === 'shamela-cloud' ? 'cloud' : 'local',
         });
         if (!r.page) return { error: r.error ?? 'could not read the page', transport: r.transport };
-        ledger.add([{ id: sid, reference: `${pfx === 'turath' ? 'تراث' : 'الشاملة'}، ${(r.page as { pageLabel?: string }).pageLabel ?? `ص ${r.page.pageNumber}`}`, content: r.page.text }]);
+        ledger.add([{ id: sid, reference: r.page.citation ?? `${pfx === 'turath' ? 'تراث' : 'الشاملة'}، ${(r.page as { pageLabel?: string }).pageLabel ?? `ص ${r.page.pageNumber}`}`, content: r.page.text }]);
         return {
           transport: r.transport,
           bookId,
+          ...(r.page.citation ? { reference: r.page.citation } : {}),
           page: r.page.pageNumber,
           text: capResult(r.page.text),
           footnotes: r.page.footnotes ? capResult(r.page.footnotes) : undefined,

@@ -2039,5 +2039,6 @@
   "agent.restore_original": "استعادة الأصل",
   "agent.external_restored": "تمت استعادة الأصل",
   "agent.step.file_approval_pending": "وافق على تعديل ملف خارج المشروع",
-  "agent.step.automate_word_document": "جارٍ تعديل مستند Word"
+  "agent.step.automate_word_document": "جارٍ تعديل مستند Word",
+  "agent.artifact_add_footnote": "أضف حاشية"
 }

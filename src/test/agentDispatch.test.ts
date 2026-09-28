@@ -560,11 +560,12 @@ describe('agent dispatch', () => {
     const { dispatch } = mk({ emitArtifact: (ev) => events.push(ev as Record<string, unknown>) });
     await dispatch('search_shamela', { query: 'الأعمال' });
     await dispatch('insert_footnote', { chapter: '01.docx', marker: '[1]', source_id: 'shamela:55:40', claim: 'x' });
-    const cites = events.find((e) => e.op === 'citations') as { entries: Array<Record<string, unknown>> } | undefined;
+    // M13 — search_shamela now emits its own citation card first; the footnote's is the last one.
+    const cites = events.filter((e) => e.op === 'citations').pop() as { entries: Array<Record<string, unknown>> } | undefined;
     expect(cites?.entries[0]).toMatchObject({
       marker: '[1]', sourceId: 'shamela:55:40', tier: 1, excerpt: 'إنما الأعمال', claim: 'x',
     });
-    expect((events.find((e) => e.op === 'close') as { targetChapter?: string } | undefined)?.targetChapter).toBe('01.docx');
+    expect((events.filter((e) => e.op === 'close').pop() as { targetChapter?: string } | undefined)?.targetChapter).toBe('01.docx');
   });
 
   it('insert_footnote REFUSES when the claim-check says the source does not support the claim', async () => {
@@ -1151,6 +1152,35 @@ describe('P9 tools — font / template / global options', () => {
       expect(r.error).toMatch(/project folder/);
       const ok = await dispatch('automate_word_document', { path: extFile, ops: OPS }) as { saved: boolean };
       expect(ok.saved).toBe(true);
+    });
+  });
+
+  // ── M13 Phase 3 (ADR-0058) — Shamela citation cards ──
+  describe('search_shamela citation cards', () => {
+    it('uses the enriched reference (author, volume, printed page) and returns the fields', async () => {
+      shamelaRouterMock.routeShamelaSearch.mockResolvedValueOnce({
+        hits: [{
+          bookId: '1681', bookTitle: 'صحيح البخاري', pageNumber: 9, snippet: 'إنما الأعمال بالنيات', score: 1,
+          author: 'البخاري', deathYear: 256, volume: '1', printedPage: 6,
+          citation: 'البخاري (ت 256هـ)، صحيح البخاري، ج 1، ص 6',
+        }],
+        transport: 'local',
+      });
+      const events: Array<Record<string, unknown>> = [];
+      const { dispatch, ledger } = mk({ emitArtifact: (ev) => events.push(ev as Record<string, unknown>) });
+      const r = await dispatch('search_shamela', { query: 'الأعمال بالنيات' }) as { results: Array<Record<string, unknown>> };
+      expect(r.results[0]).toMatchObject({ id: 'shamela:1681:9', reference: 'البخاري (ت 256هـ)، صحيح البخاري، ج 1، ص 6', author: 'البخاري', volume: '1', printedPage: 6 });
+      expect(ledger.resolveOrThrow('shamela:1681:9').reference).toBe('البخاري (ت 256هـ)، صحيح البخاري، ج 1، ص 6');
+      const card = events.find((e) => e.op === 'citations') as { entries: Array<Record<string, unknown>> };
+      expect(card.entries[0]).toMatchObject({ sourceId: 'shamela:1681:9', footnote: 'البخاري (ت 256هـ)، صحيح البخاري، ج 1، ص 6' });
+    });
+
+    it('emits no card when there are no hits', async () => {
+      shamelaRouterMock.routeShamelaSearch.mockResolvedValueOnce({ hits: [], transport: 'local' });
+      const events: Array<Record<string, unknown>> = [];
+      const { dispatch } = mk({ emitArtifact: (ev) => events.push(ev as Record<string, unknown>) });
+      await dispatch('search_shamela', { query: 'لا شيء' });
+      expect(events).toHaveLength(0);
     });
   });
 });
