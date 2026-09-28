@@ -153,6 +153,11 @@ const DOMAIN_RULES: DomainRule[] = [
     tools: ['search_my_computer', 'read_external_document', 'automate_word_document', 'add_folder_to_library'],
   },
   {
+    // M13 Phase 4 (ADR-0060) — read one web page the scholar named.
+    keywords: ['http://', 'https://', 'www.', 'ویب سائٹ', 'ویب صفحہ', 'لنک', 'یہ صفحہ', 'website', 'web page', 'webpage', 'this link', 'this page', 'الموقع', 'الرابط', 'صفحة'],
+    tools: ['extract_web_page', 'search_general'],
+  },
+  {
     // M13 Phase 2 — a folder of books into the searchable library.
     keywords: ['لائبریری میں شامل', 'لائبریری میں ڈال', 'کتابوں کا فولڈر', 'add folder', 'index my books', 'import folder', 'import my books', 'مکتبة', 'أضف المجلد'],
     tools: ['add_folder_to_library', 'search_corpus', 'search_my_computer'],
