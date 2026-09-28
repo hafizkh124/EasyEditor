@@ -27,6 +27,7 @@ import { requestPlanApproval, resolvePlanApproval } from '../agent/planApproval.
 import { requestFileApproval, resolveFileApproval, type FileApprovalRequest } from '../agent/fileApproval.js';
 import { restoreFromBackup } from '../agent/externalFiles.js';
 import { openDocument } from '../agent/openFile.js';
+import { undoFileOps, type FileMove } from '../agent/fileOps.js';
 import { acquireAgentSlot, releaseAgentSlot, cancelRunningAgent, runningTask } from '../agent/queue.js';
 import type { AgentMode } from '../../shared/agent/types.js';
 import { getWorkspaceDbService } from './workspaceHandlers.js';
@@ -99,6 +100,13 @@ export function registerAgentHandlers(): void {
         case 'restoreExternalEdit': {
           if (runningTask()) throw new Error('ایک ایجنٹ ٹاسک چل رہا ہے — پہلے اسے مکمل ہونے دیں');
           return restoreFromBackup(String(payload.path ?? ''), String(payload.backup ?? ''));
+        }
+
+        // ── M13 (ADR-0061): undo organize_files (move back / remove copies) ──
+        case 'undoFileOps': {
+          if (runningTask()) throw new Error('ایک ایجنٹ ٹاسک چل رہا ہے — پہلے اسے مکمل ہونے دیں');
+          const ops = Array.isArray(payload.ops) ? (payload.ops as FileMove[]).filter((m) => m && typeof m.from === 'string' && typeof m.to === 'string' && (m.action === 'copy' || m.action === 'move')) : [];
+          return undoFileOps(ops);
         }
 
         // ── M13 (ADR-0056): "Open in Word" — documents only, never executables ──
@@ -272,6 +280,7 @@ export function registerAgentHandlers(): void {
               question: result.question,
               modeUpgrade: result.modeUpgrade,
               externalEdits: result.externalEdits,
+              fileOps: result.fileOps,
               error: result.error,
             };
           } finally {

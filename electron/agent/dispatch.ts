@@ -51,6 +51,8 @@ import { extractDocumentText } from './documentText.js';
 import { resolveLibraryFolder, listFolderDocuments, planFolderIngest, ingestFolderFiles, type LibraryPort } from './folderIngest.js';
 import { UrlProvenance, UNTRUSTED_NOTICE, isScholarlyHost, hostOf } from '../../shared/agent/webUrls.js';
 import type { WebPage } from './adapters/webExtract.js';
+import { parseFileList, resolveDestination, planFileOps, applyFileOps, type FileMove } from './fileOps.js';
+import { assertOpenableDoc } from './openFile.js';
 import { recordWrite } from './checkpoint.js';
 import { getDraftMode, buildDraftInput, type DraftMode } from '../../shared/ai/prompts/draftSection.js';
 import { buildFatwaHtml, resolveResultTable, resolveDisclaimer } from '../../shared/print/fatwaTemplate.js';
@@ -79,6 +81,17 @@ import type { GeneralSearchResult } from './generalSearch.js';
 import type { ResearchMode, ResearchResult, ResearchFilter } from './researchBridge.js';
 
 const log = logger.child('agent/dispatch');
+
+/** `D:/x/a.docx` + `pdf` → `D:/x/a.pdf`, or `a (2).pdf` if taken. */
+function freeNameBeside(src: string, toExt: string): string {
+  const dir = path.dirname(src);
+  const stem = path.basename(src, path.extname(src));
+  for (let i = 1; i < 1000; i++) {
+    const out = path.join(dir, i === 1 ? `${stem}.${toExt}` : `${stem} (${i}).${toExt}`);
+    if (!fs.existsSync(out)) return out;
+  }
+  throw new Error('too many converted copies beside this file');
+}
 
 /**
  * M13 (ADR-0059) — reciprocal-rank fusion of two ranked lists (k = 60),
@@ -213,6 +226,10 @@ export interface AgentSession {
   userText?: string;
   /** M13 Phase 4 — loads one page read-only (hidden sandboxed window). Absent ⇒ tool unavailable. */
   extractWebPage?: ((url: string) => Promise<WebPage>) | null;
+  /** M13 Phase 5 — opens a document in its default app (openFile.ts). Absent ⇒ tool unavailable. */
+  openDocument?: ((absPath: string) => Promise<unknown>) | null;
+  /** M13 Phase 5 — told about every copy/move organize_files made, for "Undo". */
+  onFileOps?: ((ops: FileMove[]) => void) | null;
 }
 
 /** ADR-0044 / ADR-0054 — the local-first router's options for this run. */
@@ -636,6 +653,50 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         };
       }
 
+      // M13 Phase 5 (ADR-0061) — open a found document in Word / the PDF
+      // viewer. Documents only; the scholar approves each open.
+      case 'open_file': {
+        const abs = assertOpenableDoc(str(args.path, 'path'));
+        if (!session.openDocument || !session.requestFileApproval) return { error: 'open_file is only available in the desktop Agent panel.' };
+        const d = await session.requestFileApproval({ tool: 'open_file', path: abs, ops: [`«${path.basename(abs)}» کو اس کے اپنے پروگرام میں کھولنا`] });
+        if (d !== 'approved') return { error: 'the scholar declined opening the file.' };
+        await session.openDocument(abs);
+        return { opened: abs };
+      }
+
+      // M13 Phase 5 (ADR-0061) — copy or move documents into one folder.
+      // Never deletes, never overwrites; every move is undoable.
+      case 'organize_files': {
+        const files = parseFileList(args.files);
+        const action: 'copy' | 'move' = args.action === 'move' ? 'move' : 'copy';
+        const dest = resolveDestination(args.destination);
+        const plan = planFileOps(files, dest.dir, action);
+        const real = plan.filter((m) => m.from !== m.to);
+        if (!real.length) return { destination: dest.dir, count: 0, note: 'Every file is already in that folder.' };
+        if (!session.requestFileApproval) return { error: 'organize_files needs the desktop Agent panel (per-call approval) — not available here.' };
+        const verb = action === 'move' ? 'منتقل' : 'کاپی';
+        const d = await session.requestFileApproval({
+          tool: 'organize_files',
+          path: dest.dir,
+          ops: [
+            `${real.length} فائلیں ${verb} ہوں گی${dest.create ? ' (نیا فولڈر بنے گا)' : ''} — کچھ حذف یا اوور رائٹ نہیں ہوگا`,
+            ...real.slice(0, 8).map((m) => `${path.basename(m.from)} ← ${path.dirname(m.from)}`),
+            ...(real.length > 8 ? [`… اور ${real.length - 8}`] : []),
+          ],
+        });
+        if (d !== 'approved') return { error: 'the scholar declined — no file was copied or moved.' };
+        const r = applyFileOps(plan, dest);
+        if (r.done.length) { try { session.onFileOps?.(r.done); } catch { /* UI only */ } }
+        return {
+          destination: dest.dir,
+          action,
+          count: r.done.length,
+          ...(r.failed.length ? { failed: r.failed.map((f) => ({ file: path.basename(f.from), error: f.error })) } : {}),
+          renamed: r.done.filter((m) => path.basename(m.to) !== path.basename(m.from)).map((m) => ({ from: path.basename(m.from), to: path.basename(m.to) })),
+          note: action === 'move' ? 'The result card offers Undo to move them back.' : 'Originals are untouched.',
+        };
+      }
+
       // M13 Phase 4 (ADR-0060) — read ONE web page, read-only. The URL must
       // come from the scholar or a search result; the text comes back framed
       // as untrusted data.
@@ -965,6 +1026,24 @@ export function createDispatcher(session: AgentSession): Dispatcher {
       }
 
       case 'convert_document': {
+        // M13 Phase 5 (ADR-0061) — any document on the machine, by full path:
+        // the converted copy lands BESIDE the source (never overwriting), approved first.
+        if (typeof args.path === 'string' && args.path.trim() && !args.chapter) {
+          const to = str(args.to, 'to') as 'docx' | 'pdf' | 'rtf' | 'txt';
+          const src = assertOpenableDoc(args.path.trim());
+          const srcExt = path.extname(src).toLowerCase();
+          if (!['.docx', '.doc', '.rtf', '.odt', '.pdf'].includes(srcExt)) return { error: `cannot convert a ${srcExt} file` };
+          if (srcExt === `.${to}`) return { error: `the file is already .${to}` };
+          if (srcExt === '.pdf' && to !== 'docx') return { error: 'a PDF can only be reflowed to docx' };
+          const out = freeNameBeside(src, to);
+          if (!session.requestFileApproval) return { error: 'converting a file outside the project needs the desktop Agent panel — not available here.' };
+          const d = await session.requestFileApproval({ tool: 'convert_document', path: src, ops: [`نئی فائل بنے گی: ${path.basename(out)} (اصل فائل میں کوئی تبدیلی نہیں)`] });
+          if (d !== 'approved') return { error: 'the scholar declined the conversion.' };
+          const r = srcExt === '.pdf'
+            ? await word.reflowPdf(src, out)
+            : await word.fromWord(src, to as 'pdf' | 'rtf' | 'txt', out);
+          return { outputPath: r.outputPath };
+        }
         const chapter = str(args.chapter, 'chapter');
         const to = str(args.to, 'to') as 'docx' | 'pdf' | 'rtf' | 'txt';
         const src = chapterPath(root, chapter);

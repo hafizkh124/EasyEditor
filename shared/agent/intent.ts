@@ -51,7 +51,9 @@ const EDIT_VERB =
  * needs the loop and its sources, so it is NOT `direct` however plain the verb.
  */
 const NEEDS_SOURCE =
-  /(cite|citation|footnote|حوالہ|حاشیہ|تخریج|verify|research|\bsources?\b|مراجع|مصادر|takhrij|sanad|isnad|درجہ حدیث|صحت حدیث|تحقیق کر|فتویٰ|فتوى)/i;
+  // M13 — a pasted URL means "go read that": never a plain edit (live check:
+  // "یہ صفحہ پڑھ کر خلاصہ بتاؤ <url>" was routed direct, with no tools).
+  /(https?:\/\/|cite|citation|footnote|حوالہ|حاشیہ|تخریج|verify|research|\bsources?\b|مراجع|مصادر|takhrij|sanad|isnad|درجہ حدیث|صحت حدیث|تحقیق کر|فتویٰ|فتوى)/i;
 
 export function classifyIntent(instruction: string, ctx: IntentContext): IntentResult {
   const text = instruction.trim();

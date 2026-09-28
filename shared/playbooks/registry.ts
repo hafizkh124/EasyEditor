@@ -380,6 +380,41 @@ export const PLAYBOOKS: Playbook[] = [
       { tool: 'install_font', bind: ['font_path'], note: 'Install the font file the scholar pointed at, and verify Word sees it.' },
     ],
   },
+  // ── M13 (ADR-0061) — desktop-agent playbooks ─────────────────────────
+  {
+    id: 'format-urdu-document',
+    title: 'Format an Urdu/Arabic Word file: fonts + page numbers (with backup)',
+    trigger: 'format-urdu',
+    keywords: ['اردو فائل کی فارمیٹنگ', 'فائل کی فارمیٹنگ', 'فونٹ درست کر', 'format my urdu document', 'fix the fonts in my'],
+    guidance: 'Find the file first if the scholar did not give a full path. In automate_word_document use setFonts with urduFont "Jameel Noori Nastaleeq" and arabicFont "Traditional Arabic" unless the scholar named others, then insertPageNumbers with numberStyle "arabic-indic". A file outside the project is backed up and approved automatically — do not ask again in prose.',
+    steps: [
+      { tool: 'search_my_computer', bind: ['query'], optional: true, note: 'Find the Word file on the computer.' },
+      { tool: 'automate_word_document', bind: ['path', 'ops'], note: 'Back up the file, set Urdu/Arabic fonts, add page numbers (approved first).' },
+    ],
+  },
+  {
+    id: 'find-and-cite-shamela',
+    title: 'Find a passage in Shamela and footnote it',
+    trigger: 'shamela-cite',
+    keywords: ['شاملہ سے حوالہ', 'شاملہ کا حوالہ', 'cite from shamela', 'shamela footnote', 'حوالہ شاملہ سے'],
+    guidance: 'Search Shamela, read the best page to confirm the wording, then footnote it. The footnote text is the deterministic reference (author, title, volume, printed page) — never write it yourself.',
+    steps: [
+      { tool: 'search_shamela', bind: ['query'], note: 'Search the Shamela library.' },
+      { tool: 'read_shamela_page', bind: ['source_id'], note: 'Read the best page to confirm the passage.' },
+      { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id'], note: 'Insert the footnote as a tracked change.' },
+    ],
+  },
+  {
+    id: 'collect-files',
+    title: 'Collect matching files from the computer into one folder',
+    trigger: 'collect-files',
+    keywords: ['فائلیں جمع', 'فائلیں ایک فولڈر میں', 'collect my files', 'gather the files', 'organize my files into'],
+    guidance: 'Default to COPY unless the scholar clearly says move/منتقل. Pass every path search_my_computer returned that matches the ask.',
+    steps: [
+      { tool: 'search_my_computer', bind: ['query', 'extensions'], note: 'Find the matching files.' },
+      { tool: 'organize_files', bind: ['files', 'destination', 'action'], note: 'Copy (or move) them into the folder — approved first, never overwrites.' },
+    ],
+  },
 ];
 
 const BY_ID = new Map(PLAYBOOKS.map((p) => [p.id, p]));

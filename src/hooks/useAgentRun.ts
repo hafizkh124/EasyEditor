@@ -58,6 +58,8 @@ export interface RunResult {
   modeUpgrade?: { targetMode: "plan" | "auto"; reason: string };
   /** M13 (ADR-0056) — outside-project files this run edited, each with its sibling `.bak`. */
   externalEdits?: ExternalEdit[];
+  /** M13 (ADR-0061) — organize_files copies/moves, for Undo. */
+  fileOps?: Array<{ from: string; to: string; action: "copy" | "move" }>;
   error?: string;
 }
 /** M13 (ADR-0056) — one outside-project file edit and the backup made first. */
@@ -923,6 +925,13 @@ export function useAgentRun() {
       setRestoredExternal((prev) => [...prev, e.path]);
     } catch (err) { log.error("restoreExternalEdit failed", { err }); }
   }, [agent]);
+  const [fileOpsUndone, setFileOpsUndone] = useState(false);
+  useEffect(() => { setFileOpsUndone(false); }, [result]);
+  const undoFileOps = useCallback(async () => {
+    if (!agent?.undoFileOps || !result?.fileOps?.length) return;
+    try { await agent.undoFileOps(result.fileOps); setFileOpsUndone(true); }
+    catch (err) { log.error("undoFileOps failed", { err }); }
+  }, [agent, result]);
   const openExternal = useCallback(async (filePath: string) => {
     if (!agent?.openDocument) return;
     try { await agent.openDocument(filePath); } catch (err) { log.error("openDocument failed", { err }); }
@@ -1108,6 +1117,7 @@ export function useAgentRun() {
     planPending,
     fileApproval, decideFileWrite,
     restoredExternal, restoreExternal, openExternal,
+    fileOpsUndone, undoFileOps,
     // M11 — Ask-to-Plan/Auto escalation (`request_mode_upgrade`).
     modeUpgradeRequest, approveModeUpgrade, declineModeUpgrade,
     // M11 Phase 6 — Regenerate / Refine for the live agent_run card.
@@ -1180,6 +1190,7 @@ export type AgentRunView = Pick<
   | "showTools" | "setShowTools"
   | "decidePlan"
   | "fileApproval" | "decideFileWrite" | "restoredExternal" | "restoreExternal" | "openExternal"
+  | "fileOpsUndone" | "undoFileOps"
   | "pendingOptions" | "optionsApplied" | "applyOptions" | "revertOptions"
   | "pendingOcr" | "ocrGranted" | "grantOcr"
   | "undone" | "undoTask"

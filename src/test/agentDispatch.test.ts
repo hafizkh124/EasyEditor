@@ -66,7 +66,7 @@ const searchMyComputer = vi.fn(async () => ({
   hits: [{ path: 'D:\\Fatawa\\فتوی 12.docx', name: 'فتوی 12.docx', ext: '.docx', size: 20480, modified: '2026-09-01T10:00:00.000Z', source: 'windows-search' as const }],
   source: 'windows-search' as const,
 }));
-vi.mock('../../electron/host/desktopSearch.ts', () => ({ searchMyComputer }));
+vi.mock('../../electron/host/desktopSearch.ts', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../electron/host/desktopSearch')>()), searchMyComputer }));
 
 const runCritique = vi.fn(async () => ({ ok: true, text: 'الحكم: سليم مع إصلاحات.\n1. الفقرة الثانية بلا مصدر.', model: 'gemini:gemini-2.5-flash' }));
 vi.mock('../../electron/agent/critic.ts', () => ({ runCritique }));
@@ -1286,6 +1286,55 @@ describe('P9 tools — font / template / global options', () => {
       const r = await dispatch('extract_web_page', { url: 'http://192.168.1.1/admin' }) as { error: string };
       expect(r.error).toMatch(/private-network/);
       expect(extractWebPage).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── M13 Phase 5 (ADR-0061) — open / organise / convert by path ──
+  describe('open_file / organize_files / convert_document by path', () => {
+    const dir = path.join(process.cwd(), 'test-results', `p5-${process.pid}`);
+    beforeEach(() => {
+      fs.rmSync(dir, { recursive: true, force: true });
+      fs.mkdirSync(path.join(dir, 'in'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'in', 'فتوی 1.docx'), 'a');
+      fs.writeFileSync(path.join(dir, 'in', 'فتوی 2.pdf'), 'b');
+    });
+
+    it('open_file asks first, then opens; refuses programs', async () => {
+      const openDocument = vi.fn(async () => ({}));
+      const requestFileApproval = vi.fn(async () => 'approved' as const);
+      const { dispatch } = mk({ openDocument, requestFileApproval });
+      const f = path.join(dir, 'in', 'فتوی 1.docx');
+      expect(await dispatch('open_file', { path: f })).toEqual({ opened: path.resolve(f) });
+      expect(requestFileApproval).toHaveBeenCalledOnce();
+      fs.writeFileSync(path.join(dir, 'in', 'setup.exe'), 'MZ');
+      await expect(dispatch('open_file', { path: path.join(dir, 'in', 'setup.exe') })).rejects.toThrow(/only documents/);
+    });
+
+    it('organize_files copies after approval and reports ops for undo', async () => {
+      const onFileOps = vi.fn();
+      const { dispatch } = mk({ requestFileApproval: vi.fn(async () => 'approved' as const), onFileOps });
+      const files = JSON.stringify([path.join(dir, 'in', 'فتوی 1.docx'), path.join(dir, 'in', 'فتوی 2.pdf')]);
+      const r = await dispatch('organize_files', { files, destination: path.join(dir, 'out') }) as { count: number; action: string };
+      expect(r).toMatchObject({ count: 2, action: 'copy' });
+      expect(fs.readdirSync(path.join(dir, 'out')).sort()).toEqual(['فتوی 1.docx', 'فتوی 2.pdf']);
+      expect(fs.existsSync(path.join(dir, 'in', 'فتوی 1.docx'))).toBe(true);
+      expect(onFileOps).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ action: 'copy' })]));
+    });
+
+    it('organize_files declined → nothing happens', async () => {
+      const { dispatch } = mk({ requestFileApproval: vi.fn(async () => 'rejected' as const) });
+      const r = await dispatch('organize_files', { files: path.join(dir, 'in', 'فتوی 1.docx'), destination: path.join(dir, 'out'), action: 'move' }) as { error: string };
+      expect(r.error).toMatch(/declined/);
+      expect(fs.existsSync(path.join(dir, 'out'))).toBe(false);
+    });
+
+    it('convert_document by path writes beside the source, approved first, never overwriting', async () => {
+      fs.writeFileSync(path.join(dir, 'in', 'فتوی 1.pdf'), 'existing');
+      wordMock.fromWord.mockResolvedValueOnce({ outputPath: 'x', ms: 1 });
+      const requestFileApproval = vi.fn(async () => 'approved' as const);
+      const { dispatch } = mk({ projectRoot: null, requestFileApproval });
+      await dispatch('convert_document', { path: path.join(dir, 'in', 'فتوی 1.docx'), to: 'pdf' });
+      expect(wordMock.fromWord).toHaveBeenCalledWith(path.resolve(dir, 'in', 'فتوی 1.docx'), 'pdf', path.join(path.resolve(dir, 'in'), 'فتوی 1 (2).pdf'));
     });
   });
 });

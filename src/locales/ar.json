@@ -2044,5 +2044,9 @@
   "agent.step.search_my_computer": "جارٍ البحث في هذا الحاسوب",
   "agent.step.read_external_document": "جارٍ قراءة المستند",
   "agent.step.add_folder_to_library": "جارٍ إضافة المجلد إلى المكتبة",
-  "agent.step.extract_web_page": "جارٍ قراءة صفحة الويب"
+  "agent.step.extract_web_page": "جارٍ قراءة صفحة الويب",
+  "agent.file_ops_undo": "إرجاع الملفات ({n})",
+  "agent.file_ops_undone": "أُرجعت الملفات",
+  "agent.step.open_file": "جارٍ فتح الملف",
+  "agent.step.organize_files": "جارٍ ترتيب الملفات"
 }

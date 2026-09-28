@@ -649,6 +649,15 @@ const ChatDisplay = ({
                   </div>
                 );
               })}
+              {/* M13 (ADR-0061) — undo organize_files. */}
+              {(agent.result.fileOps?.length ?? 0) > 0 && (
+                <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => void agent.undoFileOps()} disabled={agent.fileOpsUndone}>
+                  <Undo2 className="h-3.5 w-3.5" />
+                  {agent.fileOpsUndone
+                    ? t("agent.file_ops_undone", "Files put back")
+                    : t("agent.file_ops_undo", "فائلیں واپس کریں ({n})").replace("{n}", String(agent.result.fileOps!.length))}
+                </Button>
+              )}
               {agent.result.checkpointId && (
                 <Button
                   size="sm"

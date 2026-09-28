@@ -460,6 +460,8 @@ const electronAPI = {
       modeUpgrade?: { targetMode: 'plan' | 'auto'; reason: string };
       /** M13 (ADR-0056) — outside-project files edited, each with its `.bak`. */
       externalEdits?: Array<{ path: string; backup: string; ops: string[] }>;
+      /** M13 (ADR-0061) — organize_files copies/moves, for Undo. */
+      fileOps?: Array<{ from: string; to: string; action: 'copy' | 'move' }>;
       error?: string;
     }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'run', instruction, mode, projectRoot, scope, history }),
@@ -473,6 +475,9 @@ const electronAPI = {
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'restoreExternalEdit', path, backup }),
     openDocument: (path: string): Promise<{ opened: string }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'openDocument', path }),
+    // M13 (ADR-0061) — undo organize_files.
+    undoFileOps: (ops: Array<{ from: string; to: string; action: 'copy' | 'move' }>): Promise<{ undone: number; skipped: Array<{ path: string; reason: string }> }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'undoFileOps', ops }),
     cancel: (): Promise<{ cancelled: boolean }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.AGENT_INVOKE, { action: 'cancel' }),
     undoTask: (projectRoot: string, checkpointId: string): Promise<{ restored: string[]; removed: string[] }> =>
