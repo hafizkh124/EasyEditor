@@ -30,6 +30,8 @@ import { beginCheckpoint } from './checkpoint.js';
 import type { ExternalEdit } from './externalFiles.js';
 import type { FileApprovalRequest } from './fileApproval.js';
 import { extractWebPage } from './adapters/webExtract.js';
+import { openDocument } from './openFile.js';
+import type { FileMove } from './fileOps.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
 import { buildHistory, type ConversationTurn } from '../../shared/agent/history.js';
 import { buildSystemPrompt } from '../../shared/agent/systemPrompt.js';
@@ -145,6 +147,8 @@ export type AgentRunOutput = AgentRunResult & {
   checkpointId?: string;
   /** M13 (ADR-0056) — outside-project files this run edited, each with its sibling `.bak`. */
   externalEdits?: ExternalEdit[];
+  /** M13 (ADR-0061) — copies/moves organize_files made, for "Undo". */
+  fileOps?: FileMove[];
 };
 
 export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
@@ -232,8 +236,13 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
    * write them, and nothing was written to disclose either).
    */
   const externalEdits: ExternalEdit[] = [];
+  const fileOps: FileMove[] = [];
   const finish = (raw: AgentRunOutput): AgentRunOutput => {
-    const output: AgentRunOutput = externalEdits.length ? { ...raw, externalEdits: [...externalEdits] } : raw;
+    const output: AgentRunOutput = {
+      ...raw,
+      ...(externalEdits.length ? { externalEdits: [...externalEdits] } : {}),
+      ...(fileOps.length ? { fileOps: [...fileOps] } : {}),
+    };
     if (!projectRoot) return output;
     const { wrote, sources } = digestRun(output);
     appendJournalEntry(projectRoot, {
@@ -323,6 +332,8 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
     // M13 Phase 4 (ADR-0060) — URLs the scholar typed (this turn + earlier) may be opened.
     userText: [input.instruction, ...(input.history ?? []).map((h) => h.instruction)].join('\n'),
     extractWebPage,
+    openDocument,
+    onFileOps: (ops) => { fileOps.push(...ops); },
   };
   const { dispatch } = createDispatcher(session);
 
@@ -352,7 +363,8 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   // `connectors` (merged Hub + per-project state) and `intent` were resolved
   // above. A tool whose connector is off is not shown to the model; the intent
   // classifier's `gateConnectors` narrows further (ADR-0038).
-  const scopeCtx = { ask: playbook ? undefined : instruction, playbook, gateConnectors };
+  // M13 — with no project open, the desktop file tools are the whole point of a Plan/Auto run.
+  const scopeCtx = { ask: playbook ? undefined : instruction, playbook, gateConnectors, includeDomainOnly: !projectRoot && canWrite };
   const scopedTools = toolsFor(mode, scopeCtx)
     .filter((tool) => !isToolDisabled(connectors, tool.name));
   const disabledTools = new Set(
@@ -369,8 +381,10 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   // would be answered blind. When the text is already in the instruction the
   // model simply answers without calling anything.
   if (mode === 'ask' && !playbook && intent.route.kind === 'direct') {
+    // M13 — "summarise my file D:\x.docx" is a plain edit too, on a file
+    // outside the project: the read-only file tools stay available.
     const directTools = scopedTools.filter(
-      (t) => t.name === 'read_document' || t.name === 'search_corpus',
+      (t) => ['read_document', 'search_corpus', 'read_external_document', 'search_my_computer'].includes(t.name),
     );
     log.info('agent run — direct answer', { checkpointId, tools: directTools.map((t) => t.name) });
     const result = await runAgentLoop(instruction, agentModel.generate, dispatch, systemPrompt, {

@@ -183,6 +183,8 @@ function agentView(overrides: Partial<import("@/hooks/useAgentRun").AgentRunView
     restoredExternal: [],
     restoreExternal: vi.fn(),
     openExternal: vi.fn(),
+    fileOpsUndone: false,
+    undoFileOps: vi.fn(),
     pendingOptions: [],
     optionsApplied: false,
     applyOptions: vi.fn(),

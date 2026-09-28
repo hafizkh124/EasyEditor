@@ -97,6 +97,8 @@ function labelFor(name: string): string {
     case 'read_external_document': return 'reading the document';
     case 'add_folder_to_library': return 'adding the folder to the library';
     case 'extract_web_page': return 'reading the web page';
+    case 'open_file': return 'opening the file';
+    case 'organize_files': return 'organising the files';
     case 'convert_document': return 'converting the document';
     case 'run_task': return 'running the text task';
     case 'extract_author_voice': return 'learning your writing voice';

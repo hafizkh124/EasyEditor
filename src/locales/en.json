@@ -2044,5 +2044,9 @@
   "agent.step.search_my_computer": "searching this computer",
   "agent.step.read_external_document": "reading the document",
   "agent.step.add_folder_to_library": "adding the folder to the library",
-  "agent.step.extract_web_page": "reading the web page"
+  "agent.step.extract_web_page": "reading the web page",
+  "agent.file_ops_undo": "Put files back ({n})",
+  "agent.file_ops_undone": "Files put back",
+  "agent.step.open_file": "opening the file",
+  "agent.step.organize_files": "organising the files"
 }

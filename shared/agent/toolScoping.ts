@@ -44,6 +44,15 @@ export interface DomainRule {
  */
 const DOMAIN_RULES: DomainRule[] = [
   {
+    // M13 (ADR-0061) — the scholar NAMED Shamela. Without this, "مکتبہ شاملہ
+    // میں … حدیث" matched only the hadith rule, was gated to the hadith
+    // connector, and search_shamela was never offered (caught by the live
+    // Gemini check, agentDesktopTools.live.test.ts).
+    keywords: ['مکتبہ شاملہ', 'مکتبۂ شاملہ', 'المكتبة الشاملة', 'مكتبة الشاملة', 'شاملہ', 'الشاملة', 'shamela'],
+    tools: ['search_shamela', 'read_shamela_page', 'find_shamela_book', 'insert_footnote'],
+    connector: 'shamela',
+  },
+  {
     keywords: ['فتویٰ', 'فتوى', 'استفتاء', 'نازلہ', 'حکم شرعی', 'مذاہب', 'fatwa', 'istifta', 'ruling', 'madhhab', 'madhahib'],
     tools: ['query_tafseer', 'search_hadith', 'search_shamela', 'search_general', 'research_topic', 'insert_footnote', 'draft_section'],
   },
@@ -136,21 +145,43 @@ const DOMAIN_RULES: DomainRule[] = [
   {
     // M13 Phase 1 (ADR-0057) — Word document automation (tables, fonts, page
     // setup, find & replace, page numbers) on a chapter or any .docx on disk.
+    //
+    // NO file-extension keywords (".docx"): chapter names end in .docx, so
+    // "باب 01-fiqh.docx پر صفحہ ترتیب" matched this rule and narrowed the tool
+    // set to exclude set_page_layout — a regression the live agent eval caught.
+    // The rule also carries the core document tools, so a Word ask it matches
+    // can never lose them.
     keywords: [
-      'ٹیبل', 'جدول', 'table', 'ورڈ', 'word file', 'word document', '.docx', 'docx',
+      'ٹیبل', 'جدول', 'table', 'ورڈ فائل', 'ورڈ دستاویز', 'word file', 'word document',
       'landscape', 'portrait', 'اورینٹیشن', 'افقی', 'پیج سائز', 'page size', 'paper size', 'صفحہ نمبر', 'page number',
       'find and replace', 'replace all', 'بدل دو', 'تبدیل کر دو', 'کی جگہ',
     ],
-    tools: ['automate_word_document', 'install_font', 'search_my_computer', 'read_external_document'],
+    tools: [
+      'automate_word_document', 'install_font', 'search_my_computer', 'read_external_document',
+      'set_page_layout', 'typeset_print_ready', 'run_task', 'draft_section', 'add_document_comment', 'insert_footnote',
+    ],
   },
   {
     // M13 Phase 2 (ADR-0059) — the scholar's own files on this machine.
     keywords: [
-      'میرے کمپیوٹر', 'کمپیوٹر میں', 'کمپیوٹر سے', 'میری فائل', 'فائلیں', 'فائل تلاش', 'فولڈر', 'ڈرائیو',
-      'my computer', 'my files', 'on my pc', 'on my laptop', 'find the file', 'find file', 'folder', 'drive',
+      'میرے کمپیوٹر', 'کمپیوٹر میں', 'کمپیوٹر سے', 'میری فائل', 'فائل تلاش', 'فائلیں تلاش', 'فولڈر میں', 'ڈرائیو میں',
+      'my computer', 'my file', 'on my pc', 'on my laptop', 'find the file', 'in the folder', 'in my folder',
+      // A full Windows path in the ask ("D:\Books\x.docx") is about a file on this machine.
+      ':\\',
       'جهازي', 'ملفاتي', 'حاسوبي',
     ],
-    tools: ['search_my_computer', 'read_external_document', 'automate_word_document', 'add_folder_to_library'],
+    tools: ['search_my_computer', 'read_external_document', 'automate_word_document', 'add_folder_to_library', 'open_file', 'organize_files', 'convert_document'],
+  },
+  {
+    // M13 Phase 5 (ADR-0061) — open / collect / convert the scholar's files.
+    // Multi-word phrases only — a bare "collect" matched "hadith collections".
+    keywords: [
+      'فائل کھولو', 'فائل کھول دو', 'ورڈ میں کھول', 'open the file', 'open it in word', 'open in word',
+      'فائلیں جمع', 'فائلیں اکٹھی', 'ایک فولڈر میں', 'فائلیں منتقل', 'فائلیں کاپی',
+      'collect my files', 'gather the files', 'move the files', 'copy the files', 'organize my files',
+      'پی ڈی ایف بنا', 'پی ڈی ایف میں تبدیل', 'convert to pdf', 'save as pdf',
+    ],
+    tools: ['open_file', 'organize_files', 'convert_document', 'search_my_computer'],
   },
   {
     // M13 Phase 4 (ADR-0060) — read one web page the scholar named.
@@ -232,6 +263,19 @@ export const NATIVE_ONLY_TOOLS = new Set<string>([
   'build_spreadsheet',
   // M13 (ADR-0056/0057/0059) — Word COM + files on this machine.
   'automate_word_document', 'search_my_computer', 'read_external_document', 'add_folder_to_library',
+  'open_file', 'organize_files', 'extract_web_page',
+]);
+
+/**
+ * M13 (ADR-0061) — tools offered ONLY when a domain rule or playbook names
+ * them, never on the un-narrowed "full registry" route. Seven more tools on
+ * every open-ended ask diluted the model's attention enough to flip the live
+ * eval's draft-grounded-section scenario to a consistent failure (ADR-0027 F2's
+ * reason for pruning in the first place).
+ */
+export const DOMAIN_ONLY_TOOLS = new Set<string>([
+  'automate_word_document', 'search_my_computer', 'read_external_document', 'add_folder_to_library',
+  'open_file', 'organize_files', 'extract_web_page',
 ]);
 
 export interface ScopeContext {
@@ -251,6 +295,12 @@ export interface ScopeContext {
    * the citation-closure + FLOOR tail. Non-connector tools are never touched.
    */
   gateConnectors?: string[];
+  /**
+   * M13 — offer the DOMAIN_ONLY_TOOLS even without a keyword match (run.ts
+   * sets it for Plan/Auto with no project open: working on the scholar's own
+   * files by path is the only thing such a run can do).
+   */
+  includeDomainOnly?: boolean;
 }
 
 /**
@@ -301,7 +351,7 @@ export function toolsFor(mode: AgentMode, ctx: ScopeContext = {}): AgentTool[] {
       return cid === null || gate.has(cid);
     };
     if (!allowed) {
-      allowed = new Set<string>(base.map((t) => t.name).filter(keep));
+      allowed = new Set<string>(base.map((t) => t.name).filter(keep).filter((n) => ctx.includeDomainOnly || !DOMAIN_ONLY_TOOLS.has(n)));
     } else {
       allowed = new Set<string>([...allowed].filter(keep));
     }
@@ -311,7 +361,10 @@ export function toolsFor(mode: AgentMode, ctx: ScopeContext = {}): AgentTool[] {
 
   // No narrowing rule fired — the full mode set stands (+ the clarify
   // pseudo-tool, + the mode-upgrade one in Ask — M11).
-  if (!allowed) return mode === 'ask' ? [...base, CLARIFY_TOOL, MODE_UPGRADE_TOOL] : [...base, CLARIFY_TOOL];
+  if (!allowed) {
+    const open = ctx.includeDomainOnly ? base : base.filter((t) => !DOMAIN_ONLY_TOOLS.has(t.name));
+    return mode === 'ask' ? [...open, CLARIFY_TOOL, MODE_UPGRADE_TOOL] : [...open, CLARIFY_TOOL];
+  }
 
   // CITATION CLOSURE — retrieval must always be citable.
   if (writeCapable) {

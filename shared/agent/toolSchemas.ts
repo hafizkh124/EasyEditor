@@ -364,10 +364,11 @@ export const AGENT_TOOLS: AgentTool[] = [
     name: 'convert_document',
     description: 'Convert a chapter to another format (pdf/rtf/txt) or reflow a PDF into an editable docx. Shows the user the loss list first. Does not need the agent — offered here for completeness.',
     params: {
-      chapter: { type: 'string', description: 'The chapter file name (or a .pdf in the project folder for reflow).' },
+      chapter: { type: 'string', description: 'The chapter file name (or a .pdf in the project folder for reflow). Give this OR path.' },
+      path: { type: 'string', description: 'M13: the full path of any .docx/.doc/.rtf/.odt/.pdf on the computer — the converted copy is saved beside it (approved first). Give this OR chapter.' },
       to: { type: 'string', description: 'Target format.', enum: ['docx', 'pdf', 'rtf', 'txt'] },
     },
-    required: ['chapter', 'to'],
+    required: ['to'],
     effect: 'write',
   },
   {
@@ -525,6 +526,26 @@ export const AGENT_TOOLS: AgentTool[] = [
       max_files: { type: 'number', description: 'How many new files to add in this call (default 10, max 25).' },
     },
     required: ['folder'],
+    effect: 'write',
+  },
+  {
+    name: 'open_file',
+    description: "Open a document on this computer in its own program (Word for .docx, the PDF viewer for .pdf, …) so the scholar can look at it — after the scholar approves. Documents only, never programs. Use when the scholar says \"open it / کھولو\" about a file found with search_my_computer or just edited.",
+    params: {
+      path: { type: 'string', description: 'Full path of the document.' },
+    },
+    required: ['path'],
+    effect: 'read',
+  },
+  {
+    name: 'organize_files',
+    description: "Copy (default) or move a list of the scholar's documents into one folder, e.g. \"collect all my fatwa .docx files into D:\\Fatawa\\2026\". Never deletes and never overwrites (a clashing name becomes \"name (2).docx\"); a move can be undone from the result card. The scholar approves each call. Get the paths first with search_my_computer. Documents only.",
+    params: {
+      files: { type: 'string', description: 'JSON array of full paths (or one full path per line).' },
+      destination: { type: 'string', description: 'Full path of the destination folder (created if its parent exists).' },
+      action: { type: 'string', enum: ['copy', 'move'], description: 'copy (default, originals stay) or move.' },
+    },
+    required: ['files', 'destination'],
     effect: 'write',
   },
   {
