@@ -97,6 +97,8 @@ export type AgentArtifactEvent =
         claim?: string;
         /** A hadith grading AS THE SOURCE STATED IT (الدرر السنية, ADR-0040) — a distinct chip, never our verdict. */
         grade?: string;
+        /** M13 (ADR-0058) — the deterministic footnote text; the card offers to insert it. */
+        footnote?: string;
       }>;
     }
   | { op: 'close'; artifactId: string; status: 'final' | 'aborted'; targetChapter?: string };

@@ -61,6 +61,7 @@ reconstruct rationale without rereading commits.
 | [0055](./0055-hybrid-rerank-adaptive-chunking-and-open-mcp.md) | Hybrid reranking with score preservation (RRF in `score` to safeguard Kifayat Gate threshold, cross-encoder score in `rerank_score`, Cohere BYOK isolated from chat providers), structural adaptive chunking (`adaptive-v1` for isnad/matn and bab boundaries), and Open Islamic Knowledge MCP server (`search_islamic_corpus`, `takhrij_hadith` composition, `calculate_faraid`) (extends 0004, 0027, 0036, 0038) | Accepted |
 | [0056](./0056-m13-outside-project-file-edits.md) | Agent edits to files outside the project: chapter OR absolute path targets, per-write approval in every mode, sibling `<name>.<yyyyMMdd_HHmmss>.bak` first, Open-in-Word + Restore-original; Plan/Auto usable with no project open (extends 0016, 0018, 0019, 0026) | Accepted |
 | [0057](./0057-m13-word-document-automation.md) | `automate_word_document`: batched Word ops in one session: RTL table, script-aware fonts, orientation/paper, count-then-ReplaceAll find and replace, Arabic-Indic page numbers; live-verified vs Word 16 (extends 0017, 0025, 0056) | Accepted |
+| [0058](./0058-m13-shamela-citation-cards.md) | Shamela citation cards: local hits enriched from master.db + the book's page table (author, death, volume, PRINTED page instead of the internal id), deterministic reference that insert_footnote writes verbatim, card button pre-fills (never inserts); import stores printed page + volume (extends 0033, 0044, 0049) | Accepted |
 
 ## When to write a new ADR
 

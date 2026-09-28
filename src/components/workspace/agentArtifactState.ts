@@ -19,6 +19,8 @@ export interface ArtifactCitationEntry {
   claim?: string;
   /** A hadith grading as the source stated it (الدرر السنية, ADR-0040). */
   grade?: string;
+  /** M13 (ADR-0058) — the ready-made footnote; the card's button pre-fills an insert request. */
+  footnote?: string;
 }
 
 export interface ArtifactState {
@@ -33,6 +35,15 @@ export interface ArtifactState {
   targetChapter?: string;
   /** ADR-0045 — structured payload for a visualisation artifact. */
   data?: unknown;
+}
+
+/**
+ * M13 (ADR-0058) — the composer text a citation card's "حاشیہ لگائیں" button
+ * pre-fills. The source id travels with it so the agent re-reads that exact
+ * page (the retrieval ledger is per task) before calling `insert_footnote`.
+ */
+export function buildFootnotePrefill(sourceId: string, footnote: string): string {
+  return `یہ حوالہ حاشیے کے طور پر لگائیں — پہلے read_shamela_page سے صفحہ ${sourceId} پڑھ کر تصدیق کریں: «${footnote}» — باب: `;
 }
 
 /** Fold one artifact event into the ordered artifact list. */

@@ -884,6 +884,23 @@ export function useAgentRun() {
 
   useEffect(() => () => { try { recorderRef.current?.stop(); } catch { /* not recording */ } }, []);
 
+  // M13 (ADR-0058) — a citation card's "حاشیہ لگائیں" pre-fills the composer
+  // (never sends — ADR-0049), switching to Plan so the insert can be reviewed.
+  useEffect(() => {
+    const onPrefill = (e: Event) => {
+      const text = (e as CustomEvent<{ text?: string }>).detail?.text;
+      if (typeof text !== "string" || !text) return;
+      setInput(text);
+      setMode((m) => (m === "ask" ? "plan" : m));
+      requestAnimationFrame(() => {
+        const ta = taRef.current;
+        if (ta) { ta.focus(); ta.setSelectionRange(text.length, text.length); }
+      });
+    };
+    window.addEventListener("agent-prefill", onPrefill);
+    return () => window.removeEventListener("agent-prefill", onPrefill);
+  }, []);
+
   const [undone, setUndone] = useState(false);
   const undoTask = useCallback(async () => {
     if (!agent || !projectRoot || !result?.checkpointId) return;

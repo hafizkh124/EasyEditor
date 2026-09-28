@@ -18,7 +18,8 @@ import { getCurrentUserId } from '../db/workspaceStore/identity.js';
 import { createItem } from '../db/workspaceStore/library.js';
 import { storeChunk } from '../db/ingest.js';
 import { embedTextContent } from '../ai/geminiClient.js';
-import { readShamelaBook } from './shamelaNative.js';
+import { readShamelaBook, detectShamelaInstallation } from './shamelaNative.js';
+import { getAllPageMeta, type PageMeta } from './pageMeta.js';
 import { chunkDocumentText } from '../../shared/text/documentChunks.js';
 
 export interface ImportProgress {
@@ -129,6 +130,16 @@ export async function importShamelaBooks({
         return true;
       });
 
+      // M13 (ADR-0058) — the helper's page id is Shamela's INTERNAL id; the
+      // book's own page table maps it to the printed page and the volume.
+      // (Volume used to be hard-coded NaN and the internal id stored as the
+      // page, so imported citations pointed at the wrong page.)
+      let pageMeta = new Map<number, PageMeta>();
+      try {
+        const st = await detectShamelaInstallation();
+        if (st.path) pageMeta = await getAllPageMeta(st.path, String(book.id));
+      } catch { /* best-effort — fall back to the internal id */ }
+
       for (const page of pages) {
         if (signal?.aborted) { cancelled = true; break; }
 
@@ -136,8 +147,10 @@ export async function importShamelaBooks({
         const text = toPlainText(page.text);
         if (!text) continue;
 
-        const pageNumber = Number.parseInt(page.page, 10);
-        const partNumber = Number.NaN;
+        const internalId = Number.parseInt(page.page, 10);
+        const meta = pageMeta.get(internalId);
+        const pageNumber = meta?.printedPage ?? internalId;
+        const partNumber = meta?.volume ? Number.parseInt(meta.volume, 10) : Number.NaN;
 
         for (const chunk of chunkDocumentText(text)) {
           if (signal?.aborted) { cancelled = true; break; }

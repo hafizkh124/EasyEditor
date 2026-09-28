@@ -2039,5 +2039,6 @@
   "agent.restore_original": "Restore original",
   "agent.external_restored": "Original restored",
   "agent.step.file_approval_pending": "approve the change to a file outside the project",
-  "agent.step.automate_word_document": "editing the Word document"
+  "agent.step.automate_word_document": "editing the Word document",
+  "agent.artifact_add_footnote": "Add as footnote"
 }

@@ -1,13 +1,18 @@
 import React from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, BookmarkPlus } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { classifyHadithGrade, GRADE_FAMILY_STYLE } from "@/lib/citations/hadithGrade";
-import type { ArtifactState } from "../agentArtifactState";
+import { buildFootnotePrefill, type ArtifactState } from "../agentArtifactState";
 import { SanadTree } from "./SanadTree";
 import { NarratorCard } from "./NarratorCard";
 import { MatnDiff, type MatnDiffPayload } from "./MatnDiff";
 import type { SanadTreePayload, NarratorCardPayload } from "../../../../shared/jkhssn/types";
+
+/** M13 (ADR-0058) — ask the agent composer (`useAgentRun`) to pre-fill an insert-footnote request. */
+function requestFootnotePrefill(sourceId: string, footnote: string): void {
+  window.dispatchEvent(new CustomEvent("agent-prefill", { detail: { text: buildFootnotePrefill(sourceId, footnote) } }));
+}
 
 /**
  * Plan §5.2 — the artifact body renderer, shared by the compact timeline chip
@@ -69,7 +74,7 @@ export const ArtifactBody: React.FC<{ artifact: ArtifactState; compact?: boolean
               })()}
             </>
           );
-          const expandable = Boolean(c.excerpt || c.claim || c.url);
+          const expandable = Boolean(c.excerpt || c.claim || c.url || c.footnote);
           if (!expandable) return <li key={i} className="flex items-start gap-1.5">{head}</li>;
           return (
             <li key={i}>
@@ -92,6 +97,20 @@ export const ArtifactBody: React.FC<{ artifact: ArtifactState; compact?: boolean
                       <ExternalLink className="h-3 w-3 shrink-0" />
                       {t("agent.artifact_open_source", "Open the source")}
                     </a>
+                  )}
+                  {c.footnote && (
+                    <div className="space-y-1">
+                      <p className="rounded bg-muted px-1.5 py-1" dir="rtl">{c.footnote}</p>
+                      {/* M13 (ADR-0058) — pre-fills the composer; never inserts on its own (ADR-0049). */}
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-primary hover:bg-accent"
+                        onClick={() => requestFootnotePrefill(c.sourceId, c.footnote!)}
+                      >
+                        <BookmarkPlus className="h-3 w-3 shrink-0" />
+                        {t("agent.artifact_add_footnote", "حاشیہ لگائیں")}
+                      </button>
+                    </div>
                   )}
                 </div>
               </details>

@@ -2039,5 +2039,6 @@
   "agent.restore_original": "اصل حالت بحال کریں",
   "agent.external_restored": "اصل حالت بحال ہو گئی",
   "agent.step.file_approval_pending": "پروجیکٹ سے باہر کی فائل میں تبدیلی کی منظوری دیں",
-  "agent.step.automate_word_document": "ورڈ دستاویز میں ترمیم ہو رہی ہے"
+  "agent.step.automate_word_document": "ورڈ دستاویز میں ترمیم ہو رہی ہے",
+  "agent.artifact_add_footnote": "حاشیہ لگائیں"
 }

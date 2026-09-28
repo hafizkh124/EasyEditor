@@ -19,6 +19,7 @@ import {
 } from '../../shamela/shamelaNative.js';
 import { searchCloud, readCloudPage, findCloudBook, type CloudBook } from '../../shamela/cloudClient.js';
 import { searchTurath, readTurathPage, findTurathBook } from '../../shamela/turathClient.js';
+import { enrichLocalHits, type EnrichedFields } from '../../shamela/pageMeta.js';
 
 const log = logger.child('agent/shamelaRouter');
 
@@ -32,14 +33,17 @@ export interface RouteOpts {
   preferTransport?: 'local' | 'cloud' | 'turath';
 }
 
+/** A hit, optionally enriched with author / volume / printed page (M13, ADR-0058). */
+export type RoutedHit = ShamelaSearchResult & Partial<EnrichedFields> & { pageLabel?: string };
+
 export interface SearchRoute {
-  hits: ShamelaSearchResult[];
+  hits: RoutedHit[];
   transport: ShamelaTransport;
   note?: string;
   error?: string;
 }
 export interface PageRoute {
-  page?: ShamelaPageContent;
+  page?: ShamelaPageContent & Partial<EnrichedFields>;
   transport: ShamelaTransport;
   error?: string;
 }
@@ -51,6 +55,22 @@ export interface BookRoute {
 }
 
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+/**
+ * M13 (ADR-0058) — local hits carry Shamela's internal page id and no title;
+ * fill title/author/volume/printed page from master.db + the book's page
+ * table. Never fails the search: any error returns the hits unchanged.
+ */
+async function enrichLocal<T extends { bookId: string; pageNumber: number; bookTitle?: string }>(hits: T[]): Promise<Array<T & Partial<EnrichedFields>>> {
+  if (!hits.length) return hits;
+  try {
+    const st = await detectShamelaInstallation();
+    return st.path ? await enrichLocalHits(st.path, hits) : hits;
+  } catch (e) {
+    log.warn('Shamela hit enrichment failed', { message: errMsg(e) });
+    return hits;
+  }
+}
 
 export async function routeShamelaSearch(
   query: string,
@@ -69,7 +89,7 @@ export async function routeShamelaSearch(
   let localErr: unknown;
   if (opts.localEnabled) {
     try {
-      const hits = applyScope(await searchShamelaNative(query, fetchLimit));
+      const hits = await enrichLocal(applyScope(await searchShamelaNative(query, fetchLimit)));
       return { hits, transport: 'local', note: scopeNote }; // success — even 0 hits — wins
     } catch (e) {
       localErr = e;
@@ -133,7 +153,7 @@ export async function routeShamelaReadPage(bookId: string, page: number, opts: R
     try {
       const pc =
         t === 'local'
-          ? await readShamelaPage(bookId, page)
+          ? (await enrichLocal([await readShamelaPage(bookId, page)]))[0]
           : t === 'cloud'
           ? await readCloudPage(bookId, page)
           : await readTurathPage(bookId, page);
