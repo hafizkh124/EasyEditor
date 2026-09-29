@@ -340,7 +340,11 @@ while ($true) {
                 $ps = $script:doc.PageSetup
                 $ps.TopMargin = 72; $ps.BottomMargin = 72
                 $ps.LeftMargin = 108; $ps.RightMargin = 72
-                $script:doc.Content.ParagraphFormat.ReadingOrder = 1  # wdReadingOrderRtl
+                # WdReadingOrder: wdReadingOrderRtl = 0, wdReadingOrderLtr = 1. Until 2026-09-29
+                # this set 1 (= LTR) under an 'RTL' comment, and readStructure mapped 1 -> 'rtl',
+                # so the bug hid itself. Verified live: 0 writes <w:bidi/> into the paragraph
+                # properties of the saved .docx, 1 does not.
+                $script:doc.Content.ParagraphFormat.ReadingOrder = 0  # wdReadingOrderRtl
                 Write-Result @{ ok = $true; op = 'setRtlPageSetup' }
             }
 
@@ -520,7 +524,9 @@ public static class WordBridgeFontApi {
                 $ro = 'mixed'
                 try {
                     $val = $script:doc.Content.ParagraphFormat.ReadingOrder
-                    if ($val -eq 1) { $ro = 'rtl' } elseif ($val -eq 0) { $ro = 'ltr' }
+                    # wdReadingOrderRtl = 0, wdReadingOrderLtr = 1 (a mixed document
+                    # returns wdUndefined and stays 'mixed').
+                    if ($val -eq 0) { $ro = 'rtl' } elseif ($val -eq 1) { $ro = 'ltr' }
                 } catch { }
 
                 $words = 0
@@ -777,7 +783,7 @@ public static class WordBridgeFontApi {
                 if ([bool]$cmd.rtl) {
                     $ps = $script:doc.PageSetup
                     $ps.TopMargin = 72; $ps.BottomMargin = 72; $ps.LeftMargin = 108; $ps.RightMargin = 72
-                    $script:doc.Content.ParagraphFormat.ReadingOrder = 1  # wdReadingOrderRtl
+                    $script:doc.Content.ParagraphFormat.ReadingOrder = 0  # wdReadingOrderRtl (see setRtlPageSetup)
                 }
                 $script:doc.SaveAs2($cmd.path, 16)  # wdFormatXMLDocument
                 Write-Result @{ ok = $true; op = 'createDocument'; name = $script:doc.Name }
