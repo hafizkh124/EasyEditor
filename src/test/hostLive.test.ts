@@ -413,6 +413,15 @@ describe.runIf(LIVE)('M9 Phase 2 Word ops live (real Word)', () => {
     const s = await word.readStructure(out);
     expect(s.headings.join(' ')).toContain('الأول');
     expect(s.readingOrder).toBe('rtl');
+    // Ground truth independent of Word's enum: an RTL paragraph carries
+    // <w:bidi/> in the saved XML. readStructure alone cannot catch an inverted
+    // ReadingOrder constant (it was inverted the same way until 2026-09-29).
+    const xml = spawnSync('powershell', ['-NoProfile', '-Command',
+      `Add-Type -AssemblyName System.IO.Compression.FileSystem;$z=[IO.Compression.ZipFile]::OpenRead('${out}');` +
+      `$r=New-Object IO.StreamReader($z.GetEntry('word/document.xml').Open());$t=$r.ReadToEnd();$r.Close();$z.Dispose();` +
+      `Write-Output ([regex]::Matches($t,'<w:bidi[ />]').Count)`],
+      { encoding: 'utf8', timeout: 60_000 });
+    expect(Number(xml.stdout.trim())).toBeGreaterThanOrEqual(2); // heading + paragraph
   });
 
   it('addComment attaches a margin comment to the anchor text, as a tracked change', async () => {
