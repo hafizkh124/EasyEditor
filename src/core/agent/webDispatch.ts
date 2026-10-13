@@ -36,6 +36,7 @@ import { toSelectedDomains } from "@/lib/research/sources";
 import type { Document } from "@/core/workspace/types";
 import type { CitationItem } from "~shared/research/citationTypes";
 import { formatScholarlyRef } from "~shared/research/citationTypes";
+import { excerptFields } from "~shared/agent/hadithExcerpt";
 import { parseAyahRef, surahLabel } from "~shared/quran/surahNames";
 import { RetrievalLedger, assertClaimSupported, type RetrievedChunk } from "~shared/agent/grounding";
 import { runAgentLoop } from "~shared/agent/loop";
@@ -250,20 +251,24 @@ export function createWebDispatcher(session: WebAgentSession): WebDispatcher {
         const { answer, citations, error } = await runIslamicQuery(query, session.researchFilter);
         if (error) return { error };
         const chunks: RetrievedChunk[] = [];
+        const passages = new Map<string, ReturnType<typeof excerptFields>>();
         for (const c of citations) {
           const ref = formatScholarlyRef(c.citation_ref, c.domain);
           if (!ref) continue;
           const n = c.citation_ref.hadith_number ?? c.citation_ref.fatwa_number ?? chunks.length + 1;
-          chunks.push({ id: `${c.domain}:${c.citation_ref.collection ?? c.citation_ref.book ?? "x"}:${n}`, reference: ref, source_url: c.url ?? c.citation_ref.url ?? null });
+          const id = `${c.domain}:${c.citation_ref.collection ?? c.citation_ref.book ?? "x"}:${n}`;
+          const passage = excerptFields(c);
+          passages.set(id, passage);
+          chunks.push({ id, reference: ref, source_url: c.url ?? c.citation_ref.url ?? null, ...(passage.content ? { content: passage.content } : {}) });
         }
         ledger.add(chunks);
         if (chunks.length) {
           const artifactId = `hadith-${Date.now().toString(36)}`;
           emitArtifact({ op: "open", artifactId, title: `احادیث: ${query.slice(0, 40)}`, artifactType: "citation-list" });
-          emitArtifact({ op: "citations", artifactId, entries: chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, url: c.source_url ?? undefined, tier: 1 })) });
+          emitArtifact({ op: "citations", artifactId, entries: chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, url: c.source_url ?? undefined, tier: 1, excerpt: c.content?.slice(0, 500) })) });
           emitArtifact({ op: "close", artifactId, status: "final" });
         }
-        return { count: chunks.length, note: chunks.length === 0 ? "جواب ملا مگر صفحہ-درست حوالہ نہیں۔" : undefined, answer: capResult(answer.trim()), results: chunks.map((c) => ({ id: c.id, reference: c.reference, url: c.source_url ?? undefined })) };
+        return { count: chunks.length, note: chunks.length === 0 ? "جواب ملا مگر صفحہ-درست حوالہ نہیں۔" : undefined, answer: capResult(answer.trim()), results: chunks.map((c) => { const p = passages.get(c.id); return { id: c.id, reference: c.reference, url: c.source_url ?? undefined, ...(p?.excerpt ? { excerpt: p.excerpt } : {}), ...(p?.excerpt_ar ? { excerpt_ar: p.excerpt_ar } : {}) }; }) };
       }
 
       case "search_repositories": {
