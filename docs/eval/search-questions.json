@@ -1,0 +1,30 @@
+{
+  "_note": "Draft sample questions for the search-quality eval (docs/PHASE0-DIAGNOSIS-URDU.md §4). `expected` is deliberately EMPTY: fill it from Shamela yourself (book + hadith/page number). Nothing here is a verified ground truth.",
+  "questions": [
+    { "id": 1,  "kind": "hadith-lexical", "q": "إنما الأعمال بالنيات", "expected": [] },
+    { "id": 2,  "kind": "hadith-lexical", "q": "من كذب علي متعمدا", "expected": [] },
+    { "id": 3,  "kind": "hadith-lexical", "q": "لا ضرر ولا ضرار", "expected": [] },
+    { "id": 4,  "kind": "hadith-lexical", "q": "الدين النصيحة", "expected": [] },
+    { "id": 5,  "kind": "hadith-lexical", "q": "كلمتان خفيفتان على اللسان", "expected": [] },
+    { "id": 6,  "kind": "hadith-topical", "q": "والدین کے ساتھ حسنِ سلوک کی احادیث", "expected": [] },
+    { "id": 7,  "kind": "hadith-topical", "q": "وضو میں پاؤں دھونے کا حکم", "expected": [] },
+    { "id": 8,  "kind": "hadith-topical", "q": "جھوٹی گواہی کی وعید", "expected": [] },
+    { "id": 9,  "kind": "hadith-topical", "q": "پڑوسی کے حقوق", "expected": [] },
+    { "id": 10, "kind": "hadith-topical", "q": "روزے میں بھول کر کھانا", "expected": [] },
+    { "id": 11, "kind": "fiqh", "q": "نماز میں بچے کو اٹھانے کا حکم", "expected": [] },
+    { "id": 12, "kind": "fiqh", "q": "سونے کی زکوٰۃ کا نصاب", "expected": [] },
+    { "id": 13, "kind": "fiqh", "q": "طلاقِ ثلاثہ کا حکم", "expected": [] },
+    { "id": 14, "kind": "fiqh", "q": "مسافر کی نماز کا قصر", "expected": [] },
+    { "id": 15, "kind": "fiqh", "q": "سود کی تعریف", "expected": [] },
+    { "id": 16, "kind": "tafsir", "q": "آیت الکرسی کی تفسیر", "expected": [] },
+    { "id": 17, "kind": "tafsir", "q": "وما خلقت الجن والإنس إلا ليعبدون کا مفہوم", "expected": [] },
+    { "id": 18, "kind": "tafsir", "q": "مالک یوم الدین کی قراءات", "expected": [] },
+    { "id": 19, "kind": "tafsir", "q": "لفظ تقویٰ کا قرآن میں استعمال", "expected": [] },
+    { "id": 20, "kind": "tafsir", "q": "ولا تقربوا الزنا کی تفسیر", "expected": [] },
+    { "id": 21, "kind": "rijal", "q": "ابو ہریرہؓ کی روایات کی تعداد", "expected": [] },
+    { "id": 22, "kind": "mustalah", "q": "ضعیف اور منکر حدیث میں فرق", "expected": [] },
+    { "id": 23, "kind": "rijal", "q": "امام بخاری کے اساتذہ", "expected": [] },
+    { "id": 24, "kind": "lughat", "q": "صلاة کا لغوی معنی", "expected": [] },
+    { "id": 25, "kind": "mustalah", "q": "حسن لغیرہ کی تعریف", "expected": [] }
+  ]
+}
