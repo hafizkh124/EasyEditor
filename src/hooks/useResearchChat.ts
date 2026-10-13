@@ -20,10 +20,15 @@ const errMsg = (e: unknown, fallback: string): string =>
 
 function mergeCitations(existing: CitationItem[], fetched: CitationItem[]): CitationItem[] {
   const merged = [...existing];
+  const keyOf = (c: CitationItem) => c.url ?? `${c.domain}-${JSON.stringify(c.citation_ref)}`;
   for (const c of fetched) {
-    const key = c.url ?? `${c.domain}-${JSON.stringify(c.citation_ref)}`;
-    if (!merged.some((m) => (m.url ?? `${m.domain}-${JSON.stringify(m.citation_ref)}`) === key)) {
+    const key = keyOf(c);
+    const at = merged.findIndex((m) => keyOf(m) === key);
+    if (at === -1) {
       merged.push(c);
+    } else if (merged[at].extra && !c.extra) {
+      // Seen earlier only as a browse-only extra, now a real source of this answer.
+      merged[at] = c;
     }
   }
   return merged;
@@ -230,10 +235,12 @@ export function useResearchChat(args: UseResearchChatArgs) {
       chatHistory: prevMessages,
       tier,
       onDelta,
-      onSourcesReady: (count, domains, fetched) => {
+      onSourcesReady: (count, domains, fetched, more) => {
         setSourcesReadyInfo({ count, domains });
         queryCitations = fetched;
-        const merged = mergeCitations(citations, fetched);
+        // Browse-only results beyond the ten the model read: kept after the real ones, flagged.
+        const extras = (more ?? []).map((c) => ({ ...c, extra: true }));
+        const merged = mergeCitations(citations, [...fetched, ...extras]);
         finalCitations = merged;
         setCitations(merged);
       },

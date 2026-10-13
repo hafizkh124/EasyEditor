@@ -48,6 +48,8 @@ export interface CitationItem {
   /** Arabic matn, when the retrieved row has it separately from `content`
    *  (whose text is often the Urdu translation). Shown first in the panel. */
   content_ar?: string;
+  /** A browse-only result beyond the ones the model read (never cited as [N], never in a bibliography). */
+  extra?: boolean;
 }
 
 /**

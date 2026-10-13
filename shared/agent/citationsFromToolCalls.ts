@@ -40,6 +40,12 @@ interface ResultRow {
   source_url?: unknown;
 }
 
+function extraRowsOf(result: unknown): ResultRow[] {
+  if (!result || typeof result !== 'object') return [];
+  const more = (result as Record<string, unknown>).ui_more;
+  return Array.isArray(more) ? (more as ResultRow[]) : [];
+}
+
 function rowsOf(result: unknown): ResultRow[] {
   if (!result || typeof result !== 'object') return [];
   const r = result as Record<string, unknown>;
@@ -53,7 +59,11 @@ export function citationsFromToolCalls(toolCalls: ToolCallLike[]): CitationItem[
   for (const call of toolCalls) {
     if (!citable.includes(call.name)) continue;
     const domain = connectorForTool(call.name) ?? call.name;
-    for (const row of rowsOf(call.result)) {
+    const rows: Array<{ row: ResultRow; extra: boolean }> = [
+      ...rowsOf(call.result).map((row) => ({ row, extra: false })),
+      ...extraRowsOf(call.result).map((row) => ({ row, extra: true })),
+    ];
+    for (const { row, extra } of rows) {
       const reference = typeof row.reference === 'string' ? row.reference.trim() : '';
       if (!reference) continue;
       const url = typeof row.url === 'string' ? row.url : typeof row.source_url === 'string' ? row.source_url : undefined;
@@ -61,7 +71,7 @@ export function citationsFromToolCalls(toolCalls: ToolCallLike[]): CitationItem[
       // panel can show and copy the passage, not just its reference label.
       const content = typeof row.excerpt === 'string' && row.excerpt.trim() ? row.excerpt.trim() : undefined;
       const contentAr = typeof row.excerpt_ar === 'string' && row.excerpt_ar.trim() ? row.excerpt_ar.trim() : undefined;
-      out.push({ domain, citation_ref: { title: reference }, url, ...(content ? { content } : {}), ...(contentAr ? { content_ar: contentAr } : {}) });
+      out.push({ domain, citation_ref: { title: reference }, url, ...(content ? { content } : {}), ...(contentAr ? { content_ar: contentAr } : {}), ...(extra ? { extra: true } : {}) });
     }
   }
   return out;
