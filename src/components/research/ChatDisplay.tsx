@@ -142,6 +142,8 @@ const ChatDisplay = ({
   };
 
   const lastMsg = messages[messages.length - 1];
+  // The latest question, so the sources panel can mark its words in the passages.
+  const lastUserText = useMemo(() => [...messages].reverse().find((m) => m.role === "user")?.content, [messages]);
   const responseLooksTruncated = useMemo(() => {
     if (!lastMsg || lastMsg.role !== "user") {
       const assistMsg = lastMsg?.role === "assistant" ? lastMsg : null;
@@ -244,7 +246,7 @@ const ChatDisplay = ({
       // nothing, so fall back to the plain research suggestions instead.
       content = <EmptyState onSuggestionClick={handleSuggestionClick} t={t} isAgentMode={Boolean(agent?.hasWriteTarget)} />;
     } else if (item.type === "citations") {
-      content = <CitationPanel citations={citations} t={t} />;
+      content = <CitationPanel citations={citations} query={lastUserText} t={t} />;
     } else if (item.type === "message") {
       const msg = item.msg;
       const isLastAssistant = msg.role === "assistant" && item.index === messages.length - 1 - lastAssistantIdx;
@@ -401,7 +403,7 @@ const ChatDisplay = ({
               )}
               {/* M11 — which sources this turn actually retrieved, as the
                   primary surface (CitationPanel renders nothing when empty). */}
-              <CitationPanel citations={citationsFromToolCalls(turn.result.toolCalls)} t={t} />
+              <CitationPanel citations={citationsFromToolCalls(turn.result.toolCalls)} query={turn.instruction} t={t} />
               {turn.result.toolCalls.length > 0 && (
                 <p className="text-xs text-muted-foreground">
                   {t("agent.tool_calls", "{n} tool calls").replace("{n}", String(turn.result.toolCalls.length))}
@@ -555,7 +557,7 @@ const ChatDisplay = ({
               )}
               {/* M11 — the primary, discoverable "which sources" surface;
                   the raw tool-call list below stays as a debug toggle. */}
-              <CitationPanel citations={citationsFromToolCalls(agent.result.toolCalls)} t={t} />
+              <CitationPanel citations={citationsFromToolCalls(agent.result.toolCalls)} query={agent.lastInstruction} t={t} />
               {agent.result.toolCalls.length > 0 && (
                 <div>
                   <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => agent.setShowTools((s) => !s)}>

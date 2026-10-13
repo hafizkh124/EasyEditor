@@ -63,8 +63,8 @@ describe("Arabic matn first (search-quality phase 2.6)", () => {
 
   it("shows the Arabic matn and puts the translation under it", () => {
     render(<CitationPanel citations={[both]} t={t} />);
-    const arabic = screen.getByText("كَلِمَتانِ خَفيفَتانِ على اللِّسانِ");
-    const urdu = screen.getByText("ہم سے زہیر بن حرب نے بیان کیا");
+    const arabic = screen.getByText("كَلِمَتانِ خَفيفَتانِ على اللِّسانِ").closest("p")!;
+    const urdu = screen.getByText("ہم سے زہیر بن حرب نے بیان کیا").closest("p")!;
     expect(arabic.getAttribute("dir")).toBe("rtl");
     // Arabic precedes the translation in document order
     expect(arabic.compareDocumentPosition(urdu) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -84,5 +84,24 @@ describe("Arabic matn first (search-quality phase 2.6)", () => {
   it("a row with only Arabic (live-API tiers) still renders", () => {
     render(<CitationPanel citations={[{ domain: "dorar", citation_ref: { book: "x" }, content: both.content_ar }]} t={t} />);
     expect(screen.getByText(both.content_ar)).toBeTruthy();
+  });
+});
+
+describe("search words are marked in the passage (search-quality phase 2.9)", () => {
+  const cite = {
+    domain: "hadith-json",
+    citation_ref: { collection: "bukhari", hadith_number: "6406" },
+    content_ar: "كَلِمَتانِ خَفيفَتانِ على اللِّسانِ ثَقيلَتانِ في الميزانِ",
+  };
+
+  it("marks the query words, diacritics and all, and leaves the rest alone", () => {
+    const { container } = render(<CitationPanel citations={[cite]} query="كلمتان خفيفتان" t={t} />);
+    const marks = [...container.querySelectorAll("mark")].map((m) => m.textContent);
+    expect(marks).toEqual(["كَلِمَتانِ", "خَفيفَتانِ"]);
+  });
+
+  it("marks nothing for an Urdu question or when no query is given", () => {
+    expect(render(<CitationPanel citations={[cite]} query="پڑوسی کے حقوق" t={t} />).container.querySelectorAll("mark")).toHaveLength(0);
+    expect(render(<CitationPanel citations={[cite]} t={t} />).container.querySelectorAll("mark")).toHaveLength(0);
   });
 });

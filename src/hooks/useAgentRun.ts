@@ -1101,6 +1101,8 @@ export function useAgentRun() {
     running,
     progress,
     result,
+    // The question behind `result` (the panel marks its words in the passages).
+    lastInstruction: lastInstructionRef.current ?? undefined,
     // M11 Phase 1 — the finished conversation before the current run.
     turns,
     clearConversation,
@@ -1194,4 +1196,5 @@ export type AgentRunView = Pick<
   | "pendingOptions" | "optionsApplied" | "applyOptions" | "revertOptions"
   | "pendingOcr" | "ocrGranted" | "grantOcr"
   | "undone" | "undoTask"
->;
+>
+  & { /** The question behind `result`; optional so a view built without it still type-checks. */ lastInstruction?: string };
