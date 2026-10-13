@@ -14,6 +14,7 @@ import { searchTurathCloud, shouldQueryTurath } from "../_shared/turath.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 import { fuseAndRerank } from "../_shared/rerank.ts";
 import { settleWithGrace } from "../_shared/fanOutGrace.ts";
+import { dropQuranRows, isHadithOnlyPlan } from "../_shared/sourceScope.ts";
 import { decryptKey } from "../_shared/providerKeyCrypto.ts";
 
 // Query-time diacritic normalization now lives in the `search_documents_smart`
@@ -665,7 +666,10 @@ export async function handle(req: Request): Promise<Response> {
         (async (): Promise<IslamicResult[]> => {
           try {
             const sourceTypes: string[] = [];
-            if (wantsQuran)  sourceTypes.push("quran");
+            // The plan may have established the user asked for hadith only;
+            // Tier K then has no business spending its slots on Qur'an rows.
+            const planForScope = await queryPlanPromise;
+            if (wantsQuran && !isHadithOnlyPlan(planForScope)) sourceTypes.push("quran");
             if (wantsHadith) sourceTypes.push("hadith");
             if (wantsFatwa)  sourceTypes.push("fatwa");
             if (sourceTypes.length === 0) return [];
@@ -1101,6 +1105,23 @@ export async function handle(req: Request): Promise<Response> {
           seenKeys.add(k);
           allResults.unshift(e);
         }
+      }
+    }
+
+    // The planner's scope.source_types was computed but never applied: a
+    // hadith-only question still received Tier A's / Tier K's Qur'an rows.
+    {
+      const scopePlan = await queryPlanPromise;
+      const before = allResults.length;
+      allResults = dropQuranRows(allResults, scopePlan);
+      if (allResults.length !== before) {
+        stages.push({
+          stage: `filter(hadith-only scope): ${before} -> ${allResults.length}`,
+          startMs: dedupeStart,
+          endMs: since(),
+          ms: 0,
+          count: allResults.length,
+        });
       }
     }
 
