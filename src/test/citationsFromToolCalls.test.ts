@@ -63,3 +63,13 @@ describe("citationsFromToolCalls (M11)", () => {
     expect(citationsFromToolCalls(toolCalls)).toEqual([]);
   });
 });
+
+describe("citationsFromToolCalls — passage text (search-quality phase 1.2)", () => {
+  it("carries the tool's excerpt through as `content`, and omits it when absent", () => {
+    const out = citationsFromToolCalls([
+      { name: "search_shamela", result: { results: [{ id: "a", reference: "صحيح البخاري ج1 ص5", excerpt: "  إنما الأعمال بالنيات  " }, { id: "b", reference: "مسلم 1907" }] } },
+    ]);
+    expect(out[0].content).toBe("إنما الأعمال بالنيات");
+    expect("content" in out[1]).toBe(false);
+  });
+});

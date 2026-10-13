@@ -34,6 +34,7 @@ interface ToolCallLike {
 interface ResultRow {
   id?: unknown;
   reference?: unknown;
+  excerpt?: unknown;
   url?: unknown;
   source_url?: unknown;
 }
@@ -55,7 +56,10 @@ export function citationsFromToolCalls(toolCalls: ToolCallLike[]): CitationItem[
       const reference = typeof row.reference === 'string' ? row.reference.trim() : '';
       if (!reference) continue;
       const url = typeof row.url === 'string' ? row.url : typeof row.source_url === 'string' ? row.source_url : undefined;
-      out.push({ domain, citation_ref: { title: reference }, url });
+      // The tool already returns the retrieved text; carry it through so the
+      // panel can show and copy the passage, not just its reference label.
+      const content = typeof row.excerpt === 'string' && row.excerpt.trim() ? row.excerpt.trim() : undefined;
+      out.push({ domain, citation_ref: { title: reference }, url, ...(content ? { content } : {}) });
     }
   }
   return out;
