@@ -203,3 +203,21 @@ it("every corpus book has a display label", () => {
     assert(label !== id, `book ${id} has no display label`);
   }
 });
+
+describe("coercePlan — disciplines are model picks UNIONED with keyword hits (search-quality phase 2.2)", () => {
+  const base = { intent: "topical", scope: { source_types: [], collections: [], surah: null, verse: null, disciplines: [] }, arabic_surface_forms: ["ابو هريرة"], related_concepts: [], semantic_query_ar: "x", is_proper_noun: false };
+
+  it("a narrator question gets rijal even when the model returned no discipline", () => {
+    expect(coercePlan(base, "امام بخاری کے اساتذہ").scope.disciplines).toContain("rijal");
+    expect(coercePlan(base, "ابو ہریرہؓ کی روایات کی تعداد").scope.disciplines).toContain("rijal");
+  });
+
+  it("keeps the model's own pick and adds the keyword one", () => {
+    const withModel = { ...base, scope: { ...base.scope, disciplines: ["tafsir"] } };
+    expect(coercePlan(withModel, "امام بخاری کے اساتذہ").scope.disciplines.sort()).toEqual(["rijal", "tafsir"]);
+  });
+
+  it("an ordinary hadith question stays discipline-free", () => {
+    expect(coercePlan(base, "پڑوسی کے حقوق").scope.disciplines).toEqual([]);
+  });
+});

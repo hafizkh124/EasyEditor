@@ -105,7 +105,7 @@ const DISCIPLINE_MARKERS: Record<Discipline, RegExp> = {
   fatwa:  /فتاو[یٰي]ٰ?|فتویٰ|فتوی|الفتاوى|استفتاء|\bfatwa\b|\bfatawa\b/i,
   tafsir: /تفسیر|تفسير|مفسر|المفسرين|\btafsir\b|\btafseer\b/i,
   lughat: /لغت|لغوی|لغوي|معجم|القاموس|مفردات|مادہ\s*لغوی|\blughat\b|\blexicon\b/i,
-  rijal:  /رجال|الرجال|جرح\s*و\s*تعدیل|الجرح\s*والتعديل|طبقات|راوی\s*کا\s*ترجمہ|\brijal\b/i,
+  rijal:  /رجال|الرجال|جرح\s*و\s*تعدیل|الجرح\s*والتعديل|طبقات|راوی\s*کا\s*ترجمہ|اساتذہ|تلامذہ|شیوخ|کتنی\s*روایات|روایات\s*کی\s*تعداد|\brijal\b/i,
   // Bare "صرف" is an everyday word ("only/spending"), so require the more
   // specific forms (علم النحو / النحو / الصرف / إعراب / ترکیب نحوی).
   nahw:   /علم\s*النحو|النحو|الصرف|إعراب|اعرابِ|ترکیب\s*نحوی|\bnahw\b|\bi'?rab\b/i,
