@@ -31,6 +31,8 @@ export interface ScholarlyCitationRef {
   author?: string;
   title?: string;
   type?: string;
+  /** Other corpora that carried the same hadith, joined into this one result. */
+  also_in?: string[];
 }
 
 export interface CitationItem {

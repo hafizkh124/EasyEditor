@@ -23,3 +23,16 @@ describe("Arabic matn reaches the client (search-quality phase 2.6)", () => {
     expect(setAr.length).toBe(hasMatn.length); // no tier sets has_matn without also passing the text on
   });
 });
+
+describe("same-hadith grouping is wired into islamic-search (search-quality phase 2.7)", () => {
+  it("runs after the hadith-only filter and before rerank, and the model sees the Arabic too", () => {
+    const src = readFileSync("supabase/functions/islamic-search/index.ts", "utf8");
+    const filter = src.indexOf("allResults = dropQuranRows(allResults, scopePlan)");
+    const group = src.indexOf("allResults = groupWitnesses(allResults)");
+    const rerank = src.indexOf("allResults = await fuseAndRerank(");
+    expect(filter).toBeGreaterThan(0);
+    expect(group).toBeGreaterThan(filter);
+    expect(rerank).toBeGreaterThan(group);
+    expect(src).toContain("r.content_ar && r.content_ar !== r.content");
+  });
+});

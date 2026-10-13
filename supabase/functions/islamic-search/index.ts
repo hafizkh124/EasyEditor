@@ -16,6 +16,7 @@ import { fuseAndRerank } from "../_shared/rerank.ts";
 import { settleWithGrace } from "../_shared/fanOutGrace.ts";
 import { searchInChunks } from "../_shared/chunkedSearch.ts";
 import { dropQuranRows, isHadithOnlyPlan } from "../_shared/sourceScope.ts";
+import { groupWitnesses } from "../_shared/witnessGroups.ts";
 import { decryptKey } from "../_shared/providerKeyCrypto.ts";
 
 // Query-time diacritic normalization now lives in the `search_documents_smart`
@@ -222,8 +223,11 @@ function buildContextBlock(results: IslamicResult[]): string {
       citeLine = `REFERENCE: ${parts.join(", ")}`;
     }
 
-    // Include both Arabic and English content when available
-    const content = r.content;
+    // Include both Arabic and English content when available. For corpus rows
+    // `content` is usually the Urdu translation, so the Arabic matn (when the row
+    // has it separately) goes in front — the model can then quote the real text.
+    const content = r.content_ar && r.content_ar !== r.content ? `${r.content_ar}
+${r.content}` : r.content;
     // Anchor passages (see topic-anchor merge below) are canonical
     // references for a recognized topic, not something the search actually
     // found relevant to THIS query — label them so the model doesn't cite
@@ -1204,6 +1208,23 @@ export async function handle(req: Request): Promise<Response> {
       if (allResults.length !== before) {
         stages.push({
           stage: `filter(hadith-only scope): ${before} -> ${allResults.length}`,
+          startMs: dedupeStart,
+          endMs: since(),
+          ms: 0,
+          count: allResults.length,
+        });
+      }
+    }
+
+    // The same hadith from two corpora (e.g. the local corpus's Urdu row and the
+    // live API's Arabic row) is one card with both texts, not two of the ten
+    // slots. Joined only when book, number AND the Arabic text agree.
+    {
+      const before = allResults.length;
+      allResults = groupWitnesses(allResults);
+      if (allResults.length !== before) {
+        stages.push({
+          stage: `group(same-hadith witnesses): ${before} -> ${allResults.length}`,
           startMs: dedupeStart,
           endMs: since(),
           ms: 0,
