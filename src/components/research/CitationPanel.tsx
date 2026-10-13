@@ -6,9 +6,10 @@
  */
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookMarked, ChevronDown, ChevronUp } from "lucide-react";
+import { BookMarked, Check, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CitationBadge from "./CitationBadge";
+import { passageClipboardText } from "@/lib/citations/passageText";
 import { DOMAIN_LABEL, groupByDomain } from "@/lib/citations/domains";
 
 // The type moved to shared/ (M9 defect #3) so the Electron agent can import it
@@ -22,8 +23,63 @@ interface CitationPanelProps {
   t: import("@/lib/i18n").Translator;
 }
 
+const PassageCard = ({ index, item, t }: { index: number; item: CitationItem; t: CitationPanelProps["t"] }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const text = item.content?.trim() ?? "";
+  const long = text.length > 280;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(passageClipboardText(item));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard can be blocked (permissions, insecure context): stay silent, the text is selectable */
+    }
+  };
+
+  return (
+    <li className="rounded-md border border-border bg-background p-2 space-y-1.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+          <span className="text-xs font-semibold text-muted-foreground tabular-nums">[{index}]</span>
+          <CitationBadge domain={item.domain} citationRef={{ ...item.citation_ref, url: item.url ?? item.citation_ref.url }} />
+        </div>
+        <button
+          type="button"
+          onClick={copy}
+          className="shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label={t("research.copy", "کاپی")}
+        >
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          {copied ? t("research.copied_short", "کاپی ہو گیا") : t("research.copy", "کاپی")}
+        </button>
+      </div>
+      {text && (
+        <>
+          <p
+            dir="auto"
+            className={`text-sm leading-7 text-foreground whitespace-pre-wrap break-words ${expanded || !long ? "" : "line-clamp-4"}`}
+          >
+            {text}
+          </p>
+          {long && (
+            <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs text-primary hover:underline">
+              {expanded ? t("research.show_less", "کم دکھائیں") : t("research.show_more", "مکمل عبارت")}
+            </button>
+          )}
+        </>
+      )}
+    </li>
+  );
+};
+
 const CitationPanel = ({ citations, t }: CitationPanelProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+  // Open by default when the passages themselves are available — the text is
+  // the evidence, so it should be what the reader sees first, not a closed box.
+  const hasPassages = citations.some((c) => !!c.content?.trim());
+  const [isOpen, setIsOpen] = useState(hasPassages);
 
   if (citations.length === 0) return null;
 
@@ -63,25 +119,35 @@ const CitationPanel = ({ citations, t }: CitationPanelProps) => {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <ScrollArea className="max-h-64">
-              <div className="px-3 pb-3 space-y-3">
-                {Object.entries(groups).map(([domain, items]) => (
-                  <div key={domain} className="space-y-1.5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-2">
-                      {DOMAIN_LABEL[domain] ?? domain}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {items.map((item, idx) => (
-                        <CitationBadge
-                          key={`${domain}-${idx}`}
-                          domain={domain}
-                          citationRef={{ ...item.citation_ref, url: item.url ?? item.citation_ref.url }}
-                        />
-                      ))}
+            <ScrollArea className={hasPassages ? "max-h-[32rem]" : "max-h-64"}>
+              {hasPassages ? (
+                // Numbered in retrieval order so [N] matches the inline
+                // citations in the answer.
+                <ol className="px-3 pb-3 pt-2 space-y-2">
+                  {citations.map((item, i) => (
+                    <PassageCard key={`${item.domain}-${i}`} index={i + 1} item={item} t={t} />
+                  ))}
+                </ol>
+              ) : (
+                <div className="px-3 pb-3 space-y-3">
+                  {Object.entries(groups).map(([domain, items]) => (
+                    <div key={domain} className="space-y-1.5">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-2">
+                        {DOMAIN_LABEL[domain] ?? domain}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {items.map((item, idx) => (
+                          <CitationBadge
+                            key={`${domain}-${idx}`}
+                            domain={domain}
+                            citationRef={{ ...item.citation_ref, url: item.url ?? item.citation_ref.url }}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </ScrollArea>
           </motion.div>
         )}

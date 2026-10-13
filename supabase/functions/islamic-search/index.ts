@@ -13,6 +13,7 @@ import type { IslamicResult } from "../islamic-api-fetch/index.ts";
 import { searchTurathCloud, shouldQueryTurath } from "../_shared/turath.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 import { fuseAndRerank } from "../_shared/rerank.ts";
+import { settleWithGrace } from "../_shared/fanOutGrace.ts";
 import { decryptKey } from "../_shared/providerKeyCrypto.ts";
 
 // Query-time diacritic normalization now lives in the `search_documents_smart`
@@ -114,6 +115,9 @@ export const TIER_T_DOMAINS = ["turath"];
 export const PERSONAL_MIN_SIMILARITY = 0.6;
 export const PERSONAL_MAX_ROWS = 3;
 
+/** How long the optional live-scrape tier may outlive the corpus tiers. */
+export const TIER_C_GRACE_MS = 1_500;
+
 const ALL_DOMAINS = [
   ...TIER_A_DOMAINS,
   ...TIER_B_DOMAINS,
@@ -151,6 +155,16 @@ const SURAH_NAMES: Record<number, string> = {
   106: "Quraysh", 107: "Al-Maun", 108: "Al-Kawthar", 109: "Al-Kafirun", 110: "An-Nasr",
   111: "Al-Masad", 112: "Al-Ikhlas", 113: "Al-Falaq", 114: "An-Nas",
 };
+
+/** Longest passage sent to the client per source; keeps sources_ready small. */
+export const CLIENT_PASSAGE_MAX_CHARS = 1200;
+
+export function passageForClient(content: unknown): string | undefined {
+  if (typeof content !== "string") return undefined;
+  const text = content.trim();
+  if (!text) return undefined;
+  return text.length > CLIENT_PASSAGE_MAX_CHARS ? `${text.slice(0, CLIENT_PASSAGE_MAX_CHARS).trimEnd()}…` : text;
+}
 
 function buildContextBlock(results: IslamicResult[]): string {
   if (results.length === 0) return "\n\n[No Islamic sources were retrieved for this query. If you have general knowledge about this topic, clearly state that it comes from general knowledge, not from verified sources.]";
@@ -1018,8 +1032,11 @@ export async function handle(req: Request): Promise<Response> {
 
     const fanOutStart = since();
     const anchorsStart = fanOutStart;
+    // Tier C (live scraping) is optional: it may take up to 15s and often
+    // returns nothing, so it only gets a short grace after every corpus tier
+    // has finished (see _shared/fanOutGrace.ts for the measurement).
     const [settled, anchorResultsRaw] = await Promise.all([
-      Promise.allSettled(fanOutPromises),
+      settleWithGrace(fanOutPromises, fanOutTiers.map((t) => t === "tierC"), TIER_C_GRACE_MS),
       Promise.all(anchorFetches),
     ]);
     stages.push({ stage: "fanOut(all tiers)", startMs: fanOutStart, endMs: since(), ms: since() - fanOutStart });
@@ -1261,6 +1278,10 @@ export async function handle(req: Request): Promise<Response> {
       domain:       r.domain,
       citation_ref: r.citation_ref,
       url:          r.citation_ref.url ?? undefined,
+      // The passage itself — until now only the label and link reached the
+      // client, so a reader could never see (or copy) what was retrieved
+      // unless the model happened to quote it.
+      content:      passageForClient(r.content),
     }));
 
     // Everything above is what the user waits through before a single byte is

@@ -37,6 +37,12 @@ export interface CitationItem {
   domain: string;
   citation_ref: ScholarlyCitationRef;
   url?: string;
+  /**
+   * The retrieved passage itself (truncated server-side), so the reader can
+   * see and copy the actual text — not just a reference label. Optional: the
+   * agent's tool-call citations and older persisted sessions don't carry it.
+   */
+  content?: string;
 }
 
 /**
