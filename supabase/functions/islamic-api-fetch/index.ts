@@ -53,6 +53,10 @@ export interface IslamicResult {
     _is_anchor?: boolean;
   };
   language: "ar" | "en" | "ur";
+  /** Arabic matn for DISPLAY, when the row has it. Corpus rows' `content` is often
+   *  the Urdu/English translation; sent to the client so the panel can show the
+   *  Arabic text first. Optional: live-API tiers put the Arabic in `content`. */
+  content_ar?: string;
   /**
    * True when this passage is known to carry real Arabic matn (scripture or
    * hadith wording), not merely Urdu prose that happens to contain Arabic

@@ -43,6 +43,9 @@ export interface CitationItem {
    * agent's tool-call citations and older persisted sessions don't carry it.
    */
   content?: string;
+  /** Arabic matn, when the retrieved row has it separately from `content`
+   *  (whose text is often the Urdu translation). Shown first in the panel. */
+  content_ar?: string;
 }
 
 /**
