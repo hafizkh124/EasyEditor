@@ -73,3 +73,13 @@ describe("citationsFromToolCalls — passage text (search-quality phase 1.2)", (
     expect("content" in out[1]).toBe(false);
   });
 });
+
+describe("citationsFromToolCalls — Arabic excerpt (search-quality phase 2.8)", () => {
+  it("carries excerpt_ar through as content_ar next to the translation", () => {
+    const out = citationsFromToolCalls([
+      { name: "search_hadith", result: { results: [{ id: "a", reference: "صحيح البخاري، 6406", excerpt: "ہم سے زہیر نے بیان کیا", excerpt_ar: "كلمتان خفيفتان على اللسان" }] } },
+    ]);
+    expect(out[0].content).toBe("ہم سے زہیر نے بیان کیا");
+    expect(out[0].content_ar).toBe("كلمتان خفيفتان على اللسان");
+  });
+});

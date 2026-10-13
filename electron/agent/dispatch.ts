@@ -61,6 +61,7 @@ import { saveTranscript, transcriptPathFor } from './adapters/transcribe.js';
 import { saveOcrText, ocrTextPathFor } from './adapters/ocr.js';
 import { readAssetText, writeAssetText, registerChapter } from '../fs/projectFolder.js';
 import { formatScholarlyRef } from '../../shared/research/citationTypes.js';
+import { excerptFields } from '../../shared/agent/hadithExcerpt.js';
 import { buildApparatus, apparatusTable } from '../../shared/research/apparatus.js';
 import { resolveTrim, PRINT_LAYOUT_LOSS } from '../../shared/print/trimSizes.js';
 import { resolveLayoutPreset, LAYOUT_PRESET_IDS } from '../../shared/print/layoutPresets.js';
@@ -1089,28 +1090,36 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const r = await researchSearch('islamic', query, researchFilter);
         if (r.error) return { error: r.error };
         const chunks: RetrievedChunk[] = [];
+        const passages = new Map<string, ReturnType<typeof excerptFields>>();
         for (const c of r.citations ?? []) {
           const ref = formatScholarlyRef(c.citation_ref, c.domain);
           if (!ref) continue;
           const num = c.citation_ref.hadith_number ?? c.citation_ref.fatwa_number ?? chunks.length + 1;
+          const id = `${c.domain}:${c.citation_ref.collection ?? c.citation_ref.book ?? 'x'}:${num}`;
+          const passage = excerptFields(c);
+          passages.set(id, passage);
           chunks.push({
-            id: `${c.domain}:${c.citation_ref.collection ?? c.citation_ref.book ?? 'x'}:${num}`,
+            id,
             reference: ref,
             source_url: c.url ?? c.citation_ref.url ?? null,
+            ...(passage.content ? { content: passage.content } : {}),
           });
         }
         ledger.add(chunks);
         if (chunks.length) {
           const artifactId = `hadith-${Date.now().toString(36)}`;
           emitArtifact({ op: 'open', artifactId, title: `احادیث: ${query.slice(0, 40)}`, artifactType: 'citation-list' });
-          emitArtifact({ op: 'citations', artifactId, entries: chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, url: c.source_url ?? undefined, tier: 1 })) });
+          emitArtifact({ op: 'citations', artifactId, entries: chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, url: c.source_url ?? undefined, tier: 1, excerpt: c.content?.slice(0, 500) })) });
           emitArtifact({ op: 'close', artifactId, status: 'final' });
         }
         return {
           count: chunks.length,
           note: chunks.length === 0 ? 'The hadith channel returned an answer but no page-precise citations to cite.' : undefined,
           answer: capResult((r.answer ?? '').trim()),
-          results: chunks.map((c) => ({ id: c.id, reference: c.reference, url: c.source_url ?? undefined })),
+          results: chunks.map((c) => {
+            const p = passages.get(c.id);
+            return { id: c.id, reference: c.reference, url: c.source_url ?? undefined, ...(p?.excerpt ? { excerpt: p.excerpt } : {}), ...(p?.excerpt_ar ? { excerpt_ar: p.excerpt_ar } : {}) };
+          }),
         };
       }
 
