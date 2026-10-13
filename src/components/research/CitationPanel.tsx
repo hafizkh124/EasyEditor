@@ -119,10 +119,14 @@ const CitationPanel = ({ citations, query, t }: CitationPanelProps) => {
   // the evidence, so it should be what the reader sees first, not a closed box.
   const hasPassages = citations.some((c) => !!(c.content?.trim() || c.content_ar?.trim()));
   const [isOpen, setIsOpen] = useState(hasPassages);
+  const [showMore, setShowMore] = useState(false);
 
   if (citations.length === 0) return null;
 
-  const groups = groupByDomain(citations);
+  // Results beyond the ones the model read are browse-only: counted apart, folded away.
+  const main = citations.filter((c) => !c.extra);
+  const extra = citations.filter((c) => c.extra);
+  const groups = groupByDomain(main);
   const domainCount = Object.keys(groups).length;
 
   return (
@@ -136,7 +140,7 @@ const CitationPanel = ({ citations, query, t }: CitationPanelProps) => {
           <BookMarked className="h-4 w-4 text-primary shrink-0" />
           <span>{t("research.citations_panel_title")}</span>
           <span className="ms-1 rounded-full bg-primary/10 text-primary text-xs font-semibold px-1.5 py-0.5 leading-none">
-            {citations.length}
+            {main.length}
           </span>
           <span className="text-xs text-muted-foreground font-normal">
             {t("research.citations_from_domains").replace("{n}", String(domainCount))}
@@ -163,8 +167,22 @@ const CitationPanel = ({ citations, query, t }: CitationPanelProps) => {
                 // Numbered in retrieval order so [N] matches the inline
                 // citations in the answer.
                 <ol className="px-3 pb-3 pt-2 space-y-2">
-                  {citations.map((item, i) => (
+                  {main.map((item, i) => (
                     <PassageCard key={`${item.domain}-${i}`} index={i + 1} item={item} query={query} t={t} />
+                  ))}
+                  {extra.length > 0 && !showMore && (
+                    <li className="list-none">
+                      <button
+                        type="button"
+                        onClick={() => setShowMore(true)}
+                        className="w-full rounded-md border border-dashed border-border py-2 text-sm text-primary hover:bg-muted"
+                      >
+                        {t("research.more_results", "مزید {n} نتائج دکھائیں").replace("{n}", String(extra.length))}
+                      </button>
+                    </li>
+                  )}
+                  {showMore && extra.map((item, i) => (
+                    <PassageCard key={`x-${item.domain}-${i}`} index={main.length + i + 1} item={item} query={query} t={t} />
                   ))}
                 </ol>
               ) : (

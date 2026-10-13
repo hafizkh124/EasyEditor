@@ -222,7 +222,8 @@ export async function runAgentLoop(
       result = { error: err instanceof Error ? err.message : String(err) };
     }
     toolCalls.push({ name, args, result });
-    messages.push({ role: 'tool', name, result });
+    // `ui_more` is for the reader only (browse-only extra results); the model never pays for it.
+    messages.push({ role: 'tool', name, result: withoutUiOnly(result) });
     opts.onProgress?.({
       step,
       label: labelFor(name),
@@ -247,3 +248,10 @@ function finish(
 }
 
 export { labelFor, stepLabelKey };
+
+/** Drops the top-level `ui_more` field from a tool result before the model sees it. */
+export function withoutUiOnly(result: unknown): unknown {
+  if (!result || typeof result !== 'object' || Array.isArray(result) || !('ui_more' in result)) return result;
+  const { ui_more: _uiMore, ...rest } = result as Record<string, unknown>;
+  return rest;
+}

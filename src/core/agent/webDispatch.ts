@@ -248,7 +248,7 @@ export function createWebDispatcher(session: WebAgentSession): WebDispatcher {
 
       case "search_hadith": {
         const query = str(args.query, "query");
-        const { answer, citations, error } = await runIslamicQuery(query, session.researchFilter);
+        const { answer, citations, more, error } = await runIslamicQuery(query, session.researchFilter);
         if (error) return { error };
         const chunks: RetrievedChunk[] = [];
         const passages = new Map<string, ReturnType<typeof excerptFields>>();
@@ -261,6 +261,15 @@ export function createWebDispatcher(session: WebAgentSession): WebDispatcher {
           passages.set(id, passage);
           chunks.push({ id, reference: ref, source_url: c.url ?? c.citation_ref.url ?? null, ...(passage.content ? { content: passage.content } : {}) });
         }
+        // Browse-only results beyond the ten the model read: shown to the reader under
+        // "more results", never added to the ledger and stripped before the model
+        // sees the tool result (see withoutUiOnly in shared/agent/loop.ts).
+        const uiMore = more.flatMap((c) => {
+          const ref = formatScholarlyRef(c.citation_ref, c.domain);
+          if (!ref) return [];
+          const p = excerptFields(c);
+          return [{ reference: ref, url: c.url ?? c.citation_ref.url ?? undefined, ...(p.excerpt ? { excerpt: p.excerpt } : {}), ...(p.excerpt_ar ? { excerpt_ar: p.excerpt_ar } : {}) }];
+        });
         ledger.add(chunks);
         if (chunks.length) {
           const artifactId = `hadith-${Date.now().toString(36)}`;
@@ -268,7 +277,7 @@ export function createWebDispatcher(session: WebAgentSession): WebDispatcher {
           emitArtifact({ op: "citations", artifactId, entries: chunks.map((c, i) => ({ marker: String(i + 1), reference: c.reference, sourceId: c.id, supported: true, url: c.source_url ?? undefined, tier: 1, excerpt: c.content?.slice(0, 500) })) });
           emitArtifact({ op: "close", artifactId, status: "final" });
         }
-        return { count: chunks.length, note: chunks.length === 0 ? "جواب ملا مگر صفحہ-درست حوالہ نہیں۔" : undefined, answer: capResult(answer.trim()), results: chunks.map((c) => { const p = passages.get(c.id); return { id: c.id, reference: c.reference, url: c.source_url ?? undefined, ...(p?.excerpt ? { excerpt: p.excerpt } : {}), ...(p?.excerpt_ar ? { excerpt_ar: p.excerpt_ar } : {}) }; }) };
+        return { count: chunks.length, note: chunks.length === 0 ? "جواب ملا مگر صفحہ-درست حوالہ نہیں۔" : undefined, answer: capResult(answer.trim()), results: chunks.map((c) => { const p = passages.get(c.id); return { id: c.id, reference: c.reference, url: c.source_url ?? undefined, ...(p?.excerpt ? { excerpt: p.excerpt } : {}), ...(p?.excerpt_ar ? { excerpt_ar: p.excerpt_ar } : {}) }; }), ...(uiMore.length ? { ui_more: uiMore } : {}) };
       }
 
       case "search_repositories": {
@@ -628,19 +637,20 @@ async function webQueryTafseer(q: { reference: string; mode: string; sources?: s
 async function runIslamicQuery(
   query: string,
   filter?: { selectedDomains?: string[]; requireArabicMatn?: boolean },
-): Promise<{ answer: string; citations: CitationItem[]; error?: string }> {
+): Promise<{ answer: string; citations: CitationItem[]; more: CitationItem[]; error?: string }> {
   return new Promise((resolve) => {
     const acc = { text: "" };
     let citations: CitationItem[] = [];
+    let more: CitationItem[] = [];
     streamIslamicQuery({
       query, strictMode: false, chatHistory: [], tier: "free",
       selectedDomains: toSelectedDomains(filter?.selectedDomains ?? []),
       requireArabicMatn: filter?.requireArabicMatn ?? false,
       onDelta: (chunk) => { acc.text += chunk; },
-      onSourcesReady: (_c, _d, fetched) => { citations = fetched; },
-      onDone: () => resolve({ answer: acc.text, citations }),
-      onError: (err) => resolve({ answer: "", citations: [], error: err }),
-    }).catch((err) => resolve({ answer: "", citations: [], error: err instanceof Error ? err.message : String(err) }));
+      onSourcesReady: (_c, _d, fetched, extra) => { citations = fetched; more = extra ?? []; },
+      onDone: () => resolve({ answer: acc.text, citations, more }),
+      onError: (err) => resolve({ answer: "", citations: [], more: [], error: err }),
+    }).catch((err) => resolve({ answer: "", citations: [], more: [], error: err instanceof Error ? err.message : String(err) }));
   });
 }
 

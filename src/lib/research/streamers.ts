@@ -156,7 +156,7 @@ export async function streamIslamicQuery({
   strictMode?: boolean;
   chatHistory: ChatMessage[];
   tier: string;
-  onSourcesReady?: (count: number, domains: string[], citations: CitationItem[]) => void;
+  onSourcesReady?: (count: number, domains: string[], citations: CitationItem[], more?: CitationItem[]) => void;
 } & StreamCallbacks): Promise<void> {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/islamic-search`;
   try {
@@ -186,7 +186,7 @@ export async function streamIslamicQuery({
     let buffer = "";
 
     type IslamicEvent =
-      | { type: "sources_ready"; count?: number; domains?: string[]; citations?: CitationItem[] }
+      | { type: "sources_ready"; count?: number; domains?: string[]; citations?: CitationItem[]; more_citations?: CitationItem[] }
       | { type: "error"; message?: string }
       | { choices?: Array<{ delta?: { content?: string } }> };
 
@@ -200,7 +200,7 @@ export async function streamIslamicQuery({
       try {
         const parsed = JSON.parse(jsonStr) as IslamicEvent;
         if ("type" in parsed && parsed.type === "sources_ready") {
-          onSourcesReady?.(parsed.count ?? 0, parsed.domains ?? [], parsed.citations ?? []);
+          onSourcesReady?.(parsed.count ?? 0, parsed.domains ?? [], parsed.citations ?? [], parsed.more_citations);
           return false;
         }
         // Sent when the Gemini call fails AFTER sources_ready already went

@@ -383,6 +383,12 @@ const ChatDisplay = ({
           <div className="flex gap-2">
             <AiAvatar />
             <div className="flex-1 min-w-0 rounded-md border border-border bg-card p-2.5 text-sm space-y-2">
+              {/* The retrieved passages come BEFORE the model's words about them, so
+                  the reader sees the text itself first (CitationPanel renders
+                  nothing when empty). */}
+              {!turn.result.error && (
+                <CitationPanel citations={citationsFromToolCalls(turn.result.toolCalls)} query={turn.instruction} t={t} />
+              )}
               <p
                 dir={aRtl ? "rtl" : "ltr"}
                 className={cn(
@@ -401,9 +407,6 @@ const ChatDisplay = ({
                   {t("agent.used_playbook", "Playbook: {id}").replace("{id}", turn.result.playbook)}
                 </p>
               )}
-              {/* M11 — which sources this turn actually retrieved, as the
-                  primary surface (CitationPanel renders nothing when empty). */}
-              <CitationPanel citations={citationsFromToolCalls(turn.result.toolCalls)} query={turn.instruction} t={t} />
               {turn.result.toolCalls.length > 0 && (
                 <p className="text-xs text-muted-foreground">
                   {t("agent.tool_calls", "{n} tool calls").replace("{n}", String(turn.result.toolCalls.length))}
@@ -500,6 +503,12 @@ const ChatDisplay = ({
 
           {agent.result && (
             <div className="rounded-md border border-border bg-card p-2.5 space-y-2 text-sm">
+              {/* M11 — the primary, discoverable "which sources" surface, now ABOVE
+                  the answer: the retrieved text first, the model's words after.
+                  The raw tool-call list below stays as a debug toggle. */}
+              {!agent.result.error && (
+                <CitationPanel citations={citationsFromToolCalls(agent.result.toolCalls)} query={agent.lastInstruction} t={t} />
+              )}
               {agent.result.error ? (
                 <p className="text-destructive text-xs">{agent.result.error}</p>
               ) : agent.modeUpgradeRequest ? (
@@ -555,9 +564,6 @@ const ChatDisplay = ({
               {agent.result.playbook && (
                 <p className="text-xs text-muted-foreground">{t("agent.used_playbook", "Playbook: {id}").replace("{id}", agent.result.playbook)}</p>
               )}
-              {/* M11 — the primary, discoverable "which sources" surface;
-                  the raw tool-call list below stays as a debug toggle. */}
-              <CitationPanel citations={citationsFromToolCalls(agent.result.toolCalls)} query={agent.lastInstruction} t={t} />
               {agent.result.toolCalls.length > 0 && (
                 <div>
                   <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => agent.setShowTools((s) => !s)}>

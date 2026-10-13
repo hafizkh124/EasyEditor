@@ -121,6 +121,13 @@ export const PERSONAL_MAX_ROWS = 3;
 /** How long the optional live-scrape tier may outlive the corpus tiers. */
 export const TIER_C_GRACE_MS = 1_500;
 
+/** How many sources the MODEL reads and may cite as [N]. */
+export const MODEL_SOURCES = 10;
+/** How many the reader can browse: the next 15 come from the same ranked list. */
+export const DISPLAY_SOURCES = 25;
+/** Per-field cap for those extra, browse-only passages (keeps sources_ready small). */
+export const EXTRA_PASSAGE_MAX_CHARS = 600;
+
 const ALL_DOMAINS = [
   ...TIER_A_DOMAINS,
   ...TIER_B_DOMAINS,
@@ -162,11 +169,11 @@ const SURAH_NAMES: Record<number, string> = {
 /** Longest passage sent to the client per source; keeps sources_ready small. */
 export const CLIENT_PASSAGE_MAX_CHARS = 1200;
 
-export function passageForClient(content: unknown): string | undefined {
+export function passageForClient(content: unknown, max: number = CLIENT_PASSAGE_MAX_CHARS): string | undefined {
   if (typeof content !== "string") return undefined;
   const text = content.trim();
   if (!text) return undefined;
-  return text.length > CLIENT_PASSAGE_MAX_CHARS ? `${text.slice(0, CLIENT_PASSAGE_MAX_CHARS).trimEnd()}…` : text;
+  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 }
 
 function buildContextBlock(results: IslamicResult[]): string {
@@ -1268,10 +1275,15 @@ export async function handle(req: Request): Promise<Response> {
     // library, word-by-word, the classical corpus and Turath would never surface.
     allResults = await fuseAndRerank(query, allResults, {
       cohereApiKey: cohereKey,
-      maxResults: 10,
+      maxResults: DISPLAY_SOURCES,
       timeoutMs: 2500,
       groupOf: (r) => tierOfRow.get(r) ?? "other",
     });
+    // Taking the first MODEL_SOURCES of a longer ranked list is the same as ranking
+    // for MODEL_SOURCES (fuseAndRerank cuts a prefix), so the model sees exactly
+    // what it saw before; the remainder is only for the reader to browse.
+    const moreResults = allResults.slice(MODEL_SOURCES);
+    allResults = allResults.slice(0, MODEL_SOURCES);
 
     stages.push({
       stage: `rerank(cohere:${cohereKey ? "byok" : "rrf-fallback"}): top-${allResults.length}`,
@@ -1364,6 +1376,19 @@ export async function handle(req: Request): Promise<Response> {
           count:     allResults.length,
           domains:   [...new Set(allResults.map((r) => r.domain))],
           citations: citationSummaries,
+          // Browse-only: results 11..25 for the "more results" fold. The model never
+          // saw these, so they are never cited as [N].
+          ...(moreResults.length > 0
+            ? {
+                more_citations: moreResults.map((r) => ({
+                  domain:       r.domain,
+                  citation_ref: r.citation_ref,
+                  url:          r.citation_ref.url ?? undefined,
+                  content:      passageForClient(r.content, EXTRA_PASSAGE_MAX_CHARS),
+                  content_ar:   passageForClient(r.content_ar, EXTRA_PASSAGE_MAX_CHARS),
+                })),
+              }
+            : {}),
           // Present only when asked for, so the normal response shape is
           // untouched for real clients.
           ...(debugTiming ? { timing: { totalMs: since(), stages } } : {}),

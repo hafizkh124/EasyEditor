@@ -48,7 +48,9 @@ function formatCitationRef(ref: CitationItem["citation_ref"]): string {
   return parts.join(", ");
 }
 
-export function buildBibliographyMarkdown(citations: CitationItem[]): string {
+export function buildBibliographyMarkdown(allCitations: CitationItem[]): string {
+  // Browse-only extras were never read by the model nor cited; they don't belong in a bibliography.
+  const citations = allCitations.filter((c) => !c.extra);
   const lines: string[] = [
     "# Islamic Research Bibliography",
     `_Generated: ${new Date().toLocaleString()}_`,
@@ -76,7 +78,7 @@ export function buildBibliographyMarkdown(citations: CitationItem[]): string {
 }
 
 export function downloadBibliography(citations: CitationItem[]): boolean {
-  if (citations.length === 0) return false;
+  if (citations.filter((c) => !c.extra).length === 0) return false;
   const content = buildBibliographyMarkdown(citations);
   const blob = new Blob([content], { type: "text/markdown; charset=utf-8" });
   const url = URL.createObjectURL(blob);

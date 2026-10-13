@@ -234,6 +234,7 @@
   "research.show_more": "Show full text",
   "research.show_less": "Show less",
   "research.also_in": "Same hadith also in:",
+  "research.more_results": "Show {n} more results",
   "research.ai_tools": "AI Refinement",
   "research.formalize": "Formalize",
   "research.humanize": "Humanize",
