@@ -74,9 +74,15 @@ export async function searchInChunks<T extends ScoredRow>(
   if (parts.length === 0) return { data: [], error: null, chunks: 0 };
   if (parts.length === 1) return { ...(await call(parts[0], limit)), chunks: 1 };
 
-  // A row can rank high by matching one term in every chunk, so each chunk
-  // returns more than `limit` rows before the merge cuts back down.
-  const chunkLimit = limit * 2;
+  // The RPCs derive their per-term candidate cap from this number
+  // (p_match_limit * 20 rows per branch), and live measurement showed the work
+  // scales linearly with it (tierk-candidate-cap.sql: cap 600 -> 711ms, 150 ->
+  // 442ms, 60 -> 245ms). Asking each chunk for `limit * 2` doubled every
+  // branch's cap to 1200 and ate most of the benefit of splitting; keeping it at
+  // `limit` leaves per-branch work exactly as before. The price is that a row
+  // matching one term in each chunk can be cut by a chunk-local top-`limit`;
+  // acceptable, and the candidate sets were already arbitrary (LIMIT, no ORDER BY).
+  const chunkLimit = limit;
   const results = await Promise.all(parts.map((p) => call(p, chunkLimit)));
   const ok = results.filter((r) => !r.error && r.data);
   if (ok.length === 0) return { data: null, error: results[0].error, chunks: parts.length };
