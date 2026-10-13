@@ -79,7 +79,7 @@ Decide:
      ${booksPromptList()}
    - "surah": surah number if the user named one, else null.
    - "verse": ayah number within that surah if the user named one ("البقرہ 255" → surah 2, verse 255), else null. Never set verse without surah.
-   - "disciplines": subset of ["fiqh","fatwa","tafsir","lughat","rijal","nahw"], [] unless the question is clearly about the classical literature of that discipline. Use "fiqh" for فقہی مسائل / اقوالِ مذاہب, "fatwa" for فتاویٰ, "tafsir" for تفسیرِ آیت / اقوالِ مفسرین, "lughat" for لغوی معنیٰ / مادہ, "rijal" for راوی کا حال / جرح و تعدیل, "nahw" for نحو و صرف / اعراب. This is ADDITIVE — it does not replace the Quran/Hadith scope.
+   - "disciplines": subset of ["fiqh","fatwa","tafsir","lughat","rijal","nahw","hadith_term"], [] unless the question is clearly about the classical literature of that discipline. Use "fiqh" for فقہی مسائل / اقوالِ مذاہب, "fatwa" for فتاویٰ, "tafsir" for تفسیرِ آیت / اقوالِ مفسرین, "lughat" for لغوی معنیٰ / مادہ, "rijal" for ANY question about a narrator himself — his biography, teachers/students (اساتذہ/تلامذہ), how many narrations he transmitted (کتنی روایات), his reliability (جرح و تعدیل), "hadith_term" for the TERMINOLOGY of hadith science (ضعیف/منکر/حسن لغیرہ کی تعریف, اصطلاحاتِ حدیث), "nahw" for نحو و صرف / اعراب. This is ADDITIVE — it does not replace the Quran/Hadith scope.
 
 3. "arabic_surface_forms" — THE MOST IMPORTANT FIELD. The actual Arabic words as they appear in scripture. Think about the triliteral root and give the real inflected forms, WITHOUT the definite article ال and WITHOUT proclitic prefixes (و ف ب ل ك) — the search layer adds those itself.
    - "نیت"        → ["نية","نيات","نوى","ينوي","انوى"]
@@ -200,8 +200,16 @@ export function coercePlan(raw: unknown, query: string): QueryPlan {
 
   // Disciplines: model-picked wins; otherwise keep whatever the keyword
   // heuristic detected (same safety-net pattern as collections).
+  //
+  // Model-picked AND keyword-detected are unioned, not either/or. Live
+  // 2026-10-13: for "ابو ہریرہؓ کی روایات کی تعداد" none of the ten results came
+  // from the rijal corpus (19,616 rows, with per-narrator narration counts).
+  // The prompt's old wording for "rijal" only named "راوی کا حال / جرح و تعدیل",
+  // which is the likely cause (not confirmed — the plan itself isn't logged).
+  // A keyword hit is a sure positive and the channel is additive, so adding it
+  // costs one extra retrieval call, never a wrong exclusion.
   const modelDisciplines = coerceDisciplines(o.scope?.disciplines);
-  const disciplines = modelDisciplines.length > 0 ? modelDisciplines : fb.scope.disciplines;
+  const disciplines = [...new Set([...modelDisciplines, ...fb.scope.disciplines])];
 
   const forms = arabicOnly(Array.isArray(o.arabic_surface_forms) ? o.arabic_surface_forms : []);
   const related = arabicOnly(Array.isArray(o.related_concepts) ? o.related_concepts : []);
