@@ -24,18 +24,16 @@ Please sync and redeploy these Supabase Edge Functions:
    `Deno.serve(async (req) => { ... })`. It is exported on purpose so tests can
    call it.
 5. After deploying, open the DEPLOYED source of `islamic-search` (not the repo)
-   and confirm it contains the text "searchInChunks". Tell me the deployment
+   and confirm it contains the text "const chunkLimit = limit". Tell me the deployment
    timestamp. (The previous round's "already live" reply was wrong, so please
    verify rather than assume.)
 
 ## What changed
 
-- `_shared/chunkedSearch.ts` (new) + `islamic-search/index.ts`: the Tier K
-  lexical search (`search_documents_smart` / `search_documents_scoped` RPCs) is
-  now sent as up to 4 PARALLEL calls over slices of the term list instead of one
-  call. Same RPCs, same SQL, no schema change; only the call pattern differs.
-  Reason: measured live, each term costs ~0.35s inside the RPC and the RPC runs
-  its terms serially, so 9-12 terms took 5-20s.
+- `_shared/chunkedSearch.ts`: each parallel chunk of the Tier K lexical search
+  now asks the RPC for the SAME `p_match_limit` (30) instead of 60. The RPCs
+  derive a per-term candidate cap of `p_match_limit * 20` rows, so 60 had been
+  doubling every branch's work to 1200 rows. No schema or SQL change.
 ```
 
 ---
@@ -43,4 +41,6 @@ Please sync and redeploy these Supabase Edge Functions:
 ## Notes for you (not for Lovable)
 
 Once deployed, tell Claude; it will re-run sample questions 6, 9, 21 and 23 and compare the `tierK:rpc` timing
+(still labelled "..., N calls"; the check this time is that the stage is faster than
+before: Q6 was 7.0s, Q9 8.7s, Q23 14.5s)
 compare with the 2026-10-13 baseline (docs/PHASE0-DIAGNOSIS-URDU.md).

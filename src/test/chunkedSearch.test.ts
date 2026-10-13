@@ -50,10 +50,10 @@ describe("searchInChunks", () => {
     expect(out.data).toHaveLength(8);
   });
 
-  it("asks each chunk for more rows than the final limit", async () => {
+  it("asks each chunk for the SAME limit (the RPC multiplies it by 20 per term branch)", async () => {
     const seen: number[] = [];
     await searchInChunks(["a", "b", "c", "d", "e"], 30, async (t, lim) => { seen.push(lim); return { data: rowsFor(t), error: null }; });
-    expect(new Set(seen)).toEqual(new Set([60]));
+    expect(new Set(seen)).toEqual(new Set([30]));
   });
 
   it("a failed chunk degrades to the others; all failing surfaces the error", async () => {
