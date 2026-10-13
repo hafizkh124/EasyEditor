@@ -518,6 +518,78 @@ export async function handle(req: Request): Promise<Response> {
     // blocking them.
     const queryPlanPromise = timed("planQuery", planQuery(query, supabase).catch(() => null));
 
+    // Exact-count facts are computed in the BACKGROUND, started as soon as the
+    // plan exists and awaited only where the prompt is built. Live 2026-10-13:
+    // for "ابو ہریرہؓ کی روایات کی تعداد" the count RPC ran only after the whole
+    // fan-out had finished and added 5.5s to sources_ready on its own, although
+    // it needs nothing but the plan (ready in ~0.2s).
+    const computeCountBlock = async (): Promise<string> => {
+    // When the user asks "how many times…", retrieval alone cannot answer —
+    // the model only sees a sample of passages, so it (correctly) says it has
+    // no statistic. Here we run the exact SQL aggregation and hand the model
+    // the real number + per-surah/per-book breakdown, so it can state the
+    // count instead of declining. Counting lives in count_term_occurrences
+    // (migration 20260723210000) — the same function the Editor's reference
+    // search uses. Non-fatal: any failure just omits the block.
+    // Guard: a "degraded" plan came from the keyword fallback (planQuery's
+    // model call failed or returned nothing usable), not the LLM planner. Its
+    // arabic_surface_forms can be raw leftover words from the user's Urdu
+    // sentence rather than actual surface forms of ONE specific term (seen in
+    // practice: "پانی اور زمین کتنی بار؟" degraded to surface_forms containing
+    // "قرآن، کریم، کتنی، بار، ہے؟" — count_term_occurrences then summed
+    // occurrences of ALL of those unrelated words into one bogus "58 times").
+    // A wrong confident number is worse than an honest "I don't have that
+    // statistic", so count facts are only trusted from a real plan.
+    let countBlock = "";
+    const queryPlan = await queryPlanPromise;
+    if (queryPlan?.intent === "count" && !queryPlan.degraded && queryPlan.arabic_surface_forms.length > 0) {
+      const countStart = since();
+      try {
+        const { data: countRows, error: countErr } = await supabase.rpc("count_term_occurrences", {
+          p_patterns:                 queryPlan.arabic_surface_forms,
+          p_source_types:             queryPlan.scope.source_types.length > 0 ? queryPlan.scope.source_types : null,
+          p_collections:              queryPlan.scope.collections.length > 0 ? resolveCollectionSlugs(queryPlan.scope.collections) : null,
+          p_surah:                    queryPlan.scope.surah,
+          p_exclude_definite_article: queryPlan.is_proper_noun,
+        });
+        stages.push({
+          stage: "countBlock:rpc(count_term_occurrences)",
+          startMs: countStart,
+          endMs: since(),
+          ms: since() - countStart,
+          count: Array.isArray(countRows) ? countRows.length : 0,
+          error: countErr ? `${countErr.code ?? ""} ${countErr.message ?? String(countErr)}`.trim() : undefined,
+        });
+        if (!countErr && Array.isArray(countRows) && countRows.length > 0) {
+          const total = countRows.reduce((s: number, r: any) => s + (Number(r.occurrences) || 0), 0);
+          const rowsMatched = countRows.reduce((s: number, r: any) => s + (Number(r.rows_matched) || 0), 0);
+          const breakdown = countRows
+            .slice(0, 40)
+            .map((r: any) => `  - ${r.bucket_label}: ${r.occurrences}`)
+            .join("\n");
+          const hasHadith = queryPlan.scope.source_types.includes("hadith");
+          const caveats = [
+            `یہ گنتی ان الفاظ پر ہوئی: ${queryPlan.arabic_surface_forms.join("، ")}`,
+            hasHadith ? "احادیث کا متن سند (اسناد) سمیت محفوظ ہے، اس لیے سند کے الفاظ بھی شمار ہوتے ہیں۔ نیز ہمارے ذخیرے میں ١٧ کتبِ حدیث ہیں — گنتی انہی کی ہے۔" : "",
+            queryPlan.is_proper_noun ? "چونکہ یہ اسمِ علم ہے، «ال» کے ساتھ آنے والی صورتیں شمار سے خارج کی گئی ہیں۔" : "",
+          ].filter(Boolean).join(" ");
+
+          countBlock =
+            `\n\n🔢 EXACT_COUNT_FACTS (computed directly over the full corpus — AUTHORITATIVE, use these numbers verbatim):\n` +
+            `Total occurrences: ${total}\n` +
+            `Distinct passages containing it: ${rowsMatched}\n` +
+            `Breakdown by ${hasHadith ? "book" : "surah"}:\n${breakdown}\n` +
+            `Caveats to state to the user: ${caveats}\n` +
+            `INSTRUCTION: The user asked HOW MANY TIMES. Lead your answer with the exact total (${total}) as a definitive figure — do NOT say the sources lack a statistic. Present the breakdown, then the caveats. This count IS authoritative.`;
+        }
+      } catch (e) {
+        console.error("[islamic-search] count block failed:", e);
+      }
+    }
+    return countBlock;
+  };
+    const countBlockPromise = computeCountBlock();
+
     // --- Fan-out: Tier A (always), Tier B (Pro/Ultra), Tier C (Pro/Ultra), Tier K (keyword) ---
     const tierADomains = effectiveDomains.filter((d) => TIER_A_DOMAINS.includes(d));
     const tierBDomains = effectiveDomains.filter((d) => TIER_B_DOMAINS.includes(d));
@@ -1215,74 +1287,7 @@ export async function handle(req: Request): Promise<Response> {
       count: allResults.length,
     });
 
-    // By now the fan-out (line ~506's Promise.allSettled) has already taken
-    // at least as long as the slowest tier, so this promise — kicked off
-    // concurrently with that fan-out — has almost always already settled;
-    // this await adds no meaningful wait in the common case.
-    const queryPlan = await queryPlanPromise;
-
-    // ── Exact-count facts ────────────────────────────────────────────────
-    // When the user asks "how many times…", retrieval alone cannot answer —
-    // the model only sees a sample of passages, so it (correctly) says it has
-    // no statistic. Here we run the exact SQL aggregation and hand the model
-    // the real number + per-surah/per-book breakdown, so it can state the
-    // count instead of declining. Counting lives in count_term_occurrences
-    // (migration 20260723210000) — the same function the Editor's reference
-    // search uses. Non-fatal: any failure just omits the block.
-    // Guard: a "degraded" plan came from the keyword fallback (planQuery's
-    // model call failed or returned nothing usable), not the LLM planner. Its
-    // arabic_surface_forms can be raw leftover words from the user's Urdu
-    // sentence rather than actual surface forms of ONE specific term (seen in
-    // practice: "پانی اور زمین کتنی بار؟" degraded to surface_forms containing
-    // "قرآن، کریم، کتنی، بار، ہے؟" — count_term_occurrences then summed
-    // occurrences of ALL of those unrelated words into one bogus "58 times").
-    // A wrong confident number is worse than an honest "I don't have that
-    // statistic", so count facts are only trusted from a real plan.
-    let countBlock = "";
-    if (queryPlan?.intent === "count" && !queryPlan.degraded && queryPlan.arabic_surface_forms.length > 0) {
-      const countStart = since();
-      try {
-        const { data: countRows, error: countErr } = await supabase.rpc("count_term_occurrences", {
-          p_patterns:                 queryPlan.arabic_surface_forms,
-          p_source_types:             queryPlan.scope.source_types.length > 0 ? queryPlan.scope.source_types : null,
-          p_collections:              queryPlan.scope.collections.length > 0 ? resolveCollectionSlugs(queryPlan.scope.collections) : null,
-          p_surah:                    queryPlan.scope.surah,
-          p_exclude_definite_article: queryPlan.is_proper_noun,
-        });
-        stages.push({
-          stage: "countBlock:rpc(count_term_occurrences)",
-          startMs: countStart,
-          endMs: since(),
-          ms: since() - countStart,
-          count: Array.isArray(countRows) ? countRows.length : 0,
-          error: countErr ? `${countErr.code ?? ""} ${countErr.message ?? String(countErr)}`.trim() : undefined,
-        });
-        if (!countErr && Array.isArray(countRows) && countRows.length > 0) {
-          const total = countRows.reduce((s: number, r: any) => s + (Number(r.occurrences) || 0), 0);
-          const rowsMatched = countRows.reduce((s: number, r: any) => s + (Number(r.rows_matched) || 0), 0);
-          const breakdown = countRows
-            .slice(0, 40)
-            .map((r: any) => `  - ${r.bucket_label}: ${r.occurrences}`)
-            .join("\n");
-          const hasHadith = queryPlan.scope.source_types.includes("hadith");
-          const caveats = [
-            `یہ گنتی ان الفاظ پر ہوئی: ${queryPlan.arabic_surface_forms.join("، ")}`,
-            hasHadith ? "احادیث کا متن سند (اسناد) سمیت محفوظ ہے، اس لیے سند کے الفاظ بھی شمار ہوتے ہیں۔ نیز ہمارے ذخیرے میں ١٧ کتبِ حدیث ہیں — گنتی انہی کی ہے۔" : "",
-            queryPlan.is_proper_noun ? "چونکہ یہ اسمِ علم ہے، «ال» کے ساتھ آنے والی صورتیں شمار سے خارج کی گئی ہیں۔" : "",
-          ].filter(Boolean).join(" ");
-
-          countBlock =
-            `\n\n🔢 EXACT_COUNT_FACTS (computed directly over the full corpus — AUTHORITATIVE, use these numbers verbatim):\n` +
-            `Total occurrences: ${total}\n` +
-            `Distinct passages containing it: ${rowsMatched}\n` +
-            `Breakdown by ${hasHadith ? "book" : "surah"}:\n${breakdown}\n` +
-            `Caveats to state to the user: ${caveats}\n` +
-            `INSTRUCTION: The user asked HOW MANY TIMES. Lead your answer with the exact total (${total}) as a definitive figure — do NOT say the sources lack a statistic. Present the breakdown, then the caveats. This count IS authoritative.`;
-        }
-      } catch (e) {
-        console.error("[islamic-search] count block failed:", e);
-      }
-    }
+    const countBlock = await countBlockPromise;
 
     // Emit SSE "sources ready" event — genuinely before Gemini starts this
     // time. The comment here used to say that while the code below it
