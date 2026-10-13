@@ -82,3 +82,17 @@ describe("searchInChunks", () => {
     expect(src).toContain('supabase.rpc("search_documents_smart"');
   });
 });
+
+describe("count facts run concurrently with the fan-out (search-quality phase 2.5)", () => {
+  it("the count block is started right after the plan and only awaited where the prompt is built", () => {
+    const src = readFileSync("supabase/functions/islamic-search/index.ts", "utf8");
+    const started = src.indexOf("const countBlockPromise = computeCountBlock();");
+    const fanOut = src.indexOf("settleWithGrace(fanOutPromises");
+    const awaited = src.indexOf("const countBlock = await countBlockPromise;");
+    expect(started).toBeGreaterThan(0);
+    expect(started).toBeLessThan(fanOut);   // begins before the fan-out is awaited
+    expect(awaited).toBeGreaterThan(fanOut); // consumed after it
+    // the guard against trusting a degraded (keyword-fallback) plan is unchanged
+    expect(src).toContain('queryPlan?.intent === "count" && !queryPlan.degraded');
+  });
+});
