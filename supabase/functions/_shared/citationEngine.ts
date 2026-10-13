@@ -578,6 +578,18 @@ async function toPersonalCitations(
   }));
 }
 
+/**
+ * Tuning for the personal-library channels. Both default to the original,
+ * permissive behaviour so findCitations() is unchanged; islamic-search passes
+ * stricter values because its fan-out has only ten slots.
+ */
+export interface PersonalChannelOptions {
+  /** Minimum cosine similarity for the vector half. Default 0.35. */
+  minSimilarity?: number;
+  /** Lexical half: require every query term, not just the first. */
+  requireAllTerms?: boolean;
+}
+
 /** Personal Corpus Vector Channel — pgvector search on library_chunks (FR-2.7, FR-2.8) */
 export async function personalVectorChannel(
   // deno-lint-ignore no-explicit-any
@@ -585,6 +597,7 @@ export async function personalVectorChannel(
   plan: QueryPlan,
   rawQuery: string,
   userId?: string,
+  options: PersonalChannelOptions = {},
 ): Promise<Array<EngineCitation & { match_key: string }>> {
   // No verified owner ⇒ no personal search. See FindCitationsInput.userId.
   if (!userId) return [];
@@ -597,7 +610,7 @@ export async function personalVectorChannel(
     const { data, error } = await supabase.rpc("match_library_chunks", {
       query_embedding: embedding,
       filter_user_id: userId,
-      match_threshold: 0.35,
+      match_threshold: options.minSimilarity ?? 0.35,
       match_count: SEMANTIC_LIMIT,
     });
 
@@ -616,6 +629,7 @@ export async function personalLexicalChannel(
   supabase: any,
   rawQuery: string,
   userId?: string,
+  options: PersonalChannelOptions = {},
 ): Promise<Array<EngineCitation & { match_key: string }>> {
   // No verified owner ⇒ no personal search. See FindCitationsInput.userId.
   if (!userId) return [];
@@ -624,12 +638,17 @@ export async function personalLexicalChannel(
     const terms = rawQuery.trim().split(/\s+/).filter((t) => t.length > 2).slice(0, 3);
     if (terms.length === 0) return [];
 
-    const { data, error } = await supabase
+    let q = supabase
       .from("library_chunks")
       .select("id, library_item_id, chunk_index, content, language")
-      .eq("user_id", userId)
-      .ilike("content", `%${terms[0]}%`)
-      .limit(LEXICAL_LIMIT);
+      .eq("user_id", userId);
+    // Default: the FIRST term alone (original behaviour, other callers rely
+    // on it). `requireAllTerms` makes every term a condition, so one common
+    // word in a long query can no longer pull in an unrelated page.
+    for (const term of options.requireAllTerms ? terms : terms.slice(0, 1)) {
+      q = q.ilike("content", `%${term}%`);
+    }
+    const { data, error } = await q.limit(LEXICAL_LIMIT);
 
     if (error || !data) return [];
 

@@ -105,6 +105,15 @@ export const TIER_D_DISCIPLINE: Record<string, string> = {
 // Tier T: Turath.io live classical library API (ADR-0054).
 export const TIER_T_DOMAINS = ["turath"];
 
+// Tier L limits. Measured live on 2026-10-13 (docs/PHASE0-DIAGNOSIS-URDU.md): a
+// single uploaded book ("Tajweedi-Qaida") appeared in 21 of 23 unrelated
+// questions — hadith, fiqh, tafsir alike — because the vector half accepted
+// anything above cosine 0.35 and the lexical half matched on the first word
+// alone. 0.6 is match_library_chunks's own designed default; the ten result
+// slots are shared by every tier, so a private library gets at most three.
+export const PERSONAL_MIN_SIMILARITY = 0.6;
+export const PERSONAL_MAX_ROWS = 3;
+
 const ALL_DOMAINS = [
   ...TIER_A_DOMAINS,
   ...TIER_B_DOMAINS,
@@ -877,8 +886,8 @@ export async function handle(req: Request): Promise<Response> {
             is_proper_noun: false,
           };
           const [vecRows, lexRows] = await Promise.all([
-            personalVectorChannel(supabase, effectivePlan, query, user.id),
-            personalLexicalChannel(supabase, query, user.id),
+            personalVectorChannel(supabase, effectivePlan, query, user.id, { minSimilarity: PERSONAL_MIN_SIMILARITY }),
+            personalLexicalChannel(supabase, query, user.id, { requireAllTerms: true }),
           ]);
           const seen = new Set<string>();
           const merged: IslamicResult[] = [];
@@ -892,7 +901,7 @@ export async function handle(req: Request): Promise<Response> {
               language: (row.language as "ar" | "en" | "ur") ?? "ur",
               has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
             });
-            if (merged.length >= 8) break;
+            if (merged.length >= PERSONAL_MAX_ROWS) break;
           }
           return merged;
         } catch (e) {
