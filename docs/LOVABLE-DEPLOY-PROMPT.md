@@ -2,46 +2,42 @@
 
 Copy the block below into Lovable. Everything outside it is notes for you.
 
-**Current round — commit `f809d69`.** Edge functions changed: `islamic-search`
-(plus the shared files it imports). **No migrations.**
+**Current round — commit `883b994`.** One edge function changed: `islamic-search`
+(plus one new shared file it imports). **No migrations.**
 
 ---
 
 ```
-The GitHub repo's `main` branch has been updated (latest commit f809d69).
-Please sync and redeploy these Supabase Edge Functions:
+The GitHub repo's `main` branch has been updated (latest commit 883b994 or later).
+Please sync and redeploy this Supabase Edge Function:
 
   - islamic-search
-  - refine-text
-  - resource-search
-
-(refine-text and resource-search import _shared/citationEngine.ts, which gained
-an optional parameter; their behaviour is unchanged, but they bundle the file.)
 
 ## What to do
 
 1. Pull the latest `main`.
-2. Redeploy the three functions above.
+2. Redeploy `islamic-search`.
 3. Do NOT create, run, or generate any database migration. This change set
    contains zero schema changes.
 4. Do NOT refactor the exported `handle(req)` pattern back into an inline
    `Deno.serve(async (req) => { ... })`. It is exported on purpose so tests can
    call it.
+5. After deploying, open the DEPLOYED source of `islamic-search` (not the repo)
+   and confirm it contains the text "dropQuranRows". Tell me the deployment
+   timestamp. (The previous round's "already live" reply was wrong, so please
+   verify rather than assume.)
 
 ## What changed
 
-- `islamic-search/index.ts`: (a) the personal-library tier now uses a stricter
-  similarity threshold and caps at 3 rows; (b) each source's passage text
-  (<=1200 chars) is added to the `sources_ready` event; (c) the live-scrape tier
-  (domain-scrape) is optional and only gets 1.5s after the other tiers finish.
-- `_shared/citationEngine.ts`: personalVectorChannel / personalLexicalChannel
-  accept an optional options argument (defaults = old behaviour).
-- `_shared/fanOutGrace.ts`: new helper file.
+- `_shared/sourceScope.ts` (new): when the query planner is confident the user
+  asked for hadith only, Qur'an rows are dropped.
+- `islamic-search/index.ts`: Tier K skips the Qur'an source type for such
+  queries, and the merged result list is filtered with `dropQuranRows`.
 ```
 
 ---
 
 ## Notes for you (not for Lovable)
 
-After it is deployed, tell Claude and it will re-run the 23 sample questions
-to compare against the 2026-10-13 baseline (docs/PHASE0-DIAGNOSIS-URDU.md).
+Once deployed, tell Claude; it will re-run sample questions 6, 8 and 9 and
+compare with the 2026-10-13 baseline (docs/PHASE0-DIAGNOSIS-URDU.md).
