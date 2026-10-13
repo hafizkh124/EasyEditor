@@ -10,6 +10,7 @@ import { BookMarked, Check, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CitationBadge from "./CitationBadge";
 import { passageClipboardText } from "@/lib/citations/passageText";
+import { highlightSegments } from "@/lib/citations/highlight";
 import { DOMAIN_LABEL, groupByDomain } from "@/lib/citations/domains";
 
 // The type moved to shared/ (M9 defect #3) so the Electron agent can import it
@@ -20,10 +21,27 @@ import type { CitationItem } from "~shared/research/citationTypes";
 
 interface CitationPanelProps {
   citations: CitationItem[];
+  /** The user's question. When it is Arabic, its words are marked in each passage. */
+  query?: string;
   t: import("@/lib/i18n").Translator;
 }
 
-const PassageCard = ({ index, item, t }: { index: number; item: CitationItem; t: CitationPanelProps["t"] }) => {
+/** A passage with the user's search words marked (plain text when there is nothing to mark). */
+const Marked = ({ text, query }: { text: string; query?: string }) => (
+  <>
+    {highlightSegments(text, query).map((seg, i) =>
+      seg.match ? (
+        <mark key={i} className="rounded-sm bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-700/50">
+          {seg.text}
+        </mark>
+      ) : (
+        <span key={i}>{seg.text}</span>
+      ),
+    )}
+  </>
+);
+
+const PassageCard = ({ index, item, query, t }: { index: number; item: CitationItem; query?: string; t: CitationPanelProps["t"] }) => {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const arabic = item.content_ar?.trim() ?? "";
@@ -69,7 +87,7 @@ const PassageCard = ({ index, item, t }: { index: number; item: CitationItem; t:
               lang="ar"
               className={`font-[Amiri,'Noto_Naskh_Arabic',serif] text-xl leading-[2.2] text-foreground whitespace-pre-wrap break-words ${expanded || !long ? "" : "line-clamp-4"}`}
             >
-              {arabic}
+              <Marked text={arabic} query={query} />
             </p>
           )}
           {(showTranslation || !arabic) && (
@@ -77,7 +95,7 @@ const PassageCard = ({ index, item, t }: { index: number; item: CitationItem; t:
               dir="auto"
               className={`${arabic ? "text-sm text-muted-foreground" : "text-sm text-foreground"} leading-7 whitespace-pre-wrap break-words ${expanded || !long ? "" : "line-clamp-4"}`}
             >
-              {translation}
+              <Marked text={translation} query={query} />
             </p>
           )}
           {item.citation_ref.also_in && item.citation_ref.also_in.length > 0 && (
@@ -96,7 +114,7 @@ const PassageCard = ({ index, item, t }: { index: number; item: CitationItem; t:
   );
 };
 
-const CitationPanel = ({ citations, t }: CitationPanelProps) => {
+const CitationPanel = ({ citations, query, t }: CitationPanelProps) => {
   // Open by default when the passages themselves are available — the text is
   // the evidence, so it should be what the reader sees first, not a closed box.
   const hasPassages = citations.some((c) => !!(c.content?.trim() || c.content_ar?.trim()));
@@ -146,7 +164,7 @@ const CitationPanel = ({ citations, t }: CitationPanelProps) => {
                 // citations in the answer.
                 <ol className="px-3 pb-3 pt-2 space-y-2">
                   {citations.map((item, i) => (
-                    <PassageCard key={`${item.domain}-${i}`} index={i + 1} item={item} t={t} />
+                    <PassageCard key={`${item.domain}-${i}`} index={i + 1} item={item} query={query} t={t} />
                   ))}
                 </ol>
               ) : (
