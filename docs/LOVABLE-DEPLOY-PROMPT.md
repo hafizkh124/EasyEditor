@@ -26,7 +26,7 @@ Please sync and redeploy these Supabase Edge Functions:
    `Deno.serve(async (req) => { ... })`. It is exported on purpose so tests can
    call it.
 5. After deploying, open the DEPLOYED source of `islamic-search` (not the repo)
-   and confirm it contains the text "content_ar:   passageForClient". Tell me the deployment
+   and confirm it contains the text "groupWitnesses". Tell me the deployment
    timestamp. (The previous round's "already live" reply was wrong, so please
    verify rather than assume.)
 
@@ -37,6 +37,11 @@ Please sync and redeploy these Supabase Edge Functions:
   `has_matn` now also pass the Arabic text through, and `sources_ready` carries it
   (<=1200 chars) as `content_ar` next to `content`. Previously corpus rows' `content`
   was often the Urdu translation and the Arabic never reached the client.
+- `_shared/witnessGroups.ts` (new) + `islamic-search/index.ts`: the same hadith
+  arriving from two corpora (e.g. corpus `bukhari #6406` Urdu + live-API
+  `صحيح البخاري #6406` Arabic) is joined into ONE result, only when book, number and
+  the Arabic text all agree. The model's context block now also includes the Arabic
+  matn when a row has it.
 ```
 
 ---
@@ -44,5 +49,6 @@ Please sync and redeploy these Supabase Edge Functions:
 ## Notes for you (not for Lovable)
 
 Once deployed, tell Claude; it will re-run Q1-Q5 and check that `sources_ready` now
-has a `content_ar` field per source (Arabic matn), then confirm how the new panel
-looks in the app.
+has a `content_ar` field per source (Arabic matn), that the Q5 duplicates
+(bukhari 6406, ibn-hibban 841) are now single cards (look for the stage
+`group(same-hadith witnesses)`), then confirm how the new panel looks in the app.

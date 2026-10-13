@@ -80,6 +80,11 @@ const PassageCard = ({ index, item, t }: { index: number; item: CitationItem; t:
               {translation}
             </p>
           )}
+          {item.citation_ref.also_in && item.citation_ref.also_in.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {t("research.also_in", "یہی حدیث یہاں بھی:")} {item.citation_ref.also_in.join("، ")}
+            </p>
+          )}
           {long && (
             <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs text-primary hover:underline">
               {expanded ? t("research.show_less", "کم دکھائیں") : t("research.show_more", "مکمل عبارت")}
