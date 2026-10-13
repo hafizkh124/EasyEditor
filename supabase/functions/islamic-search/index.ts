@@ -14,6 +14,7 @@ import { searchTurathCloud, shouldQueryTurath } from "../_shared/turath.ts";
 import { callChatCompletions } from "../_shared/aiGateway.ts";
 import { fuseAndRerank } from "../_shared/rerank.ts";
 import { settleWithGrace } from "../_shared/fanOutGrace.ts";
+import { searchInChunks } from "../_shared/chunkedSearch.ts";
 import { dropQuranRows, isHadithOnlyPlan } from "../_shared/sourceScope.ts";
 import { decryptKey } from "../_shared/providerKeyCrypto.ts";
 
@@ -722,21 +723,25 @@ export async function handle(req: Request): Promise<Response> {
             // own stage here, with the row count and any error message, to
             // tell a real timeout apart from a genuinely fast empty search.
             const rpcStart = since();
-            const { data, error } = usingScoped
-              ? await supabase.rpc("search_documents_scoped", {
-                  p_patterns:     terms,
-                  p_source_types: sourceTypes,
-                  p_collections:  scopedSlugs,
-                  p_surah:        queryPlan?.scope.surah ?? null,
-                  p_limit:        30,
-                })
-              : await supabase.rpc("search_documents_smart", {
-                  p_terms:        terms,
-                  p_source_types: sourceTypes,
-                  p_match_limit:  30,
-                });
+            // One big RPC runs its per-term branches serially (~0.35s each,
+            // so 9-12 terms = 5-14s). Split across a few parallel calls — see
+            // _shared/chunkedSearch.ts for the measurement behind this.
+            const { data, error, chunks } = await searchInChunks<any>(terms, 30, (chunkTerms, chunkLimit) =>
+              usingScoped
+                ? supabase.rpc("search_documents_scoped", {
+                    p_patterns:     chunkTerms,
+                    p_source_types: sourceTypes,
+                    p_collections:  scopedSlugs,
+                    p_surah:        queryPlan?.scope.surah ?? null,
+                    p_limit:        chunkLimit,
+                  })
+                : supabase.rpc("search_documents_smart", {
+                    p_terms:        chunkTerms,
+                    p_source_types: sourceTypes,
+                    p_match_limit:  chunkLimit,
+                  }));
             stages.push({
-              stage: `tierK:rpc(${usingScoped ? "search_documents_scoped" : "search_documents_smart"}, ${sourceTypes.join("+")}, ${terms.length} terms)`,
+              stage: `tierK:rpc(${usingScoped ? "search_documents_scoped" : "search_documents_smart"}, ${sourceTypes.join("+")}, ${terms.length} terms, ${chunks} calls)`,
               startMs: rpcStart,
               endMs: since(),
               ms: since() - rpcStart,
