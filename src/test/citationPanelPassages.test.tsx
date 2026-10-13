@@ -52,3 +52,37 @@ describe("passageForClient", () => {
     expect(out.endsWith("…")).toBe(true);
   });
 });
+
+describe("Arabic matn first (search-quality phase 2.6)", () => {
+  const both = {
+    domain: "hadith-json",
+    citation_ref: { collection: "bukhari", hadith_number: "6406" },
+    content: "ہم سے زہیر بن حرب نے بیان کیا",
+    content_ar: "كَلِمَتانِ خَفيفَتانِ على اللِّسانِ",
+  };
+
+  it("shows the Arabic matn and puts the translation under it", () => {
+    render(<CitationPanel citations={[both]} t={t} />);
+    const arabic = screen.getByText("كَلِمَتانِ خَفيفَتانِ على اللِّسانِ");
+    const urdu = screen.getByText("ہم سے زہیر بن حرب نے بیان کیا");
+    expect(arabic.getAttribute("dir")).toBe("rtl");
+    // Arabic precedes the translation in document order
+    expect(arabic.compareDocumentPosition(urdu) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("does not repeat a passage whose content equals its content_ar", () => {
+    render(<CitationPanel citations={[{ ...both, content: both.content_ar }]} t={t} />);
+    expect(screen.getAllByText(both.content_ar)).toHaveLength(1);
+  });
+
+  it("copies Arabic first, then translation, reference and link", () => {
+    const out = passageClipboardText({ ...both, url: "https://example.org/b" });
+    expect(out.indexOf(both.content_ar)).toBeLessThan(out.indexOf(both.content));
+    expect(out).toContain("https://example.org/b");
+  });
+
+  it("a row with only Arabic (live-API tiers) still renders", () => {
+    render(<CitationPanel citations={[{ domain: "dorar", citation_ref: { book: "x" }, content: both.content_ar }]} t={t} />);
+    expect(screen.getByText(both.content_ar)).toBeTruthy();
+  });
+});

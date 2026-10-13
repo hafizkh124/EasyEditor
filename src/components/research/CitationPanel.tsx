@@ -26,8 +26,13 @@ interface CitationPanelProps {
 const PassageCard = ({ index, item, t }: { index: number; item: CitationItem; t: CitationPanelProps["t"] }) => {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
-  const text = item.content?.trim() ?? "";
-  const long = text.length > 280;
+  const arabic = item.content_ar?.trim() ?? "";
+  const translation = item.content?.trim() ?? "";
+  // Corpus rows often carry the Urdu translation in `content` and the Arabic matn
+  // separately; the matn leads, the translation sits under it.
+  const showTranslation = translation !== "" && translation !== arabic;
+  const text = arabic || translation;
+  const long = (arabic.length + (showTranslation ? translation.length : 0)) > 280;
 
   const copy = async () => {
     try {
@@ -58,12 +63,23 @@ const PassageCard = ({ index, item, t }: { index: number; item: CitationItem; t:
       </div>
       {text && (
         <>
-          <p
-            dir="auto"
-            className={`text-sm leading-7 text-foreground whitespace-pre-wrap break-words ${expanded || !long ? "" : "line-clamp-4"}`}
-          >
-            {text}
-          </p>
+          {arabic && (
+            <p
+              dir="rtl"
+              lang="ar"
+              className={`font-[Amiri,'Noto_Naskh_Arabic',serif] text-xl leading-[2.2] text-foreground whitespace-pre-wrap break-words ${expanded || !long ? "" : "line-clamp-4"}`}
+            >
+              {arabic}
+            </p>
+          )}
+          {(showTranslation || !arabic) && (
+            <p
+              dir="auto"
+              className={`${arabic ? "text-sm text-muted-foreground" : "text-sm text-foreground"} leading-7 whitespace-pre-wrap break-words ${expanded || !long ? "" : "line-clamp-4"}`}
+            >
+              {translation}
+            </p>
+          )}
           {long && (
             <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs text-primary hover:underline">
               {expanded ? t("research.show_less", "کم دکھائیں") : t("research.show_more", "مکمل عبارت")}
@@ -78,7 +94,7 @@ const PassageCard = ({ index, item, t }: { index: number; item: CitationItem; t:
 const CitationPanel = ({ citations, t }: CitationPanelProps) => {
   // Open by default when the passages themselves are available — the text is
   // the evidence, so it should be what the reader sees first, not a closed box.
-  const hasPassages = citations.some((c) => !!c.content?.trim());
+  const hasPassages = citations.some((c) => !!(c.content?.trim() || c.content_ar?.trim()));
   const [isOpen, setIsOpen] = useState(hasPassages);
 
   if (citations.length === 0) return null;

@@ -81,6 +81,8 @@ export function rowToIslamicResult(row: any): IslamicResult {
     },
     language: (row.language as "ar" | "en" | "ur") ?? "ar",
     has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
+    // Arabic matn for display (the `content` of corpus rows is often the Urdu translation).
+    content_ar: typeof row.content_ar === "string" && row.content_ar.trim() !== "" ? row.content_ar : undefined,
   };
 }
 

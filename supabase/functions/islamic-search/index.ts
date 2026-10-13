@@ -864,6 +864,8 @@ export async function handle(req: Request): Promise<Response> {
               citation_ref: row.citation_ref ?? {},
               language: (row.language as "ar" | "en" | "ur") ?? "ar",
               has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
+              // Arabic matn for display (the `content` of corpus rows is often the Urdu translation).
+              content_ar: typeof row.content_ar === "string" && row.content_ar.trim() !== "" ? row.content_ar : undefined,
             }));
           } catch (e) {
             console.error("Tier K error:", e);
@@ -918,6 +920,8 @@ export async function handle(req: Request): Promise<Response> {
             citation_ref: row.citation_ref ?? {},
             language: (row.language as "ar" | "en" | "ur") ?? "ur",
             has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
+            // Arabic matn for display (the `content` of corpus rows is often the Urdu translation).
+            content_ar: typeof row.content_ar === "string" && row.content_ar.trim() !== "" ? row.content_ar : undefined,
           }));
         } catch (e) {
           console.error("Tier D (classical) error:", e);
@@ -995,6 +999,8 @@ export async function handle(req: Request): Promise<Response> {
               citation_ref: row.citation_ref,
               language: (row.language as "ar" | "en" | "ur") ?? "ur",
               has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
+              // Arabic matn for display (the `content` of corpus rows is often the Urdu translation).
+              content_ar: typeof row.content_ar === "string" && row.content_ar.trim() !== "" ? row.content_ar : undefined,
             });
             if (merged.length >= PERSONAL_MAX_ROWS) break;
           }
@@ -1069,6 +1075,8 @@ export async function handle(req: Request): Promise<Response> {
                 citation_ref: { ...(row.citation_ref ?? {}), _is_anchor: true },
                 language: row.language ?? "ar",
                 has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
+                // Arabic matn for display (the `content` of corpus rows is often the Urdu translation).
+                content_ar: typeof row.content_ar === "string" && row.content_ar.trim() !== "" ? row.content_ar : undefined,
               }));
             })
         );
@@ -1105,6 +1113,8 @@ export async function handle(req: Request): Promise<Response> {
                 citation_ref: { ...(row.citation_ref ?? {}), _is_anchor: true },
                 language: row.language ?? "ar",
                 has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
+                // Arabic matn for display (the `content` of corpus rows is often the Urdu translation).
+                content_ar: typeof row.content_ar === "string" && row.content_ar.trim() !== "" ? row.content_ar : undefined,
               }));
             })
         );
@@ -1313,6 +1323,7 @@ export async function handle(req: Request): Promise<Response> {
       // client, so a reader could never see (or copy) what was retrieved
       // unless the model happened to quote it.
       content:      passageForClient(r.content),
+      content_ar:   passageForClient(r.content_ar),
     }));
 
     // Everything above is what the user waits through before a single byte is
