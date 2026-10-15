@@ -82,6 +82,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
   // user to re-supply something — "pdf" (re-upload) vs "text"/"image"/null
   // (those complete in seconds; not worth a resume prompt, just start over).
   const [resumeSourceRef, setResumeSourceRef] = useState<string | null>(null);
+  const [resumedShamelaBookId, setResumedShamelaBookId] = useState<string | null>(null);
 
   const [sourceLanguage, setSourceLanguage] = useState("auto");
   const [targetLanguage, setTargetLanguage] = useState("ur");
@@ -381,6 +382,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
 
       if (project.source_ref?.startsWith("shamela:")) {
         const bookId = project.source_ref.slice("shamela:".length);
+        setResumedShamelaBookId(bookId);
         await loadShamelaBook(bookId, project.title);
       } else {
         // 'pdf', 'text', 'image', or null — none of these can be re-fetched
@@ -588,6 +590,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     loadedCount,
     sourceError,
     resumeSourceRef,
+    resumedShamelaBookId,
 
     sourceLanguage,
     targetLanguage,

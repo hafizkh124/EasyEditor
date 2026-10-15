@@ -87,9 +87,12 @@ describe('run', () => {
     await expect(invoke({ action: 'run', instruction: '  ', mode: 'ask', projectRoot: 'C:\\p' })).rejects.toThrow(/instruction/);
   });
 
-  it('rejects a missing project folder in Plan/Auto (they write into one)', async () => {
-    await expect(invoke({ action: 'run', instruction: 'x', mode: 'plan', projectRoot: '' })).rejects.toThrow(/project folder/);
-    await expect(invoke({ action: 'run', instruction: 'x', mode: 'auto', projectRoot: '' })).rejects.toThrow(/project folder/);
+  it('Plan/Auto run with no project folder (writes limited to picked files downstream)', async () => {
+    const p = invoke({ action: 'run', instruction: 'x', mode: 'plan', projectRoot: '' });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(runAgent).toHaveBeenCalledWith(expect.objectContaining({ mode: 'plan', projectRoot: null }));
+    resolveRun({ answer: 'x', stopReason: 'done', steps: 1, toolCalls: [] });
+    await expect(p).resolves.toMatchObject({ answer: 'x' });
   });
 
   it('M11 — Ask mode runs with no project folder (passes null through to runAgent, not empty string)', async () => {
