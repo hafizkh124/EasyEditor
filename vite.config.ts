@@ -347,6 +347,9 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
         "~shared": path.resolve(__dirname, "./shared"),
       },
+      // One copy of React + router only — a mismatched pre-bundled copy breaks
+      // router context ("useLocation() may be used only in the context of a <Router>").
+      dedupe: ["react", "react-dom", "react-router", "react-router-dom"],
     },
   };
 });
