@@ -2,8 +2,8 @@
 
 Copy the block below into Lovable. Everything outside it is notes for you.
 
-**Current round — latest `main`.** One edge function changed: `islamic-search`.
-**No migrations.** (The rest of this round is front-end only and ships with the web build.)
+**Current round — latest `main`.** One edge function changed: `islamic-search`
+(new shared file `_shared/phraseRank.ts`). **No migrations.**
 
 ---
 
@@ -23,21 +23,21 @@ Please sync and redeploy this Supabase Edge Function:
    `Deno.serve(async (req) => { ... })`. It is exported on purpose so tests can
    call it.
 5. After deploying, open the DEPLOYED source of `islamic-search` (not the repo)
-   and confirm it contains the text "more_citations". Tell me the deployment
-   timestamp. If you cannot read the deployed source, say so plainly.
+   and confirm it contains the text "prioritizePhraseHits". Tell me the
+   deployment timestamp. If you cannot read the deployed source, say so plainly.
 
 ## What changed
 
-- `islamic-search/index.ts`: the final ranking now keeps 25 results instead of 10.
-  The first 10 go to the model exactly as before (same ranking prefix, same
-  context block, same [N] numbering); results 11-25 are sent to the client only,
-  in a new `more_citations` array on the `sources_ready` event, with passages cut
-  to 600 chars. They are browse-only: never given to the model, never cited.
+- `_shared/phraseRank.ts` (new) + `islamic-search/index.ts`: when the user's query
+  is an Arabic phrase of 2+ words, the ranked results are REORDERED (nothing is
+  dropped) so rows containing the whole phrase come first, Six Books rows before
+  other phrase rows, the rest keep their order. Urdu/topical queries are untouched.
 ```
 
 ---
 
 ## Notes for you (not for Lovable)
 
-Once deployed, tell Claude; it will check that `sources_ready` carries up to 15
-`more_citations`, and look at the new "show N more results" fold in the app.
+Once deployed, tell Claude; it will re-run the five famous-phrase questions and
+check that Sahih Muslim 2694 (query "كلمتان خفيفتان على اللسان") now appears in the
+ten sources the model reads, and that Urdu questions are ranked as before.
