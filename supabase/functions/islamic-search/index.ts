@@ -17,6 +17,7 @@ import { settleWithGrace } from "../_shared/fanOutGrace.ts";
 import { searchInChunks } from "../_shared/chunkedSearch.ts";
 import { dropQuranRows, isHadithOnlyPlan } from "../_shared/sourceScope.ts";
 import { groupWitnesses } from "../_shared/witnessGroups.ts";
+import { prioritizePhraseHits } from "../_shared/phraseRank.ts";
 import { decryptKey } from "../_shared/providerKeyCrypto.ts";
 
 // Query-time diacritic normalization now lives in the `search_documents_smart`
@@ -1279,6 +1280,21 @@ export async function handle(req: Request): Promise<Response> {
       timeoutMs: 2500,
       groupOf: (r) => tierOfRow.get(r) ?? "other",
     });
+    // An Arabic phrase typed by the user: rows that contain the WHOLE phrase come
+    // first, Six Books before the rest (reorders only; nothing is dropped).
+    {
+      const before = allResults;
+      allResults = prioritizePhraseHits(allResults, query);
+      if (allResults !== before) {
+        stages.push({
+          stage: "rank(exact-phrase, six-books first)",
+          startMs: rerankStart,
+          endMs: since(),
+          ms: 0,
+          count: allResults.length,
+        });
+      }
+    }
     // Taking the first MODEL_SOURCES of a longer ranked list is the same as ranking
     // for MODEL_SOURCES (fuseAndRerank cuts a prefix), so the model sees exactly
     // what it saw before; the remainder is only for the reader to browse.
