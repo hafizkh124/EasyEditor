@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import CitationPanel from "@/components/research/CitationPanel";
@@ -103,5 +104,13 @@ describe("search words are marked in the passage (search-quality phase 2.9)", ()
   it("marks nothing for an Urdu question or when no query is given", () => {
     expect(render(<CitationPanel citations={[cite]} query="پڑوسی کے حقوق" t={t} />).container.querySelectorAll("mark")).toHaveLength(0);
     expect(render(<CitationPanel citations={[cite]} t={t} />).container.querySelectorAll("mark")).toHaveLength(0);
+  });
+});
+
+describe("long references stay inside the card (search-quality phase 2.12)", () => {
+  it("wraps the reference chip and stops the scroll area from growing to its widest child", () => {
+    const src = readFileSync("src/components/research/CitationPanel.tsx", "utf8");
+    expect(src).toContain("[&>*]:!whitespace-normal");
+    expect(src).toContain("[&_[data-radix-scroll-area-viewport]>div]:!block");
   });
 });
