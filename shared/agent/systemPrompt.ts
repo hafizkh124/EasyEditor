@@ -10,6 +10,7 @@
 import type { AgentMode } from './types.js';
 import type { ToolAvailabilityLike } from './capabilities.js';
 import { authorVoicePromptSection } from './authorVoice.js';
+import { languageInstruction } from '../research/answerLanguage.js';
 
 const BASE = `You are the EasyEditor research assistant, operating a scholar's own tools (Microsoft Word over COM, their local Maktaba Shamela library, their personal corpus) to help prepare an Arabic/Urdu/English scholarly document.
 
@@ -103,6 +104,10 @@ export interface WebSystemPromptInput {
 
 export function buildWebSystemPrompt(input: WebSystemPromptInput): string {
   const parts = [WEB_BASE];
+  // No detected language here (the question arrives later as a user message), so the
+  // general rule: the language of the scholar's message, unless they ask for another.
+  parts.push(`
+${languageInstruction(null)}`);
 
   parts.push(
     input.mode === 'ask'
@@ -126,6 +131,8 @@ export function buildWebSystemPrompt(input: WebSystemPromptInput): string {
 
 export function buildSystemPrompt(input: SystemPromptInput): string {
   const parts = [BASE];
+  parts.push(`
+${languageInstruction(null)}`);
 
   parts.push(
     input.mode === 'ask'

@@ -18,6 +18,7 @@ import { searchInChunks } from "../_shared/chunkedSearch.ts";
 import { dropQuranRows, isHadithOnlyPlan } from "../_shared/sourceScope.ts";
 import { groupWitnesses } from "../_shared/witnessGroups.ts";
 import { prioritizePhraseHits, withPhraseTerm } from "../_shared/phraseRank.ts";
+import { languageInstruction } from "../_shared/mirror/research/answerLanguage.ts";
 import { decryptKey } from "../_shared/providerKeyCrypto.ts";
 
 // Query-time diacritic normalization now lives in the `search_documents_smart`
@@ -278,7 +279,7 @@ export function autoReferencedRefundAmount(explicitStrictMode: unknown, effectiv
   return TOKEN_COSTS.islamic - TOKEN_COSTS.research;
 }
 
-function buildSystemPrompt(contextBlock: string, strictMode: boolean, hasCountFacts = false): string {
+function buildSystemPrompt(contextBlock: string, strictMode: boolean, hasCountFacts = false, question = ""): string {
   const modeInstruction = strictMode
     ? `STRICT SOURCE MODE:
 - You MUST answer ONLY based on the provided Islamic sources below.
@@ -364,7 +365,7 @@ CITATION RULES:
 
 FORMATTING:
 - Use Markdown with the emoji headers shown above
-- Respond in the same language as the user's question (Arabic / English / Urdu)
+- ${languageInstruction(question)}
 - For Arabic content, preserve diacritics (tashkeel) as provided in sources
 - Use **bold** for key Islamic terms
 ${contextBlock}`;
@@ -1417,7 +1418,7 @@ export async function handle(req: Request): Promise<Response> {
         // times" question with the authoritative figure rather than
         // declining.
         const messages: any[] = [
-          { role: "system", content: buildSystemPrompt(contextBlock + countBlock, effectiveStrictMode, countBlock.length > 0) },
+          { role: "system", content: buildSystemPrompt(contextBlock + countBlock, effectiveStrictMode, countBlock.length > 0, query) },
         ];
         if (chatHistory && chatHistory.length > 0) {
           for (const msg of chatHistory) {

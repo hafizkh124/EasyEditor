@@ -18,6 +18,7 @@ const FILES = [
   "text/fileText.ts",
   "text/takhrij.ts",
   "search/rankFusion.ts",
+  "research/answerLanguage.ts",
 ];
 
 const OUT = "supabase/functions/_shared/mirror";
