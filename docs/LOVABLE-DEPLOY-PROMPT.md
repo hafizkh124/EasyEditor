@@ -3,7 +3,7 @@
 Copy the block below into Lovable. Everything outside it is notes for you.
 
 **Current round — latest `main`.** One edge function changed: `islamic-search`
-(new shared file `_shared/phraseRank.ts`). **No migrations.**
+(new shared file `_shared/rulingRank.ts`). **No migrations.**
 
 ---
 
@@ -23,24 +23,20 @@ Please sync and redeploy this Supabase Edge Function:
    `Deno.serve(async (req) => { ... })`. It is exported on purpose so tests can
    call it.
 5. After deploying, open the DEPLOYED source of `islamic-search` (not the repo)
-   and confirm it contains the text "tierK6:phrase-six-books". Tell me the
+   and confirm it contains the text "demote quran+weak behind hadith". Tell me the
    deployment timestamp. If you cannot read the deployed source, say so plainly.
 
 ## What changed
 
-- `islamic-search/index.ts` + `_shared/phraseRank.ts`: for an Arabic phrase query, one extra
-  fan-out branch ("Tier K6") runs `search_documents_scoped` with that single phrase, hadith
-  only, restricted to the Six Books' collections (limit 20). Reason: the canonical rows exist
-  (verified: bukhari 110, muslim 5, ibnmajah 2340...) and appear when the user names the book,
-  but in an open search the 600-arbitrary-candidates-per-term lexical RPC never reached them.
-  Same existing RPC, no schema change. Gated like Tier K's hadith search (off if the user
-  turned hadith sources off); Urdu/topical queries do not trigger it.
+- `islamic-search/index.ts` + `_shared/rulingRank.ts`: after the rerank, Qur'an verse rows and
+  weak/fabricated-graded hadith rows are moved BEHIND the other results (reorder only, nothing
+  dropped; topic anchors stay first; skipped when the question itself asks for verses/tafsir).
+  Reason: judged live, a practical question like "نماز میں بچے کو اٹھانے کا حکم" spent 4 of its
+  first 10 slots on verses sharing one word. Pure ordering, no schema change.
 ```
 
 ---
 
 ## Notes for you (not for Lovable)
 
-Once deployed, tell Claude; it will re-run "من كذب علي متعمدا" and "لا ضرر ولا ضرار" WITHOUT a
-book name and check that Bukhari / Muslim / Ibn Majah rows now reach the ten sources the
-model reads, and that sources_ready time stays about the same.
+Once deployed, tell Claude; it will re-run the 6 judged questions and compare against your marks.
