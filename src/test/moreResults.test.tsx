@@ -53,9 +53,12 @@ describe("more results (search-quality phase 2.10)", () => {
   });
 
   it("extras are left out of a bibliography", () => {
+    // The header carries today's date, so look at the entry lines, not the whole text.
     const md = buildBibliographyMarkdown([item(1), item(11, true)]);
-    expect(md).toContain("1");
-    expect(md).not.toContain("11");
+    const entries = md.split("\n").filter((l) => l.startsWith("- "));
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toContain("No. 1");
+    expect(entries.join("\n")).not.toContain("No. 11");
   });
 
   it("islamic-search ranks for the display list but gives the model only the first ten", () => {

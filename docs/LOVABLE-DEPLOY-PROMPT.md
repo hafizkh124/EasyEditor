@@ -23,23 +23,22 @@ Please sync and redeploy this Supabase Edge Function:
    `Deno.serve(async (req) => { ... })`. It is exported on purpose so tests can
    call it.
 5. After deploying, open the DEPLOYED source of `islamic-search` (not the repo)
-   and confirm it contains the text "withPhraseTerm". Tell me the
+   and confirm it contains the text "languageInstruction". Tell me the
    deployment timestamp. If you cannot read the deployed source, say so plainly.
 
 ## What changed
 
-- `_shared/phraseRank.ts` + `islamic-search/index.ts`, two related changes for an Arabic phrase query:
-  (1) the whole phrase is also added as the FIRST lexical search term (Tier K), so the
-  rows that really contain it are among the candidates; (2) the ranked list is
-  reordered (nothing dropped) so exact-phrase rows come first, Six Books before other
-  books. A short-phrase detection bug (13-14 letter phrases were ignored) is fixed.
-  Urdu/topical queries are untouched.
+- `islamic-search/index.ts` + new `_shared/mirror/research/answerLanguage.ts`: the system
+  prompt now detects the language of the question (Urdu / Arabic / English from the
+  letters used) and states it outright: "Write your answer in <language>", unless the
+  scholar explicitly asks for another language; quotations stay in their original
+  language. Before, an Arabic question was answered in English because the only rule
+  was one buried line and the context block is English-labelled.
 ```
 
 ---
 
 ## Notes for you (not for Lovable)
 
-Once deployed, tell Claude; it will re-run the five famous-phrase questions and
-check that Sahih Muslim 2694 (query "كلمتان خفيفتان على اللسان") now appears in the
-ten sources the model reads, and that Urdu questions are ranked as before.
+Once deployed, tell Claude; it will ask an Arabic question and an Urdu one and check the
+language of each answer, plus one with an explicit "answer in English".
