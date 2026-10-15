@@ -13,6 +13,13 @@ export interface RerankOptions<T = unknown> {
   groupOf?: (c: T) => string;
   /** How many fused candidates the cross-encoder scores. Default 40. */
   poolSize?: number;
+  /**
+   * When the caller returns a longer list but only the first `modelSlots`
+   * reach the model, fusion and the anchor floor are computed for that prefix:
+   * the head holds a fair cross-source mix and at least MIN_RETRIEVED_SLOTS
+   * retrieved rows; overflow anchors/rows follow after it.
+   */
+  modelSlots?: number;
 }
 
 export interface CandidateWithScore {
@@ -99,9 +106,23 @@ export async function fuseAndRerank<T extends CandidateWithScore>(
     : maxResults;
 
   // Nothing to cut: keep the caller's order rather than reshuffling for no reason.
-  const needsCut = rawPool.length > availableSlots;
+  const modelSlots = options.modelSlots;
+  const headRetrieved = modelSlots === undefined ? availableSlots
+    : anchors.length > 0 ? Math.max(MIN_RETRIEVED_SLOTS, modelSlots - anchors.length) : modelSlots;
+  const headAnchors = modelSlots === undefined ? anchors.length : Math.max(0, modelSlots - headRetrieved);
+  const assemble = (rows: T[]): T[] => {
+    const kept = rows.slice(0, availableSlots);
+    if (modelSlots === undefined) return [...anchors, ...kept];
+    return [
+      ...anchors.slice(0, headAnchors),
+      ...kept.slice(0, headRetrieved),
+      ...anchors.slice(headAnchors),
+      ...kept.slice(headRetrieved),
+    ];
+  };
+  const needsCut = rawPool.length > Math.min(availableSlots, headRetrieved);
   const fused = needsCut ? fuseByGroup(rawPool, groupOf) : rawPool;
-  const fallback = () => [...anchors, ...fused.slice(0, availableSlots)];
+  const fallback = () => assemble(fused);
 
   // If no Cohere key provided or no pool items, fall back immediately to fused RRF order
   if (!options.cohereApiKey || rawPool.length === 0) {
@@ -169,7 +190,7 @@ export async function fuseAndRerank<T extends CandidateWithScore>(
       }
     }
 
-    return [...anchors, ...reranked.slice(0, availableSlots)];
+    return assemble(reranked);
   } catch (e) {
     clearTimeout(timer);
     const msg = e instanceof Error ? e.message : String(e);

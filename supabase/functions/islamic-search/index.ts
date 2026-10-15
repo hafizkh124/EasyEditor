@@ -1316,6 +1316,7 @@ export async function handle(req: Request): Promise<Response> {
     allResults = await fuseAndRerank(query, allResults, {
       cohereApiKey: cohereKey,
       maxResults: DISPLAY_SOURCES,
+      modelSlots: MODEL_SOURCES,
       timeoutMs: 2500,
       groupOf: (r) => tierOfRow.get(r) ?? "other",
     });
