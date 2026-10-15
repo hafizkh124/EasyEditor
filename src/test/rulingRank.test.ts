@@ -29,9 +29,17 @@ describe("demoteQuranAndWeak", () => {
   it("keeps anchors first and never drops a row", () => {
     const anchor = r("a", "tanzil", { citation_ref: { _is_anchor: true } });
     const rows = [r("v", "tanzil"), anchor, r("h", "hadith-json")];
-    const out = demoteQuranAndWeak(rows, Q);
+    const out = demoteQuranAndWeak(rows, "نماز کے فضائل");
     expect(ids(out)).toEqual(["a", "h", "v"]);
     expect(out).toHaveLength(3);
+  });
+
+  it("a Qur'an anchor loses its pin under a ruling cue, but keeps it for a plain topic", () => {
+    const anchor = r("a", "tanzil", { citation_ref: { _is_anchor: true } });
+    const hAnchor = r("ha", "hadith-json", { citation_ref: { _is_anchor: true } });
+    const rows = [anchor, hAnchor, r("h", "hadith-json")];
+    expect(ids(demoteQuranAndWeak(rows, Q))).toEqual(["ha", "h", "a"]);
+    expect(ids(demoteQuranAndWeak(rows, "زکوٰۃ کا نصاب"))).toEqual(["a", "ha", "h"]);
   });
 
   it("returns the same array when there is nothing to move or nothing better to promote", () => {
