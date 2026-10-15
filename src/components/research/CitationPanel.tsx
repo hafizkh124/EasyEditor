@@ -67,7 +67,11 @@ const PassageCard = ({ index, item, query, t }: { index: number; item: CitationI
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5 min-w-0">
           <span className="text-xs font-semibold text-muted-foreground tabular-nums">[{index}]</span>
-          <CitationBadge domain={item.domain} citationRef={{ ...item.citation_ref, url: item.url ?? item.citation_ref.url }} />
+          {/* A reference can be a whole sentence (agent results carry the formatted line):
+              let the chip wrap inside the card instead of stretching it. */}
+          <div className="min-w-0 max-w-full [&>*]:!whitespace-normal [&>*]:!rounded-lg [&>*]:!leading-snug">
+            <CitationBadge domain={item.domain} citationRef={{ ...item.citation_ref, url: item.url ?? item.citation_ref.url }} />
+          </div>
         </div>
         <button
           type="button"
@@ -162,7 +166,9 @@ const CitationPanel = ({ citations, query, t }: CitationPanelProps) => {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <ScrollArea className={hasPassages ? "max-h-[32rem]" : "max-h-64"}>
+            {/* Radix wraps the content in a `display: table` box, which grows to the widest
+                child (a long reference) and pushes the whole panel past its column. */}
+            <ScrollArea className={`${hasPassages ? "max-h-[32rem]" : "max-h-64"} [&_[data-radix-scroll-area-viewport]>div]:!block`}>
               {hasPassages ? (
                 // Numbered in retrieval order so [N] matches the inline
                 // citations in the answer.
