@@ -158,12 +158,11 @@ export function registerAgentHandlers(): void {
             payload.mode === 'auto' || payload.mode === 'do' ? 'auto'
             : payload.mode === 'plan' ? 'plan'
             : 'ask';
-          // M11 — Ask mode may run with no project folder open; Plan/Auto
-          // still need one (they write into it).
+          // Any mode may run with no project folder open; run.ts/dispatch.ts
+          // restrict no-project writes to the user's own picked files.
           const rawProjectRoot = typeof payload.projectRoot === 'string' ? payload.projectRoot : '';
           const projectRoot: string | null = rawProjectRoot || null;
           if (!instruction) throw new Error('instruction is required');
-          if (!projectRoot && mode !== 'ask') throw new Error('open a project folder first');
 
           // Plan §4.4 — validate the optional structured scope.
           const rawScope = (payload.scope && typeof payload.scope === 'object' ? payload.scope : null) as
