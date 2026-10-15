@@ -23,15 +23,17 @@ Please sync and redeploy this Supabase Edge Function:
    `Deno.serve(async (req) => { ... })`. It is exported on purpose so tests can
    call it.
 5. After deploying, open the DEPLOYED source of `islamic-search` (not the repo)
-   and confirm it contains the text "prioritizePhraseHits". Tell me the
+   and confirm it contains the text "withPhraseTerm". Tell me the
    deployment timestamp. If you cannot read the deployed source, say so plainly.
 
 ## What changed
 
-- `_shared/phraseRank.ts` (new) + `islamic-search/index.ts`: when the user's query
-  is an Arabic phrase of 2+ words, the ranked results are REORDERED (nothing is
-  dropped) so rows containing the whole phrase come first, Six Books rows before
-  other phrase rows, the rest keep their order. Urdu/topical queries are untouched.
+- `_shared/phraseRank.ts` + `islamic-search/index.ts`, two related changes for an Arabic phrase query:
+  (1) the whole phrase is also added as the FIRST lexical search term (Tier K), so the
+  rows that really contain it are among the candidates; (2) the ranked list is
+  reordered (nothing dropped) so exact-phrase rows come first, Six Books before other
+  books. A short-phrase detection bug (13-14 letter phrases were ignored) is fixed.
+  Urdu/topical queries are untouched.
 ```
 
 ---

@@ -84,3 +84,35 @@ describe("prioritizePhraseHits", () => {
     expect(cut).toBeGreaterThan(phrase);
   });
 });
+
+import { withPhraseTerm } from "../../supabase/functions/_shared/phraseRank";
+
+describe("withPhraseTerm (search-quality phase 2.14)", () => {
+  it("puts the whole phrase first so a later cap cannot cut it", () => {
+    const out = withPhraseTerm(["كذب", "متعمدا"], "من كذب علي متعمدا");
+    expect(out[0]).toBe("من كذب علي متعمدا");
+    expect(out.slice(1)).toEqual(["كذب", "متعمدا"]);
+    expect(withPhraseTerm(Array.from({ length: 20 }, (_, i) => `w${i}`), "من كذب علي متعمدا").slice(0, 12)[0]).toBe("من كذب علي متعمدا");
+  });
+  it("does not repeat it when the planner already produced the same string", () => {
+    expect(withPhraseTerm(["من كذب علي متعمدا", "كذب"], "من كذب علي متعمدا")).toEqual(["من كذب علي متعمدا", "كذب"]);
+  });
+  it("leaves Urdu and single-word queries alone", () => {
+    const t = ["حقوق", "جار"];
+    expect(withPhraseTerm(t, "پڑوسی کے حقوق")).toBe(t);
+    expect(withPhraseTerm(t, "الصلاة")).toBe(t);
+  });
+  it("is wired into Tier K ahead of the 12-term cap", () => {
+    const src = readFileSync("supabase/functions/islamic-search/index.ts", "utf8");
+    expect(src).toContain("withPhraseTerm(expanded, query).slice(0, 12)");
+  });
+});
+
+describe("short phrases count as phrases (found live: 13-14 letter hadith phrases were ignored)", () => {
+  it.each(["من كذب علي متعمدا", "لا ضرر ولا ضرار", "الدين النصيحة"])("%s", (q) => {
+    expect(phraseOf(q)).not.toBeNull();
+  });
+  it("an Urdu question that happens to contain Arabic words is still not a phrase", () => {
+    expect(phraseOf("کیا إنما الأعمال بالنيات کا مطلب بتائیں")).toBeNull();
+  });
+});

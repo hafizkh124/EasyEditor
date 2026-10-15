@@ -17,7 +17,7 @@ import { settleWithGrace } from "../_shared/fanOutGrace.ts";
 import { searchInChunks } from "../_shared/chunkedSearch.ts";
 import { dropQuranRows, isHadithOnlyPlan } from "../_shared/sourceScope.ts";
 import { groupWitnesses } from "../_shared/witnessGroups.ts";
-import { prioritizePhraseHits } from "../_shared/phraseRank.ts";
+import { prioritizePhraseHits, withPhraseTerm } from "../_shared/phraseRank.ts";
 import { decryptKey } from "../_shared/providerKeyCrypto.ts";
 
 // Query-time diacritic normalization now lives in the `search_documents_smart`
@@ -775,7 +775,8 @@ export async function handle(req: Request): Promise<Response> {
               ...(queryPlan?.related_concepts ?? []),
             ])];
             // Cap to a sensible upper bound so the SQL UNNEST stays small.
-            const terms = expanded.slice(0, 12);
+            // An Arabic phrase is searched as a phrase too (first, so the cap keeps it).
+            const terms = withPhraseTerm(expanded, query).slice(0, 12);
 
             // When the user named specific books ("صحیح بخاری میں..."), use the
             // scoped RPC so the local corpus honours that restriction. Without
