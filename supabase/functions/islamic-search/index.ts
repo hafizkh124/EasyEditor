@@ -16,6 +16,7 @@ import { fuseAndRerank } from "../_shared/rerank.ts";
 import { settleWithGrace } from "../_shared/fanOutGrace.ts";
 import { searchInChunks } from "../_shared/chunkedSearch.ts";
 import { dropQuranRows, isHadithOnlyPlan } from "../_shared/sourceScope.ts";
+import { demoteQuranAndWeak } from "../_shared/rulingRank.ts";
 import { groupWitnesses } from "../_shared/witnessGroups.ts";
 import { prioritizePhraseHits, withPhraseTerm, phraseOf, sixBooksCollectionSlugs } from "../_shared/phraseRank.ts";
 import { languageInstruction } from "../_shared/mirror/research/answerLanguage.ts";
@@ -1318,6 +1319,21 @@ export async function handle(req: Request): Promise<Response> {
       timeoutMs: 2500,
       groupOf: (r) => tierOfRow.get(r) ?? "other",
     });
+    // A practical question ("ruling on…") should not spend its first slots on
+    // verses that share one word, or on weak/fabricated hadith (reorders only).
+    {
+      const before = allResults;
+      allResults = demoteQuranAndWeak(allResults, query);
+      if (allResults !== before) {
+        stages.push({
+          stage: "rank(demote quran+weak behind hadith)",
+          startMs: rerankStart,
+          endMs: since(),
+          ms: 0,
+          count: allResults.length,
+        });
+      }
+    }
     // An Arabic phrase typed by the user: rows that contain the WHOLE phrase come
     // first, Six Books before the rest (reorders only; nothing is dropped).
     {
