@@ -23,22 +23,24 @@ Please sync and redeploy this Supabase Edge Function:
    `Deno.serve(async (req) => { ... })`. It is exported on purpose so tests can
    call it.
 5. After deploying, open the DEPLOYED source of `islamic-search` (not the repo)
-   and confirm it contains the text "languageInstruction". Tell me the
+   and confirm it contains the text "tierK6:phrase-six-books". Tell me the
    deployment timestamp. If you cannot read the deployed source, say so plainly.
 
 ## What changed
 
-- `islamic-search/index.ts` + new `_shared/mirror/research/answerLanguage.ts`: the system
-  prompt now detects the language of the question (Urdu / Arabic / English from the
-  letters used) and states it outright: "Write your answer in <language>", unless the
-  scholar explicitly asks for another language; quotations stay in their original
-  language. Before, an Arabic question was answered in English because the only rule
-  was one buried line and the context block is English-labelled.
+- `islamic-search/index.ts` + `_shared/phraseRank.ts`: for an Arabic phrase query, one extra
+  fan-out branch ("Tier K6") runs `search_documents_scoped` with that single phrase, hadith
+  only, restricted to the Six Books' collections (limit 20). Reason: the canonical rows exist
+  (verified: bukhari 110, muslim 5, ibnmajah 2340...) and appear when the user names the book,
+  but in an open search the 600-arbitrary-candidates-per-term lexical RPC never reached them.
+  Same existing RPC, no schema change. Gated like Tier K's hadith search (off if the user
+  turned hadith sources off); Urdu/topical queries do not trigger it.
 ```
 
 ---
 
 ## Notes for you (not for Lovable)
 
-Once deployed, tell Claude; it will ask an Arabic question and an Urdu one and check the
-language of each answer, plus one with an explicit "answer in English".
+Once deployed, tell Claude; it will re-run "من كذب علي متعمدا" and "لا ضرر ولا ضرار" WITHOUT a
+book name and check that Bukhari / Muslim / Ibn Majah rows now reach the ten sources the
+model reads, and that sources_ready time stays about the same.

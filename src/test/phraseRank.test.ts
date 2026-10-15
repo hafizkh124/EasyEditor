@@ -116,3 +116,25 @@ describe("short phrases count as phrases (found live: 13-14 letter hadith phrase
     expect(phraseOf("کیا إنما الأعمال بالنيات کا مطلب بتائیں")).toBeNull();
   });
 });
+
+import { sixBooksCollectionSlugs } from "../../supabase/functions/_shared/phraseRank";
+import { resolveCollectionSlugs } from "../../supabase/functions/_shared/collections";
+
+describe("Six Books phrase search (search-quality phase 2.16)", () => {
+  it("resolves to the stored collection strings of exactly the Six Books", () => {
+    const slugs = sixBooksCollectionSlugs(resolveCollectionSlugs);
+    for (const s of ["bukhari", "muslim", "abudawud", "tirmidhi", "nasai", "ibnmajah"]) expect(slugs).toContain(s);
+    expect(slugs).not.toContain("kanz-ul-ummal");
+  });
+
+  it("is a separate, hadith-only, collection-scoped tier gated like Tier K's hadith search", () => {
+    const src = readFileSync("supabase/functions/islamic-search/index.ts", "utf8");
+    const tier = src.indexOf('pushTimed("tierK6:phrase-six-books"');
+    expect(tier).toBeGreaterThan(0);
+    const body = src.slice(tier, tier + 1500);
+    expect(body).toContain('supabase.rpc("search_documents_scoped"');
+    expect(body).toContain('p_source_types: ["hadith"]');
+    expect(body).toContain("sixBooksCollectionSlugs(resolveCollectionSlugs)");
+    expect(src.slice(tier - 400, tier)).toContain("phraseOf(query) !== null && wantsHadith");
+  });
+});

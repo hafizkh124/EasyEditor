@@ -87,3 +87,11 @@ export function withPhraseTerm(terms: string[], query: string | null | undefined
   const raw = (query ?? "").trim().replace(/\s+/g, " ");
   return [raw, ...terms.filter((t) => t !== raw)];
 }
+
+/**
+ * The Six Books' canonical ids as the `p_collections` argument of
+ * `search_documents_scoped` (every string each book is stored under).
+ */
+export function sixBooksCollectionSlugs(resolve: (ids: string[]) => string[]): string[] {
+  return resolve([...SIX_BOOKS]);
+}

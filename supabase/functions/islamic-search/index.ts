@@ -17,7 +17,7 @@ import { settleWithGrace } from "../_shared/fanOutGrace.ts";
 import { searchInChunks } from "../_shared/chunkedSearch.ts";
 import { dropQuranRows, isHadithOnlyPlan } from "../_shared/sourceScope.ts";
 import { groupWitnesses } from "../_shared/witnessGroups.ts";
-import { prioritizePhraseHits, withPhraseTerm } from "../_shared/phraseRank.ts";
+import { prioritizePhraseHits, withPhraseTerm, phraseOf, sixBooksCollectionSlugs } from "../_shared/phraseRank.ts";
 import { languageInstruction } from "../_shared/mirror/research/answerLanguage.ts";
 import { decryptKey } from "../_shared/providerKeyCrypto.ts";
 
@@ -883,6 +883,42 @@ export async function handle(req: Request): Promise<Response> {
             }));
           } catch (e) {
             console.error("Tier K error:", e);
+            return [];
+          }
+        })()
+      );
+    }
+
+    // Tier K6: an Arabic phrase, searched INSIDE the Six Books only. Live (2026-10-14):
+    // the canonical rows for "من كذب علي متعمدا" (Bukhari 110, Muslim 5, Ibn Majah 36…)
+    // exist, and appear the moment the user names the book — but in an open search they
+    // never reach the candidate pool, because a phrase this common matches thousands of
+    // rows and the lexical RPC keeps an arbitrary 600. One extra, cheap, single-term,
+    // collection-scoped call guarantees the Six Books get their say.
+    // Same gate as Tier K's hadith search: if the user switched the hadith sources off, so is this.
+    if (phraseOf(query) !== null && wantsHadith) {
+      pushTimed("tierK6:phrase-six-books",
+        (async (): Promise<IslamicResult[]> => {
+          try {
+            const { data, error } = await supabase.rpc("search_documents_scoped", {
+              p_patterns:     [query.trim()],
+              p_source_types: ["hadith"],
+              p_collections:  sixBooksCollectionSlugs(resolveCollectionSlugs),
+              p_surah:        null,
+              p_limit:        20,
+            });
+            if (error) { console.error("Tier K6 error:", error); return []; }
+            return ((data ?? []) as Array<{ domain: string; content: string; content_ar: string; citation_ref: any; language: string }>)
+              .map((row): IslamicResult => ({
+                domain: row.domain,
+                content: row.content,
+                citation_ref: row.citation_ref ?? {},
+                language: (row.language as "ar" | "en" | "ur") ?? "ar",
+                has_matn: typeof row.content_ar === "string" && row.content_ar.trim() !== "",
+                content_ar: typeof row.content_ar === "string" && row.content_ar.trim() !== "" ? row.content_ar : undefined,
+              }));
+          } catch (e) {
+            console.error("Tier K6 error:", e);
             return [];
           }
         })()
