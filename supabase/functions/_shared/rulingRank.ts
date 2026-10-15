@@ -42,11 +42,18 @@ export function asksForQuran(query: string | null | undefined): boolean {
   return ASKS_QURAN.test(query ?? "");
 }
 
+// A "what is the ruling" cue. Topic anchors are matched on ONE word of the
+// question, so "نماز میں بچے کو اٹھانے کا حکم" pinned three generic prayer verses
+// (2:238, 20:14, 2:43) above the one hadith about carrying a child. Under a
+// ruling cue a Qur'an anchor loses its pin; hadith anchors keep it.
+const RULING_CUE = /حکم|جائز|ناجائز|حلال|حرام|مسئل|فتو|کیا\s|حكم|يجوز|هل\s|فتوى/;
+
 export function demoteQuranAndWeak<T extends RulingRow>(rows: T[], query: string | null | undefined): T[] {
   if (!query || rows.length < 2 || asksForQuran(query)) return rows;
+  const unpinQuranAnchors = RULING_CUE.test(query);
   const first: T[] = [], quran: T[] = [], weak: T[] = [], rest: T[] = [];
   for (const r of rows) {
-    if (r.citation_ref?._is_anchor === true) first.push(r);
+    if (r.citation_ref?._is_anchor === true && !(unpinQuranAnchors && QURAN_DOMAINS.has(r.domain))) first.push(r);
     else if (QURAN_DOMAINS.has(r.domain)) quran.push(r);
     else if (isWeakRow(r)) weak.push(r);
     else rest.push(r);
