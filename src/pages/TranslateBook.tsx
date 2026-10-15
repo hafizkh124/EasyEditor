@@ -106,8 +106,8 @@ export default function TranslateBook() {
   };
 
   const readerPage: ReaderPage | null =
-    currentBookPage?.sourceHtml && shamelaBookId
-      ? { bookId: shamelaBookId, pageNumber: currentBookPage.pageNum, text: currentBookPage.sourceHtml }
+    currentBookPage?.sourceHtml && (shamelaBookId ?? book.resumedShamelaBookId)
+      ? { bookId: (shamelaBookId ?? book.resumedShamelaBookId)!, pageNumber: currentBookPage.pageNum, text: currentBookPage.sourceHtml }
       : null;
 
   return (
