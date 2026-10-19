@@ -109,15 +109,20 @@ function EnglishBody() {
 
       <h2>4. Combining Shamela with AI (Al-Ulama Easy Editor)</h2>
       <p>
+        Research opens in the signed-in workspace rather than a standalone public tool.
+        OCR and Speak also require an account. <Link to="/signup">Create an account</Link>
+        {" "}and wait for administrator approval, or sign in to an approved account below.
+      </p>
+      <p>
         Shamela is unmatched at raw retrieval, but it can't summarise, translate to Urdu, or
         verify a citation across multiple Sunan. That is where an AI research assistant
         grounded in Qurʾān and Ḥadīth helps:
       </p>
       <ol>
         <li>Search Shamela for the passage you need — copy the Arabic quotation.</li>
-        <li>Paste it into <Link to="/research">Al-Ulama Easy Editor's Research mode</Link>. The AI returns a citation-verified answer with Qurʾān / Ḥadīth references, plus Urdu and English translations.</li>
-        <li>For images of printed Shamela pages, use <Link to="/ocr">OCR</Link> to extract Arabic text, then feed it to Research or Translate.</li>
-        <li>Use <Link to="/speak">Speak</Link> to have the passage read aloud in a natural Arabic voice for memorisation.</li>
+        <li><Link to="/login">Sign in to use Research in the workspace</Link>, then paste the passage. The AI returns a citation-verified answer with Qurʾān / Ḥadīth references, plus Urdu and English translations.</li>
+        <li>For images of printed Shamela pages, <Link to="/login">sign in to use OCR</Link> to extract Arabic text, then feed it to Research or Translate.</li>
+        <li><Link to="/login">Sign in to use Speak</Link> to have the passage read aloud in a natural Arabic voice for memorisation.</li>
       </ol>
 
       <h2>5. Verifying citations — a small madrasah workflow</h2>
@@ -188,14 +193,19 @@ function UrduBody() {
 
       <h2>4. شاملہ + AI (Al-Ulama Easy Editor) کا ملاپ</h2>
       <p>
+        ریسرچ کوئی الگ پبلک ٹول نہیں؛ یہ لاگ ان کے بعد ورک اسپیس میں کھلتی ہے۔
+        OCR اور Speak کے لیے بھی اکاؤنٹ ضروری ہے۔ <Link to="/signup">اکاؤنٹ بنائیں</Link>
+        {" "}اور منتظم کی منظوری کا انتظار کریں، یا اپنے منظور شدہ اکاؤنٹ میں لاگ ان کریں۔
+      </p>
+      <p>
         شاملہ متن نکالنے میں بے مثال ہے، مگر خلاصہ، اردو ترجمہ، یا متعدد سنن سے تصدیق نہیں
         کر سکتی۔ یہاں قرآن و حدیث پر مبنی AI اسسٹنٹ کام آتا ہے:
       </p>
       <ol>
         <li>شاملہ سے مطلوبہ عربی اقتباس کاپی کریں۔</li>
-        <li>اسے <Link to="/research">Easy Editor کے Research موڈ</Link> میں پیسٹ کریں — AI حوالہ جات کے ساتھ تصدیق شدہ جواب، اردو و انگریزی ترجمہ فراہم کرے گا۔</li>
-        <li>پرنٹ شدہ صفحات کی تصاویر کے لیے <Link to="/ocr">OCR</Link> استعمال کریں۔</li>
-        <li>حفظ کے لیے قدرتی عربی آواز میں سنیں: <Link to="/speak">Speak</Link>۔</li>
+        <li><Link to="/login">ورک اسپیس میں Research کے لیے لاگ ان کریں</Link> اور اقتباس پیسٹ کریں — AI حوالہ جات کے ساتھ تصدیق شدہ جواب، اردو و انگریزی ترجمہ فراہم کرے گا۔</li>
+        <li>پرنٹ شدہ صفحات کی تصاویر سے متن نکالنے کے لیے <Link to="/login">OCR استعمال کرنے کے لیے لاگ ان کریں</Link>۔</li>
+        <li>حفظ کے لیے قدرتی عربی آواز میں سنیں: <Link to="/login">Speak استعمال کرنے کے لیے لاگ ان کریں</Link>۔</li>
       </ol>
 
       <h2>5. حوالہ کی تصدیق — مدرسہ کا محفوظ طریقہ</h2>
@@ -259,14 +269,19 @@ function ArabicBody() {
 
       <h2>4. الشاملة مع الذكاء الاصطناعي (Al-Ulama Easy Editor)</h2>
       <p>
+        يفتح البحث في مساحة العمل بعد تسجيل الدخول، وليس كأداة عامة مستقلة.
+        وتتطلّب أداتا OCR وSpeak حسابًا أيضًا. <Link to="/signup">أنشئ حسابًا</Link>
+        {" "}وانتظر موافقة المسؤول، أو سجّل الدخول إلى حسابك المعتمد.
+      </p>
+      <p>
         الشاملة ممتازة في استخراج النصوص، لكنها لا تُلخّص ولا تُترجم إلى الأردية ولا تُوثّق
         الحديث في السنن المتعدّدة. هنا يأتي دور مساعد الأبحاث المؤسّس على القرآن والسنة:
       </p>
       <ol>
         <li>ابحث في الشاملة عن النص → انسخ الاقتباس العربي.</li>
-        <li>الصقه في <Link to="/research">وضع البحث في Easy Editor</Link> ليُعيد لك إجابة موثّقة بالمراجع مع ترجمات أردية وإنجليزية.</li>
-        <li>لصور صفحات الشاملة استخدم <Link to="/ocr">OCR</Link> لاستخراج النص.</li>
-        <li>للحفظ، استمع للنص بصوت عربي طبيعي عبر <Link to="/speak">Speak</Link>.</li>
+        <li><Link to="/login">سجّل الدخول لاستخدام البحث في مساحة العمل</Link> ثم الصق الاقتباس، لتحصل على إجابة موثّقة بالمراجع مع ترجمات أردية وإنجليزية.</li>
+        <li>لصور صفحات الشاملة، <Link to="/login">سجّل الدخول لاستخدام OCR</Link> لاستخراج النص.</li>
+        <li>للحفظ، <Link to="/login">سجّل الدخول لاستخدام Speak</Link> واستمع للنص بصوت عربي طبيعي.</li>
       </ol>
 
       <h2>5. التحقّق من المراجع — سير عمل آمن</h2>

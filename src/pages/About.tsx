@@ -119,12 +119,20 @@ const About = () => {
                 <ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </Button>
             </Link>
-            <Link to="/research">
+            <Link to="/login">
               <Button variant="outline" size="lg" className="h-12 px-6 text-base">
-                {pick(lang, "Try the research assistant", "ریسرچ اسسٹنٹ آزمائیں", "جرّب مساعد البحث")}
+                {pick(lang, "Sign in for research", "ریسرچ کے لیے لاگ ان کریں", "سجّل الدخول للبحث")}
               </Button>
             </Link>
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {pick(
+              lang,
+              "Research opens in the signed-in workspace; OCR and Speak also require an account. New accounts require administrator approval before tools become available.",
+              "ریسرچ لاگ ان کے بعد ورک اسپیس میں کھلتی ہے؛ OCR اور Speak کے لیے بھی اکاؤنٹ ضروری ہے۔ نئے اکاؤنٹس کو ٹولز استعمال کرنے سے پہلے منتظم کی منظوری درکار ہوتی ہے۔",
+              "يفتح البحث في مساحة العمل بعد تسجيل الدخول؛ وتتطلّب أداتا OCR وSpeak حسابًا أيضًا. تحتاج الحسابات الجديدة إلى موافقة المسؤول قبل إتاحة الأدوات.",
+            )}
+          </p>
         </div>
       </section>
 
