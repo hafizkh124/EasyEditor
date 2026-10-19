@@ -3,6 +3,14 @@ Allow: /
 
 # Authenticated / private routes — do not index
 Disallow: /dashboard
+Disallow: /workspace
+Disallow: /library
+Disallow: /translate-book
+Disallow: /connect-device
+Disallow: /pricing$
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
 Disallow: /research
 Disallow: /transcribe
 Disallow: /ocr
