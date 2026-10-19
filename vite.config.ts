@@ -175,7 +175,7 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: "Easy Editor",
           short_name: "Easy Editor",
-          description: "AI toolkit (Transcribe, Speak, OCR, Research)",
+          description: "AI research and writing workspace for Islamic scholars: research, editor, transcription, OCR and text-to-speech",
           // Matches index.html's own light-mode <meta name="theme-color">
           // (#0d9488) instead of a plain white that clashed with it — a
           // manifest has one static theme_color, no prefers-color-scheme.
