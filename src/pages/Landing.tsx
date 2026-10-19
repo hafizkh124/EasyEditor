@@ -247,6 +247,15 @@ const Landing = () => {
             );
           })}
         </div>
+        <p className="mt-8 text-center text-sm">
+          <Link to={`${prefix}/guides/maktaba-shamila-tutorial`} className="font-medium text-primary hover:underline">
+            {lang === "ar"
+              ? "دليل: توثيق البحث الشرعي انطلاقًا من المكتبة الشاملة"
+              : lang === "ur"
+              ? "رہنما: مکتبہ شاملہ سے حوالہ جانچ کر تحقیق کیسے کریں"
+              : "Guide: citation-checked research starting from Maktaba Shamila"}
+          </Link>
+        </p>
       </section>
 
       {/* Desktop */}
@@ -482,6 +491,9 @@ const Landing = () => {
             </Link>
             <Link to={`${prefix}/refund-policy`} className="hover:text-foreground">
               {language === "ar" ? "الاسترداد" : language === "ur" ? "ریفنڈ" : "Refunds"}
+            </Link>
+            <Link to={`${prefix}/guides/maktaba-shamila-tutorial`} className="hover:text-foreground">
+              {language === "ar" ? "دليل الشاملة" : language === "ur" ? "شاملہ رہنما" : "Shamila guide"}
             </Link>
             <Link to={`${prefix}/faq/is-ai-haram-in-islam`} className="hover:text-foreground">
               {language === "ar" ? "الأسئلة الشائعة" : language === "ur" ? "سوالات" : "FAQ"}
