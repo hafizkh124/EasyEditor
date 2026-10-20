@@ -84,3 +84,13 @@ coverage/
 # Playwright output (npm run test:e2e) — regenerated, never committed.
 test-results/
 playwright-report/
+<<<<<<< HEAD
+=======
+
+# Personal / business documents and per-machine Claude settings — keep local only.
+# The repo is public; investment plans and contact details do not belong here.
+docs/private/
+docs/EXECUTIVE-SUMMARY-1PAGE-URDU.md
+docs/PROPOSAL-INVESTMENT-FUNDING-URDU.md
+.claude/settings.local.json
+>>>>>>> fa3293ee38634ebd5b3d3991ccb5931367b79e6e
