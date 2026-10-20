@@ -14,7 +14,7 @@ import {
   buildMentions, filterMentions, activeTriggerQuery, applyMention, applyLibraryTag,
   type Mention, type ScopeKind,
 } from "../../shared/mentions";
-import { PLAYBOOKS } from "../../shared/playbooks/registry";
+import { PLAYBOOKS, type Playbook } from "../../shared/playbooks/registry";
 import { applyArtifactEvent, type ArtifactState } from "@/components/workspace/agentArtifactState";
 import { getShamelaClient } from "@/core/shamela/shamelaClient";
 import { deriveRunStats } from "~shared/agent/runStats";
@@ -174,9 +174,23 @@ export function useAgentRun() {
   const lastInstructionRef = useRef<string | null>(null);
   const runIdRef = useRef<string | null>(null);
   const [showTools, setShowTools] = useState(false);
+  // The scholar's own skills (Settings → Skills) — merged into the `/` picker.
+  const [customSkills, setCustomSkills] = useState<Playbook[]>([]);
   const [caps, setCaps] = useState<string | null>(null);
   const [picker, setPicker] = useState<{ kind: "mention" | "command" | "library"; query: string } | null>(null);
   const [pickerActiveIndex, setPickerActiveIndex] = useState(0);
+
+  // Re-read the custom skills each time the `/` picker opens, so a skill just
+  // saved in Settings shows up without a reload.
+  const commandPickerOpen = picker?.kind === "command";
+  useEffect(() => {
+    if (!commandPickerOpen) return;
+    const skillsApi = window.electronAPI?.skills;
+    if (!skillsApi?.list) return;
+    let live = true;
+    skillsApi.list().then((r) => { if (live) setCustomSkills(r.custom ?? []); }).catch(() => { /* picker keeps built-ins */ });
+    return () => { live = false; };
+  }, [commandPickerOpen]);
   const [shamelaBooks, setShamelaBooks] = useState<Array<{ id: string; title: string }>>([]);
   const [libraryRows, setLibraryRows] = useState<LibraryPickerRow[]>([]);
   const [scopeTags, setScopeTags] = useState<ScopeTag[]>([]);
@@ -607,7 +621,7 @@ export function useAgentRun() {
     if (!picker) return [];
     if (picker.kind === "command") {
       const q = picker.query.toLowerCase();
-      return PLAYBOOKS
+      return [...PLAYBOOKS, ...customSkills]
         .filter((p) => p.title.toLowerCase().includes(q) || p.id.includes(q))
         .map((p) => ({
           kind: "command" as const,
@@ -660,7 +674,7 @@ export function useAgentRun() {
         requestAnimationFrame(() => { ta?.focus(); ta?.setSelectionRange(next.caret, next.caret); });
       },
     }));
-  }, [picker, mentions, input, libraryRows, addScopeTag]);
+  }, [picker, mentions, input, libraryRows, addScopeTag, customSkills]);
 
   /** Called by the ScopeReviewDialog on confirm — creates the multi-book chip. */
   const confirmScopeReview = useCallback((tag: Omit<ScopeTag, "id">) => {
