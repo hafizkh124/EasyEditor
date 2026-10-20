@@ -24,6 +24,7 @@ import {
   Star,
   CreditCard,
   Clock,
+  Github,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PLAN_TIERS, buildFeatures, priceForCurrency, type PaidTier } from "@/lib/planTiers";
@@ -304,9 +305,16 @@ const Landing = () => {
             </Card>
           ))}
         </div>
-        <p className="mt-6 text-center text-sm">
-          <a href={SOURCE_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-            {lang === "ar" ? "الشيفرة المصدرية على GitHub" : lang === "ur" ? "GitHub پر سورس کوڈ" : "Source code on GitHub"}
+        <p className="mt-6 text-center">
+          <a
+            href={SOURCE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={lang === "ar" ? "الشيفرة المصدرية على GitHub" : lang === "ur" ? "GitHub پر سورس کوڈ" : "Source code on GitHub"}
+            title={lang === "ar" ? "الشيفرة المصدرية على GitHub" : lang === "ur" ? "GitHub پر سورس کوڈ" : "Source code on GitHub"}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+          >
+            <Github className="h-5 w-5" />
           </a>
         </p>
       </section>
