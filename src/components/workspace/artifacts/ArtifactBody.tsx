@@ -4,6 +4,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { classifyHadithGrade, GRADE_FAMILY_STYLE } from "@/lib/citations/hadithGrade";
 import { buildFootnotePrefill, type ArtifactState } from "../agentArtifactState";
+import { CitationFeedbackBar } from "@/components/research/CitationFeedbackBar";
+import { UNVERIFIED_DISCLAIMER_AR } from "../../../../shared/citation/verifyCitation";
 import { SanadTree } from "./SanadTree";
 import { NarratorCard } from "./NarratorCard";
 import { MatnDiff, type MatnDiffPayload } from "./MatnDiff";
@@ -60,13 +62,21 @@ export const ArtifactBody: React.FC<{ artifact: ArtifactState; compact?: boolean
               <span className="flex-1">{c.reference}</span>
               {c.supported === true && <span className="text-emerald-600" title={t("agent.artifact_supported", "supported")}>✓</span>}
               {c.supported === false && <span className="text-amber-600" title={t("agent.artifact_unverified", "unverified")}>?</span>}
-              {c.grade && (() => {
+              {c.grade && c.gradedBy === "" && (
+                <span
+                  className="rounded-full border border-border bg-muted px-1.5 leading-none text-muted-foreground"
+                  title={t("citations.grade_unattributed", "The source named no scholar for this grade — not shown as a ruling")}
+                >
+                  {UNVERIFIED_DISCLAIMER_AR}
+                </span>
+              )}
+              {c.grade && c.gradedBy !== "" && (() => {
                 const fam = classifyHadithGrade(c.grade);
                 const style = fam ? GRADE_FAMILY_STYLE[fam] : null;
                 return (
                   <span
                     className={cn("rounded-full border px-1.5 leading-none", style ? style.chip : "border-border bg-muted text-muted-foreground")}
-                    title={t("citations.grade_disclaimer", "{source}: {grade} — graded by the source, not by us").replace("{source}", "الدرر السنية").replace("{grade}", c.grade)}
+                    title={t("citations.grade_disclaimer", "{source}: {grade} — graded by the source, not by us").replace("{source}", c.gradedBy || "الدرر السنية").replace("{grade}", c.grade)}
                   >
                     {style ? style.label : c.grade}
                   </span>
@@ -74,8 +84,7 @@ export const ArtifactBody: React.FC<{ artifact: ArtifactState; compact?: boolean
               })()}
             </>
           );
-          const expandable = Boolean(c.excerpt || c.claim || c.url || c.footnote);
-          if (!expandable) return <li key={i} className="flex items-start gap-1.5">{head}</li>;
+          // Every AI citation expands to its feedback bar (Approve / Edit).
           return (
             <li key={i}>
               <details className="group">
@@ -98,6 +107,11 @@ export const ArtifactBody: React.FC<{ artifact: ArtifactState; compact?: boolean
                       {t("agent.artifact_open_source", "Open the source")}
                     </a>
                   )}
+                  <CitationFeedbackBar
+                    citation={{ reference: c.reference, grade: c.grade, gradedBy: c.gradedBy || undefined, sourceUrl: c.url }}
+                    sourceId={c.sourceId}
+                    onApprove={c.footnote ? () => requestFootnotePrefill(c.sourceId, c.footnote!) : undefined}
+                  />
                   {c.footnote && (
                     <div className="space-y-1">
                       <p className="rounded bg-muted px-1.5 py-1" dir="rtl">{c.footnote}</p>

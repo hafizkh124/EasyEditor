@@ -300,6 +300,29 @@ describe('agent dispatch', () => {
     expect(ledger.size).toBe(1);
   });
 
+  it('verify_citation checks claimed details against the retrieved dorar chunk and gates insert_footnote', async () => {
+    const researchSearch = vi.fn(async () => ({
+      answer: '…',
+      citations: [{ domain: 'dorar', citation_ref: { book: 'التمهيد', hadith_number: '21', grade: 'خطأ في إسناده', mohdith: 'ابن عبدالبر' }, url: 'https://dorar/1' }],
+    }));
+    const { dispatch, ledger } = mk({ researchSearch });
+    const g = await dispatch('grade_hadith', { text: 'x' }) as { results: Array<{ id: string }> };
+    const id = g.results[0].id;
+    expect((ledger.get(id)?.locus?.gradedBy)).toBe('ابن عبدالبر');
+
+    const ok = await dispatch('verify_citation', { source_id: id, book: 'التمهيد', number: '21', graded_by: 'ابن عبدالبر' }) as { status: string };
+    expect(ok.status).toBe('verified');
+
+    const bad = await dispatch('verify_citation', { source_id: id, book: 'التمهيد', number: '99' }) as { status: string; instruction: string };
+    expect(bad.status).toBe('partial');
+    expect(bad.instruction).toMatch(/number/);
+    // a footnote for a source that failed verification is refused
+    await expect(dispatch('insert_footnote', { chapter: '01.docx', marker: '[1]', source_id: id })).rejects.toThrow(/لم أقف عليه/);
+
+    const unknown = await dispatch('verify_citation', { source_id: 'nope', page: '1' }) as { error?: string };
+    expect(unknown.error).toMatch(/not one of the/);
+  });
+
   it('grade_hadith falls back to the direct adapter when the bridge has no dorar rows', async () => {
     const researchSearch = vi.fn(async () => ({ answer: '…', citations: [{ domain: 'hadith', citation_ref: { collection: 'البخاري', hadith_number: 1 } }] }));
     gradeHadith.mockResolvedValueOnce({ chunks: [{ id: 'dorar:abc123', reference: 'صحيح البخاري ١ — الحكم: صحيح (الدرر السنية)', content: 'متن', grade: 'صحيح' }], note: undefined, error: undefined });

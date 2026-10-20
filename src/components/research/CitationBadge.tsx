@@ -11,6 +11,8 @@ interface CitationRef {
   hadith_number?: string | number;
   grade?: string;
   rawi?: string;
+  /** The scholar who graded the hadith (المحدث), as the source states it. */
+  mohdith?: string;
   // Quran fields
   surah_number?: number;
   surah_name?: string;
@@ -136,7 +138,7 @@ const CitationBadge = ({ domain, citationRef, className }: CitationBadgeProps) =
   const style = family ? GRADE_FAMILY_STYLE[family] : null;
   const source = domainLabel(domain);
   const disclaimer = t("citations.grade_disclaimer", "{source}: {grade} — graded by the source, not by us")
-    .replace("{source}", source)
+    .replace("{source}", citationRef.mohdith ? `${citationRef.mohdith} (${source})` : source)
     .replace("{grade}", citationRef.grade);
 
   return (

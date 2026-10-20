@@ -252,6 +252,7 @@ export const PLAYBOOKS: Playbook[] = [
       { tool: 'read_document', bind: ['chapter'], note: 'Read the draft and list every claim that needs a source.' },
       { tool: 'search_shamela', bind: ['query'], repeat: true, note: 'Retrieve the original classical source for each claim.' },
       { tool: 'search_hadith', bind: ['query'], optional: true, repeat: true, note: 'Retrieve the takhrīj + grade for each hadith claim.' },
+      { tool: 'verify_citation', bind: ['source_id', 'book', 'volume', 'page', 'number', 'grade', 'graded_by'], optional: true, repeat: true, note: 'Check each cited detail against its retrieved source.' },
       { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id', 'claim'], repeat: true, note: 'Footnote each claim from its verified source.' },
       { tool: 'add_document_comment', bind: ['chapter', 'anchor_text', 'comment'], optional: true, repeat: true, note: 'Flag each claim that could not be sourced with a margin note.' },
     ],
@@ -432,11 +433,12 @@ export const PLAYBOOKS: Playbook[] = [
       'hadith number (رقم الحديث) and volume/page (الجزء والصفحة) ONLY as the retrieved result states them — a field the source ' +
       'did not give is left out, never filled in. Every grading must be attributed to a named scholar exactly as the source states it ' +
       '(e.g. "قال الألباني: صحيح"); never grade a hadith yourself or merge verdicts into your own. Never fabricate a hadith text, ' +
-      'book name or page number. If no source is found, write: لم أقف عليه في المصادر المتاحة.',
+      'book name or page number. Run verify_citation on the retrieved source before stating any of these details; if it is not verified, state only what matched. If no source is found, write: لم أقف عليه في المصادر المتاحة.',
     steps: [
       { tool: 'search_hadith', bind: ['query'], note: 'Find the narration and the collections that report it.' },
       { tool: 'grade_hadith', bind: ['text'], note: 'Fetch the grading exactly as the named scholar stated it (الدرر السنية).' },
       { tool: 'search_shamela', bind: ['query'], optional: true, note: 'Locate the original book page for the reference.' },
+      { tool: 'verify_citation', bind: ['source_id', 'book', 'volume', 'page', 'number', 'grade', 'graded_by'], optional: true, note: 'Check the book, page, number and grading scholar against the retrieved source.' },
       { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id', 'claim'], optional: true, note: 'Footnote the hadith from its retrieved source.' },
     ],
   },
@@ -510,6 +512,7 @@ export const PLAYBOOKS: Playbook[] = [
       { tool: 'read_document', bind: ['chapter'], note: 'Read the transcript chapter and list each quotation.' },
       { tool: 'search_hadith', bind: ['query'], optional: true, repeat: true, note: 'Find each quoted hadith with its grade.' },
       { tool: 'search_shamela', bind: ['query'], optional: true, repeat: true, note: 'Find each quoted scholarly text in its original book.' },
+      { tool: 'verify_citation', bind: ['source_id', 'book', 'volume', 'page', 'number'], optional: true, repeat: true, note: 'Check each cited detail against its retrieved source.' },
       { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id', 'claim'], optional: true, repeat: true, note: 'Footnote each quotation from its retrieved source.' },
       { tool: 'add_document_comment', bind: ['chapter', 'anchor_text', 'comment'], optional: true, repeat: true, note: 'Flag each quotation that could not be sourced.' },
     ],
