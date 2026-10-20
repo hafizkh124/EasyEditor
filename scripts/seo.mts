@@ -8,16 +8,24 @@
  * see the static HTML. `prerender` copies dist/index.html once per locale route
  * and rewrites the head (lang/dir, title, description, canonical, hreflang,
  * Open Graph) so each locale is served correct metadata before any JS runs. The
- * body is still the SPA shell. Only the landing page has localised title and
- * description copy here; other pages keep the default English text but still get
- * the right lang, canonical and hreflang (their React `useSeo` call refines the
- * title client-side).
+ * body is still the SPA shell. Routes in PAGE_META get localised title and
+ * description; the rest keep the default English text but still get the right
+ * lang, canonical and hreflang (their React `useSeo` call refines the title
+ * client-side).
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SEO } from "../src/lib/landingContent.ts";
+import { ABOUT_SEO, SHAMELA_GUIDE_SEO } from "../src/lib/pageSeo.ts";
+
+/** Localised head copy per route; routes not listed keep the default English head. */
+const PAGE_META: Record<string, { title: Record<string, string>; description: Record<string, string> }> = {
+  "/": SEO,
+  "/about": ABOUT_SEO,
+  "/guides/maktaba-shamila-tutorial": SHAMELA_GUIDE_SEO,
+};
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ORIGIN = "https://editor.alulama.org";
@@ -103,9 +111,10 @@ function render(base: string, loc: Locale, path: string): string {
   // Idempotent: drop any head links a previous run (or the source) already added.
   let html = base.replace(/\s*<link rel="(?:canonical|alternate)"[^>]*>/g, "");
   html = setMeta(html, /<html[^>]*>/, `<html lang="${loc}" dir="${loc === "en" ? "ltr" : "rtl"}">`);
-  if (path === "/") {
-    const title = escapeAttr(SEO.title[loc]);
-    const description = escapeAttr(SEO.description[loc]);
+  const meta = PAGE_META[path];
+  if (meta) {
+    const title = escapeAttr(meta.title[loc]);
+    const description = escapeAttr(meta.description[loc]);
     html = setMeta(html, /<title>[\s\S]*?<\/title>/, `<title>${title}</title>`);
     html = setMeta(html, /<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`);
     html = setMeta(html, /<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`);

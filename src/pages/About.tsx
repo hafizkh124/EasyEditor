@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useSeo } from "@/hooks/useSeo";
 import { useLanguage } from "@/contexts/LanguageContext";
 import PublicLayout from "@/components/PublicLayout";
+import { ABOUT_SEO } from "@/lib/pageSeo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -12,6 +13,9 @@ import {
   Sparkles,
   Users,
   Quote,
+  Bot,
+  Plug,
+  Monitor,
 } from "lucide-react";
 
 type Lang = "en" | "ur" | "ar";
@@ -22,21 +26,7 @@ const About = () => {
   const { language, direction } = useLanguage();
   const lang = language as Lang;
 
-  useSeo({
-    title: pick(
-      lang,
-      "Muslim AI Assistant for Scholars & Students — About",
-      "علماء و طلبہ کے لیے Muslim AI اسسٹنٹ — تعارف",
-      "مساعد ذكاء اصطناعي إسلامي للعلماء والطلاب — من نحن",
-    ),
-    description: pick(
-      lang,
-      "About Al-Ulama Easy Editor: a Muslim AI assistant for scholars and students grounded in Quran, Hadith and classical Islamic sources. Urdu, Arabic and English.",
-      "العلماء ایزی ایڈیٹر کا تعارف: قرآن، حدیث اور کلاسیکی مصادر پر مبنی Muslim AI اسسٹنٹ — اردو، عربی، انگریزی۔",
-      "تعرّف على Al-Ulama Easy Editor: مساعد ذكاء اصطناعي إسلامي للعلماء وطلبة العلم، مبني على القرآن والحديث والمصادر الإسلامية الكلاسيكية — بالعربية والأردية والإنجليزية.",
-    ),
-    path: "/about",
-  });
+  useSeo({ title: ABOUT_SEO.title[lang], description: ABOUT_SEO.description[lang], path: "/about" });
 
   const pillars = [
     {
@@ -77,6 +67,36 @@ const About = () => {
         "Text-to-speech, speech-to-text, image-to-text and a smart Islamic editor.",
         "ٹیکسٹ ٹو اسپیچ، اسپیچ ٹو ٹیکسٹ، تصاویر سے متن، اور سمارٹ ایڈیٹر۔",
         "تحويل النص إلى كلام، وتحويل الكلام إلى نص، واستخراج النصوص من الصور، ومحرّر إسلامي ذكي.",
+      ),
+    },
+    {
+      icon: Bot,
+      title: pick(lang, "An agent with scholarly playbooks", "علمی پلے بُکس والا ایجنٹ", "وكيل بخطط عمل علمية"),
+      desc: pick(
+        lang,
+        "25 playbooks — fatwa drafting, takhrij, zakat and faraid, thesis formatting — and it asks before changing your documents.",
+        "25 پلے بُکس — فتویٰ مسودہ، تخریج، زکوٰۃ و فرائض، تھیسس فارمیٹنگ — اور دستاویز بدلنے سے پہلے آپ سے پوچھتا ہے۔",
+        "25 خطة عمل — صياغة الفتوى والتخريج والزكاة والفرائض وتنسيق الرسائل — ويستأذنك قبل تعديل مستنداتك.",
+      ),
+    },
+    {
+      icon: Plug,
+      title: pick(lang, "Connected to classical sources", "کلاسیکی ماخذ سے مربوط", "موصول بالمصادر الكلاسيكية"),
+      desc: pick(
+        lang,
+        "Maktaba Shamela, Turath, tafsir, hadith and rijal sources, lexicons and poetry through one connectors hub.",
+        "مکتبہ شاملہ، تراث، تفاسیر، حدیث و رجال، لغات اور شاعری ایک کنکٹرز ہب کے ذریعے۔",
+        "المكتبة الشاملة وتراث والتفاسير ومصادر الحديث والرجال والمعاجم والشعر عبر مركز موصّلات واحد.",
+      ),
+    },
+    {
+      icon: Monitor,
+      title: pick(lang, "Privacy-first desktop app", "پرائیویسی فرسٹ ڈیسک ٹاپ ایپ", "تطبيق مكتبي يحترم الخصوصية"),
+      desc: pick(
+        lang,
+        "Local storage and offline search, your own AI key in the OS keychain, and open source under AGPL-3.0.",
+        "مقامی اسٹوریج اور آف لائن سرچ، OS کی چین میں آپ کی اپنی AI کلید، اور AGPL-3.0 کے تحت اوپن سورس۔",
+        "تخزين محلي وبحث دون اتصال ومفتاح ذكاء اصطناعي خاص بك في سلسلة مفاتيح النظام، ومفتوح المصدر برخصة AGPL-3.0.",
       ),
     },
   ];

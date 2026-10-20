@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import PublicLayout from "@/components/PublicLayout";
 import { useSeo } from "@/hooks/useSeo";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { SHAMELA_GUIDE_SEO, type L10n, type Lang } from "@/lib/pageSeo";
 
 /**
  * SEO guide: /guides/maktaba-shamila-tutorial (+ /ur, /ar mirrors).
@@ -13,24 +14,10 @@ import { useLanguage } from "@/contexts/LanguageContext";
  * formats or disk size — those were not verified, so the guide sends readers to
  * the official download page instead of restating them.
  */
-type Lang = "en" | "ur" | "ar";
-type L10n = Record<Lang, string>;
 
 const DATE_MODIFIED = "2026-10-19";
 const SHAMELA = "https://shamela.ws";
 const SHAMELA_AI = "https://shamela.ws/ai";
-
-const TITLE: L10n = {
-  en: "Maktaba Shamila (المكتبة الشاملة) — Using It with AI for Citation-Checked Islamic Research",
-  ur: "مکتبہ شاملہ — AI کے ساتھ حوالہ جانچ کر تحقیق کیسے کریں",
-  ar: "المكتبة الشاملة: كيف توثّق بحثك الشرعي بمساعدة الذكاء الاصطناعي",
-};
-
-const DESCRIPTION: L10n = {
-  en: "What Maktaba Shamila offers today, how its own AI search differs from a citation-checking workflow, and how to carry a passage from Shamela into Al-Ulama Easy Editor for Urdu translation, source checking and writing.",
-  ur: "مکتبہ شاملہ آج کیا دیتی ہے، اس کی اپنی AI سرچ اور حوالہ جانچ کے عمل میں کیا فرق ہے، اور شاملہ کی عبارت کو العلماء ایزی ایڈیٹر میں اردو ترجمے، ماخذ کی جانچ اور تحریر کے لیے کیسے لائیں۔",
-  ar: "ما تقدّمه المكتبة الشاملة اليوم، وكيف يختلف بحثها بالذكاء الاصطناعي عن سير عمل التوثيق، وكيف تنقل نصًا منها إلى العلماء إيزي إيديتور للترجمة إلى الأردية وفحص المصادر والكتابة.",
-};
 
 interface Section {
   h: L10n;
@@ -203,8 +190,8 @@ export default function MaktabaShamilaGuide() {
   const lang = language as Lang;
   const prefix = lang === "en" ? "" : `/${lang}`;
 
-  const title = TITLE[lang];
-  const description = DESCRIPTION[lang];
+  const title = SHAMELA_GUIDE_SEO.title[lang];
+  const description = SHAMELA_GUIDE_SEO.description[lang];
 
   useSeo({ title: `${title} — Al-Ulama Easy Editor`, description, path: "/guides/maktaba-shamila-tutorial" });
 

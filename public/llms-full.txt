@@ -1,0 +1,70 @@
+# Al-Ulama Easy Editor — full reference
+
+Al-Ulama Easy Editor (also "EasyEditor", العلماء ایزی ایڈیٹر) is an AI research and writing workspace for Islamic scholars, students, researchers, translators and publishers working in Urdu, Arabic and English. It runs on the web (https://editor.alulama.org) and as a desktop app for Windows, macOS and Linux (https://github.com/hafizkh124/EasyEditor/releases). The code is open source under AGPL-3.0: https://github.com/hafizkh124/EasyEditor
+
+Short version: /llms.txt
+
+## Principles
+
+- AI output is a draft. Each AI run records its sources and a confidence score (the Trust tab) so the user can verify them.
+- The tool assists a scholar's judgement; it does not issue rulings.
+- The user stays in control: fixed pipelines (recipes) show their cost before running, the agent asks before editing files or documents, and look-alike entities in the knowledge graph are only suggested as duplicates.
+
+## Workspace
+
+Three pillars on one screen (`/workspace`):
+- Library (left): projects and documents, plus Sources, Graph and Recipes tabs.
+- Canvas (centre): a TipTap editor with tables, text alignment, fonts, an RTL toggle, track changes (accept/reject), margin annotations that survive AI edits, citation footnotes, version history, slash and bubble menus, fullscreen.
+- Workbench (right): Research, Translate, Extract, Tasks and Trust tabs.
+
+Export: DOCX, PDF (print), HTML, TXT; SRT/VTT for transcripts; MP3 audiobook with chapter marks; fatwa PDF; print-layout presets.
+Import: PDF, DOCX, TXT and MD into the personal library; Maktaba Shamela books on desktop.
+
+## AI features
+
+- Research: Islamic, custom-source and general modes with citation search.
+- AI task library: 12 built-in tasks (harakat, spelling, paraphrase, summarise, citations, auto-format, normalise, formalise, humanise, shorten, section summaries); users can duplicate and edit a built-in task. No free-form prompt box.
+- Recipes: fixed multi-step pipelines (for example normalise → spell-check → auto-format), priced in one pre-flight dialog.
+- Long documents: processed in chunks at heading and sentence boundaries, with progress, cancel, per-run undo and resume after reload (only if the document is unchanged).
+- Agent: a tool-using assistant (about 45 tools) that searches sources, runs zakat and faraid calculators, drafts sections (including fatwa mode), typesets print-ready PDFs, compares manuscript variants and builds indexes. Desktop runs the full loop; web runs a reduced one.
+- Playbooks: 25 named workflows (thesis format, verified citations, submission PDF, manuscript edition, fatwa, zakat and faraid, digitise a book, Urdu formatting and others).
+- Connectors: Maktaba Shamela (and Shamela Cloud), Turath, tafsir, hadith, Dorar, rijal, JKHSSN, web search, repositories, Ganjoor poetry, Urdu prosody, zakat and faraid calculators.
+- Personal library and knowledge graph: private per user; semantic search; entities for people, books, places and terms with backlinks.
+- Providers: Gemini, Groq, OpenRouter and OpenAI-compatible endpoints; bring-your-own-key on web and desktop.
+- MCP server: tools for faraid calculation, Islamic corpus search, hadith takhrij and account status.
+
+## Voice, OCR and translation
+
+- Transcription: Urdu, Arabic, English; long audio up to 60 minutes via chunked transcription; SRT/VTT export.
+- Text-to-speech: six voice personas. Personal voice cloning (own voice only) is planned, not available; cloning of other people is not supported.
+- OCR: images and PDFs with Urdu and Arabic support, with a review page.
+- Book translation: a PDF or Shamela source beside its AI translation, with translation memory.
+
+## Desktop app
+
+Local-first storage with offline semantic search (SQLite + sqlite-vec); bring-your-own Gemini key stored in the OS keychain; native Maktaba Shamela 4 integration (reads the local install, imports chosen books with page and volume); offline Whisper speech-to-text and Piper text-to-speech for Urdu and Arabic; agent automation of Word, Excel, PowerPoint, LibreOffice and InPage. Web and desktop workspaces are separate; move work between them by export/import.
+
+## Access and pricing
+
+- Tools need an account. New accounts are reviewed and approved by an admin; until a plan is assigned the account has no usage quota.
+- Monthly plans (shown on https://editor.alulama.org/pricing-info):
+  - Basic: 1,400 PKR / $5 — 30 min transcription, 30 OCR pages, 20 research queries.
+  - Pro: 5,400 PKR / $19 — 5 h transcription, 300 OCR pages, 200 research queries.
+  - Ultra: 8,400 PKR / $29 — 10 h transcription, 2,000 OCR pages, 500 research queries.
+- Payment: bank transfer, JazzCash or EasyPaisa, then upload a receipt.
+
+## Limits
+
+- No real-time multi-user collaboration or document sharing.
+- Personal voice cloning not yet available.
+- Shamela's own AI search is a separate service (https://shamela.ws/ai); Easy Editor does not claim to be more accurate than it.
+
+## Pages
+
+- https://editor.alulama.org/ — overview, features, desktop, pricing, FAQ
+- https://editor.alulama.org/about
+- https://editor.alulama.org/pricing-info
+- https://editor.alulama.org/faq/is-ai-haram-in-islam
+- https://editor.alulama.org/answers
+- https://editor.alulama.org/guides/maktaba-shamila-tutorial — using Shamela with AI and a citation-checking workflow
+- Urdu: prefix `/ur`; Arabic: prefix `/ar`
