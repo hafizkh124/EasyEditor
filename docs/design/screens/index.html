@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EasyEditor 2026 — اسکرین ڈیزائنز</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .wrap { max-inline-size: 1080px; margin: 0 auto; padding: 36px 24px 80px; display: flex; flex-direction: column; gap: 32px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .tile { display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 18px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); text-decoration: none; color: inherit; transition: transform var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease); }
+  .tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  table { border-collapse: collapse; inline-size: 100%; font-size: 14px; } th, td { padding: 10px 12px; text-align: start; border-block-end: 1px solid hsl(var(--border)); } th { font-size: 12px; color: hsl(var(--muted-foreground)); font-weight: 600; }
+  .sw { display: flex; flex-wrap: wrap; gap: 10px; } .sw span { padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; border: 1px solid; }
+</style>
+</head>
+<body data-title="EasyEditor 2026 — مرحلہ B: اسکرین ڈیزائنز" data-note="تمام اسکرینز اصل ٹوکنز اور اجزاء پر مبنی HTML پروٹو ٹائپس ہیں۔ اوپر لائٹ/ڈارک اور اردو RTL / English LTR بدل کر دیکھیں۔">
+<div class="wrap">
+
+<section class="col" style="--g:12px">
+  <div class="xxl b"><x-t ur="اسکرینز" en="Screens"></x-t></div>
+  <div class="tiles">
+    <a class="tile" href="01-workspace.html"><div class="row"><span class="tag mob">موبائل</span><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span></div><b class="lg">01 · Workspace</b><span class="sm muted">ایڈیٹر، سلیکشن بار، Workbench/اعتماد، ایپ مینو، تین پلر، کمانڈ پیلیٹ، ٹیبلیٹ</span></a>
+    <a class="tile" href="02-desktop-onboarding.html"><div class="row"><span class="tag desk">ڈیسک ٹاپ</span></div><b class="lg">02 · پہلی بار · جوڑنا · میری API</b><span class="sm muted">اختیاری ڈیٹابیس کنکشن، اپنی API اور endpoint، "فعال کریں" حالت</span></a>
+    <a class="tile" href="03-auth.html"><div class="row"><span class="tag mob">موبائل</span><span class="tag">ویب</span></div><b class="lg">03 · لاگ ان / سائن اپ / منظوری</b><span class="sm muted">غلطی کی حالت، پاس ورڈ کی طاقت، انتظار کی اسکرین</span></a>
+    <a class="tile" href="04-dashboard.html"><div class="row"><span class="tag mob">موبائل</span><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span></div><b class="lg">04 · ڈیش بورڈ</b><span class="sm muted">جاری کام، ٹول گرڈ، استعمال، اعتماد کا خلاصہ</span></a>
+    <a class="tile" href="05-tools.html"><div class="row"><span class="tag mob">موبائل</span><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span></div><b class="lg">05 · ٹولز</b><span class="sm muted">ٹرانسکرائب، OCR، کتاب کا ترجمہ، مشترکہ اسٹیپر</span></a>
+    <a class="tile" href="06-states.html"><div class="row"><span class="tag">سب</span></div><b class="lg">06 · نظام کی حالتیں</b><span class="sm muted">Skeleton، خالی، غلطی، آف لائن، کوٹا، 404، ٹوسٹ</span></a>
+    <a class="tile" href="07-landing.html"><div class="row"><span class="tag mob">موبائل</span><span class="tag">ویب</span></div><b class="lg">07 · Landing</b><span class="sm muted">ہیرو، فیچرز، تین پلیٹ فارمز، قیمتیں</span></a>
+    <a class="tile" href="08-shamela.html"><div class="row"><span class="tag mob">موبائل</span><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span></div><b class="lg">08 · مکتبہ شاملہ</b><span class="sm muted">لوکل (ڈیسک ٹاپ)، Bridge (ویب)، کلاؤڈ اور ریڈر (موبائل)</span></a>
+  </div>
+</section>
+
+<section class="col" style="--g:12px">
+  <div class="xl b"><x-t ur="طے شدہ فیصلے" en="Decisions"></x-t></div>
+  <div class="card"><table>
+    <tr><th>فیچر</th><th>ویب</th><th>موبائل</th><th>ڈیسک ٹاپ</th></tr>
+    <tr><td>سائن ان / رجسٹریشن</td><td>لازمی</td><td>لازمی</td><td>لازمی نہیں · اختیاری "ڈیٹابیس سے جوڑیں"</td></tr>
+    <tr><td>اپنی API کلید</td><td>ہاں (موجودہ پینل)</td><td>ہاں (موجودہ پینل)</td><td>ہاں + اپنا endpoint (Ollama / LM Studio)</td></tr>
+    <tr><td>لوکل مکتبہ شاملہ</td><td>Bridge کے ذریعے</td><td><b>نہیں</b></td><td>براہِ راست</td></tr>
+    <tr><td>OCR / ترجمہ / وائس کلوننگ</td><td>ہاں</td><td>ہاں</td><td>ہاں · اپنی API یا ڈیٹابیس سے "فعال کریں"</td></tr>
+    <tr><td>Dashboard / Profile / Pricing / Admin</td><td>سب</td><td>سب (Admin کے بغیر)</td><td>Dashboard + Profile؛ Pricing جڑنے کے بعد؛ Admin صرف ایڈمن اکاؤنٹ</td></tr>
+    <tr><td>باقی سب</td><td colspan="3">یکساں</td></tr>
+  </table></div>
+</section>
+
+<section class="col" style="--g:12px">
+  <div class="xl b"><x-t ur="ڈیزائن زبان" en="Design language"></x-t></div>
+  <div class="sw">
+    <span class="chip success" style="padding:8px 12px">success · مصحح</span><span class="chip warning" style="padding:8px 12px">warning · موثق</span><span class="chip weak" style="padding:8px 12px">weak · ضعیف</span><span class="chip danger" style="padding:8px 12px">danger · مکذوب</span><span class="chip info" style="padding:8px 12px">info</span><span class="chip brand" style="padding:8px 12px">brand</span>
+  </div>
+  <p class="muted sm" style="margin:0;max-inline-size:80ch">رنگ سیمینٹک ٹوکنز سے آتے ہیں (کوئی خام palette رنگ نہیں)، لاجیکل پراپرٹیز (RTL محفوظ)، سائے کی بڑھتی سیڑھی، 150–250ms motion، ہر ٹچ ٹارگٹ ≥ 40–44px، درجہ بندی چپ کی صورت میں۔ ٹوکنز <span class="mono">_shared/tokens.css</span> میں، اجزاء <span class="mono">_shared/ui.css</span> میں؛ مرحلہ C میں یہی قدریں <span class="mono">src/index.css</span> اور <span class="mono">tailwind.config.ts</span> میں جائیں گی۔</p>
+</section>
+</div>
+</body>
+</html>

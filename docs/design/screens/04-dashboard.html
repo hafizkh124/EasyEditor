@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .shell { display: grid; grid-template-columns: 232px 1fr; flex: 1; min-block-size: 0; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .tool { padding: 16px; display: flex; flex-direction: column; gap: 10px; border-radius: 18px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); transition: transform var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease); }
+  .tool:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .tool.locked { background: hsl(var(--muted) / .5); }
+  .stat { display: flex; flex-direction: column; gap: 2px; padding: 14px; } .stat .n { font-size: 26px; font-weight: 700; line-height: 1.2; }
+  .bars { display: flex; align-items: flex-end; gap: 6px; block-size: 72px; } .bars i { flex: 1; border-radius: 5px 5px 2px 2px; background: hsl(var(--chart-1)); opacity: .85; } .bars i.b2 { background: hsl(var(--chart-2)); }
+</style>
+</head>
+<body data-title="04 · ڈیش بورڈ" data-note="Registry سے چلنے والا ٹول گرڈ۔ ڈیسک ٹاپ پر جو ٹول فعال نہیں، وہ 'فعال کریں' کارڈ کے ساتھ موجود رہتا ہے۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag">ویب</span><span class="tag desk">ڈیسک ٹاپ</span>ڈیش بورڈ · 1280px</h2>
+  <p class="cap">اوپر "جاری کام" (آخری دستاویز ایک کلک میں)، پھر ٹولز، پھر استعمال۔ ڈیسک ٹاپ پر ٹوکن کارڈ کی جگہ "میری API" کی حالت۔ ویب پر ٹوکن بیلنس اور پلان۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>app.easyeditor.example/dashboard</div></div>
+      <div class="shell">
+        <aside class="sidebar p3 col" style="--g:2px"><div class="row p2" style="--g:10px"><span class="avatar">ع</span><span class="b">Easy Editor</span></div>
+          <a class="nav-item"><i data-i="book"></i><x-t ur="ورک اسپیس" en="Workspace"></x-t></a><a class="nav-item on"><i data-i="dash"></i><x-t ur="ڈیش بورڈ" en="Dashboard"></x-t></a>
+          <div class="nav-label"><x-t ur="ٹولز" en="TOOLS"></x-t></div><a class="nav-item"><i data-i="mic"></i><x-t ur="ٹرانسکرائب" en="Transcribe"></x-t></a><a class="nav-item"><i data-i="volume"></i><x-t ur="بولیں" en="Speak"></x-t></a><a class="nav-item"><i data-i="scan"></i>OCR</a><a class="nav-item"><i data-i="lang"></i><x-t ur="کتاب کا ترجمہ" en="Book translation"></x-t></a>
+          <span class="grow"></span><a class="nav-item"><i data-i="user"></i><x-t ur="پروفائل" en="Profile"></x-t></a><a class="nav-item"><i data-i="sliders"></i><x-t ur="ترتیبات" en="Settings"></x-t></a></aside>
+        <div class="scroll p6 col" style="--g:24px">
+          <div class="row between"><div class="col" style="--g:2px"><div class="xxl b"><x-t ur="السلام علیکم، حافظ" en="Welcome back, Hafiz"></x-t></div><div class="muted"><x-t ur="آج آپ کیا کرنا چاہیں گے؟" en="What would you like to work on?"></x-t></div></div><button class="btn primary lg"><i data-i="plus"></i><x-t ur="نیا دستاویز" en="New document"></x-t></button></div>
+
+          <div class="card raised p4 row hero-bg" style="--g:16px"><span class="li" style="padding:0"><span class="ic" style="inline-size:48px;block-size:48px"><i data-i="file" data-s="24"></i></span></span><div class="grow col" style="--g:2px"><span class="xs muted"><x-t ur="جاری کام · 2 گھنٹے پہلے" en="CONTINUE · 2 hours ago"></x-t></span><span class="b lg">مسئلہ کی تحقیق — مسودہ</span><div class="progress" style="max-inline-size:260px;margin-block-start:6px"><i style="inline-size:64%"></i></div></div><button class="btn primary"><x-t ur="دوبارہ کھولیں" en="Resume"></x-t><i data-i="arrow" data-flip></i></button></div>
+
+          <div class="col" style="--g:10px"><div class="b"><x-t ur="ٹولز" en="Tools"></x-t></div>
+            <div class="grid4">
+              <a class="tool"><span class="li" style="padding:0"><span class="ic"><i data-i="mic"></i></span></span><div><div class="b"><x-t ur="ٹرانسکرائب" en="Transcribe"></x-t></div><div class="sm muted"><x-t ur="آواز سے متن" en="Speech to text"></x-t></div></div></a>
+              <a class="tool"><span class="li" style="padding:0"><span class="ic info"><i data-i="volume"></i></span></span><div><div class="b"><x-t ur="بولیں" en="Speak"></x-t></div><div class="sm muted"><x-t ur="متن سے آواز" en="Text to speech"></x-t></div></div></a>
+              <a class="tool locked"><div class="row between"><span class="li" style="padding:0"><span class="ic neutral"><i data-i="scan"></i></span></span><span class="chip neutral"><i data-i="key"></i><x-t ur="فعال کریں" en="Enable"></x-t></span></div><div><div class="b">OCR</div><div class="sm muted"><x-t ur="API یا ڈیٹابیس سے" en="Via API or database"></x-t></div></div></a>
+              <a class="tool locked"><div class="row between"><span class="li" style="padding:0"><span class="ic neutral"><i data-i="lang"></i></span></span><span class="chip neutral"><i data-i="key"></i><x-t ur="فعال کریں" en="Enable"></x-t></span></div><div><div class="b"><x-t ur="کتاب کا ترجمہ" en="Book translation"></x-t></div><div class="sm muted"><x-t ur="API یا ڈیٹابیس سے" en="Via API or database"></x-t></div></div></a>
+            </div></div>
+
+          <div class="grid4" style="grid-template-columns: 1.4fr 1fr 1fr">
+            <div class="card stat"><div class="row between"><span class="sm muted"><x-t ur="اس ہفتے کی سرگرمی" en="This week"></x-t></span><span class="chip success"><x-t ur="+18%" en="+18%"></x-t></span></div><div class="bars" style="margin-block-start:8px"><i style="block-size:30%"></i><i class="b2" style="block-size:55%"></i><i style="block-size:45%"></i><i class="b2" style="block-size:80%"></i><i style="block-size:62%"></i><i class="b2" style="block-size:100%"></i><i style="block-size:40%"></i></div><div class="row xs muted between"><span>Sat</span><span>Fri</span></div></div>
+            <div class="card stat"><span class="sm muted"><x-t ur="ٹوکن بیلنس" en="Token balance"></x-t></span><span class="n">12,400</span><div class="progress" style="margin-block:6px"><i style="inline-size:41%"></i></div><span class="xs muted"><x-t ur="پلان: پرو · 18 دن باقی" en="Plan: Pro · 18 days left"></x-t></span></div>
+            <div class="card stat"><span class="sm muted"><x-t ur="ذرائع کا اعتماد" en="Source confidence"></x-t></span><div class="col" style="--g:6px;margin-block-start:6px"><div class="row between sm"><span class="chip success"><x-t ur="مصحح" en="Verified"></x-t></span><b>62%</b></div><div class="row between sm"><span class="chip warning"><x-t ur="موثق" en="Reliable"></x-t></span><b>28%</b></div><div class="row between sm"><span class="chip weak"><x-t ur="ضعیف" en="Weak"></x-t></span><b>10%</b></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>ڈیش بورڈ</h2>
+  <p class="cap">ایک کالم: جاری کام کارڈ سب سے اوپر، پھر 2×2 ٹول گرڈ، پھر استعمال۔ نیچے وہی 4 ٹیب نیویگیشن۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="menu"></i></button><span class="title grow"><x-t ur="ڈیش بورڈ" en="Dashboard"></x-t></span><button class="icon-btn"><i data-i="bell"></i></button></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:16px">
+        <div class="col" style="--g:2px"><div class="xl b"><x-t ur="السلام علیکم، حافظ" en="Welcome back, Hafiz"></x-t></div></div>
+        <div class="card raised p4 col hero-bg" style="--g:10px"><span class="xs muted"><x-t ur="جاری کام" en="CONTINUE"></x-t></span><span class="b lg">مسئلہ کی تحقیق — مسودہ</span><div class="progress"><i style="inline-size:64%"></i></div><button class="btn primary block"><x-t ur="دوبارہ کھولیں" en="Resume"></x-t></button></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <a class="tool"><span class="li" style="padding:0"><span class="ic"><i data-i="mic"></i></span></span><div class="b sm"><x-t ur="ٹرانسکرائب" en="Transcribe"></x-t></div></a>
+          <a class="tool"><span class="li" style="padding:0"><span class="ic info"><i data-i="volume"></i></span></span><div class="b sm"><x-t ur="بولیں" en="Speak"></x-t></div></a>
+          <a class="tool"><span class="li" style="padding:0"><span class="ic warning"><i data-i="scan"></i></span></span><div class="b sm">OCR</div></a>
+          <a class="tool"><span class="li" style="padding:0"><span class="ic"><i data-i="lang"></i></span></span><div class="b sm"><x-t ur="کتاب کا ترجمہ" en="Book translation"></x-t></div></a>
+        </div>
+        <div class="card stat"><span class="sm muted"><x-t ur="ٹوکن بیلنس" en="Token balance"></x-t></span><span class="n">12,400</span><div class="progress" style="margin-block:6px"><i style="inline-size:41%"></i></div></div>
+      </div>
+      <nav class="bottomnav"><a><i data-i="folder"></i><x-t ur="مکتبہ" en="Library"></x-t></a><a><i data-i="pen"></i><x-t ur="لکھیں" en="Write"></x-t></a><a><i data-i="search"></i><x-t ur="تحقیق" en="Research"></x-t></a><a class="on"><i data-i="dash"></i><x-t ur="ٹولز" en="Tools"></x-t></a></nav></div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>
