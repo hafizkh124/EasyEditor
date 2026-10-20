@@ -50,6 +50,25 @@ Built on top of that shell:
 - **Annotations** — margin notes that survive AI edits; if a run rewrites the
   marked text the note is kept and flagged as detached rather than deleted.
 
+## Agent, playbooks & connectors
+
+- **Agent** — a tool-using assistant (about 45 tools) that searches the corpus,
+  Shamela, tafsir, hadith and rijal sources, runs zakat and faraid calculators,
+  drafts sections (including fatwa mode), typesets print-ready PDFs, compares
+  manuscript variants and builds indexes. It asks for approval before editing
+  files or documents. Desktop runs the full loop; web runs a reduced one.
+- **Playbooks** — 25 named workflows (thesis format, verified citations,
+  submission PDF, manuscript edition, fatwa, zakat and faraid, digitise-a-book,
+  Urdu formatting, …) managed under Settings → Skills.
+- **Connectors Hub** — Shamela, Shamela Cloud, Turath, tafsir, hadith, Dorar,
+  rijal, JKHSSN, web, repositories, Ganjoor, Urdu prosody, zakat and faraid.
+- **Providers & BYOK** — Gemini, Groq, OpenRouter and OpenAI-compatible
+  endpoints; bring-your-own-key works on web and desktop.
+- **Book Translation** — a PDF or Shamela source beside its AI translation,
+  with translation memory, chunk by chunk.
+- **MCP server** — `supabase/functions/mcp` exposes faraid calculation, corpus
+  search, takhrij and account tools to external assistants.
+
 ## Standalone tools
 
 - **Transcribe** — speech-to-text with AI refinement; long-form audio up to 60

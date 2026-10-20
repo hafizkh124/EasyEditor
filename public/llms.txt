@@ -1,31 +1,50 @@
 # Al-Ulama Easy Editor
 
-> AI-powered Islamic research, transcription, OCR, and text-to-speech suite with full Urdu, Arabic, and English support — built for scholars and students.
+> AI research and writing workspace for Islamic scholars, students and researchers. Source-grounded research (Quran, Hadith, tafsir, fiqh), a rich Urdu/Arabic/English editor, an AI agent with scholarly playbooks, transcription, OCR and text-to-speech. Available on the web and as a privacy-first desktop app (Windows, macOS, Linux). Open source under AGPL-3.0.
 
-Al-Ulama Easy Editor (EasyEditor) provides a grounded Islamic GPT research assistant (Quran & Hadith citations), long-form audio transcription, image-to-text OCR for Arabic/Urdu/English, and natural text-to-speech voices.
+Al-Ulama Easy Editor (also "EasyEditor", العلماء ایزی ایڈیٹر) is built for muftis, researchers, translators and publishers working in Urdu, Arabic and English. AI output is treated as a draft: every AI run records its sources and a confidence score, and the tool assists a scholar's judgement rather than issuing rulings.
 
-## Pages
+## Public pages
 
-- [Home](/): Product overview, features, and pricing.
-- [Pricing](/pricing): Basic, Pro, and Ultra plans (PKR).
-- [Sign up](/signup): Create an account (manual admin approval).
-- [Log in](/login): Sign in with email or Google.
+- [Full reference](https://editor.alulama.org/llms-full.txt): Detailed feature, pricing and limits reference.
+- [Home](https://editor.alulama.org/): Product overview, features, desktop app, pricing and FAQ.
+- [About](https://editor.alulama.org/about): Mission and approach.
+- [Pricing and plans](https://editor.alulama.org/pricing-info): Basic, Pro and Ultra plans in PKR and USD, with usage limits.
+- [Is using AI haram in Islam?](https://editor.alulama.org/faq/is-ai-haram-in-islam): Our position on AI in Islamic research.
+- [Answers](https://editor.alulama.org/answers): Short answers to common questions.
+- [Maktaba Shamila tutorial](https://editor.alulama.org/guides/maktaba-shamila-tutorial): Using Maktaba Shamela with Easy Editor.
+- [Terms](https://editor.alulama.org/terms), [Privacy](https://editor.alulama.org/privacy), [Refund policy](https://editor.alulama.org/refund-policy)
+- [Source code](https://github.com/hafizkh124/EasyEditor): AGPL-3.0.
 
-## Features
+## What it does
 
-- [Islamic Research](/research): Citation-grounded answers from Quran and Hadith.
-- [Transcribe](/transcribe): Urdu, Arabic, and English audio transcription.
-- [OCR](/ocr): Extract Urdu, Arabic, and English text from images.
-- [Speak](/speak): Multilingual text-to-speech with multiple voices.
+- Three-pillar workspace: library (projects, documents, sources, knowledge graph, recipes), editor canvas, and a research workbench (research, translate, extract, tasks, trust).
+- Editor: tables, track changes, margin annotations, version history, citation footnotes, RTL; export to DOCX, PDF, HTML and TXT.
+- Research: Islamic, custom-source and general modes; sources and confidence score shown for each AI run.
+- AI task library: 12 built-in tasks (harakat, spelling, paraphrase, summarise, citations, auto-format, formalise, humanise, shorten, section summaries) plus user-editable copies; fixed multi-step recipes; chunked processing of long documents with cancel and undo.
+- AI agent: tool-using agent with 25 scholarly playbooks (e.g. fatwa drafting, hadith takhrij, zakat and faraid workflows, thesis formatting, Urdu typesetting) that asks for approval before changing documents.
+- Connectors: Maktaba Shamela, Turath, tafsir, hadith and rijal sources, lexicons, Ganjoor poetry, Urdu prosody, zakat and faraid calculators.
+- Personal library: upload PDF, DOCX, TXT or MD; private per user; semantic search; knowledge graph of people, books, places and terms.
+- Transcription (Urdu, Arabic, English; up to 60 minutes; SRT/VTT export), OCR (Urdu/Arabic/English images and PDFs), text-to-speech (six voice personas), and book translation with translation memory.
+- Desktop app: local-first storage with offline semantic search, bring-your-own Gemini key stored in the OS keychain, native Maktaba Shamela 4 integration, offline Whisper speech-to-text and Piper text-to-speech, and agent automation of Word, Excel, PowerPoint, LibreOffice and InPage.
+- MCP server exposing tools such as faraid calculation, Islamic corpus search and hadith takhrij.
 
-## Languages / Locales
+## Access and pricing
 
-The marketing site is published in three locales with full `hreflang` SEO:
+- Tools require an account; new accounts are reviewed and approved by an admin.
+- Paid plans (monthly): Basic 1,400 PKR / $5, Pro 5,400 PKR / $19, Ultra 8,400 PKR / $29. See the pricing page for current limits.
+- Payment is by bank transfer, JazzCash or EasyPaisa with receipt upload.
 
-- English (default): `/`, `/about`, `/pricing-info`, `/terms`, `/privacy`, `/refund-policy`, `/faq/is-ai-haram-in-islam`
-- اردو (Urdu): `/ur`, `/ur/about`, `/ur/pricing-info`, `/ur/terms`, `/ur/privacy`, `/ur/refund-policy`, `/ur/faq/is-ai-haram-in-islam`
-- العربية (Arabic): `/ar`, `/ar/about`, `/ar/pricing-info`, `/ar/terms`, `/ar/privacy`, `/ar/refund-policy`, `/ar/faq/is-ai-haram-in-islam`
+## Limits
+
+- No real-time multi-user collaboration or document sharing.
+- Personal voice cloning (own voice only) is planned and not yet available.
+- Web and desktop workspaces are separate; move work between them by export/import.
+
+## Languages
+
+The interface and public pages are available in English (default), اردو (`/ur/...`) and العربية (`/ar/...`), with hreflang alternates.
 
 ## نبذة (بالعربية)
 
-Al-Ulama Easy Editor هو مساعد ذكاء اصطناعي إسلامي للعلماء وطلبة العلم، مبني على القرآن والسنّة. يدعم البحث المرجعي، والتفريغ الصوتي طويل المدى، والتعرّف الضوئي على النصوص العربية والأردية والإنجليزية، وتحويل النص إلى كلام بأصوات طبيعية.
+العلماء إيزي إيديتور مساحة عمل بالذكاء الاصطناعي للبحث والكتابة موجّهة للعلماء وطلبة العلم: بحث موثّق المصادر، ومحرّر بالعربية والأردية والإنجليزية، ووكيل بخطط عمل علمية، وتفريغ صوتي وOCR وتحويل نص إلى كلام، على الويب وكتطبيق مكتبي يحترم الخصوصية.
