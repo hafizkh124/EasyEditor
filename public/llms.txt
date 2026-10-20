@@ -6,6 +6,7 @@ Al-Ulama Easy Editor (also "EasyEditor", العلماء ایزی ایڈیٹر) i
 
 ## Public pages
 
+- [Full reference](https://editor.alulama.org/llms-full.txt): Detailed feature, pricing and limits reference.
 - [Home](https://editor.alulama.org/): Product overview, features, desktop app, pricing and FAQ.
 - [About](https://editor.alulama.org/about): Mission and approach.
 - [Pricing and plans](https://editor.alulama.org/pricing-info): Basic, Pro and Ultra plans in PKR and USD, with usage limits.

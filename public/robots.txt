@@ -1,3 +1,39 @@
+# AI crawlers — public marketing pages are open to them; the Disallow rules
+# listed here (app and account routes) apply to every crawler, including these.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: PerplexityBot
+User-agent: Google-Extended
+Allow: /
+Disallow: /dashboard
+Disallow: /workspace
+Disallow: /library
+Disallow: /translate-book
+Disallow: /connect-device
+Disallow: /pricing$
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /research
+Disallow: /transcribe
+Disallow: /ocr
+Disallow: /ocr-review
+Disallow: /editor
+Disallow: /speak
+Disallow: /translate
+Disallow: /admin
+Disallow: /settings
+Disallow: /profile
+Disallow: /complete-profile
+Disallow: /pending-approval
+Disallow: /account-rejected
+Disallow: /checkout/
+Disallow: /reset-password
+Disallow: /~oauth
+
 User-agent: *
 Allow: /
 
