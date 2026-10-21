@@ -2109,5 +2109,6 @@
   "skills.group_mine": "مهاراتي",
   "skills.group_edit": "مهارات النص",
   "skills.group_prompt": "قوالب علمية",
-  "skills.group_workflow": "متعددة الخطوات"
+  "skills.group_workflow": "متعددة الخطوات",
+  "skills.manage": "إدارة المهارات"
 }

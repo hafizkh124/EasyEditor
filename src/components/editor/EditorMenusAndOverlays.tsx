@@ -9,6 +9,8 @@ import { FloatingBubbleMenu } from "./FloatingBubbleMenu";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { MobileTaskSheet } from "./MobileTaskSheet";
 import { getActionHandler } from "./bubbleMenuTasks";
+import { RecipeRunDialog } from "@/components/workspace/RecipeRunDialog";
+import type { Recipe } from "@/lib/recipes/recipeService";
 import { SolvencyDialog } from "@/components/workspace/SolvencyDialog";
 import { ChunkProgressBar } from "@/components/workspace/ChunkProgressBar";
 import { TaskRunCard } from "@/components/workspace/TaskRunCard";
@@ -92,6 +94,7 @@ export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({
   t,
 }) => {
   const [footnotesOpen, setFootnotesOpen] = React.useState(false);
+  const [recipeToRun, setRecipeToRun] = React.useState<Recipe | null>(null);
   const canFootnoteExport =
     isDesktop() &&
     Boolean(typeof window !== "undefined" && window.electronAPI?.docBridge?.applyCitations) &&
@@ -110,8 +113,9 @@ export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({
             onOpenMobileSheet={setMobileSheetText}
           />
           {!isMobile && (
-            <SlashCommandMenu editor={editor} actions={aiActions} onAutoFormat={handleAutoFormat} />
+            <SlashCommandMenu editor={editor} actions={aiActions} onAutoFormat={handleAutoFormat} onRunRecipe={setRecipeToRun} />
           )}
+          <RecipeRunDialog recipe={recipeToRun} onClose={() => setRecipeToRun(null)} />
           <MobileTaskSheet
             open={mobileSheetText !== null}
             onOpenChange={(open) => !open && setMobileSheetText(null)}

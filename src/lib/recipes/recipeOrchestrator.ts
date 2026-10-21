@@ -1,4 +1,6 @@
 import { getTaskBySlug } from "@/lib/tasks/registry";
+import { isRefineTextAction } from "@/lib/editor/aiActions";
+import { runsInEditor } from "@/lib/skills/registry";
 import { calculateTaskCost } from "@/lib/tasks/cost";
 import type { DocumentTaskOutcome } from "@/core/workspace/WorkspaceContext";
 import type { Recipe, RecipeStep } from "./recipeService";
@@ -68,6 +70,15 @@ export function validateRecipe(recipe: Recipe): { ok: boolean; problems: string[
     if (!task.chunkable) {
       problems.push(
         `'${step.stepLabel}': '${task.defaultLabel}' پوری دستاویز پر نہیں چل سکتا۔`,
+      );
+      continue;
+    }
+    // A whole-document run replaces each section with what the step returns.
+    // A task meant to append (section summaries) would overwrite the text
+    // instead, and the chunked runner only accepts the actions it can apply.
+    if (!runsInEditor(task) || !task.actionName || !isRefineTextAction(task.actionName)) {
+      problems.push(
+        `'${step.stepLabel}': '${task.defaultLabel}' پوری دستاویز پر چلانے سے متن بدل جائے گا، اس لیے یہ ترکیب میں ابھی نہیں چل سکتا۔`,
       );
     }
   }

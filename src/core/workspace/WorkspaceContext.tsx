@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { type WorkbenchTab, type RailPanel, usePanelState } from "./usePanelState";
+import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
 
 /** The page the Shamela reader is currently showing (plain text, for AI). */
 export interface ReaderPageSignal {
@@ -33,6 +34,9 @@ export interface DocumentTaskOutcome {
  * signals are. `null` means no editor is mounted and nothing can be run.
  */
 export type DocumentTaskRunner = (taskSlug: string) => Promise<DocumentTaskOutcome>;
+
+/** Runs one editor skill the way the `/` menu does (see SelectionBarActions.runTask). */
+export type EditorTaskRunner = (taskSlug: string) => void;
 
 interface WorkspaceContextType {
   activeDocumentId: string | null;
@@ -92,6 +96,18 @@ interface WorkspaceContextType {
   /** The mounted editor's whole-document task runner, or null (see above). */
   runDocumentTask: DocumentTaskRunner | null;
   registerDocumentTaskRunner: (runner: DocumentTaskRunner | null) => void;
+
+  /**
+   * The mounted editor's task runner for one skill — on the selection, or the
+   * document when nothing is selected — so `Ctrl+K` can run editor skills.
+   */
+  runEditorTask: EditorTaskRunner | null;
+  registerEditorTaskRunner: (runner: EditorTaskRunner | null) => void;
+
+  /** A prompt skill chosen outside the chat (`Ctrl+K`), for the research composer to open. */
+  pendingSkillPrompt: ScholarlyPromptDef | null;
+  requestSkillPrompt: (prompt: ScholarlyPromptDef) => void;
+  clearPendingSkillPrompt: () => void;
 
   /**
    * Headings of the document currently open in the Canvas, in order. Published
@@ -161,6 +177,21 @@ export const WorkspaceProvider: React.FC<{
 
   // Held in state, not a ref: the Recipes tab has to re-render when the editor
   // mounts or unmounts, or its Run button would stay disabled forever.
+  const [runEditorTask, setRunEditorTask] = useState<EditorTaskRunner | null>(null);
+  const registerEditorTaskRunner = useCallback((runner: EditorTaskRunner | null) => {
+    setRunEditorTask(() => runner);
+  }, []);
+
+  const [pendingSkillPrompt, setPendingSkillPrompt] = useState<ScholarlyPromptDef | null>(null);
+  const requestSkillPrompt = useCallback(
+    (prompt: ScholarlyPromptDef) => {
+      setPendingSkillPrompt(prompt);
+      panelState.setWorkbenchTab("research");
+    },
+    [panelState],
+  );
+  const clearPendingSkillPrompt = useCallback(() => setPendingSkillPrompt(null), []);
+
   const [runDocumentTask, setRunDocumentTask] = useState<DocumentTaskRunner | null>(null);
   const registerDocumentTaskRunner = useCallback((runner: DocumentTaskRunner | null) => {
     // Wrapped, because a bare function passed to a setter is treated as an
@@ -204,6 +235,11 @@ export const WorkspaceProvider: React.FC<{
         setCommandPaletteOpen,
         runDocumentTask,
         registerDocumentTaskRunner,
+        runEditorTask,
+        registerEditorTaskRunner,
+        pendingSkillPrompt,
+        requestSkillPrompt,
+        clearPendingSkillPrompt,
         documentOutline,
         setDocumentOutline,
       }}

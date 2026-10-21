@@ -3,6 +3,8 @@ import { BUILTIN_TASKS, setCustomTasks } from "@/lib/tasks/registry";
 import { customTaskService, rowToDefinition, type CustomTaskRow } from "@/lib/tasks/customTasks";
 import { SCHOLARLY_PROMPTS } from "@/lib/prompts/promptsRegistry";
 import { PLAYBOOKS } from "~shared/playbooks/registry";
+import { recipeService, type Recipe } from "@/lib/recipes/recipeService";
+import { validateRecipe } from "@/lib/recipes/recipeOrchestrator";
 import { isDesktop } from "@/utils/environment";
 import { logger } from "@/lib/logger";
 import { buildSkills, skillsFor } from "./registry";
@@ -28,6 +30,7 @@ const HIDDEN_KEY = "easyeditor.skills.hidden";
 
 interface State {
   customRows: CustomTaskRow[];
+  recipes: Recipe[];
   playbookEnabled: Record<string, boolean>;
   hidden: string[];
   loaded: boolean;
@@ -49,7 +52,7 @@ function writeHidden(hidden: string[]) {
   } catch { /* storage unavailable: the choice lasts until reload */ }
 }
 
-let state: State = { customRows: [], playbookEnabled: {}, hidden: readHidden(), loaded: false };
+let state: State = { customRows: [], recipes: [], playbookEnabled: {}, hidden: readHidden(), loaded: false };
 let loading: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
@@ -63,18 +66,38 @@ const skillsApi = () => (typeof window !== "undefined" ? window.electronAPI?.ski
 const playbooksAvailable = () => isDesktop();
 
 async function load(): Promise<void> {
-  const [rows, merged] = await Promise.all([
-    customTaskService.list().catch((err: unknown) => {
+  // Each source lands on its own, so a slow one (recipes come from the
+  // backend) never holds the others back.
+  const mine = customTaskService
+    .list()
+    .catch((err: unknown) => {
       log.warn("loading my skills failed", { err });
       return [] as CustomTaskRow[];
-    }),
+    })
+    .then((rows) => {
+      const customRows = (rows ?? []).filter((r) => !r.archived_at);
+      setCustomTasks(customRows.map(rowToDefinition));
+      setState({ customRows, loaded: true });
+    });
+
+  const switches =
     playbooksAvailable() && skillsApi()?.list
-      ? skillsApi()!.list().then((r) => r.merged).catch(() => ({} as Record<string, boolean>))
-      : Promise.resolve({} as Record<string, boolean>),
-  ]);
-  const customRows = (rows ?? []).filter((r) => !r.archived_at);
-  setCustomTasks(customRows.map(rowToDefinition));
-  setState({ customRows, playbookEnabled: merged ?? {}, loaded: true });
+      ? skillsApi()!
+          .list()
+          .then((r) => setState({ playbookEnabled: r.merged ?? {} }))
+          .catch(() => undefined)
+      : Promise.resolve();
+
+  const recipes =
+    import.meta.env.VITE_RECIPES === "false"
+      ? Promise.resolve()
+      : Promise.all([recipeService.listRecipes().catch(() => [] as Recipe[]), mine]).then(([list]) => {
+          // Validated after my skills are registered, since a recipe can name
+          // one. A recipe that would fail at some step is left out of the menus.
+          setState({ recipes: (list ?? []).filter((r) => validateRecipe(r).ok) });
+        });
+
+  await Promise.all([mine, switches, recipes]);
 }
 
 /** Reload my skills and the playbook switches (after creating or editing one). */
@@ -87,7 +110,7 @@ export function refreshSkills(): Promise<void> {
 
 /** For tests: drop everything loaded so far. */
 export function resetSkillsStore() {
-  state = { customRows: [], playbookEnabled: {}, hidden: readHidden(), loaded: false };
+  state = { customRows: [], recipes: [], playbookEnabled: {}, hidden: readHidden(), loaded: false };
   loading = null;
   listeners.forEach((l) => l());
 }
@@ -112,8 +135,9 @@ export function useSkills() {
         customRows: s.customRows,
         scholarlyPrompts: SCHOLARLY_PROMPTS,
         playbooks: playbooksAvailable() ? PLAYBOOKS : null,
+        recipes: s.recipes,
       }),
-    [s.customRows],
+    [s.customRows, s.recipes],
   );
 
   const isHidden = useCallback(

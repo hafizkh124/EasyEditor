@@ -1168,6 +1168,7 @@ export function useAgentRun() {
     pickerItems,
     skillPromptRequest,
     clearSkillPromptRequest,
+    requestSkillPrompt: setSkillPromptRequest,
     pickerActiveIndex, setPickerActiveIndex,
     // Plan §4 — the `#` / `/` / `@` scope chips + the review dialog + batch mode.
     scopeTags,

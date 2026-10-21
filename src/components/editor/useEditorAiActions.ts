@@ -308,6 +308,14 @@ export function useEditorAiActions({
     else void runTextAction(slug, slug);
   }, [onRemoveHarakat, handleAutoFormat, runTextAction]);
 
+  // Published for `Ctrl+K`, which lives outside the editor.
+  const registerEditorTaskRunner = workspace?.registerEditorTaskRunner;
+  useEffect(() => {
+    if (!registerEditorTaskRunner) return;
+    registerEditorTaskRunner(editor ? runTask : null);
+    return () => registerEditorTaskRunner(null);
+  }, [registerEditorTaskRunner, editor, runTask]);
+
   const actions = useMemo<SelectionBarActions>(
     () => ({
       onAddHarakat, onRemoveHarakat, onSpellCheck, onParaphrase, onSummarize,

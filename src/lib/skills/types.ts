@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
+import type { Recipe } from "@/lib/recipes/recipeService";
 
 /**
  * One skill (SYSTEM-2026 §7). What used to be four separate lists — AI tasks,
@@ -9,7 +10,8 @@ import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
  * - `edit`: changes the selected text or the document (the AI tasks).
  * - `prompt`: fills a ready-made instruction into the chat.
  * - `guided`: an interview before writing ("مجھ سے پوچھو").
- * - `workflow`: several steps in a row (the agent's playbooks).
+ * - `workflow`: several steps in a row — the agent's playbooks (chat) and
+ *   recipes, which run their tasks over the open document (editor).
  */
 export type SkillKind = "edit" | "prompt" | "guided" | "workflow";
 
@@ -33,6 +35,8 @@ export interface Skill {
   /** `workflow`: the playbook, and its `/trigger` if it has one. */
   playbookId?: string;
   trigger?: string;
+  /** `workflow` in the editor: the recipe the run dialog confirms and runs. */
+  recipe?: Recipe;
   /** `mine`: the `ai_tasks` row, for editing and archiving in settings. */
   rowId?: string;
   baseTaskSlug?: string | null;

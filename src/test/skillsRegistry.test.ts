@@ -51,6 +51,12 @@ describe("skills registry", () => {
     expect(build().filter((s) => s.kind === "workflow")).toHaveLength(PLAYBOOKS.length);
   });
 
+  it("offers runnable recipes in the editor as multi-step skills", () => {
+    const recipe = { id: "rc1", title: "Polish", steps: [{ taskSlug: "spelling_check", stepLabel: "املا" }], is_builtin: true, created_at: "" };
+    const skill = build({ recipes: [recipe] }).find((s) => s.id === "recipe:rc1")!;
+    expect(skill).toMatchObject({ kind: "workflow", places: ["editor"], recipe });
+  });
+
   it("drops hidden skills from a menu", () => {
     const chat = skillsFor(build(), "chat", (id) => id === "guided:grill_me");
     expect(chat.some((s) => s.id === "guided:grill_me")).toBe(false);

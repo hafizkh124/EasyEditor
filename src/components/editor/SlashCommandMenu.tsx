@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { stripHarakat } from "@/utils/arabicUtils";
 import { useSkills } from "@/lib/skills/useSkills";
+import type { Recipe } from "@/lib/recipes/recipeService";
 import { useOpenSkillsSettings } from "@/lib/skills/useOpenSkillsSettings";
 import type { SelectionBarActions } from "./useEditorAiActions";
 
@@ -14,6 +15,8 @@ interface SlashCommandMenuProps {
   actions: SelectionBarActions;
   onAutoFormat: () => void;
   onNavigateSpeak?: () => void;
+  /** A recipe picked from `/`: the editor opens its run dialog. */
+  onRunRecipe?: (recipe: Recipe) => void;
 }
 
 interface CommandItemOption {
@@ -43,6 +46,7 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
   actions,
   onAutoFormat,
   onNavigateSpeak,
+  onRunRecipe,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -66,13 +70,20 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
   // tasks and my skills, each run by the editor's generic task runner — so
   // nothing in this menu can be a no-op. "Manage skills" closes the list.
   const options: CommandItemOption[] = React.useMemo(() => {
-    const items: CommandItemOption[] = forPlace("editor").map((skill) => ({
+    const items: CommandItemOption[] = forPlace("editor")
+      .filter((skill) => !skill.recipe || onRunRecipe)
+      .map((skill) => ({
       id: skill.id,
       label: skill.label,
       category:
+        skill.recipe ? "کئی مراحل" :
         skill.taskSlug === "auto_format" ? "فارمیٹنگ" : skill.origin === "mine" ? "میری مہارت" : "مہارت",
       icon: (skill.taskSlug && TASK_ICONS[skill.taskSlug]) || skill.icon || Sparkles,
       action: () => {
+        if (skill.recipe) {
+          onRunRecipe?.(skill.recipe);
+          return;
+        }
         if (!skill.taskSlug) return;
         if (skill.taskSlug === "auto_format") onAutoFormat();
         else if (actions.runTask) actions.runTask(skill.taskSlug);
@@ -100,7 +111,7 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
     }
 
     return items;
-  }, [forPlace, actions, onAutoFormat, onNavigateSpeak, openSkillsSettings]);
+  }, [forPlace, actions, onAutoFormat, onNavigateSpeak, onRunRecipe, openSkillsSettings]);
 
   const filteredOptions = React.useMemo(() => {
     const cleanQuery = stripHarakat(query.trim().toLowerCase());

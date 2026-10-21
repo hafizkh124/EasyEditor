@@ -2109,5 +2109,6 @@
   "skills.group_mine": "My skills",
   "skills.group_edit": "Text skills",
   "skills.group_prompt": "Scholarly prompts",
-  "skills.group_workflow": "Multi-step"
+  "skills.group_workflow": "Multi-step",
+  "skills.manage": "Manage skills"
 }

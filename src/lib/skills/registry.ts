@@ -1,4 +1,5 @@
-import { BookOpenCheck, MessageCircleQuestion, ScrollText, Sparkles, UserPen } from "lucide-react";
+import { BookOpenCheck, Layers, MessageCircleQuestion, ScrollText, Sparkles, UserPen } from "lucide-react";
+import type { Recipe } from "@/lib/recipes/recipeService";
 import type { TaskDefinition } from "@/lib/tasks/types";
 import type { CustomTaskRow } from "@/lib/tasks/customTasks";
 import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
@@ -17,6 +18,8 @@ import type { Skill, SkillPlace } from "./types";
  *   insert their instruction.
  * - Scholarly prompts and "مجھ سے پوچھو" fill an instruction into the chat.
  * - Playbooks need the desktop agent; on the web they are absent, not dead.
+ * - Recipes run their steps over the open document, so they are editor
+ *   skills. Only recipes that pass `validateRecipe` are passed in.
  *
  * Order is what the `/` menus show: guided first, then built-in, then mine,
  * then multi-step.
@@ -28,13 +31,15 @@ export interface SkillSources {
   scholarlyPrompts: readonly ScholarlyPromptDef[];
   /** `null` where the agent cannot run playbooks (the web). */
   playbooks: readonly Playbook[] | null;
+  /** Runnable recipes only. */
+  recipes?: readonly Recipe[];
 }
 
 /** False for a task that appends to the whole document, which the editor's runner cannot do. */
 export const runsInEditor = (task: Pick<TaskDefinition, "scope" | "applyMode">) =>
   !(task.scope === "document" && task.applyMode === "append");
 
-export function buildSkills({ tasks, customRows, scholarlyPrompts, playbooks }: SkillSources): Skill[] {
+export function buildSkills({ tasks, customRows, scholarlyPrompts, playbooks, recipes = [] }: SkillSources): Skill[] {
   const guided: Skill = {
     id: `guided:${GRILL_ME.id}`,
     kind: "guided",
@@ -99,7 +104,18 @@ export function buildSkills({ tasks, customRows, scholarlyPrompts, playbooks }: 
     trigger: pb.trigger,
   }));
 
-  return [guided, ...builtinEdits, ...mine, ...prompts, ...workflows];
+  const recipeSkills: Skill[] = recipes.map((recipe) => ({
+    id: `recipe:${recipe.id}`,
+    kind: "workflow",
+    origin: recipe.is_builtin ? "builtin" : "mine",
+    label: recipe.title,
+    description: recipe.description ?? recipe.steps.map((step) => step.stepLabel).join(" ← "),
+    icon: Layers,
+    places: ["editor"],
+    recipe,
+  }));
+
+  return [guided, ...builtinEdits, ...mine, ...prompts, ...workflows, ...recipeSkills];
 }
 
 /** The skills a `/` menu offers: runnable in that place and not hidden. */
