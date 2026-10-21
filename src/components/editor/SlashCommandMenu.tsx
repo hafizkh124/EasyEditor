@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import type { Editor } from "@tiptap/react";
 import {
   Sparkles, Eraser, CheckCheck, RefreshCw, FileText, BookmarkCheck,
-  AlignLeft, GraduationCap, Heart, Scissors, Wand2, Volume2,
+  AlignLeft, GraduationCap, Heart, Scissors, Wand2, Volume2, Settings2,
 } from "lucide-react";
-import { getTasksForSurface } from "@/lib/tasks/registry";
-import type { TaskDefinition } from "@/lib/tasks/types";
 import { stripHarakat } from "@/utils/arabicUtils";
+import { useSkills } from "@/lib/skills/useSkills";
+import { useOpenSkillsSettings } from "@/lib/skills/useOpenSkillsSettings";
 import type { SelectionBarActions } from "./useEditorAiActions";
 
 interface SlashCommandMenuProps {
@@ -59,34 +59,23 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
     setSelectedIndex(0);
   }, []);
 
-  const getActionHandler = useCallback((taskSlug: string): (() => void) | undefined => {
-    switch (taskSlug) {
-      case "add_harakat": return actions.onAddHarakat;
-      case "remove_harakat": return actions.onRemoveHarakat;
-      case "spelling_check": return actions.onSpellCheck;
-      case "paraphrase": return actions.onParaphrase;
-      case "summarize": return actions.onSummarize;
-      case "citations": return actions.onCitations;
-      case "normalize_script": return actions.onNormalizeScript;
-      case "formalize": return actions.onFormalize;
-      case "humanize": return actions.onHumanize;
-      case "shorten": return actions.onShorten;
-      case "auto_format": return onAutoFormat;
-      default: return undefined;
-    }
-  }, [actions, onAutoFormat]);
+  const { forPlace } = useSkills();
+  const openSkillsSettings = useOpenSkillsSettings();
 
-  // Build full options list from slash surface tasks + /speak
+  // The editor's skills from the one skills list (SYSTEM-2026 §7): built-in
+  // tasks and my skills, each run by the editor's generic task runner — so
+  // nothing in this menu can be a no-op. "Manage skills" closes the list.
   const options: CommandItemOption[] = React.useMemo(() => {
-    const slashTasks = getTasksForSurface("slash");
-    const items: CommandItemOption[] = slashTasks.map((t: TaskDefinition) => ({
-      id: t.slug,
-      label: t.defaultLabel,
-      category: t.slug === "auto_format" ? "فارمیٹنگ" : "ای آئی ٹاسکس",
-      icon: TASK_ICONS[t.slug] || Sparkles,
+    const items: CommandItemOption[] = forPlace("editor").map((skill) => ({
+      id: skill.id,
+      label: skill.label,
+      category:
+        skill.taskSlug === "auto_format" ? "فارمیٹنگ" : skill.origin === "mine" ? "میری مہارت" : "مہارت",
+      icon: (skill.taskSlug && TASK_ICONS[skill.taskSlug]) || skill.icon || Sparkles,
       action: () => {
-        const handler = getActionHandler(t.slug);
-        handler?.();
+        if (!skill.taskSlug) return;
+        if (skill.taskSlug === "auto_format") onAutoFormat();
+        else if (actions.runTask) actions.runTask(skill.taskSlug);
       },
     }));
 
@@ -100,8 +89,18 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
       });
     }
 
+    if (openSkillsSettings) {
+      items.push({
+        id: "manage-skills",
+        label: "مہارتیں سنبھالیں",
+        category: "",
+        icon: Settings2,
+        action: openSkillsSettings,
+      });
+    }
+
     return items;
-  }, [getActionHandler, onNavigateSpeak]);
+  }, [forPlace, actions, onAutoFormat, onNavigateSpeak, openSkillsSettings]);
 
   const filteredOptions = React.useMemo(() => {
     const cleanQuery = stripHarakat(query.trim().toLowerCase());

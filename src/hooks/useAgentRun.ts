@@ -14,7 +14,11 @@ import {
   buildMentions, filterMentions, activeTriggerQuery, applyMention, applyLibraryTag,
   type Mention, type ScopeKind,
 } from "../../shared/mentions";
-import { PLAYBOOKS } from "../../shared/playbooks/registry";
+import { useSkills } from "@/lib/skills/useSkills";
+import { matchesSkill } from "@/lib/skills/registry";
+import { useOpenSkillsSettings } from "@/lib/skills/useOpenSkillsSettings";
+import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
+import { stripHarakat } from "@/utils/arabicUtils";
 import { applyArtifactEvent, type ArtifactState } from "@/components/workspace/agentArtifactState";
 import { getShamelaClient } from "@/core/shamela/shamelaClient";
 import { deriveRunStats } from "~shared/agent/runStats";
@@ -603,22 +607,54 @@ export function useAgentRun() {
     setActiveArtifactId((cur) => (cur === id ? null : cur));
   }, []);
 
+  const { forPlace: skillsForPlace } = useSkills();
+  const chatSkills = useMemo(() => skillsForPlace("chat"), [skillsForPlace]);
+  const openSkillsSettings = useOpenSkillsSettings();
+  /** A prompt skill picked from `/`, waiting for the composer's arguments dialog. */
+  const [skillPromptRequest, setSkillPromptRequest] = useState<ScholarlyPromptDef | null>(null);
+  const clearSkillPromptRequest = useCallback(() => setSkillPromptRequest(null), []);
+
   const pickerItems = useMemo<PickerItem[]>(() => {
     if (!picker) return [];
     if (picker.kind === "command") {
-      const q = picker.query.toLowerCase();
-      return PLAYBOOKS
-        .filter((p) => p.title.toLowerCase().includes(q) || p.id.includes(q))
-        .map((p) => ({
+      // The chat's skills from the one skills list (SYSTEM-2026 §7). A skill
+      // hidden in Settings → Skills is absent here too; for playbooks that is
+      // the same switch the desktop agent obeys.
+      const done = () => {
+        setPicker(null);
+        taRef.current?.focus();
+      };
+      const items: PickerItem[] = chatSkills
+        .filter((skill) => matchesSkill(skill, picker.query, stripHarakat))
+        .map((skill) => ({
           kind: "command" as const,
-          label: p.trigger ? `/${p.trigger} — ${p.title}` : p.title,
+          label: skill.kind === "workflow" && skill.trigger ? `/${skill.trigger} — ${skill.label}` : skill.label,
+          sublabel: skill.description,
           apply: () => {
-            setInput(p.trigger ? `/${p.trigger} ` : `${p.title} `);
-            addScopeTag({ kind: "/", label: p.trigger ?? p.id, ref: p.id });
-            setPicker(null);
-            taRef.current?.focus();
+            if (skill.kind === "workflow" && skill.playbookId) {
+              setInput(skill.trigger ? `/${skill.trigger} ` : `${skill.label} `);
+              addScopeTag({ kind: "/", label: skill.trigger ?? skill.playbookId, ref: skill.playbookId });
+            } else if (skill.prompt) {
+              // Its arguments are filled in a dialog the composer opens.
+              setInput("");
+              setSkillPromptRequest(skill.prompt);
+            } else if (skill.promptText) {
+              setInput(skill.promptText);
+            }
+            done();
           },
         }));
+      if (openSkillsSettings && matchesSkill({ id: "manage-skills", kind: "edit", origin: "builtin", label: "مہارتیں سنبھالیں", places: [] }, picker.query, stripHarakat)) {
+        items.push({
+          kind: "command" as const,
+          label: "مہارتیں سنبھالیں",
+          apply: () => {
+            setPicker(null);
+            openSkillsSettings();
+          },
+        });
+      }
+      return items;
     }
     if (picker.kind === "library") {
       const sectionOrder = { book: 0, author: 1, category: 2, century: 3 } as const;
@@ -660,7 +696,7 @@ export function useAgentRun() {
         requestAnimationFrame(() => { ta?.focus(); ta?.setSelectionRange(next.caret, next.caret); });
       },
     }));
-  }, [picker, mentions, input, libraryRows, addScopeTag]);
+  }, [picker, mentions, input, libraryRows, addScopeTag, chatSkills, openSkillsSettings]);
 
   /** Called by the ScopeReviewDialog on confirm — creates the multi-book chip. */
   const confirmScopeReview = useCallback((tag: Omit<ScopeTag, "id">) => {
@@ -1130,6 +1166,8 @@ export function useAgentRun() {
     caps,
     picker, setPicker,
     pickerItems,
+    skillPromptRequest,
+    clearSkillPromptRequest,
     pickerActiveIndex, setPickerActiveIndex,
     // Plan §4 — the `#` / `/` / `@` scope chips + the review dialog + batch mode.
     scopeTags,

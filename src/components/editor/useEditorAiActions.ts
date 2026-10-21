@@ -32,6 +32,12 @@ export interface SelectionBarActions {
   onFormalize?: () => void;
   onHumanize?: () => void;
   onShorten?: () => void;
+  /**
+   * Run any task by its registry slug — built-in or one of my skills. The one
+   * runner every editor menu uses (`/`, the selection bar, the mobile sheet),
+   * so a task can no longer be listed in one menu and do nothing in another.
+   */
+  runTask?: (slug: string) => void;
 }
 
 interface UseEditorAiActionsArgs {
@@ -296,14 +302,20 @@ export function useEditorAiActions({
   }, [editor, getSelectionOrAll, applyTextResult, t]);
 
 
+  const runTask = useCallback((slug: string) => {
+    if (slug === "remove_harakat") onRemoveHarakat();
+    else if (slug === "auto_format") void handleAutoFormat();
+    else void runTextAction(slug, slug);
+  }, [onRemoveHarakat, handleAutoFormat, runTextAction]);
+
   const actions = useMemo<SelectionBarActions>(
     () => ({
       onAddHarakat, onRemoveHarakat, onSpellCheck, onParaphrase, onSummarize,
-      onCitations, onNormalizeScript, onFormalize, onHumanize, onShorten,
+      onCitations, onNormalizeScript, onFormalize, onHumanize, onShorten, runTask,
     }),
     [
       onAddHarakat, onRemoveHarakat, onSpellCheck, onParaphrase, onSummarize, onCitations,
-      onNormalizeScript, onFormalize, onHumanize, onShorten,
+      onNormalizeScript, onFormalize, onHumanize, onShorten, runTask,
     ],
   );
 

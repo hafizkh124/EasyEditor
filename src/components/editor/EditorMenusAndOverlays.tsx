@@ -8,6 +8,7 @@ import type { SelectionBarActions } from "./useEditorAiActions";
 import { FloatingBubbleMenu } from "./FloatingBubbleMenu";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { MobileTaskSheet } from "./MobileTaskSheet";
+import { getActionHandler } from "./bubbleMenuTasks";
 import { SolvencyDialog } from "@/components/workspace/SolvencyDialog";
 import { ChunkProgressBar } from "@/components/workspace/ChunkProgressBar";
 import { TaskRunCard } from "@/components/workspace/TaskRunCard";
@@ -116,21 +117,7 @@ export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({
             onOpenChange={(open) => !open && setMobileSheetText(null)}
             selectedText={mobileSheetText ?? ""}
             aiBusy={aiBusy}
-            getHandler={(slug) => {
-              const map: Record<string, (() => void) | undefined> = {
-                add_harakat: aiActions.onAddHarakat,
-                remove_harakat: aiActions.onRemoveHarakat,
-                spelling_check: aiActions.onSpellCheck,
-                paraphrase: aiActions.onParaphrase,
-                summarize: aiActions.onSummarize,
-                citations: aiActions.onCitations,
-                normalize_script: aiActions.onNormalizeScript,
-                formalize: aiActions.onFormalize,
-                humanize: aiActions.onHumanize,
-                shorten: aiActions.onShorten,
-              };
-              return map[slug];
-            }}
+            getHandler={(slug) => getActionHandler(aiActions, slug)}
           />
         </>
       )}

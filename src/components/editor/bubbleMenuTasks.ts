@@ -4,6 +4,8 @@ import {
   BookmarkCheck, AlignLeft, GraduationCap, Heart, Scissors,
 } from "lucide-react";
 import type { SelectionBarActions } from "./useEditorAiActions";
+import { getTaskBySlug } from "@/lib/tasks/registry";
+import { runsInEditor } from "@/lib/skills/registry";
 
 export const TASK_ICONS: Record<string, React.FC<{ className?: string }>> = {
   add_harakat: Sparkles,
@@ -51,6 +53,12 @@ export function getActionHandler(
     case "formalize": return actions.onFormalize;
     case "humanize": return actions.onHumanize;
     case "shorten": return actions.onShorten;
-    default: return undefined;
+    default: {
+      // Any other task — my skills among them — goes through the generic runner.
+      const task = getTaskBySlug(taskSlug);
+      if (!task || !actions.runTask || !runsInEditor(task)) return undefined;
+      const run = actions.runTask;
+      return () => run(taskSlug);
+    }
   }
 }

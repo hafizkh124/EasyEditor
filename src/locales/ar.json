@@ -2094,5 +2094,20 @@
   "filespage.results_empty": "ستظهر هنا النصوص المفرّغة ونصوص OCR والترجمات.",
   "filespage.type_transcript": "تفريغ صوتي",
   "filespage.type_ocr": "نص OCR",
-  "filespage.type_translation": "ترجمة"
+  "filespage.type_translation": "ترجمة",
+  "agent.hub_skills": "المهارات  (/)",
+  "skills.use": "استخدم",
+  "skills.hub.subtitle_all": "اكتب / في المحرر أو المحادثة لفتح هذه المهارات. أوقف ما لا تحتاجه.",
+  "skills.new": "مهارة جديدة",
+  "skills.copy": "أنشئ مهارتي من هذه",
+  "skills.edit": "تعديل",
+  "skills.archive": "أرشفة",
+  "skills.archive_failed": "تعذّرت أرشفة المهارة",
+  "skills.place_editor": "المحرر",
+  "skills.place_chat": "المحادثة",
+  "skills.group_guided": "سؤال وجواب",
+  "skills.group_mine": "مهاراتي",
+  "skills.group_edit": "مهارات النص",
+  "skills.group_prompt": "قوالب علمية",
+  "skills.group_workflow": "متعددة الخطوات"
 }

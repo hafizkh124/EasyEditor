@@ -120,7 +120,7 @@ export const ComposerHub: React.FC<ComposerHubProps> = ({
       {showSkills && onOpenPlaybooks && (
         <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start hover:bg-muted" onClick={handleAction(onOpenPlaybooks)}>
           <ScrollText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          {t("agent.hub_playbooks", "Playbooks  (/)")}
+          {t("agent.hub_skills", "مہارتیں  (/)")}
         </button>
       )}
 

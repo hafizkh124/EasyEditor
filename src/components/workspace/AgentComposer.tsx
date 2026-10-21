@@ -7,8 +7,7 @@ import { useAgentRun, type AgentMode, type ScopeTag } from "@/hooks/useAgentRun"
 import { useClampToViewport } from "@/lib/ui/clampToViewport";
 import { ScopeReviewDialog } from "./ScopeReviewDialog";
 import { ComposerHub } from "@/components/composer/ComposerHub";
-import { CustomPromptsPicker } from "@/components/composer/CustomPromptsPicker";
-import { ScholarlyPromptModal } from "@/components/research/ScholarlyPromptModal";
+import { SkillPromptDialog } from "@/components/composer/SkillPromptDialog";
 
 /** Icon + accent for a scope chip, keyed by kind (colour is never the only signal). */
 function chipStyle(tag: ScopeTag): { icon: React.ReactNode; cls: string } {
@@ -69,12 +68,8 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
   const pickerRef = useRef<HTMLDivElement>(null);
   const hubRef = useRef<HTMLDivElement>(null);
   const [overflowOpen, setOverflowOpen] = React.useState(false);
-  const [promptsOpen, setPromptsOpen] = React.useState(false);
-  const [scholarlyPromptsOpen, setScholarlyPromptsOpen] = React.useState(false);
-  const promptsRef = useRef<HTMLDivElement>(null);
   const { transform: pickerTransform } = useClampToViewport(pickerRef, [a.picker, a.pickerItems.length]);
   const { transform: hubTransform } = useClampToViewport(hubRef, [a.hubOpen]);
-  const { transform: promptsTransform } = useClampToViewport(promptsRef, [promptsOpen]);
 
   const chips = a.scopeTags;
   const visibleChips = chips.slice(0, 4);
@@ -212,8 +207,6 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
               showSources
               showSkills
               showConnectors
-              showPrompts
-              showScholarlyPrompts
               selectedDomains={selectedDomains}
               onSelectedDomainsChange={onSelectedDomainsChange}
               requireArabicMatn={requireArabicMatn}
@@ -226,24 +219,16 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
               onChangeFolder={() => a.pf.openFolder()}
               onOpenPlaybooks={() => { a.updateInput("/", 1); a.taRef.current?.focus(); }}
               onOpenScope={() => { a.updateInput(`${a.input}${a.input && !a.input.endsWith(" ") ? " " : ""}#`, a.input.length + (a.input && !a.input.endsWith(" ") ? 2 : 1)); a.taRef.current?.focus(); }}
-              onOpenPrompts={() => setPromptsOpen(true)}
-              onOpenScholarlyPrompts={() => setScholarlyPromptsOpen(true)}
               onClose={() => a.setHubOpen(false)}
             />
           </div>
         )}
-        {promptsOpen && (
-          <div ref={promptsRef} style={{ transform: promptsTransform }} className="absolute bottom-full start-2 mb-1 w-[min(20rem,80vw)] max-h-[min(24rem,70vh)] overflow-y-auto overscroll-contain rounded-md border border-border bg-popover text-xs shadow-md">
-            <CustomPromptsPicker
-              onInsert={(text) => { a.updateInput(text, text.length); a.taRef.current?.focus(); }}
-              onClose={() => setPromptsOpen(false)}
-            />
-          </div>
-        )}
-        <ScholarlyPromptModal
-          isOpen={scholarlyPromptsOpen}
-          onClose={() => setScholarlyPromptsOpen(false)}
-          onSelectPrompt={(promptText, prompt) => {
+        {/* My skills, scholarly prompts and "مجھ سے پوچھو" are all in the `/`
+            menu now (SYSTEM-2026 §7); a prompt skill's details are filled here. */}
+        <SkillPromptDialog
+          prompt={a.skillPromptRequest}
+          onClose={a.clearSkillPromptRequest}
+          onApply={(promptText, prompt) => {
             a.updateInput(promptText, promptText.length);
             if (!prompt.corpusReady) toast.warning(t("research.prompt_corpus_pending"));
             setTimeout(() => a.taRef.current?.focus(), 50);

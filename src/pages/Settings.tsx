@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useSeo } from "@/hooks/useSeo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,7 +43,12 @@ const Settings = () => {
 
   const { user } = useAuth();
   const { t, language, setLanguage, direction } = useLanguage();
-  const [activeSection, setActiveSection] = useState<SettingsSection>("general");
+  // `?section=skills` is where "Manage skills" at the end of every `/` menu lands.
+  const [searchParams] = useSearchParams();
+  const requestedSection = searchParams.get("section");
+  const [activeSection, setActiveSection] = useState<SettingsSection>(
+    SECTIONS.some((s) => s.id === requestedSection) ? (requestedSection as SettingsSection) : "general",
+  );
 
   // The boot-time application of profiles.preferred_language lives in
   // FirstRunLanguageGate, so a fresh device speaks the user's language before

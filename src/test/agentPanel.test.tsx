@@ -331,6 +331,17 @@ describe("AgentPanel", () => {
     expect(await screen.findByText(/university thesis format/i)).toBeInTheDocument();
   });
 
+  it("offers 'مجھ سے پوچھو' on '/', and fills its instruction into the composer", async () => {
+    renderPanel();
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: "/مجھ" } });
+    fireEvent.click(await screen.findByText("مجھ سے پوچھو"));
+    const topic = await screen.findByLabelText(/موضوع/);
+    fireEvent.change(topic, { target: { value: "زکوٰۃ" } });
+    fireEvent.click(screen.getByRole("button", { name: "استعمال کریں" }));
+    await waitFor(() => expect(ta.value).toContain("«زکوٰۃ»"));
+  });
+
   it("opens the chapter picker on '@'", async () => {
     renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;

@@ -2094,5 +2094,20 @@
   "filespage.results_empty": "Transcripts, OCR text and translations will appear here.",
   "filespage.type_transcript": "Transcript",
   "filespage.type_ocr": "OCR text",
-  "filespage.type_translation": "Translation"
+  "filespage.type_translation": "Translation",
+  "agent.hub_skills": "Skills  (/)",
+  "skills.use": "Use",
+  "skills.hub.subtitle_all": "Type / in the editor or the chat to open these skills. Switch off the ones you don't need.",
+  "skills.new": "New skill",
+  "skills.copy": "Make my own skill from this",
+  "skills.edit": "Edit",
+  "skills.archive": "Archive",
+  "skills.archive_failed": "Could not archive the skill",
+  "skills.place_editor": "Editor",
+  "skills.place_chat": "Chat",
+  "skills.group_guided": "Question and answer",
+  "skills.group_mine": "My skills",
+  "skills.group_edit": "Text skills",
+  "skills.group_prompt": "Scholarly prompts",
+  "skills.group_workflow": "Multi-step"
 }
