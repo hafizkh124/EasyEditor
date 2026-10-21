@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSeo } from "@/hooks/useSeo";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,8 +13,7 @@ import AppLayout from "@/components/AppLayout";
 import { handleSupabaseError } from "@/lib/errors";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useApproval } from "@/hooks/useApproval";
-import { useSessionHistory } from "@/hooks/useSessionHistory";
-import { useAllDocuments } from "@/core/workspace/useAllDocuments";
+import { useRecentItems } from "@/hooks/useRecentItems";
 import { useCreateActions } from "@/components/layout/useCreateActions";
 import { getLifecycleInfo } from "@/lib/subscriptionLifecycle";
 import { WHATSAPP_CONTACT_URL } from "@/lib/paymentAccounts";
@@ -46,13 +45,6 @@ const JOB_DESC: Record<string, { key: TranslationKey; fallback: string }> = {
   "translate.book": { key: "home.job_desc.translate", fallback: "PDF یا شاملہ کی کتاب" },
 };
 
-interface RecentItem {
-  id: string;
-  kind: "chat" | "document";
-  title: string;
-  updatedAt: string;
-  to: string;
-}
 
 const Dashboard = () => {
   useSeo({ title: "Home — Al-Ulama Easy Editor", description: "Ask a question, start a job, or pick up where you left off.", path: "/dashboard", noindex: true });
@@ -65,8 +57,6 @@ const Dashboard = () => {
   const [displayName, setDisplayName] = useState("");
   const [question, setQuestion] = useState("");
   const jobs = useCreateActions().filter((a) => a.group === "job");
-  const sessions = useSessionHistory("research");
-  const documents = useAllDocuments();
 
   useEffect(() => {
     if (!user) return;
@@ -82,26 +72,7 @@ const Dashboard = () => {
     fetchProfile();
   }, [user]);
 
-  const recent = useMemo<RecentItem[]>(() => {
-    const chats: RecentItem[] = sessions.items.map((s) => ({
-      id: `chat:${s.id}`,
-      kind: "chat",
-      title: s.title,
-      updatedAt: s.updated_at,
-      to: `/workspace?panel=research&session=${encodeURIComponent(s.id)}`,
-    }));
-    const docs: RecentItem[] = documents.allDocs.map((d) => ({
-      id: `doc:${d.id}`,
-      kind: "document",
-      title: d.title,
-      updatedAt: d.updated_at,
-      to: `/workspace/${d.id}`,
-    }));
-    return [...chats, ...docs]
-      .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
-      .slice(0, RECENT_LIMIT);
-  }, [sessions.items, documents.allDocs]);
-  const recentLoading = (sessions.loading || documents.loading) && recent.length === 0;
+  const { items: recent, loading: recentLoading } = useRecentItems(RECENT_LIMIT);
 
   // Lifecycle dates were added in Phase B; cast to read them safely while the
   // generated types catch up.

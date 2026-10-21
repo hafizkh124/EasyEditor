@@ -12,8 +12,7 @@ import { CreateSheet } from "@/components/layout/CreateMenu";
  * button exactly in the middle — `[ Chat/Write ]  ( + )  [ Files ]`. "Me" is
  * the top-bar avatar (AccountMenu), not a tab.
  *
- * Interim targets until the new Home and Files screens land: Chat/Write opens
- * /dashboard (today's home) and Files opens the workspace library.
+ * Chat/Write opens Home (/dashboard) and Files opens /files.
  */
 
 interface Tab {
@@ -33,11 +32,11 @@ const TABS: [Tab, Tab] = [
     isActive: (p) => p === "/dashboard" || p === "/",
   },
   {
-    to: "/workspace",
+    to: "/files",
     icon: FolderOpen,
     labelKey: "nav.files",
     fallback: "فائلیں",
-    isActive: (p) => p === "/workspace" || p.startsWith("/workspace/"),
+    isActive: (p) => p === "/files",
   },
 ];
 

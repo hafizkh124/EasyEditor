@@ -21,6 +21,7 @@ import { APP_THEME_STORAGE_KEY } from "@/lib/theme";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Files = lazy(() => import("./pages/Files"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
@@ -139,6 +140,7 @@ const App = () => (
                   <Route path="/ur/refund-policy" element={<DesktopToWorkspace><Refund /></DesktopToWorkspace>} />
                   <Route path="/ur/pricing-info" element={<DesktopToWorkspace><PricingInfo /></DesktopToWorkspace>} />
                   <Route path="/dashboard" element={<ProtectedRoute allowGuest><Dashboard /></ProtectedRoute>} />
+                  <Route path="/files" element={<ProtectedRoute allowGuest><ErrorBoundary><Files /></ErrorBoundary></ProtectedRoute>} />
                   {/* allowGuest: on desktop these run on the offline Whisper/Piper
                       engines, which need no account. CapabilityRoute is what keeps
                       the cloud-only tools off desktop entirely. On web `allowGuest`

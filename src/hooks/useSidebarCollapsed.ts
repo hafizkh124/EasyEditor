@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const KEY = "sidebar.collapsed";
 
@@ -17,8 +17,8 @@ export function useSidebarCollapsed(): [boolean, (v: boolean) => void, () => voi
     } catch { /* ignore */ }
   }, [collapsed]);
 
-  const setCollapsed = (v: boolean) => setCollapsedState(v);
-  const toggle = () => setCollapsedState((c) => !c);
+  const setCollapsed = useCallback((v: boolean) => setCollapsedState(v), []);
+  const toggle = useCallback(() => setCollapsedState((c) => !c), []);
 
   return [collapsed, setCollapsed, toggle];
 }

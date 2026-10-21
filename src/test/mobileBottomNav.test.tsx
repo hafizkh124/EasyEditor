@@ -63,7 +63,7 @@ describe("AppLayout mobile tab bar", () => {
     renderLayout();
     const bar = tabBar();
     const links = within(bar).getAllByRole("link");
-    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/dashboard", "/workspace"]);
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/dashboard", "/files"]);
     expect(within(bar).getByText("چیٹ/لکھیں")).toBeInTheDocument();
     expect(within(bar).getByText("فائلیں")).toBeInTheDocument();
     // The "+" sits in the middle of the grid: link, button, link.
@@ -81,7 +81,7 @@ describe("AppLayout mobile tab bar", () => {
   });
 
   it("marks the current tab", () => {
-    renderLayout("/workspace/abc");
+    renderLayout("/files");
     const files = within(tabBar()).getByRole("link", { name: /فائلیں/ });
     expect(files).toHaveAttribute("aria-current", "page");
   });

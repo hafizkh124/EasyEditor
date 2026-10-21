@@ -1,7 +1,6 @@
+import { useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { useApproval } from "@/hooks/useApproval";
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 import { cn } from "@/lib/utils";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
@@ -10,7 +9,7 @@ import { DesktopAccountMenu } from "@/components/auth/DesktopAccountMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { AppSidebar } from "@/components/layout/AppSidebar";
-import { sectionNav, adminNavItem, useActiveSection, type NavItem } from "@/components/layout/appNav";
+import { sectionNav } from "@/components/layout/appNav";
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { CreateMenuButton } from "@/components/layout/CreateMenu";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
@@ -18,13 +17,22 @@ import { MobileTabBar } from "@/components/layout/MobileTabBar";
 /* ─── Main Layout ─── */
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t, direction } = useLanguage();
-  const { user } = useAuth();
-  const { isAdmin } = useApproval();
   const location = useLocation();
   const [collapsed, , toggleCollapsed] = useSidebarCollapsed();
-  const activeSection = useActiveSection();
 
-  const navItems: NavItem[] = isAdmin && adminNavItem ? [...sectionNav, adminNavItem] : sectionNav;
+  // Ctrl+B / ⌘B shows and hides the sidebar (SYSTEM-2026 §2). Not while typing
+  // in rich text, where it means bold.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== "b") return;
+      const target = e.target as HTMLElement | null;
+      if (target?.isContentEditable) return;
+      e.preventDefault();
+      toggleCollapsed();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleCollapsed]);
 
   return (
     <div className="flex min-h-screen bg-background app-shell" dir={direction}>
@@ -46,13 +54,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <AppSidebar
           collapsed={collapsed}
           onToggleCollapse={toggleCollapsed}
-          activeSection={activeSection}
           activePath={location.pathname}
-          navItems={navItems}
-          user={user}
+          navItems={sectionNav}
           t={t}
           showCollapseButton
           createSlot={<CreateMenuButton collapsed={collapsed} />}
+          footerSlot={<AccountMenu variant="sidebar" collapsed={collapsed} />}
         />
       </aside>
 

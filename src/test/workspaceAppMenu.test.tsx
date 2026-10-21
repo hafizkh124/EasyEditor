@@ -37,9 +37,9 @@ const open = () => {
 describe("workspace app menu", () => {
   beforeEach(() => navigate.mockReset());
 
-  it("offers a route to the dashboard", async () => {
+  it("offers a route to Home (the dashboard route)", async () => {
     open();
-    const item = await screen.findByText("ڈیش بورڈ");
+    const item = await screen.findByText("ہوم");
     fireEvent.click(item);
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/dashboard"));
   });
@@ -90,7 +90,7 @@ describe("workspace app menu", () => {
 
     it("drops the cloud-only tools", async () => {
       open();
-      await screen.findByText("ڈیش بورڈ");
+      await screen.findByText("ہوم");
       for (const label of ["OCR", "استخراج", "کتاب کا ترجمہ"]) {
         expect(screen.queryByText(label)).not.toBeInTheDocument();
       }
@@ -105,7 +105,7 @@ describe("workspace app menu", () => {
 
     it("still offers a way out to the dashboard, settings and the profile", async () => {
       open();
-      expect(await screen.findByText("ڈیش بورڈ")).toBeInTheDocument();
+      expect(await screen.findByText("ہوم")).toBeInTheDocument();
       expect(await screen.findByText("ترتیبات")).toBeInTheDocument();
       expect(await screen.findByText("میری پروفائل")).toBeInTheDocument();
     });

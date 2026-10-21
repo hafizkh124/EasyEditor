@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { CreditCard, Settings, Shield, User } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApproval } from "@/hooks/useApproval";
 import { isCapabilityAvailable } from "@/core/capabilities/registry";
@@ -15,8 +16,11 @@ import {
  * top-bar avatar instead of a bottom tab, so the tab bar can keep exactly two
  * tabs with the "+" in the middle. Everything that used to be in the mobile
  * drawer's footer and header (profile, plan, settings, theme, admin) is here.
+ *
+ * The `sidebar` variant is the same menu as the desktop/web sidebar's footer:
+ * a full-width row with the email, opening upwards.
  */
-export function AccountMenu() {
+export function AccountMenu({ variant = "avatar", collapsed = false }: { variant?: "avatar" | "sidebar"; collapsed?: boolean }) {
   const { t, direction } = useLanguage();
   const { user } = useAuth();
   const { isAdmin } = useApproval();
@@ -33,14 +37,27 @@ export function AccountMenu() {
         <button
           type="button"
           aria-label={t("account.open_menu", "اکاؤنٹ مینو کھولیں")}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn(
+            "flex shrink-0 items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            variant === "avatar" && "h-10 w-10 justify-center",
+            variant === "sidebar" && "min-h-touch w-full gap-2 rounded-lg px-2 text-start transition-colors hover:bg-sidebar-accent",
+            variant === "sidebar" && collapsed && "justify-center px-0",
+          )}
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
             {initial ?? <User className="h-4 w-4" aria-hidden="true" />}
           </span>
+          {variant === "sidebar" && !collapsed && (
+            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{email || t("account.me", "میں")}</span>
+          )}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={6} className="w-[min(16rem,calc(100vw-2rem))]">
+      <DropdownMenuContent
+        align={variant === "sidebar" ? "start" : "end"}
+        side={variant === "sidebar" ? "top" : "bottom"}
+        sideOffset={6}
+        className="w-[min(16rem,calc(100vw-2rem))]"
+      >
         {email && (
           <>
             <DropdownMenuLabel className="truncate text-xs font-normal text-muted-foreground">{email}</DropdownMenuLabel>

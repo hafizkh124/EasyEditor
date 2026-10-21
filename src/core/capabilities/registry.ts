@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  BookOpen, Bot, Languages, LayoutDashboard, Mic, ScanText, Search,
+  BookOpen, Bot, FolderOpen, Home, Languages, Mic, ScanText, Search,
   Settings as SettingsIcon, Shield, Sparkles, User, Volume2,
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
@@ -47,7 +47,7 @@ export type Surface =
 
 export type CapabilityId =
   | "workspace" | "transcribe" | "ocr" | "speak" | "translate.book"
-  | "research" | "settings" | "dashboard" | "profile" | "admin"
+  | "research" | "settings" | "dashboard" | "files" | "profile" | "admin"
   | "voice.cloning" | "tokens.meter"
   | "wb.aiReader" | "wb.research" | "wb.agent";
 
@@ -91,26 +91,26 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "workspace", route: "/workspace", labelKey: "nav.workspace", fallbackLabel: "ورک اسپیس",
     icon: BookOpen, runtimes: { web: ALWAYS, desktop: ALWAYS },
-    surfaces: ["sidebar", "dashboard-grid", "command-palette"],
+    surfaces: ["dashboard-grid", "command-palette"],
   },
   {
     id: "transcribe", route: "/transcribe", labelKey: "nav.transcribe", fallbackLabel: "ٹرانسکرائب",
     icon: Mic,
     runtimes: { web: ALWAYS, desktop: { on: "flag", flag: "VITE_LOCAL_VOICE" } },
-    surfaces: ["sidebar", "create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    surfaces: ["create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
     createLabelKey: "create.audio_to_text", createFallbackLabel: "آڈیو سے متن",
   },
   {
     id: "speak", route: "/speak", labelKey: "nav.speak", fallbackLabel: "بولیں",
     icon: Volume2,
     runtimes: { web: ALWAYS, desktop: { on: "flag", flag: "VITE_LOCAL_VOICE" } },
-    surfaces: ["sidebar", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    surfaces: ["workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
   },
   {
     id: "ocr", route: "/ocr", labelKey: "nav.ocr", fallbackLabel: "OCR",
     icon: ScanText,
     runtimes: { web: ALWAYS, desktop: { on: "never", reason: "OCR runs on a paid cloud edge function with no local counterpart." } },
-    surfaces: ["sidebar", "create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    surfaces: ["create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
     createLabelKey: "create.image_to_text", createFallbackLabel: "تصویر/PDF سے متن",
   },
   {
@@ -133,12 +133,19 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "settings", route: "/settings", labelKey: "nav.settings", fallbackLabel: "ترتیبات",
     icon: SettingsIcon, runtimes: { web: ALWAYS, desktop: ALWAYS },
+    surfaces: ["workspace-menu", "command-palette"],
+  },
+  // The sidebar is just Home and Files (SYSTEM-2026 §2): the jobs are behind
+  // "+", and settings, profile and admin are in the "Me" menu.
+  {
+    id: "dashboard", route: "/dashboard", labelKey: "nav.home", fallbackLabel: "ہوم",
+    icon: Home, runtimes: { web: ALWAYS, desktop: ALWAYS },
     surfaces: ["sidebar", "workspace-menu", "command-palette"],
   },
   {
-    id: "dashboard", route: "/dashboard", labelKey: "nav.dashboard", fallbackLabel: "ڈیش بورڈ",
-    icon: LayoutDashboard, runtimes: { web: ALWAYS, desktop: ALWAYS },
-    surfaces: ["workspace-menu", "command-palette"],
+    id: "files", route: "/files", labelKey: "nav.files", fallbackLabel: "فائلیں",
+    icon: FolderOpen, runtimes: { web: ALWAYS, desktop: ALWAYS },
+    surfaces: ["sidebar", "workspace-menu", "command-palette"],
   },
   {
     id: "profile", route: "/profile", labelKey: "nav.profile", fallbackLabel: "میری پروفائل",
@@ -149,7 +156,8 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "admin", route: "/admin", labelKey: "nav.admin", fallbackLabel: "ایڈمن",
     icon: Shield,
     runtimes: { web: ALWAYS, desktop: { on: "never", reason: "The admin console administers cloud accounts." } },
-    surfaces: ["sidebar"],
+    // Reached from the "Me" menu, which asks `isCapabilityAvailable("admin")`.
+    surfaces: [],
   },
 
   // Cloud-only halves of otherwise-local features. No route and no nav surface:
@@ -254,4 +262,9 @@ export function capabilityUnavailableReason(id: CapabilityId): string | null {
 /** Every capability that belongs on `surface` and is available on this runtime, in registry order. */
 export function availableCapabilities(surface: Surface): Capability[] {
   return CAPABILITIES.filter((c) => c.surfaces.includes(surface) && isCapabilityAvailable(c.id));
+}
+
+/** One capability, or `null` when it does not exist on this runtime. */
+export function availableCapability(id: CapabilityId): Capability | null {
+  return isCapabilityAvailable(id) ? BY_ID.get(id) ?? null : null;
 }

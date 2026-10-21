@@ -21,6 +21,8 @@ interface WorkspaceHandoffState {
   source?: "research" | "ocr" | "transcribe" | "manual";
   /** "+ New document" from the create menu: open a fresh, empty document. */
   intent?: "new-document";
+  /** Which folder the new document goes into (Files → a folder → New document). */
+  projectId?: string;
   /** A question asked from Home, pre-filled into the research composer. */
   question?: string;
 }
@@ -36,6 +38,7 @@ const WorkspacePage: React.FC = () => {
   const handoffContent = handoff.content;
   const handoffSource = handoff.source;
   const wantsNewDocument = handoff.intent === "new-document";
+  const handoffProjectId = handoff.projectId;
 
   // Generalized so /translate (UX-v1 P3) can redirect here with
   // their own tab preselected, the same way /research already did.
@@ -62,7 +65,10 @@ const WorkspacePage: React.FC = () => {
       const resolveDocument = async () => {
         try {
           const projects = await documentService.listProjects();
-          const proj = projects[0] ?? (await documentService.createProject("General Workspace", "general"));
+          const proj =
+            projects.find((p) => p.id === handoffProjectId) ??
+            projects[0] ??
+            (await documentService.createProject("General Workspace", "general"));
           const panelQuery = workbenchTabFromUrl ? `?panel=${workbenchTabFromUrl}` : "";
 
           const titleKey =
@@ -100,7 +106,7 @@ const WorkspacePage: React.FC = () => {
 
       resolveDocument();
     }
-  }, [documentId, navigate, workbenchTabFromUrl, t, handoffContent, handoffSource, wantsNewDocument]);
+  }, [documentId, navigate, workbenchTabFromUrl, t, handoffContent, handoffSource, wantsNewDocument, handoffProjectId]);
 
   return (
     <WorkspaceProvider
