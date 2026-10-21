@@ -19,6 +19,8 @@ const log = logger.child("Workspace");
 interface WorkspaceHandoffState {
   content?: string;
   source?: "research" | "ocr" | "transcribe" | "manual";
+  /** "+ New document" from the create menu: open a fresh, empty document. */
+  intent?: "new-document";
 }
 
 const WorkspacePage: React.FC = () => {
@@ -31,6 +33,7 @@ const WorkspacePage: React.FC = () => {
   const handoff = (location.state as WorkspaceHandoffState) ?? {};
   const handoffContent = handoff.content;
   const handoffSource = handoff.source;
+  const wantsNewDocument = handoff.intent === "new-document";
 
   // Generalized so /translate (UX-v1 P3) can redirect here with
   // their own tab preselected, the same way /research already did.
@@ -49,8 +52,9 @@ const WorkspacePage: React.FC = () => {
   // Otherwise, let the user browse the Home tab and choose a book/document.
   const autoResolveStarted = useRef(false);
   useEffect(() => {
-    // If there's handoff content, we need a document to land it in
-    if (handoffContent && !autoResolveStarted.current) {
+    // If there's handoff content (or the create menu asked for a new
+    // document), we need a document to land it in.
+    if ((handoffContent || wantsNewDocument) && !autoResolveStarted.current) {
       autoResolveStarted.current = true;
 
       const resolveDocument = async () => {
@@ -70,9 +74,10 @@ const WorkspacePage: React.FC = () => {
           // need converting — before this, markdown went straight into the HTML
           // parser and its `**bold**` and `## heading` markers survived as
           // literal characters in the document.
-          const handoffHtml = looksLikeHtml(handoffContent)
-            ? handoffContent
-            : markdownToHtml(handoffContent);
+          const content = handoffContent ?? "";
+          const handoffHtml = looksLikeHtml(content)
+            ? content
+            : markdownToHtml(content);
           // Name the document after what it actually contains; the generic
           // "From Research" style label is only the fallback, since a workspace
           // full of identically-named documents is unnavigable.
@@ -93,7 +98,7 @@ const WorkspacePage: React.FC = () => {
 
       resolveDocument();
     }
-  }, [documentId, navigate, workbenchTabFromUrl, t, handoffContent, handoffSource]);
+  }, [documentId, navigate, workbenchTabFromUrl, t, handoffContent, handoffSource, wantsNewDocument]);
 
   return (
     <WorkspaceProvider

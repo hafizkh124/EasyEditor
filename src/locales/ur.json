@@ -2053,5 +2053,16 @@
   "agent.file_ops_undo": "فائلیں واپس کریں ({n})",
   "agent.file_ops_undone": "فائلیں واپس ہو گئیں",
   "agent.step.open_file": "فائل کھولی جا رہی ہے",
-  "agent.step.organize_files": "فائلیں ترتیب دی جا رہی ہیں"
+  "agent.step.organize_files": "فائلیں ترتیب دی جا رہی ہیں",
+  "nav.chat_write": "چیٹ/لکھیں",
+  "nav.files": "فائلیں",
+  "nav.plan_billing": "پلان اور ادائیگی",
+  "account.open_menu": "اکاؤنٹ مینو کھولیں",
+  "create.new": "نیا",
+  "create.menu_label": "نیا کام شروع کریں",
+  "create.audio_to_text": "آڈیو سے متن",
+  "create.image_to_text": "تصویر/PDF سے متن",
+  "create.translate_book": "کتاب کا ترجمہ",
+  "create.new_chat": "نئی چیٹ",
+  "create.new_document": "نیا دستاویز"
 }

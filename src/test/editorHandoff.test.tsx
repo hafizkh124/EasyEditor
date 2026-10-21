@@ -115,6 +115,18 @@ describe("editor handoff", () => {
     expect(findBlankDocument).not.toHaveBeenCalled();
   });
 
+  it("opens a fresh, empty, untitled document for the create menu's New document", async () => {
+    renderAt({ intent: "new-document" });
+
+    await waitFor(() => expect(createDocument).toHaveBeenCalledTimes(1));
+
+    const [projectId, title, content] = createDocument.mock.calls[0];
+    expect(projectId).toBe("proj-1");
+    expect(title).toBe("editor.untitled");
+    // Nothing was handed over, so nothing but an empty paragraph may land in it.
+    expect(JSON.stringify(content)).not.toMatch(/"text":"[^"]+"/);
+  });
+
   it("leaves the workspace on Home when nothing was handed over", async () => {
     findBlankDocument.mockResolvedValue({ id: "doc-blank" });
     renderAt(undefined);

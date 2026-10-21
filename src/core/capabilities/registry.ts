@@ -39,7 +39,7 @@ export type Availability =
 
 export type Surface =
   | "sidebar"
-  | "mobile-nav"
+  | "create-menu"
   | "workspace-menu"
   | "dashboard-grid"
   | "command-palette"
@@ -67,6 +67,13 @@ export interface Capability {
    * unavailable, so desktop simply has no Tools entry rather than an empty one.
    */
   group?: "tool";
+  /**
+   * How the capability reads in the "+" create menu (SYSTEM-2026 §2), where
+   * it is phrased as the job ("Audio to text") rather than the tool's name
+   * ("Transcribe"). Only read on the `create-menu` surface.
+   */
+  createLabelKey?: TranslationKey;
+  createFallbackLabel?: string;
 }
 
 const ALWAYS: Availability = { on: "always" };
@@ -84,13 +91,14 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "workspace", route: "/workspace", labelKey: "nav.workspace", fallbackLabel: "ورک اسپیس",
     icon: BookOpen, runtimes: { web: ALWAYS, desktop: ALWAYS },
-    surfaces: ["sidebar", "mobile-nav", "dashboard-grid", "command-palette"],
+    surfaces: ["sidebar", "dashboard-grid", "command-palette"],
   },
   {
     id: "transcribe", route: "/transcribe", labelKey: "nav.transcribe", fallbackLabel: "ٹرانسکرائب",
     icon: Mic,
     runtimes: { web: ALWAYS, desktop: { on: "flag", flag: "VITE_LOCAL_VOICE" } },
-    surfaces: ["sidebar", "mobile-nav", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    surfaces: ["sidebar", "create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    createLabelKey: "create.audio_to_text", createFallbackLabel: "آڈیو سے متن",
   },
   {
     id: "speak", route: "/speak", labelKey: "nav.speak", fallbackLabel: "بولیں",
@@ -102,7 +110,8 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "ocr", route: "/ocr", labelKey: "nav.ocr", fallbackLabel: "OCR",
     icon: ScanText,
     runtimes: { web: ALWAYS, desktop: { on: "never", reason: "OCR runs on a paid cloud edge function with no local counterpart." } },
-    surfaces: ["sidebar", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    surfaces: ["sidebar", "create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    createLabelKey: "create.image_to_text", createFallbackLabel: "تصویر/PDF سے متن",
   },
   {
     // Book Translation absorbed Quick Translate's text/image/PDF flows (and
@@ -113,7 +122,8 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "translate.book", route: "/translate-book", labelKey: "nav.translate_book", fallbackLabel: "کتاب کا ترجمہ",
     icon: Languages,
     runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Translation runs on a cloud edge function." } },
-    surfaces: ["workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    surfaces: ["create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    createLabelKey: "create.translate_book", createFallbackLabel: "کتاب کا ترجمہ",
   },
   {
     id: "research", route: "/research", labelKey: "nav.research", fallbackLabel: "تحقیق",
@@ -123,12 +133,12 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "settings", route: "/settings", labelKey: "nav.settings", fallbackLabel: "ترتیبات",
     icon: SettingsIcon, runtimes: { web: ALWAYS, desktop: ALWAYS },
-    surfaces: ["sidebar", "mobile-nav", "workspace-menu", "command-palette"],
+    surfaces: ["sidebar", "workspace-menu", "command-palette"],
   },
   {
     id: "dashboard", route: "/dashboard", labelKey: "nav.dashboard", fallbackLabel: "ڈیش بورڈ",
     icon: LayoutDashboard, runtimes: { web: ALWAYS, desktop: ALWAYS },
-    surfaces: ["mobile-nav", "workspace-menu", "command-palette"],
+    surfaces: ["workspace-menu", "command-palette"],
   },
   {
     id: "profile", route: "/profile", labelKey: "nav.profile", fallbackLabel: "میری پروفائل",

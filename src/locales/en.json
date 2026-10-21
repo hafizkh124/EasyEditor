@@ -2053,5 +2053,16 @@
   "agent.file_ops_undo": "Put files back ({n})",
   "agent.file_ops_undone": "Files put back",
   "agent.step.open_file": "opening the file",
-  "agent.step.organize_files": "organising the files"
+  "agent.step.organize_files": "organising the files",
+  "nav.chat_write": "Chat/Write",
+  "nav.files": "Files",
+  "nav.plan_billing": "Plan & billing",
+  "account.open_menu": "Open account menu",
+  "create.new": "New",
+  "create.menu_label": "Create something new",
+  "create.audio_to_text": "Audio to text",
+  "create.image_to_text": "Image/PDF to text",
+  "create.translate_book": "Translate a book",
+  "create.new_chat": "New chat",
+  "create.new_document": "New document"
 }

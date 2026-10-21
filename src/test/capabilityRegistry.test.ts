@@ -18,7 +18,7 @@ import enTranslations from "@/locales/en.json";
  */
 
 const SURFACES: Surface[] = [
-  "sidebar", "mobile-nav", "workspace-menu", "dashboard-grid", "command-palette", "workbench-tab",
+  "sidebar", "create-menu", "workspace-menu", "dashboard-grid", "command-palette", "workbench-tab",
 ];
 
 /**

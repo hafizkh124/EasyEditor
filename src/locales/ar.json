@@ -2053,5 +2053,16 @@
   "agent.file_ops_undo": "إرجاع الملفات ({n})",
   "agent.file_ops_undone": "أُرجعت الملفات",
   "agent.step.open_file": "جارٍ فتح الملف",
-  "agent.step.organize_files": "جارٍ ترتيب الملفات"
+  "agent.step.organize_files": "جارٍ ترتيب الملفات",
+  "nav.chat_write": "محادثة/كتابة",
+  "nav.files": "الملفات",
+  "nav.plan_billing": "الخطة والفوترة",
+  "account.open_menu": "فتح قائمة الحساب",
+  "create.new": "جديد",
+  "create.menu_label": "ابدأ عملاً جديداً",
+  "create.audio_to_text": "من الصوت إلى نص",
+  "create.image_to_text": "من الصورة/PDF إلى نص",
+  "create.translate_book": "ترجمة كتاب",
+  "create.new_chat": "محادثة جديدة",
+  "create.new_document": "مستند جديد"
 }

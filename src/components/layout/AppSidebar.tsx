@@ -136,11 +136,13 @@ export interface AppSidebarProps {
   user: { email?: string } | null;
   t: Translator;
   showCollapseButton: boolean;
+  /** The "+ New" create menu (SYSTEM-2026 §2), rendered under the logo. */
+  createSlot?: React.ReactNode;
 }
 
 export const AppSidebar = ({
   collapsed, onToggleCollapse, onItemClick, activeSection, activePath,
-  navItems, user, t, showCollapseButton,
+  navItems, user, t, showCollapseButton, createSlot,
 }: AppSidebarProps) => (
   <div className="flex h-full flex-col bg-sidebar">
     <div className={cn(
@@ -177,6 +179,8 @@ export const AppSidebar = ({
         </Button>
       </div>
     )}
+
+    {createSlot && <div className={cn("px-2 pt-3", collapsed && "px-3")}>{createSlot}</div>}
 
     <nav className="flex-shrink-0 space-y-0.5 p-2">
       {navItems.map((item) =>
