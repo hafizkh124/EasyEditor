@@ -45,6 +45,7 @@ export const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
 export function storagePathForUpload(id: string, nameHint: string): string {
   const base = nameHint.replace(/\\/g, '/').split('/').pop() ?? '';
   // keep the TAIL if it must be shortened, so the extension survives
+  // eslint-disable-next-line no-control-regex -- control characters are exactly what a safe filename must not contain
   let name = base.replace(/[<>:"|?*\u0000-\u001f]/g, '_').trim().slice(-120);
   if (!name || /^\.+$/.test(name)) name = 'file';
   return `${id}/${name}`;

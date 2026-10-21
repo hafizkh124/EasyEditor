@@ -22,7 +22,8 @@ export type AnswerLanguage = 'urdu' | 'arabic' | 'english';
 const URDU_LETTERS = /[ٹڈڑںےپچژگھہۂکی]/g;
 const ARABIC_LETTERS = /[ء-يٱ-ۓ]/g;
 // Letters/marks Arabic uses where Urdu does not: ك ي ة ى ؤ ئ ء ً ٌ ٍ َ ُ ِ ّ ْ
-const ARABIC_ONLY = /[كيةىؤئً-ْ]/g;
+// eslint-disable-next-line no-misleading-character-class -- the range IS the tashkeel marks (U+064B–U+0652), on purpose
+const ARABIC_ONLY = /[\u0643\u064A\u0629\u0649\u0624\u0626\u064B-\u0652]/g;
 const LATIN = /[A-Za-z]/g;
 
 const count = (s: string, re: RegExp) => (s.match(re) ?? []).length;
