@@ -63,7 +63,7 @@ export function useEditorExtract(editor: Editor | null) {
         const source = `<p><em>${escapeHtml(t("extract.from_file", "فائل سے: {name}").replace("{name}", file.name))}</em></p>`;
         editor.chain().focus().insertContentAt(pos, source + textToHtml(text)).run();
         logActivity(kind === "audio" ? "stt" : "ocr", text.slice(0, 60));
-        toast.success(t("extract.inserted", "متن دستاویز میں آ گیا"), { id: toastId });
+        toast.success(t("extract.inserted"), { id: toastId });
       } catch (err) {
         const failure = describeFailure(err, controller.signal);
         if (!failure) toast.info(t("extract.cancelled"), { id: toastId });
