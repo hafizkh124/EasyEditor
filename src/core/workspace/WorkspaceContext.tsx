@@ -114,8 +114,22 @@ interface WorkspaceContextType {
    * here so the Agent tab's `@` picker (SPEC-M8 Layer 7) can offer the outline
    * as explicit references without reaching into the editor instance.
    */
-  documentOutline: string[];
-  setDocumentOutline: (headings: string[]) => void;
+  documentOutline: OutlineHeading[];
+  setDocumentOutline: (headings: OutlineHeading[]) => void;
+
+  /**
+   * The folder index (SYSTEM-2026 §3) asks the editor to scroll to the nth
+   * heading of the open document; the editor consumes it. `nonce` lets the
+   * same heading be chosen twice in a row.
+   */
+  headingJump: { index: number; nonce: number } | null;
+  jumpToHeading: (index: number) => void;
+}
+
+/** One heading of the open document, in document order. */
+export interface OutlineHeading {
+  text: string;
+  level: number;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
@@ -147,12 +161,19 @@ export const WorkspaceProvider: React.FC<{
   const [readerJump, setReaderJump] = useState<ReaderJumpSignal | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
-  const [documentOutline, setDocumentOutlineState] = useState<string[]>([]);
+  const [documentOutline, setDocumentOutlineState] = useState<OutlineHeading[]>([]);
 
-  const setDocumentOutline = useCallback((headings: string[]) => {
+  const setDocumentOutline = useCallback((headings: OutlineHeading[]) => {
     setDocumentOutlineState((prev) =>
-      prev.length === headings.length && prev.every((h, i) => h === headings[i]) ? prev : headings,
+      prev.length === headings.length && prev.every((h, i) => h.text === headings[i].text && h.level === headings[i].level)
+        ? prev
+        : headings,
     );
+  }, []);
+
+  const [headingJump, setHeadingJump] = useState<{ index: number; nonce: number } | null>(null);
+  const jumpToHeading = useCallback((index: number) => {
+    setHeadingJump((prev) => ({ index, nonce: (prev?.nonce ?? 0) + 1 }));
   }, []);
 
   const sendSelectionToWorkbench = useCallback(
@@ -242,6 +263,8 @@ export const WorkspaceProvider: React.FC<{
         clearPendingSkillPrompt,
         documentOutline,
         setDocumentOutline,
+        headingJump,
+        jumpToHeading,
       }}
     >
       {children}

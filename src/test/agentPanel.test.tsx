@@ -40,7 +40,7 @@ const pf = {
 };
 vi.mock("@/core/projectFolder/context", () => ({ useProjectFolderContext: () => pf }));
 
-let documentOutline: string[] = [];
+let documentOutline: { text: string; level: number }[] = [];
 vi.mock("@/core/workspace/WorkspaceContext", () => ({
   useOptionalWorkspace: () => ({ documentOutline }),
 }));
@@ -396,7 +396,7 @@ describe("AgentPanel", () => {
   });
 
   it("offers the open document's headings as `@` mentions", async () => {
-    documentOutline = ["Literature Review", "Methodology"];
+    documentOutline = [{ text: "Literature Review", level: 2 }, { text: "Methodology", level: 2 }];
     renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "expand @method", selectionStart: 14 } });

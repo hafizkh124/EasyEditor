@@ -437,7 +437,7 @@ export function useAgentRun() {
   const mentions = useMemo<Mention[]>(
     () => buildMentions({
       chapters: pf.chapters.map((c) => c.name),
-      outline: ws?.documentOutline ?? [],
+      outline: (ws?.documentOutline ?? []).map((h) => h.text).filter(Boolean),
       shamelaBooks,
       assets,
     }),

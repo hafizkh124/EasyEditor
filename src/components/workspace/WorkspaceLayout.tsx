@@ -43,7 +43,6 @@ export const WorkspaceLayout: React.FC = () => {
     setWorkbenchOpen,
     mobileLibraryOpen,
     setMobileLibraryOpen,
-    setDocumentOutline,
     stageCollapsed,
     stageMaximized,
   } = useWorkspace();
@@ -148,16 +147,8 @@ export const WorkspaceLayout: React.FC = () => {
     }
   };
 
-  // Publish the open document's headings so the Agent tab's `@` picker can
-  // offer them (SPEC-M8 Layer 7). Cheap regex over the editor HTML; the context
-  // setter de-dupes so this is safe to run on every content change.
-  useEffect(() => {
-    if (!currentHtml) { setDocumentOutline([]); return; }
-    const headings = [...currentHtml.matchAll(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi)]
-      .map((m) => m[1].replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim())
-      .filter(Boolean);
-    setDocumentOutline(headings);
-  }, [currentHtml, setDocumentOutline]);
+  // The open document's headings are published by the editor itself
+  // (useHeadingJump), for the `@` picker and the folder index.
 
   const handleRestoreVersion = (contentJson: Record<string, unknown>) => {
     setRestoredContent(contentJson);
@@ -207,6 +198,11 @@ export const WorkspaceLayout: React.FC = () => {
           direction="horizontal"
           autoSaveId="workspace.layout.v2"
           className="h-full min-w-0 flex-1 relative"
+          // `clip`, not the library's `hidden`: a hidden box can still be
+          // scrolled, and a `scrollIntoView` inside an off-screen mobile drawer
+          // (the chat keeping its last message in view) used to slide the
+          // whole row sideways, pushing the editor off the screen.
+          style={{ overflow: "clip" }}
         >
           {/* Pillar 1: the active rail panel — a column on desktop, a start-edge
               drawer on mobile. Collapsed to 0 when no rail panel is active. */}
@@ -226,7 +222,7 @@ export const WorkspaceLayout: React.FC = () => {
           >
             <SidePanelHost
               forceExpanded={isMobile}
-              forcePanel={isMobile ? "library" : undefined}
+              forcePanel={isMobile ? "folder" : undefined}
               onNavigate={isMobile ? () => setMobileLibraryOpen(false) : undefined}
               activeDocumentWordCount={liveWordCount}
             />

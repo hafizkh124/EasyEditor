@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { isRtlText } from "@/utils/textUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useHeadingJump } from "./useHeadingJump";
 import { useEditorAiActions, type SelectionBarActions } from "./useEditorAiActions";
 import { useTrackChanges, type TrackMode } from "./useTrackChanges";
 import { useFormatBrush } from "./useFormatBrush";
@@ -208,6 +209,9 @@ const RichEditor = ({
     applyAsSuggestion,
     onSetTrackMode: handleSetTrackMode,
   });
+
+  // The outline for the folder index, and its "go to heading".
+  useHeadingJump(editor);
 
   // Margin notes on this document (FR-1.3).
   const notes = useAnnotations(editor, documentId);

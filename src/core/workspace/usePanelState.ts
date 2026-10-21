@@ -21,9 +21,10 @@ export function isWorkbenchTab(value: unknown): value is WorkbenchTab {
 // Plan §3.1 — the start-edge activity rail. JKHSSN is a tab inside "library"
 // (مکتبہ), not its own rail icon (§3.0). `null` = the side panel is collapsed
 // to just the 48px rail.
-export type RailPanel = "files" | "library" | "history" | "settings";
+// "folder" is the folder index (SYSTEM-2026 §3), first and the default.
+export type RailPanel = "folder" | "files" | "library" | "history" | "settings";
 
-const RAIL_PANELS: readonly RailPanel[] = ["files", "library", "history", "settings"];
+const RAIL_PANELS: readonly RailPanel[] = ["folder", "files", "library", "history", "settings"];
 
 export function isRailPanel(value: unknown): value is RailPanel {
   return typeof value === "string" && (RAIL_PANELS as readonly string[]).includes(value);
@@ -41,7 +42,7 @@ interface PanelState {
 const STORAGE_KEY = "workspace.panels";
 
 const DEFAULT_STATE: PanelState = {
-  activeRailPanel: "library",
+  activeRailPanel: "folder",
   workbenchCollapsed: true, // Default closed per Constitution §1.3 (Workbench on Demand)
   workbenchTab: "research",
   stageCollapsed: false,
