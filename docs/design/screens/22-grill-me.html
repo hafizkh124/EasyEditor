@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grill me</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .gr { display: grid; grid-template-columns: 1fr 360px; flex: 1; min-block-size: 0; }
+  .qcard { padding: 22px; border-radius: 22px; border: 1px solid hsl(var(--warning-bd)); background: hsl(var(--card)); box-shadow: var(--shadow-md); display: flex; flex-direction: column; gap: 14px; }
+  .qn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: hsl(var(--warning)); background: hsl(var(--warning-bg)); padding: 3px 10px; border-radius: 99px; align-self: flex-start; }
+  .opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); text-align: start; } .opt.on { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / .14); background: hsl(var(--primary-soft) / .5); }
+  .opt .k { inline-size: 24px; block-size: 24px; border-radius: 7px; background: hsl(var(--muted)); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; } .opt.on .k { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .rec { font-size: 11px; padding: 1px 8px; border-radius: 99px; background: hsl(var(--primary-soft)); color: hsl(var(--primary)); font-weight: 600; }
+  .dots2 { display: flex; gap: 5px; } .dots2 i { inline-size: 22px; block-size: 5px; border-radius: 4px; background: hsl(var(--border)); } .dots2 i.d { background: hsl(var(--success)); } .dots2 i.c { background: hsl(var(--warning)); }
+  .outline { display: flex; flex-direction: column; gap: 8px; } .on-i { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; padding: 8px 10px; border-radius: 12px; } .on-i.new { background: hsl(var(--success-bg)); animation: pop var(--t-slow) var(--ease); } @keyframes pop { from { transform: translateY(4px); opacity: .4; } }
+  .on-i .n { inline-size: 22px; block-size: 22px; border-radius: 50%; background: hsl(var(--muted)); display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; }
+  .gm { display: inline-flex; padding: 3px; border-radius: 12px; background: hsl(var(--muted)); gap: 2px; } .gm span { padding: 6px 12px; border-radius: 9px; font-size: 13px; font-weight: 500; color: hsl(var(--muted-foreground)); display: inline-flex; gap: 6px; align-items: center; } .gm span.on { background: hsl(var(--card)); color: hsl(var(--foreground)); box-shadow: var(--shadow-sm); }
+  .src { padding: 10px 12px; border-radius: 12px; border: 1px solid hsl(var(--border)); background: hsl(var(--muted) / .5); font-size: 13px; }
+  .comp { border: 1px solid hsl(var(--border-strong)); border-radius: 16px; background: hsl(var(--card)); padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+</style>
+</head>
+<body data-title="22 · مجھ سے پوچھو (Brainstorm / Grill me)" data-note="AI ایک وقت میں ایک سوال کر کے آپ کے خیال کو واضح کرتا ہے۔ جوابات سے خاکہ بنتا جاتا ہے، پھر Plan یا مسودے کی طرف منتقل۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>سیشن: ایک وقت میں ایک سوال، دائیں خاکہ بنتا ہوا</h2>
+  <p class="cap">داخلے کے راستے: چیٹ میں "مجھ سے پوچھو" چپ، "/" مینو میں «/سوال»، نئے پروجیکٹ کی شروعات پر، اور منتخب متن پر "اس پر مجھ سے سوال کرو"۔ ہر سوال کے ساتھ اختیارات (A/B/C، ایک "تجویز کردہ" نشان کے ساتھ) اور اپنا جواب لکھنا/بولنا۔ سوال پروجیکٹ کے منتخب ذرائع سے جڑے ہوئے ہیں، عام نہیں۔ AI یہاں حکم نہیں دیتا، صرف واضح کراتا ہے۔ ہمیشہ "کافی ہے، آگے بڑھو" کا بٹن۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center">مسئلہ اباحت — <x-t ur="مجھ سے پوچھو" en="Grill me"></x-t></span></div>
+      <div class="topbar" style="block-size:52px;padding-inline:16px"><button class="icon-btn"><i data-i="x"></i></button><b class="sm"><x-t ur="مجھ سے پوچھو" en="Grill me"></x-t></b><div class="gm"><span class="on"><i data-i="help" data-s="14"></i><x-t ur="وضاحت" en="Clarify"></x-t></span><span><i data-i="zap" data-s="14"></i><x-t ur="چیلنج" en="Challenge"></x-t></span><span><i data-i="list" data-s="14"></i><x-t ur="خاکہ" en="Outline"></x-t></span></div><span class="grow"></span><div class="col" style="--g:4px;align-items:flex-end"><span class="xs muted"><x-t ur="سوال 4 / ~7" en="Question 4 / ~7"></x-t></span><div class="dots2"><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i><i></i></div></div><button class="btn sm"><x-t ur="کافی ہے، آگے بڑھو" en="Enough, continue"></x-t><i data-i="arrow" data-flip></i></button></div>
+      <div class="gr">
+        <div class="scroll p6 col" style="--g:18px;justify-content:center;background:hsl(var(--background))"><div class="col" style="--g:6px;max-inline-size:640px;margin-inline:auto;inline-size:100%">
+          <span class="xs muted"><x-t ur="آپ کا پچھلا جواب: «چاروں مذاہب کا موازنہ»" en="Your last answer: “Compare the four schools”"></x-t></span>
+          <div class="qcard"><span class="qn"><i data-i="help" data-s="14"></i><x-t ur="سوال 4" en="Question 4"></x-t></span>
+            <div class="xl b" style="line-height:1.7"><x-t ur="آپ کا مقصد کس قول کی وضاحت ہے، یا صرف تمام اقوال کا غیر جانبدار موازنہ؟" en="Is your aim to explain one view, or a neutral comparison of all views?"></x-t></div>
+            <div class="src row" style="--g:8px"><i data-i="book" class="muted"></i><span class="xs"><x-t ur="المغنی اور المجموع کے مواقف مختلف ہیں؛ اسی لیے پوچھ رہا ہوں۔" en="Al-Mughni and Al-Majmu take different positions; that's why I'm asking."></x-t></span></div>
+            <div class="col" style="--g:8px"><button class="opt on"><span class="k">A</span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="غیر جانبدار موازنہ" en="Neutral comparison"></x-t> <span class="rec"><x-t ur="تجویز" en="Suggested"></x-t></span></b><span class="xs muted"><x-t ur="ہر قول کے دلائل برابر وزن سے" en="Each view's evidence with equal weight"></x-t></span></div></button><button class="opt"><span class="k">B</span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="ایک قول کی وضاحت" en="Explain one view"></x-t></b><span class="xs muted"><x-t ur="باقی کا مختصر رد" en="Brief rebuttal of the rest"></x-t></span></div></button><button class="opt"><span class="k">C</span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="طلبہ کے لیے سادہ تعارف" en="Simple intro for students"></x-t></b></div></button></div>
+            <div class="comp"><span class="muted sm grow"><x-t ur="یا اپنا جواب لکھیں…" en="Or write your own answer…"></x-t></span><button class="icon-btn sm"><i data-i="mic"></i></button><button class="btn primary sm"><x-t ur="اگلا" en="Next"></x-t><i data-i="arrow" data-flip></i></button></div>
+            <div class="row between xs muted"><button class="btn sm ghost"><x-t ur="چھوڑیں" en="Skip"></x-t></button><button class="btn sm ghost"><i data-i="undo"></i><x-t ur="پچھلا جواب بدلیں" en="Change previous answer"></x-t></button></div></div></div></div>
+        <aside class="sidebar p4 col" style="border-inline-end:0;border-inline-start:1px solid hsl(var(--border));--g:12px"><div class="row between"><b><x-t ur="خاکہ (بن رہا ہے)" en="Outline (building)"></x-t></b><span class="chip success"><span class="dot"></span><x-t ur="لائیو" en="Live"></x-t></span></div>
+          <div class="outline"><div class="on-i"><span class="n">1</span><div class="col" style="--g:0"><b class="sm"><x-t ur="مسئلہ" en="Issue"></x-t></b><span class="xs muted"><x-t ur="اصل اباحت یا توقف" en="Default permissibility vs. suspension"></x-t></span></div></div><div class="on-i"><span class="n">2</span><div class="col" style="--g:0"><b class="sm"><x-t ur="قارئین" en="Audience"></x-t></b><span class="xs muted"><x-t ur="اہلِ علم" en="Scholars"></x-t></span></div></div><div class="on-i"><span class="n">3</span><div class="col" style="--g:0"><b class="sm"><x-t ur="ذرائع" en="Sources"></x-t></b><span class="xs muted"><x-t ur="6 منتخب، چاروں مذاہب" en="6 selected, four schools"></x-t></span></div></div><div class="on-i new"><span class="n" style="background:hsl(var(--success));color:#fff">4</span><div class="col" style="--g:0"><b class="sm"><x-t ur="انداز" en="Approach"></x-t></b><span class="xs muted"><x-t ur="غیر جانبدار موازنہ" en="Neutral comparison"></x-t></span></div></div><div class="on-i" style="opacity:.5"><span class="n">5</span><span class="sm"><x-t ur="دلائل کی ترتیب…" en="Order of evidence…"></x-t></span></div></div>
+          <hr class="hr"><div class="banner info" style="padding:10px"><i data-i="spark"></i><div class="t xs"><x-t ur="سوال کم سے کم رکھے جاتے ہیں (عموماً 5 سے 8)۔" en="Questions are kept few (usually 5 to 8)."></x-t></div></div></aside>
+      </div>
+    </div>
+
+    <div class="device desk short" style="inline-size:620px">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="چیلنج موڈ" en="Challenge mode"></x-t></span></div>
+      <div class="viewport" style="justify-content:center;padding:24px"><div class="qcard" style="border-color:hsl(var(--danger-bd))"><span class="qn" style="color:hsl(var(--danger));background:hsl(var(--danger-bg))"><i data-i="zap" data-s="14"></i><x-t ur="مخالف نقطۂ نظر" en="Devil's advocate"></x-t></span>
+        <div class="muted sm"><x-t ur="آپ نے لکھا: «جمہور کا قول راجح ہے»" en="You wrote: “The majority view is preferred”"></x-t></div>
+        <div class="b lg" style="line-height:1.8"><x-t ur="اگر کوئی کہے کہ توقف والوں کی دلیل زیادہ محتاط ہے، تو آپ کا جواب کیا ہوگا؟" en="If someone says the suspension view is the more cautious one, how would you respond?"></x-t></div>
+        <div class="src row" style="--g:8px"><i data-i="book" class="muted"></i><span class="xs"><x-t ur="المجموع 1/56 میں یہی اعتراض مذکور ہے۔" en="Al-Majmu 1/56 raises this objection."></x-t></span></div>
+        <div class="comp"><span class="muted sm grow"><x-t ur="اپنا جواب لکھیں…" en="Write your answer…"></x-t></span><button class="icon-btn sm"><i data-i="mic"></i></button><button class="btn primary sm"><x-t ur="جواب دیں" en="Answer"></x-t></button></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>ایک ہاتھ سے جواب: بڑے اختیارات، آواز، خاکہ شیٹ</h2>
+  <p class="cap">سوال اوپر، اختیارات نیچے انگوٹھے کی پہنچ میں، 48px سے بڑے۔ آواز میں جواب دینا خاص اہم ہے (اردو بولنے والے محققین کے لیے ٹائپ سے تیز)۔ اوپر "خاکہ (4)" کا بٹن لائیو خاکے کی شیٹ کھولتا ہے۔ سیشن بند کرنے پر پیش رفت محفوظ رہتی ہے اور بعد میں جاری رکھی جا سکتی ہے۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="x"></i></button><div class="col grow" style="--g:4px"><div class="dots2"><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i></div></div><button class="btn sm"><i data-i="list"></i><x-t ur="خاکہ 4" en="Outline 4"></x-t></button></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:14px"><span class="qn"><i data-i="help" data-s="14"></i><x-t ur="سوال 4 / ~7" en="Question 4 / ~7"></x-t></span><div class="xl b" style="line-height:1.7"><x-t ur="آپ کا مقصد کس قول کی وضاحت ہے، یا غیر جانبدار موازنہ؟" en="Explain one view, or a neutral comparison?"></x-t></div><div class="src row" style="--g:8px"><i data-i="book" class="muted"></i><span class="xs"><x-t ur="المغنی اور المجموع کے مواقف مختلف ہیں۔" en="Al-Mughni and Al-Majmu differ."></x-t></span></div>
+        <div class="col" style="--g:8px"><button class="opt on" style="min-block-size:56px"><span class="k">A</span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="غیر جانبدار موازنہ" en="Neutral comparison"></x-t></b><span class="rec" style="align-self:flex-start"><x-t ur="تجویز" en="Suggested"></x-t></span></div></button><button class="opt" style="min-block-size:56px"><span class="k">B</span><b class="sm"><x-t ur="ایک قول کی وضاحت" en="Explain one view"></x-t></b></button><button class="opt" style="min-block-size:56px"><span class="k">C</span><b class="sm"><x-t ur="طلبہ کے لیے سادہ تعارف" en="Simple intro"></x-t></b></button></div></div>
+        <div style="padding:8px 12px 12px" class="col"><div class="comp" style="min-block-size:52px"><span class="muted sm grow"><x-t ur="یا بول کر جواب دیں…" en="Or answer by voice…"></x-t></span><button class="icon-btn fill" style="border-radius:50%"><i data-i="mic"></i></button></div><div class="row between" style="margin-block-start:6px"><button class="btn sm ghost"><x-t ur="چھوڑیں" en="Skip"></x-t></button><button class="btn sm ghost"><x-t ur="کافی ہے" en="Enough"></x-t></button><button class="btn primary"><x-t ur="اگلا" en="Next"></x-t></button></div></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="x"></i></button><b class="grow"><x-t ur="مجھ سے پوچھو" en="Grill me"></x-t></b></div>
+      <div class="viewport"><div class="scrim"></div><div class="sheet" style="position:absolute;inset-inline:0;inset-block-end:0;z-index:6;padding-block-end:20px"><div class="grab"></div><div class="p4 col" style="--g:10px"><div class="row between"><b><x-t ur="خاکہ (بن رہا ہے)" en="Outline (building)"></x-t></b><span class="chip success"><span class="dot"></span><x-t ur="لائیو" en="Live"></x-t></span></div><div class="outline"><div class="on-i"><span class="n">1</span><div class="col" style="--g:0"><b class="sm"><x-t ur="مسئلہ" en="Issue"></x-t></b><span class="xs muted"><x-t ur="اصل اباحت یا توقف" en="Default permissibility vs. suspension"></x-t></span></div></div><div class="on-i"><span class="n">2</span><div class="col" style="--g:0"><b class="sm"><x-t ur="قارئین" en="Audience"></x-t></b><span class="xs muted"><x-t ur="اہلِ علم" en="Scholars"></x-t></span></div></div><div class="on-i"><span class="n">3</span><div class="col" style="--g:0"><b class="sm"><x-t ur="ذرائع" en="Sources"></x-t></b><span class="xs muted"><x-t ur="6 منتخب" en="6 selected"></x-t></span></div></div><div class="on-i new"><span class="n" style="background:hsl(var(--success));color:#fff">4</span><div class="col" style="--g:0"><b class="sm"><x-t ur="انداز" en="Approach"></x-t></b><span class="xs muted"><x-t ur="غیر جانبدار موازنہ" en="Neutral comparison"></x-t></span></div></div></div><button class="btn block"><i data-i="pen"></i><x-t ur="کوئی نکتہ بدلیں" en="Edit a point"></x-t></button></div></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="x"></i></button><b class="grow"><x-t ur="خاکہ تیار" en="Outline ready"></x-t></b></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:12px"><div class="col center" style="--g:8px;padding-block:8px"><span class="avatar" style="inline-size:60px;block-size:60px;background:hsl(var(--success-bg));color:hsl(var(--success))"><i data-i="check" data-s="28"></i></span><div class="xl b"><x-t ur="7 سوالات، خاکہ تیار" en="7 questions, outline ready"></x-t></div></div>
+        <div class="card pad col" style="--g:8px"><b class="sm"><x-t ur="مسئلہ اباحت — خاکہ" en="Default ruling — outline"></x-t></b><div class="sm muted"><x-t ur="1. تمہید  2. جمہور کا قول  3. توقف کا قول  4. دلائل کا موازنہ  5. خلاصہ" en="1. Intro  2. Majority view  3. Suspension view  4. Evidence comparison  5. Summary"></x-t></div></div>
+        <div class="muted xs"><x-t ur="اب کیا کرنا ہے؟" en="What next?"></x-t></div>
+        <button class="li card"><span class="ic"><i data-i="list"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="منصوبہ بنوائیں" en="Make a plan"></x-t></b><span class="xs muted"><x-t ur="ایجنٹ مرحلہ وار چلے (Plan)" en="Agent runs step by step (Plan)"></x-t></span></div><i data-i="chev-l" class="muted"></i></button>
+        <button class="li card"><span class="ic info"><i data-i="pen"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="مسودہ شروع کریں" en="Start the draft"></x-t></b><span class="xs muted"><x-t ur="ایڈیٹر میں عنوانات کے ساتھ" en="In the editor, with headings"></x-t></span></div><i data-i="chev-l" class="muted"></i></button>
+        <button class="li card"><span class="ic neutral"><i data-i="file"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="نوٹ کے طور پر محفوظ" en="Save as a note"></x-t></b></div><i data-i="chev-l" class="muted"></i></button></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag mob">موبائل</span>داخلے کے راستے</h2>
+  <div class="frames">
+    <div class="card pop" style="inline-size:360px;padding:6px"><div class="nav-label" style="padding-block-start:4px">/ <x-t ur="سلیش مینو" en="SLASH MENU"></x-t></div><div class="menu-item on"><i data-i="help" style="color:hsl(var(--warning))"></i><div class="col" style="--g:0"><b class="sm"><x-t ur="/سوال — مجھ سے پوچھو" en="/grill — Grill me"></x-t></b><span class="xs muted"><x-t ur="سوالات سے خیال واضح کریں" en="Sharpen your idea with questions"></x-t></span></div></div><div class="menu-item"><i data-i="spark"></i><x-t ur="خلاصہ بنائیں" en="Summarise"></x-t></div><div class="menu-item"><i data-i="quote"></i><x-t ur="خودکار حوالہ جات" en="Auto citations"></x-t></div></div>
+    <div class="card raised" style="inline-size:420px;padding:16px"><div class="col" style="--g:10px"><b class="sm"><x-t ur="نیا پروجیکٹ کیسے شروع کریں؟" en="How do you want to start?"></x-t></b><button class="li card"><span class="ic" style="background:hsl(var(--warning-bg));color:hsl(var(--warning))"><i data-i="help"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="مجھ سے پوچھو" en="Grill me"></x-t> <span class="chip brand"><x-t ur="سوچنے میں مدد" en="Think it through"></x-t></span></b><span class="xs muted"><x-t ur="خیال واضح کریں، پھر خاکہ" en="Clarify the idea, then an outline"></x-t></span></div></button><button class="li card"><span class="ic"><i data-i="search"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="تحقیق شروع کریں" en="Start researching"></x-t></b></div></button><button class="li card"><span class="ic info"><i data-i="pen"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="سیدھا لکھنا شروع کریں" en="Just start writing"></x-t></b></div></button></div></div>
+    <div class="card" style="inline-size:340px;padding:6px"><div class="card raised row" style="padding:4px;--g:0;margin:8px;inline-size:max-content"><button class="btn sm ghost"><i data-i="spark"></i><x-t ur="AI ٹاسک" en="AI task"></x-t></button><button class="btn sm ghost" style="color:hsl(var(--warning))"><i data-i="help"></i><x-t ur="مجھ سے پوچھو" en="Grill me"></x-t></button><button class="btn sm ghost"><i data-i="more"></i></button></div><div class="p3 xs muted"><x-t ur="منتخب متن پر سلیکشن بار میں بھی۔" en="Also in the selection bar on any selected text."></x-t></div></div>
+  </div>
+</section>
+</main>
+</body>
+</html>
