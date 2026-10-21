@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
@@ -26,9 +26,8 @@ const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const Transcribe = lazy(() => import("./pages/Transcribe"));
+const Extract = lazy(() => import("./pages/Extract"));
 const Speak = lazy(() => import("./pages/Speak"));
-const OCR = lazy(() => import("./pages/OCR"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Pricing = lazy(() => import("./pages/Pricing"));
@@ -77,6 +76,14 @@ const AppRouter = isDesktop() ? HashRouter : BrowserRouter;
  * routes still exist for the web build, so a single set of routes serves both
  * targets — desktop just redirects web-only pages to /workspace.
  */
+/** /transcribe and /ocr open the one extract screen, keeping `?session=` and any hand-off state. */
+const ToExtract: React.FC<{ kind: "audio" | "image" }> = ({ kind }) => {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  params.set("kind", kind);
+  return <Navigate to={`/extract?${params.toString()}`} state={location.state} replace />;
+};
+
 const DesktopToWorkspace: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   isDesktop() ? <Navigate to="/workspace" replace /> : <>{children}</>;
 
@@ -145,9 +152,13 @@ const App = () => (
                       engines, which need no account. CapabilityRoute is what keeps
                       the cloud-only tools off desktop entirely. On web `allowGuest`
                       is inert, so the login gate is unchanged. */}
-                  <Route path="/transcribe" element={<CapabilityRoute id="transcribe"><ProtectedRoute allowGuest><ErrorBoundary><Transcribe /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  {/* One "extract text" screen (SYSTEM-2026 §5). /transcribe and /ocr
+                      are kept as doors into it — the + menu, old bookmarks and
+                      saved results (`?session=`) all land in the same place. */}
+                  <Route path="/extract" element={<CapabilityRoute id="extract"><ProtectedRoute allowGuest><ErrorBoundary><Extract /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/transcribe" element={<CapabilityRoute id="transcribe"><ToExtract kind="audio" /></CapabilityRoute>} />
                   <Route path="/speak" element={<CapabilityRoute id="speak"><ProtectedRoute allowGuest><ErrorBoundary><Speak /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
-                  <Route path="/ocr" element={<CapabilityRoute id="ocr"><ProtectedRoute><ErrorBoundary><OCR /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/ocr" element={<CapabilityRoute id="ocr"><ToExtract kind="image" /></CapabilityRoute>} />
                   <Route path="/workspace" element={<ProtectedRoute allowGuest><ErrorBoundary><Workspace /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/workspace/:documentId" element={<ProtectedRoute allowGuest><ErrorBoundary><Workspace /></ErrorBoundary></ProtectedRoute>} />
                   {/* /research and /editor are retired pages (UX-v1 P3): the workspace

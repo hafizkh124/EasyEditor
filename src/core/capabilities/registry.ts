@@ -46,7 +46,7 @@ export type Surface =
   | "workbench-tab";
 
 export type CapabilityId =
-  | "workspace" | "transcribe" | "ocr" | "speak" | "translate.book"
+  | "workspace" | "extract" | "transcribe" | "ocr" | "speak" | "translate.book"
   | "research" | "settings" | "dashboard" | "files" | "profile" | "admin"
   | "voice.cloning" | "tokens.meter"
   | "wb.aiReader" | "wb.research" | "wb.agent";
@@ -92,6 +92,15 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "workspace", route: "/workspace", labelKey: "nav.workspace", fallbackLabel: "ورک اسپیس",
     icon: BookOpen, runtimes: { web: ALWAYS, desktop: ALWAYS },
     surfaces: ["dashboard-grid", "command-palette"],
+  },
+  {
+    // The one extract-text screen (SYSTEM-2026 §5) behind both jobs below. It
+    // exists wherever either does: on desktop that is the local-voice build,
+    // since OCR is cloud-only.
+    id: "extract", route: "/extract", labelKey: "extract.title", fallbackLabel: "متن نکالیں",
+    icon: ScanText,
+    runtimes: { web: ALWAYS, desktop: { on: "flag", flag: "VITE_LOCAL_VOICE" } },
+    surfaces: [],
   },
   {
     id: "transcribe", route: "/transcribe", labelKey: "nav.transcribe", fallbackLabel: "ٹرانسکرائب",

@@ -27,11 +27,6 @@ const SURFACES: Surface[] = [
  * small — every entry is a place the scanner stops looking.
  */
 const WEB_ONLY_FEATURE_PAGES = new Set([
-  "src/pages/OCR.tsx",
-  // The page's workflow moved into this hook; the "listen to the result"
-  // hand-off to /speak went with it. Same gate applies — OCR is desktop:never,
-  // so nothing here renders on a runtime where /speak might be missing.
-  "src/pages/ocr/useOcrWorkflow.ts",
   "src/pages/OcrReview.tsx",
 ]);
 
