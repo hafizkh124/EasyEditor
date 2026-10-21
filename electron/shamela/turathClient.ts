@@ -84,7 +84,7 @@ interface PersistedCacheFile {
   entries: Record<string, CacheEntry>;
 }
 
-let memoryCache = new Map<string, CacheEntry>();
+const memoryCache = new Map<string, CacheEntry>();
 let cacheLoaded = false;
 let saveDebounceTimer: NodeJS.Timeout | null = null;
 let customCachePath: string | null = null;

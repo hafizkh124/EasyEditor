@@ -45,7 +45,7 @@ export function normalizeArabicForTakhrij(text: string): string {
 export function takhrijTokens(text: string): Set<string> {
   return new Set(
     normalizeArabicForTakhrij(text || "")
-      .split(/[\s،.:؛()«»"'\-]+/)
+      .split(/[\s،.:؛()«»"'-]+/)
       .map((w) => w.trim())
       .filter((w) => w.length > 3 && !TAKHRIJ_COMMON_WORDS.has(w)),
   );
