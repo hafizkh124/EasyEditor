@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jobs and states</title>
+<link rel="stylesheet" href="../screens/_shared/tokens.css">
+<link rel="stylesheet" href="../screens/_shared/ui.css">
+<link rel="stylesheet" href="_app.css">
+<script src="../screens/_shared/kit.js" defer></script>
+<style>
+  .jrow { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+  .toast { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 14px; background: hsl(var(--popover)); border: 1px solid hsl(var(--border)); box-shadow: var(--shadow-lg); }
+</style>
+</head>
+<body data-title="v3 · 08 · جاری کام، اطلاعات اور خاص حالتیں" data-note="SYSTEM-2026 §9، §10: ترجمہ، ٹرانسکرائب، OCR اور ایجنٹ کے کام ایک قطار میں۔ پہلی بار کا ہوم، ناکامی، آف لائن، اور ڈیسک ٹاپ پر «فعال کریں»۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>جاری کاموں کی قطار</h2>
+  <p class="cap">سائیڈبار کی «جاری کام» پٹی پر کلک سے پوری فہرست۔ ہر کام کی حالت: جاری · منظوری درکار · جائزہ · مکمل · ناکام۔ ہر قطار سے سیدھا نتیجے پر۔ ایپ بند ہو جائے تو کام وہیں سے جاری۔</p>
+  <div class="frames">
+    <div class="device desk short">
+      <div data-tb="desk"></div>
+      <div class="app" style="grid-template-columns:264px 1fr"><aside data-side="home"></aside>
+        <div class="hero-bg" style="position:relative"><div class="pop card raised" style="position:absolute;inset-block-end:90px;inset-inline-start:-6px;inline-size:420px;padding:12px;z-index:5"><div class="row between" style="padding:4px 6px 10px"><b><x-t ur="جاری کام" en="Jobs"></x-t></b><div class="segmented" style="font-size:12px"><span class="on"><x-t ur="سب" en="All"></x-t></span><span><x-t ur="توجہ درکار" en="Needs you"></x-t></span></div></div><div class="col" style="--g:8px">
+          <div class="jrow"><div class="row between"><div class="row" style="--g:8px"><i data-i="lang"></i><b class="sm"><x-t ur="فتاویٰ جلد 2 — ترجمہ" en="Fatawa vol. 2 — translation"></x-t></b></div><span class="chip info"><x-t ur="جاری" en="Running"></x-t></span></div><div class="progress"><i style="inline-size:38%"></i></div><div class="row between xs muted"><span><x-t ur="18 / 48 صفحات" en="18 / 48 pages"></x-t></span><span><x-t ur="~16 منٹ" en="~16 min"></x-t></span></div></div>
+          <div class="jrow" style="border-color:hsl(var(--warning-bd))"><div class="row between"><div class="row" style="--g:8px"><i data-i="list"></i><b class="sm"><x-t ur="حوالہ جات مکمل کریں" en="Complete citations"></x-t></b></div><span class="chip warning"><x-t ur="منظوری درکار" en="Needs approval"></x-t></span></div><button class="btn sm primary" style="align-self:flex-start"><x-t ur="منصوبہ دیکھیں" en="Review plan"></x-t></button></div>
+          <div class="jrow"><div class="row between"><div class="row" style="--g:8px"><i data-i="mic"></i><b class="sm"><x-t ur="بیان 12 ربیع الاول" en="Lecture 12 Rabi"></x-t></b></div><span class="chip success"><i data-i="check"></i><x-t ur="مکمل" en="Done"></x-t></span></div><div class="row"><button class="btn sm"><i data-i="file"></i><x-t ur="کھولیں" en="Open"></x-t></button><button class="btn sm ghost"><i data-i="copy"></i><x-t ur="سب کاپی" en="Copy all"></x-t></button></div></div>
+          <div class="jrow" style="border-color:hsl(var(--danger-bd))"><div class="row between"><div class="row" style="--g:8px"><i data-i="scan"></i><b class="sm">رسالہ.jpg</b></div><span class="chip danger"><x-t ur="ناکام" en="Failed"></x-t></span></div><span class="xs muted"><x-t ur="تصویر بہت دھندلی ہے۔ بہتر روشنی میں دوبارہ لیں۔" en="The image is too blurry. Retake in better light."></x-t></span><div class="row"><button class="btn sm"><i data-i="refresh"></i><x-t ur="دوبارہ" en="Retry"></x-t></button><button class="btn sm ghost"><x-t ur="ہٹائیں" en="Remove"></x-t></button></div></div>
+        </div></div></div></div>
+    </div>
+    <div class="col" style="--g:10px;inline-size:380px">
+      <div class="toast"><span style="color:hsl(var(--success))"><i data-i="check" data-s="20"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="متن تیار: بیان 12 ربیع الاول" en="Text ready: Lecture 12 Rabi"></x-t></b><span class="xs muted"><x-t ur="6,240 الفاظ · کاپی ہو گیا" en="6,240 words · copied"></x-t></span></div><button class="btn sm"><x-t ur="کھولیں" en="Open"></x-t></button></div>
+      <div class="toast"><span style="color:hsl(var(--warning))"><i data-i="list" data-s="20"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="منصوبہ آپ کی منظوری کا منتظر" en="A plan is waiting for you"></x-t></b><span class="xs muted"><x-t ur="حوالہ جات مکمل کریں" en="Complete citations"></x-t></span></div><button class="btn sm primary"><x-t ur="دیکھیں" en="Review"></x-t></button></div>
+      <div class="toast"><span style="color:hsl(var(--danger))"><i data-i="warn" data-s="20"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="OCR ناکام" en="OCR failed"></x-t></b><span class="xs muted"><x-t ur="تصویر دھندلی ہے" en="Image is blurry"></x-t></span></div><button class="btn sm"><x-t ur="دوبارہ" en="Retry"></x-t></button></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>پہلی بار کا ہوم · ڈیسک ٹاپ پر «فعال کریں»</h2>
+  <p class="cap">نئے صارف کا ہوم خالی نہیں: تین کام اور تین مثالی سوال جن پر ٹیپ سے فوراً تجربہ۔ ڈیسک ٹاپ پر OCR یا ترجمہ تب تک «فعال کریں» دکھائے جب تک نہ اپنی API ہو نہ ڈیٹابیس کنکشن؛ فیچر غائب نہیں ہوتا۔</p>
+  <div class="frames">
+    <div class="device desk short" style="inline-size:760px">
+      <div data-tb="desk"></div>
+      <div class="scroll hero-bg" style="padding:36px"><div class="col" style="--g:18px;max-inline-size:600px;margin-inline:auto">
+        <div class="col center" style="--g:6px"><span class="logo" style="inline-size:52px;block-size:52px;border-radius:16px;font-size:22px">ع</span><div class="xl b"><x-t ur="خوش آمدید" en="Welcome"></x-t></div><span class="muted sm"><x-t ur="سوال پوچھیں، فائل سے متن نکالیں، یا کتاب کا ترجمہ کروائیں" en="Ask a question, extract text from a file, or translate a book"></x-t></span></div>
+        <div class="composer"><span class="muted sm"><x-t ur="سوال پوچھیں…" en="Ask a question…"></x-t></span><div class="row"><span class="grow"></span><button class="icon-btn sm fill"><i data-i="send" data-flip></i></button></div></div>
+        <div class="col" style="--g:8px"><span class="xs muted"><x-t ur="آزمانے کے لیے" en="TRY"></x-t></span><button class="rec card" style="text-align:start"><span class="ty ic-c"><i data-i="chat"></i></span><span class="sm grow"><x-t ur="زکوٰۃ کے نصاب میں سونے اور چاندی کا فرق؟" en="Gold vs silver nisab for zakat?"></x-t></span></button><button class="rec card" style="text-align:start"><span class="ty ic-a"><i data-i="mic"></i></span><span class="sm grow"><x-t ur="نمونہ آڈیو سے متن نکال کر دیکھیں" en="Try extracting text from a sample audio"></x-t></span></button><button class="rec card" style="text-align:start"><span class="ty ic-t"><i data-i="lang"></i></span><span class="sm grow"><x-t ur="ایک صفحے کا نمونہ ترجمہ" en="Translate a one-page sample"></x-t></span></button></div></div></div>
+    </div>
+    <div class="device desk short" style="inline-size:520px">
+      <div data-tb="desk" data-t="تصویر/PDF سے متن"></div>
+      <div class="viewport center" style="justify-content:center;padding:24px"><div class="emptyst" style="max-inline-size:420px"><div class="art"><i data-i="scan"></i></div><div class="b lg"><x-t ur="یہ سہولت فعال کریں" en="Turn this on"></x-t></div><div class="sm muted"><x-t ur="ڈیسک ٹاپ پر OCR آپ کی اپنی API کلید یا ڈیٹابیس کنکشن سے چلتا ہے۔" en="On desktop, OCR runs with your own API key or a database connection."></x-t></div><div class="col" style="--g:8px;inline-size:100%;text-align:start"><div class="opt"><span class="li" style="padding:0"><span class="ic ic-o"><i data-i="key"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="اپنی API" en="My API"></x-t></b><span class="xs muted"><x-t ur="Gemini کلید سے فوراً" en="Instantly with a Gemini key"></x-t></span></div><button class="btn sm primary"><x-t ur="کلید ڈالیں" en="Add key"></x-t></button></div><div class="opt"><span class="li" style="padding:0"><span class="ic ic-a"><i data-i="cloud"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="ڈیٹابیس سے جوڑیں" en="Connect to database"></x-t></b><span class="xs muted"><x-t ur="ٹوکنز سے" en="Uses your tokens"></x-t></span></div><button class="btn sm"><x-t ur="جوڑیں" en="Connect"></x-t></button></div></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>جاری کام · اطلاع · آف لائن</h2>
+  <div class="frames">
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="grow"><x-t ur="جاری کام" en="Jobs"></x-t></b></div>
+      <div class="viewport"><div class="scroll grow p3 col" style="--g:8px"><div class="jrow"><div class="row between"><b class="sm"><x-t ur="فتاویٰ جلد 2 — ترجمہ" en="Fatawa vol. 2"></x-t></b><span class="chip info">38%</span></div><div class="progress"><i style="inline-size:38%"></i></div></div><div class="jrow" style="border-color:hsl(var(--warning-bd))"><div class="row between"><b class="sm"><x-t ur="حوالہ جات مکمل کریں" en="Complete citations"></x-t></b><span class="chip warning"><x-t ur="منظوری" en="Approve"></x-t></span></div><button class="btn sm primary"><x-t ur="منصوبہ دیکھیں" en="Review plan"></x-t></button></div><div class="jrow"><div class="row between"><b class="sm"><x-t ur="بیان 12 ربیع" en="Lecture 12 Rabi"></x-t></b><span class="chip success"><x-t ur="مکمل" en="Done"></x-t></span></div><div class="row"><button class="btn sm grow"><x-t ur="کھولیں" en="Open"></x-t></button><button class="btn sm grow"><i data-i="copy"></i><x-t ur="کاپی" en="Copy"></x-t></button></div></div></div></div>
+    </div>
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="viewport hero-bg"><div style="padding:10px"><div class="toast"><span class="logo" style="inline-size:36px;block-size:36px">ع</span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="متن تیار ہے" en="Your text is ready"></x-t></b><span class="xs muted"><x-t ur="وائس نوٹ — 3:42 · 412 الفاظ" en="Voice note — 3:42 · 412 words"></x-t></span></div></div></div></div>
+    </div>
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><span class="logo" style="margin-inline:8px">ع</span><b class="grow">Easy Editor</b></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:12px"><div class="banner warning"><i data-i="wifioff"></i><div class="t"><b><x-t ur="آپ آف لائن ہیں" en="You're offline"></x-t></b><x-t ur="لکھنا جاری رکھیں۔ چیٹ، ترجمہ اور متن نکالنا انٹرنیٹ آنے پر چلیں گے؛ قطار میں رکھ دیے جائیں گے۔" en="Keep writing. Chat, translation and extraction will run when you're back online; they'll wait in the queue."></x-t></div></div><div class="rec"><span class="ty ic-c"><i data-i="file"></i></span><b class="sm grow"><x-t ur="مسئلہ اباحت — مسودہ" en="Default ruling — draft"></x-t></b><span class="chip success"><x-t ur="مقامی" en="Local"></x-t></span></div></div><nav data-tabs="home"></nav></div>
+    </div>
+  </div>
+</section>
+</main>
+<script src="_v3.js"></script>
+</body>
+</html>

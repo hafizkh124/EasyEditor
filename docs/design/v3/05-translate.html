@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Translate</title>
+<link rel="stylesheet" href="../screens/_shared/tokens.css">
+<link rel="stylesheet" href="../screens/_shared/ui.css">
+<link rel="stylesheet" href="_app.css">
+<script src="../screens/_shared/kit.js" defer></script>
+<style>
+  .st { display: flex; align-items: center; gap: 8px; font-size: 13px; } .st .s { display: flex; align-items: center; gap: 6px; color: hsl(var(--muted-foreground)); } .st .s.on { color: hsl(var(--primary)); font-weight: 600; } .st .s.done { color: hsl(var(--success)); }
+  .st .n { inline-size: 24px; block-size: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: hsl(var(--muted)); } .st .on .n { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); } .st .done .n { background: hsl(var(--success-bg)); color: hsl(var(--success)); } .st .bar { flex: 1; block-size: 1px; background: hsl(var(--border)); }
+  .tsrc { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; } .tsrc .c { padding: 12px 6px; border-radius: 14px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; text-align: center; } .tsrc .c.on { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / .14); } .tsrc .c svg.i { font-size: 20px; color: hsl(var(--primary)); }
+  .tr { display: grid; grid-template-columns: 1fr 1fr 300px; flex: 1; min-block-size: 0; }
+  .pairs { overflow: auto; min-block-size: 0; grid-column: 1 / 3; }
+  .ph { display: grid; grid-template-columns: 1fr 1fr; position: sticky; inset-block-start: 0; background: hsl(var(--sidebar)); border-block-end: 1px solid hsl(var(--border)); z-index: 1; } .ph > div { padding: 8px 18px; font-size: 12px; font-weight: 600; color: hsl(var(--muted-foreground)); } .ph > div + div { border-inline-start: 1px solid hsl(var(--border)); }
+  .rv { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: hsl(var(--success)); } .gt { background: hsl(var(--info-bg)); color: hsl(var(--info)); border-radius: 4px; padding-inline: 3px; }
+  .cfg { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+</style>
+</head>
+<body data-title="v3 · 05 · کتاب کا ترجمہ" data-note="SYSTEM-2026 §6: ماخذ ← ترتیب (انداز، حصہ، اصطلاحات) ← پس منظر میں ترجمہ ← پیراگراف بہ پیراگراف جائزہ ← Word (صرف ترجمہ یا دو لسانی) یا ایڈیٹر۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>ترتیب: ایک صفحے پر سب کچھ، پہلے سے اندازہ</h2>
+  <p class="cap">تین قدم ایک ہی اسکرین پر (کوئی لمبا ویزرڈ نہیں)۔ اصطلاحات کی فہرست یہیں سے؛ فولڈر میں پہلے سے محفوظ فہرست خود آ جاتی ہے۔ «شروع» دبانے سے پہلے وقت اور لاگت واضح۔ پہلے 2 صفحات کا «نمونہ ترجمہ» دیکھنے کا اختیار، تاکہ انداز درست ہو تو ہی پوری کتاب چلے۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div data-tb="desk" data-t="کتاب کا ترجمہ"></div>
+      <div class="app" style="grid-template-columns:264px 1fr"><aside data-side="home"></aside>
+        <div class="scroll" style="padding:28px 40px"><div class="col" style="--g:18px;max-inline-size:880px;margin-inline:auto">
+          <div class="row between"><div class="xl b"><x-t ur="کتاب کا ترجمہ" en="Translate a book"></x-t></div><div class="st" style="inline-size:420px"><span class="s done"><span class="n"><i data-i="check" data-s="12"></i></span><x-t ur="ماخذ" en="Source"></x-t></span><span class="bar"></span><span class="s on"><span class="n">2</span><x-t ur="ترتیب" en="Settings"></x-t></span><span class="bar"></span><span class="s"><span class="n">3</span><x-t ur="جائزہ" en="Review"></x-t></span></div></div>
+          <div class="tsrc"><div class="c on"><i data-i="file"></i>PDF</div><div class="c"><i data-i="book"></i><x-t ur="شاملہ کتاب" en="Shamela book"></x-t></div><div class="c"><i data-i="image"></i><x-t ur="تصاویر" en="Images"></x-t></div><div class="c"><i data-i="align"></i><x-t ur="چسپاں متن" en="Paste text"></x-t></div><div class="c"><i data-i="pen"></i><x-t ur="میری دستاویز" en="My document"></x-t></div></div>
+          <div class="card pad row" style="--g:12px"><span class="li" style="padding:0"><span class="ic ic-t"><i data-i="file"></i></span></span><div class="col grow" style="--g:0"><b class="sm">فتاویٰ_جلد2.pdf</b><span class="xs muted"><x-t ur="48 صفحات · 14 ابواب · زبان: اردو (پہچانی گئی)" en="48 pages · 14 chapters · language: Urdu (detected)"></x-t></span></div><button class="btn sm ghost"><x-t ur="بدلیں" en="Change"></x-t></button></div>
+          <div class="cfg">
+            <div class="card pad col" style="--g:12px"><b class="sm"><x-t ur="زبان اور انداز" en="Language & style"></x-t></b><div class="row" style="--g:8px"><span class="chip neutral" style="padding:6px 12px">اردو</span><i data-i="arrow" data-flip></i><span class="chip brand" style="padding:6px 12px">English</span></div><div class="segmented" style="inline-size:100%"><span class="grow center"><x-t ur="لفظی" en="Literal"></x-t></span><span class="on grow center"><x-t ur="متوازن" en="Balanced"></x-t></span><span class="grow center"><x-t ur="بامحاورہ" en="Idiomatic"></x-t></span></div><div class="row between sm"><span><x-t ur="قرآنی آیات اور احادیث اصل عربی میں رکھیں" en="Keep Quran verses and hadith in Arabic"></x-t></span><span class="switch on"></span></div></div>
+            <div class="card pad col" style="--g:12px"><b class="sm"><x-t ur="کون سا حصہ" en="Which part"></x-t></b><div class="segmented" style="inline-size:100%"><span class="on grow center"><x-t ur="پوری کتاب" en="Whole book"></x-t></span><span class="grow center"><x-t ur="ابواب" en="Chapters"></x-t></span><span class="grow center"><x-t ur="صفحات" en="Pages"></x-t></span></div><div class="row between sm"><span class="muted"><x-t ur="اندازہ" en="Estimate"></x-t></span><b><x-t ur="~25 منٹ · 18,400 ٹوکنز" en="~25 min · 18,400 tokens"></x-t></b></div><div class="row between sm"><span class="muted"><x-t ur="بیلنس" en="Balance"></x-t></span><b style="color:hsl(var(--success))">30,000</b></div></div>
+            <div class="card" style="grid-column:1/3"><div class="row between p3" style="border-block-end:1px solid hsl(var(--border))"><div class="col" style="--g:0"><b class="sm"><x-t ur="اصطلاحات کی فہرست" en="Glossary"></x-t></b><span class="xs muted"><x-t ur="پوری کتاب میں یہی ترجمہ استعمال ہوگا · فولڈر «زکوٰۃ کے فتاویٰ» سے 12 آئیں" en="Used consistently across the book · 12 loaded from folder “Zakat fatwas”"></x-t></span></div><div class="row"><button class="btn sm"><i data-i="spark"></i><x-t ur="کتاب سے اصطلاحات تجویز کریں" en="Suggest terms from the book"></x-t></button><button class="btn sm"><i data-i="plus"></i></button></div></div>
+              <div class="gloss"><b style="min-inline-size:120px">صلاۃ</b><i data-i="arrow" data-flip class="muted"></i><span class="en grow" style="font-size:14px">Salah</span><span class="chip neutral"><x-t ur="ترجمہ نہ کریں" en="Keep as is"></x-t></span></div><div class="gloss"><b style="min-inline-size:120px">نصاب</b><i data-i="arrow" data-flip class="muted"></i><span class="en grow" style="font-size:14px">nisab (minimum threshold)</span><span class="chip neutral"><x-t ur="پہلی بار وضاحت" en="Explain first time"></x-t></span></div><div class="gloss" style="border:0"><b style="min-inline-size:120px">مکروہ تحریمی</b><i data-i="arrow" data-flip class="muted"></i><span class="en grow" style="font-size:14px">prohibitively disliked (makruh tahrimi)</span></div></div>
+          </div>
+          <div class="row"><button class="btn lg"><i data-i="eye"></i><x-t ur="پہلے 2 صفحات کا نمونہ" en="Preview first 2 pages"></x-t></button><span class="grow"></span><button class="btn primary lg"><x-t ur="ترجمہ شروع کریں" en="Start translation"></x-t><i data-i="arrow" data-flip></i></button></div>
+        </div></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>جائزہ: پیراگراف بہ پیراگراف · اصطلاحات · ایکسپورٹ</h2>
+  <p class="cap">اصل اور ترجمہ آمنے سامنے، ہر جوڑا ایک قطار۔ ایک پر کلک سے دونوں نمایاں؛ ترجمہ وہیں قابلِ ترمیم۔ ہر جوڑے پر: «جائزہ مکمل»، «ہدایت کے ساتھ دوبارہ»۔ اصطلاحات ترجمے میں نیلے نشان سے؛ دائیں/بائیں پینل میں فہرست اور «کہاں کہاں مختلف ہے» کی جانچ۔ اوپر پیش رفت: ترجمہ ہوا / جائزہ ہوا۔</p>
+  <div class="frames">
+    <div class="device desk" style="inline-size:1360px">
+      <div data-tb="desk" data-t="فتاویٰ جلد 2 — ترجمہ"></div>
+      <div class="col" style="flex:1;min-block-size:0">
+        <div class="topbar" style="block-size:56px;padding-inline:16px"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><div class="col" style="--g:0"><b class="sm"><x-t ur="فتاویٰ جلد 2" en="Fatawa vol. 2"></x-t></b><span class="xs muted"><x-t ur="اردو ← English · متوازن" en="Urdu → English · balanced"></x-t></span></div><span class="grow"></span><div class="col" style="--g:4px;inline-size:260px"><div class="row between xs"><span class="muted"><x-t ur="ترجمہ 48/48 · جائزہ 17/48" en="Translated 48/48 · reviewed 17/48"></x-t></span><b>35%</b></div><div class="progress"><i style="inline-size:35%;background:hsl(var(--success))"></i></div></div><div class="segmented"><span><x-t ur="صرف ترجمہ" en="Translation"></x-t></span><span class="on"><x-t ur="آمنے سامنے" en="Side by side"></x-t></span></div><button class="btn primary"><i data-i="download"></i><x-t ur="ایکسپورٹ" en="Export"></x-t></button></div>
+        <div class="tr">
+          <div class="pairs"><div class="ph"><div><x-t ur="اصل · صفحہ 17" en="Source · page 17"></x-t></div><div>English</div></div>
+            <div class="pair"><div><div class="doc" style="font-size:16px;line-height:2.1">زکوٰۃ کا <b>نصاب</b> سونے میں ساڑھے سات تولہ ہے۔</div></div><div><div class="en">The zakat <span class="gt">nisab</span> for gold is seven and a half tola.</div><div class="row" style="margin-block-start:6px"><span class="rv"><i data-i="check" data-s="12"></i><x-t ur="جائزہ مکمل" en="Reviewed"></x-t></span></div></div></div>
+            <div class="pair on"><div><div class="doc" style="font-size:16px;line-height:2.1">اور جو فقراء کے لیے زیادہ نافع ہو، اسی کا اعتبار کیا جائے گا۔</div></div><div><div class="en" style="outline:2px solid hsl(var(--primary)/.4);border-radius:8px;padding:6px 8px;background:hsl(var(--card))">Whichever is more beneficial to the poor shall be taken into account.</div><div class="row" style="margin-block-start:8px;--g:6px"><button class="btn sm"><i data-i="check"></i><x-t ur="جائزہ مکمل" en="Mark reviewed"></x-t></button><button class="btn sm ghost"><i data-i="refresh"></i><x-t ur="ہدایت کے ساتھ دوبارہ…" en="Redo with instruction…"></x-t></button><span class="chip neutral" style="margin-inline-start:auto"><x-t ur="«زیادہ رواں کرو»" en="“make it more fluent”"></x-t></span></div></div></div>
+            <div class="pair"><div><div class="doc" style="font-size:16px;line-height:2.1">نماز (<b>صلاۃ</b>) کے بعد یہ دعا پڑھنا مستحب ہے۔</div></div><div><div class="en">It is recommended to recite this supplication after <span class="gt">Salah</span>.</div></div></div>
+          </div>
+          <aside class="col" style="min-block-size:0;border-inline-start:1px solid hsl(var(--border));background:hsl(var(--sidebar))"><div class="tabs"><button class="tab on"><x-t ur="اصطلاحات" en="Glossary"></x-t></button><button class="tab"><x-t ur="ابواب" en="Chapters"></x-t></button></div>
+            <div class="scroll grow col" style="--g:0"><div class="gloss"><b class="grow">نصاب</b><span class="en" style="font-size:13px">nisab</span><span class="chip success">31</span></div><div class="gloss"><b class="grow">صلاۃ</b><span class="en" style="font-size:13px">Salah</span><span class="chip success">12</span></div><div class="gloss" style="background:hsl(var(--warning-bg)/.6)"><b class="grow">مکروہ تحریمی</b><span class="en" style="font-size:13px">makruh tahrimi</span><span class="chip warning"><x-t ur="2 جگہ مختلف" en="2 differ"></x-t></span></div>
+              <div class="p3"><button class="btn sm block"><i data-i="refresh"></i><x-t ur="مختلف جگہیں درست کریں" en="Fix inconsistencies"></x-t></button></div></div></aside>
+        </div>
+      </div>
+    </div>
+    <div class="card raised" style="inline-size:440px;padding:18px"><div class="col" style="--g:12px"><div class="row between"><b><x-t ur="ترجمہ ایکسپورٹ کریں" en="Export translation"></x-t></b><button class="icon-btn sm"><i data-i="x"></i></button></div>
+      <div class="opt"><span class="radio"></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="Word · صرف ترجمہ" en="Word · translation only"></x-t></b><span class="xs muted"><x-t ur="انگریزی کتاب کی صورت" en="As an English book"></x-t></span></div></div>
+      <div class="opt on"><span class="radio"></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="Word · دو لسانی" en="Word · bilingual"></x-t></b><span class="xs muted"><x-t ur="اصل اور ترجمہ آمنے سامنے کالموں میں" en="Source and translation in facing columns"></x-t></span></div></div>
+      <div class="opt"><span class="radio"></span><div class="grow col" style="--g:0"><b class="sm">PDF</b></div></div>
+      <div class="opt"><span class="radio"></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="ایڈیٹر میں کھولیں" en="Open in editor"></x-t></b><span class="xs muted"><x-t ur="مزید کام کے لیے دستاویز" en="As a document for further work"></x-t></span></div></div>
+      <div class="row between sm"><span><x-t ur="اصطلاحات کی فہرست آخر میں شامل کریں" en="Append the glossary"></x-t></span><span class="switch on"></span></div>
+      <div class="banner warning" style="padding:10px"><i data-i="info"></i><div class="t xs"><x-t ur="31 صفحات کا جائزہ ابھی باقی ہے۔ پھر بھی ایکسپورٹ ہو سکتا ہے۔" en="31 pages are not yet reviewed. You can still export."></x-t></div></div>
+      <button class="btn primary lg block"><i data-i="download"></i><x-t ur="ایکسپورٹ" en="Export"></x-t></button></div></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>ترتیب · جائزہ (ایک جوڑا ایک کارڈ) · ایکسپورٹ</h2>
+  <p class="cap">موبائل پر آمنے سامنے کالم جگہ نہیں رکھتے، اس لیے ہر جوڑا ایک کارڈ: اوپر اصل، نیچے ترجمہ۔ دائیں/بائیں سوائپ سے اگلا جوڑا؛ «جائزہ مکمل» بڑا بٹن۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="x"></i></button><b class="grow"><x-t ur="کتاب کا ترجمہ" en="Translate a book"></x-t></b></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:12px"><div class="card pad row" style="--g:10px"><span class="li" style="padding:0"><span class="ic ic-t"><i data-i="file"></i></span></span><div class="col grow" style="--g:0"><b class="sm">فتاویٰ_جلد2.pdf</b><span class="xs muted"><x-t ur="48 صفحات" en="48 pages"></x-t></span></div></div><div class="row" style="--g:8px"><span class="chip neutral" style="padding:6px 12px">اردو</span><i data-i="arrow" data-flip></i><span class="chip brand" style="padding:6px 12px">English</span></div><div class="segmented" style="inline-size:100%"><span class="grow center"><x-t ur="لفظی" en="Literal"></x-t></span><span class="on grow center"><x-t ur="متوازن" en="Balanced"></x-t></span><span class="grow center"><x-t ur="بامحاورہ" en="Idiomatic"></x-t></span></div><div class="li card"><span class="ic ic-o"><i data-i="list"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="اصطلاحات" en="Glossary"></x-t></b><span class="xs muted"><x-t ur="12 فولڈر سے · +3 تجویز" en="12 from folder · +3 suggested"></x-t></span></div><i data-i="chev-l" class="muted"></i></div><div class="row between sm"><span class="muted"><x-t ur="اندازہ" en="Estimate"></x-t></span><b><x-t ur="~25 منٹ · 18,400 ٹوکنز" en="~25 min · 18,400 tokens"></x-t></b></div></div>
+        <div class="p3 col" style="--g:8px;border-block-start:1px solid hsl(var(--border))"><button class="btn primary lg block"><x-t ur="ترجمہ شروع کریں" en="Start translation"></x-t></button><button class="btn block ghost"><i data-i="eye"></i><x-t ur="پہلے 2 صفحات کا نمونہ" en="Preview 2 pages"></x-t></button></div></div>
+    </div>
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><div class="col grow" style="--g:4px"><b class="sm"><x-t ur="جائزہ · 17/48" en="Review · 17/48"></x-t></b><div class="progress"><i style="inline-size:35%;background:hsl(var(--success))"></i></div></div><button class="icon-btn"><i data-i="download"></i></button></div>
+      <div class="viewport"><div class="scroll grow p3 col" style="--g:10px"><div class="card col" style="--g:0;overflow:hidden"><div class="p3" style="background:hsl(var(--muted)/.5)"><span class="xs muted"><x-t ur="اصل · ص 17" en="Source · p. 17"></x-t></span><div class="doc" style="font-size:16px;line-height:2">اور جو فقراء کے لیے زیادہ نافع ہو، اسی کا اعتبار کیا جائے گا۔</div></div><div class="p3"><span class="xs muted">English</span><div class="en">Whichever is more beneficial to the poor shall be taken into account.</div></div></div>
+        <div class="row" style="--g:6px;flex-wrap:wrap"><span class="chip neutral" style="padding:6px 10px"><x-t ur="زیادہ رواں" en="More fluent"></x-t></span><span class="chip neutral" style="padding:6px 10px"><x-t ur="زیادہ لفظی" en="More literal"></x-t></span><span class="chip neutral" style="padding:6px 10px"><x-t ur="مختصر" en="Shorter"></x-t></span><span class="chip neutral" style="padding:6px 10px"><i data-i="pen"></i><x-t ur="خود لکھیں" en="Edit"></x-t></span></div></div>
+        <div class="p3 row" style="border-block-start:1px solid hsl(var(--border))"><button class="btn lg"><i data-i="chev-r" data-flip></i></button><button class="btn primary lg grow"><i data-i="check"></i><x-t ur="جائزہ مکمل، اگلا" en="Reviewed, next"></x-t></button></div></div>
+    </div>
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="grow"><x-t ur="ایکسپورٹ" en="Export"></x-t></b></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:10px"><div class="opt"><span class="radio"></span><b class="sm"><x-t ur="Word · صرف ترجمہ" en="Word · translation only"></x-t></b></div><div class="opt on"><span class="radio"></span><div class="col" style="--g:0"><b class="sm"><x-t ur="Word · دو لسانی" en="Word · bilingual"></x-t></b><span class="xs muted"><x-t ur="اصل اور ترجمہ آمنے سامنے" en="Facing columns"></x-t></span></div></div><div class="opt"><span class="radio"></span><b class="sm">PDF</b></div><div class="opt"><span class="radio"></span><b class="sm"><x-t ur="ایڈیٹر میں کھولیں" en="Open in editor"></x-t></b></div><div class="row between sm"><span><x-t ur="اصطلاحات آخر میں" en="Append glossary"></x-t></span><span class="switch on"></span></div></div>
+        <div class="p3"><button class="btn primary lg block"><i data-i="download"></i><x-t ur="ایکسپورٹ" en="Export"></x-t></button></div></div>
+    </div>
+  </div>
+</section>
+</main>
+<script src="_v3.js"></script>
+</body>
+</html>
