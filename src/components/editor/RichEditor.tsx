@@ -8,6 +8,7 @@ import { isRtlText } from "@/utils/textUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useHeadingJump } from "./useHeadingJump";
+import { useEditorExtract } from "./useEditorExtract";
 import { useEditorAiActions, type SelectionBarActions } from "./useEditorAiActions";
 import { useTrackChanges, type TrackMode } from "./useTrackChanges";
 import { useFormatBrush } from "./useFormatBrush";
@@ -212,6 +213,8 @@ const RichEditor = ({
 
   // The outline for the folder index, and its "go to heading".
   useHeadingJump(editor);
+  // Extract text from a file into this document (`/` or drop on the editor).
+  const { extractAvailable, pickAndExtract } = useEditorExtract(editor);
 
   // Margin notes on this document (FR-1.3).
   const notes = useAnnotations(editor, documentId);
@@ -296,6 +299,7 @@ const RichEditor = ({
         mobileSheetText={mobileSheetText}
         setMobileSheetText={setMobileSheetText}
         handleAutoFormat={handleAutoFormat}
+        onExtract={extractAvailable ? pickAndExtract : undefined}
         pendingChunkedRun={pendingChunkedRun}
         dismissChunkedRun={dismissChunkedRun}
         confirmChunkedRun={confirmChunkedRun}

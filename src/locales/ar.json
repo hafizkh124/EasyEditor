@@ -2168,5 +2168,7 @@
   "extract.page": "صفحة",
   "extract.unsupported": "لا يمكن قراءة هذا النوع من الملفات هنا.",
   "extract.recording": "تسجيل",
-  "extract.mic_denied": "تعذّر فتح الميكروفون."
+  "extract.mic_denied": "تعذّر فتح الميكروفون.",
+  "extract.from_file": "من الملف: {name}",
+  "extract.inserted": "أُدرج النص في المستند"
 }

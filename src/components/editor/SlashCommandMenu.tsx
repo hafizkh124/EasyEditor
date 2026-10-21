@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import type { Editor } from "@tiptap/react";
 import {
   Sparkles, Eraser, CheckCheck, RefreshCw, FileText, BookmarkCheck,
-  AlignLeft, GraduationCap, Heart, Scissors, Wand2, Volume2, Settings2,
+  AlignLeft, GraduationCap, Heart, Scissors, Wand2, Volume2, Settings2, FileInput,
 } from "lucide-react";
 import { stripHarakat } from "@/utils/arabicUtils";
 import { useSkills } from "@/lib/skills/useSkills";
@@ -17,6 +17,8 @@ interface SlashCommandMenuProps {
   onNavigateSpeak?: () => void;
   /** A recipe picked from `/`: the editor opens its run dialog. */
   onRunRecipe?: (recipe: Recipe) => void;
+  /** `/متن نکالیں`: choose a file whose text goes in at the cursor. */
+  onExtract?: () => void;
 }
 
 interface CommandItemOption {
@@ -47,6 +49,7 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
   onAutoFormat,
   onNavigateSpeak,
   onRunRecipe,
+  onExtract,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -90,6 +93,16 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
       },
     }));
 
+    if (onExtract) {
+      items.push({
+        id: "extract",
+        label: "متن نکالیں (آڈیو، تصویر، PDF)",
+        category: "ٹولز",
+        icon: FileInput,
+        action: onExtract,
+      });
+    }
+
     if (onNavigateSpeak) {
       items.push({
         id: "speak",
@@ -111,7 +124,7 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
     }
 
     return items;
-  }, [forPlace, actions, onAutoFormat, onNavigateSpeak, onRunRecipe, openSkillsSettings]);
+  }, [forPlace, actions, onAutoFormat, onNavigateSpeak, onRunRecipe, onExtract, openSkillsSettings]);
 
   const filteredOptions = React.useMemo(() => {
     const cleanQuery = stripHarakat(query.trim().toLowerCase());

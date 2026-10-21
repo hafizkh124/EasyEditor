@@ -2168,5 +2168,7 @@
   "extract.page": "Page",
   "extract.unsupported": "This kind of file can't be read here.",
   "extract.recording": "Recording",
-  "extract.mic_denied": "The microphone could not be opened."
+  "extract.mic_denied": "The microphone could not be opened.",
+  "extract.from_file": "From file: {name}",
+  "extract.inserted": "The text is in the document"
 }

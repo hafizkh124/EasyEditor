@@ -2168,5 +2168,7 @@
   "extract.page": "صفحہ",
   "extract.unsupported": "اس قسم کی فائل یہاں نہیں پڑھی جا سکتی۔",
   "extract.recording": "ریکارڈنگ",
-  "extract.mic_denied": "مائیکروفون نہیں کھل سکا۔"
+  "extract.mic_denied": "مائیکروفون نہیں کھل سکا۔",
+  "extract.from_file": "فائل سے: {name}",
+  "extract.inserted": "متن دستاویز میں آ گیا"
 }

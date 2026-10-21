@@ -24,6 +24,8 @@ import { stripSuggestions } from "@/lib/editor/exporters";
 
 interface EditorMenusAndOverlaysProps {
   editor: Editor | null;
+  /** "Extract text here" — choose a file whose text goes in at the cursor. */
+  onExtract?: () => void;
   menusEnabled: boolean;
   isMobile: boolean;
   aiActions: SelectionBarActions;
@@ -72,6 +74,7 @@ export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({
   mobileSheetText,
   setMobileSheetText,
   handleAutoFormat,
+  onExtract,
   pendingChunkedRun,
   dismissChunkedRun,
   confirmChunkedRun,
@@ -113,7 +116,7 @@ export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({
             onOpenMobileSheet={setMobileSheetText}
           />
           {!isMobile && (
-            <SlashCommandMenu editor={editor} actions={aiActions} onAutoFormat={handleAutoFormat} onRunRecipe={setRecipeToRun} />
+            <SlashCommandMenu editor={editor} actions={aiActions} onAutoFormat={handleAutoFormat} onRunRecipe={setRecipeToRun} onExtract={onExtract} />
           )}
           <RecipeRunDialog recipe={recipeToRun} onClose={() => setRecipeToRun(null)} />
           <MobileTaskSheet
