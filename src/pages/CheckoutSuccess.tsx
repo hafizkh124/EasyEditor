@@ -24,8 +24,8 @@ const CheckoutSuccess = () => {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
       <Card className="w-full max-w-md border-border/60 shadow-lg">
         <CardContent className="pt-8 pb-6 text-center space-y-4">
-          <div className="mx-auto rounded-full bg-emerald-500/10 p-4 w-fit">
-            <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+          <div className="mx-auto rounded-full bg-success/10 p-4 w-fit">
+            <CheckCircle2 className="h-10 w-10 text-success" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">{t("checkout.payment_received")}</h1>
           <p className="text-muted-foreground text-sm">

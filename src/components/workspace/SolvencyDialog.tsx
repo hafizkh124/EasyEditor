@@ -38,7 +38,7 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-            <Coins className="h-5 w-5 text-amber-500" />
+            <Coins className="h-5 w-5 text-warning" />
             <span>{t("library.solvency_title", "Token cost and run confirmation")}</span>
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -61,7 +61,7 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">{t("library.required_cost", "Required token cost:")}</span>
-              <span className="font-bold text-amber-700 dark:text-amber-400">{t("library.tokens", "{count} tokens").replace("{count}", String(totalCost))}</span>
+              <span className="font-bold text-warning">{t("library.tokens", "{count} tokens").replace("{count}", String(totalCost))}</span>
             </div>
             <div className="flex justify-between items-center border-t border-border/50 pt-1.5">
               <span className="text-muted-foreground">{t("library.available_balance", "Available token balance:")}</span>

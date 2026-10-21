@@ -61,7 +61,7 @@ export const IngestProgressCard: React.FC<IngestProgressCardProps> = ({
               progress.status === "failed"
                 ? "bg-destructive"
                 : progress.done
-                ? "bg-emerald-600"
+                ? "bg-success"
                 : "bg-primary"
             }`}
             style={{ width: `${progress.progressPercent}%` }}

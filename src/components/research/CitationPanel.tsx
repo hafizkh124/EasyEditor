@@ -31,7 +31,7 @@ const Marked = ({ text, query }: { text: string; query?: string }) => (
   <>
     {highlightSegments(text, query).map((seg, i) =>
       seg.match ? (
-        <mark key={i} className="rounded-sm bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-700/50">
+        <mark key={i} className="rounded-sm bg-warning-soft px-0.5 text-inherit dark:bg-warning/50">
           {seg.text}
         </mark>
       ) : (

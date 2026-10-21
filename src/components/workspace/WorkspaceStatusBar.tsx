@@ -20,8 +20,8 @@ import { cn } from "@/lib/utils";
 type DotState = "on" | "stale" | "off";
 
 const DOT_CLS: Record<DotState, string> = {
-  on: "bg-emerald-500",
-  stale: "bg-amber-500",
+  on: "bg-success",
+  stale: "bg-warning",
   off: "bg-muted-foreground/40",
 };
 

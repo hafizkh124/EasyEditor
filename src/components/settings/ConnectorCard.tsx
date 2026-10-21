@@ -47,16 +47,16 @@ function statusView(
   if (!health) return { dot: "•", tone: "text-muted-foreground", label: "—" };
   if (health.ok === true) {
     const ms = typeof health.latencyMs === "number" && health.latencyMs > 0 ? ` · ${health.latencyMs}ms` : "";
-    return { dot: "🟢", tone: "text-emerald-600 dark:text-emerald-400", label: t("connectors.status.connected") + ms };
+    return { dot: "🟢", tone: "text-success", label: t("connectors.status.connected") + ms };
   }
   if (health.ok === false) {
-    return { dot: "🔴", tone: "text-red-600 dark:text-red-400", label: t("connectors.status.error"), hint: health.detail };
+    return { dot: "🔴", tone: "text-destructive", label: t("connectors.status.error"), hint: health.detail };
   }
   // ok === null. For an MCP connector that just isn't linked yet, that is a
   // one-time sign-in, NOT an error — a distinct amber "setup" state. Everything
   // else (bridged connectors) stays a quiet "checked when used".
   if (healthKind === "mcp") {
-    return { dot: "🟡", tone: "text-amber-600 dark:text-amber-500", label: t("connectors.status.setup"), hint: health.detail };
+    return { dot: "🟡", tone: "text-warning", label: t("connectors.status.setup"), hint: health.detail };
   }
   return { dot: "⚪", tone: "text-muted-foreground", label: t("connectors.status.unknown"), hint: health.detail };
 }
@@ -116,10 +116,10 @@ export function ConnectorCard({
         )}
       </div>
       {s.hint && s.dot === "🔴" && (
-        <p className="mt-1 ps-9 text-xs text-red-600 dark:text-red-400">{s.hint}</p>
+        <p className="mt-1 ps-9 text-xs text-destructive">{s.hint}</p>
       )}
       {s.hint && s.dot === "🟡" && (
-        <p className="mt-1 ps-9 text-xs text-amber-600 dark:text-amber-500">{s.hint}</p>
+        <p className="mt-1 ps-9 text-xs text-warning">{s.hint}</p>
       )}
     </div>
   );

@@ -25,7 +25,7 @@ const AgentArtifactPanel: React.FC<{ artifacts: ArtifactState[] }> = ({ artifact
               <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span className="truncate">{a.title}</span>
               {a.status !== "open" && (
-                <span className={`ms-auto rounded px-1 text-xs ${a.status === "final" ? "text-emerald-600" : "text-amber-600"}`}>
+                <span className={`ms-auto rounded px-1 text-xs ${a.status === "final" ? "text-success" : "text-warning"}`}>
                   {a.status}
                 </span>
               )}

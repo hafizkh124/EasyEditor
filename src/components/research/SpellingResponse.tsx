@@ -155,7 +155,7 @@ const SpellingResponse = ({ original, corrected, changes, t }: SpellingResponseP
               </del>
               <ins
                 title={t("research.spelling_now")}
-                className="text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 rounded px-1 mx-0.5 no-underline font-medium"
+                className="text-success bg-success/10 rounded px-1 mx-0.5 no-underline font-medium"
               >
                 {seg.corrected}
               </ins>

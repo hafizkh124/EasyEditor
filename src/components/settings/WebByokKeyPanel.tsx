@@ -151,7 +151,7 @@ export const WebByokKeyPanel: React.FC = () => {
             </SelectContent>
           </Select>
           {status.hasKey ? (
-            <span className="flex items-center gap-1 text-xs text-emerald-600">
+            <span className="flex items-center gap-1 text-xs text-success">
               <CheckCircle className="h-3.5 w-3.5" />
               {t("byok.web.saved_as", "محفوظ — …{last4}").replace("{last4}", status.lastFour ?? "")}
             </span>

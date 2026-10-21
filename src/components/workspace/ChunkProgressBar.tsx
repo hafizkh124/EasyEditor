@@ -36,7 +36,7 @@ export const ChunkProgressBar: React.FC<ChunkProgressBarProps> = ({ progress, on
             {t("library.parts_of", "{current} of {total} parts").replace("{current}", String(progress.current)).replace("{total}", String(progress.total))}
           </span>
           {progress.throttled && (
-            <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
+            <span className="flex items-center gap-1 text-xs text-warning">
               <Timer className="h-3.5 w-3.5" />
               {t("library.throttled", "Paused due to server rate limit")}
             </span>

@@ -22,7 +22,7 @@ const AiStatusBadge = ({ status, score, t }: { status: string | null; score: num
   if (!status || status === "none") return null;
   if (status === "auto_approved") {
     return (
-      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 gap-1">
+      <Badge className="bg-success/15 text-success border-success/30 gap-1">
         <Sparkles className="h-3 w-3" />
         {t("admin.ai_auto_approved")} {score !== null && `(${score}%)`}
       </Badge>
@@ -30,7 +30,7 @@ const AiStatusBadge = ({ status, score, t }: { status: string | null; score: num
   }
   if (status === "manual_review") {
     return (
-      <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 gap-1">
+      <Badge className="bg-warning/15 text-warning border-warning/30 gap-1">
         <AlertTriangle className="h-3 w-3" />
         {t("admin.ai_manual_review")} {score !== null && `(AI: ${score}%)`}
       </Badge>
@@ -125,7 +125,7 @@ const UpgradeRequests = ({ requests, loading, onApprove, onReject, tierLabel }: 
                             <TooltipTrigger asChild>
                               <button
                                 type="button"
-                                className="text-xs text-amber-700 dark:text-amber-400 underline-offset-2 hover:underline"
+                                className="text-xs text-warning underline-offset-2 hover:underline"
                               >
                                 {t("admin.ai_flags_hover").replace("{n}", String(reasons.length))}
                               </button>

@@ -31,8 +31,20 @@
  *                       use `dvh`/`svh`. Same grandfather pattern via
  *                       `LEGACY_VIEWPORT`.
  *
+ *   STATUS_COLOR_DIRS - all of src/components and src/pages (UI/UX 2026,
+ *                    audit S-02). A raw palette status colour
+ *                    (`text-emerald-600`, `bg-amber-500/10`, `border-red-300`…)
+ *                    is a HARD violation: use the semantic families
+ *                    `success` / `warning` / `weak` / `info` / `destructive`
+ *                    (with `-soft` and `-border`), which pair light and dark
+ *                    by themselves and whose contrast is asserted in
+ *                    src/test/tokenContrast.test.ts. Decorative hues with no
+ *                    status meaning (violet/purple/pink, gradient stops) are
+ *                    not covered.
+ *
  * One tier of enforcement:
- *   HARD (exit 1)  - font-serif, border-2, physical-direction, viewport.
+ *   HARD (exit 1)  - font-serif, border-2, physical-direction, viewport,
+ *                     raw status colour.
  *   SOFT (warn)    - the §4.1 spacing vocabulary, and a fixed pixel/large
  *                     width (`w-[400px]`, `w-64`+) with no `sm:`/`md:`/`lg:`
  *                     anywhere on the line. Warn-only: a fixed width is
@@ -49,6 +61,11 @@ import { pathToFileURL } from "node:url";
 
 export const CHROME_DIRS = ["src/components/workspace", "src/components/layout", "src/components/shamela", "src/components/reader"];
 export const APP_WIDE_DIRS = [...CHROME_DIRS, "src/components/research", "src/components/editor", "src/pages"];
+export const STATUS_COLOR_DIRS = ["src/components", "src/pages"];
+
+// A raw Tailwind palette class for a hue that carries status meaning
+// (green = success, amber = warning, orange = weak, blue = info, red = danger).
+const RAW_STATUS_COLOR = /(?<![\w-])(?:bg|text|border|ring|fill|stroke|outline|divide|decoration)-(?:red|rose|green|emerald|lime|teal|amber|yellow|orange|blue|sky|cyan|indigo)-\d{2,3}\b/;
 
 // §4.1 allowed: gap-1/1.5/2/3/4/6 and p-2/3/4/6 (plus px/py halves for tight chips).
 // Flag off-vocabulary paddings (5/7/9/11+), skipping empty-state vertical centering.
@@ -129,9 +146,20 @@ function relFromSrcOf(filePath) {
  * Passing the same list for both collapses this back to the pre-M10 shape,
  * which is exactly what the existing single-argument callers do.
  */
-export function scanChromeDirs(chromeDirs = CHROME_DIRS, appWideDirs = APP_WIDE_DIRS) {
+export function scanChromeDirs(chromeDirs = CHROME_DIRS, appWideDirs = APP_WIDE_DIRS, statusColorDirs = STATUS_COLOR_DIRS) {
   const hard = [];
   const soft = [];
+
+  for (const dir of statusColorDirs) {
+    if (!statSync(dir, { throwIfNoEntry: false })) continue;
+    for (const file of walk(dir)) {
+      const rel = file.split(/[\\/]/).slice(-4).join("/");
+      stripComments(readFileSync(file, "utf8")).split("\n").forEach((line, i) => {
+        const raw = line.match(RAW_STATUS_COLOR);
+        if (raw) hard.push({ file: rel, line: i + 1, label: `raw status colour '${raw[0]}' (use success/warning/weak/info/destructive)`, text: line.trim().slice(0, 80) });
+      });
+    }
+  }
   const chromeSet = new Set(chromeDirs.map((d) => d.replace(/\\/g, "/")));
 
   for (const dir of appWideDirs) {

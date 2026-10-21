@@ -78,7 +78,7 @@ export const AdvancedVoicesPanel: React.FC = () => {
         <CardTitle className="text-xl font-bold flex items-center justify-between">
           <span>اعلیٰ درجے کی آوازیں (Advanced Voices Add-on)</span>
           {sidecar.installed ? (
-            <Badge variant="default" className="bg-green-600">فعال (Active)</Badge>
+            <Badge variant="default" className="bg-success">فعال (Active)</Badge>
           ) : (
             <Badge variant="secondary">غیر انسٹال شدہ (Optional Add-on)</Badge>
           )}

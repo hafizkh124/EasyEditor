@@ -156,7 +156,7 @@ export const CommandPalette: React.FC = () => {
               }}
               className="flex items-center gap-2 cursor-pointer"
             >
-              <Folder className="h-4 w-4 text-amber-500 shrink-0" />
+              <Folder className="h-4 w-4 text-warning shrink-0" />
               <span className="truncate font-medium">{p.title}</span>
               <span className="text-xs text-muted-foreground capitalize">({p.kind})</span>
             </CommandItem>
@@ -168,12 +168,12 @@ export const CommandPalette: React.FC = () => {
         {/* Quick Actions */}
         <CommandGroup heading={t("library.cmd_actions", "Actions")}>
           <CommandItem onSelect={handleCreateNewDoc} className="cursor-pointer gap-2">
-            <Plus className="h-4 w-4 text-emerald-500" />
+            <Plus className="h-4 w-4 text-success" />
             <span>{t("library.cmd_new_document", "New Document")}</span>
           </CommandItem>
 
           <CommandItem onSelect={handleCreateNewProject} className="cursor-pointer gap-2">
-            <FolderPlus className="h-4 w-4 text-amber-500" />
+            <FolderPlus className="h-4 w-4 text-warning" />
             <span>{t("library.cmd_new_project", "New Project")}</span>
           </CommandItem>
 
@@ -220,7 +220,7 @@ export const CommandPalette: React.FC = () => {
             }}
             className="cursor-pointer gap-2"
           >
-            <Search className="h-4 w-4 text-blue-500" />
+            <Search className="h-4 w-4 text-info" />
             <span>{t("library.cmd_open_research", "Open Research Tab")}</span>
           </CommandItem>
 

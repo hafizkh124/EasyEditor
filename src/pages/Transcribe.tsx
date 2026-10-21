@@ -189,7 +189,7 @@ const Transcribe = () => {
               </SelectContent>
             </Select>
             {(sttLanguage === "sd" || sttLanguage === "bal") && (
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 text-center">
+              <p className="text-xs text-warning mt-1 text-center">
                 {t("stt.low_accuracy_warning")}
               </p>
             )}

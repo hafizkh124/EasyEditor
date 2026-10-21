@@ -60,14 +60,14 @@ export function JkhssnConnectPanel() {
   }
 
   const badge = avail.available
-    ? { label: t("jkhssn.status_ready", "متصل"), cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" }
+    ? { label: t("jkhssn.status_ready", "متصل"), cls: "bg-success/10 text-success border-success/30" }
     : rebuilding
-      ? { label: t("jkhssn.status_building", "انڈیکس بن رہا ہے"), cls: "bg-amber-500/10 text-amber-600 border-amber-500/30" }
+      ? { label: t("jkhssn.status_building", "انڈیکس بن رہا ہے"), cls: "bg-warning/10 text-warning border-warning/30" }
       : { label: t("jkhssn.status_off", "غیر متصل"), cls: "bg-muted text-muted-foreground border-border" };
 
   const row = (ok: boolean | null, label: string) => (
     <div className="flex items-center gap-2 text-xs">
-      {ok === true ? <CheckCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> : ok === false ? <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" /> : <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40 shrink-0" />}
+      {ok === true ? <CheckCircle className="h-3.5 w-3.5 text-success shrink-0" /> : ok === false ? <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" /> : <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40 shrink-0" />}
       <span>{label}</span>
     </div>
   );

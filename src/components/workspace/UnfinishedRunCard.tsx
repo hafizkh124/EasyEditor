@@ -23,12 +23,12 @@ export const UnfinishedRunCard: React.FC<UnfinishedRunCardProps> = ({
 
   return (
     <div
-      className="border-t border-amber-500/30 bg-amber-500/10 px-3 py-2 space-y-2 text-xs"
+      className="border-t border-warning/30 bg-warning/10 px-3 py-2 space-y-2 text-xs"
       role="alert"
     >
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 min-w-0">
-          <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-400 shrink-0" />
+          <AlertCircle className="h-4 w-4 text-warning shrink-0" />
           <span className="font-medium text-foreground truncate">
             {t("library.unfinished_run", "Unfinished run: {slug} ({done} of {total} complete)")
               .replace("{slug}", run.task_slug)
@@ -42,7 +42,7 @@ export const UnfinishedRunCard: React.FC<UnfinishedRunCardProps> = ({
             <Button
               size="sm"
               variant="default"
-              className="h-6 px-2 text-xs gap-1 bg-amber-600 hover:bg-amber-700 text-white"
+              className="h-6 px-2 text-xs gap-1 bg-warning hover:bg-warning/90 text-warning-foreground"
               onClick={onResume}
             >
               <Play className="h-3.5 w-3.5" />
@@ -52,7 +52,7 @@ export const UnfinishedRunCard: React.FC<UnfinishedRunCardProps> = ({
           <Button
             size="sm"
             variant="outline"
-            className="h-6 px-2 text-xs gap-1 border-amber-500/40 text-amber-700 hover:bg-amber-500/20"
+            className="h-6 px-2 text-xs gap-1 border-warning/40 text-warning hover:bg-warning/20"
             onClick={onDiscard}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -61,7 +61,7 @@ export const UnfinishedRunCard: React.FC<UnfinishedRunCardProps> = ({
         </div>
       </div>
       {!canResume && (
-        <p className="text-xs text-amber-700/80">
+        <p className="text-xs text-warning/80">
           {t("library.cannot_resume", "The document text has changed — resuming at the previous position is not possible.")}
         </p>
       )}

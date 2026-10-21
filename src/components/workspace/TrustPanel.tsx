@@ -25,7 +25,7 @@ export const TrustPanel: React.FC = () => {
         <Tabs value={view} onValueChange={(v) => setView(v as "trust" | "tasks")}>
           <TabsList className="grid grid-cols-2 h-9 bg-muted p-0.5">
             <TabsTrigger value="trust" className="text-xs gap-1.5 py-0 h-full">
-              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-success" />
               {t("workbench.trust", "Trust")}
             </TabsTrigger>
             <TabsTrigger value="tasks" className="text-xs gap-1.5 py-0 h-full">

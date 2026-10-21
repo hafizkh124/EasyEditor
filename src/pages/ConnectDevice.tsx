@@ -102,7 +102,7 @@ export default function ConnectDevice() {
         <CardContent className="space-y-4 pt-6 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             {phase === "done" ? (
-              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              <CheckCircle2 className="h-6 w-6 text-success" />
             ) : (
               <MonitorSmartphone className="h-6 w-6 text-primary" />
             )}

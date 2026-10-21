@@ -29,7 +29,7 @@ export const AnnotationMark = Mark.create<AnnotationMarkAttributes>({
           }
           return {
             "data-annotation-id": attributes.annotationId,
-            class: "annotation-highlight bg-amber-500/20 underline decoration-amber-500/50 cursor-pointer",
+            class: "annotation-highlight bg-warning/20 underline decoration-warning/50 cursor-pointer",
           };
         },
       },

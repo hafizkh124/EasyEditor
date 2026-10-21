@@ -34,8 +34,8 @@ export function classifyHadithGrade(grade: string | null | undefined): HadithGra
 }
 
 export const GRADE_FAMILY_STYLE: Record<HadithGradeFamily, { chip: string; label: string }> = {
-  verified: { chip: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20", label: "مصحح" },
-  authenticated: { chip: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20", label: "موثق" },
-  weak: { chip: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20", label: "ضعیف" },
-  forged: { chip: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20", label: "مکذوب" },
+  verified: { chip: "bg-success-soft text-success border-success-border", label: "مصحح" },
+  authenticated: { chip: "bg-warning-soft text-warning border-warning-border", label: "موثق" },
+  weak: { chip: "bg-weak-soft text-weak border-weak-border", label: "ضعیف" },
+  forged: { chip: "bg-destructive-soft text-destructive border-destructive-border", label: "مکذوب" },
 };

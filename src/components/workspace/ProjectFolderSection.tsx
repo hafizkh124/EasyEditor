@@ -61,7 +61,7 @@ export const ProjectFolderSection: React.FC = () => {
       ) : (
         <>
           {pf.externalChange && (
-            <div className="flex items-center gap-1.5 rounded border border-amber-500/40 bg-amber-500/5 p-1.5 text-xs text-amber-700 dark:text-amber-400">
+            <div className="flex items-center gap-1.5 rounded border border-warning/40 bg-warning/5 p-1.5 text-xs text-warning">
               <AlertTriangle className="h-3 w-3 shrink-0" />
               <span className="flex-1 truncate">
                 {t("projectfolder.external_change", "“{name}” changed outside the app").replace("{name}", pf.externalChange)}

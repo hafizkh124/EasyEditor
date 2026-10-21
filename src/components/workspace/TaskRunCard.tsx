@@ -46,10 +46,10 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
     percent === null
       ? null
       : percent >= 70
-        ? { label: t("library.confidence_high", "High confidence"), cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" }
+        ? { label: t("library.confidence_high", "High confidence"), cls: "bg-success/10 text-success border-success/20" }
         : percent >= 40
-          ? { label: t("library.confidence_medium", "Medium confidence"), cls: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20" }
-          : { label: t("library.confidence_low", "Low confidence — check"), cls: "bg-red-500/10 text-red-600 border-red-500/20" };
+          ? { label: t("library.confidence_medium", "Medium confidence"), cls: "bg-warning/10 text-warning border-warning/20" }
+          : { label: t("library.confidence_low", "Low confidence — check"), cls: "bg-destructive/10 text-destructive border-destructive/20" };
 
   const notes: string[] = [];
   if (summary.failed > 0) notes.push(t("library.parts_failed", "{count} parts failed").replace("{count}", String(summary.failed)));
@@ -114,7 +114,7 @@ export const TaskRunCard: React.FC<TaskRunCardProps> = ({ summary, onUndo, onDis
 
       {notes.length > 0 && (
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" />
           {notes.join("، ")}
         </p>
       )}

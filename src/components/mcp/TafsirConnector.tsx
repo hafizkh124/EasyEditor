@@ -48,7 +48,7 @@ export function TafsirConnector() {
           </RadioGroup>
 
           {mode === "local" && (
-            <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+            <p className="flex items-start gap-1.5 text-xs text-warning">
               <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               مقامی موڈ کے لیے Python اور uv درکار ہیں؛ اندراج کا بڑا ڈیٹا بیس تیسرے مرحلے میں ہوگا۔
             </p>

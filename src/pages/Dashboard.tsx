@@ -114,7 +114,7 @@ const Dashboard = () => {
               lifecycle.status === "expired"
                 ? "border-destructive/40 bg-destructive/5"
                 : lifecycle.status === "expiring_soon"
-                ? "border-amber-400/40 bg-amber-50 dark:bg-amber-950/20"
+                ? "border-warning/40 bg-warning-soft"
                 : undefined
             }
           >
@@ -123,7 +123,7 @@ const Dashboard = () => {
                 {lifecycle.status === "expired" || lifecycle.status === "expiring_soon" ? (
                   <AlertTriangle
                     className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
-                      lifecycle.status === "expired" ? "text-destructive" : "text-amber-700 dark:text-amber-400"
+                      lifecycle.status === "expired" ? "text-destructive" : "text-warning"
                     }`}
                   />
                 ) : (

@@ -51,7 +51,7 @@ export const PENDING_CHECKOUT_KEY = "pendingCheckoutPlan";
 export const PENDING_CHECKOUT_METHOD_KEY = "pendingCheckoutMethod";
 
 const PLAN_STYLE: Record<PaidTier, { icon: typeof Zap; iconClass: string; bg: string }> = {
-  basic: { icon: Zap, iconClass: "text-blue-500", bg: "bg-blue-500/10" },
+  basic: { icon: Zap, iconClass: "text-info", bg: "bg-info/10" },
   pro: { icon: Crown, iconClass: "text-primary", bg: "bg-primary/15" },
   ultra: { icon: Star, iconClass: "text-purple-500", bg: "bg-purple-500/10" },
 };
@@ -272,7 +272,7 @@ const Landing = () => {
           <ul className="mx-auto grid max-w-4xl gap-3 sm:grid-cols-2">
             {DESKTOP.points.map((point) => (
               <li key={point.en} className="flex items-start gap-2 rounded-lg border border-border/60 bg-background p-4 text-sm">
-                <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
+                <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-success" />
                 <span>{point[lang]}</span>
               </li>
             ))}
@@ -320,7 +320,7 @@ const Landing = () => {
       </section>
 
       {/* Audiences */}
-      <section id="audiences" className="border-y border-border/60 bg-muted/30 py-16">
+      <section id="audiences" className="border-y border-border/60 bg-muted/60 py-16">
         <div className="mx-auto max-w-6xl px-4">
           <h2 className="mb-10 text-center text-3xl font-bold tracking-tight">{AUDIENCES.title[lang]}</h2>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -370,7 +370,7 @@ const Landing = () => {
                   )}
                   {comingSoon && (
                     <div className="absolute inset-x-0 top-0 flex justify-center">
-                      <span className="rounded-b-lg bg-amber-500 px-4 py-1 text-xs font-semibold text-white">
+                      <span className="rounded-b-lg bg-warning px-4 py-1 text-xs font-semibold text-warning-foreground">
                         {t("pricing.coming_soon")}
                       </span>
                     </div>
@@ -388,20 +388,20 @@ const Landing = () => {
                         {" "}/ {t("pricing.per_month")}
                       </span>
                     </div>
-                    <div className="mb-4 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    <div className="mb-4 inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
                       <Zap className="h-3 w-3" /> {language === "ar" ? "تحقّق فوري من النظام" : language === "ur" ? "سسٹم سے فوری تصدیق" : "Instant system verification"}
                     </div>
                     <ul className="space-y-2 text-start">
                       {plan.features.map((f, idx) => (
                         <li key={idx} className="flex items-start gap-2 text-sm">
                           {f.comingSoon ? (
-                            <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
+                            <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
                           ) : (
-                            <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
+                            <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-success" />
                           )}
                           <span className="text-foreground/90 flex-1">{f.label}</span>
                           {f.comingSoon && (
-                            <Badge variant="outline" className="text-xs py-0 px-1.5 border-amber-400/60 text-amber-700 dark:text-amber-400">
+                            <Badge variant="outline" className="text-xs py-0 px-1.5 border-warning/60 text-warning">
                               {t("pricing.coming_soon")}
                             </Badge>
                           )}

@@ -163,7 +163,7 @@ export const AiReaderPanel: React.FC = () => {
 
       {/* No-key hint */}
       {noKey && (
-        <div className="mx-2 mt-2 flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300 shrink-0">
+        <div className="mx-2 mt-2 flex items-start gap-1.5 rounded-md border border-warning/30 bg-warning/10 p-2 text-xs text-warning shrink-0">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span className="flex-1">
             {t("reader.ai.key_required")}

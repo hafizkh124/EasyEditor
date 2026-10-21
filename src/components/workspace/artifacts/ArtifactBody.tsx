@@ -58,8 +58,8 @@ export const ArtifactBody: React.FC<{ artifact: ArtifactState; compact?: boolean
             <>
               <span className="font-mono text-muted-foreground">{c.marker}</span>
               <span className="flex-1">{c.reference}</span>
-              {c.supported === true && <span className="text-emerald-600" title={t("agent.artifact_supported", "supported")}>✓</span>}
-              {c.supported === false && <span className="text-amber-600" title={t("agent.artifact_unverified", "unverified")}>?</span>}
+              {c.supported === true && <span className="text-success" title={t("agent.artifact_supported", "supported")}>✓</span>}
+              {c.supported === false && <span className="text-warning" title={t("agent.artifact_unverified", "unverified")}>?</span>}
               {c.grade && (() => {
                 const fam = classifyHadithGrade(c.grade);
                 const style = fam ? GRADE_FAMILY_STYLE[fam] : null;

@@ -29,22 +29,22 @@ describe("CitationBadge grading chip", () => {
     render(<CitationBadge domain="dorar" citationRef={{ book: "Sahih Bukhari", grade: "إسناده صحيح" }} />);
     const chip = screen.getByText("مصحح");
     expect(chip).toBeInTheDocument();
-    expect(chip.className).toContain("emerald");
+    expect(chip.className).toContain("text-success");
   });
 
   it("shows a forged hadith as the مکذوب chip, not a neutral one", () => {
     render(<CitationBadge domain="dorar" citationRef={{ book: "X", grade: "حديث موضوع" }} />);
     const chip = screen.getByText("مکذوب");
-    expect(chip.className).toContain("red");
+    expect(chip.className).toContain("text-destructive");
   });
 
   it("falls back to the raw source text, uncoloured, when the grading can't be confidently classified", () => {
     render(<CitationBadge domain="dorar" citationRef={{ book: "X", grade: "رواه الطبراني" }} />);
     const chip = screen.getByText("رواه الطبراني");
-    expect(chip.className).not.toContain("emerald");
-    expect(chip.className).not.toContain("red");
-    expect(chip.className).not.toContain("amber");
-    expect(chip.className).not.toContain("orange");
+    expect(chip.className).not.toContain("text-success");
+    expect(chip.className).not.toContain("text-destructive");
+    expect(chip.className).not.toContain("text-warning");
+    expect(chip.className).not.toContain("text-weak");
   });
 
   it("always discloses the grading source in the chip's tooltip", () => {

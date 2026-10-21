@@ -183,11 +183,11 @@ export const ByokKeyPanel: React.FC = () => {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-sm">{p.label}</span>
-                  {p.freeTier && <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">مفت tier</span>}
+                  {p.freeTier && <span className="text-xs px-1.5 py-0.5 rounded bg-success-soft text-success">مفت tier</span>}
                   {isVerified ? (
-                    <span className="flex items-center gap-1 text-xs text-emerald-600"><ShieldCheck className="h-3.5 w-3.5" />تصدیق شدہ</span>
+                    <span className="flex items-center gap-1 text-xs text-success"><ShieldCheck className="h-3.5 w-3.5" />تصدیق شدہ</span>
                   ) : (
-                    <span className="flex items-center gap-1 text-xs text-amber-600"><AlertTriangle className="h-3.5 w-3.5" />غیر تصدیق شدہ</span>
+                    <span className="flex items-center gap-1 text-xs text-warning"><AlertTriangle className="h-3.5 w-3.5" />غیر تصدیق شدہ</span>
                   )}
                   <label className="flex items-center gap-1 text-xs">
                     <input type="radio" name="loop-provider" checked={isActive} onChange={() => selectActive(p.id)} aria-label={`${p.label} — ایجنٹ لوپ`} />
@@ -203,7 +203,7 @@ export const ByokKeyPanel: React.FC = () => {
                   </label>
                 </div>
                 {st.hasKey ? (
-                  <span className="flex items-center gap-1 text-xs text-emerald-600">
+                  <span className="flex items-center gap-1 text-xs text-success">
                     <CheckCircle className="h-3.5 w-3.5" />
                     {st.fromEnv ? 'env سے' : `…${st.lastFour}`}
                   </span>
@@ -219,7 +219,7 @@ export const ByokKeyPanel: React.FC = () => {
               </div>
 
               {p.privacyNote && (
-                <p className="text-xs text-amber-700 bg-amber-50 rounded p-2 leading-relaxed">{p.privacyNote}</p>
+                <p className="text-xs text-warning bg-warning-soft rounded p-2 leading-relaxed">{p.privacyNote}</p>
               )}
 
               <div className="relative">

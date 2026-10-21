@@ -202,7 +202,7 @@ const UserTable = ({
                               href={buildWhatsAppLink(u.whatsapp_number)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-green-700 hover:underline font-mono"
+                              className="flex items-center gap-1 text-success hover:underline font-mono"
                             >
                               <MessageCircle className="h-3 w-3" />
                               {u.whatsapp_number}
@@ -226,7 +226,7 @@ const UserTable = ({
                           </span>
                           {(u.referred_by || (u.referral_credits ?? 0) > 0) && (
                             <span className="flex items-center gap-1">
-                              <Gift className="h-3 w-3 text-green-600" />
+                              <Gift className="h-3 w-3 text-success" />
                               {u.referred_by ? (t("admin.referred_user", "Referred")) : ""}
                               {(u.referral_credits ?? 0) > 0 ? ` • Credits: ${u.referral_credits}` : ""}
                             </span>
@@ -250,7 +250,7 @@ const UserTable = ({
                               </>
                             )}
                             {lifecycle.status === "expiring_soon" && (
-                              <Badge variant="outline" className="text-xs text-amber-700 dark:text-amber-400 border-amber-400">
+                              <Badge variant="outline" className="text-xs text-warning border-warning-border">
                                 {(t("admin.expiring_in", "Expires in {n}d")).replace("{n}", String(lifecycle.daysRemaining ?? 0))}
                               </Badge>
                             )}
@@ -276,7 +276,7 @@ const UserTable = ({
                                 size="sm"
                                 variant="outline"
                                 onClick={() => onRenew(u.user_id)}
-                                className="text-green-700 border-green-300 hover:bg-green-50 h-7 text-xs"
+                                className="text-success border-success-border hover:bg-success-soft h-7 text-xs"
                               >
                                 <RefreshCw className="h-3.5 w-3.5 me-1" />
                                 {t("admin.renew", "Renew")}

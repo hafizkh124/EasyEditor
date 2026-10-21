@@ -30,8 +30,8 @@ export const EntityMergeSuggestions: React.FC<EntityMergeSuggestionsProps> = ({
   };
 
   return (
-    <div className="mb-2 rounded-md border border-amber-500/25 bg-amber-500/5 p-2 space-y-1.5">
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+    <div className="mb-2 rounded-md border border-warning/25 bg-warning/5 p-2 space-y-1.5">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-warning">
         <AlertCircle className="h-3.5 w-3.5" />
         <span>{t("library.possible_duplicates", "Possible duplicates ({count})").replace("{count}", String(suggestions.length))}</span>
       </div>

@@ -58,12 +58,12 @@ const AccountRejected = () => {
               </div>
             )}
 
-            <div className="rounded-md border border-green-500/30 bg-green-500/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+            <div className="rounded-md border border-success/30 bg-success/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
               <div>
                 <p className="font-medium text-sm">{t("rejected.appeal_label", "Appeal via WhatsApp")}</p>
                 <p className="text-xs text-muted-foreground font-mono">+{WHATSAPP_CONTACT_NUMBER}</p>
               </div>
-              <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
+              <Button asChild className="bg-success hover:bg-success/90 text-success-foreground">
                 <a
                   href={`${WHATSAPP_CONTACT_URL}?text=${appealMessage}`}
                   target="_blank"

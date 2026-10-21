@@ -161,8 +161,8 @@ export function TafsirConnectPanel({ mode, onConnectedChange }: TafsirConnectPan
   };
 
   const statusIcon = (ok?: boolean) =>
-    ok ? <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
-        : <XCircle className="h-4 w-4 text-red-500 shrink-0" />;
+    ok ? <CheckCircle className="h-4 w-4 text-success shrink-0" />
+        : <XCircle className="h-4 w-4 text-destructive shrink-0" />;
 
   const native = hasTafsirNative();
 
@@ -302,11 +302,11 @@ export function TafsirConnectPanel({ mode, onConnectedChange }: TafsirConnectPan
                 )}
               </div>
               {diag.errors.length > 0 && (
-                <div className="p-2.5 rounded border border-red-500/30 bg-red-500/5 space-y-1">
-                  <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                <div className="p-2.5 rounded border border-destructive/30 bg-destructive/5 space-y-1">
+                  <span className="text-xs font-semibold text-destructive">
                     مسائل ({diag.errors.length})
                   </span>
-                  <ul className="text-xs text-red-600/80 dark:text-red-400/80 list-disc list-inside space-y-0.5">
+                  <ul className="text-xs text-destructive/80 list-disc list-inside space-y-0.5">
                     {diag.errors.map((e, i) => <li key={i}>{e}</li>)}
                   </ul>
                 </div>

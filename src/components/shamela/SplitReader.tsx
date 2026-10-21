@@ -135,7 +135,7 @@ const SplitPane: React.FC<SplitPaneProps> = React.memo(function SplitPane({
           title={progress.isFavorite ? t("reader.remove_favorite") : t("reader.add_favorite")}
           aria-label={progress.isFavorite ? t("reader.remove_favorite") : t("reader.add_favorite")}
         >
-          <Star className={cn("h-3.5 w-3.5", progress.isFavorite && "text-amber-500 fill-current")} />
+          <Star className={cn("h-3.5 w-3.5", progress.isFavorite && "text-warning fill-current")} />
         </Button>
         {onClosePane && (
           <Button variant="ghost" size="icon" className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0" onClick={onClosePane} title={t("reader.remove_pane")} aria-label={t("reader.remove_pane")}>

@@ -161,11 +161,11 @@ export function ShamelaBridgeConnectPanel() {
           <div className="p-3 rounded-lg border border-border bg-muted/60 space-y-2 text-xs">
             <div className="flex items-center justify-between">
               <span className="font-medium text-foreground">{t("shamela.bridge.catalog_books")}</span>
-              <span className="text-emerald-600 font-semibold">{catalogBooks?.toLocaleString() ?? "—"}</span>
+              <span className="text-success font-semibold">{catalogBooks?.toLocaleString() ?? "—"}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="font-medium text-foreground">{t("shamela.bridge.downloaded_books")}</span>
-              <span className="text-emerald-600 font-semibold">{downloadedBooks?.toLocaleString() ?? "—"}</span>
+              <span className="text-success font-semibold">{downloadedBooks?.toLocaleString() ?? "—"}</span>
             </div>
           </div>
         )}

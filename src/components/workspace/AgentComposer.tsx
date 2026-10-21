@@ -157,7 +157,7 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
           open `a.pf.chapters` is also empty, but that isn't "an empty
           folder", it's "no folder yet" (the hint below already covers that). */}
       {a.pf.folder && a.pf.chapters.length === 0 && (
-        <div className="flex items-center gap-1.5 rounded border border-amber-500/40 bg-amber-500/5 p-2 m-3 mb-0 text-xs text-amber-700 dark:text-amber-400 shrink-0">
+        <div className="flex items-center gap-1.5 rounded border border-warning/40 bg-warning/5 p-2 m-3 mb-0 text-xs text-warning shrink-0">
           {t("agent.no_chapters", "This folder has no .docx or .rtf files yet — the agent has nothing to read. Add chapter files, or pick a different folder.")}
         </div>
       )}
@@ -426,7 +426,7 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
           <span className="opacity-40">·</span>
           <span className="shrink-0">{t("agent.pill_chapters", "{n} ch").replace("{n}", String(a.pf.chapters.length))}</span>
           {(() => { const off = CONNECTORS.filter((c) => !(a.connectorState?.[c.id] ?? isConnectorOn(a.connectors, c.id))).length; return off > 0 ? (
-            <><span className="opacity-40">·</span><span className="shrink-0 text-amber-600">{t("agent.pill_connectors_off", "{n} source off").replace("{n}", String(off))}</span></>
+            <><span className="opacity-40">·</span><span className="shrink-0 text-warning">{t("agent.pill_connectors_off", "{n} source off").replace("{n}", String(off))}</span></>
           ) : null; })()}
           <span className="opacity-40 shrink-0">·</span>
           {/* QA finding: `truncate` alone does nothing on a flex item — a

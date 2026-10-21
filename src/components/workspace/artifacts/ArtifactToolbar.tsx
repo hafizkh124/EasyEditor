@@ -103,7 +103,7 @@ export const ArtifactToolbar: React.FC<{
     <div className="flex items-center gap-0.5">
       {ws && (
         <button className={btn} onClick={doInsert} title={insertLabel} aria-label={insertLabel}>
-          {inserted ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <FileInput className="h-3.5 w-3.5" />}
+          {inserted ? <Check className="h-3.5 w-3.5 text-success" /> : <FileInput className="h-3.5 w-3.5" />}
         </button>
       )}
       {isVisual && (
@@ -140,7 +140,7 @@ export const ArtifactToolbar: React.FC<{
         </button>
       )}
       <button className={btn} onClick={() => void doCopy()} title={copyLabel} aria-label={copyLabel}>
-        {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <ClipboardCopy className="h-3.5 w-3.5" />}
+        {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <ClipboardCopy className="h-3.5 w-3.5" />}
       </button>
       {onDismiss && (
         <button className={btn} onClick={onDismiss} title={dismissLabel} aria-label={dismissLabel}>

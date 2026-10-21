@@ -89,10 +89,10 @@ export const TrustTab: React.FC = () => {
     confidencePercent === null
       ? null
       : confidencePercent >= 70
-        ? { label: t("library.confidence_high", "High confidence"), cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" }
+        ? { label: t("library.confidence_high", "High confidence"), cls: "bg-success/10 text-success border-success/20" }
         : confidencePercent >= 40
-          ? { label: t("library.confidence_medium", "Medium confidence"), cls: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20" }
-          : { label: t("library.confidence_low", "Low confidence — check"), cls: "bg-red-500/10 text-red-600 border-red-500/20" };
+          ? { label: t("library.confidence_medium", "Medium confidence"), cls: "bg-warning/10 text-warning border-warning/20" }
+          : { label: t("library.confidence_low", "Low confidence — check"), cls: "bg-destructive/10 text-destructive border-destructive/20" };
 
   return (
     <div className="flex flex-col h-full bg-background p-3 space-y-3">
@@ -130,7 +130,7 @@ export const TrustTab: React.FC = () => {
               )}
             </div>
             <p className="text-xs text-muted-foreground flex items-center gap-1 pt-1">
-              <Info className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+              <Info className="h-3.5 w-3.5 shrink-0 text-info" />
               {confidencePercent === null
                 ? t("library.confidence_hint_na", "Confidence is only reported on citation tasks; spelling and harakat tasks show no number.")
                 : t("library.confidence_hint_value", "The kifayat gate auto-approves at above 70% confidence. The lowest number across runs is shown.")}
@@ -161,7 +161,7 @@ export const TrustTab: React.FC = () => {
           <div className="p-3 rounded-lg border border-border bg-card space-y-2 text-xs">
             <div className="flex items-center justify-between font-semibold">
               <span className="flex items-center gap-1.5 text-foreground">
-                <Coins className="h-3.5 w-3.5 text-amber-500" />
+                <Coins className="h-3.5 w-3.5 text-warning" />
                 <span>{t("library.token_audit", "Total token audit")}</span>
               </span>
               <span className="text-primary font-bold">{t("library.token_plural", "{count} tokens").replace("{count}", String(totalTokensSpent))}</span>
@@ -179,7 +179,7 @@ export const TrustTab: React.FC = () => {
                       <span className="truncate max-w-[120px]">{r.task_slug}</span>
                       {r.status === "failed" ? (
                         <span className="flex items-center gap-1 shrink-0">
-                          <span className="text-red-600 dark:text-red-400 font-medium">{t("library.failed", "Failed")}</span>
+                          <span className="text-destructive font-medium">{t("library.failed", "Failed")}</span>
                           <Button
                             size="sm"
                             variant="ghost"
@@ -201,7 +201,7 @@ export const TrustTab: React.FC = () => {
                       )}
                     </div>
                     {r.status === "failed" && r.error && (
-                      <p className="text-red-600/80 dark:text-red-400/80 text-xs leading-snug ps-0.5" dir="auto">
+                      <p className="text-destructive/80 text-xs leading-snug ps-0.5" dir="auto">
                         {r.error}
                       </p>
                     )}
@@ -240,8 +240,8 @@ export const TrustTab: React.FC = () => {
           )}
 
           {/* Kifayat Audit Guarantee */}
-          <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 text-xs space-y-1">
-            <div className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+          <div className="p-3 rounded-lg border border-success/30 bg-success/5 text-xs space-y-1">
+            <div className="font-semibold text-success flex items-center gap-1">
               <CheckCircle className="h-3.5 w-3.5" />
               <span>{t("library.audit_guarantee", "Scholarly neutrality and audit guarantee")}</span>
             </div>

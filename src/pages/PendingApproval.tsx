@@ -22,10 +22,10 @@ const PENDING_CHECKOUT_METHOD_KEY = "pendingCheckoutMethod";
 const PLAN_ICONS: Record<PaidTier, typeof Zap> = { basic: Zap, pro: Crown, ultra: Star };
 const PLAN_COLORS: Record<PaidTier, { icon: string; border: string; bg: string; selectedBorder: string }> = {
   basic: {
-    icon: "text-blue-500",
-    border: "border-blue-200/60 dark:border-blue-800/40",
-    bg: "bg-blue-500/5",
-    selectedBorder: "border-blue-500 ring-2 ring-blue-500/30",
+    icon: "text-info",
+    border: "border-info-border",
+    bg: "bg-info/5",
+    selectedBorder: "border-info ring-2 ring-info/30",
   },
   pro: {
     icon: "text-primary",
@@ -286,7 +286,7 @@ const PendingApproval = () => {
                   <ul className="space-y-1">
                     {includedFeatures.map((f, i) => (
                       <li key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                        <Check className="h-3 w-3 text-success flex-shrink-0" />
                         <span>{f.label}</span>
                       </li>
                     ))}
@@ -394,7 +394,7 @@ const PendingApproval = () => {
         </Card>
 
         {/* WhatsApp Card */}
-        <Card className="border-green-500/30 bg-green-500/5">
+        <Card className="border-success/30 bg-success/5">
           <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
             <div className="space-y-0.5">
               <p className="font-medium text-sm">{t("pending.whatsapp_label", "Send Receipt on WhatsApp")}</p>
@@ -402,7 +402,7 @@ const PendingApproval = () => {
             </div>
             <Button
               asChild
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-success hover:bg-success/90 text-success-foreground"
               data-approval-allow
             >
               <a

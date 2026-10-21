@@ -10,8 +10,8 @@ import type { SourceFilter } from "./useResourceSearch";
  * it's the neutral/no-filter state.
  */
 export const SOURCE_CHIP_STYLE: Partial<Record<SourceFilter, string>> = {
-  quran: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
-  hadith: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/20",
+  quran: "bg-success/10 text-success border-success/20",
+  hadith: "bg-info/10 text-info border-info/20",
   tafsir: "bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20",
-  shamela: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+  shamela: "bg-warning/10 text-warning border-warning/20",
 };

@@ -77,7 +77,7 @@ export const PhoneValue = ({ display, raw, wa, copyLabel, copiedLabel, copyFaile
         target="_blank"
         rel="noopener noreferrer"
         aria-label={waLabel ?? "WhatsApp"}
-        className="flex-shrink-0 rounded-md p-1.5 text-emerald-600 transition-colors hover:bg-emerald-500/10 dark:text-emerald-400 focus:outline-none focus:ring-2 focus:ring-ring"
+        className="flex-shrink-0 rounded-md p-1.5 text-success transition-colors hover:bg-success/10 focus:outline-none focus:ring-2 focus:ring-ring"
       >
         <MessageCircle className="h-3.5 w-3.5" />
       </a>

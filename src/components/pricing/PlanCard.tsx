@@ -69,7 +69,7 @@ export const PlanCard = ({
 
       {plan.comingSoon && (
         <Ribbon delay={0.5}>
-          <span className="flex items-center gap-1.5 bg-amber-500 text-white text-xs font-semibold px-4 py-1 rounded-b-lg">
+          <span className="flex items-center gap-1.5 bg-warning text-warning-foreground text-xs font-semibold px-4 py-1 rounded-b-lg">
             <Construction className="h-3 w-3" />
             {t("pricing.coming_soon")}
           </span>
@@ -95,7 +95,7 @@ export const PlanCard = ({
             <span className="text-3xl font-bold text-primary">{priceForCurrency(plan, currency)}</span>
             <span className="text-sm text-muted-foreground">/ {t("pricing.per_month")}</span>
           </div>
-          <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-success">
             <Sparkles className="h-3 w-3" />
             {t("pricing.instant_verification", language === "ur" ? "سسٹم سے فوری تصدیق" : "Instant system verification")}
           </div>
@@ -121,12 +121,12 @@ export const PlanCard = ({
         >
           {plan.comingSoon ? (
             <Button disabled className="w-full h-11 rounded-xl" variant="outline">
-              <Construction className="h-4 w-4 me-2 text-amber-500" />
+              <Construction className="h-4 w-4 me-2 text-warning" />
               {t("pricing.notify_me")}
             </Button>
           ) : isPending ? (
-            <div className="rounded-xl border border-amber-400/50 bg-amber-50 dark:bg-amber-950/20 p-3 text-center space-y-1">
-              <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium">
+            <div className="rounded-xl border border-warning/50 bg-warning-soft p-3 text-center space-y-1">
+              <div className="flex items-center justify-center gap-2 text-warning text-sm font-medium">
                 <Clock className="h-4 w-4" />
                 {t("pricing.pending_approval")}
               </div>
@@ -177,7 +177,7 @@ const FeatureRow = ({
       {feature.included ? (
         <Check className={`h-3 w-3 ${plan.iconClass}`} />
       ) : feature.comingSoon ? (
-        <Clock className="h-3 w-3 text-amber-500" />
+        <Clock className="h-3 w-3 text-warning" />
       ) : (
         <X className="h-3 w-3 text-muted-foreground" />
       )}
@@ -194,7 +194,7 @@ const FeatureRow = ({
       {feature.label}
     </span>
     {feature.comingSoon && (
-      <Badge variant="outline" className="ms-auto text-xs py-0 px-1.5 border-amber-400/60 text-amber-700 dark:text-amber-400">
+      <Badge variant="outline" className="ms-auto text-xs py-0 px-1.5 border-warning/60 text-warning">
         {t("pricing.coming_soon")}
       </Badge>
     )}

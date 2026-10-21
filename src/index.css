@@ -60,14 +60,36 @@ All colors MUST be HSL.
     --sidebar-border: 0 0% 89%;
     --sidebar-ring: 161 93% 30%;
 
-    --chart-1: 158 64% 51%;
+    /* Semantic status families (UI/UX 2026, SYSTEM-2026 §4). Each has a
+       strong colour (text, icons, solid fills), a soft surface and a border,
+       so chips, banners and grading labels (مصحح / موثق / ضعیف / مکذوب) never
+       reach for raw palette classes. Contrast of each colour on its soft
+       surface is asserted in src/test/tokenContrast.test.ts. */
+    --success: 152 62% 26%;
+    --success-foreground: 150 60% 97%;
+    --success-soft: 150 55% 93%;
+    --success-border: 150 38% 78%;
+    --warning: 33 90% 27%;
+    --warning-foreground: 40 100% 97%;
+    --warning-soft: 42 96% 91%;
+    --warning-border: 40 70% 74%;
+    --weak: 21 80% 32%;
+    --weak-foreground: 24 100% 97%;
+    --weak-soft: 24 90% 93%;
+    --weak-border: 22 65% 77%;
+    --info: 214 72% 36%;
+    --info-foreground: 214 100% 97%;
+    --info-soft: 214 90% 95%;
+    --info-border: 214 60% 80%;
+    --destructive-soft: 0 85% 98%;
+    --destructive-border: 0 60% 82%;
 
-    --chart-2: 141 69% 58%;
-
-    --chart-3: 172 66% 50%;
-
-    --chart-4: 82 77% 55%;
-
+    /* Series must stay distinguishable without colour vision (brand green,
+       blue, amber, magenta, grey), not five greens. */
+    --chart-1: 161 93% 30%;
+    --chart-2: 213 80% 48%;
+    --chart-3: 36 92% 50%;
+    --chart-4: 330 55% 50%;
     --chart-5: 0 0% 45%;
 
     /* 'Noto Naskh Arabic' sits directly after Work Sans on purpose. Work Sans
@@ -88,21 +110,22 @@ All colors MUST be HSL.
 
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    /* A strictly rising ladder: 2xs and xs, shadow and sm were identical,
+       and 2xl was weaker than xl. */
+    --shadow-2xs: 0 1px 1px 0px hsl(0 0% 0% / 0.04);
+    --shadow-xs: 0 1px 2px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 1px 2px -1px hsl(0 0% 0% / 0.05);
+    --shadow: 0 2px 6px -1px hsl(0 0% 0% / 0.09), 0 1px 3px -1px hsl(0 0% 0% / 0.06);
+    --shadow-md: 0 4px 10px -2px hsl(0 0% 0% / 0.10), 0 2px 4px -2px hsl(0 0% 0% / 0.06);
+    --shadow-lg: 0 12px 24px -6px hsl(0 0% 0% / 0.14), 0 4px 8px -4px hsl(0 0% 0% / 0.08);
+    --shadow-xl: 0 20px 40px -10px hsl(0 0% 0% / 0.18), 0 8px 16px -8px hsl(0 0% 0% / 0.10);
+    --shadow-2xl: 0 28px 56px -12px hsl(0 0% 0% / 0.24);
 
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-
-    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    /* Motion scale (UI/UX audit M-01): 150-250ms, one ease-out curve. */
+    --duration-fast: 150ms;
+    --duration-base: 200ms;
+    --duration-slow: 250ms;
+    --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
 
     --tracking-normal: 0em;
 
@@ -145,19 +168,38 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 158 64% 70%;
     --sidebar-border: 0 0% 20%;
     --sidebar-ring: 158 64% 51%;
-    --chart-1: 156 71% 66%;
-    --chart-2: 141 76% 73%;
-    --chart-3: 170 76% 64%;
-    --chart-4: 81 84% 67%;
-    --chart-5: 0 0% 45%;
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    --success: 152 55% 62%;
+    --success-foreground: 152 60% 8%;
+    --success-soft: 152 35% 13%;
+    --success-border: 152 30% 26%;
+    --warning: 40 90% 66%;
+    --warning-foreground: 38 80% 9%;
+    --warning-soft: 38 45% 13%;
+    --warning-border: 38 40% 28%;
+    --weak: 24 90% 68%;
+    --weak-foreground: 22 80% 9%;
+    --weak-soft: 22 45% 14%;
+    --weak-border: 22 40% 30%;
+    --info: 213 90% 72%;
+    --info-foreground: 214 60% 9%;
+    --info-soft: 214 40% 15%;
+    --info-border: 214 35% 30%;
+    --destructive-soft: 0 40% 12%;
+    --destructive-border: 0 35% 30%;
+
+    --chart-1: 158 64% 51%;
+    --chart-2: 213 85% 66%;
+    --chart-3: 38 92% 60%;
+    --chart-4: 330 65% 66%;
+    --chart-5: 0 0% 65%;
+    --shadow-2xs: 0 1px 1px 0px hsl(0 0% 0% / 0.30);
+    --shadow-xs: 0 1px 2px 0px hsl(0 0% 0% / 0.40);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.50);
+    --shadow: 0 2px 6px -1px hsl(0 0% 0% / 0.50);
+    --shadow-md: 0 4px 10px -2px hsl(0 0% 0% / 0.55);
+    --shadow-lg: 0 12px 24px -6px hsl(0 0% 0% / 0.60);
+    --shadow-xl: 0 20px 40px -10px hsl(0 0% 0% / 0.65);
+    --shadow-2xl: 0 28px 56px -12px hsl(0 0% 0% / 0.70);
   }
 }
 

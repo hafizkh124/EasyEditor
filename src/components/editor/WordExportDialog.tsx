@@ -137,7 +137,7 @@ export const WordExportDialog: React.FC<Props> = ({ open, onOpenChange, html, ti
 
         {phase === "done" && resultPath ? (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+            <CheckCircle2 className="h-10 w-10 text-success" />
             <p className="text-sm text-muted-foreground break-all">{resultPath}</p>
             <Button onClick={openResult} className="gap-2">
               <ExternalLink className="h-4 w-4" />
@@ -191,8 +191,8 @@ export const WordExportDialog: React.FC<Props> = ({ open, onOpenChange, html, ti
             </div>
 
             {losses.length > 0 && (
-              <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
-                <div className="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-400 mb-1">
+              <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-xs">
+                <div className="flex items-center gap-1.5 font-medium text-warning mb-1">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   {t("docbridge.export.losses_title", "This conversion may lose:")}
                 </div>

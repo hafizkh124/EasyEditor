@@ -67,7 +67,7 @@ export default function UpsellModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Coins className="h-5 w-5 text-amber-500" />
+            <Coins className="h-5 w-5 text-warning" />
             {t("tokens.low_balance_title", "Low Token Balance")}
           </DialogTitle>
           <DialogDescription>

@@ -216,9 +216,9 @@ export const ChunkInspectorDialog: React.FC<ChunkInspectorDialogProps> = ({ item
                             variant="secondary"
                             className={`text-[10px] px-1.5 py-0 ${
                               metaKind === "hadith"
-                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                                ? "bg-success/15 text-success"
                                 : metaKind === "fiqh"
-                                ? "bg-blue-500/15 text-blue-700 dark:text-blue-400"
+                                ? "bg-info/15 text-info"
                                 : "bg-muted text-muted-foreground"
                             }`}
                           >
@@ -235,7 +235,7 @@ export const ChunkInspectorDialog: React.FC<ChunkInspectorDialogProps> = ({ item
                       >
                         {copiedId === chunk.id ? (
                           <>
-                            <Check className="h-3 w-3 text-emerald-600" />
+                            <Check className="h-3 w-3 text-success" />
                             <span>{t("library.chunks.copied", "Copied")}</span>
                           </>
                         ) : (
