@@ -47,6 +47,9 @@ vi.mock("@/components/TokenCostBadge", () => ({ default: () => null }));
 const toast = vi.hoisted(() => ({ error: vi.fn(), info: vi.fn(), success: vi.fn() }));
 vi.mock("sonner", () => ({ toast }));
 
+const takeSharedFile = vi.hoisted(() => vi.fn(async () => null as File | null));
+vi.mock("@/lib/extract/sharedFile", () => ({ takeSharedFile }));
+
 import Extract from "@/pages/Extract";
 import { detectKind } from "@/pages/extract/useExtract";
 
@@ -57,9 +60,9 @@ function Probe() {
   return null;
 }
 
-function renderPage() {
+function renderPage(path = "/extract") {
   return render(
-    <MemoryRouter initialEntries={["/extract"]}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/extract" element={<Extract />} />
         <Route path="*" element={<Probe />} />
@@ -169,6 +172,13 @@ describe("Extract page", () => {
     await screen.findByDisplayValue("فتویٰ کا متن");
     fireEvent.click(screen.getByRole("button", { name: /دستاویز بنائیں/ }));
     expect(landed).toEqual({ pathname: "/workspace", state: { content: "فتویٰ کا متن", source: "ocr", projectId: undefined } });
+  });
+
+  it("starts at once on a file shared into the app", async () => {
+    takeSharedFile.mockResolvedValueOnce(new File(["a"], "PTT-20261021.opus", { type: "audio/ogg" }));
+    transcribeLongForm.mockResolvedValue({ text: "وائس نوٹ کا متن", chunkCount: 1 });
+    renderPage("/extract?shared=1");
+    expect(await screen.findByDisplayValue("وائس نوٹ کا متن")).toBeInTheDocument();
   });
 
   it("asks a signed-out user to sign in before reading pages", () => {

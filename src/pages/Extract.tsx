@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Camera, Copy, FileAudio, FileDown, FilePlus2, FileText, ImageIcon, Loader2, Mic, RotateCcw, Square, Upload,
@@ -22,6 +22,7 @@ import { isRtlText } from "@/utils/textUtils";
 import { cn } from "@/lib/utils";
 import type { TranslationKey } from "@/lib/i18n";
 import { useExtract } from "./extract/useExtract";
+import { takeSharedFile } from "@/lib/extract/sharedFile";
 
 /**
  * "Extract text" (SYSTEM-2026 §5) — the one screen behind "+ → audio to text"
@@ -52,6 +53,17 @@ const Extract = () => {
   const cameraRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const projectId = (location.state as { projectId?: string } | null)?.projectId;
+
+  // A file shared into the app ("Share → Easy Editor") starts right away.
+  const shared = searchParams.get("shared") === "1";
+  const startRef = useRef(x.start);
+  startRef.current = x.start;
+  useEffect(() => {
+    if (!shared) return;
+    void takeSharedFile().then((file) => {
+      if (file) void startRef.current(file);
+    });
+  }, [shared]);
 
   const pick = (files: FileList | null) => {
     const file = files?.[0];

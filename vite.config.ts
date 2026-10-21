@@ -201,6 +201,23 @@ export default defineConfig(({ mode }) => {
           // falls back to, not the RTL languages some users will switch to.
           lang: "en",
           dir: "ltr",
+          // "Share → Easy Editor" from WhatsApp, the gallery or Files (Android):
+          // public/share-target-sw.js receives the file and opens /extract.
+          share_target: {
+            action: "/share-target",
+            method: "POST",
+            enctype: "multipart/form-data",
+            params: {
+              title: "title",
+              text: "text",
+              files: [
+                {
+                  name: "file",
+                  accept: ["audio/*", "video/*", "image/*", "application/pdf", ".opus", ".ogg", ".m4a", ".amr", ".pdf"],
+                },
+              ],
+            },
+          },
           shortcuts: [
             {
               name: "نئی تحقیق",
@@ -257,6 +274,8 @@ export default defineConfig(({ mode }) => {
             "**/*amiri-*.woff2",
             "**/*vazirmatn-*.woff2",
           ],
+          // The share target's POST handler, ahead of workbox's own router.
+          importScripts: ["/share-target-sw.js"],
           navigateFallback: "/index.html",
           navigateFallbackDenylist: [/^\/~oauth(?:\/|$)/, /^\/\.lovable(?:\/|$)/],
           runtimeCaching: [
