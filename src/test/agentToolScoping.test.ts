@@ -37,7 +37,7 @@ describe('toolsFor', () => {
     const stepTools = new Set(pb.steps.map((s) => s.tool));
     for (const t of n) {
       const ok = stepTools.has(t) || (FLOOR_TOOLS as readonly string[]).includes(t)
-        || t === 'run_playbook' || t === 'insert_footnote' || t === 'ask_clarifying_question';
+        || t === 'run_playbook' || t === 'insert_footnote' || t === 'verify_citation' || t === 'ask_clarifying_question';
       expect(ok, `unexpected tool in scoped set: ${t}`).toBe(true);
     }
   });

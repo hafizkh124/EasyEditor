@@ -19,6 +19,8 @@ export interface ArtifactCitationEntry {
   claim?: string;
   /** A hadith grading as the source stated it (الدرر السنية, ADR-0040). */
   grade?: string;
+  /** The named scholar behind `grade`; '' ⇒ the source named none (grade shown as unattributed). */
+  gradedBy?: string;
   /** M13 (ADR-0058) — the ready-made footnote; the card's button pre-fills an insert request. */
   footnote?: string;
 }

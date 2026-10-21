@@ -18,6 +18,8 @@ export interface ScholarlyCitationRef {
   hadith_number?: string | number;
   grade?: string;
   rawi?: string;
+  /** The scholar who graded the hadith (المحدث), as the source states it. */
+  mohdith?: string;
   surah_number?: number;
   surah_name?: string;
   surah_name_en?: string;

@@ -16,6 +16,13 @@ const globalStore = {
 };
 vi.mock("../../electron/skills/globalStore.ts", () => globalStore);
 
+const customStore = {
+  readCustomSkills: vi.fn(() => [] as unknown[]),
+  saveCustomSkill: vi.fn((skill: unknown) => [skill]),
+  deleteCustomSkill: vi.fn(() => [] as unknown[]),
+};
+vi.mock("../../electron/skills/customStore.ts", () => customStore);
+
 const projectFolder = {
   readSkills: vi.fn(() => ({} as Record<string, boolean>)),
   setSkill: vi.fn((_root: string, id: string, on: boolean) => ({ [id]: on } as Record<string, boolean>)),
@@ -68,5 +75,29 @@ describe("skillsHandlers", () => {
 
   it("an unknown action throws", async () => {
     await expect(invoke({ action: "wat" })).rejects.toThrow();
+  });
+
+  it("saveCustom validates, saves, and returns validation errors as data", async () => {
+    const ok = (await invoke({ action: "saveCustom", markdown: "---\ntitle: T\ntrigger: t1\nsteps: search_hadith\n---\nbody" })) as { ok: boolean };
+    expect(ok.ok).toBe(true);
+    expect(customStore.saveCustomSkill).toHaveBeenCalledTimes(1);
+
+    const bad = (await invoke({ action: "saveCustom", title: "T", steps: ["nope"] })) as { ok: boolean; errors: string[] };
+    expect(bad.ok).toBe(false);
+    expect(bad.errors.join()).toMatch(/unknown tool/);
+    expect(customStore.saveCustomSkill).toHaveBeenCalledTimes(1);
+  });
+
+  it("list includes custom skills in playbooks and the merged map; deleteCustom routes to the store", async () => {
+    customStore.readCustomSkills.mockReturnValue([
+      { id: "custom-x", title: "X", keywords: [], steps: [{ tool: "search_hadith", bind: ["query"], note: "n" }] },
+    ]);
+    const r = (await invoke({ action: "list" })) as { playbooks: unknown[]; custom: unknown[]; merged: Record<string, boolean> };
+    expect(r.playbooks).toHaveLength(PLAYBOOKS.length + 1);
+    expect(r.custom).toHaveLength(1);
+    expect(r.merged["custom-x"]).toBe(true);
+
+    await invoke({ action: "deleteCustom", id: "custom-x" });
+    expect(customStore.deleteCustomSkill).toHaveBeenCalledWith("custom-x");
   });
 });

@@ -93,6 +93,12 @@ function toChunk(g: HadithGrading): RetrievedChunk {
     reference: `${bits.join(' — ')} (الدرر السنية)`,
     content: g.matn.slice(0, 2000),
     grade: g.grade,
+    locus: {
+      book: g.source,
+      number: g.number,
+      gradedBy: g.mohdith,
+      grade: g.grade,
+    },
   };
 }
 

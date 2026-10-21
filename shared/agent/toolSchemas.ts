@@ -260,6 +260,22 @@ export const AGENT_TOOLS: AgentTool[] = [
     effect: 'write',
   },
   {
+    name: 'verify_citation',
+    description: "Check the book / volume / page / number / chapter (and, for a grade, the scholar who gave it) you intend to cite against the retrieved source behind a source_id. Returns verified, partial or unverified. Call it BEFORE insert_footnote or before stating a reference or grade in your answer. If the result is not verified, do NOT state those details — write: لم أقف عليه في المصادر المتاحة. Fails for an id that was not retrieved in this task. Do NOT use it to find sources (search_*) or to judge a hadith yourself.",
+    params: {
+      source_id: { type: 'string', description: 'The id of a chunk returned by a prior search_* / grade_hadith call in this task.' },
+      book: { type: 'string', description: 'The book / collection name you intend to cite.' },
+      volume: { type: 'string', description: 'The volume (الجزء) you intend to cite.' },
+      page: { type: 'string', description: 'The page (الصفحة) you intend to cite.' },
+      number: { type: 'string', description: 'The hadith / report number (رقم الحديث) you intend to cite.' },
+      chapter: { type: 'string', description: 'The chapter (الباب) you intend to cite.' },
+      grade: { type: 'string', description: 'A grading you intend to report, exactly as you will word it.' },
+      graded_by: { type: 'string', description: 'The named scholar (المحدث) you will attribute that grade to.' },
+    },
+    required: ['source_id'],
+    effect: 'read',
+  },
+  {
     name: 'transcribe_media',
     description: "Transcribe a recording that is already in the project folder (an @mentioned lecture or dars) into timestamped text, saved as a .transcript.txt beside it. Uses the scholar's own local Whisper — nothing is uploaded. Long recordings are chunked automatically. Do NOT use for a file that is not in the project folder, and do NOT use to re-read a transcript that already exists (read it with create_chapter's from_source, or @mention it).",
     params: {

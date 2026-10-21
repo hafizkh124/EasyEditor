@@ -45,6 +45,7 @@ import { isToolDisabled, mergeConnectorState } from '../../shared/agent/connecto
 import { readConnectors, readOcrConsent, readSkills } from '../fs/projectFolder.js';
 import { readGlobalConnectors } from '../connectors/globalStore.js';
 import { readGlobalSkills } from '../skills/globalStore.js';
+import { readCustomSkills } from '../skills/customStore.js';
 import type {
   AgentMode,
   AgentProgress,
@@ -180,11 +181,12 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   // automatic keyword match here and the explicit `run_playbook` tool
   // further down (session.runPlaybookRef) — this was previously read-only
   // (SkillsPanel.tsx listed playbooks with no toggle at all).
+  const customSkills = readCustomSkills();
   const skills = (() => {
-    try { return mergeSkillState(readGlobalSkills(), projectRoot ? readSkills(projectRoot) : undefined); }
+    try { return mergeSkillState(readGlobalSkills(), projectRoot ? readSkills(projectRoot) : undefined, customSkills); }
     catch { return {}; }
   })();
-  const playbook = selectPlaybook(instruction, skills);
+  const playbook = selectPlaybook(instruction, skills, customSkills);
   const agentModel = await resolveAgentModel();
   if (agentModel.provider.id !== 'gemini') log.info('agent model provider', { provider: agentModel.provider.id });
 
@@ -403,7 +405,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
   const isSlash = instruction.trim().startsWith('/');
   if (playbook && (isSlash || playbookMatchIsStrong(instruction, playbook.keywords))) {
     session.runPlaybookRef = async (ref, chapter) => {
-      const pb = resolvePlaybook(ref, skills);
+      const pb = resolvePlaybook(ref, skills, customSkills);
       if (!pb) return { error: `unknown playbook: ${ref}` };
       const r = await runPlaybook({
         playbook: pb, instruction, mode,
@@ -430,7 +432,7 @@ export async function runAgent(input: AgentRunInput): Promise<AgentRunOutput> {
 
   // ── 3. Free agentic loop ─────────────────────────────────────────────
   session.runPlaybookRef = async (ref, chapter) => {
-    const pb = resolvePlaybook(ref, skills);
+    const pb = resolvePlaybook(ref, skills, customSkills);
     if (!pb) return { error: `unknown playbook: ${ref}` };
     const r = await runPlaybook({
       playbook: pb, instruction, mode,

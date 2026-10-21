@@ -130,6 +130,8 @@ export default tseslint.config(
       "src/components/ContactInfoCard.tsx",
       "src/components/FirstRunLanguageGate.tsx",
       "src/lib/activityLog.ts",
+      // ── citation feedback (owner-only golden-dataset log, RLS; like activityLog) ──
+      "src/lib/citationFeedback.ts",
       // ── referrals ───────────────────────────────────────────────────────
       "src/components/ReferralCard.tsx",
       // ── notifications ───────────────────────────────────────────────────
