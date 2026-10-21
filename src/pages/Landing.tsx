@@ -320,7 +320,7 @@ const Landing = () => {
       </section>
 
       {/* Audiences */}
-      <section id="audiences" className="border-y border-border/60 bg-muted/30 py-16">
+      <section id="audiences" className="border-y border-border/60 bg-muted/60 py-16">
         <div className="mx-auto max-w-6xl px-4">
           <h2 className="mb-10 text-center text-3xl font-bold tracking-tight">{AUDIENCES.title[lang]}</h2>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">

@@ -40,7 +40,7 @@ export function addSearch(
 export function listSearches(db: SqliteDatabase, limit = 60): SearchHistoryRow[] {
   const userId = getCurrentUserId(db);
   const rows = db
-    .prepare('SELECT id, kind, query, filters, result_count, created_at FROM search_history WHERE user_id = ? ORDER BY created_at DESC LIMIT ?')
+    .prepare('SELECT id, kind, query, filters, result_count, created_at FROM search_history WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?')
     .all(userId, limit) as Array<{ id: string; kind: string; query: string; filters: string; result_count: number | null; created_at: string }>;
   return rows.map((r) => ({
     id: r.id,
