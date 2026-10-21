@@ -2132,5 +2132,8 @@
   "sources.section": "Sources",
   "sources.pin_action": "Pin sources",
   "sources.none_pinned": "No sources pinned. Chats here use all your active sources.",
-  "sources.unpin": "Unpin"
+  "sources.unpin": "Unpin",
+  "sources.folder_chip": "{folder} sources ({count})",
+  "sources.folder_chip_off": "Turn off the folder's sources for this chat",
+  "sources.folder_chip_on": "Use the folder's sources"
 }

@@ -15,6 +15,9 @@ import {
   type Mention, type ScopeKind,
 } from "../../shared/mentions";
 import { useSkills } from "@/lib/skills/useSkills";
+import { useAllDocuments } from "@/core/workspace/useAllDocuments";
+import { pinnedSourcesOf, type PinnedSource } from "@/lib/sources/pinnedSources";
+import { searchSources } from "@/lib/sources/searchSources";
 import { matchesSkill } from "@/lib/skills/registry";
 import { useOpenSkillsSettings } from "@/lib/skills/useOpenSkillsSettings";
 import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
@@ -607,6 +610,29 @@ export function useAgentRun() {
     setActiveArtifactId((cur) => (cur === id ? null : cur));
   }, []);
 
+  // The open document's folder and its pinned sources (SYSTEM-2026 §3): every
+  // chat in a folder answers from them unless switched off for this chat.
+  const { allDocs: folderDocs, projects: folderProjects } = useAllDocuments();
+  const activeFolder = useMemo(() => {
+    const doc = folderDocs.find((d) => d.id === ws?.activeDocumentId);
+    return doc ? folderProjects.find((p) => p.id === doc.project_id) ?? null : null;
+  }, [folderDocs, folderProjects, ws?.activeDocumentId]);
+  const folderSources = useMemo(() => pinnedSourcesOf(activeFolder), [activeFolder]);
+  const [folderSourcesOn, setFolderSourcesOn] = useState(true);
+  useEffect(() => setFolderSourcesOn(true), [activeFolder?.id]);
+
+  // `@` offers sources (SYSTEM-2026 §8): the folder's pinned ones first, then
+  // books and files matching what was typed. Picking one scopes the run to it.
+  const [sourceHits, setSourceHits] = useState<PinnedSource[]>([]);
+  useEffect(() => {
+    if (picker?.kind !== "mention" || picker.query.trim().length < 2) { setSourceHits([]); return; }
+    let cancelled = false;
+    const handle = setTimeout(() => {
+      void searchSources(picker.query).then((rows) => { if (!cancelled) setSourceHits(rows); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [picker]);
+
   const { forPlace: skillsForPlace } = useSkills();
   const chatSkills = useMemo(() => skillsForPlace("chat"), [skillsForPlace]);
   const openSkillsSettings = useOpenSkillsSettings();
@@ -682,7 +708,7 @@ export function useAgentRun() {
         },
       }));
     }
-    return filterMentions(mentions, picker.query).map((m) => ({
+    const mentionItems: PickerItem[] = filterMentions(mentions, picker.query).map((m) => ({
       kind: "mention" as const,
       label: m.label,
       apply: () => {
@@ -696,7 +722,35 @@ export function useAgentRun() {
         requestAnimationFrame(() => { ta?.focus(); ta?.setSelectionRange(next.caret, next.caret); });
       },
     }));
-  }, [picker, mentions, input, libraryRows, addScopeTag, chatSkills, openSkillsSettings]);
+    const q = picker.query.trim().toLocaleLowerCase();
+    const taken = new Set([
+      ...mentions.map((m) => m.ref),
+      ...scopeTags.map((t) => t.ref),
+      ...(folderSourcesOn ? folderSources.map((f) => f.ref) : []),
+    ]);
+    const sources = [
+      ...folderSources.filter((f) => !folderSourcesOn && (!q || f.label.toLocaleLowerCase().includes(q))),
+      ...sourceHits,
+    ].filter((src, i, all) => !taken.has(src.ref) && all.findIndex((x) => x.ref === src.ref) === i);
+    const sourceItems: PickerItem[] = sources.map((src) => ({
+      kind: "mention" as const,
+      label: src.label,
+      sublabel: src.sublabel,
+      section: "source",
+      apply: () => {
+        // The `@word` is replaced by a source chip, like a `#` book.
+        const ta = taRef.current;
+        const value = ta?.value ?? input;
+        const caret = ta?.selectionStart ?? value.length;
+        const before = value.slice(0, caret).replace(/@[^\s@]*$/, "");
+        setInput(before + value.slice(caret));
+        addScopeTag({ kind: "#", label: src.label, ref: src.ref, scopeType: "book" });
+        setPicker(null);
+        requestAnimationFrame(() => { ta?.focus(); ta?.setSelectionRange(before.length, before.length); });
+      },
+    }));
+    return [...mentionItems, ...sourceItems];
+  }, [picker, mentions, input, libraryRows, addScopeTag, chatSkills, openSkillsSettings, scopeTags, folderSources, folderSourcesOn, sourceHits]);
 
   /** Called by the ScopeReviewDialog on confirm — creates the multi-book chip. */
   const confirmScopeReview = useCallback((tag: Omit<ScopeTag, "id">) => {
@@ -802,7 +856,11 @@ export function useAgentRun() {
     // dialog), not a composer control (plan §4.2).
     const batchExec = hashTags.map((t) => t.execMode).find((m) => m === "per-book" || m === "per-author");
     const scope: AgentScope = {
-      books: [...new Set(hashTags.flatMap(bookRefsOf))],
+      books: [...new Set([
+        ...hashTags.flatMap(bookRefsOf),
+        // The folder's pinned sources, unless switched off for this chat.
+        ...(folderSourcesOn ? folderSources.map((f) => f.ref) : []),
+      ])],
       groups: hashTags
         .filter((t) => t.scopeType && t.scopeType !== "book")
         .map((t) => ({ type: t.scopeType!, ref: t.ref, label: t.label, bookRefs: t.resolvedBookRefs ?? [] })),
@@ -849,7 +907,7 @@ export function useAgentRun() {
       setPlanPending(false);
       setFileApproval(null);
     }
-  }, [input, agent, projectRoot, running, mode, pf, result, turns, webAgent, handleProgress, scopeTags]);
+  }, [input, agent, projectRoot, running, mode, pf, result, turns, webAgent, handleProgress, scopeTags, folderSources, folderSourcesOn]);
 
   const cancel = useCallback(() => { void agent?.cancel(); webAgent.cancel(); }, [agent, webAgent]);
 
@@ -1166,6 +1224,10 @@ export function useAgentRun() {
     caps,
     picker, setPicker,
     pickerItems,
+    folderName: activeFolder?.title ?? null,
+    folderSources,
+    folderSourcesOn,
+    setFolderSourcesOn,
     skillPromptRequest,
     clearSkillPromptRequest,
     requestSkillPrompt: setSkillPromptRequest,

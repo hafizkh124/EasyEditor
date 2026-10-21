@@ -2132,5 +2132,8 @@
   "sources.section": "ذرائع",
   "sources.pin_action": "ذرائع پن کریں",
   "sources.none_pinned": "کوئی ذریعہ پن نہیں۔ یہاں کی چیٹ آپ کے سب فعال ذرائع استعمال کرتی ہے۔",
-  "sources.unpin": "پن ہٹائیں"
+  "sources.unpin": "پن ہٹائیں",
+  "sources.folder_chip": "{folder} کے ذرائع ({count})",
+  "sources.folder_chip_off": "اس چیٹ میں فولڈر کے ذرائع بند کریں",
+  "sources.folder_chip_on": "فولڈر کے ذرائع استعمال کریں"
 }

@@ -2132,5 +2132,8 @@
   "sources.section": "المصادر",
   "sources.pin_action": "تثبيت المصادر",
   "sources.none_pinned": "لا مصادر مثبّتة. المحادثات هنا تستخدم كل مصادرك المفعّلة.",
-  "sources.unpin": "إلغاء التثبيت"
+  "sources.unpin": "إلغاء التثبيت",
+  "sources.folder_chip": "مصادر {folder} ({count})",
+  "sources.folder_chip_off": "أوقف مصادر المجلد في هذه المحادثة",
+  "sources.folder_chip_on": "استخدم مصادر المجلد"
 }

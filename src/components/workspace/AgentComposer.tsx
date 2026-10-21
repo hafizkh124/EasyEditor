@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Send, Loader2, Square, Mic, Plus, X, Book, User, Layers, CalendarClock, Repeat, AtSign, Pencil, Hourglass, ScrollText, FolderOpen, Hash } from "lucide-react";
+import { Send, Loader2, Square, Mic, Plus, X, Book, User, Layers, CalendarClock, Repeat, AtSign, Pencil, Hourglass, ScrollText, FolderOpen, Hash, Pin } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CONNECTORS, isConnectorOn } from "../../../shared/agent/connectors";
@@ -263,6 +263,7 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
                   >
                     {it.kind === "command" ? <ScrollText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       : it.kind === "library" ? <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      : it.section === "source" ? <Book className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       : <span className="text-muted-foreground">@</span>}
                     <span className="truncate">{it.label}</span>
                     {it.sublabel ? <span className="ms-auto shrink-0 truncate text-muted-foreground/70">{it.sublabel}</span> : null}
@@ -270,6 +271,41 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
                 </React.Fragment>
               );
             })}
+          </div>
+        )}
+        {/* The folder's pinned sources (SYSTEM-2026 §3): on by default for every
+            chat in the folder, switchable for this one. */}
+        {a.folderSources.length > 0 && (
+          <div className="mb-1.5 flex items-center gap-1 text-xs">
+            {a.folderSourcesOn ? (
+              <span
+                className="inline-flex max-w-full items-center gap-1 rounded bg-primary/10 py-0.5 pe-1 ps-1.5 text-primary"
+                title={a.folderSources.map((f) => f.label).join("، ")}
+              >
+                <Pin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">
+                  {t("sources.folder_chip", "{folder} کے ذرائع ({count})")
+                    .replace("{folder}", a.folderName ?? "")
+                    .replace("{count}", String(a.folderSources.length))}
+                </span>
+                <button
+                  className="ms-0.5 shrink-0 rounded p-0.5 hover:bg-background/40"
+                  onClick={() => a.setFolderSourcesOn(false)}
+                  aria-label={t("sources.folder_chip_off", "اس چیٹ میں فولڈر کے ذرائع بند کریں")}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => a.setFolderSourcesOn(true)}
+                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground hover:bg-muted"
+              >
+                <Pin className="h-3 w-3" aria-hidden="true" />
+                {t("sources.folder_chip_on", "فولڈر کے ذرائع استعمال کریں")}
+              </button>
+            )}
           </div>
         )}
         {/* Plan §4.4 — removable scope chips. Chips are authoritative; the inline
