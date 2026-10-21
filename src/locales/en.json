@@ -2135,5 +2135,6 @@
   "sources.unpin": "Unpin",
   "sources.folder_chip": "{folder} sources ({count})",
   "sources.folder_chip_off": "Turn off the folder's sources for this chat",
-  "sources.folder_chip_on": "Use the folder's sources"
+  "sources.folder_chip_on": "Use the folder's sources",
+  "folderindex.chats": "Chats"
 }

@@ -39,8 +39,19 @@ vi.mock("@/core/workspace/documentService", () => ({
   },
 }));
 
+vi.mock("@/hooks/useSessionHistory", () => ({
+  useSessionHistory: () => ({
+    loading: false,
+    items: [
+      { id: "c1", title: "زکوٰۃ پر گفتگو", project_id: "p1", updated_at: "" },
+      { id: "c2", title: "دوسرے فولڈر کی", project_id: "p2", updated_at: "" },
+    ],
+  }),
+}));
+
 const ws = {
   activeDocumentId: "d1" as string | null,
+  openChatSession: vi.fn(),
   setActiveDocumentId: vi.fn(),
   documentOutline: [
     { text: "باب اول", level: 2 },
@@ -105,6 +116,14 @@ describe("FolderIndexPanel", () => {
     localStorage.setItem("workspace.folderIndex.sort", "date");
     renderPanel();
     expect(docButtons().map((b) => b.textContent)).toEqual(["ج تیسرا", "ب دوسرا", "الف پہلا"]);
+  });
+
+  it("lists this folder's chats and opens one beside the document", () => {
+    renderPanel();
+    const chats = screen.getByRole("list", { name: "چیٹس" });
+    expect(within(chats).queryByText("دوسرے فولڈر کی")).not.toBeInTheDocument();
+    fireEvent.click(within(chats).getByRole("button", { name: "زکوٰۃ پر گفتگو" }));
+    expect(ws.openChatSession).toHaveBeenCalledWith("c1");
   });
 
   it("lists the folder's pinned sources; a Shamela book opens in the reader, and one can be unpinned", async () => {

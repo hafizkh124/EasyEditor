@@ -233,7 +233,7 @@ export class WorkspaceDbService {
   public async clearSearches(): Promise<void> { searchHistory.clearSearches(this.db); }
 
   // ── Research sessions — offline mirror (plan §3.5) ────────────────────────
-  public async upsertResearchSession(p: { id: string | null; title: string; mode: string; messages: unknown[]; citations: unknown[]; selectedDomains: string[] }): Promise<string> {
+  public async upsertResearchSession(p: { id: string | null; title: string; mode: string; messages: unknown[]; citations: unknown[]; selectedDomains: string[]; projectId?: string | null }): Promise<string> {
     return sessions.upsertResearchSession(this.db, p);
   }
   public async loadResearchSession(id: string): Promise<sessions.LocalResearchSession | null> { return sessions.loadResearchSession(this.db, id); }

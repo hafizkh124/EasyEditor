@@ -2135,5 +2135,6 @@
   "sources.unpin": "پن ہٹائیں",
   "sources.folder_chip": "{folder} کے ذرائع ({count})",
   "sources.folder_chip_off": "اس چیٹ میں فولڈر کے ذرائع بند کریں",
-  "sources.folder_chip_on": "فولڈر کے ذرائع استعمال کریں"
+  "sources.folder_chip_on": "فولڈر کے ذرائع استعمال کریں",
+  "folderindex.chats": "چیٹس"
 }

@@ -35,7 +35,12 @@ vi.mock("@/core/workspace/useAllDocuments", () => ({
 vi.mock("@/hooks/useSessionHistory", () => ({
   useSessionHistory: (section: string) => ({
     loading: false,
-    items: section === "transcribe" ? [{ id: "s1", title: "بیان", updated_at: "2026-02-10T00:00:00Z" }] : [],
+    items:
+      section === "transcribe"
+        ? [{ id: "s1", title: "بیان", updated_at: "2026-02-10T00:00:00Z" }]
+        : section === "research"
+          ? [{ id: "c1", title: "زکوٰۃ پر گفتگو", updated_at: "2026-02-11T00:00:00Z", project_id: "p1" }]
+          : [],
   }),
 }));
 
@@ -75,10 +80,19 @@ describe("Files page", () => {
   it("opens a folder to just its documents, and a new document goes into it", () => {
     renderFiles();
     fireEvent.click(screen.getByRole("button", { name: /فتاویٰ/ }));
-    const links = within(screen.getByRole("list")).getAllByRole("link");
+    const links = within(screen.getByRole("list", { name: "دستاویزات" })).getAllByRole("link");
     expect(links.map((a) => a.getAttribute("href"))).toEqual(["/workspace/d1"]);
     fireEvent.click(screen.getByRole("button", { name: "نیا دستاویز" }));
     expect(landed).toEqual({ pathname: "/workspace", state: { intent: "new-document", projectId: "p1" } });
+  });
+
+  it("lists the chats started in an open folder", () => {
+    renderFiles("/files?folder=p1");
+    const link = screen.getByRole("link", { name: /زکوٰۃ پر گفتگو/ });
+    expect(link).toHaveAttribute("href", "/workspace?panel=research&session=c1");
+    // …and only in that folder.
+    renderFiles("/files?folder=p3");
+    expect(screen.getAllByRole("link", { name: /زکوٰۃ پر گفتگو/ })).toHaveLength(1);
   });
 
   it("filters by the search box", () => {

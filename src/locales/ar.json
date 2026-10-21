@@ -2135,5 +2135,6 @@
   "sources.unpin": "إلغاء التثبيت",
   "sources.folder_chip": "مصادر {folder} ({count})",
   "sources.folder_chip_off": "أوقف مصادر المجلد في هذه المحادثة",
-  "sources.folder_chip_on": "استخدم مصادر المجلد"
+  "sources.folder_chip_on": "استخدم مصادر المجلد",
+  "folderindex.chats": "المحادثات"
 }

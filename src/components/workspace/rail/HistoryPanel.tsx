@@ -70,14 +70,13 @@ const SessionsView: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { items, loading, available, rename, remove } = useSessionHistory("research");
-  const { setWorkbenchTab } = useWorkspace();
+  const { setWorkbenchTab, openChatSession } = useWorkspace();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
-  const resume = (item: SessionHistoryItem) => {
-    setWorkbenchTab("research");
-    navigate(`/workspace?panel=research&session=${item.id}`);
-  };
+  // Opened beside whatever is open, through the workspace (a URL change is
+  // not seen by the mounted chat).
+  const resume = (item: SessionHistoryItem) => openChatSession(item.id);
 
   const newSession = () => {
     setWorkbenchTab("research");

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowUpDown, BookOpen, ChevronDown, FilePlus2, FileText, Folder, FolderOpen, GripVertical, Hash, Pin, X } from "lucide-react";
+import { ArrowUpDown, BookOpen, MessageSquareText, ChevronDown, FilePlus2, FileText, Folder, FolderOpen, GripVertical, Hash, Pin, X } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
@@ -16,6 +16,7 @@ import { logger } from "@/lib/logger";
 import { sortDocuments, type SortMode } from "@/core/workspace/sortDocuments";
 import { pinnedSourcesOf, savePinnedSources, shamelaBookIdOf } from "@/lib/sources/pinnedSources";
 import { PinSourcesDialog } from "@/components/workspace/PinSourcesDialog";
+import { useSessionHistory } from "@/hooks/useSessionHistory";
 
 const log = logger.child("FolderIndexPanel");
 
@@ -25,11 +26,12 @@ const log = logger.child("FolderIndexPanel");
  * on one takes the editor there. Order is the folder's own (drag to change),
  * or by name or date.
  *
- * Below the documents, the folder's pinned sources: every chat in the folder
- * answers from them, and a Shamela book opens in the reader.
+ * Below the documents, the folder's chats (opened beside the document), and
+ * its pinned sources: every chat in the folder answers from them, and a
+ * Shamela book opens in the reader.
  *
- * With nothing open it lists the folders to pick one. Chats and results join
- * this panel once folders can hold them.
+ * With nothing open it lists the folders to pick one. Transcripts, OCR text
+ * and translations land in documents, so they are listed with the documents.
  */
 
 const SORT_KEY = "workspace.folderIndex.sort";
@@ -48,7 +50,8 @@ function readSort(): SortMode {
 export const FolderIndexPanel: React.FC<{ onNavigate?: () => void }> = ({ onNavigate }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { activeDocumentId, setActiveDocumentId, documentOutline, jumpToHeading } = useWorkspace();
+  const { activeDocumentId, setActiveDocumentId, documentOutline, jumpToHeading, openChatSession } = useWorkspace();
+  const chatHistory = useSessionHistory("research");
   const { projects, docsMap, allDocs, loading, refresh } = useAllDocuments();
   const [sort, setSortState] = useState<SortMode>(readSort);
   const [pickedFolderId, setPickedFolderId] = useState<string | null>(null);
@@ -81,6 +84,13 @@ export const FolderIndexPanel: React.FC<{ onNavigate?: () => void }> = ({ onNavi
   };
 
   const pinned = pinnedSourcesOf(folder);
+  const chats = folder ? chatHistory.items.filter((c) => c.project_id === folder.id) : [];
+
+  // A chat opens in the workbench beside whatever is open, without leaving it.
+  const openChat = (sessionId: string) => {
+    openChatSession(sessionId);
+    onNavigate?.();
+  };
 
   const openBook = (bookId: string) => {
     setActiveDocumentId(bookId);
@@ -254,6 +264,26 @@ export const FolderIndexPanel: React.FC<{ onNavigate?: () => void }> = ({ onNavi
               );
             })}
           </ul>
+        )}
+
+        {chats.length > 0 && (
+          <>
+            <h3 className="mt-4 px-2 pb-1 text-xs font-semibold text-muted-foreground">{t("folderindex.chats", "چیٹس")}</h3>
+            <ul aria-label={t("folderindex.chats", "چیٹس")} className="space-y-0.5">
+              {chats.map((chat) => (
+                <li key={chat.id}>
+                  <button
+                    type="button"
+                    onClick={() => openChat(chat.id)}
+                    className="flex min-h-touch w-full items-center gap-2 rounded-md px-2 text-start text-sm hover:bg-muted"
+                  >
+                    <MessageSquareText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="truncate">{chat.title}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
 
         <div className="mt-4 flex items-center justify-between px-2 pb-1">

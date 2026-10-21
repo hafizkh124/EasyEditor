@@ -27,25 +27,35 @@ export async function upsertResearchSession(params: {
   messages: ChatMessage[];
   citations: CitationItem[];
   selectedDomains: string[];
+  /** The folder the chat was started in (SYSTEM-2026 §3); only ever set, never cleared. */
+  projectId?: string | null;
 }): Promise<string | null> {
-  const payload = {
+  const base = {
     title: params.title,
     mode: params.mode,
     messages: params.messages,
     citations: params.citations,
     selected_domains: params.selectedDomains,
   };
+  const withFolder = params.projectId ? { ...base, project_id: params.projectId } : base;
+
+  // Until the `project_id` migration has run on this database the column is
+  // missing, and a write naming it fails — so it is retried without, and the
+  // chat is still saved, just not yet linked to its folder.
+  const missingColumn = (error: { message?: string } | null) => Boolean(error?.message?.includes("project_id"));
+
   if (params.id) {
-    await fromSessions()
-      .update(payload)
-      .eq("id", params.id)
-      .eq("user_id", params.userId);
+    const { error } = await fromSessions().update(withFolder).eq("id", params.id).eq("user_id", params.userId);
+    if (missingColumn(error)) await fromSessions().update(base).eq("id", params.id).eq("user_id", params.userId);
     return params.id;
   }
-  const { data, error } = await fromSessions()
-    .insert({ user_id: params.userId, ...payload })
+  let { data, error } = await fromSessions()
+    .insert({ user_id: params.userId, ...withFolder })
     .select("id")
     .single();
+  if (missingColumn(error)) {
+    ({ data, error } = await fromSessions().insert({ user_id: params.userId, ...base }).select("id").single());
+  }
   if (error || !data?.id) return null;
   return data.id as string;
 }

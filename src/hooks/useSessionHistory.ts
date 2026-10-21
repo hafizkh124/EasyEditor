@@ -14,6 +14,8 @@ export interface SessionHistoryItem {
   created_at: string;
   updated_at: string;
   metadata: Record<string, unknown>;
+  /** Research chats only: the folder the chat belongs to, if any. */
+  project_id?: string | null;
 }
 
 interface UserSessionRow {
@@ -50,12 +52,41 @@ export function useSessionHistory(section: SessionSection) {
   const [available, setAvailable] = useState(true);
 
   const fetchItems = useCallback(async () => {
-    if (!user) { setItems([]); return; }
+    if (!user) {
+      // A desktop with no account still keeps its chats, in the local
+      // database (see lib/sessions/store.ts) — list those.
+      if (section === "research" && typeof window !== "undefined" && window.electronAPI?.invoke) {
+        setLoading(true);
+        try {
+          const rows = (await window.electronAPI.invoke("workspace:invoke", { method: "listResearchSessions", args: [] })) as
+            | Array<{ id: string; title: string; mode: string; project_id?: string | null; created_at?: string; updated_at: string }>
+            | null;
+          setItems((rows ?? []).map((r) => ({
+            id: r.id,
+            section: "research" as const,
+            title: r.title ?? "Untitled",
+            created_at: r.created_at ?? r.updated_at,
+            updated_at: r.updated_at,
+            metadata: { mode: r.mode },
+            project_id: r.project_id ?? null,
+          })));
+        } catch {
+          setItems([]);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+      setItems([]);
+      return;
+    }
     setLoading(true);
     try {
       if (section === "research") {
+        // "*" rather than a column list, so a database that has not run the
+        // `project_id` migration yet still lists its chats.
         const { data, error } = await fromResearchSessions()
-          .select("id, title, mode, created_at, updated_at")
+          .select("*")
           .eq("user_id", user.id)
           .order("updated_at", { ascending: false });
         if (error) {
@@ -73,6 +104,7 @@ export function useSessionHistory(section: SessionSection) {
           created_at: r.created_at,
           updated_at: r.updated_at,
           metadata:   { mode: r.mode },
+          project_id: r.project_id ?? null,
         })));
         return;
       }

@@ -259,6 +259,7 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
       messages TEXT NOT NULL DEFAULT '[]',
       citations TEXT NOT NULL DEFAULT '[]',
       selected_domains TEXT NOT NULL DEFAULT '[]',
+      project_id TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -304,6 +305,14 @@ export function initializeDatabaseSchema(db: SqliteDatabase): void {
   // it does today, so upgrading cannot flip the direction of anyone's work.
   try {
     db.exec(`ALTER TABLE documents ADD COLUMN text_direction TEXT DEFAULT NULL;`);
+  } catch {
+    // Column already exists
+  }
+
+  // The folder a chat belongs to (SYSTEM-2026 §3), for databases created
+  // before the column existed. Nullable: existing chats have no folder.
+  try {
+    db.exec(`ALTER TABLE research_sessions ADD COLUMN project_id TEXT DEFAULT NULL;`);
   } catch {
     // Column already exists
   }

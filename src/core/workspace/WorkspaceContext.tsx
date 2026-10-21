@@ -104,6 +104,14 @@ interface WorkspaceContextType {
   runEditorTask: EditorTaskRunner | null;
   registerEditorTaskRunner: (runner: EditorTaskRunner | null) => void;
 
+  /**
+   * Open a saved chat in the research tab (the folder index, History). An
+   * explicit request rather than a URL change, which the chat does not see
+   * once the workspace is mounted; `?session=` still works on a fresh load.
+   */
+  chatSessionRequest: { id: string; nonce: number } | null;
+  openChatSession: (id: string) => void;
+
   /** A prompt skill chosen outside the chat (`Ctrl+K`), for the research composer to open. */
   pendingSkillPrompt: ScholarlyPromptDef | null;
   requestSkillPrompt: (prompt: ScholarlyPromptDef) => void;
@@ -203,6 +211,16 @@ export const WorkspaceProvider: React.FC<{
     setRunEditorTask(() => runner);
   }, []);
 
+  const [chatSessionRequest, setChatSessionRequest] = useState<{ id: string; nonce: number } | null>(null);
+  const openChatSession = useCallback(
+    (id: string) => {
+      setChatSessionRequest((prev) => ({ id, nonce: (prev?.nonce ?? 0) + 1 }));
+      panelState.setWorkbenchTab("research");
+      panelState.setWorkbenchOpen(true);
+    },
+    [panelState],
+  );
+
   const [pendingSkillPrompt, setPendingSkillPrompt] = useState<ScholarlyPromptDef | null>(null);
   const requestSkillPrompt = useCallback(
     (prompt: ScholarlyPromptDef) => {
@@ -258,6 +276,8 @@ export const WorkspaceProvider: React.FC<{
         registerDocumentTaskRunner,
         runEditorTask,
         registerEditorTaskRunner,
+        chatSessionRequest,
+        openChatSession,
         pendingSkillPrompt,
         requestSkillPrompt,
         clearPendingSkillPrompt,

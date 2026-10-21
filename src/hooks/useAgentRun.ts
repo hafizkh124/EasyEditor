@@ -18,6 +18,7 @@ import { useSkills } from "@/lib/skills/useSkills";
 import { useAllDocuments } from "@/core/workspace/useAllDocuments";
 import { pinnedSourcesOf, type PinnedSource } from "@/lib/sources/pinnedSources";
 import { searchSources } from "@/lib/sources/searchSources";
+import { useChatPersistence, type SavedExchange } from "@/hooks/useChatPersistence";
 import { matchesSkill } from "@/lib/skills/registry";
 import { useOpenSkillsSettings } from "@/lib/skills/useOpenSkillsSettings";
 import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
@@ -155,7 +156,7 @@ export function useAgentRun() {
   const pf = useProjectFolderContext();
   const ws = useOptionalWorkspace();
   const { subscription } = useSubscription();
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const agent = typeof window !== "undefined" ? window.electronAPI?.agent : undefined;
   // M10 Phase 2.1 — the web counterpart of `agent` above. Mutually exclusive
   // by construction: `available` is false whenever `agent` exists.
@@ -773,7 +774,10 @@ export function useAgentRun() {
   // unlock Plan/Auto" flow, and wiping the thread there would be data loss,
   // not a reset.
   const prevProjectRootRef = useRef<string | null>(null);
+  // Set below by the chat persistence: a cleared thread starts a new session.
+  const forgetSessionRef = useRef<() => void>(() => {});
   const clearConversation = useCallback(() => {
+    forgetSessionRef.current();
     setTurns([]);
     setResult(null);
     setProgress([]);
@@ -782,6 +786,31 @@ export function useAgentRun() {
     setPlanPending(false);
     lastInstructionRef.current = null;
   }, []);
+  // ── Saving the chat and opening a saved one (SYSTEM-2026 §3) ──
+  const answerOf = (r: RunResult) => (r.question?.trim() || r.answer || "").trim();
+  const exchanges = useMemo<SavedExchange[]>(() => {
+    const done = turns.map((tn) => ({ instruction: tn.instruction, answer: answerOf(tn.result) }));
+    const current = result && lastInstructionRef.current ? [{ instruction: lastInstructionRef.current, answer: answerOf(result) }] : [];
+    return [...done, ...current].filter((e) => e.instruction || e.answer);
+  }, [turns, result]);
+  const { forgetSession } = useChatPersistence({
+    userId: user?.id ?? null,
+    exchanges,
+    running,
+    folderId: activeFolder?.id ?? null,
+    restore: (saved) => {
+      clearConversation();
+      setTurns(saved.map((e) => ({
+        id: mkTurnId(),
+        instruction: e.instruction,
+        result: { answer: e.answer, stopReason: "restored", steps: 0, toolCalls: [] },
+      })));
+    },
+    reset: clearConversation,
+    sessionRequest: ws?.chatSessionRequest ?? null,
+  });
+  forgetSessionRef.current = forgetSession;
+
   useEffect(() => {
     const prev = prevProjectRootRef.current;
     prevProjectRootRef.current = projectRoot;

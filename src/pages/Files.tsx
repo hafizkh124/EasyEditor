@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  ArrowRight, BookOpen, FilePlus2, FileText, Folder, FolderOpen, FolderPlus, Languages, Mic, ScanText, Search,
+  ArrowRight, BookOpen, FilePlus2, MessageSquareText, FileText, Folder, FolderOpen, FolderPlus, Languages, Mic, ScanText, Search,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSeo } from "@/hooks/useSeo";
@@ -65,6 +65,7 @@ const FilesPage = () => {
   const { projects, docsMap, allDocs, loading, refresh } = useAllDocuments();
   const transcripts = useSessionHistory("transcribe");
   const ocrSessions = useSessionHistory("ocr");
+  const chatHistory = useSessionHistory("research");
 
   const folders = projects.filter((p) => p.kind !== "translation");
   const folder = folderId ? folders.find((p) => p.id === folderId) ?? null : null;
@@ -79,6 +80,10 @@ const FilesPage = () => {
   }, [folder, docsMap, allDocs, q]);
 
   const shownFolders = folders.filter((f) => !q || matches(f.title, q));
+  // An open folder also lists the chats started in it.
+  const folderChats = folder
+    ? chatHistory.items.filter((c) => c.project_id === folder.id && (!q || matches(c.title, q)))
+    : [];
 
   // Each job's results appear only where the job itself exists (registry).
   const results = useMemo<ResultItem[]>(() => {
@@ -228,6 +233,26 @@ const FilesPage = () => {
                   )
                 )}
 
+                {folderChats.length > 0 && (
+                  <section aria-labelledby="files-chats" className="space-y-2">
+                    <h2 id="files-chats" className="text-sm font-semibold text-muted-foreground">{t("folderindex.chats", "چیٹس")}</h2>
+                    <ul aria-labelledby="files-chats" className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                      {folderChats.map((c) => (
+                        <li key={c.id}>
+                          <Link
+                            to={`/workspace?panel=research&session=${encodeURIComponent(c.id)}`}
+                            className="flex min-h-touch items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                          >
+                            <MessageSquareText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                            <span className="min-w-0 flex-1 truncate text-sm text-foreground">{c.title}</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{formatDate(c.updated_at)}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
                 <section aria-labelledby="files-documents" className="space-y-2">
                   {!folder && (
                     <h2 id="files-documents" className="text-sm font-semibold text-muted-foreground">
@@ -239,7 +264,7 @@ const FilesPage = () => {
                       {q ? t("filespage.no_match", "تلاش سے کچھ نہیں ملا۔") : t("filespage.folder_empty", "اس فولڈر میں ابھی کوئی دستاویز نہیں۔")}
                     </p>
                   ) : (
-                    <ul aria-labelledby={folder ? undefined : "files-documents"} className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                    <ul aria-labelledby={folder ? undefined : "files-documents"} aria-label={folder ? t("folderindex.documents", "دستاویزات") : undefined} className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
                       {documents.map((d) => (
                         <li key={d.id}>
                           <Link
