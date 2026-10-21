@@ -138,7 +138,7 @@ const App = () => (
                   <Route path="/ur/privacy" element={<DesktopToWorkspace><Privacy /></DesktopToWorkspace>} />
                   <Route path="/ur/refund-policy" element={<DesktopToWorkspace><Refund /></DesktopToWorkspace>} />
                   <Route path="/ur/pricing-info" element={<DesktopToWorkspace><PricingInfo /></DesktopToWorkspace>} />
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/dashboard" element={<ProtectedRoute allowGuest><Dashboard /></ProtectedRoute>} />
                   {/* allowGuest: on desktop these run on the offline Whisper/Piper
                       engines, which need no account. CapabilityRoute is what keeps
                       the cloud-only tools off desktop entirely. On web `allowGuest`

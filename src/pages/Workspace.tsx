@@ -21,6 +21,8 @@ interface WorkspaceHandoffState {
   source?: "research" | "ocr" | "transcribe" | "manual";
   /** "+ New document" from the create menu: open a fresh, empty document. */
   intent?: "new-document";
+  /** A question asked from Home, pre-filled into the research composer. */
+  question?: string;
 }
 
 const WorkspacePage: React.FC = () => {
@@ -105,6 +107,7 @@ const WorkspacePage: React.FC = () => {
       documentId={documentId}
       initialWorkbenchOpenFromUrl={openWorkbenchFromUrl}
       initialWorkbenchTab={workbenchTabFromUrl}
+      initialWorkbenchQuery={handoff.question}
     >
       <ProjectFolderProvider>
         <AgentRunProvider>

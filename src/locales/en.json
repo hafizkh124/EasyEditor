@@ -2064,5 +2064,15 @@
   "create.image_to_text": "Image/PDF to text",
   "create.translate_book": "Translate a book",
   "create.new_chat": "New chat",
-  "create.new_document": "New document"
+  "create.new_document": "New document",
+  "home.greeting": "Assalamu alaikum — what shall we work on today?",
+  "home.ask_placeholder": "Ask a question… (/ for a skill, @ for a source)",
+  "home.ask_submit": "Ask",
+  "home.recent": "Recent",
+  "home.recent_empty": "Your chats and documents will appear here.",
+  "home.type_chat": "Chat",
+  "home.type_document": "Document",
+  "home.job_desc.transcribe": "Lectures, voice notes, video",
+  "home.job_desc.ocr": "Book pages, scans, PDFs",
+  "home.job_desc.translate": "PDF or a Shamela book"
 }

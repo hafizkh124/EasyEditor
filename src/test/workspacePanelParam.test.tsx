@@ -91,3 +91,19 @@ describe("WorkspaceProvider — opening on a specific tab from the URL", () => {
     expect(screen.getByTestId("probe").dataset.tab).toBe("research");
   });
 });
+
+describe("WorkspaceProvider — a question handed over from Home", () => {
+  function QueryProbe() {
+    const { pendingWorkbenchQuery } = useWorkspace();
+    return <div data-testid="query">{pendingWorkbenchQuery ?? ""}</div>;
+  }
+
+  it("starts with the question pending, for the research composer to pre-fill", () => {
+    render(
+      <WorkspaceProvider initialWorkbenchTab="research" initialWorkbenchQuery="What is wudu?">
+        <QueryProbe />
+      </WorkspaceProvider>,
+    );
+    expect(screen.getByTestId("query")).toHaveTextContent("What is wudu?");
+  });
+});

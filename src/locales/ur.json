@@ -2064,5 +2064,15 @@
   "create.image_to_text": "تصویر/PDF سے متن",
   "create.translate_book": "کتاب کا ترجمہ",
   "create.new_chat": "نئی چیٹ",
-  "create.new_document": "نیا دستاویز"
+  "create.new_document": "نیا دستاویز",
+  "home.greeting": "السلام علیکم، آج کیا کرنا ہے؟",
+  "home.ask_placeholder": "سوال پوچھیں… (/ سے مہارت، @ سے ماخذ)",
+  "home.ask_submit": "پوچھیں",
+  "home.recent": "حالیہ",
+  "home.recent_empty": "آپ کی چیٹس اور دستاویزات یہاں نظر آئیں گی۔",
+  "home.type_chat": "چیٹ",
+  "home.type_document": "دستاویز",
+  "home.job_desc.transcribe": "بیان، وائس نوٹ، ویڈیو",
+  "home.job_desc.ocr": "کتاب کے صفحات، اسکین، PDF",
+  "home.job_desc.translate": "PDF یا شاملہ کی کتاب"
 }

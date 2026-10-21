@@ -2064,5 +2064,15 @@
   "create.image_to_text": "من الصورة/PDF إلى نص",
   "create.translate_book": "ترجمة كتاب",
   "create.new_chat": "محادثة جديدة",
-  "create.new_document": "مستند جديد"
+  "create.new_document": "مستند جديد",
+  "home.greeting": "السلام عليكم، على ماذا نعمل اليوم؟",
+  "home.ask_placeholder": "اطرح سؤالاً… (/ للمهارة، @ للمصدر)",
+  "home.ask_submit": "اسأل",
+  "home.recent": "الأخيرة",
+  "home.recent_empty": "ستظهر محادثاتك ومستنداتك هنا.",
+  "home.type_chat": "محادثة",
+  "home.type_document": "مستند",
+  "home.job_desc.transcribe": "دروس، رسائل صوتية، فيديو",
+  "home.job_desc.ocr": "صفحات الكتب، المسح الضوئي، PDF",
+  "home.job_desc.translate": "PDF أو كتاب من الشاملة"
 }

@@ -111,7 +111,9 @@ export const WorkspaceProvider: React.FC<{
   initialWorkbenchOpenFromUrl?: boolean;
   /** e.g. `?panel=research` — opens the workbench on that specific tab. */
   initialWorkbenchTab?: WorkbenchTab;
-}> = ({ children, documentId, initialWorkbenchOpenFromUrl = false, initialWorkbenchTab }) => {
+  /** A question typed on Home: pre-fills the research composer once. */
+  initialWorkbenchQuery?: string;
+}> = ({ children, documentId, initialWorkbenchOpenFromUrl = false, initialWorkbenchTab, initialWorkbenchQuery }) => {
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(documentId ?? null);
   const panelState = usePanelState(initialWorkbenchOpenFromUrl, initialWorkbenchTab);
 
@@ -123,7 +125,7 @@ export const WorkspaceProvider: React.FC<{
     if (documentId) setActiveDocumentId(documentId);
   }, [documentId]);
 
-  const [pendingWorkbenchQuery, setPendingWorkbenchQuery] = useState<string | null>(null);
+  const [pendingWorkbenchQuery, setPendingWorkbenchQuery] = useState<string | null>(initialWorkbenchQuery ?? null);
   const [pendingCanvasInsertion, setPendingCanvasInsertion] = useState<string | null>(null);
   const [readerPage, setReaderPage] = useState<ReaderPageSignal | null>(null);
   const [readerJump, setReaderJump] = useState<ReaderJumpSignal | null>(null);

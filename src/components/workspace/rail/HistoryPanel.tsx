@@ -92,7 +92,7 @@ const SessionsView: React.FC = () => {
           icon={MessageSquare}
           title={t("history.signed_out_title", "سیشن محفوظ کرنے کے لیے سائن اِن کریں")}
           description={t("history.signed_out_desc", "سائن اِن کرنے کے بعد آپ کے تحقیقی سیشن یہاں محفوظ رہیں گے۔")}
-          action={<Button size="sm" onClick={() => navigate("/auth")}>{t("nav.sign_in", "سائن اِن")}</Button>}
+          action={<Button size="sm" onClick={() => navigate("/login")}>{t("nav.sign_in", "سائن اِن")}</Button>}
         />
       </div>
     );
