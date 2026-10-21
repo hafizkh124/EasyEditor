@@ -116,7 +116,8 @@ describe('resolveExternalTarget guards', () => {
 });
 
 describe('isInsideFolder', () => {
-  it('is case-insensitive and does not match a sibling prefix', () => {
+  // Windows-only semantics (drive-letter paths / C:\Windows / case-insensitive compare) — runs on Windows, skipped on POSIX CI.
+  it.skipIf(process.platform !== 'win32')('is case-insensitive and does not match a sibling prefix', () => {
     expect(isInsideFolder('C:\\Proj', 'c:\\proj\\01.docx')).toBe(true);
     expect(isInsideFolder('C:\\Proj', 'C:\\Project2\\01.docx')).toBe(false);
     expect(isInsideFolder(null, 'C:\\Proj\\01.docx')).toBe(false);

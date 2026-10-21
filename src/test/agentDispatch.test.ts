@@ -784,7 +784,8 @@ describe('build_spreadsheet (M12 Phase D — multi-sheet, formulas, formatting, 
     { name: 'خلاصہ', data: [['کل', 100000]] },
   ]);
 
-  it('parses "sheets" as JSON and calls buildWorkbook once with every sheet, format defaulted from the extension', async () => {
+  // Windows-only semantics (drive-letter paths / C:\Windows / case-insensitive compare) — runs on Windows, skipped on POSIX CI.
+  it.skipIf(process.platform !== 'win32')('parses "sheets" as JSON and calls buildWorkbook once with every sheet, format defaulted from the extension', async () => {
     const { dispatch } = mk();
     const r = await dispatch('build_spreadsheet', { filePath: 'zakat.xlsx', sheets }) as { path: string; format: string; sheets: number; note: string };
     expect(excelMock.buildWorkbook).toHaveBeenCalledTimes(1);
@@ -1093,7 +1094,8 @@ describe('research_topic (bounded sub-run, M9 Phase E)', () => {
 });
 
 describe('P9 tools — font / template / global options', () => {
-  it('install_font rejects a URL and a relative path, but installs an absolute font file', async () => {
+  // Windows-only semantics (drive-letter paths / C:\Windows / case-insensitive compare) — runs on Windows, skipped on POSIX CI.
+  it.skipIf(process.platform !== 'win32')('install_font rejects a URL and a relative path, but installs an absolute font file', async () => {
     const { dispatch } = mk();
     expect(await dispatch('install_font', { font_path: 'https://example.com/x.ttf' })).toMatchObject({ error: expect.stringMatching(/URL/i) });
     expect(await dispatch('install_font', { font_path: 'fonts/x.ttf' })).toMatchObject({ error: expect.stringMatching(/absolute/i) });
@@ -1102,7 +1104,8 @@ describe('P9 tools — font / template / global options', () => {
     expect(wordMock.installFont).toHaveBeenCalledWith('C:\\fonts\\Jameel.ttf');
   });
 
-  it('install_template checkpoints + backs up the chapter it attaches to', async () => {
+  // Windows-only semantics (drive-letter paths / C:\Windows / case-insensitive compare) — runs on Windows, skipped on POSIX CI.
+  it.skipIf(process.platform !== 'win32')('install_template checkpoints + backs up the chapter it attaches to', async () => {
     const { dispatch } = mk();
     await dispatch('install_template', { template_path: 'C:\\t\\thesis.dotx', chapter: '01.docx' });
     expect(recordEdit).toHaveBeenCalledWith('C:\\p', 'cp_1', '01.docx');

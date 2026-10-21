@@ -46,12 +46,17 @@ export interface CheckpointMeta {
   undoneAt?: string;
 }
 
+/** Last timestamp handed out — keeps checkpoints strictly ordered even within one millisecond. */
+let lastStampMs = 0;
+
 /** Open a checkpoint for one agent task. Nothing is copied yet. */
 export function beginCheckpoint(root: string, label: string): string {
-  const id = `cp_${new Date().toISOString().replace(/[:.]/g, '-')}_${randomUUID().slice(0, 8)}`;
+  lastStampMs = Math.max(Date.now(), lastStampMs + 1);
+  const stamp = new Date(lastStampMs).toISOString();
+  const id = `cp_${stamp.replace(/[:.]/g, '-')}_${randomUUID().slice(0, 8)}`;
   const dir = checkpointDir(root, id);
   fs.mkdirSync(dir, { recursive: true });
-  const meta: CheckpointMeta = { id, createdAt: new Date().toISOString(), label: label.slice(0, 300), files: [] };
+  const meta: CheckpointMeta = { id, createdAt: stamp, label: label.slice(0, 300), files: [] };
   fs.writeFileSync(metaPath(root, id), JSON.stringify(meta, null, 2), 'utf8');
   return id;
 }
@@ -130,5 +135,5 @@ export function listCheckpoints(root: string): CheckpointMeta[] {
   return ids
     .map((id) => readMeta(root, id))
     .filter((m): m is CheckpointMeta => m !== null)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
 }

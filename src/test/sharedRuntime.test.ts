@@ -13,7 +13,8 @@
  */
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
+import { promisify } from "node:util";
 import { join, relative } from "node:path";
 
 const SHARED_ROOT = join(__dirname, "..", "..", "shared");
@@ -83,6 +84,8 @@ describe("shared/ is runtime-independent", () => {
  * `denoland/setup-deno` step in .github/workflows/release.yml is what makes
  * this run for real, on every CI build.
  */
+const execFileAsync = promisify(execFile);
+
 describe("shared/ loads under Deno", () => {
   const files = listTsFiles(SHARED_ROOT);
 
@@ -97,8 +100,11 @@ describe("shared/ loads under Deno", () => {
 
   it.skipIf(!denoAvailable).each(files.map((f) => [relative(SHARED_ROOT, f), f]))(
     "%s type-checks under deno",
-    (_name, full) => {
-      execFileSync("deno", ["check", "--no-lock", full], { stdio: "pipe" });
+    async (_name, full) => {
+      // Async on purpose: ~60 synchronous `deno check` runs (~1s each) block the
+      // worker long enough that vitest's worker→runner heartbeat times out
+      // ("Timeout calling onTaskUpdate") and fails the run with every test green.
+      await execFileAsync("deno", ["check", "--no-lock", full]);
     },
   );
 });
