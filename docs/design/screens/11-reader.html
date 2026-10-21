@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reader</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .ar { font-family: 'Noto Naskh Arabic', serif; font-size: 22px; line-height: 2.5; text-align: justify; }
+  .sepia { background: #f4ecd8; color: #433422; } .sepia .muted { color: #7a6a52; }
+  .rd { display: grid; grid-template-columns: 280px 1fr; flex: 1; min-block-size: 0; }
+  .rd.split { grid-template-columns: 1fr 1fr; }
+  .toc a { display: flex; gap: 8px; padding: 7px 10px; border-radius: 9px; font-size: 14px; } .toc a.on { background: hsl(var(--primary-soft)); color: hsl(var(--primary)); font-weight: 600; } .toc a.sub { padding-inline-start: 26px; font-size: 13px; color: hsl(var(--muted-foreground)); }
+  .swatch { inline-size: 44px; block-size: 44px; border-radius: 12px; border: 2px solid hsl(var(--border)); display: grid; place-items: center; font-size: 15px; font-weight: 600; } .swatch.on { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / .18); }
+  .hl { background: hsl(48 95% 70% / .55); border-radius: 4px; }
+  .rbar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-block-start: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+  .slider { flex: 1; block-size: 4px; border-radius: 4px; background: hsl(var(--muted)); position: relative; } .slider i { position: absolute; inset-block: 0; inset-inline-start: 0; inline-size: 34%; background: hsl(var(--primary)); border-radius: 4px; } .slider b { position: absolute; inset-block-start: -6px; inset-inline-start: 34%; inline-size: 16px; block-size: 16px; border-radius: 50%; background: hsl(var(--primary)); box-shadow: var(--shadow-sm); margin-inline-start: -8px; }
+</style>
+</head>
+<body data-title="11 · شاملہ ریڈر" data-note="کتاب پڑھنا ایک پرسکون اسکرین: مواد پہلے، ٹول بار ضرورت پر۔ ڈیسک ٹاپ پر فہرست مضامین، موبائل پر شیٹ۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>ریڈر · فہرست، حوالہ، ترتیبات، موازنہ (Split)</h2>
+  <p class="cap">بالائی بار میں: واپس، فہرست، صفحہ پر جائیں، بُک مارک، پسندیدہ، موازنہ، PDF، "ورک اسپیس میں لائیں"۔ منتخب متن پر چھوٹا بار: حوالہ · نوٹ · ایڈیٹر میں · پوچھیں۔ ریڈر کی ترتیب (فونٹ، سائز، تھیم: خودکار/روشن/سیپیا/گہرا) ایک ہی جگہ۔ تھیم بدلنے سے صرف پڑھنے کا کالم بدلتا ہے، ایپ نہیں۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center">المغنی — <x-t ur="جلد 4 · صفحہ 112" en="Vol. 4 · p. 112"></x-t></span></div>
+      <div class="topbar" style="block-size:50px"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><button class="icon-btn"><i data-i="sidebar" data-flip></i></button><div class="col" style="--g:0;min-inline-size:0"><b class="sm trunc">المغنی</b><span class="xs muted">ابن قدامہ</span></div><span class="grow"></span>
+        <div class="row" style="--g:2px"><button class="icon-btn sm"><i data-i="chev-r" data-flip></i></button><span class="chip neutral mono"><bdi>112 / 540</bdi></span><button class="icon-btn sm"><i data-i="chev-l" data-flip></i></button></div>
+        <button class="icon-btn"><i data-i="bookmark"></i></button><button class="icon-btn" style="color:hsl(var(--warning))"><i data-i="star"></i></button><button class="icon-btn"><i data-i="split"></i></button><button class="icon-btn"><i data-i="file"></i></button><button class="btn sm primary"><i data-i="plus"></i><x-t ur="ورک اسپیس میں" en="To workspace"></x-t></button><button class="icon-btn" style="background:hsl(var(--muted))"><i data-i="type"></i></button></div>
+      <div class="rd">
+        <aside class="sidebar toc p3 scroll"><div class="search" style="margin-block-end:8px"><i data-i="search"></i><span><x-t ur="فہرست میں تلاش" en="Search contents"></x-t></span></div><a><i data-i="chev-d" data-s="14"></i>كتاب الطهارة</a><a class="sub">باب المياه</a><a class="sub">باب الآنية</a><a class="on"><i data-i="chev-d" data-s="14"></i>كتاب الصلاة</a><a class="sub on" style="background:none">باب الأذان</a><a class="sub">باب شروط الصلاة</a><a><i data-i="chev-l" data-s="14"></i>كتاب الزكاة</a><a><i data-i="chev-l" data-s="14"></i>كتاب الصيام</a></aside>
+        <div style="position:relative;display:flex;flex-direction:column;min-block-size:0">
+          <div class="scroll grow" style="padding:36px 64px;max-inline-size:760px;margin-inline:auto"><div class="ar">وَالْأَصْلُ فِي الْأَشْيَاءِ الْإِبَاحَةُ مَا لَمْ يَرِدْ دَلِيلٌ عَلَى خِلَافِ ذَلِكَ، <span class="hl">وَهَذَا قَوْلُ جُمْهُورِ أَهْلِ الْعِلْمِ</span>، وَقَدْ ذَهَبَ بَعْضُهُمْ إِلَى التَّوَقُّفِ حَتَّى يَرِدَ الدَّلِيلُ. وَاحْتَجُّوا بِأَنَّ الْأَحْكَامَ لَا تَثْبُتُ إِلَّا بِالشَّرْعِ.</div></div>
+          <div class="card raised row" style="position:absolute;inset-block-start:96px;inset-inline-start:140px;padding:4px;--g:0;z-index:3"><button class="btn sm ghost"><i data-i="quote"></i><x-t ur="حوالہ" en="Cite"></x-t></button><button class="btn sm ghost"><i data-i="pen"></i><x-t ur="نوٹ" en="Note"></x-t></button><button class="btn sm ghost"><i data-i="plus"></i><x-t ur="ایڈیٹر میں" en="To editor"></x-t></button><button class="btn sm ghost" style="color:hsl(var(--primary))"><i data-i="spark"></i><x-t ur="پوچھیں" en="Ask"></x-t></button></div>
+          <div class="rbar"><span class="xs muted mono">112</span><div class="slider"><i></i><b></b></div><span class="xs muted mono">540</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="ریڈر کی ترتیبات · موازنہ" en="Reader settings · compare" ></x-t></span></div>
+      <div class="viewport">
+        <div class="topbar" style="block-size:50px"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="sm"><x-t ur="موازنہ: المغنی ↔ المجموع" en="Compare: Al-Mughni ↔ Al-Majmu" ></x-t></b><span class="grow"></span><button class="btn sm"><x-t ur="دوسری کتاب بدلیں" en="Change book"></x-t></button><button class="icon-btn" style="background:hsl(var(--muted))"><i data-i="type"></i></button></div>
+        <div class="rd split" style="position:relative">
+          <div class="scroll" style="padding:28px 36px;border-inline-end:1px solid hsl(var(--border))"><div class="xs muted" style="margin-block-end:8px">المغنی · 4/112</div><div class="ar" style="font-size:20px">وَالْأَصْلُ فِي الْأَشْيَاءِ الْإِبَاحَةُ مَا لَمْ يَرِدْ دَلِيلٌ عَلَى خِلَافِ ذَلِكَ، وَهَذَا قَوْلُ جُمْهُورِ أَهْلِ الْعِلْمِ.</div></div>
+          <div class="scroll sepia" style="padding:28px 36px"><div class="xs muted" style="margin-block-end:8px">المجموع · 1/56</div><div class="ar" style="font-size:20px">قَالَ أَصْحَابُنَا: الْأَصْلُ فِي الْأَعْيَانِ الْمُنْتَفَعِ بِهَا الْإِبَاحَةُ عَلَى الْأَصَحِّ، وَقِيلَ التَّحْرِيمُ، وَقِيلَ الْوَقْفُ.</div></div>
+          <div class="pop card raised" style="position:absolute;inset-block-start:10px;inset-inline-start:10px;inline-size:300px;padding:14px;z-index:5"><div class="col" style="--g:14px">
+            <b class="sm"><x-t ur="ریڈر کی ترتیبات" en="Reader settings"></x-t></b>
+            <div class="col" style="--g:6px"><span class="xs muted"><x-t ur="فونٹ" en="Font"></x-t></span><div class="segmented" style="inline-size:100%"><span class="on grow center">نسخ</span><span class="grow center">أميري</span><span class="grow center">قرآنی</span></div></div>
+            <div class="col" style="--g:6px"><div class="row between xs muted"><span><x-t ur="سائز" en="Size"></x-t></span><b>22</b></div><div class="row" style="--g:10px"><span class="xs">A</span><div class="slider"><i style="inline-size:55%"></i><b style="inset-inline-start:55%"></b></div><span class="lg">A</span></div></div>
+            <div class="col" style="--g:6px"><span class="xs muted"><x-t ur="تھیم" en="Theme"></x-t></span><div class="row" style="--g:8px"><span class="swatch on" style="background:hsl(var(--card))">آ</span><span class="swatch" style="background:#fff">آ</span><span class="swatch" style="background:#f4ecd8;color:#433422">آ</span><span class="swatch" style="background:#161616;color:#eee">آ</span></div></div>
+            <div class="row between"><span class="sm"><x-t ur="حرکات دکھائیں" en="Show diacritics"></x-t></span><span class="switch on"></span></div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>ریڈر · پڑھنا، فہرست شیٹ، سلیکشن، ترتیبات</h2>
+  <p class="cap">مواد پوری اسکرین۔ ایک ٹیپ سے اوپر/نیچے کی بار آتی ہیں اور چند سیکنڈ بعد چھپ جاتی ہیں۔ فہرست اور ترتیبات نیچے سے شیٹ۔ صفحہ بدلنا: اطراف پر سوائپ یا نیچے سلائیڈر۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><div class="col grow" style="--g:0"><b class="sm trunc">المغنی</b><span class="xs muted"><x-t ur="جلد 4 · صفحہ 112" en="Vol. 4 · p. 112"></x-t></span></div><button class="icon-btn"><i data-i="bookmark"></i></button><button class="icon-btn"><i data-i="type"></i></button></div>
+      <div class="viewport"><div class="scroll grow" style="padding:20px 22px"><div class="ar" style="font-size:21px">وَالْأَصْلُ فِي الْأَشْيَاءِ الْإِبَاحَةُ مَا لَمْ يَرِدْ دَلِيلٌ عَلَى خِلَافِ ذَلِكَ، وَهَذَا قَوْلُ جُمْهُورِ أَهْلِ الْعِلْمِ، وَقَدْ ذَهَبَ بَعْضُهُمْ إِلَى التَّوَقُّفِ.</div></div>
+        <div class="rbar"><button class="icon-btn sm"><i data-i="list"></i></button><div class="slider"><i></i><b></b></div><span class="xs muted mono"><bdi>112/540</bdi></span><button class="icon-btn sm fill"><i data-i="spark"></i></button></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="sm grow trunc">المغنی</b></div>
+      <div class="viewport"><div class="scroll grow" style="padding:20px 22px"><div class="ar" style="font-size:21px">وَالْأَصْلُ فِي الْأَشْيَاءِ الْإِبَاحَةُ مَا لَمْ يَرِدْ دَلِيلٌ عَلَى خِلَافِ ذَلِكَ، <span class="hl">وَهَذَا قَوْلُ جُمْهُورِ أَهْلِ الْعِلْمِ</span>.</div></div>
+        <div class="card raised abar" style="position:absolute;inset-block-start:70px;inset-inline-start:14px;padding:5px;display:flex;gap:2px;border-radius:16px;z-index:4"><button class="btn sm ghost" style="flex-direction:column;min-block-size:52px;gap:2px;font-size:11px"><i data-i="quote" data-s="20"></i><x-t ur="حوالہ" en="Cite"></x-t></button><button class="btn sm ghost" style="flex-direction:column;min-block-size:52px;gap:2px;font-size:11px"><i data-i="pen" data-s="20"></i><x-t ur="نوٹ" en="Note"></x-t></button><button class="btn sm ghost" style="flex-direction:column;min-block-size:52px;gap:2px;font-size:11px"><i data-i="plus" data-s="20"></i><x-t ur="ایڈیٹر" en="Editor"></x-t></button><button class="btn sm ghost" style="flex-direction:column;min-block-size:52px;gap:2px;font-size:11px;color:hsl(var(--primary))"><i data-i="spark" data-s="20"></i><x-t ur="پوچھیں" en="Ask"></x-t></button></div>
+        <div class="sheet" style="position:absolute;inset-inline:0;inset-block-end:0;z-index:6;padding-block-end:16px"><div class="grab"></div><div class="p3 col" style="--g:10px"><div class="row between"><b class="sm"><x-t ur="اس منتخب متن پر" en="On this selection"></x-t></b><button class="icon-btn sm"><i data-i="x"></i></button></div><div class="li"><span class="ic"><i data-i="quote"></i></span><div class="grow"><div class="b sm"><x-t ur="حوالہ شامل کریں" en="Add citation"></x-t></div><div class="xs muted"><x-t ur="المغنی 4/112" en="Al-Mughni 4/112"></x-t></div></div></div><div class="li"><span class="ic info"><i data-i="spark"></i></span><div class="grow"><div class="b sm"><x-t ur="سمجھائیں / ترجمہ" en="Explain / translate"></x-t></div><div class="xs muted"><x-t ur="مطالعہ ٹیب میں" en="In the Study tab"></x-t></div></div></div></div></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="sm grow trunc">المغنی</b></div>
+      <div class="viewport"><div class="scrim"></div>
+        <div class="sheet" style="position:absolute;inset-inline:0;inset-block-end:0;z-index:6;padding-block-end:20px"><div class="grab"></div><div class="p4 col" style="--g:16px"><b><x-t ur="ریڈر کی ترتیبات" en="Reader settings"></x-t></b>
+          <div class="segmented" style="inline-size:100%"><span class="on grow center">نسخ</span><span class="grow center">أميري</span><span class="grow center">قرآنی</span></div>
+          <div class="row" style="--g:10px"><span class="xs">A</span><div class="slider"><i style="inline-size:55%"></i><b style="inset-inline-start:55%"></b></div><span class="lg">A</span></div>
+          <div class="row" style="--g:10px"><span class="swatch on" style="background:hsl(var(--card))">آ</span><span class="swatch" style="background:#fff">آ</span><span class="swatch" style="background:#f4ecd8;color:#433422">آ</span><span class="swatch" style="background:#161616;color:#eee">آ</span></div>
+          <div class="row between"><span class="sm"><x-t ur="حرکات دکھائیں" en="Show diacritics"></x-t></span><span class="switch on"></span></div>
+          <div class="row between"><span class="sm"><x-t ur="اسکرین جاگتی رکھیں" en="Keep screen awake"></x-t></span><span class="switch"></span></div></div></div></div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>

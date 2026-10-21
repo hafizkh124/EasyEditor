@@ -106,7 +106,7 @@ svg.i { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none; s
 /* ---------- Navigation ---------- */
 .topbar { flex: none; display: flex; align-items: center; gap: 4px; block-size: 52px; padding-inline: 8px; background: hsl(var(--card) / .86); backdrop-filter: blur(14px); border-block-end: 1px solid hsl(var(--border)); position: relative; z-index: 3; }
 .topbar .title { font-weight: 600; font-size: 15px; }
-.bottomnav { flex: none; display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 8px calc(10px); background: hsl(var(--card) / .92); backdrop-filter: blur(14px); border-block-start: 1px solid hsl(var(--border)); }
+.bottomnav { flex: none; display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px 4px calc(10px); background: hsl(var(--card) / .92); backdrop-filter: blur(14px); border-block-start: 1px solid hsl(var(--border)); }
 .bottomnav a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; font-size: 11px; color: hsl(var(--muted-foreground)); min-block-size: 48px; border-radius: 12px; text-decoration: none; }
 .bottomnav a svg.i { font-size: 22px; } .bottomnav a.on { color: hsl(var(--primary)); font-weight: 600; }
 .sidebar { background: hsl(var(--sidebar)); border-inline-end: 1px solid hsl(var(--border)); display: flex; flex-direction: column; }

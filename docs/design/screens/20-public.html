@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Public pages</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .nav { display: flex; align-items: center; gap: 18px; padding: 14px 40px; border-block-end: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+  .nav a { color: hsl(var(--muted-foreground)); font-size: 14px; } .logo { display: inline-grid; place-items: center; inline-size: 34px; block-size: 34px; border-radius: 10px; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 700; }
+  .art { max-inline-size: 720px; margin: 0 auto; padding: 36px 40px; display: flex; flex-direction: column; gap: 18px; }
+  .art h1 { font-size: 34px; line-height: 1.5; margin: 0; } .art h2 { font-size: 20px; margin: 10px 0 0; } .art p { margin: 0; font-size: 16px; line-height: 2; color: hsl(var(--foreground) / .88); }
+  .toc { position: sticky; inset-block-start: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; } .toc a { padding: 6px 12px; border-inline-start: 2px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); } .toc a.on { border-color: hsl(var(--primary)); color: hsl(var(--primary)); font-weight: 600; }
+  .qa { border: 1px solid hsl(var(--border)); border-radius: 16px; background: hsl(var(--card)); overflow: hidden; } .qa .q { padding: 14px 18px; display: flex; gap: 10px; align-items: center; font-weight: 600; } .qa .a { padding: 0 18px 16px; color: hsl(var(--muted-foreground)); line-height: 2; font-size: 15px; } .qa + .qa { margin-block-start: 0; }
+  .foot { padding: 28px 40px; display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; color: hsl(var(--muted-foreground)); border-block-start: 1px solid hsl(var(--border)); background: hsl(var(--sidebar)); }
+  .step { display: flex; gap: 14px; align-items: flex-start; } .step .avatar { inline-size: 36px; block-size: 36px; }
+</style>
+</head>
+<body data-title="20 · عوامی صفحات: About، FAQ، Answers، قانونی، شاملہ گائیڈ" data-note="سب ایک ہی 'مضمون کا سانچہ' استعمال کرتے ہیں: ہیڈر، ٹائپوگرافی، فہرستِ مضامین، آخر میں ایک CTA، فوٹر۔ ڈیسک ٹاپ ایپ میں یہ صفحات نہیں (ورک اسپیس پر redirect)۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag">ویب</span>مضمون کا سانچہ (About · گائیڈ · قانونی) + FAQ</h2>
+  <p class="cap">پڑھنے کی چوڑائی 720px، لائن اسپیسنگ 2.0 (نسخ/نستعلیق کے لیے)، بائیں/دائیں چپکی فہرستِ مضامین، آخر میں ایک واضح CTA۔ قیمتیں صرف ایک جگہ (Landing/پلان صفحہ)، قانونی PricingInfo اس سے لنک ہو تاکہ دونوں میں فرق نہ آئے۔ FAQ: ایکارڈین، تلاش، ہر جواب کے آخر میں متعلقہ لنک۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>easyeditor.example/guides/maktaba-shamila-tutorial</div></div>
+      <div class="scroll grow"><nav class="nav"><span class="logo">ع</span><b>Easy Editor</b><span class="grow"></span><a><x-t ur="خصوصیات" en="Features"></x-t></a><a><x-t ur="قیمتیں" en="Pricing"></x-t></a><a><x-t ur="سوالات" en="FAQ"></x-t></a><button class="btn sm primary"><x-t ur="مفت شروع کریں" en="Start free"></x-t></button></nav>
+        <div style="display:grid;grid-template-columns:200px 1fr;max-inline-size:1000px;margin:0 auto;padding:0 20px"><aside style="padding-block-start:40px"><div class="toc"><a class="on"><x-t ur="تعارف" en="Intro"></x-t></a><a><x-t ur="لوکل کنکشن" en="Local connection"></x-t></a><a><x-t ur="Bridge" en="Bridge"></x-t></a><a><x-t ur="لاگت اور شرائط" en="Costs & terms"></x-t></a></div></aside>
+          <article class="art"><span class="chip brand" style="align-self:flex-start"><x-t ur="گائیڈ" en="Guide"></x-t></span><h1><x-t ur="مکتبہ شاملہ کو Easy Editor سے جوڑیں" en="Connect Maktaba Shamila to Easy Editor"></x-t></h1><p><x-t ur="یہ گائیڈ تین مختصر مراحل میں بتاتی ہے کہ آپ اپنی لوکل شاملہ لائبریری کیسے جوڑیں، تاکہ تحقیق کے دوران حوالہ ایک کلک میں ملے۔" en="This guide shows, in three short steps, how to connect your local Shamela library so citations are one click away while you research."></x-t></p>
+            <div class="step"><span class="avatar">1</span><div class="col" style="--g:2px"><b><x-t ur="ڈیسک ٹاپ ایپ انسٹال کریں" en="Install the desktop app"></x-t></b><span class="muted"><x-t ur="لوکل لائبریری ڈیسک ٹاپ پر براہِ راست جڑتی ہے۔" en="The local library connects directly on desktop."></x-t></span></div></div><div class="step"><span class="avatar">2</span><div class="col" style="--g:2px"><b><x-t ur="ترتیبات ← کنیکٹرز" en="Settings → Connectors"></x-t></b><span class="muted"><x-t ur="«لائبریری ڈھونڈیں» دبائیں۔" en="Press “Find library”."></x-t></span></div></div>
+            <div class="banner info"><i data-i="info"></i><div class="t"><b><x-t ur="موبائل پر" en="On mobile"></x-t></b><x-t ur="موبائل پر کلاؤڈ شاملہ دستیاب ہے؛ لوکل کنکشن ڈیسک ٹاپ اور ویب (Bridge) پر۔" en="Mobile uses cloud Shamela; local connection is on desktop and web (Bridge)."></x-t></div></div>
+            <div class="card raised p4 hero-bg row between"><div class="col" style="--g:2px"><b><x-t ur="تیار ہیں؟" en="Ready?"></x-t></b><span class="sm muted"><x-t ur="مفت اکاؤنٹ بنائیں اور آج ہی آزمائیں۔" en="Create a free account and try it today."></x-t></span></div><button class="btn primary"><x-t ur="مفت شروع کریں" en="Start free"></x-t></button></div></article></div>
+        <div class="foot"><a><x-t ur="شرائط" en="Terms"></x-t></a><a><x-t ur="رازداری" en="Privacy"></x-t></a><a><x-t ur="واپسی کی پالیسی" en="Refunds"></x-t></a><a><x-t ur="قیمتیں" en="Pricing"></x-t></a><a><x-t ur="ہمارے بارے میں" en="About"></x-t></a><span class="grow"></span><span>© 2026 Easy Editor</span></div></div>
+    </div>
+
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>easyeditor.example/answers</div></div>
+      <div class="scroll grow"><nav class="nav"><span class="logo">ع</span><b>Easy Editor</b><span class="grow"></span><a><x-t ur="خصوصیات" en="Features"></x-t></a><a><x-t ur="قیمتیں" en="Pricing"></x-t></a><a class="b" style="color:hsl(var(--primary))"><x-t ur="سوالات" en="FAQ"></x-t></a><button class="btn sm primary"><x-t ur="مفت شروع کریں" en="Start free"></x-t></button></nav>
+        <article class="art"><h1><x-t ur="اکثر پوچھے گئے سوالات" en="Frequently asked questions"></x-t></h1><div class="search" style="max-inline-size:420px"><i data-i="search"></i><span><x-t ur="سوال تلاش کریں" en="Search questions"></x-t></span></div>
+          <div class="row" style="--g:6px;flex-wrap:wrap"><span class="chip brand"><x-t ur="سب" en="All"></x-t></span><span class="chip neutral"><x-t ur="رازداری" en="Privacy"></x-t></span><span class="chip neutral"><x-t ur="AI اور شریعت" en="AI & Sharia"></x-t></span><span class="chip neutral"><x-t ur="قیمتیں" en="Pricing"></x-t></span><span class="chip neutral"><x-t ur="ڈیسک ٹاپ" en="Desktop"></x-t></span></div>
+          <div class="col" style="--g:10px"><div class="qa"><div class="q"><i data-i="chev-d"></i><x-t ur="کیا میرا ڈیٹا محفوظ ہے؟" en="Is my data safe?"></x-t></div><div class="a"><x-t ur="ڈیسک ٹاپ ایپ میں سب کچھ آپ کے کمپیوٹر پر رہتا ہے؛ ویب پر آپ کے اکاؤنٹ کے اندر۔" en="On desktop everything stays on your computer; on web it stays inside your account."></x-t></div></div><div class="qa"><div class="q"><i data-i="chev-l" data-flip></i><x-t ur="کیا AI سے مدد لینا جائز ہے؟" en="Is using AI assistance permissible?"></x-t></div></div><div class="qa"><div class="q"><i data-i="chev-l" data-flip></i><x-t ur="کیا ڈیسک ٹاپ ایپ بغیر اکاؤنٹ چلتی ہے؟" en="Does the desktop app work without an account?"></x-t></div></div><div class="qa"><div class="q"><i data-i="chev-l" data-flip></i><x-t ur="میں اپنی API کلید استعمال کر سکتا ہوں؟" en="Can I use my own API key?"></x-t></div></div></div>
+          <div class="card pad row between"><span class="sm"><x-t ur="جواب نہیں ملا؟" en="Didn't find an answer?"></x-t></span><button class="btn"><i data-i="chat"></i><x-t ur="ہم سے پوچھیں" en="Ask us"></x-t></button></div></article></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>عوامی صفحات</h2>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><span class="logo" style="margin-inline:8px;inline-size:30px;block-size:30px">ع</span><b class="grow">Easy Editor</b><button class="icon-btn"><i data-i="menu"></i></button></div>
+      <div class="viewport"><div class="scroll grow"><article class="art" style="padding:20px"><span class="chip brand" style="align-self:flex-start"><x-t ur="گائیڈ" en="Guide"></x-t></span><h1 style="font-size:26px"><x-t ur="مکتبہ شاملہ کو جوڑیں" en="Connect Maktaba Shamila"></x-t></h1><p style="font-size:15px"><x-t ur="تین مختصر مراحل میں لوکل لائبریری جوڑیں۔" en="Connect your local library in three short steps."></x-t></p><div class="step"><span class="avatar">1</span><div class="col" style="--g:2px"><b class="sm"><x-t ur="ڈیسک ٹاپ ایپ انسٹال کریں" en="Install the desktop app"></x-t></b></div></div><div class="step"><span class="avatar">2</span><div class="col" style="--g:2px"><b class="sm"><x-t ur="ترتیبات ← کنیکٹرز" en="Settings → Connectors"></x-t></b></div></div><div class="banner info"><i data-i="info"></i><div class="t xs"><x-t ur="موبائل پر کلاؤڈ شاملہ دستیاب ہے۔" en="Mobile uses cloud Shamela."></x-t></div></div><button class="btn primary lg block"><x-t ur="مفت شروع کریں" en="Start free"></x-t></button></article></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="grow"><x-t ur="سوالات" en="FAQ"></x-t></b></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:10px"><div class="search"><i data-i="search"></i><span><x-t ur="سوال تلاش کریں" en="Search questions"></x-t></span></div><div class="qa"><div class="q"><i data-i="chev-d"></i><x-t ur="کیا میرا ڈیٹا محفوظ ہے؟" en="Is my data safe?"></x-t></div><div class="a"><x-t ur="ڈیسک ٹاپ پر سب کچھ آپ کے کمپیوٹر پر رہتا ہے۔" en="On desktop everything stays on your computer."></x-t></div></div><div class="qa"><div class="q"><i data-i="chev-l" data-flip></i><x-t ur="کیا ڈیسک ٹاپ بغیر اکاؤنٹ چلتا ہے؟" en="Does desktop work without an account?"></x-t></div></div><div class="qa"><div class="q"><i data-i="chev-l" data-flip></i><x-t ur="میں اپنی API لگا سکتا ہوں؟" en="Can I use my own API?"></x-t></div></div></div></div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>
