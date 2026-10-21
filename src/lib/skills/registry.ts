@@ -11,9 +11,8 @@ import type { Skill, SkillPlace } from "./types";
  * The single skills list (SYSTEM-2026 §7), built from the sources that used to
  * be separate menus. Pure, so the rules are testable without a backend:
  *
- * - Built-in AI tasks run in the editor. A task that appends to the whole
- *   document (section summaries) is left out: the editor's runner replaces
- *   the selection, so it would overwrite the document instead.
+ * - Built-in AI tasks run in the editor — section summaries included, which
+ *   the editor inserts after each section rather than over it.
  * - My skills (`ai_tasks` rows) run in the editor as a task and, in the chat,
  *   insert their instruction.
  * - Scholarly prompts and "مجھ سے پوچھو" fill an instruction into the chat.
@@ -35,10 +34,6 @@ export interface SkillSources {
   recipes?: readonly Recipe[];
 }
 
-/** False for a task that appends to the whole document, which the editor's runner cannot do. */
-export const runsInEditor = (task: Pick<TaskDefinition, "scope" | "applyMode">) =>
-  !(task.scope === "document" && task.applyMode === "append");
-
 export function buildSkills({ tasks, customRows, scholarlyPrompts, playbooks, recipes = [] }: SkillSources): Skill[] {
   const guided: Skill = {
     id: `guided:${GRILL_ME.id}`,
@@ -52,7 +47,7 @@ export function buildSkills({ tasks, customRows, scholarlyPrompts, playbooks, re
   };
 
   const builtinEdits: Skill[] = tasks
-    .filter((task) => !task.isCustom && task.surfaces.includes("slash") && runsInEditor(task))
+    .filter((task) => !task.isCustom && task.surfaces.includes("slash"))
     .map((task) => ({
       id: `task:${task.slug}`,
       kind: "edit",
@@ -77,7 +72,7 @@ export function buildSkills({ tasks, customRows, scholarlyPrompts, playbooks, re
   const mine: Skill[] = customRows
     .filter((row) => !row.archived_at)
     .map((row) => {
-      const places: SkillPlace[] = runsInEditor({ scope: row.scope, applyMode: row.apply_mode }) ? ["editor", "chat"] : ["chat"];
+      const places: SkillPlace[] = ["editor", "chat"];
       return {
         id: `mine:${row.id}`,
         kind: "edit",

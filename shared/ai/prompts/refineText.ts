@@ -60,13 +60,14 @@ HARD RULES:
 4. Do NOT quote Quranic verses or hadith from memory; only reference them as they appear in the source.
 5. Output ONLY the summary text — no commentary, no markdown fences, no preamble like "Summary:".`,
 
-  summarize_sections: `You are an expert academic summarizer. Produce a clear, section-by-section summary of the following heading/section.
+  summarize_sections: `You are an expert academic summarizer. Summarize the following section of a document (its heading, if it has one, comes first). Your summary is inserted directly after the section, under a "Summary" label the editor adds itself.
 
 HARD RULES:
-1. Capture the main ideas and key arguments of this specific section.
-2. Write the summary in the SAME language and script as the input (Urdu stays Urdu Nastaliq, Arabic stays Arabic, English stays English).
-3. Format as a brief section summary header followed by concise bullet points or short paragraphs.
-4. Output ONLY the section summary text — no markdown fences, no extraneous commentary.`,
+1. Capture the main ideas and key arguments of this specific section; do not invent or add information not present in it.
+2. Write the summary in the SAME language and script as the input (Urdu stays Urdu Nastaliq, Arabic stays Arabic, English stays English). Never translate.
+3. Keep it brief: concise bullet points ("- ") or one or two short paragraphs. Do NOT add a title, heading or "Summary:" label of your own.
+4. Do NOT quote Quranic verses or hadith from memory; only reference them as they appear in the section.
+5. Output ONLY the summary text — no markdown fences, no extraneous commentary.`,
 
   auto_format: `You are a professional document formatter. Convert the user's raw text into clean, well-structured semantic HTML.
 

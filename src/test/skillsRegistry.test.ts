@@ -31,18 +31,15 @@ describe("skills registry", () => {
     expect(first).toMatchObject({ id: "guided:grill_me", kind: "guided", places: ["chat"] });
   });
 
-  it("offers the built-in tasks in the editor, but not one that would overwrite the document", () => {
+  it("offers the built-in tasks in the editor, section summaries included", () => {
     const editor = skillsFor(build(), "editor", () => false).map((s) => s.taskSlug);
-    expect(editor).toEqual(expect.arrayContaining(["add_harakat", "auto_format", "my_style"]));
-    expect(editor).not.toContain("summarize_sections");
+    expect(editor).toEqual(expect.arrayContaining(["add_harakat", "auto_format", "summarize_sections", "my_style"]));
   });
 
   it("runs my skills in the editor and, as their instruction, in the chat", () => {
     const mine = build().find((s) => s.id === "mine:r1")!;
     expect(mine.places).toEqual(["editor", "chat"]);
     expect(mine.promptText).toBe("Rewrite in my house style.");
-    const appending = build({ customRows: [row({ scope: "document", apply_mode: "append" })] }).find((s) => s.id === "mine:r1")!;
-    expect(appending.places).toEqual(["chat"]);
     expect(build({ customRows: [row({ archived_at: "2026-01-01" })] }).some((s) => s.origin === "mine")).toBe(false);
   });
 
@@ -89,7 +86,7 @@ describe("the editor's generic task runner", () => {
     expect(runTask).toHaveBeenCalledWith("my_style");
   });
 
-  it("offers nothing for a task that would overwrite the document", () => {
+  it("keeps whole-document tasks off the selection bar", () => {
     expect(getActionHandler({ runTask: vi.fn() } as never, "summarize_sections")).toBeUndefined();
   });
 });

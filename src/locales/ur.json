@@ -2110,5 +2110,6 @@
   "skills.group_edit": "متن کی مہارتیں",
   "skills.group_prompt": "علمی پرامپٹس",
   "skills.group_workflow": "کئی مراحل والی",
-  "skills.manage": "مہارتیں سنبھالیں"
+  "skills.manage": "مہارتیں سنبھالیں",
+  "editor.no_sections_to_summarize": "کوئی حصہ اتنا لمبا نہیں کہ اس کا خلاصہ بنے۔"
 }

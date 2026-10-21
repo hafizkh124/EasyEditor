@@ -129,6 +129,34 @@ describe("runChunkedTask (FR-5.4 / FR-5.6 / FR-5.7)", () => {
     vi.spyOn(taskRunService, "updateTaskRun").mockResolvedValue(true);
   });
 
+  it("runs section summaries, and sends a custom skill's id so its own prompt is used", async () => {
+    vi.useFakeTimers();
+    const { setCustomTasks } = await import("@/lib/tasks/registry");
+    const { rowToDefinition } = await import("@/lib/tasks/customTasks");
+    setCustomTasks([
+      rowToDefinition({
+        id: "row-9", user_id: "u", slug: "my_summary", label: "میرا خلاصہ", system_prompt: "x".repeat(30),
+        base_task_slug: "summarize_sections", scope: "document", apply_mode: "append", output_format: "text",
+        chunkable: true, produces_sources: false, archived_at: null, created_at: "", updated_at: "",
+      }),
+    ]);
+    const call = vi.spyOn(aiActions, "callRefineTextDetailed").mockResolvedValue({
+      text: "- نکتہ", sources: [], confidence: null, model: null, tokensUsed: 5,
+    });
+    const one = [{ ...batches[0], mode: "append" as const }];
+
+    for (const taskSlug of ["summarize_sections", "my_summary"]) {
+      const promise = runChunkedTask({ taskSlug, batches: one, accessToken: "t", applyBatch: () => true });
+      await vi.runAllTimersAsync();
+      expect((await promise).applied).toBe(1);
+    }
+    expect(call).toHaveBeenNthCalledWith(1, "batch 0", "summarize_sections", "t", undefined);
+    // The server looks the prompt up by id; the action name is only a placeholder.
+    expect(call).toHaveBeenNthCalledWith(2, "batch 0", expect.any(String), "t", "row-9");
+    setCustomTasks([]);
+    vi.useRealTimers();
+  });
+
   it("paces requests so a long run stays under the server's 30/min limit", async () => {
     vi.useFakeTimers();
     const stamps: number[] = [];

@@ -2110,5 +2110,6 @@
   "skills.group_edit": "مهارات النص",
   "skills.group_prompt": "قوالب علمية",
   "skills.group_workflow": "متعددة الخطوات",
-  "skills.manage": "إدارة المهارات"
+  "skills.manage": "إدارة المهارات",
+  "editor.no_sections_to_summarize": "لا يوجد قسم طويل بما يكفي لتلخيصه."
 }

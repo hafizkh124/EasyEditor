@@ -36,10 +36,8 @@ const ok = (applied = 3): DocumentTaskOutcome => ({
 });
 
 describe("validateRecipe (FR-4.3)", () => {
-  it("rejects section summaries, which a whole-document run would write over the text", () => {
-    const result = validateRecipe(recipe([{ taskSlug: "summarize_sections", stepLabel: "خلاصہ" }]));
-    expect(result.ok).toBe(false);
-    expect(result.problems[0]).toContain("متن بدل جائے گا");
+  it("accepts section summaries, which are inserted after each section", () => {
+    expect(validateRecipe(recipe([{ taskSlug: "summarize_sections", stepLabel: "خلاصہ" }])).ok).toBe(true);
   });
 
   it("rejects a step whose task is not chunkable over a document", () => {

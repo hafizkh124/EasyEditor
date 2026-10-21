@@ -2110,5 +2110,6 @@
   "skills.group_edit": "Text skills",
   "skills.group_prompt": "Scholarly prompts",
   "skills.group_workflow": "Multi-step",
-  "skills.manage": "Manage skills"
+  "skills.manage": "Manage skills",
+  "editor.no_sections_to_summarize": "No section is long enough to summarise."
 }

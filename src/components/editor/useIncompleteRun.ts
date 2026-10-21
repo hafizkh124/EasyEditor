@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { taskRunService } from "@/core/workspace/taskRunService";
 import { planDocumentChunks } from "@/lib/editor/docChunker";
+import { getTaskBySlug } from "@/lib/tasks/registry";
 import { canResumeRun, type StoredBatchPlan } from "@/lib/tasks/resumePlan";
 import type { TaskRun } from "@/core/workspace/types";
 
@@ -29,6 +30,11 @@ export function useIncompleteRun(
       if (stale) return;
       setIncompleteRun(run);
       if (!run) {
+        setCanResume(false);
+        return;
+      }
+      // Section summaries cannot be resumed (see resumeChunkedRun).
+      if (getTaskBySlug(run.task_slug)?.applyMode === "append") {
         setCanResume(false);
         return;
       }

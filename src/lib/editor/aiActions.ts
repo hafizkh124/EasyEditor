@@ -18,7 +18,8 @@ export type RefineTextAction =
   | "add_harakat"
   | "auto_format"
   | "paraphrase"
-  | "summarize";
+  | "summarize"
+  | "summarize_sections";
 
 const SUPPORTED_REFINE_TEXT_ACTIONS = new Set<RefineTextAction>([
   "formalize",
@@ -31,6 +32,7 @@ const SUPPORTED_REFINE_TEXT_ACTIONS = new Set<RefineTextAction>([
   "auto_format",
   "paraphrase",
   "summarize",
+  "summarize_sections",
 ]);
 
 export function isRefineTextAction(action: string): action is RefineTextAction {

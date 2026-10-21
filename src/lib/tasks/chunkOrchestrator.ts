@@ -1,7 +1,7 @@
 import { getTaskBySlug } from "./registry";
 import { calculateTaskCost } from "./cost";
 import { taskRunService } from "@/core/workspace/taskRunService";
-import { callRefineTextDetailed, isRefineTextAction } from "@/lib/editor/aiActions";
+import { callRefineTextDetailed, isRefineTextAction, type RefineTextAction } from "@/lib/editor/aiActions";
 import type { TextBatch } from "@/lib/editor/docChunker";
 import type { TaskRunSource } from "@/core/workspace/types";
 import type { ChunkProgress } from "./types";
@@ -95,10 +95,14 @@ export async function runChunkedTask({
 }: RunChunkedTaskArgs): Promise<ChunkedRunResult> {
   const task = getTaskBySlug(taskSlug);
   if (!task) throw new Error(`ٹاسک '${taskSlug}' دستیاب نہیں ہے۔`);
-  if (!task.actionName || !isRefineTextAction(task.actionName)) {
+  // A custom task (my skill) travels as its `taskId`, and the server runs its
+  // own prompt; the action name only matters for built-ins. Same rule as
+  // runSingleBatchTask — before this, every multi-part run of a custom task
+  // stopped here.
+  if (!task.taskId && (!task.actionName || !isRefineTextAction(task.actionName))) {
     throw new Error(`ٹاسک ایکشن '${task.actionName}' مفقود یا باطل ہے۔`);
   }
-  const action = task.actionName;
+  const action = (task.actionName ?? "formalize") as RefineTextAction;
 
   // A resumed run inherits the batches its predecessor already applied: they
   // are in the document, so both the progress bar and `task_runs.progress`
@@ -178,7 +182,7 @@ export async function runChunkedTask({
       let result: Awaited<ReturnType<typeof callRefineTextDetailed>> | null = null;
 
       try {
-        result = await callRefineTextDetailed(batch.text, action, accessToken);
+        result = await callRefineTextDetailed(batch.text, action, accessToken, task.taskId);
       } catch (err) {
         // One retry after a rate-limit window; anything else fails this batch
         // only — a document with 23 of 25 paragraphs done is still useful,
@@ -189,7 +193,7 @@ export async function runChunkedTask({
           onProgress?.({ ...progress });
           await sleep(THROTTLE_MS * 5);
           try {
-            result = await callRefineTextDetailed(batch.text, action, accessToken);
+            result = await callRefineTextDetailed(batch.text, action, accessToken, task.taskId);
           } catch {
             result = null;
           }
