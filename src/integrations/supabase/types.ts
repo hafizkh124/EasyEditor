@@ -347,6 +347,42 @@ export type Database = {
           },
         ]
       }
+      citation_feedback: {
+        Row: {
+          action: string
+          consent_training: boolean
+          corrected: Json | null
+          created_at: string
+          id: string
+          original: Json
+          source_id: string | null
+          user_id: string
+          verify_status: string | null
+        }
+        Insert: {
+          action: string
+          consent_training?: boolean
+          corrected?: Json | null
+          created_at?: string
+          id?: string
+          original: Json
+          source_id?: string | null
+          user_id: string
+          verify_status?: string | null
+        }
+        Update: {
+          action?: string
+          consent_training?: boolean
+          corrected?: Json | null
+          created_at?: string
+          id?: string
+          original?: Json
+          source_id?: string | null
+          user_id?: string
+          verify_status?: string | null
+        }
+        Relationships: []
+      }
       device_link_codes: {
         Row: {
           claimed_at: string | null
