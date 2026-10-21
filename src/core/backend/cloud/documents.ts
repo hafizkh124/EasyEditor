@@ -54,6 +54,18 @@ export const cloudDocuments: DocumentBackend = {
     return (data as unknown as Project) || null;
   },
 
+  async updateProject(id: string, updates: Partial<Pick<Project, "title" | "meta">>): Promise<Project> {
+    const { data, error } = await supabase
+      .from("projects" as any)
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as unknown as Project;
+  },
+
   async listDocuments(projectId: string): Promise<Document[]> {
     const { data, error } = await supabase
       .from("documents" as any)

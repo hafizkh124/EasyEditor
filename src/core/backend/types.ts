@@ -65,6 +65,8 @@ export interface DocumentBackend {
   listProjects(): Promise<Project[]>;
   createProject(title: string, kind?: ProjectKind, meta?: Record<string, unknown>): Promise<Project>;
   getProject(id: string): Promise<Project | null>;
+  /** Rename a folder or replace its `meta` (which holds its pinned sources). */
+  updateProject(id: string, updates: Partial<Pick<Project, "title" | "meta">>): Promise<Project>;
 
   listDocuments(projectId: string): Promise<Document[]>;
   getDocument(id: string): Promise<Document | null>;

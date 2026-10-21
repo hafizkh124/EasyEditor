@@ -2122,5 +2122,15 @@
   "folderindex.sort_name": "By name",
   "folderindex.sort_date": "By date",
   "folderindex.create_failed": "Could not create the document",
-  "folderindex.order_failed": "Could not save the new order"
+  "folderindex.order_failed": "Could not save the new order",
+  "sources.pin_title": "This folder's sources",
+  "sources.pin_desc": "Every chat in this folder answers from these sources. Add more in a chat with @.",
+  "sources.pinned": "Pinned",
+  "sources.search": "Search for a book or file…",
+  "sources.searching": "Searching…",
+  "sources.pin_failed": "Could not save the sources",
+  "sources.section": "Sources",
+  "sources.pin_action": "Pin sources",
+  "sources.none_pinned": "No sources pinned. Chats here use all your active sources.",
+  "sources.unpin": "Unpin"
 }

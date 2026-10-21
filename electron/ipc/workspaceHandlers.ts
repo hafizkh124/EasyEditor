@@ -18,7 +18,7 @@ let dbService: WorkspaceDbService | null = null;
 // unenforced promise.
 export const ALLOWED_WORKSPACE_METHODS = new Set<string>([
   'getCurrentUserId',
-  'listProjects', 'createProject', 'getProject',
+  'listProjects', 'createProject', 'getProject', 'updateProject',
   'listDocuments', 'getDocument', 'findBlankDocument',
   'createDocument', 'updateDocument', 'deleteDocument',
   'snapshotVersion', 'listDocumentVersions',

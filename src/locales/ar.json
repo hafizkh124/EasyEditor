@@ -2122,5 +2122,15 @@
   "folderindex.sort_name": "حسب الاسم",
   "folderindex.sort_date": "حسب التاريخ",
   "folderindex.create_failed": "تعذّر إنشاء المستند",
-  "folderindex.order_failed": "تعذّر حفظ الترتيب الجديد"
+  "folderindex.order_failed": "تعذّر حفظ الترتيب الجديد",
+  "sources.pin_title": "مصادر هذا المجلد",
+  "sources.pin_desc": "كل محادثة في هذا المجلد تجيب من هذه المصادر. أضف المزيد في المحادثة بـ @.",
+  "sources.pinned": "مثبّتة",
+  "sources.search": "ابحث عن كتاب أو ملف…",
+  "sources.searching": "جارٍ البحث…",
+  "sources.pin_failed": "تعذّر حفظ المصادر",
+  "sources.section": "المصادر",
+  "sources.pin_action": "تثبيت المصادر",
+  "sources.none_pinned": "لا مصادر مثبّتة. المحادثات هنا تستخدم كل مصادرك المفعّلة.",
+  "sources.unpin": "إلغاء التثبيت"
 }

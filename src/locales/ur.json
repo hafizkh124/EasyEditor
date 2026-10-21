@@ -2122,5 +2122,15 @@
   "folderindex.sort_name": "نام سے",
   "folderindex.sort_date": "تاریخ سے",
   "folderindex.create_failed": "دستاویز نہیں بن سکی",
-  "folderindex.order_failed": "نئی ترتیب محفوظ نہیں ہو سکی"
+  "folderindex.order_failed": "نئی ترتیب محفوظ نہیں ہو سکی",
+  "sources.pin_title": "اس فولڈر کے ذرائع",
+  "sources.pin_desc": "اس فولڈر کی ہر چیٹ انہی ذرائع سے جواب دے گی۔ چیٹ میں @ سے مزید جوڑ سکتے ہیں۔",
+  "sources.pinned": "پن شدہ",
+  "sources.search": "کتاب یا فائل تلاش کریں…",
+  "sources.searching": "تلاش جاری ہے…",
+  "sources.pin_failed": "ذرائع محفوظ نہیں ہو سکے",
+  "sources.section": "ذرائع",
+  "sources.pin_action": "ذرائع پن کریں",
+  "sources.none_pinned": "کوئی ذریعہ پن نہیں۔ یہاں کی چیٹ آپ کے سب فعال ذرائع استعمال کرتی ہے۔",
+  "sources.unpin": "پن ہٹائیں"
 }

@@ -24,14 +24,19 @@ vi.mock("@/core/workspace/useAllDocuments", () => ({
   useAllDocuments: () => ({
     loading: false,
     refresh,
-    projects: [{ id: "p1", title: "فتاویٰ زکوٰۃ", kind: "general" }, { id: "p2", title: "خطبات", kind: "general" }, { id: "t1", title: "ترجمہ", kind: "translation" }],
+    projects: [{ id: "p1", title: "فتاویٰ زکوٰۃ", kind: "general", meta: { pinnedSources: [{ ref: "shamela:77", label: "بدائع الصنائع" }, { ref: "corpus:abc", label: "میرا PDF" }] } }, { id: "p2", title: "خطبات", kind: "general" }, { id: "t1", title: "ترجمہ", kind: "translation" }],
     docsMap: { p1: docs, p2: [] },
     allDocs: docs.map((d) => ({ ...d, projectName: "فتاویٰ زکوٰۃ", projectKind: "general" })),
   }),
 }));
 const updateDocument = vi.fn(async () => ({}));
+const updateProject = vi.fn(async () => ({}));
 vi.mock("@/core/workspace/documentService", () => ({
-  documentService: { updateDocument: (...a: unknown[]) => updateDocument(...(a as [])), createDocument: vi.fn() },
+  documentService: {
+    updateDocument: (...a: unknown[]) => updateDocument(...(a as [])),
+    updateProject: (...a: unknown[]) => updateProject(...(a as [])),
+    createDocument: vi.fn(),
+  },
 }));
 
 const ws = {
@@ -58,7 +63,7 @@ const renderPanel = () =>
     </MemoryRouter>,
   );
 const docButtons = () =>
-  within(screen.getByRole("navigation")).getAllByRole("button").filter((b) => !b.closest("[aria-label='عنوانات']"));
+  within(screen.getByRole("list", { name: "دستاویزات" })).getAllByRole("button").filter((b) => !b.closest("[aria-label='عنوانات']"));
 
 describe("FolderIndexPanel", () => {
   beforeEach(() => {
@@ -100,6 +105,19 @@ describe("FolderIndexPanel", () => {
     localStorage.setItem("workspace.folderIndex.sort", "date");
     renderPanel();
     expect(docButtons().map((b) => b.textContent)).toEqual(["ج تیسرا", "ب دوسرا", "الف پہلا"]);
+  });
+
+  it("lists the folder's pinned sources; a Shamela book opens in the reader, and one can be unpinned", async () => {
+    renderPanel();
+    const sources = screen.getByRole("list", { name: "ذرائع" });
+    fireEvent.click(within(sources).getByRole("button", { name: "بدائع الصنائع" }));
+    expect(ws.setActiveDocumentId).toHaveBeenCalledWith("77");
+    // A personal file has no reader, so it is listed but not a link.
+    expect(within(sources).queryByRole("button", { name: "میرا PDF" })).not.toBeInTheDocument();
+    fireEvent.click(within(sources).getByRole("button", { name: /پن ہٹائیں: بدائع الصنائع/ }));
+    await waitFor(() =>
+      expect(updateProject).toHaveBeenCalledWith("p1", { meta: { pinnedSources: [{ ref: "corpus:abc", label: "میرا PDF" }] } }),
+    );
   });
 
   it("with nothing open, lists the folders (not translations) to pick one", () => {

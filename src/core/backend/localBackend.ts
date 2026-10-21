@@ -40,6 +40,10 @@ export const localBackend: WorkspaceBackend = {
       return invokeWorkspace<Project>('createProject', title, kind, meta);
     },
 
+    async updateProject(id: string, updates: Partial<Pick<Project, 'title' | 'meta'>>): Promise<Project> {
+      return invokeWorkspace<Project>('updateProject', id, updates);
+    },
+
     async getProject(id: string): Promise<Project | null> {
       return invokeWorkspace<Project | null>('getProject', id);
     },

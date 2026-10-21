@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowUpDown, ChevronDown, FilePlus2, FileText, Folder, FolderOpen, GripVertical, Hash } from "lucide-react";
+import { ArrowUpDown, BookOpen, ChevronDown, FilePlus2, FileText, Folder, FolderOpen, GripVertical, Hash, Pin, X } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
@@ -14,6 +14,8 @@ import {
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { sortDocuments, type SortMode } from "@/core/workspace/sortDocuments";
+import { pinnedSourcesOf, savePinnedSources, shamelaBookIdOf } from "@/lib/sources/pinnedSources";
+import { PinSourcesDialog } from "@/components/workspace/PinSourcesDialog";
 
 const log = logger.child("FolderIndexPanel");
 
@@ -23,8 +25,11 @@ const log = logger.child("FolderIndexPanel");
  * on one takes the editor there. Order is the folder's own (drag to change),
  * or by name or date.
  *
- * With nothing open it lists the folders to pick one. Chats, pinned sources
- * and results join this panel once folders can hold them.
+ * Below the documents, the folder's pinned sources: every chat in the folder
+ * answers from them, and a Shamela book opens in the reader.
+ *
+ * With nothing open it lists the folders to pick one. Chats and results join
+ * this panel once folders can hold them.
  */
 
 const SORT_KEY = "workspace.folderIndex.sort";
@@ -49,6 +54,7 @@ export const FolderIndexPanel: React.FC<{ onNavigate?: () => void }> = ({ onNavi
   const [pickedFolderId, setPickedFolderId] = useState<string | null>(null);
   const [order, setOrder] = useState<Document[] | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [pinDialogFor, setPinDialogFor] = useState<Project | null>(null);
 
   const folders = projects.filter((p) => p.kind !== "translation");
   const activeDoc = allDocs.find((d) => d.id === activeDocumentId);
@@ -72,6 +78,25 @@ export const FolderIndexPanel: React.FC<{ onNavigate?: () => void }> = ({ onNavi
     setActiveDocumentId(doc.id);
     navigate(`/workspace/${doc.id}`, { replace: true });
     onNavigate?.();
+  };
+
+  const pinned = pinnedSourcesOf(folder);
+
+  const openBook = (bookId: string) => {
+    setActiveDocumentId(bookId);
+    navigate(`/workspace/${bookId}`, { replace: true });
+    onNavigate?.();
+  };
+
+  const unpin = async (ref: string) => {
+    if (!folder) return;
+    try {
+      await savePinnedSources(folder, pinned.filter((s) => s.ref !== ref));
+      await refresh();
+    } catch (err) {
+      log.error("unpinning failed", { err });
+      toast.error(t("sources.pin_failed"));
+    }
   };
 
   const createDocument = async () => {
@@ -176,7 +201,7 @@ export const FolderIndexPanel: React.FC<{ onNavigate?: () => void }> = ({ onNavi
         {docs.length === 0 ? (
           <p className="px-2 py-4 text-xs text-muted-foreground">{t("filespage.folder_empty", "اس فولڈر میں ابھی کوئی دستاویز نہیں۔")}</p>
         ) : (
-          <ul className="space-y-0.5">
+          <ul aria-label={t("folderindex.documents", "دستاویزات")} className="space-y-0.5">
             {docs.map((doc) => {
               const isOpen = doc.id === activeDocumentId;
               const draggable = sort === "manual" && docs.length > 1;
@@ -230,7 +255,55 @@ export const FolderIndexPanel: React.FC<{ onNavigate?: () => void }> = ({ onNavi
             })}
           </ul>
         )}
+
+        <div className="mt-4 flex items-center justify-between px-2 pb-1">
+          <h3 className="text-xs font-semibold text-muted-foreground">{t("sources.section", "ذرائع")}</h3>
+          <Button variant="ghost" size="sm" className="h-7 min-h-touch gap-1 px-2 text-xs" onClick={() => setPinDialogFor(folder)}>
+            <Pin className="h-3.5 w-3.5" aria-hidden="true" />
+            {t("sources.pin_action", "ذرائع پن کریں")}
+          </Button>
+        </div>
+        {pinned.length === 0 ? (
+          <p className="px-2 text-xs text-muted-foreground">{t("sources.none_pinned", "کوئی ذریعہ پن نہیں۔ یہاں کی چیٹ آپ کے سب فعال ذرائع استعمال کرتی ہے۔")}</p>
+        ) : (
+          <ul aria-label={t("sources.section", "ذرائع")} className="space-y-0.5">
+            {pinned.map((source) => {
+              const bookId = shamelaBookIdOf(source.ref);
+              const label = (
+                <>
+                  <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">{source.label}</span>
+                </>
+              );
+              return (
+                <li key={source.ref} className="group flex items-center">
+                  {bookId ? (
+                    <button
+                      type="button"
+                      onClick={() => openBook(bookId)}
+                      className="flex min-h-touch min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-start text-sm hover:bg-muted"
+                    >
+                      {label}
+                    </button>
+                  ) : (
+                    <span className="flex min-h-touch min-w-0 flex-1 items-center gap-2 px-2 text-sm">{label}</span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 min-h-touch shrink-0 opacity-60 group-hover:opacity-100"
+                    aria-label={`${t("sources.unpin", "پن ہٹائیں")}: ${source.label}`}
+                    onClick={() => void unpin(source.ref)}
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </nav>
+      <PinSourcesDialog project={pinDialogFor} onOpenChange={(open) => !open && setPinDialogFor(null)} onSaved={() => void refresh()} />
 
       <div className="shrink-0 border-t border-border p-2">
         <Link

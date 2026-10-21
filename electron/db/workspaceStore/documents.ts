@@ -35,6 +35,20 @@ export function getProject(db: SqliteDatabase, id: string): Project | null {
   return r ? mapProjectRow(r) : null;
 }
 
+export function updateProject(
+  db: SqliteDatabase,
+  id: string,
+  updates: Partial<Pick<Project, 'title' | 'meta'>>,
+): Project {
+  const project = getProject(db, id);
+  if (!project) throw new Error(`Project ${id} not found`);
+  const now = new Date().toISOString();
+  const title = updates.title ?? project.title;
+  const meta = updates.meta ?? project.meta ?? {};
+  db.prepare('UPDATE projects SET title = ?, meta = ?, updated_at = ? WHERE id = ?').run(title, JSON.stringify(meta), now, id);
+  return { ...project, title, meta, updated_at: now };
+}
+
 function mapProjectRow(r: any): Project {
   return {
     id: r.id,
