@@ -1,6 +1,7 @@
 /* v3 prototype partials. Runs before kit.js renders icons and text (kit waits for DOMContentLoaded).
    <aside data-side="home|chat|doc|files|me" data-folder></aside>  -> desktop sidebar
-   <nav data-tabs="home|files|me"></nav>                          -> mobile tab bar
+   <nav data-tabs="home|files"></nav>                             -> mobile tab bar (2 tabs + centred plus)
+   <span data-av data-dot></span>                                  -> top-bar avatar that opens "Me"
    <div data-sb></div>                                             -> phone status bar
    <div data-tb="desk|web" data-t="title"></div>                   -> window chrome */
 (function () {
@@ -32,10 +33,12 @@
   }
   function tabs(active) {
     function a(k, i, ur, en) { return '<a class="' + (active === k ? 'on' : '') + '"><i data-i="' + i + '"></i>' + T(ur, en) + '</a>'; }
-    return a('home', 'chat', 'چیٹ/لکھیں', 'Chat/Write') + a('files', 'folder', 'فائلیں', 'Files') + '<span class="plus"><i data-i="plus"></i></span>' + a('me', 'user', 'میں', 'Me');
+    // Option 1 (approved): two tabs with the plus exactly centred; "Me" is the top-bar avatar.
+    return a('home', 'chat', 'چیٹ/لکھیں', 'Chat/Write') + '<span class="plus"><i data-i="plus"></i></span>' + a('files', 'folder', 'فائلیں', 'Files');
   }
   document.querySelectorAll('[data-side]').forEach(function (el) { el.classList.add('side'); el.innerHTML = side(el.getAttribute('data-side'), el.hasAttribute('data-folder')); });
   document.querySelectorAll('[data-tabs]').forEach(function (el) { el.classList.add('tabbar'); el.innerHTML = tabs(el.getAttribute('data-tabs')); });
+  document.querySelectorAll('[data-av]').forEach(function (el) { el.className = 'av'; el.innerHTML = '<span class="avatar">ح</span>' + (el.hasAttribute('data-dot') ? '<span class="dotn"></span>' : ''); });
   document.querySelectorAll('[data-sb]').forEach(function (el) { el.className = 'statusbar'; el.innerHTML = '<span>9:41</span><span>●●●● 100%</span>'; });
   document.querySelectorAll('[data-tb]').forEach(function (el) {
     var web = el.getAttribute('data-tb') === 'web', t = el.getAttribute('data-t') || 'Al-Ulama Easy Editor';
