@@ -8,6 +8,7 @@ import { renderPdfPages, getPdfPageCount } from "@/lib/ocr/pdfRenderer";
 import { ocrPageImage } from "@/lib/ocr/ocrClient";
 import type { TranscriptSegment } from "@/core/voice/types";
 import type { TranslationKey } from "@/lib/i18n";
+import { estimateSegments } from "./timedParagraphs";
 
 /**
  * The extract-text engine (SYSTEM-2026 §5), shared by the Extract screen and
@@ -79,6 +80,14 @@ function readBase64(file: Blob): Promise<string> {
   });
 }
 
+export interface ExtractResult {
+  text: string;
+  /** Exact timestamps (local Whisper) — the only kind subtitles are made from. */
+  segments: TranscriptSegment[] | null;
+  /** Read-along timing for audio: exact when the engine gave it, else estimated per chunk. */
+  timing: { segments: TranscriptSegment[]; exact: boolean } | null;
+}
+
 export async function runExtraction({
   file, kind, language, sttRoute, signal, onProgress, pageLabel = "Page",
 }: {
@@ -90,7 +99,7 @@ export async function runExtraction({
   onProgress?: (p: ExtractProgress) => void;
   /** The word for page markers in a multi-page result ("صفحہ"). */
   pageLabel?: string;
-}): Promise<{ text: string; segments: TranscriptSegment[] | null }> {
+}): Promise<ExtractResult> {
   if (kind === "audio") {
     onProgress?.({ labelKey: "extract.progress_audio", current: 0, total: 0 });
     const result = await transcribeLongForm({
@@ -101,12 +110,18 @@ export async function runExtraction({
       onProgress: (ev) =>
         onProgress?.({ labelKey: "extract.progress_audio", current: ev.current ?? 0, total: ev.total ?? 0, partial: ev.partialTranscript || undefined }),
     });
-    return { text: result.text, segments: result.segments ?? null };
+    const exact = result.segments ?? null;
+    const timed = exact ?? estimateSegments(result.chunkSpans ?? []);
+    return {
+      text: result.text,
+      segments: exact,
+      timing: timed.length ? { segments: timed, exact: Boolean(exact) } : null,
+    };
   }
 
   if (kind === "image") {
     onProgress?.({ labelKey: "extract.progress_page", current: 1, total: 1 });
-    return { text: await ocrPageImage(await readBase64(file), file.type || "image/jpeg"), segments: null };
+    return { text: await ocrPageImage(await readBase64(file), file.type || "image/jpeg"), segments: null, timing: null };
   }
 
   const total = await getPdfPageCount(file);
@@ -119,7 +134,7 @@ export async function runExtraction({
     pages.push(total > 1 ? `--- ${pageLabel} ${page.pageNum} ---\n${pageText}` : pageText);
     onProgress?.({ labelKey: "extract.progress_page", current: page.pageNum, total: page.totalPages, partial: pages.join("\n\n") });
   }
-  return { text: pages.join("\n\n"), segments: null };
+  return { text: pages.join("\n\n"), segments: null, timing: null };
 }
 
 /** A failed run as a message key, or the engine's own message; null when it was cancelled. */

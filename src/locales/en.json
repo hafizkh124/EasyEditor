@@ -2170,5 +2170,16 @@
   "extract.recording": "Recording",
   "extract.mic_denied": "The microphone could not be opened.",
   "extract.from_file": "From file: {name}",
-  "extract.inserted": "The text is in the document"
+  "extract.inserted": "The text is in the document",
+  "extract.times_approx": "Times are approximate: this engine gives a time every few minutes, not for each sentence.",
+  "extract.read_along": "Transcript with the recording",
+  "extract.back_10": "Back 10 seconds",
+  "extract.forward_10": "Forward 10 seconds",
+  "extract.play": "Play",
+  "extract.pause": "Pause",
+  "extract.position": "Position in the recording",
+  "extract.speed": "Speed",
+  "extract.view": "View",
+  "extract.view_listen": "Listen and read",
+  "extract.view_edit": "Edit"
 }

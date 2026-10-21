@@ -93,6 +93,9 @@ describe("Extract page", () => {
     landed = null;
     localStorage.clear();
     Object.assign(navigator, { clipboard: { writeText: vi.fn(async () => {}) } });
+    // jsdom has no object URLs; the page makes one for the recording.
+    URL.createObjectURL = vi.fn(() => "blob:recording");
+    URL.revokeObjectURL = vi.fn();
   });
   afterEach(() => {
     delete (window as unknown as { electronAPI?: unknown }).electronAPI;
@@ -110,6 +113,23 @@ describe("Extract page", () => {
     expect(reset).toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: /سب کاپی کریں/ }));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith("بسم اللہ"));
+  });
+
+  it("opens an audio result as a read-along with its recording, and Edit shows the text", async () => {
+    transcribeLongForm.mockResolvedValue({
+      text: "پہلا حصہ۔ دوسرا حصہ۔",
+      chunkCount: 1,
+      chunkSpans: [{ start: 0, end: 30, text: "پہلا حصہ۔ دوسرا حصہ۔" }],
+    });
+    const { container } = renderPage();
+    drop(new File(["a"], "bayan.m4a", { type: "audio/mp4" }));
+    expect(await screen.findByRole("list", { name: "آڈیو کے ساتھ متن" })).toBeInTheDocument();
+    expect(container.querySelector("audio")).toHaveAttribute("src", "blob:recording");
+    // Cloud times are estimates, and subtitles are never made from them.
+    expect(screen.getByText(/وقت اندازاً ہیں/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /SRT/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "ترمیم" }));
+    expect(screen.getByDisplayValue("پہلا حصہ۔ دوسرا حصہ۔")).toBeInTheDocument();
   });
 
   it("reads every page of a PDF, in order, with page markers", async () => {

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { usePageSession } from "@/hooks/usePageSession";
@@ -7,6 +7,7 @@ import type { TranscribeLanguage } from "@/lib/audio/transcribeLongForm";
 import { logActivity } from "@/lib/activityLog";
 import { blockReason, describeFailure, detectKind, runExtraction, type ExtractKind, type ExtractProgress } from "@/lib/extract/engine";
 import { useExtractGate } from "@/lib/extract/useExtractGate";
+import { toParagraphs, type TimedParagraph } from "@/lib/extract/timedParagraphs";
 import type { TranscriptSegment } from "@/core/voice/types";
 
 export { detectKind, type ExtractKind } from "@/lib/extract/engine";
@@ -52,6 +53,19 @@ export function useExtract() {
   const [fileName, setFileName] = useState("");
   const [text, setText] = useState("");
   const [segments, setSegments] = useState<TranscriptSegment[] | null>(null);
+  // Read-along (SYSTEM-2026 §5): the recording itself, and the transcript in
+  // timed paragraphs. Only for a run in this visit — a result reopened from
+  // Files has no recording to play.
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [paragraphs, setParagraphs] = useState<TimedParagraph[] | null>(null);
+  const [timesExact, setTimesExact] = useState(false);
+  const replaceMedia = useCallback((file: File | null) => {
+    setMediaUrl((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  }, []);
+  useEffect(() => () => replaceMedia(null), [replaceMedia]);
   const [progress, setProgress] = useState<ExtractProgress | null>(null);
   const [language, setLanguage] = useState<TranscribeLanguage>("auto");
   const [autoCopy, setAutoCopyState] = useState(readAutoCopy);
@@ -107,6 +121,8 @@ export function useExtract() {
     setFileName(file.name);
     setText("");
     setSegments(null);
+    setParagraphs(null);
+    replaceMedia(fileKind === "audio" ? file : null);
     setPhase("running");
     try {
       const result = await runExtraction({
@@ -123,6 +139,8 @@ export function useExtract() {
       });
       setText(result.text);
       setSegments(result.segments);
+      setParagraphs(result.timing ? toParagraphs(result.timing.segments) : null);
+      setTimesExact(Boolean(result.timing?.exact));
       setPhase("done");
       if (!result.text.trim()) {
         toast.info(t("extract.nothing_found"));
@@ -146,7 +164,7 @@ export function useExtract() {
       abortRef.current = null;
       setProgress(null);
     }
-  }, [gate, language, audioSession, pageSession, autoCopy, copyAll, text, t]);
+  }, [gate, language, audioSession, pageSession, autoCopy, copyAll, text, t, replaceMedia]);
 
   const cancel = useCallback(() => abortRef.current?.abort(), []);
 
@@ -183,11 +201,13 @@ export function useExtract() {
     setFileName("");
     setText("");
     setSegments(null);
-  }, [audioSession, pageSession]);
+    setParagraphs(null);
+    replaceMedia(null);
+  }, [audioSession, pageSession, replaceMedia]);
 
   return {
     accept: gate.accept, audioAvailable: gate.audioAvailable, pagesAvailable: gate.pagesAvailable,
-    phase, kind, fileName, text, setText, segments, progress,
+    phase, kind, fileName, text, setText, segments, progress, mediaUrl, paragraphs, timesExact,
     language, setLanguage, sttRoute: gate.sttRoute, autoCopy, setAutoCopy,
     start, cancel, startRecording, stopRecording, startOver, copyAll,
   };

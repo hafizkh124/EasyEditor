@@ -2170,5 +2170,16 @@
   "extract.recording": "ریکارڈنگ",
   "extract.mic_denied": "مائیکروفون نہیں کھل سکا۔",
   "extract.from_file": "فائل سے: {name}",
-  "extract.inserted": "متن دستاویز میں آ گیا"
+  "extract.inserted": "متن دستاویز میں آ گیا",
+  "extract.times_approx": "وقت اندازاً ہیں: یہ انجن ہر چند منٹ کا وقت دیتا ہے، ہر جملے کا نہیں۔",
+  "extract.read_along": "آڈیو کے ساتھ متن",
+  "extract.back_10": "10 سیکنڈ پیچھے",
+  "extract.forward_10": "10 سیکنڈ آگے",
+  "extract.play": "چلائیں",
+  "extract.pause": "روکیں",
+  "extract.position": "آڈیو میں جگہ",
+  "extract.speed": "رفتار",
+  "extract.view": "منظر",
+  "extract.view_listen": "سنیں اور پڑھیں",
+  "extract.view_edit": "ترمیم"
 }

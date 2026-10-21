@@ -2170,5 +2170,16 @@
   "extract.recording": "تسجيل",
   "extract.mic_denied": "تعذّر فتح الميكروفون.",
   "extract.from_file": "من الملف: {name}",
-  "extract.inserted": "أُدرج النص في المستند"
+  "extract.inserted": "أُدرج النص في المستند",
+  "extract.times_approx": "الأوقات تقريبية: يعطي هذا المحرك وقتًا كل بضع دقائق، لا لكل جملة.",
+  "extract.read_along": "النص مع التسجيل",
+  "extract.back_10": "رجوع 10 ثوانٍ",
+  "extract.forward_10": "تقدّم 10 ثوانٍ",
+  "extract.play": "تشغيل",
+  "extract.pause": "إيقاف مؤقت",
+  "extract.position": "الموضع في التسجيل",
+  "extract.speed": "السرعة",
+  "extract.view": "العرض",
+  "extract.view_listen": "استمع واقرأ",
+  "extract.view_edit": "تعديل"
 }

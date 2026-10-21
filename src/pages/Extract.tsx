@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import type { TranslationKey } from "@/lib/i18n";
 import { useExtract } from "./extract/useExtract";
 import { takeSharedFile } from "@/lib/extract/sharedFile";
+import { AudioReadAlong } from "@/components/extract/AudioReadAlong";
 
 /**
  * "Extract text" (SYSTEM-2026 §5) — the one screen behind "+ → audio to text"
@@ -52,6 +53,9 @@ const Extract = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  // Audio with its recording opens as a read-along; "Edit" shows the plain text.
+  const [editing, setEditing] = useState(false);
+  const readAlong = x.phase === "done" && !editing && Boolean(x.mediaUrl && x.paragraphs?.length);
   const projectId = (location.state as { projectId?: string } | null)?.projectId;
 
   // A file shared into the app ("Share → Easy Editor") starts right away.
@@ -67,7 +71,10 @@ const Extract = () => {
 
   const pick = (files: FileList | null) => {
     const file = files?.[0];
-    if (file) void x.start(file);
+    if (file) {
+      setEditing(false);
+      void x.start(file);
+    }
   };
 
   const makeDocument = () =>
@@ -198,6 +205,25 @@ const Extract = () => {
                 </>
               )}
             </div>
+            {x.phase === "done" && x.mediaUrl && x.paragraphs?.length ? (
+              <div role="tablist" aria-label={t("extract.view", "منظر")} className="inline-flex rounded-lg bg-muted p-0.5 text-sm">
+                {([false, true] as const).map((edit) => (
+                  <button
+                    key={String(edit)}
+                    type="button"
+                    role="tab"
+                    aria-selected={editing === edit}
+                    onClick={() => setEditing(edit)}
+                    className={cn("min-h-touch rounded-md px-3", editing === edit ? "bg-background font-semibold shadow-xs" : "text-muted-foreground")}
+                  >
+                    {edit ? t("extract.view_edit", "ترمیم") : t("extract.view_listen", "سنیں اور پڑھیں")}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {readAlong ? (
+              <AudioReadAlong src={x.mediaUrl!} paragraphs={x.paragraphs!} exact={x.timesExact} dir={dir} />
+            ) : (
             <Textarea
               value={x.text}
               onChange={(e) => x.setText(e.target.value)}
@@ -206,6 +232,7 @@ const Extract = () => {
               aria-label={t("extract.result", "نتیجہ")}
               className="min-h-[18rem] text-base leading-loose"
             />
+            )}
             {x.phase === "done" && (
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-2">

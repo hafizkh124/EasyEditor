@@ -50,6 +50,12 @@ export interface LongFormTranscribeResult {
    * must be disabled in that case, never write an empty file).
    */
   segments?: TranscriptSegment[];
+  /**
+   * Each chunk's text with the stretch of the file it covers — always
+   * present, whichever engine ran. The cloud gives no times inside a chunk,
+   * so this is what an approximate read-along is built from.
+   */
+  chunkSpans: TranscriptSegment[];
 }
 
 export class TranscribeCancelledError extends Error {
@@ -159,6 +165,7 @@ export async function transcribeLongForm({
   checkSignal(signal);
 
   const parts: string[] = [];
+  const spans: TranscriptSegment[] = [];
   const allSegments: TranscriptSegment[] = [];
   let everyChunkHadSegments = true;
   for (const chunk of chunks) {
@@ -172,7 +179,10 @@ export async function transcribeLongForm({
       partialTranscript: parts.join("\n\n"),
     });
     const { text, segments } = await transcribeChunk(chunk, language, resolvedRoute, signal);
-    if (text) parts.push(text);
+    if (text) {
+      parts.push(text);
+      spans.push({ start: chunk.startSeconds, end: chunk.endSeconds, text });
+    }
     if (segments) {
       // Chunk-relative times become file-absolute, otherwise every chunk's
       // subtitles would start again from zero.
@@ -212,5 +222,6 @@ export async function transcribeLongForm({
     // audio, so they are offered only when every chunk supplied them.
     segments:
       everyChunkHadSegments && allSegments.length > 0 ? allSegments : undefined,
+    chunkSpans: spans,
   };
 }
