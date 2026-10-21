@@ -4,7 +4,7 @@
 -- a curated research dataset when the scholar opted in.
 create table public.citation_feedback (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null,
   action text not null check (action in ('approve', 'correct')),
   source_id text,
   verify_status text check (verify_status in ('verified', 'partial', 'unverified')),
@@ -15,6 +15,9 @@ create table public.citation_feedback (
   -- a correction must carry the corrected citation
   constraint citation_feedback_correct_has_payload check (action <> 'correct' or corrected is not null)
 );
+
+grant select, insert on public.citation_feedback to authenticated;
+grant all on public.citation_feedback to service_role;
 
 create index citation_feedback_user_created_idx
   on public.citation_feedback (user_id, created_at desc);
