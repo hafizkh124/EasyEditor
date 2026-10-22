@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSeo } from "@/hooks/useSeo";
 import { supabase } from "@/integrations/supabase/client";
+import { isCapabilityAvailable } from "@/core/capabilities/registry";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { Language } from "@/lib/i18n";
@@ -36,6 +37,14 @@ const SECTIONS: Array<{ id: SettingsSection; icon: typeof ScrollText; labelKey: 
   { id: "methods", icon: BookOpen, labelKey: "settings.nav_methods", fallback: "Methods" },
 ];
 
+/**
+ * The web build's Voice section held only the read-aloud voices, hidden for
+ * now (SYSTEM-2026 §11); the desktop's also holds transcription, so it stays.
+ */
+function visibleSections() {
+  return SECTIONS.filter((s) => s.id !== "voice" || isDesktop() || isCapabilityAvailable("speak"));
+}
+
 // FR-6.1: Settings contains language selection and local MCP companion controls.
 // M11 Phase 3: sidebar navigation with section-based layout (ADR-0047).
 const Settings = () => {
@@ -47,7 +56,7 @@ const Settings = () => {
   const [searchParams] = useSearchParams();
   const requestedSection = searchParams.get("section");
   const [activeSection, setActiveSection] = useState<SettingsSection>(
-    SECTIONS.some((s) => s.id === requestedSection) ? (requestedSection as SettingsSection) : "general",
+    visibleSections().some((s) => s.id === requestedSection) ? (requestedSection as SettingsSection) : "general",
   );
 
   // The boot-time application of profiles.preferred_language lives in
@@ -74,7 +83,7 @@ const Settings = () => {
             <span className="font-semibold text-xs tracking-wide uppercase">{t("settings.title")}</span>
           </div>
           <div className="space-y-0.5">
-            {SECTIONS.map(({ id, icon: Icon, labelKey, fallback }) => (
+            {visibleSections().map(({ id, icon: Icon, labelKey, fallback }) => (
               <button
                 key={id}
                 onClick={() => setActiveSection(id)}
@@ -102,7 +111,7 @@ const Settings = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {SECTIONS.map(({ id, labelKey, fallback }) => (
+                  {visibleSections().map(({ id, labelKey, fallback }) => (
                     <SelectItem key={id} value={id}>
                       {t(labelKey as import("@/lib/i18n").TranslationKey, fallback)}
                     </SelectItem>
@@ -180,7 +189,8 @@ const Settings = () => {
             {activeSection === "voice" && (
               <>
                 <VoiceEnginePanel />
-                <AdvancedVoicesPanel />
+                {/* Voices and cloning — hidden for now with the voice studio (SYSTEM-2026 §11). */}
+                {isCapabilityAvailable("speak") && <AdvancedVoicesPanel />}
               </>
             )}
 

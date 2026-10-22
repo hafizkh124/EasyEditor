@@ -66,9 +66,11 @@ describe("workspace app menu", () => {
   it("lists every standalone tool on the web, so the workspace is not a dead end", async () => {
     open();
     // `t` mirrors the additive API and returns the explicit fallback.
-    for (const label of ["ٹرانسکرائب", "OCR", "بولیں", "کتاب کا ترجمہ"]) {
+    for (const label of ["ٹرانسکرائب", "OCR", "کتاب کا ترجمہ"]) {
       expect(await screen.findByText(label)).toBeInTheDocument();
     }
+    // Speak is hidden for now (SYSTEM-2026 §11).
+    expect(screen.queryByText("بولیں")).not.toBeInTheDocument();
   });
 
   /**
@@ -97,6 +99,7 @@ describe("workspace app menu", () => {
     });
 
     it("keeps the tools that run on the offline voice engines", async () => {
+      vi.stubEnv("VITE_VOICE_STUDIO", "true");
       open();
       for (const label of ["ٹرانسکرائب", "بولیں"]) {
         expect(await screen.findByText(label)).toBeInTheDocument();

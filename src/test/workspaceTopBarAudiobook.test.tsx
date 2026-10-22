@@ -86,10 +86,21 @@ describe("WorkspaceTopBar audiobook export", () => {
       };
     });
 
-    it("offers the audiobook export from the download menu", () => {
+    it("offers the audiobook export from the download menu, with the voice studio on", () => {
+      vi.stubEnv("VITE_LOCAL_VOICE", "true");
+      vi.stubEnv("VITE_VOICE_STUDIO", "true");
       renderTopBar();
       openDesktopExportMenu();
       expect(screen.getByText("آڈیو بک (.mp3)")).toBeInTheDocument();
+      vi.unstubAllEnvs();
+    });
+
+    it("hides it while the voice studio is hidden (SYSTEM-2026 §11)", () => {
+      vi.stubEnv("VITE_LOCAL_VOICE", "true");
+      renderTopBar();
+      openDesktopExportMenu();
+      expect(screen.queryByText("آڈیو بک (.mp3)")).not.toBeInTheDocument();
+      vi.unstubAllEnvs();
     });
   });
 

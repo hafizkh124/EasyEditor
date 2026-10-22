@@ -22,6 +22,7 @@ import { isDesktop, modifierKeyLabel } from "@/utils/environment";
 import { WorkspaceAppMenu } from "./WorkspaceAppMenu";
 import { DesktopAccountMenu } from "@/components/auth/DesktopAccountMenu";
 import { JobsStrip } from "@/components/jobs/JobsStrip";
+import { isCapabilityAvailable } from "@/core/capabilities/registry";
 import { WordExportDialog } from "@/components/editor/WordExportDialog";
 import type { Document, DocumentVersion } from "@/core/workspace/types";
 import type { AudiobookExportProgress } from "@/core/voice/types";
@@ -61,6 +62,8 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
   // it runs on the local Piper voices in the main process. Ported from the
   // /editor page stub, which was the only place this UI existed (UX-v1 P3).
   const [audiobookProgress, setAudiobookProgress] = useState<AudiobookExportProgress | null>(null);
+  // Hidden for now with the rest of the voice studio (SYSTEM-2026 §11).
+  const audiobookAvailable = isCapabilityAvailable("audiobook");
   const [wordExportOpen, setWordExportOpen] = useState(false);
   const canWordExport = isDesktop() && Boolean(typeof window !== "undefined" && window.electronAPI?.docBridge);
 
@@ -244,7 +247,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
                 </DropdownMenuItem>
               </>
             )}
-            {isDesktop() && (
+            {audiobookAvailable && (
               <DropdownMenuItem
                 onClick={handleAudiobookExport}
                 disabled={audiobookProgress !== null}
@@ -310,7 +313,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
               <DropdownMenuItem onClick={() => handleDownload("txt")} className="gap-2">
                 <FileText className="h-4 w-4" /> {t("editor.download_txt_action", "Download Text")}
               </DropdownMenuItem>
-              {isDesktop() && (
+              {audiobookAvailable && (
                 <DropdownMenuItem
                   onClick={handleAudiobookExport}
                   disabled={audiobookProgress !== null}

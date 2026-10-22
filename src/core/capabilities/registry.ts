@@ -35,7 +35,17 @@ export type Runtime = "web" | "desktop";
 export type Availability =
   | { on: "always" }
   | { on: "never"; reason: string }
-  | { on: "flag"; flag: "VITE_LOCAL_VOICE" };
+  | { on: "flag"; flag: BuildFlag | readonly BuildFlag[] };
+
+/**
+ * Build-time switches. A list means every one must be on.
+ *
+ * VITE_VOICE_STUDIO and VITE_KNOWLEDGE_GRAPH are off by default: speaking
+ * text aloud, audiobooks, voice cloning and the knowledge graph are hidden
+ * for now (SYSTEM-2026 §11). Their code stays; turning the flag on brings
+ * them back everywhere at once.
+ */
+export type BuildFlag = "VITE_LOCAL_VOICE" | "VITE_VOICE_STUDIO" | "VITE_KNOWLEDGE_GRAPH";
 
 export type Surface =
   | "sidebar"
@@ -48,7 +58,7 @@ export type Surface =
 export type CapabilityId =
   | "workspace" | "extract" | "transcribe" | "ocr" | "speak" | "translate.book"
   | "research" | "settings" | "dashboard" | "files" | "profile" | "admin"
-  | "voice.cloning" | "tokens.meter"
+  | "voice.cloning" | "audiobook" | "knowledge.graph" | "tokens.meter"
   | "wb.aiReader" | "wb.research" | "wb.agent";
 
 export interface Capability {
@@ -112,7 +122,10 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "speak", route: "/speak", labelKey: "nav.speak", fallbackLabel: "بولیں",
     icon: Volume2,
-    runtimes: { web: ALWAYS, desktop: { on: "flag", flag: "VITE_LOCAL_VOICE" } },
+    runtimes: {
+      web: { on: "flag", flag: "VITE_VOICE_STUDIO" },
+      desktop: { on: "flag", flag: ["VITE_LOCAL_VOICE", "VITE_VOICE_STUDIO"] },
+    },
     surfaces: ["workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
   },
   {
@@ -174,7 +187,28 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "voice.cloning", route: null, labelKey: "tts.clone_title", fallbackLabel: "آواز کلون کریں",
     icon: Mic,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Voice cloning bills the ElevenLabs API and needs cloud storage." } },
+    runtimes: {
+      web: { on: "flag", flag: "VITE_VOICE_STUDIO" },
+      desktop: { on: "never", reason: "Voice cloning bills the ElevenLabs API and needs cloud storage." },
+    },
+    surfaces: [],
+  },
+  {
+    // The editor's "Audiobook (.mp3)" export: the desktop's offline voices read
+    // the document chapter by chapter.
+    id: "audiobook", route: null, labelKey: "editor.download_audiobook", fallbackLabel: "آڈیو بک (.mp3)",
+    icon: Volume2,
+    runtimes: {
+      web: { on: "never", reason: "Audiobook export runs on the desktop's offline voices." },
+      desktop: { on: "flag", flag: ["VITE_LOCAL_VOICE", "VITE_VOICE_STUDIO"] },
+    },
+    surfaces: [],
+  },
+  {
+    // The workspace settings' knowledge graph of the folder's documents.
+    id: "knowledge.graph", route: null, labelKey: "library.graph_title", fallbackLabel: "علمی گراف",
+    icon: Sparkles,
+    runtimes: { web: { on: "flag", flag: "VITE_KNOWLEDGE_GRAPH" }, desktop: { on: "flag", flag: "VITE_KNOWLEDGE_GRAPH" } },
     surfaces: [],
   },
   {
@@ -237,10 +271,14 @@ function currentRuntime(): Runtime {
  * would never be replaced and the desktop build would silently read undefined.
  * Evaluated per call so tests can `vi.stubEnv` between cases.
  */
-function flagEnabled(flag: "VITE_LOCAL_VOICE"): boolean {
+function flagEnabled(flag: BuildFlag): boolean {
   switch (flag) {
     case "VITE_LOCAL_VOICE":
       return import.meta.env.VITE_LOCAL_VOICE === "true";
+    case "VITE_VOICE_STUDIO":
+      return import.meta.env.VITE_VOICE_STUDIO === "true";
+    case "VITE_KNOWLEDGE_GRAPH":
+      return import.meta.env.VITE_KNOWLEDGE_GRAPH === "true";
   }
 }
 
@@ -251,7 +289,7 @@ function isAvailable(availability: Availability): boolean {
     case "never":
       return false;
     case "flag":
-      return flagEnabled(availability.flag);
+      return (typeof availability.flag === "string" ? [availability.flag] : availability.flag).every(flagEnabled);
   }
 }
 

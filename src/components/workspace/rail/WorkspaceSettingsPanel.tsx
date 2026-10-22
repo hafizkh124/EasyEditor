@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { isDesktop } from "@/core/backend";
 import { JkhssnConnectPanel } from "@/components/jkhssn/JkhssnConnectPanel";
 import { KnowledgeGraphTab } from "@/components/workspace/KnowledgeGraphTab";
+import { isCapabilityAvailable } from "@/core/capabilities/registry";
 import { RecipesTab } from "@/components/workspace/RecipesTab";
 import { WORKSPACE_SHORTCUTS } from "@/core/workspace/shortcuts";
 
@@ -25,7 +26,8 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 
 export const WorkspaceSettingsPanel: React.FC = () => {
   const { t } = useLanguage();
-  const graphEnabled = import.meta.env.VITE_KNOWLEDGE_GRAPH !== "false";
+  // Hidden for now (SYSTEM-2026 §11) — VITE_KNOWLEDGE_GRAPH="true" brings it back.
+  const graphEnabled = isCapabilityAvailable("knowledge.graph");
   const recipesEnabled = import.meta.env.VITE_RECIPES !== "false";
 
   return (
