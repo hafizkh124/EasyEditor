@@ -8,6 +8,20 @@
       "when": 1792586984617,
       "tag": "0000_citation_feedback",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792674226906,
+      "tag": "0001_research_sessions_folder",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792674248871,
+      "tag": "0002_translation_review",
+      "breakpoints": true
     }
   ]
 }
