@@ -123,6 +123,7 @@ const SessionsView: React.FC = () => {
                   <div key={item.id} className="group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/50">
                     {renamingId === item.id ? (
                       <input
+                        aria-label={t("sidebar.rename", "Rename")}
                         autoFocus
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}

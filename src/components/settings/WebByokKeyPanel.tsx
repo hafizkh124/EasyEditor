@@ -193,7 +193,7 @@ export const WebByokKeyPanel: React.FC = () => {
           {status.hasKey && (
             <Button variant="outline" size="sm" onClick={remove} disabled={busy}
               className="text-destructive border-destructive/30 hover:bg-destructive/10">
-              <Trash2 className="h-4 w-4 ml-1" />{t("byok.web.delete", "حذف")}
+              <Trash2 className="h-4 w-4 me-1" />{t("byok.web.delete", "حذف")}
             </Button>
           )}
           <Button size="sm" onClick={saveAndTest} disabled={busy || !draft.trim()}>

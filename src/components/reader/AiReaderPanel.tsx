@@ -206,6 +206,7 @@ export const AiReaderPanel: React.FC = () => {
       {/* Free-form input */}
       <div className="flex gap-1.5 p-2 border-t border-border shrink-0">
         <Input
+          aria-label={t("reader.ai.placeholder")}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}

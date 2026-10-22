@@ -399,6 +399,7 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
             <Plus className={`h-4 w-4 transition-transform ${a.hubOpen ? "rotate-45" : ""}`} />
           </Button>
           <textarea
+            aria-label={t("agent.placeholder", "Ask, or describe a task…  @chapter  /playbook")}
             ref={a.taRef}
             value={a.input}
             onChange={(e) => a.updateInput(e.target.value, e.target.selectionStart ?? e.target.value.length)}

@@ -32,6 +32,7 @@ export const IngestProgressCard: React.FC<IngestProgressCardProps> = ({
             variant="ghost"
             className="h-5 p-0 text-xs text-muted-foreground hover:text-destructive shrink-0"
             onClick={onCancel}
+            aria-label={t("common.cancel", "Cancel")}
           >
             <XCircle className="h-3.5 w-3.5" />
           </Button>

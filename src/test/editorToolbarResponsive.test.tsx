@@ -75,7 +75,7 @@ describe("EditorToolbar responsive split", () => {
     render(<EditorToolbar {...baseProps} />);
     // Not moved out of the document on wide viewports — `hidden sm:flex` on
     // the wrapper, not a conditional unmount.
-    expect(screen.getByLabelText("H1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Heading 1")).toBeInTheDocument();
   });
 
   it("offers a 'More formatting' overflow trigger that opens a sheet with the same secondary controls", () => {
@@ -87,7 +87,7 @@ describe("EditorToolbar responsive split", () => {
     // querying by role scopes to it instead of colliding with the always-
     // present desktop copy.
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByLabelText("H1")).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Toggle RTL")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Heading 1")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Toggle text direction (RTL/LTR)")).toBeInTheDocument();
   });
 });

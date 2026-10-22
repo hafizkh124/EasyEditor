@@ -106,6 +106,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ active = false }) => {
       {/* Add note for the current page */}
       <div className="flex gap-1.5 p-2 border-b border-border shrink-0">
         <Input
+          aria-label={`${t("reader.page")} ${readerPage.pageNumber}`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}

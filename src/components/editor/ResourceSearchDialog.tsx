@@ -128,6 +128,7 @@ const ResourceSearchDialog = ({ open, onOpenChange, onInsert, onInsertMany, t }:
 
         <div className="flex gap-2">
           <Input
+            aria-label={t("editor.search_placeholder")}
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}

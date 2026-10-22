@@ -120,6 +120,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ onSelectResult, onNavigate
         <div className="relative">
           <Search className="absolute start-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
+            aria-label={t("library.search_books_placeholder", "Search imported books…")}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);

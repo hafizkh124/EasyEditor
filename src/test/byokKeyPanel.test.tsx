@@ -48,28 +48,28 @@ describe('ByokKeyPanel (multi-provider)', () => {
 
   it('shows non-Gemini providers as unverified with the eval command', async () => {
     await renderPanel();
-    expect(screen.getAllByText('غیر تصدیق شدہ').length).toBe(2);
+    expect(screen.getAllByText('Not verified').length).toBe(2);
     expect(screen.getByText(/EVAL_PROVIDER=groq AGENT_EVAL_LIVE=1/)).toBeInTheDocument();
   });
 
   it('surfaces the refusal when activating an unverified provider for the loop', async () => {
     byok.setActiveProvider.mockRejectedValueOnce(new Error('Groq has not passed the agent eval on this machine yet'));
     await renderPanel();
-    fireEvent.click(screen.getByLabelText('Groq — ایجنٹ لوپ'));
+    fireEvent.click(screen.getByLabelText('Groq — Agent loop'));
     await waitFor(() => expect(screen.getByText(/has not passed the agent eval/)).toBeInTheDocument());
   });
 
-  it('lets an unverified provider be picked for متن سازی once it has a key', async () => {
+  it('lets an unverified provider be picked for drafting once it has a key', async () => {
     byok.getKeyStatus.mockImplementation(async (id?: string) => (id === 'groq' ? { hasKey: true, lastFour: 'wxyz' } : { hasKey: false, lastFour: null }));
     await renderPanel();
-    fireEvent.click(screen.getByLabelText('Groq — متن سازی'));
+    fireEvent.click(screen.getByLabelText('Groq — Drafting'));
     await waitFor(() => expect(byok.setTextProvider).toHaveBeenCalledWith('groq'));
   });
 
-  it('refuses متن سازی on a provider with no key', async () => {
+  it('refuses drafting on a provider with no key', async () => {
     await renderPanel();
-    fireEvent.click(screen.getByLabelText('OpenRouter — متن سازی'));
-    await waitFor(() => expect(screen.getByText(/کوئی key نہیں/)).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('OpenRouter — Drafting'));
+    await waitFor(() => expect(screen.getByText(/No key for/)).toBeInTheDocument());
     expect(byok.setTextProvider).not.toHaveBeenCalled();
   });
 
@@ -77,7 +77,7 @@ describe('ByokKeyPanel (multi-provider)', () => {
     await renderPanel();
     const groqInput = screen.getByPlaceholderText('gsk_…');
     fireEvent.change(groqInput, { target: { value: 'gsk_abcdefghijklmnopqrst' } });
-    fireEvent.click(screen.getAllByText('محفوظ و تصدیق')[1]);
+    fireEvent.click(screen.getAllByText('Save & verify')[1]);
     await waitFor(() => expect(byok.testKey).toHaveBeenCalledWith('gsk_abcdefghijklmnopqrst', 'groq'));
     await waitFor(() => expect(byok.saveKey).toHaveBeenCalledWith('gsk_abcdefghijklmnopqrst', 'groq'));
   });
@@ -93,6 +93,6 @@ describe('ByokKeyPanel (multi-provider)', () => {
     (navigator.clipboard.readText as ReturnType<typeof vi.fn>).mockResolvedValue('gsk_liveKeyFromClipboard123');
     await renderPanel();
     await waitFor(() => expect((screen.getByPlaceholderText('gsk_…') as HTMLInputElement).value).toBe('gsk_liveKeyFromClipboard123'));
-    expect(screen.getByText(/کلپ بورڈ سے Groq/)).toBeInTheDocument();
+    expect(screen.getByText(/Pasted the Groq key/)).toBeInTheDocument();
   });
 });

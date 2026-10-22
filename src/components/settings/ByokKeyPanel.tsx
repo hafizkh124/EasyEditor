@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { WebByokKeyPanel } from './WebByokKeyPanel';
 import { logger } from '@/lib/logger';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const log = logger.child('ByokKeyPanel');
 
@@ -27,6 +28,7 @@ const EVAL_CMD = (id: string) =>
   `${id.toUpperCase()}_API_KEY=… EVAL_PROVIDER=${id} AGENT_EVAL_LIVE=1 npx vitest run src/test/agentEval.live.test.ts`;
 
 export const ByokKeyPanel: React.FC = () => {
+  const { t, direction } = useLanguage();
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [active, setActive] = useState<string>('gemini');
   const [textActive, setTextActive] = useState<string>('gemini');
@@ -72,14 +74,14 @@ export const ByokKeyPanel: React.FC = () => {
         const match = providers.find((p) => new RegExp(p.keyPattern).test(text) && !statuses[p.id]?.hasKey);
         if (match && drafts[match.id] !== text) {
           setDrafts((d) => ({ ...d, [match.id]: text }));
-          setClipboardHint(`کلپ بورڈ سے ${match.label} کی key بھر دی گئی — تصدیق کر کے محفوظ کریں۔`);
+          setClipboardHint(t('byok.clipboard_filled', 'Pasted the {provider} key from your clipboard — verify and save.').replace('{provider}', match.label));
         }
       } catch { /* clipboard blocked — ignore */ }
     };
     window.addEventListener('focus', check);
     void check();
     return () => window.removeEventListener('focus', check);
-  }, [api, providers, statuses, drafts]);
+  }, [api, providers, statuses, drafts, t]);
 
   // M10 Phase 2.5.3 — web gets its own, deliberately simpler panel (one
   // provider at a time, no per-role split, no eval-verification gate — see
@@ -97,7 +99,7 @@ export const ByokKeyPanel: React.FC = () => {
       const test = await api.testKey(key, id);
       if (!test.success) { setFeedback({ type: 'error', message: test.message }); return; }
       await api.saveKey(key, id);
-      setFeedback({ type: 'success', message: `${providers.find((p) => p.id === id)?.label} key محفوظ اور تصدیق ہو گئی۔` });
+      setFeedback({ type: 'success', message: t('byok.saved_verified', '{provider} key saved and verified.').replace('{provider}', providers.find((p) => p.id === id)?.label ?? id) });
       setDrafts((d) => ({ ...d, [id]: '' }));
       await refresh();
     } catch (err) {
@@ -126,7 +128,7 @@ export const ByokKeyPanel: React.FC = () => {
   const selectRole = (setter: (id: string) => Promise<{ active: string; text: string; critic: string }>) => async (id: string) => {
     setFeedback(null);
     try {
-      if (!statuses[id]?.hasKey) throw new Error(`${providers.find((p) => p.id === id)?.label} کی کوئی key نہیں — پہلے درج کریں۔`);
+      if (!statuses[id]?.hasKey) throw new Error(t('byok.no_key', 'No key for {provider} — enter one first.').replace('{provider}', providers.find((p) => p.id === id)?.label ?? id));
       await setter(id);
       await refresh();
     } catch (err) {
@@ -147,21 +149,19 @@ export const ByokKeyPanel: React.FC = () => {
 
   return (
     <Card className="w-full border-primary/20 shadow-sm">
-      <CardHeader dir="rtl">
+      <CardHeader dir={direction}>
         <div className="flex items-center gap-2">
           <Key className="h-5 w-5 text-primary" />
-          <CardTitle className="text-xl font-bold">AI ماڈل پرووائیڈر (BYOK)</CardTitle>
+          <CardTitle className="text-xl font-bold">{t('byok.title', 'AI model provider (BYOK)')}</CardTitle>
         </div>
         <CardDescription>
-          ہر کلید آپ کے کمپیوٹر پر انکرپٹ ہو کر محفوظ رہتی ہے۔ دو کردار الگ الگ چنے جا سکتے ہیں:
-          <b> ایجنٹ لوپ</b> (ٹول کالنگ — Gemini کے سوا صرف eval پاس کرنے پر) اور
-          <b> متن سازی</b> (مسودہ/ترمیم — صرف key درکار؛ ہر مسودہ ٹریک چینج کے طور پر آپ خود دیکھتے ہیں)۔
+          {t('byok.desc', 'Each key is stored encrypted on your computer. Two roles can be chosen separately: the agent loop (tool calling — other than Gemini, only after it passes the eval) and drafting (drafts/edits — needs only a key; you review every draft as a tracked change).')}
         </CardDescription>
       </CardHeader>
-      <CardContent dir="rtl" className="space-y-4">
+      <CardContent dir={direction} className="space-y-4">
         {feedback && (
           <Alert variant={feedback.type === 'error' ? 'destructive' : 'default'}>
-            <AlertTitle>{feedback.type === 'error' ? 'غلطی' : 'کامیاب'}</AlertTitle>
+            <AlertTitle>{feedback.type === 'error' ? t('byok.error', 'Error') : t('byok.success', 'Success')}</AlertTitle>
             <AlertDescription className="whitespace-pre-wrap">{feedback.message}</AlertDescription>
           </Alert>
         )}
@@ -183,29 +183,29 @@ export const ByokKeyPanel: React.FC = () => {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-sm">{p.label}</span>
-                  {p.freeTier && <span className="text-xs px-1.5 py-0.5 rounded bg-success-soft text-success">مفت tier</span>}
+                  {p.freeTier && <span className="text-xs px-1.5 py-0.5 rounded bg-success-soft text-success">{t('byok.free_tier', 'Free tier')}</span>}
                   {isVerified ? (
-                    <span className="flex items-center gap-1 text-xs text-success"><ShieldCheck className="h-3.5 w-3.5" />تصدیق شدہ</span>
+                    <span className="flex items-center gap-1 text-xs text-success"><ShieldCheck className="h-3.5 w-3.5" />{t('byok.verified', 'Verified')}</span>
                   ) : (
-                    <span className="flex items-center gap-1 text-xs text-warning"><AlertTriangle className="h-3.5 w-3.5" />غیر تصدیق شدہ</span>
+                    <span className="flex items-center gap-1 text-xs text-warning"><AlertTriangle className="h-3.5 w-3.5" />{t('byok.unverified', 'Not verified')}</span>
                   )}
                   <label className="flex items-center gap-1 text-xs">
-                    <input type="radio" name="loop-provider" checked={isActive} onChange={() => selectActive(p.id)} aria-label={`${p.label} — ایجنٹ لوپ`} />
-                    ایجنٹ لوپ
+                    <input type="radio" name="loop-provider" checked={isActive} onChange={() => selectActive(p.id)} aria-label={`${p.label} — ${t('byok.role_loop', 'Agent loop')}`} />
+                    {t('byok.role_loop', 'Agent loop')}
                   </label>
                   <label className="flex items-center gap-1 text-xs">
-                    <input type="radio" name="text-provider" checked={isText} onChange={() => selectText(p.id)} aria-label={`${p.label} — متن سازی`} />
-                    متن سازی
+                    <input type="radio" name="text-provider" checked={isText} onChange={() => selectText(p.id)} aria-label={`${p.label} — ${t('byok.role_text', 'Drafting')}`} />
+                    {t('byok.role_text', 'Drafting')}
                   </label>
                   <label className="flex items-center gap-1 text-xs" title={p.reasoningModel ? `reasoning: ${p.reasoningModel}` : undefined}>
-                    <input type="radio" name="critic-provider" checked={isCritic} onChange={() => selectCritic(p.id)} aria-label={`${p.label} — نقد`} />
-                    نقد
+                    <input type="radio" name="critic-provider" checked={isCritic} onChange={() => selectCritic(p.id)} aria-label={`${p.label} — ${t('byok.role_critic', 'Critic')}`} />
+                    {t('byok.role_critic', 'Critic')}
                   </label>
                 </div>
                 {st.hasKey ? (
                   <span className="flex items-center gap-1 text-xs text-success">
                     <CheckCircle className="h-3.5 w-3.5" />
-                    {st.fromEnv ? 'env سے' : `…${st.lastFour}`}
+                    {st.fromEnv ? t('byok.from_env', 'From env') : `…${st.lastFour}`}
                   </span>
                 ) : (
                   <a
@@ -213,7 +213,7 @@ export const ByokKeyPanel: React.FC = () => {
                     onClick={(e) => { e.preventDefault(); void window.electronAPI?.openExternal(p.getKeyUrl); }}
                     className="flex items-center gap-1 text-xs text-primary hover:underline"
                   >
-                    <ExternalLink className="h-3.5 w-3.5" />کلید حاصل کریں
+                    <ExternalLink className="h-3.5 w-3.5" />{t('byok.get_key', 'Get a key')}
                   </a>
                 )}
               </div>
@@ -234,7 +234,7 @@ export const ByokKeyPanel: React.FC = () => {
                   type="button"
                   onClick={() => setShowKey((s) => ({ ...s, [p.id]: !s[p.id] }))}
                   className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label="کلید دکھائیں"
+                  aria-label={t('byok.show_key', 'Show key')}
                 >
                   {showKey[p.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -245,24 +245,24 @@ export const ByokKeyPanel: React.FC = () => {
                   {st.hasKey && !st.fromEnv && (
                     <Button variant="outline" size="sm" onClick={() => remove(p.id)} disabled={busy === p.id}
                       className="text-destructive border-destructive/30 hover:bg-destructive/10">
-                      <Trash2 className="h-4 w-4 ml-1" />حذف
+                      <Trash2 className="h-4 w-4 me-1" />{t('common.delete', 'Delete')}
                     </Button>
                   )}
                   <Button size="sm" onClick={() => saveAndTest(p.id)} disabled={busy === p.id || !(drafts[p.id] ?? '').trim()}>
-                    {busy === p.id ? 'جانچ…' : 'محفوظ و تصدیق'}
+                    {busy === p.id ? t('byok.testing', 'Testing…') : t('byok.save_verify', 'Save & verify')}
                   </Button>
                 </div>
                 {p.id !== 'gemini' && (
                   <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <input type="checkbox" checked={isVerified} onChange={(e) => toggleVerified(p.id, e.target.checked)} />
-                    eval پاس ہو گیا — تصدیق شدہ کے طور پر نشان زد کریں
+                    {t('byok.mark_verified', 'Eval passed — mark as verified')}
                   </label>
                 )}
               </div>
 
               {p.id !== 'gemini' && !isVerified && (
                 <p className="text-xs text-muted-foreground">
-                  منتخب کرنے سے پہلے یہ چلائیں، اور 9/9 پاس دیکھیں:
+                  {t('byok.run_eval', 'Before selecting, run this and confirm 9/9 pass:')}
                   <code className="block mt-1 bg-muted rounded p-1.5 text-left font-mono text-xs overflow-x-auto" dir="ltr">{EVAL_CMD(p.id)}</code>
                 </p>
               )}

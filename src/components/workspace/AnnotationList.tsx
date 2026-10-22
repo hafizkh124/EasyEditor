@@ -86,6 +86,7 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
                       variant="ghost"
                       className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive shrink-0"
                       onClick={() => onDeleteAnnotation(item.id)}
+                      aria-label={t("sidebar.delete", "Delete")}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

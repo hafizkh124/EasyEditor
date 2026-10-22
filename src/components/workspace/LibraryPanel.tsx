@@ -177,6 +177,7 @@ export const LibraryPanel: React.FC<LibraryPanelProps> = ({ forceExpanded = fals
         <div className="relative">
           <Search className="absolute start-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
+            aria-label={t("library.search_projects", "Search all projects...")}
             placeholder={t("library.search_projects", "Search all projects...")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

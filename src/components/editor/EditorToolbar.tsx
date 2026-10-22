@@ -69,26 +69,26 @@ const EditorToolbar = ({
   if (!editor) return null;
 
   const primaryGroup = [
-    { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), label: "Bold" },
-    { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive("italic"), label: "Italic" },
-    { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: editor.isActive("underline"), label: "Underline" },
+    { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive("bold"), label: t("editor.tb.bold", "Bold") },
+    { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive("italic"), label: t("editor.tb.italic", "Italic") },
+    { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: editor.isActive("underline"), label: t("editor.tb.underline", "Underline") },
   ];
 
   const secondaryGroups = [
     [
-      { icon: Heading1, action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), active: editor.isActive("heading", { level: 1 }), label: "H1" },
-      { icon: Heading2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: editor.isActive("heading", { level: 2 }), label: "H2" },
-      { icon: Heading3, action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: editor.isActive("heading", { level: 3 }), label: "H3" },
+      { icon: Heading1, action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), active: editor.isActive("heading", { level: 1 }), label: t("editor.tb.h1", "Heading 1") },
+      { icon: Heading2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: editor.isActive("heading", { level: 2 }), label: t("editor.tb.h2", "Heading 2") },
+      { icon: Heading3, action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: editor.isActive("heading", { level: 3 }), label: t("editor.tb.h3", "Heading 3") },
     ],
     [
-      { icon: List, action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive("bulletList"), label: "Bullet List" },
-      { icon: ListOrdered, action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive("orderedList"), label: "Ordered List" },
-      { icon: Quote, action: () => editor.chain().focus().toggleBlockquote().run(), active: editor.isActive("blockquote"), label: "Quote" },
+      { icon: List, action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive("bulletList"), label: t("editor.tb.bullet_list", "Bullet list") },
+      { icon: ListOrdered, action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive("orderedList"), label: t("editor.tb.ordered_list", "Numbered list") },
+      { icon: Quote, action: () => editor.chain().focus().toggleBlockquote().run(), active: editor.isActive("blockquote"), label: t("editor.tb.quote", "Quote") },
     ],
     [
-      { icon: AlignLeft, action: () => editor.chain().focus().setTextAlign("left").run(), active: editor.isActive({ textAlign: "left" }), label: "Align Left" },
-      { icon: AlignCenter, action: () => editor.chain().focus().setTextAlign("center").run(), active: editor.isActive({ textAlign: "center" }), label: "Center" },
-      { icon: AlignRight, action: () => editor.chain().focus().setTextAlign("right").run(), active: editor.isActive({ textAlign: "right" }), label: "Align Right" },
+      { icon: AlignLeft, action: () => editor.chain().focus().setTextAlign("left").run(), active: editor.isActive({ textAlign: "left" }), label: t("editor.tb.align_left", "Align left") },
+      { icon: AlignCenter, action: () => editor.chain().focus().setTextAlign("center").run(), active: editor.isActive({ textAlign: "center" }), label: t("editor.tb.align_center", "Center") },
+      { icon: AlignRight, action: () => editor.chain().focus().setTextAlign("right").run(), active: editor.isActive({ textAlign: "right" }), label: t("editor.tb.align_right", "Align right") },
     ],
   ];
 
@@ -109,7 +109,7 @@ const EditorToolbar = ({
               size="sm"
               pressed={btn.active}
               onPressedChange={() => btn.action()}
-              aria-label={btn.label}
+              aria-label={btn.label} title={btn.label}
               className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
             >
               <btn.icon className="h-4 w-4" />
@@ -125,7 +125,7 @@ const EditorToolbar = ({
         size="sm"
         pressed={isRtl}
         onPressedChange={onToggleDirection}
-        aria-label="Toggle RTL"
+        aria-label={t("editor.tb.toggle_direction", "Toggle text direction (RTL/LTR)")} title={t("editor.tb.toggle_direction", "Toggle text direction (RTL/LTR)")}
         className="h-8 px-2 gap-1 text-xs"
       >
         <Pilcrow className={cn("h-4 w-4", isRtl && "scale-x-[-1]")} />
@@ -280,7 +280,7 @@ const EditorToolbar = ({
             size="sm"
             pressed={btn.active}
             onPressedChange={() => btn.action()}
-            aria-label={btn.label}
+            aria-label={btn.label} title={btn.label}
             className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
           >
             <btn.icon className="h-4 w-4" />
@@ -296,7 +296,7 @@ const EditorToolbar = ({
         pressed={false}
         onPressedChange={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
-        aria-label="Undo"
+        aria-label={t("editor.tb.undo", "Undo")} title={t("editor.tb.undo", "Undo")}
         className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
       >
         <Undo2 className="h-4 w-4" />
@@ -306,7 +306,7 @@ const EditorToolbar = ({
         pressed={false}
         onPressedChange={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
-        aria-label="Redo"
+        aria-label={t("editor.tb.redo", "Redo")} title={t("editor.tb.redo", "Redo")}
         className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
       >
         <Redo2 className="h-4 w-4" />
