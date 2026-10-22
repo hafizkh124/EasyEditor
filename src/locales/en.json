@@ -2293,5 +2293,6 @@
   "pages.enable_web_hint": "This runs on your account's tokens, so please sign in.",
   "pages.enable_add_key": "Add your key",
   "pages.enable_sign_in": "Sign in",
-  "translate.needs_engine": "To translate, add your own Gemini key or sign in."
+  "translate.needs_engine": "To translate, add your own Gemini key or sign in.",
+  "editor.title_label": "Document title"
 }

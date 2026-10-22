@@ -2293,5 +2293,6 @@
   "pages.enable_web_hint": "تعمل هذه الخدمة برموز حسابك، فسجّل الدخول.",
   "pages.enable_add_key": "أضف مفتاحك",
   "pages.enable_sign_in": "سجّل الدخول",
-  "translate.needs_engine": "للترجمة أضف مفتاح Gemini الخاص بك أو سجّل الدخول."
+  "translate.needs_engine": "للترجمة أضف مفتاح Gemini الخاص بك أو سجّل الدخول.",
+  "editor.title_label": "عنوان المستند"
 }

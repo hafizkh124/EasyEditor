@@ -2293,5 +2293,6 @@
   "pages.enable_web_hint": "یہ کام آپ کے اکاؤنٹ کے ٹوکن سے چلتا ہے، اس لیے سائن ان کریں۔",
   "pages.enable_add_key": "اپنی کلید لگائیں",
   "pages.enable_sign_in": "سائن ان کریں",
-  "translate.needs_engine": "ترجمہ کے لیے اپنی Gemini کلید لگائیں یا سائن ان کریں۔"
+  "translate.needs_engine": "ترجمہ کے لیے اپنی Gemini کلید لگائیں یا سائن ان کریں۔",
+  "editor.title_label": "دستاویز کا عنوان"
 }
