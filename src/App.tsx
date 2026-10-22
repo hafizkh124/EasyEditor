@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -55,7 +55,7 @@ const ConnectDevice = lazy(() => import("./pages/ConnectDevice"));
 const queryClient = new QueryClient();
 
 const PageLoader = () => (
-  <div className="h-screen bg-background p-4 md:p-8 space-y-6 max-w-4xl mx-auto pt-16">
+  <div className="min-h-dvh bg-background p-4 md:p-8 space-y-6 max-w-4xl mx-auto pt-16">
     <Skeleton className="h-8 w-48" />
     <div className="space-y-4">
       <Skeleton className="h-4 w-full" />
@@ -68,6 +68,28 @@ const PageLoader = () => (
     </div>
   </div>
 );
+
+/**
+ * Route chunks load on first visit, which showed a blank page for 1-3 s on
+ * a slow link. Once the first screen is up, fetch the likely next ones while
+ * the browser is idle (the module cache makes the later navigation instant).
+ */
+const warmRoutes = () => {
+  void import("./pages/Workspace");
+  void import("./pages/Files");
+  void import("./pages/Settings");
+  void import("./pages/Dashboard");
+};
+
+const useWarmRoutes = () => {
+  useEffect(() => {
+    const idle = (window as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+    const id = idle ? idle(warmRoutes, { timeout: 8000 }) : window.setTimeout(warmRoutes, 3000);
+    return () => {
+      if (!idle) window.clearTimeout(id);
+    };
+  }, []);
+};
 
 const AppRouter = isDesktop() ? HashRouter : BrowserRouter;
 
@@ -88,7 +110,9 @@ const ToExtract: React.FC<{ kind: "audio" | "image" }> = ({ kind }) => {
 const DesktopToWorkspace: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   isDesktop() ? <Navigate to="/workspace" replace /> : <>{children}</>;
 
-const App = () => (
+const App = () => {
+  useWarmRoutes();
+  return (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider
       attribute="class"
@@ -221,6 +245,7 @@ const App = () => (
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
