@@ -37,10 +37,10 @@ export async function fetchIngestJobs(): Promise<IngestJob[]> {
 }
 
 export async function fetchCacheCount(): Promise<number> {
-  const { count, error } = await (supabase.from as any)("api_response_cache")
-    .select("cache_key", { count: "exact", head: true });
+  // Through the server (admins only): the table's browser read policy was dropped.
+  const { data, error } = await supabase.functions.invoke("corpus-reads", { body: { action: "cache-count" } });
   if (error) return 0;
-  return count ?? 0;
+  return (data as { count?: number } | null)?.count ?? 0;
 }
 
 export async function purgeExpiredCache(): Promise<{ ok: boolean; message?: string }> {

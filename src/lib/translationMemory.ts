@@ -30,12 +30,12 @@ export async function lookupTranslationMemory(
     // 1. Exact passage key lookup if text is in format '2:255' or 'quran:2:255'
     if (/^(?:quran:)?\d+:\d+$/i.test(clean)) {
       const key = clean.startsWith("quran:") ? clean : `quran:${clean}`;
-      const { data } = await supabase
-        .from("passage_translations")
-        .select("passage_key, translator_slug, text, translators(full_name)")
-        .eq("passage_key", key)
-        .eq("language", targetLang)
-        .limit(5);
+      // Read through the server: the browser can no longer read this table
+      // directly (its "any signed-in user" read policy was dropped).
+      const { data: reply } = await supabase.functions.invoke("corpus-reads", {
+        body: { action: "passage-translations", passageKey: key, language: targetLang },
+      });
+      const data = (reply as { rows?: Array<{ passage_key: string; translator_slug: string; text: string }> } | null)?.rows;
 
       if (data && data.length > 0) {
         data.forEach((row) => {
