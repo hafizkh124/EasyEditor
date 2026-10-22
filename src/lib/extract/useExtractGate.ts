@@ -7,6 +7,7 @@ import { ACCEPTED_MEDIA } from "@/lib/audio/formatSupport";
 import { ACCEPTED_OCR } from "@/lib/ocr/documentFormats";
 import { resolveSttRoute, type SttRoute } from "@/lib/audio/transcribeLongForm";
 import type { ExtractGate } from "./engine";
+import { usePageEngine } from "@/lib/pages/pageEngine";
 
 /**
  * What extraction may run here, right now: which kinds exist on this runtime,
@@ -20,6 +21,7 @@ export function useExtractGate(): ExtractGate & { accept: string } {
   const { canAfford: canAffordPage } = useCanAfford("ocr", 1);
   const audioAvailable = isCapabilityAvailable("transcribe");
   const pagesAvailable = isCapabilityAvailable("ocr");
+  const { engine: pageEngine } = usePageEngine();
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +41,7 @@ export function useExtractGate(): ExtractGate & { accept: string } {
     sttRoute,
     canAffordAudio,
     canAffordPage,
+    pageEngine,
     accept: [audioAvailable && ACCEPTED_MEDIA, pagesAvailable && ACCEPTED_OCR].filter(Boolean).join(","),
   };
 }

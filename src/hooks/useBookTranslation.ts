@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { TOKEN_COSTS } from "@/contexts/SubscriptionContext";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
-import { supabase } from "@/integrations/supabase/client";
 import { renderPdfPages } from "@/lib/ocr/pdfRenderer";
 import { translateOnePage } from "@/lib/translate/translatePageApi";
 import { getShamelaClient } from "@/core/shamela/shamelaClient";
@@ -21,6 +20,8 @@ import {
 } from "@/lib/jobs/jobStore";
 import { deleteStash, readStash, writeStash } from "@/lib/jobs/fileStash";
 import { translateStored } from "@/lib/i18n";
+import { getTranslationStore } from "@/hooks/bookTranslations";
+import { usePageEngine } from "@/lib/pages/pageEngine";
 
 const log = logger.child("useBookTranslation");
 
@@ -82,16 +83,6 @@ const EDIT_SAVE_DELAY_MS = 800;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * Newer columns (glossary, style, reviewed — migration 20261022000000) may
- * not exist yet where the migration has not run; a write naming one is
- * retried without them rather than failing the translation.
- */
-function mentionsColumn(error: { message?: string } | null, columns: readonly string[]): boolean {
-  const msg = error?.message ?? "";
-  return columns.some((c) => msg.includes(c));
-}
-
 interface ExistingChunk {
   source_text: string;
   translated_text: string | null;
@@ -130,6 +121,13 @@ interface UseBookTranslationOptions {
 
 export function useBookTranslation(options: UseBookTranslationOptions = {}) {
   const { user, session } = useAuth();
+  // Signed in: the account. A desktop signed out: this computer (SYSTEM-2026 §10).
+  const store = getTranslationStore(user?.id);
+  const storeRef = useRef(store);
+  storeRef.current = store;
+  // Who reads and translates: the desktop's own key, or the account (tokens).
+  const { engine, loading: engineLoading } = usePageEngine();
+  const ownKey = engine === "own-key";
   const tokenBalance = useTokenBalance();
 
   const [sourceKind, setSourceKind] = useState<BookSourceKind | null>(null);
@@ -209,12 +207,12 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
   const ensureProject = useCallback(
     async (explicitTitle: string, sourceRef: string): Promise<string | null> => {
       if (projectIdRef.current) return projectIdRef.current;
-      if (!user) {
-        setSourceError("پراجیکٹ محفوظ کرنے کے لیے سائن ان ضروری ہے۔");
+      const target = storeRef.current;
+      if (!target) {
+        setSourceError(translateStored("translate.needs_engine", "ترجمہ کے لیے اپنی Gemini کلید لگائیں یا سائن ان کریں۔"));
         return null;
       }
       const row = {
-        user_id: user.id,
         title: explicitTitle || "بلا عنوان کتاب",
         source_lang: sourceLanguage !== "auto" ? sourceLanguage : "ar",
         target_lang: targetLanguage,
@@ -223,30 +221,27 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
         source_ref: sourceRef,
         ...(options.folderId ? { project_id: options.folderId } : {}),
       };
-      const insert = (values: typeof row) =>
-        supabase.from("translation_projects").insert(values).select("id").single();
-      let { data, error } = await insert({ ...row, style, glossary } as typeof row);
-      if (error && mentionsColumn(error, ["glossary", "style"])) ({ data, error } = await insert(row));
-
-      if (error || !data) {
+      let id: string;
+      try {
+        id = await target.createProject({ ...row, style, glossary });
+      } catch (error) {
         log.error("Failed to create translation project", { error });
         setSourceError("پراجیکٹ نہیں بن سکا۔");
         return null;
       }
-      projectIdRef.current = data.id;
-      setProjectId(data.id);
-      options.onProjectId?.(data.id);
-      return data.id;
+      projectIdRef.current = id;
+      setProjectId(id);
+      options.onProjectId?.(id);
+      return id;
     },
-    [user, sourceLanguage, targetLanguage, genre, style, glossary, options],
+    [sourceLanguage, targetLanguage, genre, style, glossary, options],
   );
 
   /** Save style and glossary on the project, once it exists. */
   const saveSettings = useCallback(async (patch: { style?: TranslationStyle; glossary?: GlossaryEntry[] }) => {
     const pid = projectIdRef.current;
     if (!pid) return;
-    const { error } = await supabase.from("translation_projects").update(patch as never).eq("id", pid);
-    if (error && !mentionsColumn(error, ["glossary", "style"])) log.error("Failed to save translation settings", { error });
+    await storeRef.current?.updateProject(pid, patch).catch((error) => log.error("Failed to save translation settings", { error }));
   }, []);
 
   const setStyle = useCallback((next: TranslationStyle) => {
@@ -265,18 +260,16 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     const pid = projectIdRef.current;
     const page = pagesRef.current.find((p) => p.pageNum === pageNum);
     if (!pid || !page) return;
-    const row = {
-      project_id: pid,
-      chunk_index: pageNum,
-      source_text: page.sourceText ?? "",
-      translated_text: page.translationText || null,
-      status: page.translationText ? "completed" : READ_STATUS,
-    };
-    const upsert = (values: typeof row) =>
-      supabase.from("translation_chunks").upsert(values, { onConflict: "project_id,chunk_index" });
-    let { error } = await upsert({ ...row, reviewed: page.reviewed ?? [] } as typeof row);
-    if (error && mentionsColumn(error, ["reviewed"])) ({ error } = await upsert(row));
-    if (error) log.error("Failed to persist page translation", { pageNum, error });
+    await storeRef.current
+      ?.upsertChunk({
+        project_id: pid,
+        chunk_index: pageNum,
+        source_text: page.sourceText ?? "",
+        translated_text: page.translationText || null,
+        status: page.translationText ? "completed" : READ_STATUS,
+        reviewed: page.reviewed ?? [],
+      })
+      .catch((error) => log.error("Failed to persist page translation", { pageNum, error }));
   }, []);
 
   // Typing in the review pane saves shortly after the last keystroke, per page.
@@ -465,16 +458,9 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     setIsLoadingSource(true);
     setSourceError(null);
     try {
-      const readProject = (columns: string) =>
-        supabase.from("translation_projects").select(columns).eq("id", existingProjectId).single();
-      const base = "id, title, source_lang, target_lang, genre, source_ref";
-      let { data: projectRow, error: pErr } = await readProject(`${base}, style, glossary`);
-      if (pErr && mentionsColumn(pErr, ["glossary", "style"])) ({ data: projectRow, error: pErr } = await readProject(base));
-      if (pErr || !projectRow) throw new Error("پراجیکٹ نہیں ملا۔");
-      const project = projectRow as unknown as {
-        id: string; title: string; source_lang: string; target_lang: string; genre: string;
-        source_ref: string | null; style?: string | null; glossary?: unknown;
-      };
+      const target = storeRef.current;
+      const project = target ? await target.getProject(existingProjectId) : null;
+      if (!target || !project) throw new Error("پراجیکٹ نہیں ملا۔");
 
       projectIdRef.current = project.id;
       titleRef.current = project.title;
@@ -486,15 +472,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
       setStyleState(project.style === "literal" ? "literal" : "idiomatic");
       setGlossaryState(parseGlossary(project.glossary));
 
-      const readChunks = (columns: string) =>
-        supabase.from("translation_chunks").select(columns).eq("project_id", project.id);
-      const chunkBase = "chunk_index, source_text, translated_text, status";
-      const first = await readChunks(`${chunkBase}, reviewed`);
-      let chunkRows = first.data;
-      if (first.error && mentionsColumn(first.error, ["reviewed"])) ({ data: chunkRows } = await readChunks(chunkBase));
-      const chunks = (chunkRows ?? []) as unknown as Array<{
-        chunk_index: number; source_text: string; translated_text: string | null; status: string; reviewed?: number[] | null;
-      }>;
+      const chunks = await target.listChunks(project.id);
 
       existingChunksRef.current = new Map(
         chunks.map((c) => [c.chunk_index, {
@@ -511,14 +489,31 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
         await loadShamelaBook(bookId, project.title);
       } else {
         // 'pdf', 'text', 'image', or null — none of these can be re-fetched
-        // from a stored id the way a Shamela book can. "pdf" gets a real
-        // re-upload prompt (isLoadingSource stays false, sourceKind stays
-        // null); "text"/"image"/null get told to start over instead, since
-        // those complete in seconds and a resume prompt for them would just
-        // be confusing ("upload PDF" for a project that was never a PDF).
+        // from a stored id the way a Shamela book can. A PDF kept on this
+        // device reopens on its own; otherwise "pdf" gets a re-upload prompt.
+        // Text and image projects reopen from their saved pages (below);
+        // only an empty one is told to start over.
         const kept = project.source_ref === "pdf" ? await readStash(pdfStashKey(project.id)) : undefined;
         if (kept?.file) {
           await loadPdf(kept.file instanceof File ? kept.file : new File([kept.file], kept.fileName ?? "book.pdf", { type: "application/pdf" }));
+          return;
+        }
+        // Pasted text, or an image whose text was read: every page keeps its
+        // source text, so the translation reopens from its saved pages for
+        // review and export (SYSTEM-2026 §6).
+        const saved = [...existingChunksRef.current.entries()]
+          .filter(([, c]) => c.source_text.trim())
+          .sort(([a], [b]) => a - b);
+        if (project.source_ref !== "pdf" && saved.length > 0) {
+          setSourceKind("text");
+          sourceKindRef.current = "text";
+          sourceMarkerRef.current = project.source_ref ?? "text";
+          const restored = saved.map(([pageNum, c]) => pageFromChunk(pageNum, c, {}));
+          setPages(restored);
+          setTotalPages(restored.length);
+          setLoadedCount(restored.length);
+          setCurrentPageState(1);
+          setIsLoadingSource(false);
           return;
         }
         setResumeSourceRef(project.source_ref ?? null);
@@ -555,7 +550,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     signal: AbortSignal,
     onChunk?: (accumulated: string) => void,
   ): Promise<string> => {
-    if (!session?.access_token) throw new Error("Translation needs a signed-in session.");
+    if (!engine) throw new Error(translateStored("translate.needs_engine", "ترجمہ کے لیے اپنی Gemini کلید لگائیں یا سائن ان کریں۔"));
     let page = pagesRef.current.find((p) => p.pageNum === pageNum);
     if (!page) throw new Error(`Page ${pageNum} is not loaded.`);
 
@@ -586,11 +581,11 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
         paragraphs: Boolean(text),
       }),
       bookMode: isBookMode(),
-      accessToken: session.access_token,
+      accessToken: session?.access_token,
       signal,
       onChunk,
     });
-  }, [session, targetLanguage, sourceLanguage, genre, style, glossary, patchPage, persistPage, setPageStatus]);
+  }, [engine, session, targetLanguage, sourceLanguage, genre, style, glossary, patchPage, persistPage, setPageStatus]);
 
   /** A fresh translation replaces the page's text, so its review marks no longer apply. */
   const finishPage = useCallback(async (pageNum: number, translation: string) => {
@@ -599,7 +594,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
   }, [patchPage, persistPage]);
 
   const translateSinglePage = useCallback(async (pageNum: number) => {
-    if (!session?.access_token) return;
+    if (!engine) return;
     if (!pagesRef.current.some((p) => p.pageNum === pageNum)) return;
 
     setIsTranslatingSingle(true);
@@ -622,7 +617,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
       setIsTranslatingSingle(false);
       setStreamingText("");
     }
-  }, [session, ensureProject, translatePageNow, finishPage, setPageStatus]);
+  }, [engine, ensureProject, translatePageNow, finishPage, setPageStatus]);
 
   const estimateBatch = useCallback((from: number, to: number): BatchEstimate => {
     const targets = pagesRef.current.filter(
@@ -633,17 +628,18 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     return {
       pages: targets.length,
       pagesToRead,
-      tokenCost: targets.length * perPageCost + pagesToRead * TOKEN_COSTS.ocr,
+      // The user's own key bills their Google account, not our tokens.
+      tokenCost: ownKey ? 0 : targets.length * perPageCost + pagesToRead * TOKEN_COSTS.ocr,
       estimatedSeconds: Math.ceil(targets.length * (DISPATCH_INTERVAL_MS / 1000) + pagesToRead * OCR_SECONDS_PER_PAGE),
     };
-  }, []);
+  }, [ownKey]);
 
   const cancelBatch = useCallback(() => {
     batchAbortRef.current?.abort();
   }, []);
 
   const translateAll = useCallback(async (fromPage?: number, toPage?: number) => {
-    if (!session?.access_token) return;
+    if (!engine) return;
 
     const from = fromPage ?? 1;
     const to = toPage ?? pagesRef.current.length;
@@ -697,7 +693,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
           const p = pagesRef.current.find((x) => x.pageNum === pageNum);
           return Boolean(p?.imageBase64 && !p.sourceText?.trim());
         })();
-        const pageCost = perPageCost + (needsRead ? TOKEN_COSTS.ocr : 0);
+        const pageCost = ownKey ? 0 : perPageCost + (needsRead ? TOKEN_COSTS.ocr : 0);
         if (remainingTokens < pageCost) {
           outOfTokens = true;
           break;
@@ -751,7 +747,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
       const finishedAll = progress.done + progress.failed >= targets.length && !controller.signal.aborted;
       const wholeBook = finishedAll && progress.failed === 0 && from <= 1 && to >= pagesRef.current.length;
       if (wholeBook && projectIdRef.current) {
-        await supabase.from("translation_projects").update({ status: "completed" }).eq("id", projectIdRef.current);
+        await storeRef.current?.updateProject(projectIdRef.current, { status: "completed" }).catch(() => {});
         void deleteStash(pdfStashKey(projectIdRef.current));
       }
       if (jobId) {
@@ -774,7 +770,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
       if (jobId) registerCancel(jobId, null);
       runningJobRef.current = null;
     }
-  }, [session, tokenBalance.total, ensureProject, translatePageNow, finishPage, setPageStatus]);
+  }, [engine, ownKey, tokenBalance.total, ensureProject, translatePageNow, finishPage, setPageStatus]);
 
   /** Edit a page's whole translation (the page editor, or an unaligned page in review). */
   const updateTranslation = useCallback((pageNum: number, text: string) => {
@@ -817,7 +813,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
    */
   const retranslateParagraph = useCallback(async (pageNum: number, index: number, request: string): Promise<boolean> => {
     const page = pagesRef.current.find((p) => p.pageNum === pageNum);
-    if (!session?.access_token || !page) return false;
+    if (!engine || !page) return false;
     const { pairs, aligned } = pairParagraphs(page.sourceText, page.translationText);
     const pair = pairs[index];
     if (!pair?.source.trim()) return false;
@@ -842,7 +838,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
           extra,
         }),
         bookMode: isBookMode(),
-        accessToken: session.access_token,
+        accessToken: session?.access_token,
       })).trim();
       if (!result) return false;
       const latest = pagesRef.current.find((p) => p.pageNum === pageNum) ?? page;
@@ -863,7 +859,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     } finally {
       setRetranslating(null);
     }
-  }, [session, targetLanguage, sourceLanguage, genre, style, glossary, patchPage, persistPage]);
+  }, [engine, session, targetLanguage, sourceLanguage, genre, style, glossary, patchPage, persistPage]);
 
   const getFullTranslation = useCallback(() => {
     return pages
@@ -922,6 +918,11 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     getFullTranslation,
     /** This project's run, going on from an earlier visit to the page. */
     backgroundRun,
+    /** Who translates (own key / account), or null: show how to enable it. */
+    engine,
+    engineLoading,
+    /** Where projects are kept: "account", "device", or null (none). */
+    storeKind: store?.kind ?? null,
   };
 }
 

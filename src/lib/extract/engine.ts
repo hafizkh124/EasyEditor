@@ -8,6 +8,7 @@ import { renderPdfPages, getPdfPageCount } from "@/lib/ocr/pdfRenderer";
 import { ocrPageImage } from "@/lib/ocr/ocrClient";
 import type { TranscriptSegment } from "@/core/voice/types";
 import type { TranslationKey } from "@/lib/i18n";
+import type { PageEngine } from "@/lib/pages/pageEngine";
 import { estimateSegments } from "./timedParagraphs";
 
 /**
@@ -39,6 +40,8 @@ export interface ExtractGate {
   sttRoute: SttRoute;
   canAffordAudio: boolean;
   canAffordPage: boolean;
+  /** Who reads pages here: the desktop's own key, the account, or nobody yet. */
+  pageEngine: PageEngine;
 }
 
 /** Why this file cannot be extracted here, as a message key — or null when it can. */
@@ -52,8 +55,9 @@ export function blockReason(file: File, kind: ExtractKind | null, gate: ExtractG
     return null;
   }
   if (file.size > getMaxFileSize(kind)) return "extract.file_too_large";
-  if (!gate.signedIn) return "extract.sign_in_for_pages";
-  if (!gate.canAffordPage) return "extract.limit_reached";
+  if (!gate.pageEngine) return gate.desktop ? "extract.enable_pages" : "extract.sign_in_for_pages";
+  // The user's own key bills their Google account, not our tokens.
+  if (gate.pageEngine === "account" && !gate.canAffordPage) return "extract.limit_reached";
   return null;
 }
 

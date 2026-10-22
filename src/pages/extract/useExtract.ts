@@ -232,7 +232,7 @@ export function useExtract() {
   const resumable = !liveJob && job && canResume(job) ? job : null;
 
   return {
-    accept: gate.accept, audioAvailable: gate.audioAvailable, pagesAvailable: gate.pagesAvailable,
+    accept: gate.accept, audioAvailable: gate.audioAvailable, pagesAvailable: gate.pagesAvailable, pageEngine: gate.pageEngine,
     phase, kind, fileName: liveJob?.fileName ?? "", text, setText, segments, progress, mediaUrl, paragraphs,
     timesExact: Boolean(result?.timing?.exact), pageImages: result?.pageImages ?? null,
     language, setLanguage, sttRoute: gate.sttRoute, autoCopy, setAutoCopy,

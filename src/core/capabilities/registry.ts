@@ -105,11 +105,11 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     // The one extract-text screen (SYSTEM-2026 §5) behind both jobs below. It
-    // exists wherever either does: on desktop that is the local-voice build,
-    // since OCR is cloud-only.
+    // exists wherever either does — everywhere, now that the desktop reads
+    // pages with the user's own key or account (§10).
     id: "extract", route: "/extract", labelKey: "extract.title", fallbackLabel: "متن نکالیں",
     icon: ScanText,
-    runtimes: { web: ALWAYS, desktop: { on: "flag", flag: "VITE_LOCAL_VOICE" } },
+    runtimes: { web: ALWAYS, desktop: ALWAYS },
     surfaces: [],
   },
   {
@@ -131,7 +131,10 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "ocr", route: "/ocr", labelKey: "nav.ocr", fallbackLabel: "OCR",
     icon: ScanText,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "OCR runs on a paid cloud edge function with no local counterpart." } },
+    // Desktop (SYSTEM-2026 §10): the user's own Gemini key, or the signed-in
+    // account; with neither, the screen shows how to enable it rather than
+    // the feature going missing.
+    runtimes: { web: ALWAYS, desktop: ALWAYS },
     surfaces: ["create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
     createLabelKey: "create.image_to_text", createFallbackLabel: "تصویر/PDF سے متن",
   },
@@ -143,7 +146,8 @@ export const CAPABILITIES: readonly Capability[] = [
     // for the desktop gate Quick Translate always had.
     id: "translate.book", route: "/translate-book", labelKey: "nav.translate_book", fallbackLabel: "کتاب کا ترجمہ",
     icon: Languages,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Translation runs on a cloud edge function." } },
+    // Desktop: like OCR — own key or account, else "how to enable" (§10).
+    runtimes: { web: ALWAYS, desktop: ALWAYS },
     surfaces: ["create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
     createLabelKey: "create.translate_book", createFallbackLabel: "کتاب کا ترجمہ",
   },

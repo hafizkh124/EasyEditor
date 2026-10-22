@@ -101,8 +101,9 @@ describe("AppLayout mobile tab bar", () => {
       renderLayout();
       const sheet = openCreateSheet();
       expect(within(sheet).queryByText("آڈیو سے متن")).not.toBeInTheDocument();
-      expect(within(sheet).queryByText("تصویر/PDF سے متن")).not.toBeInTheDocument();
-      expect(within(sheet).queryByText("کتاب کا ترجمہ")).not.toBeInTheDocument();
+      // Pages run on the user's own key or account (SYSTEM-2026 §10), so they stay.
+      expect(within(sheet).getByText("تصویر/PDF سے متن")).toBeInTheDocument();
+      expect(within(sheet).getByText("کتاب کا ترجمہ")).toBeInTheDocument();
       expect(within(sheet).getByText("نئی چیٹ")).toBeInTheDocument();
       expect(within(sheet).getByText("نیا دستاویز")).toBeInTheDocument();
     });

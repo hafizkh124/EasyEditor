@@ -11,7 +11,7 @@ import { buildEditorExtensions } from "@/components/editor/editorExtensions";
 vi.mock("@/contexts/LanguageContext", () => ({
   useLanguage: () => ({ t: (k: string, fb?: string) => fb ?? k }),
 }));
-let gate = { audioAvailable: true, pagesAvailable: true, signedIn: true, desktop: false, sttRoute: "cloud", canAffordAudio: true, canAffordPage: true, accept: "audio/*,image/*" };
+let gate = { audioAvailable: true, pagesAvailable: true, signedIn: true, desktop: false, sttRoute: "cloud", canAffordAudio: true, canAffordPage: true, pageEngine: "account", accept: "audio/*,image/*" };
 vi.mock("@/lib/extract/useExtractGate", () => ({ useExtractGate: () => gate }));
 vi.mock("@/lib/activityLog", () => ({ logActivity: vi.fn() }));
 const toast = vi.hoisted(() => ({ loading: vi.fn(() => "t1"), success: vi.fn(), error: vi.fn(), info: vi.fn() }));

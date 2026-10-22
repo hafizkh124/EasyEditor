@@ -25,6 +25,7 @@ import { useExtract } from "./extract/useExtract";
 import { takeSharedFile } from "@/lib/extract/sharedFile";
 import { AudioReadAlong } from "@/components/extract/AudioReadAlong";
 import { PageCompare } from "@/components/extract/PageCompare";
+import { PageEngineEnable } from "@/components/pages/PageEngineEnable";
 import { countUncertain } from "@/lib/extract/uncertain";
 
 /**
@@ -173,6 +174,9 @@ const Extract = () => {
                 )}
               </div>
             </div>
+
+            {/* Pages need an engine: the desktop's own key or an account (SYSTEM-2026 §10). */}
+            {x.pagesAvailable && !x.pageEngine && x.phase === "idle" && <PageEngineEnable what="pages" />}
 
             {x.audioAvailable && x.phase === "idle" && (
               <div className="flex flex-wrap items-center gap-3">

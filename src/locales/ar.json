@@ -2285,5 +2285,13 @@
   "extract.runs_in_background": "يمكنك متابعة عمل آخر — ستستمر هذه المهمة ويصلك إشعار عند اكتمالها.",
   "jobs.out_of_tokens": "نفدت الرموز وبقيت صفحات.",
   "jobs.pages_failed": "تعذّرت ترجمة {n} صفحات.",
-  "jobs.file_gone": "لم يعد الملف الأصلي محفوظاً على هذا الجهاز — اختره مجدداً."
+  "jobs.file_gone": "لم يعد الملف الأصلي محفوظاً على هذا الجهاز — اختره مجدداً.",
+  "extract.enable_pages": "لقراءة الصور أو ملفات PDF أضف مفتاح Gemini الخاص بك في الإعدادات، أو سجّل الدخول.",
+  "pages.enable_translate_title": "فعّل الترجمة",
+  "pages.enable_pages_title": "فعّل استخراج النص من الصور وملفات PDF",
+  "pages.enable_desktop_hint": "أضف مفتاح Gemini الخاص بك — بلا رموز ولا تسجيل دخول، ويبقى عملك على هذا الحاسوب. أو سجّل الدخول لتستعمل رموزك.",
+  "pages.enable_web_hint": "تعمل هذه الخدمة برموز حسابك، فسجّل الدخول.",
+  "pages.enable_add_key": "أضف مفتاحك",
+  "pages.enable_sign_in": "سجّل الدخول",
+  "translate.needs_engine": "للترجمة أضف مفتاح Gemini الخاص بك أو سجّل الدخول."
 }

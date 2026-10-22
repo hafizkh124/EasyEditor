@@ -202,11 +202,44 @@ describe("Extract page", () => {
     transcribeLongForm.mockResolvedValue({ text: "مقامی", chunkCount: 1 });
     renderPage();
     await waitFor(() => expect(screen.getByText("مقامی Whisper — مفت")).toBeInTheDocument());
-    // OCR is cloud-only, so the desktop offers no camera.
-    expect(screen.queryByRole("button", { name: /تصویر کھینچیں/ })).not.toBeInTheDocument();
+    // Pages read on the desktop too (SYSTEM-2026 §10), so the camera is there.
+    expect(screen.getByRole("button", { name: /تصویر کھینچیں/ })).toBeInTheDocument();
     drop(new File(["a"], "bayan.m4a", { type: "audio/mp4" }));
     await screen.findByDisplayValue("مقامی");
     expect(transcribeLongForm.mock.calls[0][0]).toMatchObject({ route: "local" });
+  });
+
+  it("shows a signed-out desktop with no key how to enable reading pages", async () => {
+    (window as unknown as { electronAPI?: unknown }).electronAPI = {
+      isDesktop: true,
+      byok: { getKeyStatus: vi.fn(async () => ({ hasKey: false, lastFour: null })) },
+    };
+    currentUser = null;
+    renderPage();
+    expect(await screen.findByText("تصویر اور PDF سے متن فعال کریں")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /اپنی کلید لگائیں/ })).toHaveAttribute("href", "/settings?section=keys");
+    drop(new File(["x"], "page.png", { type: "image/png" }));
+    expect(toast.error).toHaveBeenCalledWith("extract.enable_pages");
+    currentUser = { id: "u1" };
+  });
+
+  it("reads pages with the desktop's own key, signed out and without tokens", async () => {
+    const invoke = vi.fn(async () => ({ data: { text: "اپنی کلید سے" } }));
+    (window as unknown as { electronAPI?: unknown }).electronAPI = {
+      isDesktop: true,
+      invoke,
+      byok: { getKeyStatus: vi.fn(async () => ({ hasKey: true, lastFour: "abcd" })) },
+    };
+    currentUser = null;
+    canAfford = false;
+    ocrPageImage.mockImplementation(async () => "اپنی کلید سے");
+    renderPage();
+    await waitFor(() => expect(screen.queryByText("تصویر اور PDF سے متن فعال کریں")).not.toBeInTheDocument());
+    await new Promise((r) => setTimeout(r, 0));
+    drop(new File(["x"], "page.png", { type: "image/png" }));
+    expect(await screen.findByText("اپنی کلید سے")).toBeInTheDocument();
+    expect(toast.error).not.toHaveBeenCalled();
+    currentUser = { id: "u1" };
   });
 
   it("copies automatically when the switch is on", async () => {

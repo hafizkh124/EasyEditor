@@ -70,7 +70,8 @@ const FilesPage = () => {
   const chatHistory = useSessionHistory("research");
   const { user } = useAuth();
   const translateRoute = availableCapability("translate.book")?.route ?? null;
-  const bookTranslations = useBookTranslationList(translateRoute && user ? user.id : null);
+  // The account's, or — on a desktop not signed in — this computer's.
+  const bookTranslations = useBookTranslationList(user?.id ?? null, Boolean(translateRoute));
 
   const folders = projects.filter((p) => p.kind !== "translation");
   const folder = folderId ? folders.find((p) => p.id === folderId) ?? null : null;

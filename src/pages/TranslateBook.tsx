@@ -33,6 +33,7 @@ import { ShamelaBookPickerDialog } from "@/components/translate/ShamelaBookPicke
 import { ReaderContent } from "@/components/shamela/ReaderContent";
 import { ReviewPane } from "@/components/translate/ReviewPane";
 import { GlossaryDialog } from "@/components/translate/GlossaryDialog";
+import { PageEngineEnable } from "@/components/pages/PageEngineEnable";
 import { buildBookHtml, type BookExportMode } from "@/lib/translate/bookExport";
 import { pairParagraphs } from "@/lib/translate/paragraphs";
 import type { TranslationStyle } from "@/lib/translate/glossary";
@@ -380,6 +381,9 @@ export default function TranslateBook() {
                 <Languages className="h-4 w-4" />{t("translate.start_new", "نیا ترجمہ شروع کریں")}
               </Button>
             </>
+          ) : !book.engine && !book.engineLoading ? (
+            // Neither the desktop's own key nor an account yet (SYSTEM-2026 §10).
+            <PageEngineEnable what="translate" className="w-full max-w-lg" />
           ) : showTextInput ? (
             <div className="w-full max-w-xl space-y-3">
               <Textarea

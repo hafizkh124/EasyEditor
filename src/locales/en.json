@@ -2285,5 +2285,13 @@
   "extract.runs_in_background": "You can do other work — this keeps running and you will be told when it is done.",
   "jobs.out_of_tokens": "Tokens ran out; the remaining pages were left.",
   "jobs.pages_failed": "{n} pages could not be translated.",
-  "jobs.file_gone": "The original file is no longer kept on this device — pick it again."
+  "jobs.file_gone": "The original file is no longer kept on this device — pick it again.",
+  "extract.enable_pages": "To read images or PDFs, add your own Gemini key in Settings, or sign in.",
+  "pages.enable_translate_title": "Turn on translation",
+  "pages.enable_pages_title": "Turn on text from images and PDFs",
+  "pages.enable_desktop_hint": "Add your own Gemini key — free of tokens, no sign-in, and your work stays on this computer. Or sign in to use your tokens.",
+  "pages.enable_web_hint": "This runs on your account's tokens, so please sign in.",
+  "pages.enable_add_key": "Add your key",
+  "pages.enable_sign_in": "Sign in",
+  "translate.needs_engine": "To translate, add your own Gemini key or sign in."
 }

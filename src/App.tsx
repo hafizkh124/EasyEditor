@@ -187,8 +187,8 @@ const App = () => (
                       on purpose, so it gets full window width instead of the Workbench
                       sidebar's ~40%-max column. Cloud-only edge function, so it's
                       gated off desktop the same way Quick Translate always was. */}
-                  <Route path="/translate-book" element={<CapabilityRoute id="translate.book"><ProtectedRoute><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
-                  <Route path="/translate-book/:projectId" element={<CapabilityRoute id="translate.book"><ProtectedRoute><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/translate-book" element={<CapabilityRoute id="translate.book"><ProtectedRoute allowGuest><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/translate-book/:projectId" element={<CapabilityRoute id="translate.book"><ProtectedRoute allowGuest><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
                   {/* /book-workspace and /translate-workspace are gone. Both
                       predated the three-pillar workspace, which supports
                       `kind: "book"` and `kind: "translation"` natively, and

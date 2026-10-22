@@ -115,11 +115,17 @@ describe("capability registry", () => {
     it("hides every cloud-only tool on every surface", () => {
       vi.stubEnv("VITE_LOCAL_VOICE", "true");
       for (const surface of SURFACES) {
-        const ids = availableCapabilities(surface).map((c) => c.id);
-        for (const cloudOnly of ["ocr", "translate.book", "admin"]) {
-          expect(ids, `${cloudOnly} leaked into ${surface}`).not.toContain(cloudOnly);
-        }
+        expect(availableCapabilities(surface).map((c) => c.id), `admin leaked into ${surface}`).not.toContain("admin");
       }
+    });
+
+    // SYSTEM-2026 §10: never missing — they run on the user's own key or
+    // account, and show how to enable them otherwise.
+    it("offers reading and translating pages", () => {
+      expect(isCapabilityAvailable("ocr")).toBe(true);
+      expect(isCapabilityAvailable("translate.book")).toBe(true);
+      expect(isCapabilityAvailable("extract")).toBe(true);
+      expect(availableCapabilities("create-menu").map((c) => c.id)).toEqual(expect.arrayContaining(["ocr", "translate.book"]));
     });
 
     it("offers Transcribe, and Speak with the voice studio, on the offline engines", () => {
@@ -137,8 +143,9 @@ describe("capability registry", () => {
       vi.stubEnv("VITE_VOICE_STUDIO", "true");
       expect(isCapabilityAvailable("transcribe")).toBe(false);
       expect(isCapabilityAvailable("speak")).toBe(false);
-      // Nothing is left to put under a "Tools" heading, so the group goes too.
-      expect(availableCapabilities("workspace-menu").filter((c) => c.group === "tool")).toEqual([]);
+      // The page tools stay: they do not need the local voice engines.
+      expect(availableCapabilities("workspace-menu").filter((c) => c.group === "tool").map((c) => c.id))
+        .toEqual(["ocr", "translate.book"]);
     });
 
     it("drops the cloud halves of the voice tools", () => {

@@ -34,9 +34,9 @@ vi.mock("@/core/workspace/useAllDocuments", () => ({
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1" } }) }));
 vi.mock("@/hooks/bookTranslations", () => ({
-  useBookTranslationList: (userId: string | null) => ({
+  useBookTranslationList: (userId: string | null, enabled = true) => ({
     loading: false,
-    items: userId ? [{ id: "bt1", title: "کتاب الصلاۃ", updatedAt: "2026-02-20T00:00:00Z" }] : [],
+    items: userId && enabled ? [{ id: "bt1", title: "کتاب الصلاۃ", updatedAt: "2026-02-20T00:00:00Z" }] : [],
   }),
 }));
 vi.mock("@/hooks/useSessionHistory", () => ({

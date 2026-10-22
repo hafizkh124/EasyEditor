@@ -90,11 +90,12 @@ describe("workspace app menu", () => {
       vi.unstubAllEnvs();
     });
 
-    it("drops the cloud-only tools", async () => {
+    // SYSTEM-2026 §10: the page tools are never missing on the desktop —
+    // they run on the user's own key or account, or show how to enable them.
+    it("keeps the page tools", async () => {
       open();
-      await screen.findByText("ہوم");
-      for (const label of ["OCR", "استخراج", "کتاب کا ترجمہ"]) {
-        expect(screen.queryByText(label)).not.toBeInTheDocument();
+      for (const label of ["OCR", "کتاب کا ترجمہ"]) {
+        expect(await screen.findByText(label)).toBeInTheDocument();
       }
     });
 

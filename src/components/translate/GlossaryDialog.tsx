@@ -40,9 +40,8 @@ export function GlossaryDialog({
     setRows(glossary.length ? glossary.map((e) => ({ ...e })) : [{ source: "", target: "" }]);
     setPasteOpen(false);
     setPasted("");
-    if (!user) return;
     let alive = true;
-    void loadEarlierGlossaries(user.id, projectId).then((list) => alive && setEarlier(list));
+    void loadEarlierGlossaries(user?.id ?? null, projectId).then((list) => alive && setEarlier(list));
     return () => { alive = false; };
   }, [open, glossary, user, projectId]);
 
