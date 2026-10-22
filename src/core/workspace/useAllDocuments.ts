@@ -122,6 +122,8 @@ export function useAllDocuments() {
   const [docsMap, setDocsMap] = useState<Record<string, Document[]>>(cache?.docsMap ?? {});
   const [allDocs, setAllDocs] = useState<DocumentWithProject[]>(cache?.allDocs ?? []);
   const [loading, setLoading] = useState(false);
+  // A failed load used to look exactly like "no files yet".
+  const [error, setError] = useState(false);
 
   const apply = useCallback(
     (snap: Snapshot) => {
@@ -139,6 +141,7 @@ export function useAllDocuments() {
       setLoading(true);
       try {
         const snap = await load(owner, force);
+        setError(!snap);
         if (snap) apply(snap);
       } finally {
         setLoading(false);
@@ -160,5 +163,5 @@ export function useAllDocuments() {
     void run(false);
   }, [run]);
 
-  return { projects, docsMap, allDocs, loading, refresh };
+  return { projects, docsMap, allDocs, loading, error, refresh };
 }

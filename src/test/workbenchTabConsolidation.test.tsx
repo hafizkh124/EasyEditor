@@ -56,11 +56,11 @@ function renderWorkbench() {
 }
 
 describe("Workbench tab consolidation (M10 Phase 3 §3.6)", () => {
-  it("shows exactly three outer tabs: Study, Research, Trust", () => {
+  it("shows exactly three outer tabs: Study, Research, Audit", () => {
     renderWorkbench();
     expect(screen.getByTitle("Study")).toBeInTheDocument();
     expect(screen.getByTitle("Research")).toBeInTheDocument();
-    expect(screen.getByTitle("Trust")).toBeInTheDocument();
+    expect(screen.getByTitle("Audit")).toBeInTheDocument();
     expect(screen.queryByTitle("Translate")).not.toBeInTheDocument();
     // The retired standalone tabs no longer exist at the outer level.
     expect(screen.queryByTitle("AI Reader")).not.toBeInTheDocument();
@@ -90,7 +90,7 @@ describe("Workbench tab consolidation (M10 Phase 3 §3.6)", () => {
     mountCounts.trust = 0;
     renderWorkbench();
 
-    selectTab(screen.getByTitle("Trust"));
+    selectTab(screen.getByTitle("Audit"));
     expect(screen.getByTestId("trust-panel")).toBeInTheDocument();
     expect(screen.queryByText("Tasks")).not.toBeInTheDocument();
     expect(mountCounts.trust).toBe(1);

@@ -108,7 +108,7 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
                   aria-label={label}
                 >
                   <Icon className={`h-3 w-3 shrink-0 ${value === "study" ? "text-primary" : ""}`} />
-                  {!showTaskTabs && <span className="truncate">{label}</span>}
+                  <span className="truncate">{label}</span>
                 </TabsTrigger>
               );
             })}
@@ -120,6 +120,7 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
             {showTaskTabs && (
               <TabsTrigger value="trust" className="text-xs h-full py-0 gap-1 px-1" title={t("workbench.trust", "Trust")} aria-label={t("workbench.trust", "Trust")}>
                 <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-success" />
+                <span className="truncate">{t("workbench.trust", "Audit")}</span>
               </TabsTrigger>
             )}
           </TabsList>

@@ -760,7 +760,7 @@ const ChatDisplay = ({
       )}>
         {listItems.length > VIRTUALIZE_THRESHOLD ? (
           <div className="absolute inset-0 px-4 py-4">
-            <div className="max-w-3xl mx-auto h-full">
+            <div className="max-w-3xl mx-auto h-full" role="log" aria-live="polite" aria-relevant="additions" aria-label={t("research.title")}>
               <VirtualMessageList
                 count={listItems.length}
                 renderItem={(i) => renderItem(listItems[i], i)}
@@ -775,7 +775,7 @@ const ChatDisplay = ({
             </div>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="max-w-3xl mx-auto px-4 py-4" role="log" aria-live="polite" aria-relevant="additions" aria-label={t("research.title")}>
             {listItems.map((item, index) => renderItem(item, index))}
             <div ref={bottomAnchorRef} />
           </div>

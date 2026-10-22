@@ -65,7 +65,7 @@ const FilesPage = () => {
   const [query, setQuery] = useState("");
   const q = query.trim().toLocaleLowerCase();
 
-  const { projects, docsMap, allDocs, loading, refresh } = useAllDocuments();
+  const { projects, docsMap, allDocs, loading, error: loadFailed, refresh } = useAllDocuments();
   const transcripts = useSessionHistory("transcribe");
   const ocrSessions = useSessionHistory("ocr");
   const chatHistory = useSessionHistory("research");
@@ -161,7 +161,7 @@ const FilesPage = () => {
     }
   };
 
-  const nothingYet = !loading && folders.length === 0 && allDocs.length === 0;
+  const nothingYet = !loading && !loadFailed && folders.length === 0 && allDocs.length === 0;
 
   return (
     <AppLayout>
@@ -201,6 +201,13 @@ const FilesPage = () => {
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
               </div>
+            ) : loadFailed && folders.length === 0 && allDocs.length === 0 ? (
+              <EmptyState
+                icon={FolderOpen}
+                title={t("filespage.load_failed_title", "فائلیں لوڈ نہیں ہو سکیں")}
+                description={t("filespage.load_failed_desc", "انٹرنیٹ یا سرور میں مسئلہ ہو سکتا ہے۔ دوبارہ کوشش کریں۔")}
+                action={<Button onClick={() => void refresh()}>{t("common.retry", "دوبارہ کوشش")}</Button>}
+              />
             ) : nothingYet ? (
               <EmptyState
                 icon={FolderOpen}
