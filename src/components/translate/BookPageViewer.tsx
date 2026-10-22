@@ -111,9 +111,9 @@ export const BookPageViewer: React.FC<BookPageViewerProps> = ({
                 className={cn(
                   "h-2 w-2 rounded-full shrink-0 transition-colors",
                   p.pageNum === currentPage && "ring-2 ring-primary ring-offset-1",
-                  p.status === "done" && "bg-emerald-500",
+                  p.status === "done" && "bg-success",
                   p.status === "failed" && "bg-destructive",
-                  p.status === "translating" && "bg-amber-400 animate-pulse",
+                  p.status === "translating" && "bg-warning animate-pulse",
                   p.status === "pending" && "bg-muted-foreground/30",
                 )}
               />

@@ -24,6 +24,9 @@ import { PROVIDER_IDS, isProviderId, type ProviderId } from '../../shared/agent/
 const asProvider = (v: unknown): ProviderId => (isProviderId(v) ? v : 'gemini');
 import { getWorkspaceDbService } from './workspaceHandlers.js';
 import { REFINE_TEXT_ACTIONS } from '../../shared/ai/prompts/refineText.js';
+import {
+  OCR_SYSTEM_PROMPT, OCR_USER_PROMPT, translateSystemPrompt, translateUserPrompt,
+} from '../../shared/ai/prompts/pages.js';
 
 export function registerAiHandlers(): void {
   // The key channels take (payload, provider?) — provider defaults to 'gemini'
@@ -130,6 +133,53 @@ export function registerAiHandlers(): void {
             systemInstruction: systemPrompt,
           });
           return { data: { text: refined } };
+        }
+
+        // SYSTEM-2026 §10 — reading and translating pages on the desktop with
+        // the user's own Gemini key: the same prompts as the process-ocr and
+        // translate-page edge functions, no account or tokens needed.
+        if (req.functionName === 'process-ocr') {
+          const body = req.body ?? {};
+          const imageBase64 = String(body.imageBase64 ?? '');
+          if (!imageBase64) throw new Error('Missing image data');
+          const text = await generateContentStream({
+            prompt: OCR_USER_PROMPT,
+            systemInstruction: OCR_SYSTEM_PROMPT,
+            images: [{ mimeType: String(body.mimeType || 'image/jpeg'), data: imageBase64 }],
+          });
+          return { data: { text } };
+        }
+
+        if (req.functionName === 'translate-page') {
+          const body = req.body ?? {};
+          const text = typeof body.text === 'string' ? body.text : '';
+          const imageBase64 = typeof body.imageBase64 === 'string' ? body.imageBase64 : '';
+          const targetLanguage = String(body.targetLanguage ?? 'ur');
+          if (!text && !imageBase64) throw new Error('Provide either text or imageBase64');
+          const streamChannelId = req.streamChannelId;
+          const send = (payload: Record<string, unknown>) => {
+            if (streamChannelId && window && !window.isDestroyed()) window.webContents.send(streamChannelId, payload);
+          };
+          try {
+            const translated = await generateContentStream(
+              {
+                prompt: translateUserPrompt(targetLanguage, text || null),
+                systemInstruction: translateSystemPrompt({
+                  targetLanguage,
+                  sourceLanguage: typeof body.sourceLanguage === 'string' ? body.sourceLanguage : null,
+                  genreInstruction: typeof body.genreInstruction === 'string' ? body.genreInstruction : null,
+                }),
+                images: text ? undefined : [{ mimeType: String(body.mimeType || 'image/jpeg'), data: imageBase64 }],
+              },
+              (chunk) => send({ chunk }),
+            );
+            send({ done: true });
+            return { data: { text: translated } };
+          } catch (err) {
+            const msg = redactKeyFromLog(err instanceof Error ? err.message : String(err));
+            send({ error: msg });
+            throw new Error(msg);
+          }
         }
 
         if (req.functionName === 'graph-extract') {

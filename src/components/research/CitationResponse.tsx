@@ -97,7 +97,7 @@ const CitationResponse = ({
 
       {showSummary && (
         <div className="flex flex-wrap items-center gap-3 text-xs pt-2 border-t border-border/50">
-          <span className="flex items-center gap-1 text-green-700 dark:text-green-400">
+          <span className="flex items-center gap-1 text-success">
             <CheckCircle2 className="h-3 w-3" />
             {cited} / {total} {t("research.citations_cited_segments", "segments cited")}
           </span>
@@ -109,7 +109,7 @@ const CitationResponse = ({
           )}
           {rejected > 0 && (
             <span
-              className="flex items-center gap-1 text-amber-700 dark:text-amber-400"
+              className="flex items-center gap-1 text-warning"
               title={t("research.citations_rejected_tooltip", "Model picked these but DB verification failed; they were dropped to avoid showing wrong references.")}
             >
               <AlertTriangle className="h-3 w-3" />

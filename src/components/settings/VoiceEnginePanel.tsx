@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { isCapabilityAvailable } from "@/core/capabilities/registry";
 import {
   getAvailableEngines,
   getPreferredEngine,
@@ -106,49 +107,57 @@ export const VoiceEnginePanel: React.FC = () => {
   };
 
   const available = getAvailableEngines();
+  const ttsAvailable = isCapabilityAvailable("speak");
 
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="text-xl font-bold">مقامی وائس اسٹوڈیو (Local Voice Studio)</CardTitle>
+        <CardTitle className="text-xl font-bold">
+          {ttsAvailable ? "مقامی وائس اسٹوڈیو (Local Voice Studio)" : "آواز سے متن (Speech to text)"}
+        </CardTitle>
         <CardDescription>
-          صوتی انجن، ترجیحات اور ماڈلز کو یہاں سے ترتیب دیں۔
+          {ttsAvailable
+            ? "صوتی انجن، ترجیحات اور ماڈلز کو یہاں سے ترتیب دیں۔"
+            : "ٹرانسکرپشن کا انجن اور مقامی ماڈل یہاں سے ترتیب دیں۔"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">اردو صوتی انجن (Urdu Voice Engine)</label>
-            <Select value={urEngine} onValueChange={(v) => handleEngineChange('ur-PK', v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="انجن منتخب کریں" />
-              </SelectTrigger>
-              <SelectContent>
-                {available.tts.map((id) => (
-                  <SelectItem key={id} value={id}>
-                    {id === 'piper' ? 'Piper (آف لائن / مقامی)' : id === 'edge-tts' ? 'Edge TTS (آن لائن)' : id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Reading text aloud is hidden for now (SYSTEM-2026 §11); transcription stays. */}
+        {ttsAvailable && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">اردو صوتی انجن (Urdu Voice Engine)</label>
+              <Select value={urEngine} onValueChange={(v) => handleEngineChange('ur-PK', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="انجن منتخب کریں" />
+                </SelectTrigger>
+                <SelectContent>
+                  {available.tts.map((id) => (
+                    <SelectItem key={id} value={id}>
+                      {id === 'piper' ? 'Piper (آف لائن / مقامی)' : id === 'edge-tts' ? 'Edge TTS (آن لائن)' : id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">عربی صوتی انجن (Arabic Voice Engine)</label>
-            <Select value={arEngine} onValueChange={(v) => handleEngineChange('ar', v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="انجن منتخب کریں" />
-              </SelectTrigger>
-              <SelectContent>
-                {available.tts.map((id) => (
-                  <SelectItem key={id} value={id}>
-                    {id === 'piper' ? 'Piper (آف لائن / مقامی)' : id === 'edge-tts' ? 'Edge TTS (آن لائن)' : id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">عربی صوتی انجن (Arabic Voice Engine)</label>
+              <Select value={arEngine} onValueChange={(v) => handleEngineChange('ar', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="انجن منتخب کریں" />
+                </SelectTrigger>
+                <SelectContent>
+                  {available.tts.map((id) => (
+                    <SelectItem key={id} value={id}>
+                      {id === 'piper' ? 'Piper (آف لائن / مقامی)' : id === 'edge-tts' ? 'Edge TTS (آن لائن)' : id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* FR-6.2: transcription engine. Desktop-only — the web build has no
             local Whisper, so offering the choice there would be a dead end. */}

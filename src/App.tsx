@@ -2,7 +2,8 @@ import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { JobNotices } from "@/components/jobs/JobNotices";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
@@ -21,13 +22,13 @@ import { APP_THEME_STORAGE_KEY } from "@/lib/theme";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Files = lazy(() => import("./pages/Files"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const Transcribe = lazy(() => import("./pages/Transcribe"));
+const Extract = lazy(() => import("./pages/Extract"));
 const Speak = lazy(() => import("./pages/Speak"));
-const OCR = lazy(() => import("./pages/OCR"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Pricing = lazy(() => import("./pages/Pricing"));
@@ -76,6 +77,14 @@ const AppRouter = isDesktop() ? HashRouter : BrowserRouter;
  * routes still exist for the web build, so a single set of routes serves both
  * targets — desktop just redirects web-only pages to /workspace.
  */
+/** /transcribe and /ocr open the one extract screen, keeping `?session=` and any hand-off state. */
+const ToExtract: React.FC<{ kind: "audio" | "image" }> = ({ kind }) => {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  params.set("kind", kind);
+  return <Navigate to={`/extract?${params.toString()}`} state={location.state} replace />;
+};
+
 const DesktopToWorkspace: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   isDesktop() ? <Navigate to="/workspace" replace /> : <>{children}</>;
 
@@ -99,6 +108,7 @@ const App = () => (
             <AppRouter>
               <ErrorBoundary>
                 <LocalePrefixSync />
+                <JobNotices />
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                   <Route path="/login" element={<Login />} />
@@ -138,14 +148,19 @@ const App = () => (
                   <Route path="/ur/privacy" element={<DesktopToWorkspace><Privacy /></DesktopToWorkspace>} />
                   <Route path="/ur/refund-policy" element={<DesktopToWorkspace><Refund /></DesktopToWorkspace>} />
                   <Route path="/ur/pricing-info" element={<DesktopToWorkspace><PricingInfo /></DesktopToWorkspace>} />
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/dashboard" element={<ProtectedRoute allowGuest><Dashboard /></ProtectedRoute>} />
+                  <Route path="/files" element={<ProtectedRoute allowGuest><ErrorBoundary><Files /></ErrorBoundary></ProtectedRoute>} />
                   {/* allowGuest: on desktop these run on the offline Whisper/Piper
                       engines, which need no account. CapabilityRoute is what keeps
                       the cloud-only tools off desktop entirely. On web `allowGuest`
                       is inert, so the login gate is unchanged. */}
-                  <Route path="/transcribe" element={<CapabilityRoute id="transcribe"><ProtectedRoute allowGuest><ErrorBoundary><Transcribe /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  {/* One "extract text" screen (SYSTEM-2026 §5). /transcribe and /ocr
+                      are kept as doors into it — the + menu, old bookmarks and
+                      saved results (`?session=`) all land in the same place. */}
+                  <Route path="/extract" element={<CapabilityRoute id="extract"><ProtectedRoute allowGuest><ErrorBoundary><Extract /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/transcribe" element={<CapabilityRoute id="transcribe"><ToExtract kind="audio" /></CapabilityRoute>} />
                   <Route path="/speak" element={<CapabilityRoute id="speak"><ProtectedRoute allowGuest><ErrorBoundary><Speak /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
-                  <Route path="/ocr" element={<CapabilityRoute id="ocr"><ProtectedRoute><ErrorBoundary><OCR /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/ocr" element={<CapabilityRoute id="ocr"><ToExtract kind="image" /></CapabilityRoute>} />
                   <Route path="/workspace" element={<ProtectedRoute allowGuest><ErrorBoundary><Workspace /></ErrorBoundary></ProtectedRoute>} />
                   <Route path="/workspace/:documentId" element={<ProtectedRoute allowGuest><ErrorBoundary><Workspace /></ErrorBoundary></ProtectedRoute>} />
                   {/* /research and /editor are retired pages (UX-v1 P3): the workspace
@@ -172,8 +187,8 @@ const App = () => (
                       on purpose, so it gets full window width instead of the Workbench
                       sidebar's ~40%-max column. Cloud-only edge function, so it's
                       gated off desktop the same way Quick Translate always was. */}
-                  <Route path="/translate-book" element={<CapabilityRoute id="translate.book"><ProtectedRoute><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
-                  <Route path="/translate-book/:projectId" element={<CapabilityRoute id="translate.book"><ProtectedRoute><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/translate-book" element={<CapabilityRoute id="translate.book"><ProtectedRoute allowGuest><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
+                  <Route path="/translate-book/:projectId" element={<CapabilityRoute id="translate.book"><ProtectedRoute allowGuest><ErrorBoundary><TranslateBook /></ErrorBoundary></ProtectedRoute></CapabilityRoute>} />
                   {/* /book-workspace and /translate-workspace are gone. Both
                       predated the three-pillar workspace, which supports
                       `kind: "book"` and `kind: "translation"` natively, and

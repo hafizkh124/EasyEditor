@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Plus, Search, PanelRight, PanelLeft, Languages, Folder, FolderPlus } from "lucide-react";
+import { FileText, Plus, Search, PanelRight, PanelLeft, Languages, Folder, FolderPlus, Settings2, Sparkles, ScanText } from "lucide-react";
 import {
   CommandDialog,
   CommandInput,
@@ -17,6 +17,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { translateStored } from "@/lib/i18n";
 import { stripHarakat } from "@/utils/arabicUtils";
 import { toast } from "sonner";
+import { useSkills } from "@/lib/skills/useSkills";
+import { matchesSkill } from "@/lib/skills/registry";
+import { SKILLS_SETTINGS_PATH } from "@/lib/skills/useOpenSkillsSettings";
+import type { Skill } from "@/lib/skills/types";
+import type { Recipe } from "@/lib/recipes/recipeService";
+import { RecipeRunDialog } from "./RecipeRunDialog";
+import { availableCapabilities } from "@/core/capabilities/registry";
+import { useOpenFolderId } from "@/components/layout/useCreateActions";
 
 export const CommandPalette: React.FC = () => {
   const navigate = useNavigate();
@@ -30,7 +38,16 @@ export const CommandPalette: React.FC = () => {
     setStageCollapsed,
     setWorkbenchTab,
     openRailPanel,
+    setWorkbenchOpen,
+    runEditorTask,
+    runDocumentTask,
+    requestSkillPrompt,
+    sendSelectionToWorkbench,
+    extractIntoEditor,
   } = useWorkspace();
+  const folderId = useOpenFolderId();
+  const { skills, forPlace } = useSkills();
+  const [recipeToRun, setRecipeToRun] = useState<Recipe | null>(null);
 
   const { projects, docsMap, allDocs, refresh: refreshAllDocs } = useAllDocuments();
   const [search, setSearch] = useState("");
@@ -111,7 +128,31 @@ export const CommandPalette: React.FC = () => {
     return stripHarakat(p.title.toLowerCase()).includes(cleanSearch);
   });
 
+  // Skills (SYSTEM-2026 §7): the same list as the `/` menus. Each one runs
+  // where it belongs — editor skills on the open document's selection, chat
+  // skills in the research chat — and is absent when that place is not open.
+  const runSkill = (skill: Skill): (() => void) | null => {
+    if (skill.recipe) return runDocumentTask ? () => setRecipeToRun(skill.recipe!) : null;
+    if (skill.places.includes("editor") && skill.taskSlug && runEditorTask) return () => runEditorTask(skill.taskSlug!);
+    const toChat = (go: () => void) => () => {
+      setWorkbenchOpen(true);
+      go();
+    };
+    if (skill.prompt) return toChat(() => requestSkillPrompt(skill.prompt!));
+    if (skill.kind === "workflow" && skill.trigger) return toChat(() => sendSelectionToWorkbench(`/${skill.trigger} `));
+    if (skill.places.includes("chat") && skill.promptText) return toChat(() => sendSelectionToWorkbench(skill.promptText!));
+    return null;
+  };
+  // Registry order ("مجھ سے پوچھو" first), minus whatever is hidden.
+  const visible = new Set([...forPlace("editor"), ...forPlace("chat")].map((skill) => skill.id));
+  const skillItems = skills
+    .filter((skill) => visible.has(skill.id))
+    .filter((skill) => !cleanSearch || matchesSkill(skill, search, stripHarakat))
+    .map((skill) => ({ skill, run: runSkill(skill) }))
+    .filter((item): item is { skill: Skill; run: () => void } => item.run !== null);
+
   return (
+    <>
     <CommandDialog open={commandPaletteOpen} onOpenChange={handleOpenChange}>
       <CommandInput
         placeholder={t("library.cmd_placeholder", "Search actions, projects or documents...")}
@@ -156,7 +197,7 @@ export const CommandPalette: React.FC = () => {
               }}
               className="flex items-center gap-2 cursor-pointer"
             >
-              <Folder className="h-4 w-4 text-amber-500 shrink-0" />
+              <Folder className="h-4 w-4 text-warning shrink-0" />
               <span className="truncate font-medium">{p.title}</span>
               <span className="text-xs text-muted-foreground capitalize">({p.kind})</span>
             </CommandItem>
@@ -168,12 +209,12 @@ export const CommandPalette: React.FC = () => {
         {/* Quick Actions */}
         <CommandGroup heading={t("library.cmd_actions", "Actions")}>
           <CommandItem onSelect={handleCreateNewDoc} className="cursor-pointer gap-2">
-            <Plus className="h-4 w-4 text-emerald-500" />
+            <Plus className="h-4 w-4 text-success" />
             <span>{t("library.cmd_new_document", "New Document")}</span>
           </CommandItem>
 
           <CommandItem onSelect={handleCreateNewProject} className="cursor-pointer gap-2">
-            <FolderPlus className="h-4 w-4 text-amber-500" />
+            <FolderPlus className="h-4 w-4 text-warning" />
             <span>{t("library.cmd_new_project", "New Project")}</span>
           </CommandItem>
 
@@ -220,7 +261,7 @@ export const CommandPalette: React.FC = () => {
             }}
             className="cursor-pointer gap-2"
           >
-            <Search className="h-4 w-4 text-blue-500" />
+            <Search className="h-4 w-4 text-info" />
             <span>{t("library.cmd_open_research", "Open Research Tab")}</span>
           </CommandItem>
 
@@ -235,7 +276,82 @@ export const CommandPalette: React.FC = () => {
             <span>{t("library.cmd_switch_language", "Switch Language / RTL")}</span>
           </CommandItem>
         </CommandGroup>
+
+        <CommandSeparator />
+
+        {/* Jobs (SYSTEM-2026 §5–6): extract into the open document, or open a tool
+            for a new result — which goes into the open document's folder. */}
+        <CommandGroup heading={t("library.cmd_jobs", "کام")}>
+          {extractIntoEditor && (
+            <CommandItem
+              value="extract here متن نکالیں دستاویز میں ocr transcribe ٹرانسکرائب آڈیو تصویر pdf"
+              onSelect={() => {
+                handleOpenChange(false);
+                extractIntoEditor();
+              }}
+              className="cursor-pointer gap-2"
+            >
+              <ScanText className="h-4 w-4 text-primary" />
+              <span>{t("library.cmd_extract_here", "متن نکالیں — اسی دستاویز میں")}</span>
+            </CommandItem>
+          )}
+          {availableCapabilities("command-palette")
+            .filter((c) => c.id !== "workspace" && c.route)
+            .map((c) => {
+              const Icon = c.icon;
+              const label = t(c.createLabelKey ?? c.labelKey, c.createFallbackLabel ?? c.fallbackLabel);
+              return (
+                <CommandItem
+                  key={c.id}
+                  value={`job ${c.id} ${label} ${t(c.labelKey, c.fallbackLabel)}${c.id === "transcribe" || c.id === "ocr" ? " extract متن نکالیں" : ""}`}
+                  onSelect={() => {
+                    handleOpenChange(false);
+                    navigate(c.route!, { state: folderId ? { projectId: folderId } : undefined });
+                  }}
+                  className="cursor-pointer gap-2"
+                >
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <span>{label}</span>
+                </CommandItem>
+              );
+            })}
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        <CommandGroup heading={t("skills.hub.title", "مہارتیں")}>
+          {skillItems.slice(0, cleanSearch ? 12 : 6).map(({ skill, run }) => {
+            const Icon = skill.icon ?? Sparkles;
+            return (
+              <CommandItem
+                key={skill.id}
+                value={`skill ${skill.id} ${skill.label}`}
+                onSelect={() => {
+                  handleOpenChange(false);
+                  run();
+                }}
+                className="cursor-pointer gap-2"
+              >
+                <Icon className="h-4 w-4 text-muted-foreground" />
+                <span className="truncate">{skill.label}</span>
+              </CommandItem>
+            );
+          })}
+          <CommandItem
+            value="skill manage-skills مہارتیں سنبھالیں"
+            onSelect={() => {
+              handleOpenChange(false);
+              navigate(SKILLS_SETTINGS_PATH);
+            }}
+            className="cursor-pointer gap-2"
+          >
+            <Settings2 className="h-4 w-4 text-muted-foreground" />
+            {t("skills.manage", "مہارتیں سنبھالیں")}
+          </CommandItem>
+        </CommandGroup>
       </CommandList>
     </CommandDialog>
+    <RecipeRunDialog recipe={recipeToRun} onClose={() => setRecipeToRun(null)} />
+    </>
   );
 };

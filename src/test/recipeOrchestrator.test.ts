@@ -36,6 +36,10 @@ const ok = (applied = 3): DocumentTaskOutcome => ({
 });
 
 describe("validateRecipe (FR-4.3)", () => {
+  it("accepts section summaries, which are inserted after each section", () => {
+    expect(validateRecipe(recipe([{ taskSlug: "summarize_sections", stepLabel: "خلاصہ" }])).ok).toBe(true);
+  });
+
   it("rejects a step whose task is not chunkable over a document", () => {
     // `summarize` is selection-scoped: a whole-document run would replace the
     // document with its own summary.

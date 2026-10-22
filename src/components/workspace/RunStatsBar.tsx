@@ -52,7 +52,7 @@ export function RunStatsBar({
         </span>
       )}
       {stats.toolsFailed > 0 && (
-        <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+        <span className="flex items-center gap-1 text-warning">
           <AlertTriangle className="h-3.5 w-3.5" />
           {t("agent.stats_failed", "{n} failed").replace("{n}", String(stats.toolsFailed))}
         </span>

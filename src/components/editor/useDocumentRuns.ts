@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "react";
 import type { Editor } from "@tiptap/react";
 import { toast } from "sonner";
-import { planDocumentChunks } from "@/lib/editor/docChunker";
+import { planDocumentChunks, planTaskChunks } from "@/lib/editor/docChunker";
 import { canResumeRun, type StoredBatchPlan } from "@/lib/tasks/resumePlan";
 import { getTaskBySlug } from "@/lib/tasks/registry";
 import { calculateTaskCost } from "@/lib/tasks/cost";
@@ -51,7 +51,7 @@ export function useDocumentRuns({
         return { ok: false, ...empty, reason: "AI Review (Track Changes) آن ہے۔" };
       }
 
-      const plan = planDocumentChunks(editor);
+      const plan = planTaskChunks(editor, task);
       if (plan.batches.length === 0) {
         return { ok: false, ...empty, reason: "دستاویز میں چلانے کے لیے کوئی متن نہیں۔" };
       }
@@ -118,6 +118,12 @@ export function useDocumentRuns({
         return;
       }
 
+      // A summary run has already added to the document, so its sections no
+      // longer match the stored plan; it is started again, not resumed.
+      if (task.applyMode === "append") {
+        toast.error(translateStored("toast.run.document_changed"));
+        return;
+      }
       const plan = planDocumentChunks(editor);
       const done = run.progress?.done ?? 0;
       const storedPlan = run.input?.batch_plan as StoredBatchPlan[] | undefined;

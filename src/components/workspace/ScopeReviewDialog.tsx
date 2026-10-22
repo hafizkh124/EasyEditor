@@ -224,7 +224,7 @@ export const ScopeReviewDialog: React.FC<{
         </fieldset>
 
         {overCap && mode === "per-book" && (
-          <p className="rounded border border-amber-500/40 bg-amber-500/5 p-2 text-xs text-amber-700 dark:text-amber-400">
+          <p className="rounded border border-warning/40 bg-warning/5 p-2 text-xs text-warning">
             {t("scope.over_cap", "Over {max} — narrow with a category + century, or select fewer books.").replace("{max}", String(BATCH_MAX_ITEMS))}
           </p>
         )}

@@ -44,7 +44,7 @@ export const ArtifactStage: React.FC = () => {
         <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <h2 className="truncate text-xs font-semibold">{active.title}</h2>
         {active.status !== "open" && (
-          <span className={`rounded px-1 text-[0.7rem] ${active.status === "final" ? "text-emerald-600" : "text-amber-600"}`}>{active.status}</span>
+          <span className={`rounded px-1 text-[0.7rem] ${active.status === "final" ? "text-success" : "text-warning"}`}>{active.status}</span>
         )}
         <div className="ms-auto flex items-center gap-0.5">
           <ArtifactToolbar

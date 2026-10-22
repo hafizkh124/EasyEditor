@@ -193,6 +193,37 @@ describe("ai:invoke — mode: edge-function", () => {
     expect(call.systemInstruction).toContain("professional editor");
   });
 
+  // SYSTEM-2026 §10 — pages on the desktop's own key.
+  it("reads a page image with the OCR prompt", async () => {
+    const result = await invoke({
+      mode: "edge-function", functionName: "process-ocr", body: { imageBase64: "IMG", mimeType: "image/png" },
+    });
+    expect(result).toEqual({ data: { text: "generated text" } });
+    const call = geminiMocks.generateContentStream.mock.calls[0][0];
+    expect(call.images).toEqual([{ mimeType: "image/png", data: "IMG" }]);
+    expect(call.systemInstruction).toContain("mark uncertain parts with [?]");
+  });
+
+  it("translates a page's text with the genre instruction", async () => {
+    const result = await invoke({
+      mode: "edge-function", functionName: "translate-page",
+      body: { text: "الحمد لله", targetLanguage: "ur", sourceLanguage: "ar", genreInstruction: "Style: literal" },
+    });
+    expect(result).toEqual({ data: { text: "generated text" } });
+    const call = geminiMocks.generateContentStream.mock.calls[0][0];
+    expect(call.prompt).toBe("Translate the following text into Urdu:\n\nالحمد لله");
+    expect(call.systemInstruction).toContain("The source language is Arabic.");
+    expect(call.systemInstruction).toContain("Special Genre Style Instruction: Style: literal");
+    expect(call.images).toBeUndefined();
+  });
+
+  it("translates a page image when there is no text", async () => {
+    await invoke({ mode: "edge-function", functionName: "translate-page", body: { imageBase64: "IMG", targetLanguage: "en" } });
+    const call = geminiMocks.generateContentStream.mock.calls[0][0];
+    expect(call.images).toEqual([{ mimeType: "image/jpeg", data: "IMG" }]);
+    expect(call.prompt).toContain("Translate all visible text in this image into English");
+  });
+
   it("prefers an explicit custom_prompt over the action's built-in one", async () => {
     await invoke({
       mode: "edge-function",

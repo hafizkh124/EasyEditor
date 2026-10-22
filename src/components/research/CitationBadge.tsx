@@ -88,13 +88,13 @@ export function formatCitation(domain: string, ref: CitationRef): string {
 
 function domainColor(domain: string): string {
   if (domain === "dorar" || domain === "sunnah" || domain === "hadith-index") {
-    return "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300";
+    return "bg-success-soft border-success-border text-success";
   }
   if (domain === "alquran" || domain === "quran-com" || domain === "tanzil") {
-    return "bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800/50 text-sky-800 dark:text-sky-300";
+    return "bg-info-soft border-info-border text-info";
   }
   if (domain === "islamqa" || domain === "islamweb" || domain === "dar-alifta") {
-    return "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-300";
+    return "bg-warning-soft border-warning-border text-warning";
   }
   return "bg-muted border-border text-muted-foreground";
 }

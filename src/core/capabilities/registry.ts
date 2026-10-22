@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  BookOpen, Bot, Languages, LayoutDashboard, Mic, ScanText, Search,
+  BookOpen, Bot, FolderOpen, Home, Languages, Mic, ScanText, Search,
   Settings as SettingsIcon, Shield, Sparkles, User, Volume2,
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
@@ -35,20 +35,30 @@ export type Runtime = "web" | "desktop";
 export type Availability =
   | { on: "always" }
   | { on: "never"; reason: string }
-  | { on: "flag"; flag: "VITE_LOCAL_VOICE" };
+  | { on: "flag"; flag: BuildFlag | readonly BuildFlag[] };
+
+/**
+ * Build-time switches. A list means every one must be on.
+ *
+ * VITE_VOICE_STUDIO and VITE_KNOWLEDGE_GRAPH are off by default: speaking
+ * text aloud, audiobooks, voice cloning and the knowledge graph are hidden
+ * for now (SYSTEM-2026 §11). Their code stays; turning the flag on brings
+ * them back everywhere at once.
+ */
+export type BuildFlag = "VITE_LOCAL_VOICE" | "VITE_VOICE_STUDIO" | "VITE_KNOWLEDGE_GRAPH";
 
 export type Surface =
   | "sidebar"
-  | "mobile-nav"
+  | "create-menu"
   | "workspace-menu"
   | "dashboard-grid"
   | "command-palette"
   | "workbench-tab";
 
 export type CapabilityId =
-  | "workspace" | "transcribe" | "ocr" | "speak" | "translate.book"
-  | "research" | "settings" | "dashboard" | "profile" | "admin"
-  | "voice.cloning" | "tokens.meter"
+  | "workspace" | "extract" | "transcribe" | "ocr" | "speak" | "translate.book"
+  | "research" | "settings" | "dashboard" | "files" | "profile" | "admin"
+  | "voice.cloning" | "audiobook" | "knowledge.graph" | "tokens.meter"
   | "wb.aiReader" | "wb.research" | "wb.agent";
 
 export interface Capability {
@@ -67,6 +77,13 @@ export interface Capability {
    * unavailable, so desktop simply has no Tools entry rather than an empty one.
    */
   group?: "tool";
+  /**
+   * How the capability reads in the "+" create menu (SYSTEM-2026 §2), where
+   * it is phrased as the job ("Audio to text") rather than the tool's name
+   * ("Transcribe"). Only read on the `create-menu` surface.
+   */
+  createLabelKey?: TranslationKey;
+  createFallbackLabel?: string;
 }
 
 const ALWAYS: Availability = { on: "always" };
@@ -84,25 +101,42 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "workspace", route: "/workspace", labelKey: "nav.workspace", fallbackLabel: "ورک اسپیس",
     icon: BookOpen, runtimes: { web: ALWAYS, desktop: ALWAYS },
-    surfaces: ["sidebar", "mobile-nav", "dashboard-grid", "command-palette"],
+    surfaces: ["dashboard-grid", "command-palette"],
+  },
+  {
+    // The one extract-text screen (SYSTEM-2026 §5) behind both jobs below. It
+    // exists wherever either does — everywhere, now that the desktop reads
+    // pages with the user's own key or account (§10).
+    id: "extract", route: "/extract", labelKey: "extract.title", fallbackLabel: "متن نکالیں",
+    icon: ScanText,
+    runtimes: { web: ALWAYS, desktop: ALWAYS },
+    surfaces: [],
   },
   {
     id: "transcribe", route: "/transcribe", labelKey: "nav.transcribe", fallbackLabel: "ٹرانسکرائب",
     icon: Mic,
     runtimes: { web: ALWAYS, desktop: { on: "flag", flag: "VITE_LOCAL_VOICE" } },
-    surfaces: ["sidebar", "mobile-nav", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    surfaces: ["create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    createLabelKey: "create.audio_to_text", createFallbackLabel: "آڈیو سے متن",
   },
   {
     id: "speak", route: "/speak", labelKey: "nav.speak", fallbackLabel: "بولیں",
     icon: Volume2,
-    runtimes: { web: ALWAYS, desktop: { on: "flag", flag: "VITE_LOCAL_VOICE" } },
-    surfaces: ["sidebar", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    runtimes: {
+      web: { on: "flag", flag: "VITE_VOICE_STUDIO" },
+      desktop: { on: "flag", flag: ["VITE_LOCAL_VOICE", "VITE_VOICE_STUDIO"] },
+    },
+    surfaces: ["workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
   },
   {
     id: "ocr", route: "/ocr", labelKey: "nav.ocr", fallbackLabel: "OCR",
     icon: ScanText,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "OCR runs on a paid cloud edge function with no local counterpart." } },
-    surfaces: ["sidebar", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    // Desktop (SYSTEM-2026 §10): the user's own Gemini key, or the signed-in
+    // account; with neither, the screen shows how to enable it rather than
+    // the feature going missing.
+    runtimes: { web: ALWAYS, desktop: ALWAYS },
+    surfaces: ["create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    createLabelKey: "create.image_to_text", createFallbackLabel: "تصویر/PDF سے متن",
   },
   {
     // Book Translation absorbed Quick Translate's text/image/PDF flows (and
@@ -112,8 +146,10 @@ export const CAPABILITIES: readonly Capability[] = [
     // for the desktop gate Quick Translate always had.
     id: "translate.book", route: "/translate-book", labelKey: "nav.translate_book", fallbackLabel: "کتاب کا ترجمہ",
     icon: Languages,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Translation runs on a cloud edge function." } },
-    surfaces: ["workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    // Desktop: like OCR — own key or account, else "how to enable" (§10).
+    runtimes: { web: ALWAYS, desktop: ALWAYS },
+    surfaces: ["create-menu", "workspace-menu", "dashboard-grid", "command-palette"], group: "tool",
+    createLabelKey: "create.translate_book", createFallbackLabel: "کتاب کا ترجمہ",
   },
   {
     id: "research", route: "/research", labelKey: "nav.research", fallbackLabel: "تحقیق",
@@ -123,12 +159,19 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "settings", route: "/settings", labelKey: "nav.settings", fallbackLabel: "ترتیبات",
     icon: SettingsIcon, runtimes: { web: ALWAYS, desktop: ALWAYS },
-    surfaces: ["sidebar", "mobile-nav", "workspace-menu", "command-palette"],
+    surfaces: ["workspace-menu", "command-palette"],
+  },
+  // The sidebar is just Home and Files (SYSTEM-2026 §2): the jobs are behind
+  // "+", and settings, profile and admin are in the "Me" menu.
+  {
+    id: "dashboard", route: "/dashboard", labelKey: "nav.home", fallbackLabel: "ہوم",
+    icon: Home, runtimes: { web: ALWAYS, desktop: ALWAYS },
+    surfaces: ["sidebar", "workspace-menu", "command-palette"],
   },
   {
-    id: "dashboard", route: "/dashboard", labelKey: "nav.dashboard", fallbackLabel: "ڈیش بورڈ",
-    icon: LayoutDashboard, runtimes: { web: ALWAYS, desktop: ALWAYS },
-    surfaces: ["mobile-nav", "workspace-menu", "command-palette"],
+    id: "files", route: "/files", labelKey: "nav.files", fallbackLabel: "فائلیں",
+    icon: FolderOpen, runtimes: { web: ALWAYS, desktop: ALWAYS },
+    surfaces: ["sidebar", "workspace-menu", "command-palette"],
   },
   {
     id: "profile", route: "/profile", labelKey: "nav.profile", fallbackLabel: "میری پروفائل",
@@ -139,7 +182,8 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "admin", route: "/admin", labelKey: "nav.admin", fallbackLabel: "ایڈمن",
     icon: Shield,
     runtimes: { web: ALWAYS, desktop: { on: "never", reason: "The admin console administers cloud accounts." } },
-    surfaces: ["sidebar"],
+    // Reached from the "Me" menu, which asks `isCapabilityAvailable("admin")`.
+    surfaces: [],
   },
 
   // Cloud-only halves of otherwise-local features. No route and no nav surface:
@@ -147,7 +191,28 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "voice.cloning", route: null, labelKey: "tts.clone_title", fallbackLabel: "آواز کلون کریں",
     icon: Mic,
-    runtimes: { web: ALWAYS, desktop: { on: "never", reason: "Voice cloning bills the ElevenLabs API and needs cloud storage." } },
+    runtimes: {
+      web: { on: "flag", flag: "VITE_VOICE_STUDIO" },
+      desktop: { on: "never", reason: "Voice cloning bills the ElevenLabs API and needs cloud storage." },
+    },
+    surfaces: [],
+  },
+  {
+    // The editor's "Audiobook (.mp3)" export: the desktop's offline voices read
+    // the document chapter by chapter.
+    id: "audiobook", route: null, labelKey: "editor.download_audiobook", fallbackLabel: "آڈیو بک (.mp3)",
+    icon: Volume2,
+    runtimes: {
+      web: { on: "never", reason: "Audiobook export runs on the desktop's offline voices." },
+      desktop: { on: "flag", flag: ["VITE_LOCAL_VOICE", "VITE_VOICE_STUDIO"] },
+    },
+    surfaces: [],
+  },
+  {
+    // The workspace settings' knowledge graph of the folder's documents.
+    id: "knowledge.graph", route: null, labelKey: "library.graph_title", fallbackLabel: "علمی گراف",
+    icon: Sparkles,
+    runtimes: { web: { on: "flag", flag: "VITE_KNOWLEDGE_GRAPH" }, desktop: { on: "flag", flag: "VITE_KNOWLEDGE_GRAPH" } },
     surfaces: [],
   },
   {
@@ -210,10 +275,14 @@ function currentRuntime(): Runtime {
  * would never be replaced and the desktop build would silently read undefined.
  * Evaluated per call so tests can `vi.stubEnv` between cases.
  */
-function flagEnabled(flag: "VITE_LOCAL_VOICE"): boolean {
+function flagEnabled(flag: BuildFlag): boolean {
   switch (flag) {
     case "VITE_LOCAL_VOICE":
       return import.meta.env.VITE_LOCAL_VOICE === "true";
+    case "VITE_VOICE_STUDIO":
+      return import.meta.env.VITE_VOICE_STUDIO === "true";
+    case "VITE_KNOWLEDGE_GRAPH":
+      return import.meta.env.VITE_KNOWLEDGE_GRAPH === "true";
   }
 }
 
@@ -224,7 +293,7 @@ function isAvailable(availability: Availability): boolean {
     case "never":
       return false;
     case "flag":
-      return flagEnabled(availability.flag);
+      return (typeof availability.flag === "string" ? [availability.flag] : availability.flag).every(flagEnabled);
   }
 }
 
@@ -244,4 +313,9 @@ export function capabilityUnavailableReason(id: CapabilityId): string | null {
 /** Every capability that belongs on `surface` and is available on this runtime, in registry order. */
 export function availableCapabilities(surface: Surface): Capability[] {
   return CAPABILITIES.filter((c) => c.surfaces.includes(surface) && isCapabilityAvailable(c.id));
+}
+
+/** One capability, or `null` when it does not exist on this runtime. */
+export function availableCapability(id: CapabilityId): Capability | null {
+  return isCapabilityAvailable(id) ? BY_ID.get(id) ?? null : null;
 }

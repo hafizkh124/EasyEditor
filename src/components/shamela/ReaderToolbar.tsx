@@ -113,7 +113,7 @@ export const ReaderToolbar: React.FC<ReaderToolbarProps> = ({
     onToggleFavorite && {
       key: "favorite",
       label: isFavorite ? t("reader.remove_favorite") : t("reader.add_favorite"),
-      icon: <Star className={cn("h-4 w-4", isFavorite && "text-amber-500 fill-current")} />,
+      icon: <Star className={cn("h-4 w-4", isFavorite && "text-warning fill-current")} />,
       onClick: onToggleFavorite,
     },
     onRequestSplit && {

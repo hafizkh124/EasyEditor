@@ -143,7 +143,7 @@ export function LibrarySourcesTab() {
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <span className="capitalize">{item.kind}</span>
                         {ingestStatus === "ready" ? (
-                          <Badge variant="outline" className="text-xs gap-0.5 px-1 py-0 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                          <Badge variant="outline" className="text-xs gap-0.5 px-1 py-0 bg-success/10 text-success border-success/20">
                             <CheckCircle2 className="h-3 w-3" />
                             {t("library.saved_badge", "Saved")}
                           </Badge>

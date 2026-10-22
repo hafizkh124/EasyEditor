@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice studio, OCR, Translation</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .two { display: grid; grid-template-columns: 1fr 1fr; flex: 1; min-block-size: 0; } .two > div { padding: 20px; display: flex; flex-direction: column; gap: 12px; min-block-size: 0; }
+  .voice { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); } .voice.on { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / .14); }
+  .play { inline-size: 40px; block-size: 40px; border-radius: 50%; background: hsl(var(--primary-soft)); color: hsl(var(--primary)); display: grid; place-items: center; flex: none; }
+  .wave { display: flex; align-items: center; gap: 3px; block-size: 36px; flex: 1; } .wave i { inline-size: 3px; border-radius: 3px; background: hsl(var(--primary)); opacity: .8; }
+  textarea.input { min-block-size: 130px; padding-block: 12px; resize: none; line-height: 1.9; }
+  .thumb { inline-size: 100%; aspect-ratio: 3/4; border-radius: 10px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); padding: 8px; display: flex; flex-direction: column; gap: 5px; } .thumb i { display: block; block-size: 5px; border-radius: 3px; background: hsl(var(--muted)); } .thumb.on { border-color: hsl(var(--primary)); box-shadow: 0 0 0 2px hsl(var(--primary) / .2); }
+  .ocr { display: grid; grid-template-columns: 96px 1fr 1fr; flex: 1; min-block-size: 0; }
+  .src { padding: 12px; border-radius: 14px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+  .low { background: hsl(var(--warning-bg)); color: hsl(var(--warning)); border-radius: 5px; padding-inline: 4px; outline: 1px solid hsl(var(--warning-bd)); }
+</style>
+</head>
+<body data-title="18 · آواز اسٹوڈیو · OCR (ایک فلو) · کتاب کا ترجمہ" data-note="Speak، انجن کی ترتیبات اور کلوننگ ایک صفحے کے 3 ٹیب۔ OCR اور OCR Review ایک فلو۔ ترجمہ کی مکمل ورک اسپیس (ڈیسک ٹاپ اور موبائل)۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>آواز اسٹوڈیو: بولیں · میری آوازیں · انجن</h2>
+  <p class="cap">تین ٹیب: بولیں (متن سے آواز)، میری آوازیں (کلوننگ: نمونہ ریکارڈ/اپ لوڈ)، انجن (مقامی/کلاؤڈ)۔ ڈیسک ٹاپ پر "انجن" ڈیفالٹ مقامی (Piper) اور کلوننگ مقامی، ویب پر کلاؤڈ۔ UI وہی۔ لاگت کا اندازہ ہر بار نظر آتا ہے (ویب پر ٹوکنز، ڈیسک ٹاپ پر "مفت")۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="آواز اسٹوڈیو" en="Voice studio"></x-t></span></div>
+      <div class="topbar" style="block-size:56px;padding-inline:20px"><span class="li" style="padding:0"><span class="ic info"><i data-i="volume"></i></span></span><span class="title lg"><x-t ur="آواز اسٹوڈیو" en="Voice studio"></x-t></span><span class="grow"></span><span class="chip neutral"><i data-i="disk"></i><x-t ur="مقامی انجن · مفت" en="Local engine · free"></x-t></span></div>
+      <div class="tabs" style="padding-inline:20px"><button class="tab on"><i data-i="volume"></i><x-t ur="بولیں" en="Speak"></x-t></button><button class="tab"><i data-i="mic"></i><x-t ur="میری آوازیں" en="My voices"></x-t></button><button class="tab"><i data-i="sliders"></i><x-t ur="انجن" en="Engine"></x-t></button></div>
+      <div class="two"><div style="border-inline-end:1px solid hsl(var(--border))"><div class="field" style="flex:1"><label><x-t ur="متن" en="Text"></x-t></label><textarea class="input doc" style="font-size:18px;min-block-size:240px;flex:1" readonly>اس مسئلے میں اہلِ علم کی آراء مختلف ہیں۔ بعض کے نزدیک اصل اباحت ہے، جبکہ دوسرے حضرات احتیاط کو ترجیح دیتے ہیں۔</textarea><div class="row between xs muted"><span>112 <x-t ur="حروف" en="chars"></x-t></span><span class="row" style="--g:6px"><i data-i="spark"></i><x-t ur="لاگت: مفت" en="Cost: free"></x-t></span></div></div><div class="row"><button class="btn primary lg grow"><i data-i="play"></i><x-t ur="سنیں" en="Listen"></x-t></button><button class="btn lg"><i data-i="download"></i>MP3</button></div></div>
+        <div><b class="sm"><x-t ur="آواز چنیں" en="Choose a voice"></x-t></b>
+          <div class="voice on"><span class="play"><i data-i="play"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="نور · اردو" en="Noor · Urdu"></x-t></b><span class="xs muted"><x-t ur="خاتون، صاف" en="Female, clear"></x-t></span></div><span class="chip brand"><x-t ur="منتخب" en="Selected"></x-t></span></div>
+          <div class="voice"><span class="play"><i data-i="play"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="علی · اردو" en="Ali · Urdu"></x-t></b><span class="xs muted"><x-t ur="مرد، گہری" en="Male, deep"></x-t></span></div></div>
+          <div class="voice"><span class="play"><i data-i="play"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="سلمیٰ · عربی" en="Salma · Arabic"></x-t></b></div></div>
+          <div class="voice" style="border-style:dashed"><span class="play" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))"><i data-i="plus"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="اپنی آواز شامل کریں" en="Add my voice"></x-t></b></div></div>
+          <div class="col" style="--g:6px;margin-block-start:6px"><div class="row between sm"><span><x-t ur="رفتار" en="Speed"></x-t></span><b>1.0×</b></div><div class="progress"><i style="inline-size:50%"></i></div></div></div></div>
+    </div>
+
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="آواز اسٹوڈیو ← میری آوازیں" en="Voice studio → My voices"></x-t></span></div>
+      <div class="topbar" style="block-size:56px;padding-inline:20px"><span class="title lg"><x-t ur="آواز اسٹوڈیو" en="Voice studio"></x-t></span></div>
+      <div class="tabs" style="padding-inline:20px"><button class="tab"><i data-i="volume"></i><x-t ur="بولیں" en="Speak"></x-t></button><button class="tab on"><i data-i="mic"></i><x-t ur="میری آوازیں" en="My voices"></x-t></button><button class="tab"><i data-i="sliders"></i><x-t ur="انجن" en="Engine"></x-t></button></div>
+      <div class="p6 col" style="--g:16px;max-inline-size:620px;margin-inline:auto;inline-size:100%"><div class="card pad col" style="--g:12px"><div class="row between"><b><x-t ur="نئی آواز بنائیں" en="Create a new voice"></x-t></b><span class="chip info"><x-t ur="مرحلہ 1/2" en="Step 1/2"></x-t></span></div><div class="sm muted"><x-t ur="30 سیکنڈ صاف آواز میں نیچے دیا متن پڑھیں۔" en="Read the text below in a clear voice for 30 seconds."></x-t></div><div class="doc card pad" style="font-size:17px;line-height:2.2">بسم اللہ الرحمٰن الرحیم۔ علم حاصل کرنا ہر مسلمان پر فرض ہے، اور تحقیق کا مقصد حق تک پہنچنا ہے۔</div><div class="row" style="--g:14px"><button class="rec" style="inline-size:56px;block-size:56px;border-radius:50%;background:hsl(var(--danger));border:0;color:#fff;display:grid;place-items:center"><i data-i="mic" data-s="24"></i></button><div class="wave"><i style="block-size:10px"></i><i style="block-size:22px"></i><i style="block-size:30px"></i><i style="block-size:16px"></i><i style="block-size:34px"></i><i style="block-size:24px"></i><i style="block-size:12px"></i><i style="block-size:28px"></i><i style="block-size:32px"></i><i style="block-size:18px"></i></div><span class="mono b">00:18</span></div><div class="row" style="--g:8px"><span class="or" style="font-size:12px;color:hsl(var(--muted-foreground))"><x-t ur="یا" en="or"></x-t></span><button class="btn"><i data-i="upload"></i><x-t ur="آڈیو فائل اپ لوڈ کریں" en="Upload an audio file"></x-t></button></div></div>
+        <div class="banner warning"><i data-i="warn"></i><div class="t xs"><x-t ur="صرف اپنی یا اجازت یافتہ آواز استعمال کریں۔" en="Only use your own voice or one you have permission to use."></x-t></div></div>
+        <div class="voice"><span class="play"><i data-i="play"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="میری آواز" en="My voice"></x-t></b><span class="xs muted"><x-t ur="30 سیکنڈ نمونہ" en="30 s sample"></x-t></span></div><button class="btn sm ghost"><x-t ur="نمونہ بدلیں" en="Replace"></x-t></button><button class="icon-btn sm"><i data-i="trash"></i></button></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>OCR: ایک فلو (اپ لوڈ ← صفحہ وار جائزہ ← محفوظ)</h2>
+  <p class="cap">پہلے <code>/ocr</code> اور <code>/ocr/review</code> دو صفحے تھے۔ اب ایک: بائیں صفحات کی تھمب نیل، درمیان میں تصویر اور کراپ، دائیں نکالا گیا متن۔ کم اعتماد والے الفاظ پیلے، ایک کلک میں درستی۔ نیچے: ایڈیٹر میں بھیجیں · سب کاپی · ایکسپورٹ۔ ڈیسک ٹاپ پر اپنی API سے چلتا ہے (اسکرین 02)۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center">OCR — فتاویٰ_جلد2.pdf</span></div>
+      <div class="topbar" style="block-size:52px;padding-inline:16px"><span class="li" style="padding:0"><span class="ic warning"><i data-i="scan"></i></span></span><b>OCR</b><span class="chip info"><x-t ur="صفحہ 3 / 48" en="Page 3 / 48"></x-t></span><span class="grow"></span><span class="chip warning"><i data-i="warn"></i><x-t ur="3 کم اعتماد" en="3 low confidence"></x-t></span><button class="btn sm"><i data-i="copy"></i><x-t ur="سب کاپی" en="Copy all"></x-t></button><button class="btn sm"><i data-i="download"></i><x-t ur="ایکسپورٹ" en="Export"></x-t></button><button class="btn sm primary"><i data-i="plus"></i><x-t ur="ایڈیٹر میں بھیجیں" en="Send to editor"></x-t></button></div>
+      <div class="ocr">
+        <div class="sidebar p3 col scroll" style="--g:8px"><div class="thumb"><i style="inline-size:80%"></i><i></i><i style="inline-size:60%"></i></div><div class="thumb"><i></i><i style="inline-size:70%"></i><i></i></div><div class="thumb on"><i style="inline-size:90%"></i><i></i><i style="inline-size:50%"></i></div><div class="thumb"><i></i><i style="inline-size:60%"></i></div></div>
+        <div class="p4" style="background:hsl(var(--muted)/.5);display:flex;flex-direction:column;gap:10px;min-block-size:0"><div class="row between"><span class="xs muted"><x-t ur="اصل تصویر" en="Original"></x-t></span><div class="row" style="--g:2px"><button class="icon-btn sm"><i data-i="refresh"></i></button><button class="icon-btn sm"><i data-i="split"></i></button></div></div><div class="card pad col" style="--g:10px;flex:1"><i style="display:block;block-size:8px;border-radius:4px;background:hsl(var(--muted));inline-size:90%"></i><i style="display:block;block-size:8px;border-radius:4px;background:hsl(var(--muted))"></i><i style="display:block;block-size:8px;border-radius:4px;background:hsl(var(--warning-bd));inline-size:30%"></i><i style="display:block;block-size:8px;border-radius:4px;background:hsl(var(--muted));inline-size:80%"></i><i style="display:block;block-size:8px;border-radius:4px;background:hsl(var(--muted));inline-size:60%"></i></div></div>
+        <div class="p4 col" style="--g:10px"><span class="xs muted"><x-t ur="نکالا گیا متن (قابلِ ترمیم)" en="Extracted text (editable)"></x-t></span><div class="doc card pad" style="font-size:18px;line-height:2.2;flex:1"><x-t ur="شریعت کے احکام میں" en="In the rulings of the Sharia"></x-t> <span class="low"><x-t ur="تدریج" en="gradual"></x-t></span> <x-t ur="کا اصول ملتا ہے" en="principle is found"></x-t>۔</div><div class="row"><button class="btn grow"><i data-i="chev-r" data-flip></i><x-t ur="پچھلا" en="Prev"></x-t></button><button class="btn primary grow"><x-t ur="محفوظ اور اگلا" en="Save & next"></x-t><i data-i="chev-l" data-flip></i></button></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>کتاب کا ترجمہ: مکمل ورک اسپیس</h2>
+  <p class="cap">ماخذ (PDF/شاملہ کتاب) اور ترجمہ ساتھ ساتھ، صفحہ وار۔ اوپر زبان جوڑی، صنف، پیشرفت، وقفہ/منسوخ۔ ترجمہ کی یادداشت (Translation memory) کے ہٹس سبز چپ میں۔ نیچے: ایڈیٹر میں ڈالیں، ایکسپورٹ۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="کتاب کا ترجمہ" en="Book translation"></x-t></span></div>
+      <div class="topbar" style="block-size:56px;padding-inline:16px"><b>فتاویٰ_جلد2.pdf</b><span class="chip info"><x-t ur="اردو ← English" en="Urdu → English"></x-t></span><span class="chip neutral"><x-t ur="صنف: فقہ" en="Genre: Fiqh"></x-t></span><span class="grow"></span><div class="col" style="--g:2px;inline-size:220px"><div class="row between xs muted"><span><bdi>18 / 48</bdi></span><span>~12 <x-t ur="منٹ" en="min"></x-t></span></div><div class="progress"><i style="inline-size:38%"></i></div></div><button class="btn sm"><i data-i="pause"></i><x-t ur="روکیں" en="Pause"></x-t></button><button class="btn sm primary"><i data-i="plus"></i><x-t ur="سب ایڈیٹر میں" en="All to editor"></x-t></button></div>
+      <div class="two" style="grid-template-columns:140px 1fr 1fr"><div class="sidebar p3 col scroll" style="--g:8px;border-inline-end:1px solid hsl(var(--border))"><div class="thumb"><i style="inline-size:80%"></i><i></i></div><div class="thumb"><i></i><i style="inline-size:70%"></i></div><div class="thumb on"><i style="inline-size:90%"></i><i></i></div></div>
+        <div class="p4" style="border-inline-end:1px solid hsl(var(--border))"><span class="xs muted"><x-t ur="اصل · صفحہ 17" en="Source · page 17"></x-t></span><div class="doc" style="font-size:17px;line-height:2.2">اس مسئلے میں فقہاء کا اختلاف ہے؛ بعض اباحت کے قائل ہیں اور بعض احتیاط کو ترجیح دیتے ہیں۔</div></div>
+        <div class="p4"><div class="row between"><span class="xs muted"><x-t ur="ترجمہ" en="Translation"></x-t></span><span class="chip success"><i data-i="check"></i><x-t ur="یادداشت سے 2 جملے" en="2 sentences from memory"></x-t></span></div><div style="font-family:'Lora',serif;font-size:17px;line-height:1.9;direction:ltr;text-align:left">The jurists differ on this issue; some hold that permissibility is the default, while others prefer caution.</div><div class="row"><button class="btn sm"><i data-i="pen"></i><x-t ur="ترمیم" en="Edit"></x-t></button><button class="btn sm"><i data-i="copy"></i><x-t ur="کاپی" en="Copy"></x-t></button><button class="btn sm"><i data-i="refresh"></i><x-t ur="دوبارہ" en="Retranslate"></x-t></button></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>آواز اسٹوڈیو · OCR صفحہ وار · ترجمہ</h2>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><span class="title grow"><x-t ur="آواز اسٹوڈیو" en="Voice studio"></x-t></span></div>
+      <div class="tabs"><button class="tab on"><x-t ur="بولیں" en="Speak"></x-t></button><button class="tab"><x-t ur="میری آوازیں" en="My voices"></x-t></button><button class="tab"><x-t ur="انجن" en="Engine"></x-t></button></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:12px"><textarea class="input doc" style="font-size:17px" readonly>اس مسئلے میں اہلِ علم کی آراء مختلف ہیں۔</textarea><div class="voice on"><span class="play"><i data-i="play"></i></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="نور · اردو" en="Noor · Urdu"></x-t></b></div><i data-i="chev-d" class="muted"></i></div><div class="col" style="--g:6px"><div class="row between sm"><span><x-t ur="رفتار" en="Speed"></x-t></span><b>1.0×</b></div><div class="progress"><i style="inline-size:50%"></i></div></div><div class="row xs muted" style="--g:6px"><i data-i="spark"></i><x-t ur="لاگت: 120 ٹوکنز" en="Cost: 120 tokens"></x-t></div></div>
+        <div class="p3 row" style="border-block-start:1px solid hsl(var(--border))"><button class="btn primary lg grow"><i data-i="play"></i><x-t ur="سنیں" en="Listen"></x-t></button><button class="btn lg"><i data-i="download"></i></button></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><span class="title grow">OCR · 3/48</span><button class="btn sm primary"><x-t ur="محفوظ" en="Save"></x-t></button></div>
+      <div class="viewport"><div class="scroll grow p3 col" style="--g:10px"><div class="row" style="overflow:hidden;--g:6px"><div class="thumb" style="inline-size:52px;flex:none"><i></i></div><div class="thumb" style="inline-size:52px;flex:none"><i></i></div><div class="thumb on" style="inline-size:52px;flex:none"><i></i></div><div class="thumb" style="inline-size:52px;flex:none"><i></i></div></div><div class="segmented" style="inline-size:100%"><span class="on grow center"><x-t ur="متن" en="Text"></x-t></span><span class="grow center"><x-t ur="تصویر" en="Image"></x-t></span><span class="grow center"><x-t ur="دونوں" en="Both"></x-t></span></div><div class="banner warning"><i data-i="warn"></i><div class="t xs"><x-t ur="3 الفاظ پر کم اعتماد (پیلے)" en="3 low-confidence words (yellow)"></x-t></div></div><div class="doc card pad" style="font-size:18px"><x-t ur="شریعت کے احکام میں" en="In the rulings of the Sharia"></x-t> <span class="low"><x-t ur="تدریج" en="gradual"></x-t></span> <x-t ur="کا اصول ملتا ہے" en="principle is found"></x-t>۔</div></div>
+        <div class="p3 row" style="border-block-start:1px solid hsl(var(--border))"><button class="btn grow"><i data-i="chev-r" data-flip></i><x-t ur="پچھلا" en="Prev"></x-t></button><button class="btn primary grow"><x-t ur="اگلا" en="Next"></x-t><i data-i="chev-l" data-flip></i></button></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><div class="col grow" style="--g:0"><b class="sm trunc">فتاویٰ_جلد2.pdf</b><span class="xs muted"><x-t ur="اردو ← English" en="Urdu → English"></x-t></span></div><button class="icon-btn"><i data-i="more"></i></button></div>
+      <div class="viewport"><div class="scroll grow p3 col" style="--g:12px"><div class="card pad col" style="--g:8px"><div class="row between sm"><span><bdi>18 / 48</bdi></span><span class="muted">~12 <x-t ur="منٹ" en="min"></x-t></span></div><div class="progress"><i style="inline-size:38%"></i></div><div class="row"><button class="btn sm"><i data-i="pause"></i><x-t ur="روکیں" en="Pause"></x-t></button><button class="btn sm ghost"><x-t ur="منسوخ" en="Cancel"></x-t></button></div></div><div class="segmented" style="inline-size:100%"><span class="on grow center"><x-t ur="ترجمہ" en="Translation"></x-t></span><span class="grow center"><x-t ur="اصل" en="Source"></x-t></span><span class="grow center"><x-t ur="دونوں" en="Both"></x-t></span></div><div class="card pad col" style="--g:8px"><div class="row between"><span class="xs muted"><x-t ur="صفحہ 17" en="Page 17"></x-t></span><span class="chip success"><i data-i="check"></i><x-t ur="یادداشت" en="Memory"></x-t></span></div><div style="font-family:'Lora',serif;line-height:1.8;direction:ltr;text-align:left">The jurists differ on this issue; some hold that permissibility is the default.</div></div></div>
+        <div class="p3 row" style="border-block-start:1px solid hsl(var(--border))"><button class="btn primary grow"><i data-i="plus"></i><x-t ur="ایڈیٹر میں ڈالیں" en="Insert in editor"></x-t></button></div></div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>

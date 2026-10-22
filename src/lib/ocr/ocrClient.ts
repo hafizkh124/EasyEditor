@@ -7,6 +7,7 @@
 // Consent to upload is gated upstream, per project, before the agent ever
 // issues an OCR request — see `electron/agent/dispatch.ts` `ocr_document`.
 
+import { usesOwnKey } from "@/lib/pages/pageEngine";
 import { supabase } from "@/integrations/supabase/client";
 
 const OCR_ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-ocr`;
@@ -25,6 +26,15 @@ export async function ocrPageImage(
   imageBase64: string,
   mimeType = "image/jpeg",
 ): Promise<string> {
+  // The desktop with the user's own key reads the page locally (SYSTEM-2026 §10).
+  if (await usesOwnKey()) {
+    const result = (await window.electronAPI!.invoke("ai:invoke", {
+      mode: "edge-function",
+      functionName: "process-ocr",
+      body: { imageBase64, mimeType },
+    })) as { data?: { text?: string } };
+    return result?.data?.text ?? "";
+  }
   const token = await sessionToken();
   if (!token) throw new Error("OCR needs a signed-in session.");
 

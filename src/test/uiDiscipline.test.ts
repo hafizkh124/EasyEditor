@@ -42,6 +42,18 @@ describe("UI discipline — app-wide rules (SPEC M10 Phase 0)", () => {
     writeFileSync(join(dir, name), contents, "utf8");
   }
 
+  it("flags a raw status palette colour", () => {
+    write("Raw.tsx", `export const Raw = () => <span className="bg-emerald-500/10 text-amber-700" />;`);
+    const { hard } = scanChromeDirs([], [], [dir]);
+    expect(hard.some((v) => v.label.includes("raw status colour"))).toBe(true);
+  });
+
+  it("does not flag the semantic status families", () => {
+    write("Semantic.tsx", `export const Ok = () => <span className="bg-success-soft text-warning border-destructive-border bg-violet-500" />;`);
+    const { hard } = scanChromeDirs([], [], [dir]);
+    expect(hard).toEqual([]);
+  });
+
   it("flags a physical-direction utility", () => {
     write("Bad.tsx", `export const Bad = () => <div className="mr-2 text-left" />;`);
     const { hard } = scanChromeDirs([], [dir]);

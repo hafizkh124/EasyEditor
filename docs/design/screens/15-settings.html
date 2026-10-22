@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .set { display: grid; grid-template-columns: 76px 240px 1fr; flex: 1; min-block-size: 0; }
+  .rail { background: hsl(var(--sidebar)); border-inline-end: 1px solid hsl(var(--border)); display: flex; flex-direction: column; align-items: center; padding: 12px 6px; gap: 4px; }
+  .rail a { inline-size: 62px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; border-radius: 14px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+  .rail a svg.i { font-size: 22px; }
+  .grp { border: 1px solid hsl(var(--border)); border-radius: 16px; background: hsl(var(--card)); overflow: hidden; }
+  .srow { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-block-end: 1px solid hsl(var(--border)); } .srow:last-child { border: 0; }
+  .conn { display: flex; gap: 12px; padding: 14px; border-radius: 16px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); align-items: center; }
+  .sc { display: flex; justify-content: space-between; padding: 10px 14px; font-size: 14px; border-block-end: 1px solid hsl(var(--border)); } .sc:last-child { border: 0; }
+  .row-li { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-block-end: 1px solid hsl(var(--border)); min-block-size: 56px; }
+</style>
+</head>
+<body data-title="15 · ترتیبات (ہر سیکشن کا اپنا URL)" data-note="/settings/general · account · ai · voice · connectors · shortcuts · about۔ پہلے تین جگہ بکھری تھیں؛ اب ایک جگہ۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>عمومی · AI اور کلیدیں · آواز · کنیکٹرز</h2>
+  <p class="cap">بائیں سیکشن لسٹ، دائیں سیٹنگز کے گروپ۔ ہر سیکشن کا اپنا URL (لنک شیئر ہو سکتا ہے، "بیک" درست چلتا ہے)۔ ڈیسک ٹاپ پر اضافی: میری API (endpoint سمیت، اسکرین 02)، آواز کے مقامی انجن، لوکل شاملہ۔ ویب پر یہی سیکشن، بغیر ان کے۔ Graph/Recipes اب یہاں نہیں، "مکتبہ ← بصیرت" میں۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="ترتیبات" en="Settings"></x-t></span></div>
+      <div class="set">
+        <div class="rail"><a><i data-i="pen"></i><x-t ur="لکھیں" en="Write"></x-t></a><a><i data-i="folder"></i><x-t ur="مکتبہ" en="Library"></x-t></a><a><i data-i="bot"></i><x-t ur="تحقیق" en="Research"></x-t></a><a><i data-i="dash"></i><x-t ur="ٹولز" en="Tools"></x-t></a><span class="grow"></span><span class="avatar">ح</span></div>
+        <aside class="sidebar p3 col" style="--g:2px"><div class="xl b p2"><x-t ur="ترتیبات" en="Settings"></x-t></div><a class="nav-item on"><i data-i="sliders"></i><x-t ur="عمومی" en="General"></x-t></a><a class="nav-item"><i data-i="user"></i><x-t ur="اکاؤنٹ اور پلان" en="Account & plan"></x-t></a><a class="nav-item"><i data-i="key"></i><x-t ur="AI اور کلیدیں" en="AI & keys"></x-t></a><a class="nav-item"><i data-i="mic"></i><x-t ur="آواز" en="Voice"></x-t></a><a class="nav-item"><i data-i="globe"></i><x-t ur="کنیکٹرز" en="Connectors"></x-t></a><a class="nav-item"><i data-i="cmd"></i><x-t ur="شارٹ کٹس" en="Shortcuts"></x-t></a><a class="nav-item"><i data-i="info"></i><x-t ur="ایپ کے بارے میں" en="About"></x-t></a></aside>
+        <div class="scroll p6 col" style="--g:22px;max-inline-size:760px"><div class="xl b"><x-t ur="عمومی" en="General"></x-t></div>
+          <div class="grp"><div class="srow"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="زبان" en="Language"></x-t></b><span class="xs muted"><x-t ur="ایپ کی زبان اور سمت" en="App language and direction"></x-t></span></div><div class="segmented"><span class="on">اردو</span><span>العربية</span><span>English</span></div></div>
+            <div class="srow"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="تھیم" en="Theme"></x-t></b></div><div class="segmented"><span><i data-i="sun"></i><x-t ur="روشن" en="Light"></x-t></span><span><i data-i="moon"></i><x-t ur="گہرا" en="Dark"></x-t></span><span class="on"><i data-i="monitor"></i><x-t ur="سسٹم" en="System"></x-t></span></div></div>
+            <div class="srow"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="دستاویز کا فونٹ" en="Document font"></x-t></b><span class="xs muted"><x-t ur="ایڈیٹر اور ریڈر میں" en="In editor and reader"></x-t></span></div><div class="segmented"><span class="on" style="font-family:'Noto Nastaliq Urdu'">نستعلیق</span><span>نسخ</span></div></div>
+            <div class="srow"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="خود بخود محفوظ" en="Autosave"></x-t></b></div><span class="switch on"></span></div></div>
+          <div class="xl b"><x-t ur="AI اور کلیدیں" en="AI & keys"></x-t></div>
+          <div class="grp"><div class="srow"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="میری API استعمال کریں" en="Use my own API"></x-t></b><span class="xs muted"><x-t ur="Gemini، Groq، OpenRouter، یا اپنا endpoint" en="Gemini, Groq, OpenRouter or your own endpoint"></x-t></span></div><span class="chip success"><span class="dot"></span><x-t ur="فعال" en="Active"></x-t></span><button class="btn sm"><x-t ur="سنبھالیں" en="Manage"></x-t><i data-i="chev-l" data-s="14"></i></button></div>
+            <div class="srow"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="رازداری: کیا بھیجا جاتا ہے" en="Privacy: what is sent"></x-t></b><span class="xs muted"><x-t ur="صرف منتخب متن اور آپ کا سوال" en="Only the selected text and your question"></x-t></span></div><i data-i="chev-l" class="muted"></i></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="ترتیبات ← کنیکٹرز / آواز" en="Settings → Connectors / Voice"></x-t></span></div>
+      <div class="set">
+        <div class="rail"><a><i data-i="pen"></i><x-t ur="لکھیں" en="Write"></x-t></a><a><i data-i="folder"></i><x-t ur="مکتبہ" en="Library"></x-t></a><a><i data-i="bot"></i><x-t ur="تحقیق" en="Research"></x-t></a><a><i data-i="dash"></i><x-t ur="ٹولز" en="Tools"></x-t></a></div>
+        <aside class="sidebar p3 col" style="--g:2px"><div class="xl b p2"><x-t ur="ترتیبات" en="Settings"></x-t></div><a class="nav-item"><i data-i="sliders"></i><x-t ur="عمومی" en="General"></x-t></a><a class="nav-item"><i data-i="user"></i><x-t ur="اکاؤنٹ اور پلان" en="Account & plan"></x-t></a><a class="nav-item"><i data-i="key"></i><x-t ur="AI اور کلیدیں" en="AI & keys"></x-t></a><a class="nav-item"><i data-i="mic"></i><x-t ur="آواز" en="Voice"></x-t></a><a class="nav-item on"><i data-i="globe"></i><x-t ur="کنیکٹرز" en="Connectors"></x-t></a><a class="nav-item"><i data-i="cmd"></i><x-t ur="شارٹ کٹس" en="Shortcuts"></x-t></a></aside>
+        <div class="scroll p6 col" style="--g:16px;max-inline-size:780px"><div class="xl b"><x-t ur="کنیکٹرز" en="Connectors"></x-t></div>
+          <div class="conn"><span class="li" style="padding:0"><span class="ic"><i data-i="book"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="مکتبہ شاملہ" en="Maktaba Shamila"></x-t></b><span class="xs muted"><x-t ur="لوکل · 7,412 کتب" en="Local · 7,412 books"></x-t></span></div><span class="chip success"><span class="dot"></span><x-t ur="متصل" en="Connected"></x-t></span><button class="btn sm"><x-t ur="سنبھالیں" en="Manage"></x-t></button></div>
+          <div class="conn"><span class="li" style="padding:0"><span class="ic info"><i data-i="cloud"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="شاملہ کلاؤڈ" en="Shamela cloud"></x-t></b><span class="xs muted"><x-t ur="آن لائن لائبریری" en="Online library"></x-t></span></div><span class="switch on"></span></div>
+          <div class="conn"><span class="li" style="padding:0"><span class="ic warning"><i data-i="quote"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="تفسیر" en="Tafsir"></x-t></b><span class="xs muted"><x-t ur="6 تفاسیر" en="6 tafsirs"></x-t></span></div><span class="chip warning"><span class="dot"></span><x-t ur="سست" en="Slow"></x-t></span><button class="btn sm"><x-t ur="جانچیں" en="Check"></x-t></button></div>
+          <div class="nav-label" style="padding-inline:0"><x-t ur="علمی ذرائع" en="SCHOLARLY SOURCES"></x-t></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="conn"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="حدیث و رجال" en="Hadith & rijal"></x-t></b><span class="xs muted">4</span></div><span class="switch on"></span></div><div class="conn"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="قرآنی لغت" en="Quranic lexicon"></x-t></b><span class="xs muted">2</span></div><span class="switch on"></span></div><div class="conn"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="اسلامی مالیات" en="Islamic finance"></x-t></b><span class="xs muted">3</span></div><span class="switch"></span></div><div class="conn"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="اردو ادب" en="Urdu adab"></x-t></b><span class="xs muted">2</span></div><span class="switch"></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="ترتیبات ← آواز" en="Settings → Voice"></x-t></span></div>
+      <div class="set">
+        <div class="rail"><a><i data-i="pen"></i><x-t ur="لکھیں" en="Write"></x-t></a><a><i data-i="folder"></i><x-t ur="مکتبہ" en="Library"></x-t></a><a><i data-i="bot"></i><x-t ur="تحقیق" en="Research"></x-t></a><a><i data-i="dash"></i><x-t ur="ٹولز" en="Tools"></x-t></a></div>
+        <aside class="sidebar p3 col" style="--g:2px"><div class="xl b p2"><x-t ur="ترتیبات" en="Settings"></x-t></div><a class="nav-item"><i data-i="sliders"></i><x-t ur="عمومی" en="General"></x-t></a><a class="nav-item"><i data-i="key"></i><x-t ur="AI اور کلیدیں" en="AI & keys"></x-t></a><a class="nav-item on"><i data-i="mic"></i><x-t ur="آواز" en="Voice"></x-t></a><a class="nav-item"><i data-i="globe"></i><x-t ur="کنیکٹرز" en="Connectors"></x-t></a></aside>
+        <div class="scroll p6 col" style="--g:18px;max-inline-size:780px"><div class="xl b"><x-t ur="آواز" en="Voice"></x-t></div>
+          <div class="banner info"><i data-i="disk"></i><div class="t"><b><x-t ur="مقامی انجن (ڈیسک ٹاپ)" en="Local engines (desktop)"></x-t></b><x-t ur="آف لائن، مفت، آپ کے کمپیوٹر پر۔ ویب/موبائل پر یہی ترتیبات کلاؤڈ انجن کے لیے۔" en="Offline, free, on your computer. On web/mobile these settings control the cloud engine."></x-t></div></div>
+          <div class="grp"><div class="srow"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="اردو بولنے کا انجن" en="Urdu speech engine"></x-t></b></div><div class="segmented"><span class="on">Piper</span><span>Edge TTS</span></div></div><div class="srow"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="عربی بولنے کا انجن" en="Arabic speech engine"></x-t></b></div><div class="segmented"><span class="on">Piper</span><span>Edge TTS</span></div></div><div class="srow"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="آواز سے متن (STT)" en="Speech to text (STT)"></x-t></b></div><div class="segmented"><span class="on">Whisper</span><span><x-t ur="کلاؤڈ" en="Cloud"></x-t></span></div></div></div>
+          <div class="grp"><div class="srow"><div class="grow col" style="--g:4px"><b class="sm"><x-t ur="ماڈلز" en="Models"></x-t></b><div class="progress" style="inline-size:260px"><i style="inline-size:64%"></i></div></div><span class="xs muted"><x-t ur="Whisper small · 64%" en="Whisper small · 64%"></x-t></span><button class="btn sm"><x-t ur="روکیں" en="Pause"></x-t></button></div><div class="srow"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="آواز کی کلوننگ (مقامی)" en="Voice cloning (local)"></x-t></b><span class="xs muted"><x-t ur="PyTorch جزو چاہیے (~2GB)" en="Needs a PyTorch component (~2GB)"></x-t></span></div><button class="btn sm"><i data-i="download"></i><x-t ur="انسٹال" en="Install"></x-t></button></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>ترتیبات · فہرست ← تفصیل</h2>
+  <p class="cap">پہلے ایک ڈراپ ڈاؤن کے ذریعے سیکشن بدلتے تھے۔ اب iOS/Android کی طرح: ایک فہرست، ٹیپ پر سیکشن (اپنے URL کے ساتھ)، بیک بٹن سے واپسی۔ ہر قطار ≥56px۔ لوکل شاملہ کی قطار نہیں۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><span class="title grow"><x-t ur="ترتیبات" en="Settings"></x-t></span></div>
+      <div class="viewport"><div class="scroll grow col" style="--g:0">
+        <div class="row-li"><span class="li" style="padding:0"><span class="ic"><i data-i="sliders"></i></span></span><span class="grow"><x-t ur="عمومی" en="General"></x-t></span><i data-i="chev-l" class="muted"></i></div>
+        <div class="row-li"><span class="li" style="padding:0"><span class="ic info"><i data-i="user"></i></span></span><span class="grow"><x-t ur="اکاؤنٹ اور پلان" en="Account & plan"></x-t></span><i data-i="chev-l" class="muted"></i></div>
+        <div class="row-li"><span class="li" style="padding:0"><span class="ic warning"><i data-i="key"></i></span></span><span class="grow"><x-t ur="AI اور کلیدیں" en="AI & keys"></x-t></span><i data-i="chev-l" class="muted"></i></div>
+        <div class="row-li"><span class="li" style="padding:0"><span class="ic"><i data-i="mic"></i></span></span><span class="grow"><x-t ur="آواز" en="Voice"></x-t></span><i data-i="chev-l" class="muted"></i></div>
+        <div class="row-li"><span class="li" style="padding:0"><span class="ic info"><i data-i="globe"></i></span></span><span class="grow"><x-t ur="کنیکٹرز" en="Connectors"></x-t></span><span class="chip success">3</span></div>
+        <div class="row-li"><span class="li" style="padding:0"><span class="ic neutral"><i data-i="info"></i></span></span><span class="grow"><x-t ur="ایپ کے بارے میں" en="About"></x-t></span><span class="xs muted">v2.0.10</span></div>
+      </div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><span class="title grow"><x-t ur="عمومی" en="General"></x-t></span></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:18px">
+        <div class="grp"><div class="srow" style="flex-wrap:wrap"><b class="sm grow"><x-t ur="زبان" en="Language"></x-t></b><div class="segmented" style="inline-size:100%"><span class="on grow center">اردو</span><span class="grow center">العربية</span><span class="grow center">EN</span></div></div><div class="srow" style="flex-wrap:wrap"><b class="sm grow"><x-t ur="تھیم" en="Theme"></x-t></b><div class="segmented" style="inline-size:100%"><span class="grow center"><x-t ur="روشن" en="Light"></x-t></span><span class="grow center"><x-t ur="گہرا" en="Dark"></x-t></span><span class="on grow center"><x-t ur="سسٹم" en="System"></x-t></span></div></div><div class="srow"><b class="sm grow"><x-t ur="خود بخود محفوظ" en="Autosave"></x-t></b><span class="switch on"></span></div><div class="srow"><b class="sm grow"><x-t ur="آف لائن کے لیے محفوظ کریں" en="Keep available offline"></x-t></b><span class="switch on"></span></div></div>
+        <div class="grp"><div class="srow"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="ہوم اسکرین پر انسٹال" en="Install to home screen"></x-t></b><span class="xs muted"><x-t ur="ایپ کی طرح کھلے" en="Opens like an app"></x-t></span></div><button class="btn sm primary"><x-t ur="انسٹال" en="Install"></x-t></button></div></div>
+      </div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><span class="title grow"><x-t ur="کنیکٹرز" en="Connectors"></x-t></span></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:10px">
+        <div class="conn"><span class="li" style="padding:0"><span class="ic info"><i data-i="cloud"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="شاملہ کلاؤڈ" en="Shamela cloud"></x-t></b><span class="xs muted"><x-t ur="آن لائن لائبریری" en="Online library"></x-t></span></div><span class="switch on"></span></div>
+        <div class="conn"><span class="li" style="padding:0"><span class="ic warning"><i data-i="quote"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="تفسیر" en="Tafsir"></x-t></b><span class="xs muted">6</span></div><span class="switch on"></span></div>
+        <div class="conn"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="حدیث و رجال" en="Hadith & rijal"></x-t></b><span class="xs muted">4</span></div><span class="switch on"></span></div>
+        <div class="conn"><div class="grow col" style="--g:0"><b class="sm"><x-t ur="اسلامی مالیات" en="Islamic finance"></x-t></b><span class="xs muted">3</span></div><span class="switch"></span></div>
+        <div class="banner info"><i data-i="monitor"></i><div class="t xs"><x-t ur="لوکل مکتبہ شاملہ ڈیسک ٹاپ ایپ اور ویب (Bridge) پر دستیاب ہے۔" en="Local Maktaba Shamila is available on the desktop app and on web (Bridge)."></x-t></div></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>

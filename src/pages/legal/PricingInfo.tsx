@@ -35,20 +35,20 @@ export default function PricingInfo() {
             <Sparkles className="h-5 w-5" /> Instant system verification (most users)
           </div>
           <ul className="text-sm text-foreground/90 space-y-1.5">
-            <li className="flex gap-2"><Upload className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Transfer the fee, then upload a screenshot of the receipt.</li>
-            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Our system verifies the amount, receiver and authenticity.</li>
-            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> If valid, your account is activated <strong>instantly</strong>.</li>
-            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Accepts NBP bank transfer, JazzCash and EasyPaisa.</li>
+            <li className="flex gap-2"><Upload className="h-4 w-4 text-success flex-shrink-0 mt-0.5" /> Transfer the fee, then upload a screenshot of the receipt.</li>
+            <li className="flex gap-2"><Check className="h-4 w-4 text-success flex-shrink-0 mt-0.5" /> Our system verifies the amount, receiver and authenticity.</li>
+            <li className="flex gap-2"><Check className="h-4 w-4 text-success flex-shrink-0 mt-0.5" /> If valid, your account is activated <strong>instantly</strong>.</li>
+            <li className="flex gap-2"><Check className="h-4 w-4 text-success flex-shrink-0 mt-0.5" /> Accepts NBP bank transfer, JazzCash and EasyPaisa.</li>
           </ul>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center gap-2 mb-2 font-semibold">
-            <Clock className="h-5 w-5 text-amber-500" /> Manual team review (if there is any issue)
+            <Clock className="h-5 w-5 text-warning" /> Manual team review (if there is any issue)
           </div>
           <ul className="text-sm text-foreground/90 space-y-1.5">
-            <li className="flex gap-2"><Clock className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" /> If the receipt is blurry, edited, or doesn't match expectations, our team reviews it manually within 1–2 business days.</li>
+            <li className="flex gap-2"><Clock className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" /> If the receipt is blurry, edited, or doesn't match expectations, our team reviews it manually within 1–2 business days.</li>
             <li className="flex gap-2"><X className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" /> Subscriptions do not auto-renew — a new payment is required each cycle.</li>
-            <li className="flex gap-2"><Check className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> You can always reach us on WhatsApp for help.</li>
+            <li className="flex gap-2"><Check className="h-4 w-4 text-success flex-shrink-0 mt-0.5" /> You can always reach us on WhatsApp for help.</li>
           </ul>
         </div>
       </div>

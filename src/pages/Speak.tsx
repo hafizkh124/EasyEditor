@@ -380,7 +380,7 @@ const Speak = () => {
           <div className="flex items-center gap-3 flex-wrap">
             <TokenCostBadge action="tts_google" quantity={Math.max(1, Math.ceil(text.length / 1000))} />
             {voiceMode === "cloned" && (
-              <TokenCostBadge action="tts_elevenlabs" quantity={Math.max(1, Math.ceil(text.length / 1000))} className="border-amber-300" />
+              <TokenCostBadge action="tts_elevenlabs" quantity={Math.max(1, Math.ceil(text.length / 1000))} className="border-warning-border" />
             )}
           </div>
         )}

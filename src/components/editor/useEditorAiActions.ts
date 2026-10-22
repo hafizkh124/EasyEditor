@@ -5,7 +5,7 @@ import { stripHarakat } from "@/utils/arabicUtils";
 import { callRefineText, type RefineTextAction } from "@/lib/editor/aiActions";
 import { shouldConfirmWholeDocument } from "@/lib/editor/applyScope";
 import { applyResult } from "@/lib/editor/applyResult";
-import { planDocumentChunks } from "@/lib/editor/docChunker";
+import { planDocumentChunks, planSectionSummaries } from "@/lib/editor/docChunker";
 import { runSingleBatchTask } from "@/lib/tasks/runTask";
 import { getTaskBySlug } from "@/lib/tasks/registry";
 import { calculateTaskCost } from "@/lib/tasks/cost";
@@ -32,6 +32,12 @@ export interface SelectionBarActions {
   onFormalize?: () => void;
   onHumanize?: () => void;
   onShorten?: () => void;
+  /**
+   * Run any task by its registry slug — built-in or one of my skills. The one
+   * runner every editor menu uses (`/`, the selection bar, the mobile sheet),
+   * so a task can no longer be listed in one menu and do nothing in another.
+   */
+  runTask?: (slug: string) => void;
 }
 
 interface UseEditorAiActionsArgs {
@@ -137,6 +143,32 @@ export function useEditorAiActions({
 
       const task = getTaskBySlug(taskSlug);
       const chunkingEnabled = import.meta.env.VITE_TASK_CHUNKING !== "false";
+
+      // Section summaries always cover the whole document, selection or not,
+      // and are inserted after each section — never written over it.
+      if (task?.applyMode === "append") {
+        if (!chunkingEnabled) {
+          toast.error(t("editor.ai_error"));
+          return;
+        }
+        if (aiReview) {
+          toast.error(t("toast.editor.review_track_warning"));
+          return;
+        }
+        const plan = planSectionSummaries(editor);
+        if (plan.batches.length === 0) {
+          toast.error(t("editor.no_sections_to_summarize"));
+          return;
+        }
+        setPendingChunkedRun({
+          taskSlug,
+          taskLabel: task.defaultLabel ?? taskSlug,
+          batches: plan.batches,
+          skipped: plan.skipped,
+          totalCost: plan.batches.reduce((sum, b) => sum + calculateTaskCost(task, b.charCount), 0),
+        });
+        return;
+      }
 
       // Whole-document runs go through the chunker, which is what preserves
       // headings, quotes and lists and leaves tables alone (FR-5.1).
@@ -296,14 +328,28 @@ export function useEditorAiActions({
   }, [editor, getSelectionOrAll, applyTextResult, t]);
 
 
+  const runTask = useCallback((slug: string) => {
+    if (slug === "remove_harakat") onRemoveHarakat();
+    else if (slug === "auto_format") void handleAutoFormat();
+    else void runTextAction(slug, slug);
+  }, [onRemoveHarakat, handleAutoFormat, runTextAction]);
+
+  // Published for `Ctrl+K`, which lives outside the editor.
+  const registerEditorTaskRunner = workspace?.registerEditorTaskRunner;
+  useEffect(() => {
+    if (!registerEditorTaskRunner) return;
+    registerEditorTaskRunner(editor ? runTask : null);
+    return () => registerEditorTaskRunner(null);
+  }, [registerEditorTaskRunner, editor, runTask]);
+
   const actions = useMemo<SelectionBarActions>(
     () => ({
       onAddHarakat, onRemoveHarakat, onSpellCheck, onParaphrase, onSummarize,
-      onCitations, onNormalizeScript, onFormalize, onHumanize, onShorten,
+      onCitations, onNormalizeScript, onFormalize, onHumanize, onShorten, runTask,
     }),
     [
       onAddHarakat, onRemoveHarakat, onSpellCheck, onParaphrase, onSummarize, onCitations,
-      onNormalizeScript, onFormalize, onHumanize, onShorten,
+      onNormalizeScript, onFormalize, onHumanize, onShorten, runTask,
     ],
   );
 

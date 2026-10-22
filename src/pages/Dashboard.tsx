@@ -1,59 +1,63 @@
 import { useEffect, useState } from "react";
 import { useSeo } from "@/hooks/useSeo";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-import { Mic, BookOpen, Image, Volume2, Clock, CalendarClock, AlertTriangle, MessageCircle, ArrowRight, ArrowLeft } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertTriangle, ArrowUp, FileText, MessageCircle, MessageSquareText } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
-import { getRecentActivity, type ActivityEntry } from "@/lib/activityLog";
+import { JobsStrip } from "@/components/jobs/JobsStrip";
 import { handleSupabaseError } from "@/lib/errors";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useApproval } from "@/hooks/useApproval";
-import { getLifecycleInfo, formatLifecycleDate } from "@/lib/subscriptionLifecycle";
+import { useRecentItems } from "@/hooks/useRecentItems";
+import { useCreateActions } from "@/components/layout/useCreateActions";
+import { getLifecycleInfo } from "@/lib/subscriptionLifecycle";
 import { WHATSAPP_CONTACT_URL } from "@/lib/paymentAccounts";
 import { getUpgradeLabelKey } from "@/lib/tierUpgrade";
 import TokenMeter from "@/components/TokenMeter";
-import { logger } from "@/lib/logger";
-import { availableCapabilities } from "@/core/capabilities/registry";
-import type { CapabilityId } from "@/core/capabilities/registry";
+import { cn } from "@/lib/utils";
 import type { TranslationKey } from "@/lib/i18n";
-import type { LucideIcon } from "lucide-react";
-
-const log = logger.child("Dashboard");
 
 /**
- * The grid's presentation — the dashboard gives each tool a fuller title and a
- * different icon than the sidebar does — stays here. Only *which* cards exist
- * comes from the registry: these were three hardcoded `<Link>`s, and since
- * /dashboard is not one of the routes `DesktopToWorkspace` redirects, they were
- * a second live path to the cloud-only tools on desktop.
+ * Home (SYSTEM-2026 §3, design v3/01-home). One question box, the three core
+ * jobs, and a single recent list mixing chats and documents. Kept at
+ * /dashboard, which the mobile Chat/Write tab opens.
+ *
+ * The job cards read the same list as the "+" menu (`useCreateActions`), so a
+ * job that cannot run on this runtime is absent here too.
  */
-const DASHBOARD_CARDS: Partial<Record<CapabilityId, { titleKey: TranslationKey; icon: LucideIcon }>> = {
-  transcribe: { titleKey: "stt.title", icon: Mic },
-  speak: { titleKey: "dashboard.tts", icon: Volume2 },
-  ocr: { titleKey: "dashboard.ocr", icon: Image },
-  research: { titleKey: "dashboard.research_assistant", icon: BookOpen },
+
+const RECENT_LIMIT = 8;
+
+const JOB_TINT: Record<string, string> = {
+  transcribe: "bg-info-soft text-info",
+  ocr: "bg-warning-soft text-warning",
+  "translate.book": "bg-success-soft text-success",
 };
 
+const JOB_DESC: Record<string, { key: TranslationKey; fallback: string }> = {
+  transcribe: { key: "home.job_desc.transcribe", fallback: "بیان، وائس نوٹ، ویڈیو" },
+  ocr: { key: "home.job_desc.ocr", fallback: "کتاب کے صفحات، اسکین، PDF" },
+  "translate.book": { key: "home.job_desc.translate", fallback: "PDF یا شاملہ کی کتاب" },
+};
+
+
 const Dashboard = () => {
-  useSeo({ title: "Dashboard — Al-Ulama Easy Editor", description: "Your Al-Ulama Easy Editor home: recent activity, usage limits and shortcuts to every tool.", path: "/dashboard", noindex: true });
+  useSeo({ title: "Home — Al-Ulama Easy Editor", description: "Ask a question, start a job, or pick up where you left off.", path: "/dashboard", noindex: true });
 
   const { user } = useAuth();
-  const { t, direction } = useLanguage();
+  const { t } = useLanguage();
+  const navigate = useNavigate();
   const { subscription } = useSubscription();
   const { isAdmin } = useApproval();
   const [displayName, setDisplayName] = useState("");
-  const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
-
-  // P6: Pass userId to avoid redundant getSession() call inside getRecentActivity
-  useEffect(() => {
-    getRecentActivity(user?.id).then(setRecentActivity)
-      .catch((err) => log.error("loading recent activity failed", { err }));
-  }, [user]);
+  const [question, setQuestion] = useState("");
+  const jobs = useCreateActions().filter((a) => a.group === "job");
 
   useEffect(() => {
     if (!user) return;
@@ -64,12 +68,12 @@ const Dashboard = () => {
         .eq("user_id", user.id)
         .single();
       if (profileError) handleSupabaseError(profileError, "load profile");
-      if (profile) setDisplayName(profile.display_name || user.email || "");
+      if (profile) setDisplayName(profile.display_name || "");
     };
     fetchProfile();
   }, [user]);
 
-  const isUnlimited = (subscription?.transcription_limit ?? 0) >= 999_999;
+  const { items: recent, loading: recentLoading } = useRecentItems(RECENT_LIMIT);
 
   // Lifecycle dates were added in Phase B; cast to read them safely while the
   // generated types catch up.
@@ -86,191 +90,163 @@ const Dashboard = () => {
         exemptFromExpiry: isAdmin,
       })
     : null;
+  const lifecycleAlert = lifecycle && (lifecycle.status === "expired" || lifecycle.status === "expiring_soon") ? lifecycle : null;
   const renewalMessage = encodeURIComponent(
     t("dashboard.renewal_whatsapp_template", "Assalam-o-Alaikum, I would like to renew my subscription."),
   );
+  const isUnlimited = (subscription?.transcription_limit ?? 0) >= 999_999;
+  const upgradeKey = subscription ? getUpgradeLabelKey(subscription.tier) : null;
 
-  const formatTime = (ts: number) => {
-    const d = new Date(ts);
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const ask = () => {
+    const text = question.trim();
+    if (!text) return;
+    navigate("/workspace?panel=research", { state: { question: text } });
   };
 
-  const dashboardCapabilities = availableCapabilities("dashboard-grid");
-  const workspaceCapability = dashboardCapabilities.find((c) => c.id === "workspace");
-  const toolCards = dashboardCapabilities.filter((c) => c.id !== "workspace");
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-8 space-y-6 max-w-4xl mx-auto">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">{t("dashboard.welcome")}</h1>
-          <p className="text-muted-foreground mt-1">{displayName ? `👋 ${displayName}` : t("dashboard.subtitle")}</p>
+      <div className="mx-auto max-w-3xl space-y-8 p-4 md:p-8">
+        {/* Long jobs (SYSTEM-2026 §9). Wide screens have them at the bottom of the sidebar. */}
+        <div className="md:hidden empty:hidden">
+          <JobsStrip variant="home" />
         </div>
+        <header className="space-y-1 pt-2 text-center md:pt-6">
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl">
+            {t("home.greeting", "السلام علیکم، آج کیا کرنا ہے؟")}
+          </h1>
+          {displayName && <p className="text-muted-foreground">{displayName}</p>}
+        </header>
 
-        {/* Subscription Lifecycle Card */}
-        {lifecycle && lifecycle.status !== "none" && (
-          <Card
-            className={
-              lifecycle.status === "expired"
-                ? "border-destructive/40 bg-destructive/5"
-                : lifecycle.status === "expiring_soon"
-                ? "border-amber-400/40 bg-amber-50 dark:bg-amber-950/20"
-                : undefined
-            }
+        {lifecycleAlert && (
+          <div
+            role="status"
+            className={cn(
+              "flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between",
+              lifecycleAlert.status === "expired"
+                ? "border-destructive-border bg-destructive-soft"
+                : "border-warning-border bg-warning-soft",
+            )}
           >
-            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
-              <div className="flex items-start gap-3 min-w-0">
-                {lifecycle.status === "expired" || lifecycle.status === "expiring_soon" ? (
-                  <AlertTriangle
-                    className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
-                      lifecycle.status === "expired" ? "text-destructive" : "text-amber-700 dark:text-amber-400"
-                    }`}
-                  />
-                ) : (
-                  <CalendarClock className="h-5 w-5 flex-shrink-0 mt-0.5 text-primary" />
-                )}
-                <div className="space-y-0.5 min-w-0">
-                  <p className="text-sm font-medium">
-                    {lifecycle.status === "expired"
-                      ? t("dashboard.subscription_expired", "Your subscription has expired")
-                      : lifecycle.status === "expiring_soon"
-                      ? (t("dashboard.expiring_soon", "Subscription expires in {n} day(s)")).replace(
-                          "{n}",
-                          String(lifecycle.daysRemaining ?? 0),
-                        )
-                      : t("dashboard.subscription_active", "Subscription Active")}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {(t("dashboard.activated_label", "Activated")) + ": " + formatLifecycleDate(lifecycle.activatedAt)}
-                    {" • "}
-                    {(t("dashboard.expires_label", "Expires")) + ": " + formatLifecycleDate(lifecycle.expiresAt)}
-                  </p>
-                </div>
-              </div>
-              {(lifecycle.status === "expired" || lifecycle.status === "expiring_soon") && (
-                <Button asChild variant="default" className="flex-shrink-0">
-                  <a
-                    href={`${WHATSAPP_CONTACT_URL}?text=${renewalMessage}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <MessageCircle className="h-4 w-4 me-2" />
-                    {t("dashboard.contact_renew", "Contact Admin to Renew")}
-                  </a>
+            <p className="flex items-start gap-2 text-sm font-medium">
+              <AlertTriangle
+                className={cn("mt-0.5 h-4 w-4 shrink-0", lifecycleAlert.status === "expired" ? "text-destructive" : "text-warning")}
+                aria-hidden="true"
+              />
+              {lifecycleAlert.status === "expired"
+                ? t("dashboard.subscription_expired", "Your subscription has expired")
+                : t("dashboard.expiring_soon", "Subscription expires in {n} day(s)").replace("{n}", String(lifecycleAlert.daysRemaining ?? 0))}
+            </p>
+            <Button asChild size="sm" className="shrink-0">
+              <a href={`${WHATSAPP_CONTACT_URL}?text=${renewalMessage}`} target="_blank" rel="noopener noreferrer">
+                <MessageCircle className="me-2 h-4 w-4" aria-hidden="true" />
+                {t("dashboard.contact_renew", "Contact Admin to Renew")}
+              </a>
+            </Button>
+          </div>
+        )}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            ask();
+          }}
+          className="rounded-2xl border border-border bg-card p-2 shadow-md transition-shadow focus-within:ring-2 focus-within:ring-ring"
+        >
+          <Textarea
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                ask();
+              }
+            }}
+            rows={2}
+            aria-label={t("home.ask_placeholder", "سوال پوچھیں…")}
+            placeholder={t("home.ask_placeholder", "سوال پوچھیں…")}
+            className="min-h-[4.5rem] resize-none border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
+          />
+          <div className="flex justify-end">
+            <Button type="submit" size="icon" disabled={!question.trim()} aria-label={t("home.ask_submit", "پوچھیں")}>
+              <ArrowUp className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </form>
+
+        {jobs.length > 0 && (
+          <div className={cn("grid gap-3", jobs.length >= 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2")}>
+            {jobs.map((job) => {
+              const desc = JOB_DESC[job.id];
+              return (
+                <button
+                  key={job.id}
+                  type="button"
+                  onClick={job.run}
+                  className="flex min-h-touch items-center gap-3 rounded-xl border border-border bg-card p-4 text-start shadow-xs transition-colors duration-fast hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-col sm:items-start"
+                >
+                  <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", JOB_TINT[job.id] ?? "bg-muted text-muted-foreground")}>
+                    <job.icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-foreground">{job.label}</span>
+                    {desc && <span className="block text-sm text-muted-foreground">{t(desc.key, desc.fallback)}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <section aria-labelledby="home-recent" className="space-y-2">
+          <h2 id="home-recent" className="text-sm font-semibold text-muted-foreground">
+            {t("home.recent", "حالیہ")}
+          </h2>
+          {recentLoading ? (
+            <div className="space-y-2">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : recent.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              {t("home.recent_empty", "آپ کی چیٹس اور دستاویزات یہاں نظر آئیں گی۔")}
+            </p>
+          ) : (
+            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+              {recent.map((item) => {
+                const Icon = item.kind === "chat" ? MessageSquareText : FileText;
+                const typeLabel = item.kind === "chat" ? t("home.type_chat", "چیٹ") : t("home.type_document", "دستاویز");
+                return (
+                  <li key={item.id}>
+                    <Link
+                      to={item.to}
+                      className="flex min-h-touch items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                    >
+                      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-label={typeLabel} />
+                      <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                        {item.title || t("editor.untitled", "بے عنوان")}
+                      </span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{formatDate(item.updatedAt)}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        {subscription && !isUnlimited && (
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <TokenMeter />
+              {upgradeKey && (
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/pricing">{t(upgradeKey as TranslationKey)}</Link>
                 </Button>
               )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Token Usage Card */}
-        {subscription && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">{t("dashboard.usage")}</CardTitle>
-              {isUnlimited && (
-                <CardDescription>{t("dashboard.unlimited")}</CardDescription>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isUnlimited ? null : (
-                <>
-                  <TokenMeter />
-                  {(() => {
-                    const upgradeKey = getUpgradeLabelKey(subscription.tier);
-                    return upgradeKey ? (
-                      <Link to="/pricing">
-                        <Button variant="outline" size="sm">{t(upgradeKey as import("@/lib/i18n").TranslationKey)}</Button>
-                      </Link>
-                    ) : null;
-                  })()}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Workspace — the single home (UX-v1 P6). Full-width and ahead of the
-            standalone-tool grid, since it reads as primary, not one option
-            among five. Previously the dashboard had no link to it at all. */}
-        {workspaceCapability && (
-          <Link to={workspaceCapability.route!}>
-            <Card className="hover:border-primary/50 transition-colors cursor-pointer bg-primary/5 border-primary/30">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="rounded-lg bg-primary/10 p-2 shrink-0">
-                  <workspaceCapability.icon className="h-6 w-6 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <CardTitle className="text-lg">{t("dashboard.workspace_title", "Workspace")}</CardTitle>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {t("dashboard.workspace_desc", "Library, writing and research side by side")}
-                  </p>
-                </div>
-                {direction === "rtl" ? (
-                  <ArrowLeft className="h-5 w-5 text-primary shrink-0" />
-                ) : (
-                  <ArrowRight className="h-5 w-5 text-primary shrink-0" />
-                )}
-              </CardContent>
-            </Card>
-          </Link>
-        )}
-
-        {/* Tools Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {toolCards.map((capability) => {
-            const card = DASHBOARD_CARDS[capability.id];
-            if (!card) return null;
-            const Icon = card.icon;
-            return (
-              <Link key={capability.id} to={capability.route!}>
-                <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-primary/10 p-2">
-                        <Icon className="h-6 w-6 text-primary" />
-                      </div>
-                      <CardTitle className="text-lg">{t(card.titleKey)}</CardTitle>
-                    </div>
-                  </CardHeader>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Recent Activity */}
-        {recentActivity.length > 0 && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Clock className="h-5 w-5 text-muted-foreground" />
-                {t("dashboard.recent_activity")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {recentActivity.map((entry) => (
-                <div key={entry.id} className="flex items-center gap-3 text-sm">
-                  <div className={`rounded p-1 ${entry.type === "tts" ? "bg-primary/10" : "bg-accent"}`}>
-                    {entry.type === "tts" ? (
-                      <Volume2 className="h-3.5 w-3.5 text-primary" />
-                    ) : entry.type === "stt" ? (
-                      <Mic className="h-3.5 w-3.5 text-accent-foreground" />
-                    ) : entry.type === "research" || entry.type === "islamic" ? (
-                      <BookOpen className="h-3.5 w-3.5 text-accent-foreground" />
-                    ) : (
-                      <Image className="h-3.5 w-3.5 text-accent-foreground" />
-                    )}
-                  </div>
-                  <span className="text-foreground truncate flex-1">{entry.label}</span>
-                  {entry.tokensSpent != null && entry.tokensSpent > 0 && (
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {entry.tokensSpent} tokens
-                    </span>
-                  )}
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">{formatTime(entry.timestamp)}</span>
-                </div>
-              ))}
             </CardContent>
           </Card>
         )}

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skills and sources</title>
+<link rel="stylesheet" href="../screens/_shared/tokens.css">
+<link rel="stylesheet" href="../screens/_shared/ui.css">
+<link rel="stylesheet" href="_app.css">
+<script src="../screens/_shared/kit.js" defer></script>
+<style>
+  .sk { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 16px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+  .sk .ic { inline-size: 38px; block-size: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; flex: none; }
+  .conn { display: flex; gap: 12px; padding: 14px; border-radius: 16px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); align-items: center; }
+  .qcard { padding: 20px; border-radius: 22px; border: 1px solid hsl(var(--warning-bd)); background: hsl(var(--card)); box-shadow: var(--shadow-md); display: flex; flex-direction: column; gap: 12px; }
+  .qn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: hsl(var(--warning)); background: hsl(var(--warning-bg)); padding: 3px 10px; border-radius: 99px; align-self: flex-start; }
+  .k { inline-size: 24px; block-size: 24px; border-radius: 7px; background: hsl(var(--muted)); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; } .opt.on .k { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  textarea.input { min-block-size: 120px; padding-block: 12px; resize: none; line-height: 1.8; }
+</style>
+</head>
+<body data-title="v3 · 06 · مہارتیں (/) اور ذرائع (@)" data-note="SYSTEM-2026 §7، §8: چار پرامپٹ لائبریریاں (ٹاسکس، پرامپٹس، پلے بکس، ریسیپیز) ایک «مہارتیں» میں؛ شاملہ، تفسیر، حدیث، میری فائلیں ایک «ذرائع» میں۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>مہارتیں سنبھالیں · نئی مہارت</h2>
+  <p class="cap">یہی صفحہ «میں ← ترتیبات ← مہارتیں» سے بھی کھلتا ہے اور `/` مینو کے آخر میں «مہارتیں سنبھالیں» سے بھی۔ تین حصے: بلٹ ان · میری · کئی مراحل والی (پرانی ریسیپیز)۔ ہر مہارت پر «/ میں دکھائیں» کا سوئچ، تاکہ `/` کی فہرست صرف کام کی چیزیں دکھائے۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div data-tb="desk" data-t="مہارتیں"></div>
+      <div class="app" style="grid-template-columns:264px 1fr 420px"><aside data-side="me"></aside>
+        <div class="scroll p6 col" style="--g:14px"><div class="row between"><div class="col" style="--g:2px"><div class="xl b"><x-t ur="مہارتیں" en="Skills"></x-t></div><span class="sm muted"><x-t ur="چیٹ اور ایڈیٹر میں / لکھ کر چلائیں" en="Run them with / in chat and the editor"></x-t></span></div><button class="btn primary"><i data-i="plus"></i><x-t ur="نئی مہارت" en="New skill"></x-t></button></div>
+          <div class="row"><div class="search grow" style="max-inline-size:340px"><i data-i="search"></i><span><x-t ur="مہارت تلاش کریں" en="Search skills"></x-t></span></div><div class="segmented"><span class="on"><x-t ur="سب" en="All"></x-t></span><span><x-t ur="بلٹ ان" en="Built-in"></x-t></span><span><x-t ur="میری" en="Mine"></x-t></span><span><x-t ur="کئی مراحل" en="Multi-step"></x-t></span></div></div>
+          <div class="sk"><span class="ic ic-o"><i data-i="help"></i></span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="مجھ سے پوچھو" en="Grill me"></x-t></b><span class="xs muted"><x-t ur="ایک وقت میں ایک سوال، آخر میں خاکہ · بلٹ ان" en="One question at a time, ends with an outline · built-in"></x-t></span></div><span class="xs muted"><x-t ur="/ میں" en="In /"></x-t></span><span class="switch on"></span></div>
+          <div class="sk"><span class="ic ic-c"><i data-i="quote"></i></span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="حوالہ جات مکمل کریں" en="Complete citations"></x-t></b><span class="xs muted"><x-t ur="ذرائع میں ماخذ ڈھونڈ کر ٹریک شدہ حوالے · بلٹ ان" en="Finds sources, adds tracked citations · built-in"></x-t></span></div><span class="xs muted"><x-t ur="/ میں" en="In /"></x-t></span><span class="switch on"></span></div>
+          <div class="sk"><span class="ic ic-t"><i data-i="table"></i></span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="مذاہب کا موازنہ" en="Compare the schools"></x-t></b><span class="xs muted"><x-t ur="3 مراحل · پہلے منصوبہ دکھاتی ہے" en="3 steps · shows a plan first"></x-t></span></div><span class="xs muted"><x-t ur="/ میں" en="In /"></x-t></span><span class="switch on"></span></div>
+          <div class="sk"><span class="ic ic-a"><i data-i="user"></i></span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="فقہی تلخیص" en="Fiqh digest"></x-t></b><span class="xs muted"><x-t ur="میری · آخری بار کل استعمال" en="Mine · last used yesterday"></x-t></span></div><button class="icon-btn sm"><i data-i="pen"></i></button><span class="switch on"></span></div>
+          <div class="sk" style="opacity:.6"><span class="ic" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))"><i data-i="type"></i></span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="رسم الخط معیاری بنائیں" en="Normalise script"></x-t></b><span class="xs muted"><x-t ur="بلٹ ان · / میں چھپی ہوئی" en="Built-in · hidden from /"></x-t></span></div><span class="switch"></span></div>
+        </div>
+        <aside class="col" style="min-block-size:0;border-inline-start:1px solid hsl(var(--border));background:hsl(var(--card))"><div class="row p4" style="border-block-end:1px solid hsl(var(--border))"><b class="grow"><x-t ur="نئی مہارت" en="New skill"></x-t></b><button class="icon-btn sm"><i data-i="x"></i></button></div>
+          <div class="scroll grow p4 col" style="--g:14px"><div class="field"><label><x-t ur="نام (/ کے بعد یہی لکھا جائے گا)" en="Name (typed after /)"></x-t></label><input class="input" value="فقہی تلخیص" readonly></div><div class="field"><label><x-t ur="ہدایات" en="Instructions"></x-t></label><textarea class="input" readonly>منتخب عبارت کو تین جملوں میں خلاصہ کرو، فقہی اصطلاحات برقرار رکھو، اور ہر جملے کے آخر میں حوالہ دو۔</textarea></div>
+            <div class="field"><label><x-t ur="کس پر چلے" en="Runs on"></x-t></label><div class="segmented"><span class="on"><x-t ur="منتخب متن" en="Selection"></x-t></span><span><x-t ur="پوری دستاویز" en="Whole document"></x-t></span><span><x-t ur="سوال" en="A question"></x-t></span></div></div>
+            <div class="field"><label><x-t ur="نتیجہ" en="Result"></x-t></label><div class="segmented"><span class="on"><x-t ur="ٹریک شدہ تبدیلی" en="Tracked change"></x-t></span><span><x-t ur="چیٹ میں جواب" en="Answer in chat"></x-t></span></div></div>
+            <div class="banner info" style="padding:10px"><i data-i="info"></i><div class="t xs"><x-t ur="پوری دستاویز والی مہارت پہلے منصوبہ دکھائے گی۔" en="Whole-document skills show a plan first."></x-t></div></div></div>
+          <div class="p4 row" style="border-block-start:1px solid hsl(var(--border))"><button class="btn primary grow"><x-t ur="محفوظ کریں" en="Save"></x-t></button><button class="btn"><i data-i="play"></i><x-t ur="آزمائیں" en="Try"></x-t></button></div></aside>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>«مجھ سے پوچھو» (ایک مہارت کے طور پر)</h2>
+  <p class="cap">الگ اسکرین نہیں، چیٹ کے اندر ہی چلتی ہے۔ سوال کارڈ میں ذرائع سے جڑی وجہ، اختیارات (ایک «تجویز»)، اپنا جواب لکھنا/بولنا۔ اوپر 5–8 سوالوں کی پیش رفت اور ہمیشہ «کافی ہے»۔ آخر میں خاکہ ← «کام کریں» کا منصوبہ یا دستاویز۔</p>
+  <div class="frames">
+    <div class="device desk short" style="inline-size:720px">
+      <div data-tb="desk"></div>
+      <div class="scroll p4 col" style="--g:14px;padding-inline:44px">
+        <div class="row between"><span class="token sk">/مجھ سے پوچھو</span><div class="row" style="--g:8px"><span class="xs muted"><x-t ur="سوال 3 / ~6" en="Question 3 / ~6"></x-t></span><button class="btn sm"><x-t ur="کافی ہے، خاکہ بنائیں" en="Enough, make the outline"></x-t></button></div></div>
+        <div class="qcard"><span class="qn"><i data-i="help" data-s="14"></i><x-t ur="سوال 3" en="Question 3"></x-t></span><div class="lg b" style="line-height:1.8"><x-t ur="فتویٰ کس کے لیے ہے: عام سائل یا اہلِ علم؟" en="Who is the fatwa for: a lay questioner or scholars?"></x-t></div><div class="row xs muted" style="--g:6px"><i data-i="book"></i><x-t ur="بدائع اور ہندیہ میں اس بحث کی تفصیل کا معیار مختلف ہے۔" en="Bada'i and Hindiyya treat this at different depths."></x-t></div>
+          <div class="opt on"><span class="k">A</span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="عام سائل · مختصر اور واضح" en="Lay questioner · short and clear"></x-t> <span class="chip brand"><x-t ur="تجویز" en="Suggested"></x-t></span></b></div></div><div class="opt"><span class="k">B</span><b class="sm"><x-t ur="اہلِ علم · دلائل کے ساتھ" en="Scholars · with evidence"></x-t></b></div>
+          <div class="composer" style="flex-direction:row;align-items:center;padding:8px 12px"><span class="muted sm grow"><x-t ur="یا اپنا جواب…" en="Or your own answer…"></x-t></span><button class="icon-btn sm"><i data-i="mic"></i></button><button class="btn sm primary"><x-t ur="اگلا" en="Next"></x-t></button></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>ذرائع: «فائلیں ← ذرائع» اور ترتیبات</h2>
+  <p class="cap">ذرائع کی فہرست ایک ہی جگہ: شاملہ کی کتابیں، میری فائلیں (ذاتی کارپس)، اور کنیکٹرز (تفسیر، حدیث و رجال…)۔ ہر ماخذ پر «فعال» کا سوئچ؛ فولڈر سے باہر کی چیٹ تمام فعال ذرائع استعمال کرتی ہے۔ ڈیسک ٹاپ پر لوکل شاملہ، ویب پر Bridge؛ موبائل پر صرف کلاؤڈ۔</p>
+  <div class="frames">
+    <div class="device desk short">
+      <div data-tb="desk" data-t="فائلیں ← ذرائع"></div>
+      <div class="app" style="grid-template-columns:264px 1fr"><aside data-side="files"></aside>
+        <div class="col" style="min-block-size:0"><div class="row p4" style="--g:12px"><div class="xl b grow"><x-t ur="فائلیں" en="Files"></x-t></div><button class="btn"><i data-i="upload"></i><x-t ur="فائل شامل کریں" en="Add file"></x-t></button></div>
+          <div class="tabs" style="padding-inline:16px"><button class="tab"><i data-i="folder"></i><x-t ur="فولڈر اور دستاویزات" en="Folders & documents"></x-t></button><button class="tab on"><i data-i="book"></i><x-t ur="ذرائع" en="Sources"></x-t></button><button class="tab"><i data-i="mic"></i><x-t ur="نتائج" en="Results"></x-t></button></div>
+          <div class="scroll grow p4 col" style="--g:10px">
+            <div class="conn"><span class="li" style="padding:0"><span class="ic"><i data-i="book"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="مکتبہ شاملہ (لوکل)" en="Maktaba Shamila (local)"></x-t></b><span class="xs muted"><x-t ur="7,412 کتب · کتاب کھولیں تو ریڈر" en="7,412 books · opening a book opens the reader"></x-t></span></div><button class="btn sm"><x-t ur="کتب دیکھیں" en="Browse"></x-t></button><span class="switch on"></span></div>
+            <div class="conn"><span class="li" style="padding:0"><span class="ic info"><i data-i="layers"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="میری فائلیں" en="My files"></x-t></b><span class="xs muted"><x-t ur="6 فائلیں · 1 تیار ہو رہی ہے (30%)" en="6 files · 1 processing (30%)"></x-t></span></div><button class="btn sm"><x-t ur="دیکھیں" en="View"></x-t></button><span class="switch on"></span></div>
+            <div class="conn"><span class="li" style="padding:0"><span class="ic warning"><i data-i="quote"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="تفاسیر" en="Tafsir"></x-t></b><span class="xs muted"><x-t ur="کنیکٹر · 6 تفاسیر" en="Connector · 6 tafsirs"></x-t></span></div><span class="switch on"></span></div>
+            <div class="conn"><span class="li" style="padding:0"><span class="ic"><i data-i="users"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="حدیث و رجال" en="Hadith & rijal"></x-t></b><span class="xs muted"><x-t ur="کنیکٹر · 4" en="Connector · 4"></x-t></span></div><span class="switch on"></span></div>
+            <div class="conn" style="opacity:.65"><span class="li" style="padding:0"><span class="ic neutral"><i data-i="card"></i></span></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="اسلامی مالیات" en="Islamic finance"></x-t></b><span class="xs muted"><x-t ur="غیر فعال" en="Off"></x-t></span></div><span class="switch"></span></div>
+          </div></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>`/` مینو · `@` مینو · مہارتیں</h2>
+  <p class="cap">موبائل کی بورڈ کے اوپر `/` اور `@` کے بٹن، تاکہ ٹائپ کیے بغیر بھی کھلیں۔ دونوں مینو نیچے سے شیٹ؛ ہر قطار ≥48px۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="grow trunc"><x-t ur="نئی چیٹ" en="New chat"></x-t></b></div>
+      <div class="viewport"><div class="grow"></div><div class="sheet" style="padding-block-end:8px"><div class="grab"></div><div class="nav-label">/ <x-t ur="مہارتیں" en="SKILLS"></x-t></div><div class="p2 col" style="--g:0"><div class="menu-item" style="min-block-size:48px"><i data-i="help" style="color:hsl(var(--warning))"></i><x-t ur="مجھ سے پوچھو" en="Grill me"></x-t></div><div class="menu-item" style="min-block-size:48px"><i data-i="quote"></i><x-t ur="حوالہ جات مکمل کریں" en="Complete citations"></x-t></div><div class="menu-item" style="min-block-size:48px"><i data-i="spark"></i><x-t ur="خلاصہ" en="Summarise"></x-t></div><div class="menu-item" style="min-block-size:48px"><i data-i="table"></i><x-t ur="مذاہب کا موازنہ" en="Compare schools"></x-t></div><div class="menu-item muted" style="min-block-size:48px"><i data-i="sliders"></i><x-t ur="مہارتیں سنبھالیں…" en="Manage skills…"></x-t></div></div></div>
+        <div class="composer" style="margin:8px 10px 10px;padding:8px 10px"><span class="sm"><span class="token sk">/</span></span><div class="row"><span class="grow"></span><button class="icon-btn sm fill"><i data-i="send" data-flip></i></button></div></div></div>
+    </div>
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="grow trunc"><x-t ur="نئی چیٹ" en="New chat"></x-t></b></div>
+      <div class="viewport"><div class="grow"></div><div class="sheet" style="padding-block-end:8px"><div class="grab"></div><div class="nav-label">@ <x-t ur="ذرائع" en="SOURCES"></x-t></div><div class="p2 col" style="--g:0"><div class="menu-item" style="min-block-size:52px"><i data-i="book"></i><div class="col grow" style="--g:0"><b class="sm">بدائع الصنائع</b><span class="xs muted"><x-t ur="شاملہ (کلاؤڈ)" en="Shamela (cloud)"></x-t></span></div><i data-i="check" class="pin"></i></div><div class="menu-item" style="min-block-size:52px"><i data-i="book"></i><div class="col grow" style="--g:0"><b class="sm">رد المحتار</b><span class="xs muted"><x-t ur="شاملہ (کلاؤڈ)" en="Shamela (cloud)"></x-t></span></div></div><div class="menu-item" style="min-block-size:52px"><i data-i="file"></i><div class="col grow" style="--g:0"><b class="sm">اصول الفقہ.pdf</b><span class="xs muted"><x-t ur="میری فائلیں" en="My files"></x-t></span></div></div><div class="menu-item" style="min-block-size:52px"><i data-i="quote"></i><b class="sm grow"><x-t ur="تفاسیر" en="Tafsir"></x-t></b></div></div></div>
+        <div class="composer" style="margin:8px 10px 10px;padding:8px 10px"><span class="sm"><span class="token src">@بدائع</span></span><div class="row"><span class="grow"></span><button class="icon-btn sm fill"><i data-i="send" data-flip></i></button></div></div></div>
+    </div>
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="grow"><x-t ur="مہارتیں" en="Skills"></x-t></b><button class="icon-btn"><i data-i="plus"></i></button></div>
+      <div class="viewport"><div class="scroll grow p3 col" style="--g:8px"><div class="segmented" style="inline-size:100%"><span class="on grow center"><x-t ur="سب" en="All"></x-t></span><span class="grow center"><x-t ur="میری" en="Mine"></x-t></span><span class="grow center"><x-t ur="کئی مراحل" en="Multi-step"></x-t></span></div><div class="sk"><span class="ic ic-o"><i data-i="help"></i></span><b class="sm grow"><x-t ur="مجھ سے پوچھو" en="Grill me"></x-t></b><span class="switch on"></span></div><div class="sk"><span class="ic ic-c"><i data-i="quote"></i></span><b class="sm grow"><x-t ur="حوالہ جات مکمل کریں" en="Complete citations"></x-t></b><span class="switch on"></span></div><div class="sk"><span class="ic ic-t"><i data-i="table"></i></span><b class="sm grow"><x-t ur="مذاہب کا موازنہ" en="Compare schools"></x-t></b><span class="switch on"></span></div><div class="sk"><span class="ic ic-a"><i data-i="user"></i></span><b class="sm grow"><x-t ur="فقہی تلخیص" en="Fiqh digest"></x-t></b><span class="switch on"></span></div></div></div>
+    </div>
+  </div>
+</section>
+</main>
+<script src="_v3.js"></script>
+</body>
+</html>

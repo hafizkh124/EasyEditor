@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { type WorkbenchTab, type RailPanel, usePanelState } from "./usePanelState";
+import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
 
 /** The page the Shamela reader is currently showing (plain text, for AI). */
 export interface ReaderPageSignal {
@@ -33,6 +34,11 @@ export interface DocumentTaskOutcome {
  * signals are. `null` means no editor is mounted and nothing can be run.
  */
 export type DocumentTaskRunner = (taskSlug: string) => Promise<DocumentTaskOutcome>;
+
+/** Runs one editor skill the way the `/` menu does (see SelectionBarActions.runTask). */
+export type EditorTaskRunner = (taskSlug: string) => void;
+/** Pick a file and extract its text at the open document's cursor (SYSTEM-2026 §5). */
+export type EditorExtractRunner = () => void;
 
 interface WorkspaceContextType {
   activeDocumentId: string | null;
@@ -94,12 +100,49 @@ interface WorkspaceContextType {
   registerDocumentTaskRunner: (runner: DocumentTaskRunner | null) => void;
 
   /**
+   * The mounted editor's task runner for one skill — on the selection, or the
+   * document when nothing is selected — so `Ctrl+K` can run editor skills.
+   */
+  runEditorTask: EditorTaskRunner | null;
+  registerEditorTaskRunner: (runner: EditorTaskRunner | null) => void;
+  /** Set while a document is open and extracting is available here — for `Ctrl+K`. */
+  extractIntoEditor: EditorExtractRunner | null;
+  registerEditorExtract: (runner: EditorExtractRunner | null) => void;
+
+  /**
+   * Open a saved chat in the research tab (the folder index, History). An
+   * explicit request rather than a URL change, which the chat does not see
+   * once the workspace is mounted; `?session=` still works on a fresh load.
+   */
+  chatSessionRequest: { id: string; nonce: number } | null;
+  openChatSession: (id: string) => void;
+
+  /** A prompt skill chosen outside the chat (`Ctrl+K`), for the research composer to open. */
+  pendingSkillPrompt: ScholarlyPromptDef | null;
+  requestSkillPrompt: (prompt: ScholarlyPromptDef) => void;
+  clearPendingSkillPrompt: () => void;
+
+  /**
    * Headings of the document currently open in the Canvas, in order. Published
    * here so the Agent tab's `@` picker (SPEC-M8 Layer 7) can offer the outline
    * as explicit references without reaching into the editor instance.
    */
-  documentOutline: string[];
-  setDocumentOutline: (headings: string[]) => void;
+  documentOutline: OutlineHeading[];
+  setDocumentOutline: (headings: OutlineHeading[]) => void;
+
+  /**
+   * The folder index (SYSTEM-2026 §3) asks the editor to scroll to the nth
+   * heading of the open document; the editor consumes it. `nonce` lets the
+   * same heading be chosen twice in a row.
+   */
+  headingJump: { index: number; nonce: number } | null;
+  jumpToHeading: (index: number) => void;
+}
+
+/** One heading of the open document, in document order. */
+export interface OutlineHeading {
+  text: string;
+  level: number;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
@@ -111,7 +154,9 @@ export const WorkspaceProvider: React.FC<{
   initialWorkbenchOpenFromUrl?: boolean;
   /** e.g. `?panel=research` — opens the workbench on that specific tab. */
   initialWorkbenchTab?: WorkbenchTab;
-}> = ({ children, documentId, initialWorkbenchOpenFromUrl = false, initialWorkbenchTab }) => {
+  /** A question typed on Home: pre-fills the research composer once. */
+  initialWorkbenchQuery?: string;
+}> = ({ children, documentId, initialWorkbenchOpenFromUrl = false, initialWorkbenchTab, initialWorkbenchQuery }) => {
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(documentId ?? null);
   const panelState = usePanelState(initialWorkbenchOpenFromUrl, initialWorkbenchTab);
 
@@ -123,18 +168,25 @@ export const WorkspaceProvider: React.FC<{
     if (documentId) setActiveDocumentId(documentId);
   }, [documentId]);
 
-  const [pendingWorkbenchQuery, setPendingWorkbenchQuery] = useState<string | null>(null);
+  const [pendingWorkbenchQuery, setPendingWorkbenchQuery] = useState<string | null>(initialWorkbenchQuery ?? null);
   const [pendingCanvasInsertion, setPendingCanvasInsertion] = useState<string | null>(null);
   const [readerPage, setReaderPage] = useState<ReaderPageSignal | null>(null);
   const [readerJump, setReaderJump] = useState<ReaderJumpSignal | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
-  const [documentOutline, setDocumentOutlineState] = useState<string[]>([]);
+  const [documentOutline, setDocumentOutlineState] = useState<OutlineHeading[]>([]);
 
-  const setDocumentOutline = useCallback((headings: string[]) => {
+  const setDocumentOutline = useCallback((headings: OutlineHeading[]) => {
     setDocumentOutlineState((prev) =>
-      prev.length === headings.length && prev.every((h, i) => h === headings[i]) ? prev : headings,
+      prev.length === headings.length && prev.every((h, i) => h.text === headings[i].text && h.level === headings[i].level)
+        ? prev
+        : headings,
     );
+  }, []);
+
+  const [headingJump, setHeadingJump] = useState<{ index: number; nonce: number } | null>(null);
+  const jumpToHeading = useCallback((index: number) => {
+    setHeadingJump((prev) => ({ index, nonce: (prev?.nonce ?? 0) + 1 }));
   }, []);
 
   const sendSelectionToWorkbench = useCallback(
@@ -159,6 +211,35 @@ export const WorkspaceProvider: React.FC<{
 
   // Held in state, not a ref: the Recipes tab has to re-render when the editor
   // mounts or unmounts, or its Run button would stay disabled forever.
+  const [runEditorTask, setRunEditorTask] = useState<EditorTaskRunner | null>(null);
+  const registerEditorTaskRunner = useCallback((runner: EditorTaskRunner | null) => {
+    setRunEditorTask(() => runner);
+  }, []);
+  const [extractIntoEditor, setExtractIntoEditor] = useState<EditorExtractRunner | null>(null);
+  const registerEditorExtract = useCallback((runner: EditorExtractRunner | null) => {
+    setExtractIntoEditor(() => runner);
+  }, []);
+
+  const [chatSessionRequest, setChatSessionRequest] = useState<{ id: string; nonce: number } | null>(null);
+  const openChatSession = useCallback(
+    (id: string) => {
+      setChatSessionRequest((prev) => ({ id, nonce: (prev?.nonce ?? 0) + 1 }));
+      panelState.setWorkbenchTab("research");
+      panelState.setWorkbenchOpen(true);
+    },
+    [panelState],
+  );
+
+  const [pendingSkillPrompt, setPendingSkillPrompt] = useState<ScholarlyPromptDef | null>(null);
+  const requestSkillPrompt = useCallback(
+    (prompt: ScholarlyPromptDef) => {
+      setPendingSkillPrompt(prompt);
+      panelState.setWorkbenchTab("research");
+    },
+    [panelState],
+  );
+  const clearPendingSkillPrompt = useCallback(() => setPendingSkillPrompt(null), []);
+
   const [runDocumentTask, setRunDocumentTask] = useState<DocumentTaskRunner | null>(null);
   const registerDocumentTaskRunner = useCallback((runner: DocumentTaskRunner | null) => {
     // Wrapped, because a bare function passed to a setter is treated as an
@@ -202,8 +283,19 @@ export const WorkspaceProvider: React.FC<{
         setCommandPaletteOpen,
         runDocumentTask,
         registerDocumentTaskRunner,
+        runEditorTask,
+        registerEditorTaskRunner,
+        extractIntoEditor,
+        registerEditorExtract,
+        chatSessionRequest,
+        openChatSession,
+        pendingSkillPrompt,
+        requestSkillPrompt,
+        clearPendingSkillPrompt,
         documentOutline,
         setDocumentOutline,
+        headingJump,
+        jumpToHeading,
       }}
     >
       {children}

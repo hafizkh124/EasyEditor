@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tools</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .toolshell { display: grid; grid-template-columns: 1fr 1fr; flex: 1; min-block-size: 0; }
+  .toolshell > div { padding: 24px; display: flex; flex-direction: column; gap: 14px; min-block-size: 0; }
+  .drop { border: 2px dashed hsl(var(--border-strong)); border-radius: 20px; padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; background: hsl(var(--card)); }
+  .wave { display: flex; align-items: center; gap: 3px; block-size: 56px; } .wave i { inline-size: 4px; border-radius: 4px; background: hsl(var(--primary)); }
+  .rec { inline-size: 76px; block-size: 76px; border-radius: 50%; background: hsl(var(--danger)); color: #fff; display: grid; place-items: center; box-shadow: 0 0 0 10px hsl(var(--danger) / .15); }
+  .stepper { display: flex; align-items: center; gap: 8px; font-size: 13px; } .stepper .s { display: flex; align-items: center; gap: 6px; color: hsl(var(--muted-foreground)); } .stepper .s.on { color: hsl(var(--primary)); font-weight: 600; } .stepper .s.done { color: hsl(var(--success)); }
+  .stepper .n { inline-size: 22px; block-size: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: hsl(var(--muted)); } .stepper .on .n { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); } .stepper .done .n { background: hsl(var(--success-bg)); color: hsl(var(--success)); }
+  .stepper .bar { flex: 1; block-size: 1px; background: hsl(var(--border)); }
+  .pgthumb { inline-size: 100%; aspect-ratio: 3/4; border-radius: 12px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .pgthumb i { display: block; block-size: 7px; border-radius: 4px; background: hsl(var(--muted)); }
+</style>
+</head>
+<body data-title="05 · ٹولز: ٹرانسکرائب، OCR، کتاب کا ترجمہ" data-note="سب ٹولز ایک 'ٹول شیل' استعمال کرتے ہیں: ان پٹ ← عمل ← نتیجہ ← محفوظ/برآمد۔ تینوں پلیٹ فارمز پر وہی فلو۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag">ویب</span><span class="tag desk">ڈیسک ٹاپ</span>ٹرانسکرائب · ریکارڈنگ کی حالت اور نتیجہ</h2>
+  <p class="cap">بائیں ان پٹ اور آواز کی لہر، دائیں زندہ متن۔ ہر ٹول میں اوپر ایک 3 قدمی اسٹیپر۔ ڈیسک ٹاپ پر انجن کا چپ ("مقامی Whisper") اور ویب پر ("کلاؤڈ") دکھتا ہے، باقی سب یکساں۔</p>
+  <div class="frames">
+    <div class="device desk short">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>app.easyeditor.example/transcribe</div></div>
+      <div class="topbar" style="block-size:56px;padding-inline:20px"><span class="li" style="padding:0"><span class="ic"><i data-i="mic"></i></span></span><span class="title lg"><x-t ur="ٹرانسکرائب" en="Transcribe"></x-t></span><span class="chip neutral"><i data-i="cloud"></i><x-t ur="کلاؤڈ انجن" en="Cloud engine"></x-t></span><span class="grow"></span><div class="stepper" style="inline-size:340px"><span class="s done"><span class="n"><i data-i="check" data-s="12"></i></span><x-t ur="ان پٹ" en="Input"></x-t></span><span class="bar"></span><span class="s on"><span class="n">2</span><x-t ur="عمل" en="Process"></x-t></span><span class="bar"></span><span class="s"><span class="n">3</span><x-t ur="نتیجہ" en="Result"></x-t></span></div></div>
+      <div class="toolshell">
+        <div class="center" style="justify-content:center;border-inline-end:1px solid hsl(var(--border));gap:18px">
+          <div class="wave"><i style="block-size:14px"></i><i style="block-size:30px"></i><i style="block-size:46px"></i><i style="block-size:22px"></i><i style="block-size:52px"></i><i style="block-size:34px"></i><i style="block-size:16px"></i><i style="block-size:40px"></i><i style="block-size:54px"></i><i style="block-size:26px"></i><i style="block-size:12px"></i><i style="block-size:36px"></i><i style="block-size:48px"></i><i style="block-size:20px"></i></div>
+          <div class="mono b" style="font-size:34px">02:14</div>
+          <div class="row" style="--g:14px"><button class="icon-btn" style="inline-size:52px;block-size:52px;background:hsl(var(--muted))"><i data-i="pause" data-s="22"></i></button><button class="rec" aria-label="stop"><span style="inline-size:24px;block-size:24px;border-radius:6px;background:#fff"></span></button><button class="icon-btn" style="inline-size:52px;block-size:52px;background:hsl(var(--muted))"><i data-i="x" data-s="22"></i></button></div>
+          <div class="row xs muted" style="--g:6px"><span class="dot" style="color:hsl(var(--danger))"></span><x-t ur="ریکارڈنگ جاری · زبان: اردو (خودکار)" en="Recording · language: Urdu (auto)"></x-t></div>
+        </div>
+        <div style="background:hsl(var(--card))">
+          <div class="row between"><span class="b"><x-t ur="زندہ متن" en="Live transcript"></x-t></span><span class="chip brand"><span class="dot"></span><x-t ur="سن رہا ہے" en="Listening"></x-t></span></div>
+          <div class="doc" style="font-size:18px;line-height:2.2"><x-t ur="آج ہم اس مسئلے کی تحقیق کریں گے کہ فقہاء کے نزدیک اصل کیا ہے اور دلائل کیا ہیں" en="Today we will look into what the jurists consider the default ruling, and what the evidence is"></x-t><span style="background:hsl(var(--primary)/.2);border-radius:4px;padding-inline:4px"> <x-t ur="…اور پھر" en="…and then"></x-t></span></div>
+          <span class="grow"></span>
+          <div class="row"><button class="btn grow"><i data-i="copy"></i><x-t ur="کاپی" en="Copy"></x-t></button><button class="btn primary grow"><i data-i="pen"></i><x-t ur="ایڈیٹر میں بھیجیں" en="Send to editor"></x-t></button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>OCR · اپ لوڈ، جائزہ، نتیجہ</h2>
+  <p class="cap">کیمرا اور فائل دونوں شروع کے راستے۔ جائزے میں صفحے کی تصویر اور نکالا گیا متن اوپر نیچے (سائز کی وجہ سے)۔ ڈیسک ٹاپ/ویب پر یہی دو کالم ساتھ ساتھ۔ کم اعتماد والے الفاظ پر پیلا نشان۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><span class="title grow">OCR</span></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:14px">
+        <div class="stepper"><span class="s on"><span class="n">1</span><x-t ur="ان پٹ" en="Input"></x-t></span><span class="bar"></span><span class="s"><span class="n">2</span><x-t ur="جائزہ" en="Review"></x-t></span><span class="bar"></span><span class="s"><span class="n">3</span><x-t ur="محفوظ" en="Save"></x-t></span></div>
+        <div class="drop"><span class="avatar" style="inline-size:56px;block-size:56px"><i data-i="upload" data-s="24"></i></span><div class="b"><x-t ur="فائل چنیں یا یہاں چھوڑیں" en="Choose a file or drop it here"></x-t></div><div class="xs muted">PDF · JPG · PNG · 20MB</div></div>
+        <button class="btn primary lg block"><i data-i="image"></i><x-t ur="کیمرے سے اسکین کریں" en="Scan with camera"></x-t></button>
+        <div class="b sm"><x-t ur="حالیہ" en="Recent"></x-t></div>
+        <div class="li card"><span class="ic"><i data-i="file"></i></span><div class="grow"><div class="b sm">فتاویٰ_جلد2.pdf</div><div class="xs muted"><x-t ur="48 صفحات · مکمل" en="48 pages · done"></x-t></div></div><span class="chip success"><x-t ur="مکمل" en="Done"></x-t></span></div>
+        <div class="li card"><span class="ic warning"><i data-i="file"></i></span><div class="grow"><div class="b sm">رسالہ.jpg</div><div class="progress" style="margin-block-start:6px"><i style="inline-size:55%"></i></div></div><span class="chip info">55%</span></div>
+      </div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><span class="title grow"><x-t ur="جائزہ · صفحہ 3 / 48" en="Review · page 3 / 48"></x-t></span><button class="btn sm primary"><x-t ur="محفوظ" en="Save"></x-t></button></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:12px">
+        <div class="pgthumb" style="aspect-ratio:auto;block-size:190px"><i style="inline-size:80%"></i><i></i><i style="inline-size:90%"></i><i style="inline-size:70%"></i><i></i><i style="inline-size:60%"></i></div>
+        <div class="banner warning"><i data-i="warn"></i><div class="t"><b><x-t ur="3 الفاظ پر کم اعتماد" en="3 low-confidence words"></x-t></b><x-t ur="نیچے نشان زد ہیں، جانچ لیں۔" en="Highlighted below, please check."></x-t></div></div>
+        <div class="doc card pad" style="font-size:18px"><x-t ur="شریعت کے احکام میں" en="In the rulings of the Sharia"></x-t> <mark style="background:hsl(var(--warning-bg));color:hsl(var(--warning));border-radius:5px;padding-inline:4px;outline:1px solid hsl(var(--warning-bd))"><x-t ur="تدریج" en="gradual"></x-t></mark> <x-t ur="کا اصول ملتا ہے" en="principle is found"></x-t></div>
+        <div class="row"><button class="btn grow"><i data-i="chev-r" data-flip></i><x-t ur="پچھلا" en="Prev"></x-t></button><button class="btn grow"><x-t ur="اگلا" en="Next"></x-t><i data-i="chev-l" data-flip></i></button></div>
+      </div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><span class="title grow"><x-t ur="کتاب کا ترجمہ" en="Book translation"></x-t></span></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:12px">
+        <div class="card pad col" style="--g:8px"><div class="row between"><span class="b">فتاویٰ_جلد2.pdf</span><span class="chip info"><x-t ur="اردو ← English" en="Urdu → English"></x-t></span></div><div class="progress"><i style="inline-size:38%"></i></div><div class="row between xs muted"><span><x-t ur="18 / 48 صفحات" en="18 / 48 pages"></x-t></span><span><x-t ur="باقی ~12 منٹ" en="~12 min left"></x-t></span></div><div class="row"><button class="btn sm"><i data-i="pause"></i><x-t ur="روکیں" en="Pause"></x-t></button><button class="btn sm ghost"><x-t ur="منسوخ" en="Cancel"></x-t></button></div></div>
+        <div class="segmented" style="inline-size:100%"><span class="on grow center"><x-t ur="ترجمہ" en="Translation"></x-t></span><span class="grow center"><x-t ur="اصل" en="Source"></x-t></span><span class="grow center"><x-t ur="دونوں" en="Both"></x-t></span></div>
+        <div class="card pad col" style="--g:8px"><span class="xs muted"><x-t ur="صفحہ 17" en="Page 17"></x-t></span><div style="font-family:'Lora',serif;line-height:1.8;direction:ltr;text-align:left">The jurists differ on this point; some hold that permissibility is the default, while others prefer caution.</div><div class="row"><span class="chip success"><x-t ur="مصحح" en="Verified"></x-t></span><span class="grow"></span><button class="icon-btn sm"><i data-i="copy"></i></button><button class="icon-btn sm"><i data-i="pen"></i></button></div></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+</main>
+</body>
+</html>

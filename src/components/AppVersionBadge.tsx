@@ -58,7 +58,7 @@ export const AppVersionBadge: React.FC<AppVersionBadgeProps> = ({
             className={`inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted ${className}`}
             data-testid="app-version-badge"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
             {!compact && <span className="font-medium">Easy Editor</span>}
             <span className="font-mono text-xs">{displayVersion}</span>
           </div>

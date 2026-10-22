@@ -1,4 +1,5 @@
 import { getTaskBySlug } from "@/lib/tasks/registry";
+import { isRefineTextAction } from "@/lib/editor/aiActions";
 import { calculateTaskCost } from "@/lib/tasks/cost";
 import type { DocumentTaskOutcome } from "@/core/workspace/WorkspaceContext";
 import type { Recipe, RecipeStep } from "./recipeService";
@@ -66,6 +67,14 @@ export function validateRecipe(recipe: Recipe): { ok: boolean; problems: string[
       continue;
     }
     if (!task.chunkable) {
+      problems.push(
+        `'${step.stepLabel}': '${task.defaultLabel}' پوری دستاویز پر نہیں چل سکتا۔`,
+      );
+      continue;
+    }
+    // The chunked runner only accepts the actions it knows how to apply (a
+    // custom task runs its own prompt by id).
+    if (!task.taskId && (!task.actionName || !isRefineTextAction(task.actionName))) {
       problems.push(
         `'${step.stepLabel}': '${task.defaultLabel}' پوری دستاویز پر نہیں چل سکتا۔`,
       );

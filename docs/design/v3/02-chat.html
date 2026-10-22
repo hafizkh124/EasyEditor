@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chat</title>
+<link rel="stylesheet" href="../screens/_shared/tokens.css">
+<link rel="stylesheet" href="../screens/_shared/ui.css">
+<link rel="stylesheet" href="_app.css">
+<script src="../screens/_shared/kit.js" defer></script>
+</head>
+<body data-title="v3 · 02 · چیٹ: پوچھیں اور کام کریں، / اور @" data-note="SYSTEM-2026 §4، §7، §8: چیٹ بغیر دستاویز کے، دو بٹن، بڑے کام میں پہلے منصوبہ، / مہارتیں، @ ذرائع، جواب میں استعمال شدہ ذرائع اور حوالہ ← ماخذ۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>چیٹ (بغیر دستاویز) · حوالہ ← اصل عبارت</h2>
+  <p class="cap">جواب کے نیچے «کون سے ذرائع استعمال ہوئے» واضح، اعتماد کا چھوٹا چپ، اور دو اہم بٹن: «دستاویز میں ڈالیں» اور «نئی دستاویز بنائیں»۔ حوالے (¹) پر کلک سے دائیں/بائیں ماخذ کا پینل کھلتا ہے، اصل عبارت ہائی لائٹ۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div data-tb="desk"></div>
+      <div class="app" style="grid-template-columns:264px 1fr 400px">
+        <aside data-side="chat"></aside>
+        <div class="col" style="min-block-size:0;border-inline-end:1px solid hsl(var(--border))">
+          <div class="row p3" style="border-block-end:1px solid hsl(var(--border))"><b class="sm grow"><x-t ur="زکوٰۃ کے نصاب کا سوال" en="Question on zakat nisab"></x-t></b><span class="chip neutral"><i data-i="folder"></i><x-t ur="فولڈر سے باہر" en="No folder"></x-t></span><button class="icon-btn sm"><i data-i="more"></i></button></div>
+          <div class="scroll grow p4 col" style="--g:16px;padding-inline:40px">
+            <div class="msg me"><span><x-t ur="سونے اور چاندی کے نصاب میں سے آج کل کس کا اعتبار کیا جائے؟" en="Today, should the gold or silver nisab be used?"></x-t></span></div>
+            <div class="msg"><div class="doc" style="font-size:17px;line-height:2.1"><x-t ur="فقہائے احناف کے ہاں مال کی جو قسم فقراء کے لیے زیادہ نافع ہو، اس کا اعتبار کیا جاتا ہے" en="The Hanafi jurists consider whichever measure benefits the poor more"></x-t><span class="cite" style="background:hsl(var(--primary));color:hsl(var(--primary-foreground))">1</span><x-t ur="؛ اسی بنا پر بہت سے معاصر اہلِ علم چاندی کے نصاب کو ترجیح دیتے ہیں" en="; on that basis many contemporary scholars prefer the silver nisab"></x-t><span class="cite">2</span>۔</div>
+              <div class="used"><span class="chip success"><span class="dot"></span><x-t ur="مضبوط" en="Strong"></x-t></span><x-t ur="استعمال شدہ ذرائع:" en="Sources used:"></x-t><span class="token src">بدائع الصنائع</span><span class="token src">رد المحتار</span></div>
+              <div class="row" style="--g:8px"><button class="btn sm primary"><i data-i="plus"></i><x-t ur="دستاویز میں ڈالیں" en="Insert into document"></x-t></button><button class="btn sm"><i data-i="file"></i><x-t ur="نئی دستاویز بنائیں" en="New document"></x-t></button><span class="grow"></span><button class="icon-btn sm"><i data-i="copy"></i></button><button class="icon-btn sm"><i data-i="refresh"></i></button></div></div>
+          </div>
+          <div style="padding:12px 28px 16px"><div class="composer"><span class="muted sm"><x-t ur="مزید پوچھیں… (/ مہارت، @ ماخذ)" en="Ask more… (/ skill, @ source)"></x-t></span><div class="row"><button class="icon-btn sm"><i data-i="plus"></i></button><div class="aw"><span class="on"><i data-i="chat" data-s="14"></i><x-t ur="پوچھیں" en="Ask"></x-t></span><span><i data-i="pen" data-s="14"></i><x-t ur="کام کریں" en="Work"></x-t></span></div><span class="grow"></span><button class="icon-btn sm"><i data-i="mic"></i></button><button class="icon-btn sm fill"><i data-i="send" data-flip></i></button></div></div></div>
+        </div>
+        <aside class="col" style="min-block-size:0;background:hsl(var(--card))"><div class="row p3" style="border-block-end:1px solid hsl(var(--border))"><span class="cite" style="vertical-align:0">1</span><div class="col grow" style="--g:0"><b class="sm">بدائع الصنائع — الکاسانی</b><span class="xs muted"><x-t ur="جلد 2 · صفحہ 16" en="Vol. 2 · p. 16"></x-t></span></div><span class="chip success"><x-t ur="مصحح" en="Verified"></x-t></span><button class="icon-btn sm"><i data-i="x"></i></button></div>
+          <div class="scroll grow p4"><div class="ar">... وَإِنَّمَا يُعْتَبَرُ <span class="hl">مَا هُوَ أَنْفَعُ لِلْفُقَرَاءِ</span>، فَإِنْ كَانَ التَّقْوِيمُ بِأَحَدِهِمَا يَبْلُغُ نِصَابًا دُونَ الْآخَرِ قُوِّمَ بِهِ ...</div></div>
+          <div class="row p3" style="border-block-start:1px solid hsl(var(--border))"><button class="btn sm"><i data-i="book"></i><x-t ur="کتاب میں کھولیں" en="Open in book"></x-t></button><button class="btn sm primary"><i data-i="quote"></i><x-t ur="حوالہ دستاویز میں" en="Cite in document"></x-t></button></div></aside>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>«کام کریں» · بڑا کام = پہلے منصوبہ · `/` اور `@`</h2>
+  <p class="cap">«کام کریں» میں بڑا کام دیا جائے تو کام شروع ہونے سے پہلے 3 سے 5 مراحل کا منصوبہ آتا ہے: منظور / ترمیم / رد۔ چھوٹا کام سیدھا ٹریک شدہ تبدیلی بنتا ہے (اسکرین 03)۔ `/` مہارتوں کی فہرست کھولتا ہے، آخر میں «مہارتیں سنبھالیں»؛ `@` ذرائع کی فہرست، جو چنے جائیں وہ نیلے ٹوکن بن کر سوال میں آ جاتے ہیں۔</p>
+  <div class="frames">
+    <div class="device desk short" style="inline-size:700px">
+      <div data-tb="desk"></div>
+      <div class="scroll p4 col" style="--g:16px;padding-inline:40px">
+        <div class="msg me"><span><x-t ur="میرے مسودے کے تمام حوالہ جات مکمل کر دو" en="Complete all citations in my draft"></x-t></span></div>
+        <div class="planbox"><div class="row between"><b class="sm"><i data-i="list"></i> <x-t ur="منصوبہ · آپ کی منظوری کا انتظار" en="Plan · waiting for your approval"></x-t></b><span class="chip info"><x-t ur="~1,200 ٹوکنز · ~2 منٹ" en="~1,200 tokens · ~2 min"></x-t></span></div>
+          <div class="ps"><span class="n">1</span><span><x-t ur="مسودے میں بغیر حوالہ کے 9 جملے ڈھونڈنا" en="Find the 9 uncited sentences"></x-t></span></div><div class="ps"><span class="n">2</span><span><x-t ur="فولڈر کے ذرائع میں ان کے ماخذ تلاش کرنا" en="Search the folder's sources for each"></x-t></span></div><div class="ps"><span class="n">3</span><span><x-t ur="حوالے ٹریک شدہ تبدیلی کے طور پر لگانا" en="Add citations as tracked changes"></x-t></span></div>
+          <div class="row"><button class="btn primary"><i data-i="check"></i><x-t ur="منظور کریں" en="Approve"></x-t></button><button class="btn"><i data-i="pen"></i><x-t ur="ترمیم" en="Edit"></x-t></button><button class="btn ghost"><x-t ur="رد" en="Reject"></x-t></button></div></div>
+        <div class="composer"><span class="sm"><x-t ur="اس موضوع پر" en="On this topic,"></x-t> <span class="token src">@بدائع</span> <span class="token src">@ہندیہ</span> <x-t ur="سے" en="from"></x-t> <span class="token sk">/مجھ سے پوچھو</span></span><div class="row"><div class="aw"><span><x-t ur="پوچھیں" en="Ask"></x-t></span><span class="on"><x-t ur="کام کریں" en="Work"></x-t></span></div><span class="grow"></span><button class="icon-btn sm fill"><i data-i="send" data-flip></i></button></div></div>
+      </div>
+    </div>
+    <div class="col" style="--g:16px">
+      <div class="pop card raised" style="inline-size:340px;padding:6px"><div class="nav-label" style="padding-block-start:4px">/ <x-t ur="مہارتیں" en="SKILLS"></x-t></div>
+        <div class="menu-item on"><i data-i="help" style="color:hsl(var(--warning))"></i><div class="col" style="--g:0"><b class="sm"><x-t ur="مجھ سے پوچھو" en="Grill me"></x-t></b><span class="xs muted"><x-t ur="سوالوں سے خیال واضح کریں" en="Sharpen the idea with questions"></x-t></span></div></div>
+        <div class="menu-item"><i data-i="quote"></i><x-t ur="حوالہ جات مکمل کریں" en="Complete citations"></x-t></div><div class="menu-item"><i data-i="spark"></i><x-t ur="خلاصہ" en="Summarise"></x-t></div><div class="menu-item"><i data-i="type"></i><x-t ur="حرکات لگائیں" en="Add diacritics"></x-t></div><div class="menu-item"><i data-i="table"></i><x-t ur="مذاہب کا موازنہ" en="Compare schools"></x-t><span class="chip neutral" style="margin-inline-start:auto"><x-t ur="3 مراحل" en="3 steps"></x-t></span></div><div class="menu-item"><i data-i="user"></i><x-t ur="میری: فقہی تلخیص" en="Mine: fiqh digest"></x-t></div>
+        <hr class="hr" style="margin:6px 0"><div class="menu-item muted"><i data-i="sliders"></i><x-t ur="مہارتیں سنبھالیں…" en="Manage skills…"></x-t></div></div>
+      <div class="pop card raised" style="inline-size:340px;padding:6px"><div class="nav-label" style="padding-block-start:4px">@ <x-t ur="ذرائع" en="SOURCES"></x-t></div>
+        <div class="menu-item on"><i data-i="book"></i><div class="col grow" style="--g:0"><b class="sm">بدائع الصنائع</b><span class="xs muted"><x-t ur="شاملہ · پن شدہ" en="Shamela · pinned"></x-t></span></div><i data-i="check" class="pin"></i></div>
+        <div class="menu-item"><i data-i="book"></i><div class="col grow" style="--g:0"><b class="sm">الفتاوى الهندية</b><span class="xs muted"><x-t ur="شاملہ" en="Shamela"></x-t></span></div></div>
+        <div class="menu-item"><i data-i="file"></i><div class="col grow" style="--g:0"><b class="sm">اصول الفقہ.pdf</b><span class="xs muted"><x-t ur="میری فائلیں" en="My files"></x-t></span></div></div>
+        <div class="menu-item"><i data-i="quote"></i><div class="col grow" style="--g:0"><b class="sm"><x-t ur="تفاسیر" en="Tafsir"></x-t></b><span class="xs muted"><x-t ur="کنیکٹر · 6" en="Connector · 6"></x-t></span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>چیٹ · ماخذ شیٹ · منصوبہ</h2>
+  <p class="cap">چیٹ کھلنے پر نیچے کی بار چھپ جاتی ہے؛ کمپوزر انگوٹھے کی پہنچ میں۔ حوالے پر ٹیپ سے نیچے سے ماخذ کی شیٹ۔ منصوبہ بھی شیٹ میں۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="grow trunc"><x-t ur="زکوٰۃ کے نصاب کا سوال" en="Zakat nisab question"></x-t></b><button class="icon-btn"><i data-i="more"></i></button></div>
+      <div class="viewport"><div class="scroll grow p3 col" style="--g:12px"><div class="msg me" style="max-inline-size:88%"><span class="sm"><x-t ur="آج کل کس نصاب کا اعتبار کیا جائے؟" en="Which nisab applies today?"></x-t></span></div>
+        <div class="msg"><div class="doc" style="font-size:16px;line-height:2.1"><x-t ur="جو فقراء کے لیے زیادہ نافع ہو" en="Whichever benefits the poor more"></x-t><span class="cite">1</span><x-t ur="؛ اسی لیے چاندی کا نصاب راجح سمجھا جاتا ہے" en="; hence the silver nisab is generally preferred"></x-t><span class="cite">2</span>۔</div><div class="used"><span class="chip success"><span class="dot"></span><x-t ur="مضبوط" en="Strong"></x-t></span><span class="token src">بدائع</span><span class="token src">رد المحتار</span></div><div class="row"><button class="btn sm primary grow"><i data-i="plus"></i><x-t ur="دستاویز میں" en="To document"></x-t></button><button class="btn sm grow"><i data-i="file"></i><x-t ur="نئی دستاویز" en="New doc"></x-t></button></div></div></div>
+        <div style="padding:8px 10px 12px"><div class="composer" style="padding:8px 10px"><span class="muted sm"><x-t ur="مزید پوچھیں…" en="Ask more…"></x-t></span><div class="row"><button class="icon-btn sm"><i data-i="plus"></i></button><div class="aw"><span class="on"><x-t ur="پوچھیں" en="Ask"></x-t></span><span><x-t ur="کام" en="Work"></x-t></span></div><span class="grow"></span><button class="icon-btn sm"><i data-i="mic"></i></button><button class="icon-btn sm fill"><i data-i="send" data-flip></i></button></div></div></div></div>
+    </div>
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="grow trunc"><x-t ur="زکوٰۃ کے نصاب کا سوال" en="Zakat nisab question"></x-t></b></div>
+      <div class="viewport"><div class="scroll grow p3"><div class="doc" style="font-size:16px;line-height:2.1"><x-t ur="جو فقراء کے لیے زیادہ نافع ہو" en="Whichever benefits the poor more"></x-t><span class="cite" style="background:hsl(var(--primary));color:hsl(var(--primary-foreground))">1</span>۔</div></div>
+        <div class="sheet" style="position:absolute;inset-inline:0;inset-block-end:0;z-index:6;block-size:60%;display:flex;flex-direction:column"><div class="grab"></div><div class="row p3"><span class="cite" style="vertical-align:0">1</span><div class="col grow" style="--g:0"><b class="sm">بدائع الصنائع</b><span class="xs muted"><x-t ur="ج 2 · ص 16" en="Vol. 2 · p. 16"></x-t></span></div><span class="chip success"><x-t ur="مصحح" en="Verified"></x-t></span></div><div class="scroll grow p3"><div class="ar" style="font-size:19px">... <span class="hl">مَا هُوَ أَنْفَعُ لِلْفُقَرَاءِ</span> ...</div></div><div class="p3 row" style="border-block-start:1px solid hsl(var(--border))"><button class="btn grow"><i data-i="book"></i><x-t ur="کتاب میں" en="Open book"></x-t></button><button class="btn primary grow"><i data-i="quote"></i><x-t ur="حوالہ لگائیں" en="Cite"></x-t></button></div></div></div>
+    </div>
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="grow trunc"><x-t ur="مسئلہ اباحت" en="Default ruling"></x-t></b></div>
+      <div class="viewport"><div class="scrim"></div><div class="sheet" style="position:absolute;inset-inline:0;inset-block-end:0;z-index:6;padding-block-end:18px"><div class="grab"></div><div class="p4 col" style="--g:10px"><div class="row between"><b><i data-i="list"></i> <x-t ur="منصوبہ" en="Plan"></x-t></b><span class="chip info"><x-t ur="~2 منٹ" en="~2 min"></x-t></span></div><div class="ps"><span class="n">1</span><span class="sm"><x-t ur="بغیر حوالہ کے جملے ڈھونڈنا" en="Find uncited sentences"></x-t></span></div><div class="ps"><span class="n">2</span><span class="sm"><x-t ur="ذرائع میں ماخذ تلاش" en="Search sources"></x-t></span></div><div class="ps"><span class="n">3</span><span class="sm"><x-t ur="ٹریک شدہ حوالے لگانا" en="Add tracked citations"></x-t></span></div><button class="btn primary lg block"><x-t ur="منظور کریں" en="Approve"></x-t></button><div class="row"><button class="btn grow"><x-t ur="ترمیم" en="Edit"></x-t></button><button class="btn ghost grow"><x-t ur="رد" en="Reject"></x-t></button></div></div></div></div>
+    </div>
+  </div>
+</section>
+</main>
+<script src="_v3.js"></script>
+</body>
+</html>

@@ -73,8 +73,8 @@ export const ImportEstimateDialog: React.FC<Props> = ({
               <Stat label={t("reader.import.chunks")} value={estimate.totalChunks.toLocaleString()} />
             </div>
 
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+            <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-warning">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 {t("reader.import.google_cost")}
               </div>

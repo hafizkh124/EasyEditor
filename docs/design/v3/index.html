@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EasyEditor v3 screens</title>
+<link rel="stylesheet" href="../screens/_shared/tokens.css">
+<link rel="stylesheet" href="../screens/_shared/ui.css">
+<link rel="stylesheet" href="_app.css">
+<script src="../screens/_shared/kit.js" defer></script>
+<style>
+  .wrap { max-inline-size: 1040px; margin: 0 auto; padding: 32px 24px 80px; display: flex; flex-direction: column; gap: 28px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .tile { display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 18px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: inherit; text-decoration: none; transition: transform var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease); }
+  .tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .old a { color: hsl(var(--primary)); }
+</style>
+</head>
+<body data-title="EasyEditor · v3 اسکرینز (نظام کے خاکے پر)" data-note="یہ اسکرینز docs/design/SYSTEM-2026.md پر بنی ہیں۔ اوپر لائٹ/ڈارک اور اردو/English بدلیں۔">
+<div class="wrap">
+  <div class="banner info"><i data-i="info"></i><div class="t"><b><x-t ur="تین کام، ایک منزل" en="Three jobs, one destination"></x-t></b><x-t ur="چیٹ/لکھنا · متن نکالنا · ترجمہ۔ ہر نتیجہ دستاویز میں۔ موبائل: 2 ٹیب، درمیان میں «+»، اوپر اوتار؛ ڈیسک ٹاپ/ویب: سائیڈبار۔ / مہارتیں، @ ذرائع۔" en="Chat/writing · text extraction · translation. Every result lands in a document. Mobile: 2 tabs, centred “+”, avatar on top; desktop/web: sidebar. / skills, @ sources."></x-t></div></div>
+  <div class="tiles">
+    <a class="tile" href="01-home.html"><b class="lg">01 · <x-t ur="شیل، ہوم اور «+»" en="Shell, home and “+”"></x-t></b><span class="sm muted"><x-t ur="سائیڈبار، تین کاموں کے کارڈ، ایک حالیہ فہرست، فائل ڈالنے پر سوال، موبائل «شیئر»" en="Sidebar, three job cards, one recent list, drop-a-file prompt, mobile share"></x-t></span></a>
+    <a class="tile" href="02-chat.html"><b class="lg">02 · <x-t ur="چیٹ" en="Chat"></x-t></b><span class="sm muted"><x-t ur="پوچھیں/کام کریں، پہلے منصوبہ، / اور @، حوالہ ← ماخذ" en="Ask/Work, plan first, / and @, citation → source"></x-t></span></a>
+    <a class="tile" href="03-folder-editor.html"><b class="lg">03 · <x-t ur="فولڈر اور ایڈیٹر" en="Folder and editor"></x-t></b><span class="sm muted"><x-t ur="انڈیکس پینل، فائل ٹیبز، پن شدہ ذرائع، ٹریک شدہ تبدیلی" en="Index panel, file tabs, pinned sources, tracked changes"></x-t></span></a>
+    <a class="tile" href="04-extract.html"><b class="lg">04 · <x-t ur="متن نکالنا" en="Extract text"></x-t></b><span class="sm muted"><x-t ur="آڈیو + تصویر/PDF ایک فلو، سب کاپی، پیراگراف وار سننا، مشکوک الفاظ" en="Audio + image/PDF in one flow, copy all, listen per paragraph, doubtful words"></x-t></span></a>
+    <a class="tile" href="05-translate.html"><b class="lg">05 · <x-t ur="ترجمہ" en="Translate"></x-t></b><span class="sm muted"><x-t ur="ترتیب، اصطلاحات، نمونہ، پیراگراف وار جائزہ، دو لسانی Word" en="Setup, glossary, preview, paragraph review, bilingual Word"></x-t></span></a>
+    <a class="tile" href="06-skills-sources.html"><b class="lg">06 · <x-t ur="مہارتیں اور ذرائع" en="Skills and sources"></x-t></b><span class="sm muted"><x-t ur="ایک مہارتوں کی فہرست، «مجھ سے پوچھو»، ایک ذرائع کی فہرست" en="One skills list, Grill me, one sources list"></x-t></span></a>
+    <a class="tile" href="07-files-me.html"><b class="lg">07 · <x-t ur="فائلیں اور «میں»" en="Files and Me"></x-t></b><span class="sm muted"><x-t ur="فولڈر، نتائج، پروفائل، پلان، ترتیبات" en="Folders, results, profile, plan, settings"></x-t></span></a>
+    <a class="tile" href="08-jobs-states.html"><b class="lg">08 · <x-t ur="جاری کام اور حالتیں" en="Jobs and states"></x-t></b><span class="sm muted"><x-t ur="مشترکہ قطار، اطلاعات، پہلی بار، آف لائن، «فعال کریں»" en="Shared queue, notifications, first run, offline, “turn on”"></x-t></span></a>
+    <a class="tile" href="nav-options.html" style="border-color:hsl(var(--success-bd))"><b class="lg">✓ <x-t ur="موبائل نیویگیشن: آپشن 1 بمقابلہ 2" en="Mobile nav: option 1 vs 2"></x-t></b><span class="sm muted"><x-t ur="فیصلہ: آپشن 1 منتخب" en="Decided: option 1"></x-t></span></a>
+  </div>
+  <div class="card pad col old" style="--g:8px"><b><x-t ur="پچھلے راؤنڈ کی اسکرینز جو برقرار ہیں (چھوٹی ترامیم کے ساتھ)" en="Earlier screens that still apply (with small edits)"></x-t></b><span class="sm"><a href="../screens/02-desktop-onboarding.html">02 ڈیسک ٹاپ آن بورڈنگ / میری API</a> · <a href="../screens/03-auth.html">03 لاگ ان</a> · <a href="../screens/06-states.html">06 حالتیں</a> · <a href="../screens/07-landing.html">07 Landing</a> · <a href="../screens/11-reader.html">11 شاملہ ریڈر</a> · <a href="../screens/16-account.html">16 پلان اور ادائیگی</a> · <a href="../screens/17-onboarding.html">17 آن بورڈنگ</a> · <a href="../screens/19-admin.html">19 ایڈمن</a> · <a href="../screens/20-public.html">20 عوامی صفحات</a></span><span class="xs muted"><x-t ur="باقی پرانی اسکرینز (ڈیش بورڈ، تحقیق، ٹاسکس، پروجیکٹ ہب، اسٹوڈیو، آواز) منسوخ ہیں۔" en="The rest (dashboard, research, tasks, project hub, studio, voice) are superseded."></x-t></span></div>
+</div>
+</body>
+</html>

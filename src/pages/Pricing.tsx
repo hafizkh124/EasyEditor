@@ -21,7 +21,7 @@ const TIER_ORDER: Record<string, number> = { free: 0, basic: 1, pro: 2, ultra: 3
 
 /** UI-only styling per tier — the data itself comes from shared PLAN_TIERS. */
 const PLAN_STYLE: Record<PaidTier, Pick<PricingPlan, "icon" | "iconClass" | "bgClass" | "cardBorder" | "gradient">> = {
-  basic: { icon: Zap, iconClass: "text-blue-500", bgClass: "bg-blue-500/10", cardBorder: "border-blue-200/60 dark:border-blue-800/40", gradient: "from-blue-500/5 via-transparent to-blue-500/5" },
+  basic: { icon: Zap, iconClass: "text-info", bgClass: "bg-info/10", cardBorder: "border-info-border", gradient: "from-blue-500/5 via-transparent to-blue-500/5" },
   pro:   { icon: Crown, iconClass: "text-primary", bgClass: "bg-primary/15", cardBorder: "border-primary/40 shadow-md", gradient: "from-primary/5 via-transparent to-primary/5" },
   ultra: { icon: Star, iconClass: "text-purple-500", bgClass: "bg-purple-500/10", cardBorder: "border-purple-300/50 dark:border-purple-700/40 opacity-80", gradient: "from-purple-500/5 via-transparent to-purple-500/5" },
 };
@@ -143,7 +143,7 @@ const Pricing = () => {
     <AppLayout>
       <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-10" dir={direction}>
         {isExpiredFlow && (
-          <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-900 dark:text-red-200">
+          <div className="rounded-lg border border-destructive-border bg-destructive-soft px-4 py-3 text-sm text-destructive">
             {t("pricing.lapsed_notice", language === "ur"
               ? "آپ کی سبسکرپشن ختم ہو چکی ہے۔ Renew کرنے کے لیے اپنے موجودہ پلان پر receipt اپلوڈ کریں۔"
               : "Your subscription has lapsed. Upload a renewal receipt for your current plan to restore access.")}

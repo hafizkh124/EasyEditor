@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extract text</title>
+<link rel="stylesheet" href="../screens/_shared/tokens.css">
+<link rel="stylesheet" href="../screens/_shared/ui.css">
+<link rel="stylesheet" href="_app.css">
+<script src="../screens/_shared/kit.js" defer></script>
+<style>
+  .drop { border: 2px dashed hsl(var(--border-strong)); border-radius: 22px; padding: 30px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; background: hsl(var(--card)); }
+  .srcs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .srcs .c { padding: 14px 8px; border-radius: 16px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+  .srcs .c svg.i { font-size: 22px; color: hsl(var(--primary)); }
+  .img { background: hsl(var(--muted) / .6); display: flex; flex-direction: column; min-block-size: 0; }
+  .paper { margin: 18px; flex: 1; border-radius: 10px; background: #fbf8f1; box-shadow: var(--shadow-md); padding: 26px; display: flex; flex-direction: column; gap: 14px; }
+  :root[data-theme="dark"] .paper { background: #2a2722; }
+  .paper i { display: block; block-size: 9px; border-radius: 4px; background: hsl(30 15% 70% / .6); } .paper i.w { background: hsl(40 90% 55% / .7); }
+  .thumbs { display: flex; gap: 6px; padding: 8px 12px; border-block-start: 1px solid hsl(var(--border)); background: hsl(var(--card)); overflow: hidden; }
+  .th { inline-size: 40px; block-size: 52px; border-radius: 6px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); flex: none; } .th.on { border: 2px solid hsl(var(--primary)); } .th.done { background: hsl(var(--success-bg)); }
+</style>
+</head>
+<body data-title="v3 · 04 · متن نکالنا (آڈیو + تصویر/PDF ایک فلو)" data-note="SYSTEM-2026 §5: فائل ← زبان ← عمل ← نتیجہ سیدھا ایڈیٹر میں۔ «سب کاپی» ایک کلک۔ آڈیو کے ساتھ پیراگراف وار سننا؛ تصویر کے ساتھ آمنے سامنے اور کم اعتماد الفاظ۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>شروع اور پیش رفت</h2>
+  <p class="cap">ایک ہی اسکرین آڈیو اور تصویر دونوں لیتی ہے، قسم خود پہچانی جاتی ہے۔ صرف دو ترتیبات سامنے: زبان (خودکار) اور «کہاں جائے»۔ باقی «مزید» میں۔ عمل شروع ہوتے ہی صارف آزاد ہے: کام جاری کاموں کی قطار میں چلا جاتا ہے۔</p>
+  <div class="frames">
+    <div class="device desk short">
+      <div data-tb="desk" data-t="متن نکالیں"></div>
+      <div class="app" style="grid-template-columns:264px 1fr"><aside data-side="home"></aside>
+        <div class="scroll hero-bg" style="padding:32px"><div class="col" style="--g:16px;max-inline-size:620px;margin-inline:auto">
+          <div class="xl b"><x-t ur="متن نکالیں" en="Extract text"></x-t></div>
+          <div class="drop"><span class="avatar" style="inline-size:56px;block-size:56px"><i data-i="upload" data-s="26"></i></span><b><x-t ur="فائل یہاں ڈالیں یا چنیں" en="Drop or choose a file"></x-t></b><span class="xs muted"><x-t ur="آڈیو، ویڈیو، تصویر، PDF · ایپ خود پہچانے گی" en="Audio, video, image, PDF · detected automatically"></x-t></span></div>
+          <div class="srcs"><div class="c"><i data-i="mic"></i><x-t ur="ابھی ریکارڈ کریں" en="Record now"></x-t></div><div class="c"><i data-i="image"></i><x-t ur="کیمرا / اسکین" en="Camera / scan"></x-t></div><div class="c"><i data-i="link"></i><x-t ur="لنک (YouTube وغیرہ)" en="Link (YouTube etc.)"></x-t></div></div>
+          <div class="card pad col" style="--g:10px"><div class="row" style="--g:10px"><span class="li" style="padding:0"><span class="ic ic-a"><i data-i="mic"></i></span></span><div class="col grow" style="--g:0"><b class="sm">bayan-rabi-ul-awwal.m4a</b><span class="xs muted"><x-t ur="آڈیو · 48 منٹ" en="Audio · 48 min"></x-t></span></div><button class="icon-btn sm"><i data-i="x"></i></button></div>
+            <div class="row" style="--g:12px"><div class="field grow"><label><x-t ur="زبان" en="Language"></x-t></label><div class="segmented"><span class="on"><x-t ur="خودکار" en="Auto"></x-t></span><span>اردو</span><span>عربی</span><span>EN</span></div></div><div class="field grow"><label><x-t ur="کہاں جائے" en="Save to"></x-t></label><div class="segmented"><span class="on"><x-t ur="نئی دستاویز" en="New document"></x-t></span><span><x-t ur="فولڈر…" en="Folder…"></x-t></span></div></div></div>
+            <div class="row xs muted" style="--g:6px"><i data-i="chev-d" data-s="14"></i><x-t ur="مزید: وقت کے نشان، بولنے والوں کی پہچان، املا کی خودکار درستی" en="More: timestamps, speaker labels, auto spelling fix"></x-t></div></div>
+          <button class="btn primary lg"><x-t ur="متن نکالیں" en="Extract text"></x-t></button></div></div></div>
+    </div>
+    <div class="device desk short" style="inline-size:620px">
+      <div data-tb="desk"></div>
+      <div class="viewport hero-bg" style="justify-content:center;padding:28px"><div class="card raised pad col" style="--g:12px;max-inline-size:460px;margin-inline:auto;inline-size:100%"><div class="row" style="--g:10px"><span class="li" style="padding:0"><span class="ic ic-a"><i data-i="mic"></i></span></span><div class="col grow" style="--g:0"><b class="sm">bayan-rabi-ul-awwal.m4a</b><span class="xs muted"><x-t ur="متن نکالا جا رہا ہے · اردو" en="Extracting · Urdu"></x-t></span></div><span class="chip info">72%</span></div><div class="progress"><i style="inline-size:72%"></i></div><div class="row between xs muted"><span><x-t ur="34 / 48 منٹ" en="34 / 48 min"></x-t></span><span><x-t ur="~4 منٹ باقی" en="~4 min left"></x-t></span></div><div class="doc" style="font-size:15px;line-height:2;color:hsl(var(--muted-foreground))"><x-t ur="…اور یہی وجہ ہے کہ زکوٰۃ کا حکم…" en="…and that is why the ruling on zakat…"></x-t></div><div class="row"><button class="btn grow"><x-t ur="پس منظر میں چلنے دیں" en="Run in background"></x-t></button><button class="btn ghost"><x-t ur="منسوخ" en="Cancel"></x-t></button></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>نتیجہ ایڈیٹر میں: آڈیو کے ساتھ · تصویر کے ساتھ</h2>
+  <p class="cap">آڈیو کا نتیجہ: ہر پیراگراف کے ساتھ وقت؛ پیراگراف پر کلک سے آڈیو وہیں سے؛ چلتا پیراگراف ہلکا نمایاں۔ تصویر/PDF کا نتیجہ: بائیں/دائیں اصل صفحہ، دوسری طرف متن؛ کم اعتماد الفاظ پیلے اور صفحے پر بھی نشان زد؛ نیچے صفحات کی پٹی۔ دونوں میں اوپر نمایاں «سب کاپی کریں» اور عام ایڈیٹر کی تمام سہولتیں (`/` درستی، حرکات، چیٹ)۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div data-tb="desk" data-t="بیان 12 ربیع الاول"></div>
+      <div class="col" style="flex:1;min-block-size:0">
+        <div class="topbar" style="block-size:52px;padding-inline:16px"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><div class="col" style="--g:0"><b class="sm"><x-t ur="بیان 12 ربیع الاول" en="Lecture, 12 Rabi al-Awwal"></x-t></b><span class="xs muted"><x-t ur="آڈیو سے متن · 48 منٹ · 6,240 الفاظ" en="From audio · 48 min · 6,240 words"></x-t></span></div><span class="grow"></span><button class="btn primary"><i data-i="copy"></i><x-t ur="سب کاپی کریں" en="Copy all"></x-t></button><button class="btn"><i data-i="spark"></i><x-t ur="/ درستی" en="/ Proofread"></x-t></button><button class="btn"><i data-i="folder"></i><x-t ur="فولڈر میں" en="Move to folder"></x-t></button><button class="icon-btn"><i data-i="upload"></i></button></div>
+        <div class="scroll grow"><div class="page col" style="--g:4px"><div class="para"><span class="ts">00:00</span><div class="doc" style="font-size:17px;line-height:2.1"><x-t ur="الحمد للہ رب العالمین۔ آج ہم زکوٰۃ کے چند اہم مسائل پر گفتگو کریں گے۔" en="Praise be to Allah. Today we will discuss some important issues of zakat."></x-t></div></div><div class="para on"><span class="ts">01:42</span><div class="doc" style="font-size:17px;line-height:2.1"><x-t ur="پہلا مسئلہ نصاب کا ہے، کہ سونے اور چاندی میں سے کس کا اعتبار کیا جائے۔" en="The first issue is the nisab: whether gold or silver is to be used."></x-t></div></div><div class="para"><span class="ts">03:10</span><div class="doc" style="font-size:17px;line-height:2.1"><x-t ur="احناف کے ہاں جو فقراء کے لیے زیادہ نافع ہو…" en="For the Hanafis, whichever benefits the poor more…"></x-t></div></div></div></div>
+        <div class="player"><button class="icon-btn fill" style="border-radius:50%"><i data-i="pause"></i></button><span class="mono xs">01:58</span><div class="wave"><i class="p" style="block-size:10px"></i><i class="p" style="block-size:20px"></i><i class="p" style="block-size:26px"></i><i class="p" style="block-size:14px"></i><i style="block-size:24px"></i><i style="block-size:12px"></i><i style="block-size:28px"></i><i style="block-size:18px"></i><i style="block-size:10px"></i><i style="block-size:22px"></i><i style="block-size:16px"></i><i style="block-size:26px"></i></div><span class="mono xs">48:02</span><div class="segmented" style="font-size:12px"><span>0.75×</span><span class="on">1×</span><span>1.5×</span></div></div>
+      </div>
+    </div>
+    <div class="device desk">
+      <div data-tb="desk" data-t="فتاویٰ_جلد2.pdf"></div>
+      <div class="col" style="flex:1;min-block-size:0">
+        <div class="topbar" style="block-size:52px;padding-inline:16px"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><div class="col" style="--g:0"><b class="sm">فتاویٰ_جلد2.pdf</b><span class="xs muted"><x-t ur="تصویر/PDF سے متن · صفحہ 3 / 48" en="From PDF · page 3 / 48"></x-t></span></div><span class="chip warning"><i data-i="warn"></i><x-t ur="اس صفحے پر 2 مشکوک الفاظ" en="2 doubtful words on this page"></x-t></span><span class="grow"></span><button class="btn primary"><i data-i="copy"></i><x-t ur="سب کاپی کریں" en="Copy all"></x-t></button><div class="segmented"><span class="on"><i data-i="split"></i></span><span><i data-i="file"></i></span></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;flex:1;min-block-size:0">
+          <div class="scroll" style="border-inline-end:1px solid hsl(var(--border))"><div class="page" style="margin-block:18px;padding-inline:28px"><div class="doc" style="font-size:18px;line-height:2.2"><x-t ur="شریعت کے احکام میں" en="In the rulings of the Sharia"></x-t> <span class="low"><x-t ur="تدریج" en="gradual"></x-t></span> <x-t ur="کا اصول ملتا ہے، اور زکوٰۃ کا نصاب بھی اسی" en="principle is found, and the nisab of zakat is also by the same"></x-t> <span class="low"><x-t ur="اصول" en="principle"></x-t></span> <x-t ur="سے مقرر ہوا۔" en="established."></x-t></div></div></div>
+          <div class="img"><div class="paper"><i style="inline-size:92%"></i><i></i><i style="inline-size:30%" class="w"></i><i style="inline-size:85%"></i><i style="inline-size:70%"></i><i style="inline-size:20%" class="w"></i><i style="inline-size:90%"></i><i style="inline-size:60%"></i></div><div class="thumbs"><span class="th done"></span><span class="th done"></span><span class="th on"></span><span class="th"></span><span class="th"></span><span class="th"></span><span class="grow"></span><button class="btn sm"><i data-i="chev-r" data-flip></i></button><button class="btn sm primary"><x-t ur="اگلا مشکوک" en="Next doubtful"></x-t><i data-i="chev-l" data-flip></i></button></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>دستاویز کے اندر سے: نتیجہ کرسر کی جگہ</h2>
+  <p class="cap">ایڈیٹر میں `/متن نکالیں` یا فائل ایڈیٹر پر ڈالنے سے نتیجہ وہیں داخل ہوتا ہے جہاں کرسر ہے، ایک ہلکی نشان دہی کے ساتھ کہ یہ حصہ فائل سے آیا ہے۔</p>
+  <div class="frames">
+    <div class="card" style="inline-size:640px;padding:22px"><div class="doc" style="font-size:17px;line-height:2.1"><p style="margin:0 0 10px"><x-t ur="اس مسئلے پر ایک بیان کا اقتباس:" en="An excerpt from a lecture on this issue:"></x-t></p><div style="border-inline-start:3px solid hsl(var(--info));padding-inline-start:14px;background:hsl(var(--info-bg)/.5);border-radius:6px;padding-block:6px"><div class="xs muted row" style="--g:6px;font-family:var(--font-sans)"><i data-i="mic" data-s="12"></i><x-t ur="voice-note.opus سے · 3:42" en="From voice-note.opus · 3:42"></x-t><span class="grow"></span><span style="color:hsl(var(--primary))"><x-t ur="سنیں" en="Listen"></x-t></span></div><x-t ur="پہلا مسئلہ نصاب کا ہے، کہ سونے اور چاندی میں سے کس کا اعتبار کیا جائے۔" en="The first issue is the nisab: whether gold or silver is to be used."></x-t><span style="border-inline-start:2px solid hsl(var(--primary));margin-inline-start:2px"></span></div></div></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>شروع · نتیجہ (آڈیو) · نتیجہ (تصویر)</h2>
+  <p class="cap">موبائل پر «سب کاپی کریں» اوپر کی بار میں سب سے نمایاں۔ آڈیو کا پلیئر نیچے؛ پیراگراف پر ٹیپ سے وہیں سے۔ تصویر کا نتیجہ: «متن / تصویر» کا سوئچ؛ مشکوک لفظ پر ٹیپ سے اصل تصویر کا وہی ٹکڑا اور درستی کے اختیارات۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="x"></i></button><b class="grow"><x-t ur="متن نکالیں" en="Extract text"></x-t></b></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:14px"><div class="drop" style="padding:22px"><span class="avatar" style="inline-size:52px;block-size:52px"><i data-i="upload" data-s="24"></i></span><b class="sm"><x-t ur="فائل چنیں" en="Choose a file"></x-t></b><span class="xs muted"><x-t ur="آڈیو، ویڈیو، تصویر، PDF" en="Audio, video, image, PDF"></x-t></span></div><div class="srcs"><div class="c"><i data-i="mic"></i><x-t ur="ریکارڈ" en="Record"></x-t></div><div class="c"><i data-i="image"></i><x-t ur="کیمرا" en="Camera"></x-t></div><div class="c"><i data-i="link"></i><x-t ur="لنک" en="Link"></x-t></div></div><div class="banner info"><i data-i="info"></i><div class="t xs"><x-t ur="WhatsApp سے وائس نوٹ «شیئر» کر کے بھی بھیج سکتے ہیں۔" en="You can also «Share» a WhatsApp voice note here."></x-t></div></div></div></div>
+    </div>
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><div class="col grow" style="--g:0"><b class="sm trunc"><x-t ur="بیان 12 ربیع الاول" en="Lecture 12 Rabi"></x-t></b><span class="xs muted"><x-t ur="آڈیو سے متن" en="From audio"></x-t></span></div><button class="btn sm primary"><i data-i="copy"></i><x-t ur="سب کاپی" en="Copy all"></x-t></button></div>
+      <div class="viewport"><div class="scroll grow p3 col" style="--g:4px"><div class="para"><span class="ts">00:00</span><div class="doc" style="font-size:16px;line-height:2"><x-t ur="آج ہم زکوٰۃ کے چند اہم مسائل پر گفتگو کریں گے۔" en="Today we will discuss some issues of zakat."></x-t></div></div><div class="para on"><span class="ts">01:42</span><div class="doc" style="font-size:16px;line-height:2"><x-t ur="پہلا مسئلہ نصاب کا ہے…" en="The first issue is the nisab…"></x-t></div></div><div class="para"><span class="ts">03:10</span><div class="doc" style="font-size:16px;line-height:2"><x-t ur="احناف کے ہاں…" en="For the Hanafis…"></x-t></div></div></div>
+        <div class="player" style="padding:8px 12px"><button class="icon-btn fill sm" style="border-radius:50%"><i data-i="pause"></i></button><div class="wave"><i class="p" style="block-size:10px"></i><i class="p" style="block-size:20px"></i><i style="block-size:24px"></i><i style="block-size:12px"></i><i style="block-size:20px"></i><i style="block-size:16px"></i><i style="block-size:10px"></i><i style="block-size:22px"></i></div><span class="mono xs">01:58</span></div>
+        <div class="kbar" style="display:flex;gap:2px;padding:4px 8px;background:hsl(var(--card));border-block-start:1px solid hsl(var(--border))"><button class="btn sm ghost"><i data-i="spark"></i><x-t ur="/ درستی" en="/ Proofread"></x-t></button><button class="btn sm ghost"><i data-i="folder"></i><x-t ur="فولڈر" en="Folder"></x-t></button><span class="grow"></span><button class="icon-btn sm fill" style="border-radius:10px"><i data-i="chat"></i></button></div></div>
+    </div>
+    <div class="device phone">
+      <div data-sb></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><div class="col grow" style="--g:0"><b class="sm">فتاویٰ_جلد2.pdf</b><span class="xs muted"><x-t ur="صفحہ 3 / 48" en="Page 3 / 48"></x-t></span></div><button class="btn sm primary"><i data-i="copy"></i><x-t ur="سب کاپی" en="Copy all"></x-t></button></div>
+      <div class="viewport"><div class="p3"><div class="segmented" style="inline-size:100%"><span class="on grow center"><x-t ur="متن" en="Text"></x-t></span><span class="grow center"><x-t ur="تصویر" en="Image"></x-t></span></div></div><div class="scroll grow p3"><div class="doc" style="font-size:17px;line-height:2.2"><x-t ur="شریعت کے احکام میں" en="In the rulings of the Sharia"></x-t> <span class="low" style="outline:2px solid hsl(var(--warning))"><x-t ur="تدریج" en="gradual"></x-t></span> <x-t ur="کا اصول ملتا ہے۔" en="principle is found."></x-t></div></div>
+        <div class="sheet" style="padding-block-end:14px"><div class="grab"></div><div class="p3 col" style="--g:10px"><div class="row" style="--g:10px"><div class="paper" style="margin:0;padding:10px;flex:none;inline-size:120px;block-size:54px;gap:6px"><i style="inline-size:60%" class="w"></i><i></i></div><div class="col grow" style="--g:0"><b class="sm"><x-t ur="یہ لفظ درست ہے؟" en="Is this word right?"></x-t></b><span class="xs muted"><x-t ur="اعتماد کم" en="Low confidence"></x-t></span></div></div><div class="row" style="--g:6px;flex-wrap:wrap"><span class="chip brand" style="padding:6px 12px">تدریج</span><span class="chip neutral" style="padding:6px 12px">تدریس</span><span class="chip neutral" style="padding:6px 12px">تدبیر</span><button class="btn sm ghost"><i data-i="pen"></i><x-t ur="خود لکھیں" en="Type it"></x-t></button></div></div></div></div>
+    </div>
+  </div>
+</section>
+</main>
+<script src="_v3.js"></script>
+</body>
+</html>

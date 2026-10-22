@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { toast } from "sonner";
 import { applyResult } from "@/lib/editor/applyResult";
+import { sectionSummaryHtml } from "@/lib/editor/sectionSummary";
 import { type TextBatch } from "@/lib/editor/docChunker";
 import { trackRanges } from "@/lib/editor/positionTracker";
 import {
@@ -163,6 +164,13 @@ export function useChunkedRuns({
             // The user deleted this passage mid-run: drop the result rather
             // than writing it at a guessed position (FR-5.2).
             if (!range || range.invalidated) return false;
+            // Section summaries leave the section as it is and go after it.
+            if (batch.mode === "append") {
+              if (!output.trim()) return false;
+              editor.chain().insertContentAt(range.to, sectionSummaryHtml(output)).run();
+              emitChange();
+              return true;
+            }
             applyResult(editor, output, {
               from: range.from,
               to: range.to,

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landing</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .nav { display: flex; align-items: center; gap: 20px; padding: 14px 40px; }
+  .nav a { color: hsl(var(--muted-foreground)); font-size: 14px; text-decoration: none; }
+  .logo { display: inline-grid; place-items: center; inline-size: 36px; block-size: 36px; border-radius: 11px; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 700; }
+  .hero { padding: 56px 40px 36px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; }
+  .h1 { font-size: 46px; line-height: 1.45; font-weight: 700; letter-spacing: -.01em; margin: 0; }
+  .h1 em { font-style: normal; color: hsl(var(--primary)); }
+  .feat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 12px 40px 36px; }
+  .plat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 0 40px 40px; }
+  .mock { padding: 14px; border-radius: 22px; }
+  .price { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 0 40px 40px; }
+  .price .card.hl { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / .14), var(--shadow-md); }
+</style>
+</head>
+<body data-title="07 · Landing (عوامی صفحہ)" data-note="صرف ویب اور موبائل (PWA) کے لیے۔ ڈیسک ٹاپ ایپ سیدھا ورک اسپیس کھولتی ہے۔ /ar اور /ur اسی ساخت سے، متن لوکیل سے۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag">ویب</span>1280px · ہیرو، فیچرز، پلیٹ فارمز، قیمتیں</h2>
+  <p class="cap">ہیرو میں ایک ہی بات: "ہر دعوے کے ساتھ ماخذ اور اعتماد"۔ دائیں پروڈکٹ کی اصل اسکرین۔ نیچے تین پلیٹ فارمز کا برابر کا وعدہ (ڈیسک ٹاپ: آف لائن اور اپنی API)۔</p>
+  <div class="frames">
+    <div class="device desk" style="block-size:auto">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>easyeditor.example</div></div>
+      <div class="viewport scroll hero-bg" style="overflow:visible">
+        <nav class="nav"><span class="logo">ع</span><b>Easy Editor</b><span class="grow"></span><a><x-t ur="خصوصیات" en="Features"></x-t></a><a><x-t ur="قیمتیں" en="Pricing"></x-t></a><a><x-t ur="ہمارے بارے میں" en="About"></x-t></a><a><x-t ur="سوالات" en="FAQ"></x-t></a><button class="btn ghost"><x-t ur="لاگ ان" en="Sign in"></x-t></button><button class="btn primary"><x-t ur="مفت شروع کریں" en="Start free"></x-t></button></nav>
+        <div class="hero">
+          <div class="col" style="--g:20px"><span class="chip brand" style="inline-self:start;align-self:flex-start"><i data-i="spark"></i><x-t ur="اہلِ علم کے لیے" en="Built for scholars"></x-t></span>
+            <h1 class="h1"><x-t ur="تحقیق، ماخذ اور تحریر — " en="Research, sources and writing — "></x-t><em><x-t ur="ایک ہی جگہ" en="in one place"></x-t></em></h1>
+            <p class="lg muted" style="margin:0;max-inline-size:520px"><x-t ur="اردو، عربی اور انگریزی میں لکھیں۔ ہر دعوے کے ساتھ ماخذ اور اعتماد کی سطح دیکھیں۔ ویب، موبائل اور ڈیسک ٹاپ پر یکساں۔" en="Write in Urdu, Arabic and English. See the source and confidence behind every claim. Identical on web, mobile and desktop."></x-t></p>
+            <div class="row"><button class="btn primary lg"><x-t ur="مفت شروع کریں" en="Start free"></x-t><i data-i="arrow" data-flip></i></button><button class="btn lg"><i data-i="download"></i><x-t ur="ڈیسک ٹاپ ڈاؤن لوڈ" en="Download desktop"></x-t></button></div>
+            <div class="row xs muted" style="--g:14px"><span class="row" style="--g:6px"><i data-i="lock"></i><x-t ur="رازداری پہلے" en="Privacy first"></x-t></span><span class="row" style="--g:6px"><i data-i="disk"></i><x-t ur="آف لائن ممکن" en="Works offline"></x-t></span><span class="row" style="--g:6px"><i data-i="key"></i><x-t ur="اپنی API" en="Your own API"></x-t></span></div>
+          </div>
+          <div class="card raised mock hero-bg" style="transform:rotate(-1.2deg)"><div class="card pad col" style="--g:10px"><div class="doc" style="font-size:17px;line-height:2.1"><x-t ur="اس مسئلے میں اہلِ علم کی آراء مختلف ہیں۔ بعض کے نزدیک اصل اباحت ہے" en="Scholars differ on this issue. Some hold that permissibility is the default"></x-t><span class="cite">1</span>۔</div><div class="row" style="--g:6px"><span class="chip success"><x-t ur="مصحح" en="Verified"></x-t></span><span class="xs muted">المغنی · 4/112</span></div></div></div>
+        </div>
+        <div class="feat">
+          <div class="card pad col"><span class="li" style="padding:0"><span class="ic"><i data-i="shield"></i></span></span><b><x-t ur="اعتماد کی سطح" en="Trust at a glance"></x-t></b><span class="sm muted"><x-t ur="ہر ماخذ پر خاموش درجہ: مصحح، موثق، ضعیف۔" en="A quiet grade on every source: verified, reliable, weak."></x-t></span></div>
+          <div class="card pad col"><span class="li" style="padding:0"><span class="ic info"><i data-i="book"></i></span></span><b><x-t ur="شاملہ اور تفاسیر" en="Shamela & tafsir"></x-t></b><span class="sm muted"><x-t ur="لاکھوں صفحات میں تلاش، حوالہ ایک کلک میں۔" en="Search millions of pages; cite in one click."></x-t></span></div>
+          <div class="card pad col"><span class="li" style="padding:0"><span class="ic warning"><i data-i="bot"></i></span></span><b><x-t ur="تحقیقی ایجنٹ" en="Research agent"></x-t></b><span class="sm muted"><x-t ur="سوال دیں، وہ ذرائع جمع کر کے مسودہ بنائے۔" en="Ask a question; it gathers sources and drafts."></x-t></span></div>
+        </div>
+        <div class="plat">
+          <div class="card pad col"><i data-i="globe" data-s="24"></i><b><x-t ur="ویب" en="Web"></x-t></b><span class="sm muted"><x-t ur="براؤزر میں، کچھ انسٹال کیے بغیر۔" en="In your browser, nothing to install."></x-t></span></div>
+          <div class="card pad col"><i data-i="tablet" data-s="24"></i><b><x-t ur="موبائل (PWA)" en="Mobile (PWA)"></x-t></b><span class="sm muted"><x-t ur="ہوم اسکرین پر انسٹال، ایک ہاتھ سے۔" en="Install to home screen, one-handed."></x-t></span></div>
+          <div class="card pad col"><i data-i="monitor" data-s="24"></i><b><x-t ur="ڈیسک ٹاپ" en="Desktop"></x-t></b><span class="sm muted"><x-t ur="آف لائن، لوکل شاملہ، اپنی API۔ اکاؤنٹ لازمی نہیں۔" en="Offline, local Shamela, your own API. No account needed."></x-t></span></div>
+        </div>
+        <div class="price">
+          <div class="card pad col"><b><x-t ur="مفت" en="Free"></x-t></b><span class="xxl b">$0</span><span class="sm muted"><x-t ur="روزانہ محدود ٹوکنز" en="Limited daily tokens"></x-t></span><button class="btn block"><x-t ur="شروع کریں" en="Get started"></x-t></button></div>
+          <div class="card pad col hl"><div class="row between"><b><x-t ur="پرو" en="Pro"></x-t></b><span class="chip brand"><x-t ur="مقبول" en="Popular"></x-t></span></div><span class="xxl b">$12</span><span class="sm muted"><x-t ur="ماہانہ 200k ٹوکنز، تمام ٹولز" en="200k tokens/month, all tools"></x-t></span><button class="btn primary block"><x-t ur="پرو لیں" en="Go Pro"></x-t></button></div>
+          <div class="card pad col"><b><x-t ur="ادارہ" en="Institution"></x-t></b><span class="xxl b">—</span><span class="sm muted"><x-t ur="ٹیم، مشترکہ لائبریری" en="Teams, shared library"></x-t></span><button class="btn block"><x-t ur="رابطہ کریں" en="Contact us"></x-t></button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>Landing</h2>
+  <p class="cap">ہیرو، ایک بڑا CTA، اور "ہوم اسکرین پر انسٹال کریں" بینر۔ مینو ایک بٹن میں۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><span class="logo" style="margin-inline:8px">ع</span><b class="grow">Easy Editor</b><button class="icon-btn"><i data-i="menu"></i></button></div>
+      <div class="viewport scroll hero-bg p4 col" style="--g:16px;padding-block:24px">
+        <span class="chip brand" style="align-self:flex-start"><i data-i="spark"></i><x-t ur="اہلِ علم کے لیے" en="Built for scholars"></x-t></span>
+        <h1 class="h1" style="font-size:30px"><x-t ur="تحقیق، ماخذ اور تحریر — " en="Research, sources and writing — "></x-t><em><x-t ur="ایک ہی جگہ" en="in one place"></x-t></em></h1>
+        <p class="muted" style="margin:0"><x-t ur="ہر دعوے کے ساتھ ماخذ اور اعتماد کی سطح۔" en="The source and confidence behind every claim."></x-t></p>
+        <button class="btn primary lg block"><x-t ur="مفت شروع کریں" en="Start free"></x-t></button>
+        <div class="card raised mock"><div class="card pad col" style="--g:8px"><div class="doc" style="font-size:16px;line-height:2.1"><x-t ur="بعض کے نزدیک اصل اباحت ہے" en="Some hold permissibility is the default"></x-t><span class="cite">1</span>۔</div><span class="chip success" style="align-self:flex-start"><x-t ur="مصحح" en="Verified"></x-t></span></div></div>
+        <div class="banner info"><i data-i="download"></i><div class="t"><b><x-t ur="ہوم اسکرین پر انسٹال کریں" en="Install to home screen"></x-t></b><x-t ur="ایپ کی طرح، آف لائن شیل کے ساتھ۔" en="App-like, with an offline shell."></x-t></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>

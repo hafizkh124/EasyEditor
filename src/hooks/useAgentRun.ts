@@ -14,7 +14,15 @@ import {
   buildMentions, filterMentions, activeTriggerQuery, applyMention, applyLibraryTag,
   type Mention, type ScopeKind,
 } from "../../shared/mentions";
-import { PLAYBOOKS, type Playbook } from "../../shared/playbooks/registry";
+import { useSkills, refreshPlaybooks } from "@/lib/skills/useSkills";
+import { useAllDocuments } from "@/core/workspace/useAllDocuments";
+import { pinnedSourcesOf, type PinnedSource } from "@/lib/sources/pinnedSources";
+import { searchSources } from "@/lib/sources/searchSources";
+import { useChatPersistence, type SavedExchange } from "@/hooks/useChatPersistence";
+import { matchesSkill } from "@/lib/skills/registry";
+import { useOpenSkillsSettings } from "@/lib/skills/useOpenSkillsSettings";
+import type { ScholarlyPromptDef } from "@/lib/prompts/promptsRegistry";
+import { stripHarakat } from "@/utils/arabicUtils";
 import { applyArtifactEvent, type ArtifactState } from "@/components/workspace/agentArtifactState";
 import { getShamelaClient } from "@/core/shamela/shamelaClient";
 import { deriveRunStats } from "~shared/agent/runStats";
@@ -24,6 +32,7 @@ import { toast } from "sonner";
 import { translateStored } from "@/lib/i18n";
 import { useAuth } from "@/contexts/AuthContext";
 import { callRefineText, isRefineTextAction } from "@/lib/editor/aiActions";
+import { addJob, newJobId, registerCancel, updateJob } from "@/lib/jobs/jobStore";
 
 const log = logger.child("useAgentRun");
 
@@ -148,7 +157,7 @@ export function useAgentRun() {
   const pf = useProjectFolderContext();
   const ws = useOptionalWorkspace();
   const { subscription } = useSubscription();
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const agent = typeof window !== "undefined" ? window.electronAPI?.agent : undefined;
   // M10 Phase 2.1 — the web counterpart of `agent` above. Mutually exclusive
   // by construction: `available` is false whenever `agent` exists.
@@ -163,8 +172,17 @@ export function useAgentRun() {
   // Plan §5.1 — which artifact the stage is showing (defaults to last-opened).
   const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null);
   const [planPending, setPlanPending] = useState(false);
+  // A large agent task (plan/auto mode, or a batch over many books) is a job
+  // in the shared queue (SYSTEM-2026 §9); a quick question is not.
+  const agentJobRef = useRef<string | null>(null);
   // M13 (ADR-0056) — the outside-file write waiting for the scholar's yes/no.
   const [fileApproval, setFileApproval] = useState<FileApproval | null>(null);
+  // Waiting on the user (a plan to approve, a file write to allow) shows as "approval needed".
+  const waitingForUser = planPending || Boolean(fileApproval);
+  useEffect(() => {
+    const jobId = agentJobRef.current;
+    if (jobId) updateJob(jobId, { status: waitingForUser ? "approval" : "running" });
+  }, [waitingForUser]);
   // M11 Phase 1 — the conversation so far. `result`/`progress`/`artifacts`
   // above describe the CURRENT (or most recent) run; `turns` holds every
   // finished run before it, both to render and to feed back as `history`.
@@ -174,22 +192,16 @@ export function useAgentRun() {
   const lastInstructionRef = useRef<string | null>(null);
   const runIdRef = useRef<string | null>(null);
   const [showTools, setShowTools] = useState(false);
-  // The scholar's own skills (Settings → Skills) — merged into the `/` picker.
-  const [customSkills, setCustomSkills] = useState<Playbook[]>([]);
   const [caps, setCaps] = useState<string | null>(null);
   const [picker, setPicker] = useState<{ kind: "mention" | "command" | "library"; query: string } | null>(null);
   const [pickerActiveIndex, setPickerActiveIndex] = useState(0);
 
-  // Re-read the custom skills each time the `/` picker opens, so a skill just
-  // saved in Settings shows up without a reload.
+  // Re-read the playbooks each time the `/` picker opens, so a custom skill
+  // just saved in Settings (they come in through the skills list) shows up
+  // without a reload.
   const commandPickerOpen = picker?.kind === "command";
   useEffect(() => {
-    if (!commandPickerOpen) return;
-    const skillsApi = window.electronAPI?.skills;
-    if (!skillsApi?.list) return;
-    let live = true;
-    skillsApi.list().then((r) => { if (live) setCustomSkills(r.custom ?? []); }).catch(() => { /* picker keeps built-ins */ });
-    return () => { live = false; };
+    if (commandPickerOpen) void refreshPlaybooks();
   }, [commandPickerOpen]);
   const [shamelaBooks, setShamelaBooks] = useState<Array<{ id: string; title: string }>>([]);
   const [libraryRows, setLibraryRows] = useState<LibraryPickerRow[]>([]);
@@ -447,7 +459,7 @@ export function useAgentRun() {
   const mentions = useMemo<Mention[]>(
     () => buildMentions({
       chapters: pf.chapters.map((c) => c.name),
-      outline: ws?.documentOutline ?? [],
+      outline: (ws?.documentOutline ?? []).map((h) => h.text).filter(Boolean),
       shamelaBooks,
       assets,
     }),
@@ -617,22 +629,77 @@ export function useAgentRun() {
     setActiveArtifactId((cur) => (cur === id ? null : cur));
   }, []);
 
+  // The open document's folder and its pinned sources (SYSTEM-2026 §3): every
+  // chat in a folder answers from them unless switched off for this chat.
+  const { allDocs: folderDocs, projects: folderProjects } = useAllDocuments();
+  const activeFolder = useMemo(() => {
+    const doc = folderDocs.find((d) => d.id === ws?.activeDocumentId);
+    return doc ? folderProjects.find((p) => p.id === doc.project_id) ?? null : null;
+  }, [folderDocs, folderProjects, ws?.activeDocumentId]);
+  const folderSources = useMemo(() => pinnedSourcesOf(activeFolder), [activeFolder]);
+  const [folderSourcesOn, setFolderSourcesOn] = useState(true);
+  useEffect(() => setFolderSourcesOn(true), [activeFolder?.id]);
+
+  // `@` offers sources (SYSTEM-2026 §8): the folder's pinned ones first, then
+  // books and files matching what was typed. Picking one scopes the run to it.
+  const [sourceHits, setSourceHits] = useState<PinnedSource[]>([]);
+  useEffect(() => {
+    if (picker?.kind !== "mention" || picker.query.trim().length < 2) { setSourceHits([]); return; }
+    let cancelled = false;
+    const handle = setTimeout(() => {
+      void searchSources(picker.query).then((rows) => { if (!cancelled) setSourceHits(rows); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [picker]);
+
+  const { forPlace: skillsForPlace } = useSkills();
+  const chatSkills = useMemo(() => skillsForPlace("chat"), [skillsForPlace]);
+  const openSkillsSettings = useOpenSkillsSettings();
+  /** A prompt skill picked from `/`, waiting for the composer's arguments dialog. */
+  const [skillPromptRequest, setSkillPromptRequest] = useState<ScholarlyPromptDef | null>(null);
+  const clearSkillPromptRequest = useCallback(() => setSkillPromptRequest(null), []);
+
   const pickerItems = useMemo<PickerItem[]>(() => {
     if (!picker) return [];
     if (picker.kind === "command") {
-      const q = picker.query.toLowerCase();
-      return [...PLAYBOOKS, ...customSkills]
-        .filter((p) => p.title.toLowerCase().includes(q) || p.id.includes(q))
-        .map((p) => ({
+      // The chat's skills from the one skills list (SYSTEM-2026 §7). A skill
+      // hidden in Settings → Skills is absent here too; for playbooks that is
+      // the same switch the desktop agent obeys.
+      const done = () => {
+        setPicker(null);
+        taRef.current?.focus();
+      };
+      const items: PickerItem[] = chatSkills
+        .filter((skill) => matchesSkill(skill, picker.query, stripHarakat))
+        .map((skill) => ({
           kind: "command" as const,
-          label: p.trigger ? `/${p.trigger} — ${p.title}` : p.title,
+          label: skill.kind === "workflow" && skill.trigger ? `/${skill.trigger} — ${skill.label}` : skill.label,
+          sublabel: skill.description,
           apply: () => {
-            setInput(p.trigger ? `/${p.trigger} ` : `${p.title} `);
-            addScopeTag({ kind: "/", label: p.trigger ?? p.id, ref: p.id });
-            setPicker(null);
-            taRef.current?.focus();
+            if (skill.kind === "workflow" && skill.playbookId) {
+              setInput(skill.trigger ? `/${skill.trigger} ` : `${skill.label} `);
+              addScopeTag({ kind: "/", label: skill.trigger ?? skill.playbookId, ref: skill.playbookId });
+            } else if (skill.prompt) {
+              // Its arguments are filled in a dialog the composer opens.
+              setInput("");
+              setSkillPromptRequest(skill.prompt);
+            } else if (skill.promptText) {
+              setInput(skill.promptText);
+            }
+            done();
           },
         }));
+      if (openSkillsSettings && matchesSkill({ id: "manage-skills", kind: "edit", origin: "builtin", label: "مہارتیں سنبھالیں", places: [] }, picker.query, stripHarakat)) {
+        items.push({
+          kind: "command" as const,
+          label: "مہارتیں سنبھالیں",
+          apply: () => {
+            setPicker(null);
+            openSkillsSettings();
+          },
+        });
+      }
+      return items;
     }
     if (picker.kind === "library") {
       const sectionOrder = { book: 0, author: 1, category: 2, century: 3 } as const;
@@ -660,7 +727,7 @@ export function useAgentRun() {
         },
       }));
     }
-    return filterMentions(mentions, picker.query).map((m) => ({
+    const mentionItems: PickerItem[] = filterMentions(mentions, picker.query).map((m) => ({
       kind: "mention" as const,
       label: m.label,
       apply: () => {
@@ -674,7 +741,35 @@ export function useAgentRun() {
         requestAnimationFrame(() => { ta?.focus(); ta?.setSelectionRange(next.caret, next.caret); });
       },
     }));
-  }, [picker, mentions, input, libraryRows, addScopeTag, customSkills]);
+    const q = picker.query.trim().toLocaleLowerCase();
+    const taken = new Set([
+      ...mentions.map((m) => m.ref),
+      ...scopeTags.map((t) => t.ref),
+      ...(folderSourcesOn ? folderSources.map((f) => f.ref) : []),
+    ]);
+    const sources = [
+      ...folderSources.filter((f) => !folderSourcesOn && (!q || f.label.toLocaleLowerCase().includes(q))),
+      ...sourceHits,
+    ].filter((src, i, all) => !taken.has(src.ref) && all.findIndex((x) => x.ref === src.ref) === i);
+    const sourceItems: PickerItem[] = sources.map((src) => ({
+      kind: "mention" as const,
+      label: src.label,
+      sublabel: src.sublabel,
+      section: "source",
+      apply: () => {
+        // The `@word` is replaced by a source chip, like a `#` book.
+        const ta = taRef.current;
+        const value = ta?.value ?? input;
+        const caret = ta?.selectionStart ?? value.length;
+        const before = value.slice(0, caret).replace(/@[^\s@]*$/, "");
+        setInput(before + value.slice(caret));
+        addScopeTag({ kind: "#", label: src.label, ref: src.ref, scopeType: "book" });
+        setPicker(null);
+        requestAnimationFrame(() => { ta?.focus(); ta?.setSelectionRange(before.length, before.length); });
+      },
+    }));
+    return [...mentionItems, ...sourceItems];
+  }, [picker, mentions, input, libraryRows, addScopeTag, chatSkills, openSkillsSettings, scopeTags, folderSources, folderSourcesOn, sourceHits]);
 
   /** Called by the ScopeReviewDialog on confirm — creates the multi-book chip. */
   const confirmScopeReview = useCallback((tag: Omit<ScopeTag, "id">) => {
@@ -697,7 +792,10 @@ export function useAgentRun() {
   // unlock Plan/Auto" flow, and wiping the thread there would be data loss,
   // not a reset.
   const prevProjectRootRef = useRef<string | null>(null);
+  // Set below by the chat persistence: a cleared thread starts a new session.
+  const forgetSessionRef = useRef<() => void>(() => {});
   const clearConversation = useCallback(() => {
+    forgetSessionRef.current();
     setTurns([]);
     setResult(null);
     setProgress([]);
@@ -706,6 +804,31 @@ export function useAgentRun() {
     setPlanPending(false);
     lastInstructionRef.current = null;
   }, []);
+  // ── Saving the chat and opening a saved one (SYSTEM-2026 §3) ──
+  const answerOf = (r: RunResult) => (r.question?.trim() || r.answer || "").trim();
+  const exchanges = useMemo<SavedExchange[]>(() => {
+    const done = turns.map((tn) => ({ instruction: tn.instruction, answer: answerOf(tn.result) }));
+    const current = result && lastInstructionRef.current ? [{ instruction: lastInstructionRef.current, answer: answerOf(result) }] : [];
+    return [...done, ...current].filter((e) => e.instruction || e.answer);
+  }, [turns, result]);
+  const { forgetSession } = useChatPersistence({
+    userId: user?.id ?? null,
+    exchanges,
+    running,
+    folderId: activeFolder?.id ?? null,
+    restore: (saved) => {
+      clearConversation();
+      setTurns(saved.map((e) => ({
+        id: mkTurnId(),
+        instruction: e.instruction,
+        result: { answer: e.answer, stopReason: "restored", steps: 0, toolCalls: [] },
+      })));
+    },
+    reset: clearConversation,
+    sessionRequest: ws?.chatSessionRequest ?? null,
+  });
+  forgetSessionRef.current = forgetSession;
+
   useEffect(() => {
     const prev = prevProjectRootRef.current;
     prevProjectRootRef.current = projectRoot;
@@ -780,7 +903,11 @@ export function useAgentRun() {
     // dialog), not a composer control (plan §4.2).
     const batchExec = hashTags.map((t) => t.execMode).find((m) => m === "per-book" || m === "per-author");
     const scope: AgentScope = {
-      books: [...new Set(hashTags.flatMap(bookRefsOf))],
+      books: [...new Set([
+        ...hashTags.flatMap(bookRefsOf),
+        // The folder's pinned sources, unless switched off for this chat.
+        ...(folderSourcesOn ? folderSources.map((f) => f.ref) : []),
+      ])],
       groups: hashTags
         .filter((t) => t.scopeType && t.scopeType !== "book")
         .map((t) => ({ type: t.scopeType!, ref: t.ref, label: t.label, bookRefs: t.resolvedBookRefs ?? [] })),
@@ -801,6 +928,13 @@ export function useAgentRun() {
 
     const historyArg = history.length ? history : undefined;
     const scopeArg = hasScope ? scope : undefined;
+    if (runMode !== "ask" || scope.batch) {
+      const jobId = newJobId("agent");
+      agentJobRef.current = jobId;
+      addJob({ id: jobId, kind: "agent", title: instruction.slice(0, 80), status: "running", href: "/workspace?panel=research" });
+      registerCancel(jobId, () => { void agent?.cancel(); webAgent.cancel(); });
+    }
+    let failed: string | null = null;
     try {
       // M11 — desktop always uses its own native agent when present (the
       // full tool set — local Shamela, جوامع الكلم, Word — over IPC), even
@@ -821,13 +955,20 @@ export function useAgentRun() {
       if (desktopReady) void pf.refresh();
     } catch (err) {
       log.error("agent run failed", { err });
-      setResult({ answer: "", stopReason: "error", steps: 0, toolCalls: [], error: err instanceof Error ? err.message : String(err) });
+      failed = err instanceof Error ? err.message : String(err);
+      setResult({ answer: "", stopReason: "error", steps: 0, toolCalls: [], error: failed });
     } finally {
+      const jobId = agentJobRef.current;
+      if (jobId) {
+        agentJobRef.current = null;
+        registerCancel(jobId, null);
+        updateJob(jobId, failed ? { status: "failed", error: failed } : { status: "review" });
+      }
       setRunning(false);
       setPlanPending(false);
       setFileApproval(null);
     }
-  }, [input, agent, projectRoot, running, mode, pf, result, turns, webAgent, handleProgress, scopeTags]);
+  }, [input, agent, projectRoot, running, mode, pf, result, turns, webAgent, handleProgress, scopeTags, folderSources, folderSourcesOn]);
 
   const cancel = useCallback(() => { void agent?.cancel(); webAgent.cancel(); }, [agent, webAgent]);
 
@@ -1144,6 +1285,13 @@ export function useAgentRun() {
     caps,
     picker, setPicker,
     pickerItems,
+    folderName: activeFolder?.title ?? null,
+    folderSources,
+    folderSourcesOn,
+    setFolderSourcesOn,
+    skillPromptRequest,
+    clearSkillPromptRequest,
+    requestSkillPrompt: setSkillPromptRequest,
     pickerActiveIndex, setPickerActiveIndex,
     // Plan §4 — the `#` / `/` / `@` scope chips + the review dialog + batch mode.
     scopeTags,

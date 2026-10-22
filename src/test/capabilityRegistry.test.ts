@@ -18,7 +18,7 @@ import enTranslations from "@/locales/en.json";
  */
 
 const SURFACES: Surface[] = [
-  "sidebar", "mobile-nav", "workspace-menu", "dashboard-grid", "command-palette", "workbench-tab",
+  "sidebar", "create-menu", "workspace-menu", "dashboard-grid", "command-palette", "workbench-tab",
 ];
 
 /**
@@ -27,11 +27,6 @@ const SURFACES: Surface[] = [
  * small — every entry is a place the scanner stops looking.
  */
 const WEB_ONLY_FEATURE_PAGES = new Set([
-  "src/pages/OCR.tsx",
-  // The page's workflow moved into this hook; the "listen to the result"
-  // hand-off to /speak went with it. Same gate applies — OCR is desktop:never,
-  // so nothing here renders on a runtime where /speak might be missing.
-  "src/pages/ocr/useOcrWorkflow.ts",
   "src/pages/OcrReview.tsx",
 ]);
 
@@ -76,12 +71,32 @@ describe("capability registry", () => {
   describe("on the web", () => {
     it("offers all standalone tools", () => {
       const ids = availableCapabilities("workspace-menu").map((c) => c.id);
-      expect(ids).toEqual(expect.arrayContaining(["transcribe", "speak", "ocr", "translate.book"]));
+      expect(ids).toEqual(expect.arrayContaining(["transcribe", "ocr", "translate.book"]));
     });
 
-    it("offers voice cloning and the token meter", () => {
-      expect(isCapabilityAvailable("voice.cloning")).toBe(true);
+    it("offers the token meter", () => {
       expect(isCapabilityAvailable("tokens.meter")).toBe(true);
+    });
+
+    // SYSTEM-2026 §11: hidden for now, code kept, one flag each to bring back.
+    it("hides the voice studio and the knowledge graph by default", () => {
+      for (const id of ["speak", "voice.cloning", "audiobook", "knowledge.graph"] as const) {
+        expect(isCapabilityAvailable(id), id).toBe(false);
+      }
+      for (const surface of SURFACES) {
+        expect(availableCapabilities(surface).map((c) => c.id)).not.toContain("speak");
+      }
+    });
+
+    it("brings them back with their flags", () => {
+      vi.stubEnv("VITE_VOICE_STUDIO", "true");
+      vi.stubEnv("VITE_KNOWLEDGE_GRAPH", "true");
+      expect(isCapabilityAvailable("speak")).toBe(true);
+      expect(isCapabilityAvailable("voice.cloning")).toBe(true);
+      expect(isCapabilityAvailable("knowledge.graph")).toBe(true);
+      // The audiobook export runs on the desktop's offline voices only.
+      expect(isCapabilityAvailable("audiobook")).toBe(false);
+      expect(availableCapabilities("workspace-menu").map((c) => c.id)).toContain("speak");
     });
 
     // M10 Phase 2.1 (ADR-0034 follow-up) brought the agent to web too; M11
@@ -100,26 +115,37 @@ describe("capability registry", () => {
     it("hides every cloud-only tool on every surface", () => {
       vi.stubEnv("VITE_LOCAL_VOICE", "true");
       for (const surface of SURFACES) {
-        const ids = availableCapabilities(surface).map((c) => c.id);
-        for (const cloudOnly of ["ocr", "translate.book", "admin"]) {
-          expect(ids, `${cloudOnly} leaked into ${surface}`).not.toContain(cloudOnly);
-        }
+        expect(availableCapabilities(surface).map((c) => c.id), `admin leaked into ${surface}`).not.toContain("admin");
       }
     });
 
-    it("offers Transcribe and Speak, which run on the offline engines", () => {
+    // SYSTEM-2026 §10: never missing — they run on the user's own key or
+    // account, and show how to enable them otherwise.
+    it("offers reading and translating pages", () => {
+      expect(isCapabilityAvailable("ocr")).toBe(true);
+      expect(isCapabilityAvailable("translate.book")).toBe(true);
+      expect(isCapabilityAvailable("extract")).toBe(true);
+      expect(availableCapabilities("create-menu").map((c) => c.id)).toEqual(expect.arrayContaining(["ocr", "translate.book"]));
+    });
+
+    it("offers Transcribe, and Speak with the voice studio, on the offline engines", () => {
       vi.stubEnv("VITE_LOCAL_VOICE", "true");
       expect(isCapabilityAvailable("transcribe")).toBe(true);
+      expect(isCapabilityAvailable("speak")).toBe(false);
+      vi.stubEnv("VITE_VOICE_STUDIO", "true");
       expect(isCapabilityAvailable("speak")).toBe(true);
+      expect(isCapabilityAvailable("audiobook")).toBe(true);
       expect(availableCapabilities("workspace-menu").map((c) => c.id)).toContain("transcribe");
     });
 
     it("withdraws them again when the local voice flag is off", () => {
       vi.stubEnv("VITE_LOCAL_VOICE", "false");
+      vi.stubEnv("VITE_VOICE_STUDIO", "true");
       expect(isCapabilityAvailable("transcribe")).toBe(false);
       expect(isCapabilityAvailable("speak")).toBe(false);
-      // Nothing is left to put under a "Tools" heading, so the group goes too.
-      expect(availableCapabilities("workspace-menu").filter((c) => c.group === "tool")).toEqual([]);
+      // The page tools stay: they do not need the local voice engines.
+      expect(availableCapabilities("workspace-menu").filter((c) => c.group === "tool").map((c) => c.id))
+        .toEqual(["ocr", "translate.book"]);
     });
 
     it("drops the cloud halves of the voice tools", () => {

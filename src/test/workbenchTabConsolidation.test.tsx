@@ -29,7 +29,7 @@ function selectTab(el: HTMLElement) {
  * the "Translate" workbench tab was retired with nothing left to show.
  */
 
-const mountCounts = { aiReader: 0, notes: 0, tasks: 0, trust: 0 };
+const mountCounts = { aiReader: 0, notes: 0, trust: 0 };
 
 function makeStub(key: keyof typeof mountCounts, testId: string) {
   return function Stub() {
@@ -42,7 +42,6 @@ function makeStub(key: keyof typeof mountCounts, testId: string) {
 
 vi.mock("@/components/reader/AiReaderPanel", () => ({ AiReaderPanel: makeStub("aiReader", "aiReader-panel") }));
 vi.mock("@/components/reader/NotesPanel", () => ({ NotesPanel: makeStub("notes", "notes-panel") }));
-vi.mock("@/components/workspace/TasksTab", () => ({ TasksTab: makeStub("tasks", "tasks-panel") }));
 vi.mock("@/components/workspace/TrustTab", () => ({ TrustTab: makeStub("trust", "trust-panel") }));
 vi.mock("@/components/research/ResearchPanel", () => ({ ResearchPanel: () => <div data-testid="research-panel" /> }));
 
@@ -87,21 +86,13 @@ describe("Workbench tab consolidation (M10 Phase 3 §3.6)", () => {
     expect(mountCounts.notes).toBe(1);
   });
 
-  it("Trust opens on the audit trail and offers an inner switch to Tasks, keeping both mounted", () => {
-    mountCounts.tasks = 0;
+  it("Trust is just the audit trail — skills are managed in Settings now", () => {
     mountCounts.trust = 0;
     renderWorkbench();
 
     selectTab(screen.getByTitle("Trust"));
     expect(screen.getByTestId("trust-panel")).toBeInTheDocument();
-    expect(screen.getByTestId("tasks-panel")).toBeInTheDocument();
-    expect(screen.getByTestId("trust-panel").parentElement).not.toHaveClass("hidden");
-    expect(screen.getByTestId("tasks-panel").parentElement).toHaveClass("hidden");
-
-    selectTab(screen.getByText("Tasks"));
-    expect(screen.getByTestId("trust-panel").parentElement).toHaveClass("hidden");
-    expect(screen.getByTestId("tasks-panel").parentElement).not.toHaveClass("hidden");
-    expect(mountCounts.tasks).toBe(1);
+    expect(screen.queryByText("Tasks")).not.toBeInTheDocument();
     expect(mountCounts.trust).toBe(1);
   });
 });

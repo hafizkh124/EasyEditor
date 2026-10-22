@@ -109,8 +109,8 @@ const Signup = () => {
         </div>
 
         {referralCode && (
-          <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3 flex items-center gap-2 text-sm">
-            <Gift className="h-4 w-4 text-green-600 flex-shrink-0" />
+          <div className="rounded-md border border-success/30 bg-success/5 p-3 flex items-center gap-2 text-sm">
+            <Gift className="h-4 w-4 text-success flex-shrink-0" />
             <span className="text-foreground">
               {referrerName
                 ? (t("signup.referred_by_named", "Referred by {name}")).replace("{name}", referrerName)

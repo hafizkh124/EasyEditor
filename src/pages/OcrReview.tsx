@@ -166,7 +166,7 @@ const OcrReview = () => {
         </Button>
         <div className="flex-1" />
         {currentPageData?.reviewed && (
-          <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+          <span className="text-xs text-success flex items-center gap-1">
             <CheckCircle2 className="h-3.5 w-3.5" />
             {t("ocr_review.reviewed")}
           </span>

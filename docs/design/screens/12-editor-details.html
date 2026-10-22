@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor details</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .tb { display: flex; align-items: center; gap: 2px; padding: 6px 10px; border-block-end: 1px solid hsl(var(--border)); background: hsl(var(--card)); overflow: hidden; }
+  .tb .sep { inline-size: 1px; block-size: 20px; background: hsl(var(--border)); margin-inline: 6px; }
+  .tb .icon-btn.on { background: hsl(var(--primary-soft)); color: hsl(var(--primary)); }
+  .page { max-inline-size: 640px; margin: 24px auto; padding-inline: 28px; }
+  .ins { background: hsl(var(--success-bg)); color: hsl(var(--success)); border-radius: 4px; padding-inline: 2px; text-decoration: underline; text-decoration-color: hsl(var(--success-bd)); }
+  .del { background: hsl(var(--danger-bg)); color: hsl(var(--danger)); border-radius: 4px; padding-inline: 2px; text-decoration: line-through; }
+  .note { background: hsl(var(--warning-bg)); border-radius: 4px; box-shadow: 0 -2px 0 hsl(var(--warning-bd)) inset; }
+  .ver { display: flex; gap: 12px; padding: 12px; border-radius: 12px; } .ver.on { background: hsl(var(--primary-soft)); }
+  .tl { inline-size: 10px; block-size: 10px; border-radius: 50%; background: hsl(var(--border-strong)); margin-block-start: 6px; flex: none; } .ver.on .tl { background: hsl(var(--primary)); }
+  .fmt { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .fmt button { display: flex; flex-direction: column; align-items: center; gap: 4px; min-block-size: 64px; padding: 10px 4px; border-radius: 14px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); font-size: 12px; } .fmt button svg.i { font-size: 20px; color: hsl(var(--primary)); }
+  .kbar { display: flex; align-items: center; gap: 2px; padding: 4px 6px; background: hsl(var(--card)); border-block-start: 1px solid hsl(var(--border)); }
+  .keys { background: hsl(0 0% 82%); padding: 8px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; }
+  :root[data-theme="dark"] .keys { background: hsl(0 0% 20%); } .keys i { block-size: 34px; border-radius: 6px; background: hsl(var(--card)); box-shadow: var(--shadow-xs); }
+</style>
+</head>
+<body data-title="12 · ایڈیٹر کی تفصیلات" data-note="ٹول بار، ٹریک چینجز، مارجن نوٹس، ورژن ہسٹری، ایکسپورٹ، slash مینو، AI رن کی حالتیں۔ دونوں پلیٹ فارمز پر۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>مکمل ٹول بار · ٹریک چینجز · AI نتیجہ کی منظوری</h2>
+  <p class="cap">ٹول بار گروپوں میں: متن، ڈھانچہ، دلیل (حوالہ/نوٹ)، جائزہ (ٹریک چینجز)۔ AI گروپ ٹول بار سے ہٹا دیا گیا؛ AI صرف سلیکشن، "/" اور کمانڈ پیلیٹ سے۔ AI کا نتیجہ مسودے پر "ٹریک شدہ" آتا ہے اور اوپر منظوری کی پٹی: سب قبول/رد، ہر تبدیلی الگ۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center">مسئلہ کی تحقیق — مسودہ</span></div>
+      <div class="topbar" style="block-size:48px"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="sm">مسئلہ کی تحقیق — مسودہ</b><span class="chip success"><span class="dot"></span><x-t ur="محفوظ" en="Saved"></x-t></span><span class="grow"></span><button class="icon-btn"><i data-i="cal"></i></button><button class="icon-btn"><i data-i="chat"></i></button><button class="btn sm"><i data-i="upload"></i><x-t ur="شیئر / ایکسپورٹ" en="Share / Export"></x-t></button><button class="icon-btn" style="background:hsl(var(--primary-soft));color:hsl(var(--primary))"><i data-i="spark"></i></button></div>
+      <div class="tb"><button class="icon-btn sm"><i data-i="undo"></i></button><button class="icon-btn sm"><i data-i="undo" data-flip style="transform:scaleX(-1)"></i></button><span class="sep"></span><button class="btn sm ghost"><x-t ur="عام متن" en="Body"></x-t><i data-i="chev-d" data-s="14"></i></button><button class="btn sm ghost" style="font-family:'Noto Nastaliq Urdu'">نستعلیق<i data-i="chev-d" data-s="14"></i></button><span class="sep"></span><button class="icon-btn sm on"><i data-i="bold"></i></button><button class="icon-btn sm"><i data-i="italic"></i></button><button class="icon-btn sm"><i data-i="type"></i></button><span class="sep"></span><button class="icon-btn sm"><i data-i="list"></i></button><button class="icon-btn sm"><i data-i="align"></i></button><button class="icon-btn sm"><i data-i="table"></i></button><span class="sep"></span><button class="icon-btn sm"><i data-i="quote"></i></button><button class="icon-btn sm"><i data-i="chat"></i></button><button class="icon-btn sm"><i data-i="link"></i></button><span class="grow"></span><div class="segmented"><span><x-t ur="لکھیں" en="Edit"></x-t></span><span class="on"><i data-i="pen"></i><x-t ur="تجویز" en="Suggest"></x-t></span><span><x-t ur="دیکھیں" en="View"></x-t></span></div></div>
+      <div class="banner warning" style="margin:10px 16px 0;align-items:center;border-radius:12px"><i data-i="spark"></i><span class="grow t"><b><x-t ur="AI نے 3 تبدیلیاں تجویز کیں" en="AI suggested 3 changes"></x-t></b><x-t ur="خلاصہ بنائیں · 840 ٹوکنز" en="Summarise · 840 tokens"></x-t></span><button class="btn sm primary"><x-t ur="سب قبول" en="Accept all"></x-t></button><button class="btn sm"><x-t ur="سب رد" en="Reject all"></x-t></button></div>
+      <div class="scroll grow"><div class="page doc"><h2><x-t ur="فقہاء کے اقوال کا خلاصہ" en="Summary of the jurists' positions"></x-t></h2><p style="margin:0 0 12px"><x-t ur="اس مسئلے میں" en="On this issue"></x-t> <span class="del"><x-t ur="علماء کا بڑا اختلاف ہے" en="there is a great dispute"></x-t></span> <span class="ins"><x-t ur="اہلِ علم کی آراء مختلف ہیں" en="scholars hold differing views"></x-t></span><span class="cite">1</span><x-t ur="۔ بعض کے نزدیک" en=". Some hold that"></x-t> <span class="note"><x-t ur="اصل اباحت ہے" en="permissibility is the default"></x-t></span><span class="cite">2</span>۔</p>
+        <div class="row" style="--g:8px;justify-content:flex-end"><button class="btn sm"><i data-i="check"></i></button><button class="btn sm"><i data-i="x"></i></button><span class="xs muted"><x-t ur="تجویز 1 / 3" en="Change 1 of 3"></x-t></span></div></div></div>
+    </div>
+
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="مارجن نوٹس · ورژن ہسٹری · slash" en="Margin notes · version history · slash"></x-t></span></div>
+      <div class="viewport" style="flex-direction:row">
+        <div class="grow scroll" style="position:relative"><div class="page doc" style="margin-block-start:30px"><h2><x-t ur="فقہاء کے اقوال" en="Jurists' positions"></x-t></h2><p style="margin:0"><x-t ur="اس مسئلے میں اہلِ علم کی آراء مختلف ہیں۔ بعض کے نزدیک" en="Scholars differ on this issue. Some hold that"></x-t> <span class="note"><x-t ur="اصل اباحت ہے" en="permissibility is the default"></x-t></span>۔</p><p style="margin:12px 0 0"><span style="color:hsl(var(--primary))">/</span><span style="color:hsl(var(--muted-foreground))">خلا</span></p></div>
+          <div class="pop card raised" style="position:absolute;inset-block-start:300px;inset-inline-end:90px;inline-size:300px;padding:6px"><div class="nav-label" style="padding-block-start:4px"><x-t ur="AI ٹاسکس" en="AI TASKS"></x-t></div><div class="menu-item on"><i data-i="spark"></i><x-t ur="خلاصہ بنائیں" en="Summarise"></x-t><span class="chip neutral" style="margin-inline-start:auto">840</span></div><div class="menu-item"><i data-i="pen"></i><x-t ur="دوبارہ لکھیں" en="Rewrite"></x-t></div><div class="menu-item"><i data-i="quote"></i><x-t ur="خودکار حوالہ جات" en="Auto citations"></x-t></div><div class="nav-label"><x-t ur="فارمیٹنگ" en="FORMATTING"></x-t></div><div class="menu-item"><i data-i="type"></i><x-t ur="حرکات لگائیں" en="Add diacritics"></x-t></div><div class="menu-item"><i data-i="volume"></i><x-t ur="آواز میں سنیں" en="Listen"></x-t></div></div>
+        </div>
+        <aside class="sidebar" style="inline-size:300px;border-inline-end:0;border-inline-start:1px solid hsl(var(--border))"><div class="tabs"><button class="tab"><i data-i="chat"></i><x-t ur="نوٹس (3)" en="Notes (3)"></x-t></button><button class="tab on"><i data-i="clock"></i><x-t ur="ورژنز" en="Versions"></x-t></button></div>
+          <div class="p3 col" style="--g:4px"><button class="btn block"><i data-i="plus"></i><x-t ur="موجودہ حالت محفوظ کریں" en="Save a snapshot"></x-t></button>
+            <div class="ver on"><span class="tl"></span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="موجودہ" en="Current"></x-t></b><span class="xs muted"><x-t ur="ابھی · 412 الفاظ" en="Now · 412 words"></x-t></span></div></div>
+            <div class="ver"><span class="tl"></span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="مسودہ مکمل" en="Draft complete"></x-t></b><span class="xs muted"><x-t ur="آج 10:12 · 398 الفاظ" en="Today 10:12 · 398 words"></x-t></span></div><button class="btn sm"><x-t ur="بحال" en="Restore"></x-t></button></div>
+            <div class="ver"><span class="tl"></span><div class="grow col" style="--g:2px"><b class="sm"><x-t ur="AI سے پہلے" en="Before AI task"></x-t></b><span class="xs muted"><x-t ur="کل 18:40 · 360 الفاظ" en="Yesterday 18:40 · 360 words"></x-t></span></div><button class="btn sm"><x-t ur="بحال" en="Restore"></x-t></button></div>
+            <div class="banner info" style="margin-block-start:6px;padding:10px"><i data-i="info"></i><div class="t xs"><x-t ur="AI ٹاسک سے پہلے خود بخود ایک ورژن محفوظ ہوتا ہے۔" en="A version is saved automatically before every AI task."></x-t></div></div></div></aside>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag mob">موبائل</span>شیئر / ایکسپورٹ · AI رن کی حالتیں</h2>
+  <p class="cap">ایکسپورٹ ایک ہی شیٹ/ڈائیلاگ: فارمیٹس کے کارڈ، "Word کے ذریعے" کی اضافی ترتیبات (RTL، ٹریک چینجز، نقصان کی رپورٹ)، آڈیو بک۔ پہلے ڈیسک ٹاپ اور موبائل مینو میں الگ فہرست تھی۔ AI رن: لاگت کی تصدیق، چلنے کی پیشرفت اور منسوخی، ادھورا رن، ناکامی۔</p>
+  <div class="frames">
+    <div class="card" style="inline-size:460px;padding:0;overflow:hidden"><div class="row between p4" style="border-block-end:1px solid hsl(var(--border))"><b><x-t ur="شیئر / ایکسپورٹ" en="Share / Export"></x-t></b><button class="icon-btn sm"><i data-i="x"></i></button></div>
+      <div class="p4 col" style="--g:14px"><div class="fmt"><button><i data-i="file"></i>Word</button><button><i data-i="file"></i>PDF</button><button><i data-i="globe"></i>HTML</button><button><i data-i="align"></i>TXT</button></div>
+        <div class="card pad col" style="--g:10px;border-color:hsl(var(--primary) / .4)"><div class="row"><i data-i="shield"></i><b class="sm grow"><x-t ur="Word کے ذریعے (اعلیٰ معیار)" en="Via Word (high fidelity)"></x-t></b><span class="chip brand"><x-t ur="تجویز" en="Recommended"></x-t></span></div><div class="row between sm"><span><x-t ur="دائیں سے بائیں (RTL)" en="Right-to-left"></x-t></span><span class="switch on"></span></div><div class="row between sm"><span><x-t ur="ٹریک چینجز شامل" en="Include tracked changes"></x-t></span><span class="switch"></span></div><div class="row between sm"><span><x-t ur="حوالہ جات بطور حاشیہ" en="Citations as footnotes"></x-t></span><span class="switch on"></span></div></div>
+        <div class="row"><div class="li card grow"><span class="ic info"><i data-i="volume"></i></span><div class="grow"><b class="sm"><x-t ur="آڈیو بک (MP3)" en="Audiobook (MP3)"></x-t></b><div class="xs muted"><x-t ur="مقامی آواز · ~14 منٹ" en="Local voice · ~14 min"></x-t></div></div></div><div class="li card grow"><span class="ic"><i data-i="gift"></i></span><div class="grow"><b class="sm"><x-t ur="شیئر کارڈ" en="Share card"></x-t></b><div class="xs muted">PNG</div></div></div></div>
+        <button class="btn primary lg block"><i data-i="download"></i><x-t ur="ایکسپورٹ" en="Export"></x-t></button></div></div>
+
+    <div class="card" style="inline-size:420px;padding:0;overflow:hidden"><div class="row between p4" style="border-block-end:1px solid hsl(var(--border))"><b><x-t ur="خلاصہ بنائیں" en="Summarise"></x-t></b><span class="chip info"><x-t ur="چل رہا ہے" en="Running"></x-t></span></div>
+      <div class="p4 col" style="--g:12px"><div class="row between sm"><span><x-t ur="حصہ 3 / 8" en="Chunk 3 of 8"></x-t></span><span class="muted">~40 <x-t ur="سیکنڈ" en="s left"></x-t></span></div><div class="progress"><i style="inline-size:37%"></i></div><div class="xs muted"><x-t ur="آپ لکھتے رہ سکتے ہیں۔ نتیجہ ٹریک شدہ تبدیلی کی صورت میں آئے گا۔" en="Keep writing. The result arrives as tracked changes."></x-t></div><div class="row"><button class="btn grow"><x-t ur="منسوخ" en="Cancel"></x-t></button><button class="btn ghost"><x-t ur="پس منظر میں" en="Run in background"></x-t></button></div></div>
+      <hr class="hr"><div class="p4 col" style="--g:10px"><div class="banner warning"><i data-i="warn"></i><div class="t"><b><x-t ur="ایک رن ادھورا ہے" en="An earlier run is unfinished"></x-t></b><x-t ur="رسالہ.docx · 5 / 12 حصے" en="Risala.docx · 5 / 12 chunks"></x-t><div class="row" style="margin-block-start:8px"><button class="btn sm primary"><x-t ur="جاری رکھیں" en="Resume"></x-t></button><button class="btn sm ghost"><x-t ur="رہنے دیں" en="Discard"></x-t></button></div></div></div></div></div>
+
+    <div class="card" style="inline-size:420px;padding:0;overflow:hidden"><div class="p4 col" style="--g:12px"><div class="row" style="--g:10px"><span class="li" style="padding:0"><span class="ic warning"><i data-i="spark"></i></span></span><div class="col" style="--g:0"><b><x-t ur="لاگت کی تصدیق" en="Confirm cost"></x-t></b><span class="xs muted"><x-t ur="طویل دستاویز · 18,200 الفاظ" en="Long document · 18,200 words"></x-t></span></div></div>
+      <div class="card pad col" style="--g:6px"><div class="row between sm"><span class="muted"><x-t ur="تخمینی لاگت" en="Estimated cost"></x-t></span><b>7,400</b></div><div class="row between sm"><span class="muted"><x-t ur="آپ کا بیلنس" en="Your balance"></x-t></span><b>12,400</b></div><div class="row between sm"><span class="muted"><x-t ur="رن کے بعد" en="After run"></x-t></span><b style="color:hsl(var(--success))">5,000</b></div></div>
+      <div class="banner danger"><i data-i="warn"></i><div class="t xs"><x-t ur="بیلنس کم ہو تو ٹاپ اپ یا اپنی API کا راستہ یہیں ملے گا۔" en="If the balance is low, top up or use your own API right here."></x-t></div></div>
+      <div class="row"><button class="btn primary grow"><x-t ur="چلائیں" en="Run"></x-t></button><button class="btn"><i data-i="key"></i><x-t ur="میری API" en="My API"></x-t></button><button class="btn ghost"><x-t ur="منسوخ" en="Cancel"></x-t></button></div></div></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>ایڈیٹر · کی بورڈ کے ساتھ، فارمیٹ شیٹ، نوٹس، ایکسپورٹ</h2>
+  <p class="cap">کی بورڈ کھلنے پر اس کے عین اوپر ایک تنگ بار: بولڈ، لسٹ، حوالہ، "Aa" (کھلے تو پوری فارمیٹ شیٹ)، "✦" AI۔ تمام ٹول بار فنکشن چھوٹی اسکرین پر دو ٹیپ کے اندر۔ ٹریک چینجز اور نوٹس کے لیے نیچے سے شیٹ۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><div class="col grow" style="--g:0"><b class="sm trunc">مسئلہ کی تحقیق — مسودہ</b><span class="xs muted"><x-t ur="لکھ رہے ہیں…" en="Typing…"></x-t></span></div><button class="icon-btn"><i data-i="upload"></i></button><button class="icon-btn"><i data-i="more"></i></button></div>
+      <div class="viewport"><div class="scroll grow" style="padding:18px 22px"><div class="doc" style="font-size:18px"><p style="margin:0"><x-t ur="اس مسئلے میں اہلِ علم کی آراء مختلف ہیں۔ بعض کے نزدیک اصل اباحت ہے" en="Scholars differ on this issue. Some hold that permissibility is the default"></x-t><span class="cite">1</span><span style="border-inline-start:2px solid hsl(var(--primary));margin-inline-start:2px"></span></p></div></div>
+        <div class="kbar"><button class="icon-btn sm"><i data-i="bold"></i></button><button class="icon-btn sm"><i data-i="italic"></i></button><button class="icon-btn sm"><i data-i="list"></i></button><button class="icon-btn sm"><i data-i="quote"></i></button><button class="icon-btn sm"><i data-i="chat"></i></button><span class="grow"></span><button class="btn sm ghost"><b>Aa</b></button><button class="btn sm primary"><i data-i="spark"></i></button></div>
+        <div class="keys"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="sm grow trunc">مسئلہ کی تحقیق — مسودہ</b></div>
+      <div class="viewport"><div class="scrim"></div>
+        <div class="sheet" style="position:absolute;inset-inline:0;inset-block-end:0;z-index:6;padding-block-end:20px"><div class="grab"></div><div class="p4 col" style="--g:14px"><b><x-t ur="فارمیٹ" en="Format"></x-t></b>
+          <div class="segmented" style="inline-size:100%"><span class="on grow center"><x-t ur="متن" en="Text"></x-t></span><span class="grow center"><x-t ur="پیراگراف" en="Paragraph"></x-t></span><span class="grow center"><x-t ur="داخل کریں" en="Insert"></x-t></span></div>
+          <div class="fmt"><button><i data-i="bold"></i><x-t ur="بولڈ" en="Bold"></x-t></button><button><i data-i="italic"></i><x-t ur="ترچھا" en="Italic"></x-t></button><button><i data-i="type"></i><x-t ur="عنوان" en="Heading"></x-t></button><button><i data-i="quote"></i><x-t ur="اقتباس" en="Quote"></x-t></button><button><i data-i="list"></i><x-t ur="فہرست" en="List"></x-t></button><button><i data-i="align"></i><x-t ur="سیدھ" en="Align"></x-t></button><button><i data-i="table"></i><x-t ur="جدول" en="Table"></x-t></button><button><i data-i="globe"></i>RTL</button></div>
+          <div class="row between"><span class="sm"><x-t ur="فونٹ" en="Font"></x-t></span><div class="segmented"><span class="on" style="font-family:'Noto Nastaliq Urdu'">نستعلیق</span><span>نسخ</span><span>أميري</span></div></div></div></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="sm grow trunc">مسئلہ کی تحقیق — مسودہ</b></div>
+      <div class="viewport"><div class="scrim"></div>
+        <div class="sheet" style="position:absolute;inset-inline:0;inset-block-end:0;z-index:6;block-size:70%;display:flex;flex-direction:column"><div class="grab"></div>
+          <div class="tabs"><button class="tab on"><x-t ur="تجاویز (3)" en="Changes (3)"></x-t></button><button class="tab"><x-t ur="نوٹس (2)" en="Notes (2)"></x-t></button><button class="tab"><x-t ur="ورژنز" en="Versions"></x-t></button></div>
+          <div class="scroll grow p3 col" style="--g:8px"><div class="card pad col" style="--g:8px"><div class="row"><span class="chip danger"><x-t ur="حذف" en="Delete"></x-t></span><span class="sm grow trunc">علماء کا بڑا اختلاف ہے</span></div><div class="row"><span class="chip success"><x-t ur="اضافہ" en="Insert"></x-t></span><span class="sm grow trunc">اہلِ علم کی آراء مختلف ہیں</span></div><div class="row"><button class="btn sm primary grow"><i data-i="check"></i><x-t ur="قبول" en="Accept"></x-t></button><button class="btn sm grow"><i data-i="x"></i><x-t ur="رد" en="Reject"></x-t></button></div></div><div class="card pad"><div class="row"><span class="chip warning"><x-t ur="دوبارہ لکھا" en="Rewrite"></x-t></span><span class="sm grow trunc">بعض کے نزدیک اصل اباحت ہے</span></div></div></div>
+          <div class="p3 row" style="border-block-start:1px solid hsl(var(--border))"><button class="btn primary grow"><x-t ur="سب قبول" en="Accept all"></x-t></button><button class="btn grow"><x-t ur="سب رد" en="Reject all"></x-t></button></div></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="sm grow trunc">مسئلہ کی تحقیق — مسودہ</b></div>
+      <div class="viewport"><div class="scrim"></div>
+        <div class="sheet" style="position:absolute;inset-inline:0;inset-block-end:0;z-index:6;padding-block-end:20px"><div class="grab"></div><div class="p4 col" style="--g:12px"><b><x-t ur="شیئر / ایکسپورٹ" en="Share / Export"></x-t></b><div class="fmt"><button><i data-i="file"></i>Word</button><button><i data-i="file"></i>PDF</button><button><i data-i="globe"></i>HTML</button><button><i data-i="align"></i>TXT</button></div><div class="li card"><span class="ic"><i data-i="shield"></i></span><div class="grow"><b class="sm"><x-t ur="Word کے ذریعے (اعلیٰ معیار)" en="Via Word (high fidelity)"></x-t></b></div><i data-i="chev-l" class="muted"></i></div><div class="li card"><span class="ic info"><i data-i="volume"></i></span><div class="grow"><b class="sm"><x-t ur="آڈیو بک (MP3)" en="Audiobook (MP3)"></x-t></b></div><i data-i="chev-l" class="muted"></i></div><div class="li card"><span class="ic"><i data-i="gift"></i></span><div class="grow"><b class="sm"><x-t ur="شیئر کارڈ" en="Share card"></x-t></b></div><i data-i="chev-l" class="muted"></i></div></div></div></div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>

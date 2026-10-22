@@ -117,7 +117,7 @@ export const TaskEditorDialog: React.FC<TaskEditorDialogProps> = ({
               className="text-xs leading-relaxed"
             />
             <p className="text-xs text-muted-foreground flex items-start gap-1">
-              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-500" />
+              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-info" />
               {t("library.task_prompt_hint", "The instruction is stored on the server and only read from your account. At least 20 characters.")}
             </p>
           </div>

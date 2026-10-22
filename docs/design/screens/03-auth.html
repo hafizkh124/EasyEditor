@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auth — لاگ ان اور سائن اپ</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .authwrap { display: grid; grid-template-columns: 1.05fr 1fr; flex: 1; min-block-size: 0; }
+  .brandpane { padding: 48px; display: flex; flex-direction: column; justify-content: space-between; color: hsl(var(--foreground)); border-inline-end: 1px solid hsl(var(--border)); }
+  .formpane { display: grid; place-items: center; padding: 32px; }
+  .form { inline-size: 100%; max-inline-size: 380px; display: flex; flex-direction: column; gap: 16px; }
+  .logo { display: inline-grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: 14px; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 700; font-size: 20px; }
+  .or { display: flex; align-items: center; gap: 12px; color: hsl(var(--muted-foreground)); font-size: 12px; } .or::before, .or::after { content: ""; flex: 1; block-size: 1px; background: hsl(var(--border)); }
+  .strength { display: flex; gap: 4px; } .strength i { flex: 1; block-size: 4px; border-radius: 3px; background: hsl(var(--muted)); } .strength i.on { background: hsl(40 94% 52%); }
+  .quote { padding: 18px; border-radius: 18px; background: hsl(var(--card) / .8); border: 1px solid hsl(var(--border)); }
+</style>
+</head>
+<body data-title="03 · اکاؤنٹ: لاگ ان، سائن اپ، منظوری کا انتظار" data-note="ویب اور موبائل پر لازمی۔ ڈیسک ٹاپ پر یہ صرف اختیاری 'ڈیٹابیس سے جوڑیں' سے کھلتی ہیں (اسکرین 02)۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag mob">موبائل</span><span class="tag">ویب</span>لاگ ان · سائن اپ (غلطی کی حالت کے ساتھ)</h2>
+  <p class="cap">ایک کالم، 16px inputs (iOS zoom نہیں)، بڑے ٹچ ٹارگٹ، Google سائن ان سب سے اوپر، پاس ورڈ کی طاقت کا اشارہ، اور غلطی فیلڈ کے ساتھ ہی (صفحے کے اوپر نہیں)۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="viewport hero-bg scroll" style="padding:24px 22px;gap:20px">
+        <div class="row" style="--g:10px"><span class="logo">ع</span><div class="col" style="--g:0"><span class="b">Al-Ulama Easy Editor</span><span class="xs muted"><x-t ur="علمی تحقیق اور تحریر" en="Scholarly research & writing"></x-t></span></div></div>
+        <div class="col" style="--g:4px"><div class="xxl b"><x-t ur="خوش آمدید" en="Welcome back"></x-t></div><div class="muted"><x-t ur="اپنے اکاؤنٹ میں داخل ہوں" en="Sign in to your account"></x-t></div></div>
+        <button class="btn lg block"><svg class="i" viewBox="0 0 24 24" style="fill:none"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8" style="display:none"/></svg><x-t ur="Google کے ساتھ جاری رکھیں" en="Continue with Google"></x-t></button>
+        <div class="or"><x-t ur="یا ای میل سے" en="or with email"></x-t></div>
+        <div class="field"><label><x-t ur="ای میل" en="Email"></x-t></label><input class="input" style="direction:ltr" value="hafiz@example.com" readonly></div>
+        <div class="field err"><label><x-t ur="پاس ورڈ" en="Password"></x-t></label><div style="position:relative"><input class="input" style="direction:ltr;padding-inline-end:46px" value="••••••" readonly><span style="position:absolute;inset-inline-end:12px;inset-block-start:12px"><i data-i="eye" data-s="20"></i></span></div><span class="hint row" style="--g:6px"><i data-i="warn"></i><x-t ur="پاس ورڈ غلط ہے۔ دوبارہ کوشش کریں۔" en="Wrong password. Try again."></x-t></span></div>
+        <div class="row between"><span class="sm" style="color:hsl(var(--primary));font-weight:500"><x-t ur="پاس ورڈ بھول گئے؟" en="Forgot password?"></x-t></span></div>
+        <button class="btn primary lg block"><x-t ur="لاگ ان" en="Sign in"></x-t></button>
+        <div class="center sm muted"><x-t ur="نیا اکاؤنٹ؟" en="New here?"></x-t> <b style="color:hsl(var(--primary))"><x-t ur="سائن اپ کریں" en="Create account"></x-t></b></div>
+      </div>
+    </div>
+
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="viewport scroll" style="padding:20px 22px;gap:16px">
+        <div class="row"><button class="icon-btn" aria-label="back"><i data-i="chev-r" data-flip></i></button><div class="steps row" style="--g:6px;margin-inline-start:auto"></div></div>
+        <div class="col" style="--g:4px"><div class="xxl b"><x-t ur="اکاؤنٹ بنائیں" en="Create your account"></x-t></div><div class="muted"><x-t ur="30 سیکنڈ لگیں گے" en="Takes 30 seconds"></x-t></div></div>
+        <div class="field"><label><x-t ur="پورا نام" en="Full name"></x-t></label><input class="input" value="حافظ خلیل" readonly></div>
+        <div class="field"><label><x-t ur="ای میل" en="Email"></x-t></label><input class="input" style="direction:ltr" value="hafiz@example.com" readonly></div>
+        <div class="field"><label><x-t ur="پاس ورڈ" en="Password"></x-t></label><input class="input" style="direction:ltr" value="••••••••••" readonly><div class="strength"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div><span class="hint"><x-t ur="درمیانہ۔ ایک علامت (!@#) اور شامل کریں۔" en="Fair. Add a symbol (!@#) to make it strong."></x-t></span></div>
+        <div class="row" style="--g:10px;align-items:flex-start"><span class="switch on" style="inline-size:36px;block-size:22px"></span><span class="sm muted"><x-t ur="میں شرائط اور رازداری کی پالیسی سے متفق ہوں" en="I agree to the Terms and Privacy Policy"></x-t></span></div>
+        <button class="btn primary lg block"><x-t ur="سائن اپ" en="Sign up"></x-t></button>
+        <div class="banner info"><i data-i="info"></i><div class="t"><x-t ur="نئے اکاؤنٹس کی منظوری ایڈمن کرتا ہے۔ عموماً چند گھنٹے لگتے ہیں۔" en="New accounts are approved by an admin, usually within a few hours."></x-t></div></div>
+      </div>
+    </div>
+
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="viewport center hero-bg" style="justify-content:center;padding:28px;gap:16px">
+        <span class="avatar" style="inline-size:72px;block-size:72px;background:hsl(var(--warning-bg));color:hsl(var(--warning))"><i data-i="clock" data-s="34"></i></span>
+        <div class="xl b"><x-t ur="منظوری کا انتظار ہے" en="Waiting for approval"></x-t></div>
+        <div class="muted"><x-t ur="آپ کی درخواست مل گئی۔ منظوری ہوتے ہی ای میل آئے گی۔" en="We got your request. You'll get an email as soon as it's approved."></x-t></div>
+        <div class="card pad col" style="--g:12px;inline-size:100%;text-align:start"><div class="row"><span class="dot" style="color:hsl(var(--success))"></span><span class="sm"><x-t ur="اکاؤنٹ بنایا گیا" en="Account created"></x-t></span></div><div class="row"><span class="dot" style="color:hsl(var(--warning))"></span><span class="sm b"><x-t ur="ایڈمن کا جائزہ" en="Admin review"></x-t></span></div><div class="row muted"><span class="dot"></span><span class="sm"><x-t ur="استعمال شروع" en="Start using"></x-t></span></div></div>
+        <div class="banner info" style="text-align:start"><i data-i="monitor"></i><div class="t"><b><x-t ur="انتظار کے دوران" en="While you wait"></x-t></b><x-t ur="ڈیسک ٹاپ ایپ بغیر اکاؤنٹ کے آف لائن چلتی ہے۔" en="The desktop app works offline without an account."></x-t></div></div>
+        <button class="btn block"><i data-i="refresh"></i><x-t ur="حالت دوبارہ دیکھیں" en="Check status"></x-t></button>
+        <button class="btn ghost"><x-t ur="لاگ آؤٹ" en="Sign out"></x-t></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">ویب</span>ڈیسک ٹاپ براؤزر · دو حصوں والا</h2>
+  <p class="cap">بائیں/دائیں برانڈ کا پینل (قدر + اعتماد کا بیان)، دوسری طرف فارم۔ 1024px سے کم پر برانڈ پینل غائب، فارم مرکز میں۔</p>
+  <div class="frames">
+    <div class="device desk short">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>app.easyeditor.example/login</div></div>
+      <div class="authwrap">
+        <div class="brandpane hero-bg">
+          <div class="row" style="--g:10px"><span class="logo">ع</span><span class="b lg">Al-Ulama Easy Editor</span></div>
+          <div class="col" style="--g:16px"><div class="xxl b" style="font-size:34px;line-height:1.4"><x-t ur="تحقیق، ماخذ اور تحریر — ایک ہی جگہ" en="Research, sources and writing — in one place"></x-t></div><div class="muted lg" style="max-inline-size:440px"><x-t ur="ہر دعوے کے ساتھ ماخذ اور اعتماد کی سطح، تاکہ آپ بھروسے سے لکھیں۔" en="Every claim comes with its source and a confidence level, so you can write with trust."></x-t></div></div>
+          <div class="quote"><div class="row" style="--g:8px"><span class="chip success"><x-t ur="مصحح" en="Verified"></x-t></span><span class="chip warning"><x-t ur="موثق" en="Reliable"></x-t></span><span class="chip weak"><x-t ur="ضعیف" en="Weak"></x-t></span></div><div class="sm muted" style="margin-block-start:8px"><x-t ur="درجہ بندی ہمیشہ خاموش چپ کی صورت میں، بینر نہیں۔" en="Grading is always a quiet chip, never a banner."></x-t></div></div>
+        </div>
+        <div class="formpane"><div class="form">
+          <div class="col" style="--g:4px"><div class="xxl b"><x-t ur="خوش آمدید" en="Welcome back"></x-t></div><div class="muted"><x-t ur="اپنے اکاؤنٹ میں داخل ہوں" en="Sign in to your account"></x-t></div></div>
+          <button class="btn lg block"><x-t ur="Google کے ساتھ جاری رکھیں" en="Continue with Google"></x-t></button>
+          <div class="or"><x-t ur="یا ای میل سے" en="or with email"></x-t></div>
+          <div class="field"><label><x-t ur="ای میل" en="Email"></x-t></label><input class="input" style="direction:ltr" value="hafiz@example.com" readonly></div>
+          <div class="field"><label><x-t ur="پاس ورڈ" en="Password"></x-t></label><input class="input" style="direction:ltr" value="••••••••" readonly></div>
+          <button class="btn primary lg block"><x-t ur="لاگ ان" en="Sign in"></x-t></button>
+          <div class="center sm muted"><x-t ur="نیا اکاؤنٹ؟" en="New here?"></x-t> <b style="color:hsl(var(--primary))"><x-t ur="سائن اپ کریں" en="Create account"></x-t></b></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>

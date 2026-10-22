@@ -33,15 +33,15 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
   return (
     <div className="flex flex-col h-full bg-background p-3">
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
-        <div className="flex items-center gap-1.5 font-semibold text-xs text-amber-700 dark:text-amber-400">
+        <div className="flex items-center gap-1.5 font-semibold text-xs text-warning">
           <StickyNote className="h-4 w-4" />
           <span>{t("annotations.title_count", "Margin Notes ({count})").replace("{count}", String(annotations.length))}</span>
         </div>
       </div>
 
       {hasSelection && onCreateAnnotation && (
-        <div className="space-y-1.5 mb-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded-md">
-          <p className="text-xs text-amber-700 font-medium">{t("annotations.add_hint", "Add a note on the selected text:")}</p>
+        <div className="space-y-1.5 mb-3 p-2 bg-warning/10 border border-warning/20 rounded-md">
+          <p className="text-xs text-warning font-medium">{t("annotations.add_hint", "Add a note on the selected text:")}</p>
           <div className="flex gap-1">
             <Input
               value={newNote}
@@ -50,7 +50,7 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
               className="h-7 text-xs"
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
-            <Button size="sm" className="h-7 px-2 text-xs gap-1 bg-amber-600 hover:bg-amber-700" onClick={handleAdd}>
+            <Button size="sm" className="h-7 px-2 text-xs gap-1 bg-warning hover:bg-warning/90 text-warning-foreground" onClick={handleAdd}>
               <Plus className="h-3.5 w-3.5" />
               {t("annotations.add", "Add")}
             </Button>
@@ -76,7 +76,7 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
                   className={`p-2 rounded-md border text-xs space-y-1 ${
                     isDetached
                       ? "bg-muted border-muted-foreground/30 text-muted-foreground"
-                      : "bg-amber-500/5 border-amber-500/20 text-foreground"
+                      : "bg-warning/5 border-warning/20 text-foreground"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-1">
@@ -92,7 +92,7 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
                   </div>
 
                   {item.anchor?.quote && (
-                    <blockquote className="border-s-2 border-amber-500/40 pe-1.5 text-xs italic text-muted-foreground truncate">
+                    <blockquote className="border-s-2 border-warning/40 pe-1.5 text-xs italic text-muted-foreground truncate">
                       "{item.anchor.quote}"
                     </blockquote>
                   )}

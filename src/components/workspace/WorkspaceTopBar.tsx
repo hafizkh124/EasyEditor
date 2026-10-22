@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   FileText, Download, CheckCircle2, Loader2, AlertCircle,
   ChevronDown, FileType, FileCode, File, Search, PanelRight, PanelLeft,
-  Languages, MoreHorizontal, ArrowLeft, History, AudioLines, X, Sparkles
+  Languages, MoreHorizontal, History, ChevronsUpDown, AudioLines, X, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,8 @@ import { splitChaptersFromHtml } from "@/lib/audiobook/splitChapters";
 import { isDesktop, modifierKeyLabel } from "@/utils/environment";
 import { WorkspaceAppMenu } from "./WorkspaceAppMenu";
 import { DesktopAccountMenu } from "@/components/auth/DesktopAccountMenu";
+import { JobsStrip } from "@/components/jobs/JobsStrip";
+import { isCapabilityAvailable } from "@/core/capabilities/registry";
 import { WordExportDialog } from "@/components/editor/WordExportDialog";
 import type { Document, DocumentVersion } from "@/core/workspace/types";
 import type { AudiobookExportProgress } from "@/core/voice/types";
@@ -49,7 +50,6 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
   onCreateSnapshot,
 }) => {
   const { t, language, setLanguage, direction } = useLanguage();
-  const navigate = useNavigate();
   const { workbenchCollapsed, toggleWorkbench, setCommandPaletteOpen, mobileLibraryOpen, setMobileLibraryOpen } =
     useWorkspace();
   // The Versions trigger button is `hidden sm:flex` — controlled state gives the
@@ -60,6 +60,8 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
   // it runs on the local Piper voices in the main process. Ported from the
   // /editor page stub, which was the only place this UI existed (UX-v1 P3).
   const [audiobookProgress, setAudiobookProgress] = useState<AudiobookExportProgress | null>(null);
+  // Hidden for now with the rest of the voice studio (SYSTEM-2026 §11).
+  const audiobookAvailable = isCapabilityAvailable("audiobook");
   const [wordExportOpen, setWordExportOpen] = useState(false);
   const canWordExport = isDesktop() && Boolean(typeof window !== "undefined" && window.electronAPI?.docBridge);
 
@@ -130,47 +132,50 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         {/* The workspace has no sidebar (FR-1.4), so this is the only route
             back to the dashboard, the tools and the profile. */}
         <WorkspaceAppMenu />
-        <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch shrink-0 md:hidden" onClick={() => navigate(-1)} aria-label={t("common.go_back", "Go back")}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        {/* Library drawer toggle — mobile only (FR-8.2) */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 min-h-touch min-w-touch shrink-0 md:hidden"
-          onClick={() => setMobileLibraryOpen(!mobileLibraryOpen)}
-          aria-expanded={mobileLibraryOpen}
-          aria-label={t("nav.library", "Library")}
-        >
-          <PanelLeft className="h-4 w-4" />
-        </Button>
         <FileText className="hidden md:block h-4 w-4 text-primary shrink-0" />
-        
+
         {projectName && (
-          <span className="hidden sm:inline text-xs text-muted-foreground truncate max-w-[120px]">
+          <span className="hidden md:inline text-xs text-muted-foreground truncate max-w-[120px]">
             {projectName} <span className="mx-1">›</span>
           </span>
         )}
 
-        <Input
-          value={doc?.title ?? ""}
-          onChange={(e) => onTitleChange(e.target.value)}
-          className="h-8 text-sm md:text-base font-semibold border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-ring px-1.5 min-w-[140px] truncate"
-          placeholder={t("editor.untitled", "Untitled")}
-        />
+        {/* On a phone the bar is two clusters (SYSTEM-2026 §3, audit MB-01):
+            here the folder over the title — tapping the folder opens its
+            files in a sheet — and at the end the chat and "more". */}
+        <div className="flex min-w-0 flex-1 flex-col md:flex-row md:items-center">
+          <button
+            type="button"
+            className="flex min-w-0 max-w-full items-center gap-1 self-start rounded px-1.5 text-xs text-muted-foreground hover:text-foreground md:hidden"
+            onClick={() => setMobileLibraryOpen(!mobileLibraryOpen)}
+            aria-expanded={mobileLibraryOpen}
+            aria-label={`${t("rail.files", "فائلیں")}: ${projectName || t("rail.files", "فائلیں")}`}
+          >
+            <PanelLeft className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">{projectName || t("rail.files", "فائلیں")}</span>
+            <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
+          </button>
+          <Input
+            value={doc?.title ?? ""}
+            onChange={(e) => onTitleChange(e.target.value)}
+            className="h-7 md:h-8 text-sm md:text-base font-semibold border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-ring px-1.5 min-w-0 md:min-w-[140px] truncate"
+            placeholder={t("editor.untitled", "Untitled")}
+            aria-label={t("editor.title_label", "دستاویز کا عنوان")}
+          />
+        </div>
       </div>
 
       {/* Center: Save status badges */}
       <div className="hidden md:flex items-center gap-2">
         {saveStatus === "saving" && (
-          <Badge variant="outline" className="gap-1 text-xs border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/5">
+          <Badge variant="outline" className="gap-1 text-xs border-warning/40 text-warning bg-warning/5">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             <span>{t("common.saving", "Saving...")}</span>
           </Badge>
         )}
         {saveStatus === "saved" && (
-          <Badge variant="outline" className="gap-1 text-xs border-emerald-500/40 text-emerald-600 bg-emerald-500/5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+          <Badge variant="outline" className="gap-1 text-xs border-success/40 text-success bg-success/5">
+            <CheckCircle2 className="h-3.5 w-3.5 text-success" />
             <span>{t("common.saved", "Saved")}</span>
           </Badge>
         )}
@@ -243,7 +248,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
                 </DropdownMenuItem>
               </>
             )}
-            {isDesktop() && (
+            {audiobookAvailable && (
               <DropdownMenuItem
                 onClick={handleAudiobookExport}
                 disabled={audiobookProgress !== null}
@@ -257,10 +262,14 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         </DropdownMenu>
 
         {/* Optional online account sign-in (desktop only) */}
-        <DesktopAccountMenu />
+        <JobsStrip variant="icon" />
+        {/* Sign-in and language live in "more" on a phone. */}
+        <div className="hidden sm:flex">
+          <DesktopAccountMenu />
+        </div>
 
         {/* Language / RTL toggle */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-xs" aria-label={t("common.switch_language", "Switch Language / RTL")} onClick={toggleDirection}>
+        <Button variant="ghost" size="icon" className="hidden sm:inline-flex h-8 w-8 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-xs" aria-label={t("common.switch_language", "Switch Language / RTL")} onClick={toggleDirection}>
           <Languages className="h-4 w-4" />
         </Button>
 
@@ -295,6 +304,9 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
                   <History className="h-4 w-4" /> {t("library.versions", "Versions")}
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={toggleDirection} className="gap-2">
+                <Languages className="h-4 w-4" /> {t("common.switch_language", "Switch Language / RTL")}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleDownload("word")} className="gap-2">
                 <FileType className="h-4 w-4" /> {t("editor.download_word_action", "Download Word")}
@@ -308,7 +320,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
               <DropdownMenuItem onClick={() => handleDownload("txt")} className="gap-2">
                 <FileText className="h-4 w-4" /> {t("editor.download_txt_action", "Download Text")}
               </DropdownMenuItem>
-              {isDesktop() && (
+              {audiobookAvailable && (
                 <DropdownMenuItem
                   onClick={handleAudiobookExport}
                   disabled={audiobookProgress !== null}

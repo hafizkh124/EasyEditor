@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio and citations</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .two { display: grid; grid-template-columns: 1fr 1fr; flex: 1; min-block-size: 0; } .two > div { min-block-size: 0; display: flex; flex-direction: column; }
+  .ar { font-family: 'Noto Naskh Arabic', serif; font-size: 20px; line-height: 2.4; text-align: justify; }
+  .hl { background: hsl(48 95% 70% / .55); border-radius: 4px; outline: 2px solid hsl(48 90% 55% / .6); }
+  .sc { padding: 14px; border-radius: 16px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: flex; flex-direction: column; gap: 8px; } .sc .ic { inline-size: 36px; block-size: 36px; border-radius: 11px; display: grid; place-items: center; font-size: 18px; }
+  table.t { border-collapse: collapse; inline-size: 100%; font-size: 13px; } .t th { text-align: start; font-size: 11px; color: hsl(var(--muted-foreground)); padding: 8px 12px; background: hsl(var(--sidebar)); border-block-end: 1px solid hsl(var(--border)); } .t td { padding: 10px 12px; border-block-end: 1px solid hsl(var(--border)); vertical-align: top; }
+  .mm { position: relative; block-size: 280px; } .mm .nd { position: absolute; padding: 6px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; border: 1px solid; background: hsl(var(--card)); box-shadow: var(--shadow-sm); }
+  .audio { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 18px; background: hsl(var(--info-bg)); border: 1px solid hsl(var(--info-bd)); }
+  .wave { display: flex; align-items: center; gap: 3px; block-size: 34px; flex: 1; } .wave i { inline-size: 3px; border-radius: 3px; background: hsl(var(--info)); }
+  .tk { padding: 14px; border-radius: 16px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: flex; flex-direction: column; gap: 10px; }
+  .diff .ins { background: hsl(var(--success-bg)); color: hsl(var(--success)); border-radius: 4px; padding-inline: 2px; } .diff .del { background: hsl(var(--danger-bg)); color: hsl(var(--danger)); border-radius: 4px; padding-inline: 2px; text-decoration: line-through; }
+</style>
+</head>
+<body data-title="23 · اسٹوڈیو آؤٹ پٹس، حوالہ ← ماخذ، کاموں کا جائزہ" data-note="حوالے پر کلک سے اصل عبارت ہائی لائٹ ہو کر کھلے۔ اسٹوڈیو: خلاصہ، آڈیو، ذہنی نقشہ، جدول۔ کام: Codex کی طرح پیش رفت اور تبدیلیوں کا جائزہ۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>حوالہ پر کلک ← اصل عبارت</h2>
+  <p class="cap">چیٹ کے ہر حوالے (¹) پر کلک سے ماخذ دائیں پینل میں اسی صفحے پر کھلتا ہے، متعلقہ عبارت ہائی لائٹ۔ اوپر "اس ماخذ کی حیثیت" کا چپ، نیچے "حوالہ ایڈیٹر میں"، "کتاب میں کھولیں"۔ جواب پر اعتماد جانچنا ایک کلک کی بات بن جاتی ہے۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center">مسئلہ اباحت — <x-t ur="چیٹ" en="Chat"></x-t></span></div>
+      <div class="two">
+        <div style="border-inline-end:1px solid hsl(var(--border))"><div class="scroll grow p4 col" style="--g:14px"><div class="doc" style="font-size:17px;line-height:2.1"><x-t ur="جمہور کے نزدیک اصل اباحت ہے" en="The majority hold that permissibility is the default"></x-t><span class="cite" style="background:hsl(var(--primary));color:hsl(var(--primary-foreground))">1</span><x-t ur="، جبکہ بعض نے توقف کو اختیار کیا" en=", while some chose to suspend judgement"></x-t><span class="cite">2</span>۔</div><div class="row" style="--g:8px"><span class="chip warning"><span class="dot"></span><x-t ur="درمیانہ" en="Moderate"></x-t></span><span class="chip neutral"><x-t ur="2 ماخذ" en="2 sources"></x-t></span></div></div></div>
+        <div style="background:hsl(var(--card))"><div class="row p3" style="border-block-end:1px solid hsl(var(--border))"><span class="cite" style="vertical-align:0;position:static">1</span><div class="col grow" style="--g:0"><b class="sm">المغنی — ابن قدامہ</b><span class="xs muted"><x-t ur="جلد 4 · صفحہ 112" en="Vol. 4 · p. 112"></x-t></span></div><span class="chip success"><x-t ur="مصحح" en="Verified"></x-t></span><button class="icon-btn sm"><i data-i="x"></i></button></div>
+          <div class="scroll grow p4"><div class="ar">... وَقَدْ ذَكَرْنَا أَنَّ <span class="hl">الْأَصْلَ فِي الْأَشْيَاءِ الْإِبَاحَةُ مَا لَمْ يَرِدْ دَلِيلٌ عَلَى خِلَافِ ذَلِكَ</span>، وَهَذَا قَوْلُ جُمْهُورِ أَهْلِ الْعِلْمِ، وَقَدْ ذَهَبَ بَعْضُهُمْ إِلَى التَّوَقُّفِ ...</div></div>
+          <div class="row p3" style="border-block-start:1px solid hsl(var(--border))"><button class="btn sm"><i data-i="book"></i><x-t ur="کتاب میں کھولیں" en="Open in book"></x-t></button><button class="btn sm primary"><i data-i="quote"></i><x-t ur="حوالہ ایڈیٹر میں" en="Cite in editor"></x-t></button><span class="grow"></span><button class="icon-btn sm"><i data-i="chev-r" data-flip></i></button><button class="icon-btn sm"><i data-i="chev-l" data-flip></i></button></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>اسٹوڈیو آؤٹ پٹس</h2>
+  <p class="cap">ہر آؤٹ پٹ ایک کارڈ، جو پروجیکٹ میں محفوظ رہتا ہے اور "ایڈیٹر میں ڈالیں / ایکسپورٹ" ممکن۔ خلاصہ ذرائع کے حوالوں کے ساتھ، آڈیو خلاصہ ہماری TTS سے (ڈیسک ٹاپ پر مقامی)، ذہنی نقشہ علمی گراف سے، جدول مذاہب کے موازنے کے لیے۔</p>
+  <div class="frames">
+    <div class="device desk" style="inline-size:620px;block-size:640px">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="اسٹوڈیو" en="Studio"></x-t></span></div>
+      <div class="scroll p4 col" style="--g:14px"><div class="audio"><button class="icon-btn fill" style="border-radius:50%;inline-size:46px;block-size:46px"><i data-i="play"></i></button><div class="col grow" style="--g:2px"><b class="sm"><x-t ur="آڈیو خلاصہ" en="Audio overview"></x-t></b><div class="wave"><i style="block-size:10px"></i><i style="block-size:22px"></i><i style="block-size:30px"></i><i style="block-size:16px"></i><i style="block-size:26px"></i><i style="block-size:12px"></i><i style="block-size:28px"></i><i style="block-size:20px"></i><i style="block-size:10px"></i><i style="block-size:24px"></i></div></div><span class="mono xs">2:14 / 6:20</span></div>
+        <div class="card"><div class="row between p3" style="border-block-end:1px solid hsl(var(--border))"><b class="sm"><x-t ur="مذاہب کا جدول" en="Schools table"></x-t></b><div class="row"><button class="btn sm"><i data-i="plus"></i><x-t ur="ایڈیٹر میں" en="To editor"></x-t></button><button class="icon-btn sm"><i data-i="download"></i></button></div></div><table class="t"><tr><th><x-t ur="مذہب" en="School"></x-t></th><th><x-t ur="قول" en="View"></x-t></th><th><x-t ur="دلیل" en="Evidence"></x-t></th></tr><tr><td>حنفی</td><td><x-t ur="اباحت" en="Permissible"></x-t></td><td>بدائع <span class="cite">3</span></td></tr><tr><td>شافعی</td><td><x-t ur="توقف (ایک روایت)" en="Suspend (one report)"></x-t></td><td>المجموع <span class="cite">4</span></td></tr><tr><td>حنبلی</td><td><x-t ur="اباحت" en="Permissible"></x-t></td><td>المغنی <span class="cite">1</span></td></tr></table></div>
+        <div class="card"><div class="row between p3" style="border-block-end:1px solid hsl(var(--border))"><b class="sm"><x-t ur="ذہنی نقشہ" en="Mind map"></x-t></b><button class="icon-btn sm"><i data-i="split"></i></button></div><div class="mm"><svg width="100%" height="100%" style="position:absolute;inset:0"><g stroke="hsl(var(--border-strong))" stroke-width="1.5"><line x1="50%" y1="50%" x2="22%" y2="22%"/><line x1="50%" y1="50%" x2="78%" y2="22%"/><line x1="50%" y1="50%" x2="22%" y2="78%"/><line x1="50%" y1="50%" x2="78%" y2="78%"/></g></svg><span class="nd" style="inset-block-start:46%;inset-inline-start:38%;border-color:hsl(var(--primary));color:hsl(var(--primary));background:hsl(var(--primary-soft))">اصل اباحت</span><span class="nd" style="inset-block-start:16%;inset-inline-start:10%;border-color:hsl(var(--success-bd));color:hsl(var(--success))">حنفی</span><span class="nd" style="inset-block-start:16%;inset-inline-start:70%;border-color:hsl(var(--warning-bd));color:hsl(var(--warning))">شافعی</span><span class="nd" style="inset-block-start:76%;inset-inline-start:10%;border-color:hsl(var(--success-bd));color:hsl(var(--success))">حنبلی</span><span class="nd" style="inset-block-start:76%;inset-inline-start:70%;border-color:hsl(var(--info-bd));color:hsl(var(--info))">مالکی</span></div></div></div>
+    </div>
+
+    <div class="device desk" style="inline-size:620px;block-size:640px">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="کام" en="Work"></x-t></span></div>
+      <div class="tabs"><button class="tab"><i data-i="layers"></i><x-t ur="اسٹوڈیو" en="Studio"></x-t></button><button class="tab on"><i data-i="tasks"></i><x-t ur="کام" en="Work"></x-t><span class="chip info">3</span></button></div>
+      <div class="scroll p4 col" style="--g:12px"><div class="segmented" style="align-self:flex-start"><span class="on"><x-t ur="سب" en="All"></x-t></span><span><x-t ur="جاری" en="Running"></x-t></span><span><x-t ur="جائزہ درکار" en="Needs review"></x-t></span><span><x-t ur="مکمل" en="Done"></x-t></span></div>
+        <div class="tk"><div class="row between"><b class="sm"><x-t ur="چاروں مذاہب کا موازنہ" en="Compare the four schools"></x-t></b><span class="chip info"><i data-i="refresh"></i><x-t ur="جاری" en="Running"></x-t></span></div><div class="progress"><i style="inline-size:55%"></i></div><div class="row xs muted between"><span><x-t ur="مرحلہ 2/3 · ذرائع میں تلاش" en="Step 2/3 · searching sources"></x-t></span><span><x-t ur="پس منظر میں چل رہا ہے" en="Running in background"></x-t></span></div></div>
+        <div class="tk" style="border-color:hsl(var(--warning-bd))"><div class="row between"><b class="sm"><x-t ur="مسودے کے حوالہ جات مکمل کریں" en="Complete the draft's citations"></x-t></b><span class="chip warning"><x-t ur="منظوری درکار" en="Needs approval"></x-t></span></div><div class="pstep sm muted"><x-t ur="3 مراحل، ~1,200 ٹوکنز" en="3 steps, ~1,200 tokens"></x-t></div><div class="row"><button class="btn primary sm"><x-t ur="منصوبہ دیکھیں" en="Review plan"></x-t></button><button class="btn sm ghost"><x-t ur="رد" en="Reject"></x-t></button></div></div>
+        <div class="tk"><div class="row between"><b class="sm"><x-t ur="خلاصہ بنائیں" en="Summarise"></x-t></b><span class="chip success"><i data-i="check"></i><x-t ur="مکمل · جائزہ" en="Done · review"></x-t></span></div><div class="card pad diff doc" style="font-size:15px;line-height:2"><x-t ur="اس مسئلے میں" en="On this issue"></x-t> <span class="del"><x-t ur="علماء کا بڑا اختلاف ہے" en="there is a great dispute"></x-t></span> <span class="ins"><x-t ur="اہلِ علم کی آراء مختلف ہیں" en="scholars hold differing views"></x-t></span></div><div class="row"><button class="btn primary sm"><i data-i="check"></i><x-t ur="سب قبول" en="Accept all"></x-t></button><button class="btn sm"><x-t ur="ایک ایک کر کے" en="One by one"></x-t></button><button class="btn sm ghost"><x-t ur="رد" en="Reject"></x-t></button></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>حوالہ شیٹ · اسٹوڈیو آؤٹ پٹ · کام کی اطلاع</h2>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="grow trunc">مسئلہ اباحت</b></div>
+      <div class="viewport"><div class="scroll grow p3 col" style="--g:12px"><div class="doc" style="font-size:16px;line-height:2.1"><x-t ur="جمہور کے نزدیک اصل اباحت ہے" en="The majority hold permissibility is the default"></x-t><span class="cite" style="background:hsl(var(--primary));color:hsl(var(--primary-foreground))">1</span>۔</div></div>
+        <div class="sheet" style="position:absolute;inset-inline:0;inset-block-end:0;z-index:6;block-size:62%;display:flex;flex-direction:column"><div class="grab"></div><div class="row p3"><span class="cite" style="vertical-align:0;position:static">1</span><div class="col grow" style="--g:0"><b class="sm">المغنی</b><span class="xs muted"><x-t ur="ج 4 · ص 112" en="Vol. 4 · p. 112"></x-t></span></div><span class="chip success"><x-t ur="مصحح" en="Verified"></x-t></span></div><div class="scroll grow p3"><div class="ar" style="font-size:19px">... <span class="hl">الْأَصْلَ فِي الْأَشْيَاءِ الْإِبَاحَةُ مَا لَمْ يَرِدْ دَلِيلٌ</span> ...</div></div><div class="p3 row" style="border-block-start:1px solid hsl(var(--border))"><button class="btn grow"><i data-i="book"></i><x-t ur="کتاب میں" en="Open book"></x-t></button><button class="btn primary grow"><i data-i="quote"></i><x-t ur="حوالہ لگائیں" en="Cite"></x-t></button></div></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="grow"><x-t ur="آڈیو خلاصہ" en="Audio overview"></x-t></b><button class="icon-btn"><i data-i="download"></i></button></div>
+      <div class="viewport"><div class="scroll grow p4 col center" style="--g:18px;justify-content:center"><div class="avatar" style="inline-size:150px;block-size:150px;border-radius:36px;background:hsl(var(--info-bg));color:hsl(var(--info))"><i data-i="volume" data-s="64"></i></div><div class="col" style="--g:2px"><b class="lg"><x-t ur="مسئلہ اباحت · خلاصہ" en="Default ruling · overview"></x-t></b><span class="sm muted"><x-t ur="6 ذرائع سے" en="From 6 sources"></x-t></span></div><div class="progress" style="inline-size:100%"><i style="inline-size:35%;background:hsl(var(--info))"></i></div><div class="row between xs muted" style="inline-size:100%"><span class="mono">2:14</span><span class="mono">6:20</span></div><div class="row" style="--g:20px"><button class="icon-btn"><i data-i="undo"></i></button><button class="icon-btn fill" style="inline-size:64px;block-size:64px;border-radius:50%"><i data-i="pause" data-s="26"></i></button><button class="icon-btn"><i data-i="undo" data-flip></i></button></div><div class="segmented"><span>0.75×</span><span class="on">1×</span><span>1.25×</span><span>1.5×</span></div></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="viewport hero-bg"><div style="padding:12px"><div class="card raised row" style="padding:12px;--g:12px"><span class="li" style="padding:0"><span class="ic warning"><i data-i="tasks"></i></span></span><div class="col grow" style="--g:0"><b class="sm"><x-t ur="کام کو آپ کی منظوری چاہیے" en="A task needs your approval"></x-t></b><span class="xs muted"><x-t ur="مسودے کے حوالہ جات · 3 مراحل" en="Draft citations · 3 steps"></x-t></span></div><button class="btn sm primary"><x-t ur="دیکھیں" en="Review"></x-t></button></div></div><div class="grow"></div><div class="sheet" style="padding:16px 16px 20px"><div class="grab"></div><div class="col" style="--g:10px"><div class="row between"><b><i data-i="list"></i> <x-t ur="منصوبہ" en="Plan"></x-t></b><span class="chip info"><x-t ur="~1,200 ٹوکنز" en="~1,200 tokens"></x-t></span></div><div class="sm"><x-t ur="1. بغیر حوالہ جملے ڈھونڈیں  2. ذرائع میں ماخذ تلاش  3. ٹریک شدہ تبدیلی کے طور پر حوالہ لگائیں" en="1. Find uncited sentences  2. Search sources  3. Add citations as tracked changes"></x-t></div><button class="btn primary lg block"><x-t ur="منظور کریں" en="Approve"></x-t></button><div class="row"><button class="btn grow"><x-t ur="ترمیم" en="Edit"></x-t></button><button class="btn ghost grow"><x-t ur="رد" en="Reject"></x-t></button></div></div></div></div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>

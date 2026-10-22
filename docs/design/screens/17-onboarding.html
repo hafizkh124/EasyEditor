@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .wrap { margin: auto; inline-size: 100%; max-inline-size: 460px; padding: 28px; display: flex; flex-direction: column; gap: 16px; }
+  .wide { max-inline-size: 760px; }
+  .st { display: flex; align-items: center; gap: 8px; font-size: 13px; } .st .s { display: flex; align-items: center; gap: 6px; color: hsl(var(--muted-foreground)); } .st .s.on { color: hsl(var(--primary)); font-weight: 600; } .st .s.done { color: hsl(var(--success)); } .st .n { inline-size: 24px; block-size: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: hsl(var(--muted)); } .st .on .n { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); } .st .done .n { background: hsl(var(--success-bg)); color: hsl(var(--success)); } .st .bar { flex: 1; block-size: 1px; background: hsl(var(--border)); }
+  .acct { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+  .pkg { padding: 14px; border-radius: 16px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: flex; gap: 12px; align-items: center; } .pkg.on { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / .14); }
+  .radio { inline-size: 20px; block-size: 20px; border-radius: 50%; border: 2px solid hsl(var(--border-strong)); flex: none; } .pkg.on .radio { border: 6px solid hsl(var(--primary)); }
+  select.input { appearance: none; }
+</style>
+</head>
+<body data-title="17 · آن بورڈنگ: پروفائل، منظوری و ادائیگی، مسترد، پاس ورڈ، OAuth" data-note="PendingApproval پہلے 451 سطروں کا ایک بھاری صفحہ تھا۔ اب 3 قدمی ویزرڈ: پروفائل ← پیکج اور ادائیگی ← منظوری کا انتظار۔ ادائیگی کا اجزاء Pricing والے سے مشترک۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag mob">موبائل</span><span class="tag">ویب</span>3 قدمی ویزرڈ</h2>
+  <p class="cap">ہر قدم پر ایک ہی کام۔ اوپر اسٹیپر جو بتاتا ہے کہاں ہیں اور کتنا باقی ہے۔ آگے نہ بڑھ سکنے کی وجہ فیلڈ کے ساتھ لکھی جاتی ہے۔ قدم 3 صرف انتظار ہے (کوئی فارم نہیں) اور "ڈیسک ٹاپ آف لائن چلتا ہے" کی یاد دہانی۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="viewport scroll"><div class="wrap" style="padding:16px 20px">
+        <div class="st"><span class="s on"><span class="n">1</span><x-t ur="پروفائل" en="Profile"></x-t></span><span class="bar"></span><span class="s"><span class="n">2</span><x-t ur="پیکج" en="Package"></x-t></span><span class="bar"></span><span class="s"><span class="n">3</span><x-t ur="منظوری" en="Approval"></x-t></span></div>
+        <div class="col" style="--g:4px"><div class="xxl b"><x-t ur="اپنا تعارف دیں" en="Tell us about you"></x-t></div><div class="muted"><x-t ur="ایڈمن منظوری کے لیے ضروری ہے" en="Needed for admin approval"></x-t></div></div>
+        <div class="field"><label><x-t ur="پورا نام" en="Full name"></x-t></label><input class="input" value="حافظ خلیل" readonly></div>
+        <div class="field"><label>WhatsApp</label><input class="input mono" value="+92 300 1234567" readonly><span class="hint"><x-t ur="رابطہ اور رسید کی تصدیق کے لیے" en="For contact and receipt verification"></x-t></span></div>
+        <div class="row"><div class="field grow"><label><x-t ur="ملک" en="Country"></x-t></label><select class="input"><option>پاکستان</option></select></div><div class="field grow"><label><x-t ur="شہر" en="City"></x-t></label><input class="input" value="لاہور" readonly></div></div>
+        <div class="field err"><label><x-t ur="پیشہ" en="Profession"></x-t></label><select class="input"><option><x-t ur="منتخب کریں" en="Select"></x-t></option></select><span class="hint row" style="--g:6px"><i data-i="warn"></i><x-t ur="پیشہ منتخب کریں" en="Choose a profession"></x-t></span></div>
+        <button class="btn primary lg block"><x-t ur="آگے" en="Continue"></x-t><i data-i="arrow" data-flip></i></button><button class="btn ghost block"><x-t ur="لاگ آؤٹ" en="Sign out"></x-t></button></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="viewport scroll"><div class="wrap" style="padding:16px 20px">
+        <div class="st"><span class="s done"><span class="n"><i data-i="check" data-s="12"></i></span></span><span class="bar"></span><span class="s on"><span class="n">2</span><x-t ur="پیکج" en="Package"></x-t></span><span class="bar"></span><span class="s"><span class="n">3</span></span></div>
+        <div class="col" style="--g:4px"><div class="xxl b"><x-t ur="پیکج چنیں" en="Choose a package"></x-t></div></div>
+        <div class="pkg"><span class="radio"></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="بنیادی" en="Basic"></x-t></b><span class="xs muted"><x-t ur="10k ٹوکنز" en="10k tokens"></x-t></span></div><b>PKR 1,400</b></div>
+        <div class="pkg on"><span class="radio"></span><div class="grow col" style="--g:0"><div class="row"><b class="sm"><x-t ur="پرو" en="Pro"></x-t></b><span class="chip brand"><x-t ur="مقبول" en="Popular"></x-t></span></div><span class="xs muted"><x-t ur="30k ٹوکنز" en="30k tokens"></x-t></span></div><b>PKR 3,300</b></div>
+        <div class="acct"><span class="li" style="padding:0"><span class="ic"><i data-i="card"></i></span></span><div class="grow col" style="--g:0"><b class="sm">JazzCash</b><span class="xs mono">0300 1234567</span></div><button class="btn sm"><i data-i="copy"></i></button></div>
+        <div class="field"><label><x-t ur="ٹرانزیکشن آئی ڈی" en="Transaction ID"></x-t></label><input class="input mono" placeholder="TXN-…" readonly></div><button class="btn block"><i data-i="image"></i><x-t ur="رسید کی تصویر" en="Receipt photo"></x-t></button>
+        <button class="btn primary lg block"><x-t ur="رسید بھیجیں" en="Submit receipt"></x-t></button><button class="btn ghost block"><x-t ur="بعد میں، پہلے انتظار" en="Later, just wait"></x-t></button></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="viewport hero-bg"><div class="wrap center" style="padding:16px 20px;justify-content:center;flex:1">
+        <div class="st" style="inline-size:100%"><span class="s done"><span class="n"><i data-i="check" data-s="12"></i></span></span><span class="bar"></span><span class="s done"><span class="n"><i data-i="check" data-s="12"></i></span></span><span class="bar"></span><span class="s on"><span class="n">3</span><x-t ur="منظوری" en="Approval"></x-t></span></div>
+        <span class="avatar" style="inline-size:72px;block-size:72px;background:hsl(var(--warning-bg));color:hsl(var(--warning))"><i data-i="clock" data-s="34"></i></span><div class="xl b"><x-t ur="منظوری کا انتظار" en="Waiting for approval"></x-t></div><div class="muted"><x-t ur="رسید مل گئی۔ منظوری پر ای میل اور اطلاع آئے گی۔" en="Receipt received. You'll get an email and a notification on approval."></x-t></div>
+        <div class="card pad col" style="--g:10px;inline-size:100%;text-align:start"><div class="row"><span class="dot" style="color:hsl(var(--success))"></span><span class="sm"><x-t ur="رسید جمع" en="Receipt submitted"></x-t></span></div><div class="row"><span class="dot" style="color:hsl(var(--warning))"></span><span class="sm b"><x-t ur="ایڈمن کا جائزہ · عموماً چند گھنٹے" en="Admin review · usually a few hours"></x-t></span></div><div class="row muted"><span class="dot"></span><span class="sm"><x-t ur="استعمال شروع" en="Start using"></x-t></span></div></div>
+        <div class="banner info" style="text-align:start"><i data-i="monitor"></i><div class="t xs"><x-t ur="ڈیسک ٹاپ ایپ بغیر اکاؤنٹ کے آف لائن چلتی ہے۔" en="The desktop app works offline without an account."></x-t></div></div><button class="btn block"><i data-i="refresh"></i><x-t ur="حالت دیکھیں" en="Check status"></x-t></button><button class="btn block ghost"><i data-i="chat"></i><x-t ur="WhatsApp پر رابطہ" en="Contact on WhatsApp"></x-t></button></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">ویب</span>ڈیسک ٹاپ براؤزر · مسترد، پاس ورڈ بھول گئے، OAuth</h2>
+  <div class="frames">
+    <div class="device desk short" style="inline-size:620px">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>app.easyeditor.example/account-rejected</div></div>
+      <div class="viewport center hero-bg" style="justify-content:center"><div class="wrap center"><span class="avatar" style="inline-size:68px;block-size:68px;background:hsl(var(--danger-bg));color:hsl(var(--danger))"><i data-i="warn" data-s="32"></i></span><div class="xl b"><x-t ur="درخواست منظور نہیں ہو سکی" en="We couldn't approve your request"></x-t></div><div class="banner danger" style="text-align:start;inline-size:100%"><i data-i="info"></i><div class="t"><b><x-t ur="وجہ" en="Reason"></x-t></b><x-t ur="رسید واضح نہیں تھی۔ دوبارہ بھیج سکتے ہیں۔" en="The receipt was unclear. You can send it again."></x-t></div></div><div class="row"><button class="btn primary"><x-t ur="رسید دوبارہ بھیجیں" en="Resubmit receipt"></x-t></button><button class="btn"><i data-i="chat"></i>WhatsApp</button><button class="btn ghost"><x-t ur="لاگ آؤٹ" en="Sign out"></x-t></button></div></div></div>
+    </div>
+    <div class="device desk short" style="inline-size:520px">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>app.easyeditor.example/forgot-password</div></div>
+      <div class="viewport center hero-bg" style="justify-content:center"><div class="wrap" style="max-inline-size:380px"><span class="avatar" style="inline-size:52px;block-size:52px"><i data-i="lock" data-s="24"></i></span><div class="col" style="--g:4px"><div class="xl b"><x-t ur="پاس ورڈ بھول گئے؟" en="Forgot your password?"></x-t></div><div class="muted"><x-t ur="ای میل دیں، ری سیٹ کا لنک بھیجیں گے" en="Enter your email and we'll send a reset link"></x-t></div></div><div class="field"><label><x-t ur="ای میل" en="Email"></x-t></label><input class="input" style="direction:ltr" value="hafiz@example.com" readonly></div><button class="btn primary lg block"><x-t ur="لنک بھیجیں" en="Send link"></x-t></button><div class="banner success"><i data-i="check"></i><div class="t xs"><x-t ur="لنک بھیج دیا گیا۔ ان باکس چیک کریں۔" en="Link sent. Check your inbox."></x-t></div></div><button class="btn ghost block"><i data-i="arrow" data-flip style="transform:scaleX(-1)"></i><x-t ur="لاگ ان پر واپس" en="Back to sign in"></x-t></button></div></div>
+    </div>
+    <div class="device desk short" style="inline-size:520px">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>app.easyeditor.example/oauth/consent</div></div>
+      <div class="viewport center hero-bg" style="justify-content:center"><div class="wrap" style="max-inline-size:400px"><div class="row" style="--g:12px;justify-content:center"><span class="avatar" style="inline-size:48px;block-size:48px;border-radius:14px;background:hsl(var(--primary));color:hsl(var(--primary-foreground))">ع</span><i data-i="arrow" data-flip></i><span class="avatar" style="inline-size:48px;block-size:48px;border-radius:14px"><i data-i="cloud" data-s="22"></i></span></div><div class="col center" style="--g:4px"><div class="xl b"><x-t ur="رسائی کی اجازت" en="Allow access"></x-t></div><div class="muted sm"><x-t ur="«Easy Editor» آپ کے اکاؤنٹ تک رسائی مانگ رہی ہے" en="“Easy Editor” is asking to access your account"></x-t></div></div><div class="card pad col" style="--g:10px"><div class="row"><i data-i="check"></i><span class="sm"><x-t ur="آپ کی بنیادی پروفائل" en="Your basic profile"></x-t></span></div><div class="row"><i data-i="check"></i><span class="sm"><x-t ur="دستاویزات پڑھنا اور لکھنا" en="Read and write your documents"></x-t></span></div></div><div class="row"><button class="btn primary lg grow"><x-t ur="اجازت دیں" en="Allow"></x-t></button><button class="btn lg grow"><x-t ur="انکار" en="Deny"></x-t></button></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">ویب</span>ڈیسک ٹاپ براؤزر · ویزرڈ دو کالم (پیکج اور ادائیگی)</h2>
+  <div class="frames">
+    <div class="device desk short">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>app.easyeditor.example/pending-approval</div></div>
+      <div class="viewport hero-bg scroll"><div class="wrap wide" style="padding:24px 40px"><div class="st"><span class="s done"><span class="n"><i data-i="check" data-s="12"></i></span><x-t ur="پروفائل" en="Profile"></x-t></span><span class="bar"></span><span class="s on"><span class="n">2</span><x-t ur="پیکج اور ادائیگی" en="Package & payment"></x-t></span><span class="bar"></span><span class="s"><span class="n">3</span><x-t ur="منظوری" en="Approval"></x-t></span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div class="col" style="--g:10px"><b class="lg"><x-t ur="پیکج چنیں" en="Choose a package"></x-t></b><div class="pkg"><span class="radio"></span><div class="grow col" style="--g:0"><b class="sm"><x-t ur="بنیادی" en="Basic"></x-t></b><span class="xs muted"><x-t ur="10k ٹوکنز" en="10k tokens"></x-t></span></div><b>PKR 1,400</b></div><div class="pkg on"><span class="radio"></span><div class="grow col" style="--g:0"><div class="row"><b class="sm"><x-t ur="پرو" en="Pro"></x-t></b><span class="chip brand"><x-t ur="مقبول" en="Popular"></x-t></span></div><span class="xs muted"><x-t ur="30k ٹوکنز" en="30k tokens"></x-t></span></div><b>PKR 3,300</b></div><div class="banner info"><i data-i="monitor"></i><div class="t xs"><x-t ur="ڈیسک ٹاپ ایپ بغیر اکاؤنٹ بھی چلتی ہے۔" en="The desktop app also works without an account."></x-t></div></div></div>
+          <div class="col" style="--g:10px"><b class="lg"><x-t ur="ادائیگی" en="Payment"></x-t></b><div class="acct"><span class="li" style="padding:0"><span class="ic"><i data-i="card"></i></span></span><div class="grow col" style="--g:0"><b class="sm">JazzCash</b><span class="xs mono">0300 1234567</span></div><button class="btn sm"><i data-i="copy"></i></button></div><div class="field"><label><x-t ur="ٹرانزیکشن آئی ڈی" en="Transaction ID"></x-t></label><input class="input mono" placeholder="TXN-…" readonly></div><button class="btn"><i data-i="image"></i><x-t ur="رسید کی تصویر" en="Receipt photo"></x-t></button><button class="btn primary lg"><x-t ur="رسید بھیجیں" en="Submit receipt"></x-t></button></div></div></div></div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>

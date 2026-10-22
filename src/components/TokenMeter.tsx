@@ -17,7 +17,7 @@ export default function TokenMeter({ compact = false }: { compact?: boolean }) {
   const barColor = isZero
     ? "bg-destructive"
     : isLow || usagePct >= 80
-    ? "bg-amber-500"
+    ? "bg-warning"
     : "bg-primary";
 
   return (

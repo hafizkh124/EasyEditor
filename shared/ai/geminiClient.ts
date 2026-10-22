@@ -25,6 +25,8 @@ export interface GeminiGenerateRequest {
   systemInstruction?: string;
   temperature?: number;
   maxTokens?: number;
+  /** Images sent before the prompt (a page to read or translate): raw base64, no data: prefix. */
+  images?: Array<{ mimeType: string; data: string }>;
 }
 
 export function redactKeyFromLog(message: string, key?: string | null): string {
@@ -112,7 +114,12 @@ export async function generateContentStream(
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
 
   const bodyPayload: Record<string, unknown> = {
-    contents: [{ parts: [{ text: req.prompt }] }],
+    contents: [{
+      parts: [
+        ...(req.images ?? []).map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } })),
+        { text: req.prompt },
+      ],
+    }],
   };
 
   if (req.systemInstruction) {

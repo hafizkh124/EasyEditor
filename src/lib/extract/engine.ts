@@ -1,0 +1,180 @@
+import { ACCEPTED_MEDIA, MAX_FILE_SIZE_BYTES } from "@/lib/audio/formatSupport";
+import {
+  transcribeLongForm, TranscribeCancelledError, MAX_DURATION_SECONDS,
+  type ChunkTranscript, type SttRoute, type TranscribeLanguage,
+} from "@/lib/audio/transcribeLongForm";
+import { MAX_PDF_PAGES, getDocumentType, getMaxFileSize } from "@/lib/ocr/documentFormats";
+import { renderPdfPages, getPdfPageCount } from "@/lib/ocr/pdfRenderer";
+import { ocrPageImage } from "@/lib/ocr/ocrClient";
+import type { TranscriptSegment } from "@/core/voice/types";
+import type { TranslationKey } from "@/lib/i18n";
+import type { PageEngine } from "@/lib/pages/pageEngine";
+import { estimateSegments } from "./timedParagraphs";
+
+/**
+ * The extract-text engine (SYSTEM-2026 §5), shared by the Extract screen and
+ * the editor's "extract here": what a file is, whether it may run, and the
+ * run itself. No UI — callers show progress and errors their own way.
+ */
+
+export type ExtractKind = "audio" | "image" | "pdf";
+
+const AUDIO_EXT = new Set(
+  ACCEPTED_MEDIA.split(",").filter((x) => x.startsWith(".")).map((x) => x.toLowerCase()),
+);
+
+/** What kind of extraction a file needs, or null when it is neither media nor a page. */
+export function detectKind(file: File): ExtractKind | null {
+  const doc = getDocumentType(file);
+  if (doc === "image" || doc === "pdf") return doc;
+  if (file.type.startsWith("audio/") || file.type.startsWith("video/")) return "audio";
+  const dot = file.name.lastIndexOf(".");
+  return dot >= 0 && AUDIO_EXT.has(file.name.slice(dot).toLowerCase()) ? "audio" : null;
+}
+
+export interface ExtractGate {
+  audioAvailable: boolean;
+  pagesAvailable: boolean;
+  signedIn: boolean;
+  desktop: boolean;
+  sttRoute: SttRoute;
+  canAffordAudio: boolean;
+  canAffordPage: boolean;
+  /** Who reads pages here: the desktop's own key, the account, or nobody yet. */
+  pageEngine: PageEngine;
+}
+
+/** Why this file cannot be extracted here, as a message key — or null when it can. */
+export function blockReason(file: File, kind: ExtractKind | null, gate: ExtractGate): TranslationKey | null {
+  if (!kind || (kind === "audio" ? !gate.audioAvailable : !gate.pagesAvailable)) return "extract.unsupported";
+  if (kind === "audio") {
+    if (file.size > MAX_FILE_SIZE_BYTES) return "stt.file_too_large";
+    // A signed-out desktop has no cloud account: only local Whisper can run.
+    if (gate.desktop && gate.sttRoute === "cloud" && !gate.signedIn) return "extract.needs_local_model";
+    if (gate.sttRoute === "cloud" && !gate.canAffordAudio) return "extract.limit_reached";
+    return null;
+  }
+  if (file.size > getMaxFileSize(kind)) return "extract.file_too_large";
+  if (!gate.pageEngine) return gate.desktop ? "extract.enable_pages" : "extract.sign_in_for_pages";
+  // The user's own key bills their Google account, not our tokens.
+  if (gate.pageEngine === "account" && !gate.canAffordPage) return "extract.limit_reached";
+  return null;
+}
+
+export class TooManyPagesError extends Error {
+  constructor(readonly limit = MAX_PDF_PAGES) {
+    super(`PDF has more than ${limit} pages`);
+  }
+}
+
+export interface ExtractProgress {
+  labelKey: TranslationKey;
+  current: number;
+  total: number;
+  /** The text so far, for showing a long job as it grows. */
+  partial?: string;
+}
+
+function readBase64(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+export interface ExtractResult {
+  text: string;
+  /** Exact timestamps (local Whisper) — the only kind subtitles are made from. */
+  segments: TranscriptSegment[] | null;
+  /** Read-along timing for audio: exact when the engine gave it, else estimated per chunk. */
+  timing: { segments: TranscriptSegment[]; exact: boolean } | null;
+  /** Image/PDF: each page's image (data URL), to show beside its text. */
+  pageImages: string[] | null;
+}
+
+/** What a resumed job already has: pages read, audio chunks transcribed. */
+export interface ExtractProgressSaved {
+  pages?: Record<number, string>;
+  chunks?: Record<number, ChunkTranscript>;
+}
+
+export async function runExtraction({
+  file, kind, language, sttRoute, signal, onProgress, pageLabel = "Page", resume, onSaved,
+}: {
+  file: File;
+  kind: ExtractKind;
+  language: TranscribeLanguage;
+  sttRoute: SttRoute;
+  signal: AbortSignal;
+  onProgress?: (p: ExtractProgress) => void;
+  /** The word for page markers in a multi-page result ("صفحہ"). */
+  pageLabel?: string;
+  /** Work kept from an interrupted run of the same file, reused rather than redone. */
+  resume?: ExtractProgressSaved;
+  /** Called with everything finished so far, after each page or chunk — for resuming. */
+  onSaved?: (saved: ExtractProgressSaved) => void;
+}): Promise<ExtractResult> {
+  const saved: ExtractProgressSaved = { pages: { ...resume?.pages }, chunks: { ...resume?.chunks } };
+  if (kind === "audio") {
+    onProgress?.({ labelKey: "extract.progress_audio", current: 0, total: 0 });
+    const result = await transcribeLongForm({
+      file,
+      language,
+      route: sttRoute,
+      signal,
+      doneChunks: saved.chunks,
+      onChunkDone: (index, chunk) => {
+        saved.chunks![index] = chunk;
+        onSaved?.(saved);
+      },
+      onProgress: (ev) =>
+        onProgress?.({ labelKey: "extract.progress_audio", current: ev.current ?? 0, total: ev.total ?? 0, partial: ev.partialTranscript || undefined }),
+    });
+    const exact = result.segments ?? null;
+    const timed = exact ?? estimateSegments(result.chunkSpans ?? []);
+    return {
+      text: result.text,
+      segments: exact,
+      timing: timed.length ? { segments: timed, exact: Boolean(exact) } : null,
+      pageImages: null,
+    };
+  }
+
+  if (kind === "image") {
+    onProgress?.({ labelKey: "extract.progress_page", current: 1, total: 1 });
+    const mime = file.type || "image/jpeg";
+    const base64 = await readBase64(file);
+    return { text: await ocrPageImage(base64, mime), segments: null, timing: null, pageImages: [`data:${mime};base64,${base64}`] };
+  }
+
+  const total = await getPdfPageCount(file);
+  if (total > MAX_PDF_PAGES) throw new TooManyPagesError();
+  const pages: string[] = [];
+  const pageImages: string[] = [];
+  for await (const page of renderPdfPages(file, { signal })) {
+    if (signal.aborted) throw new TranscribeCancelledError();
+    onProgress?.({ labelKey: "extract.progress_page", current: page.pageNum, total: page.totalPages, partial: pages.join("\n\n") || undefined });
+    const pageText = saved.pages![page.pageNum] ?? (await ocrPageImage(page.imageBase64, page.mimeType));
+    if (saved.pages![page.pageNum] === undefined) {
+      saved.pages![page.pageNum] = pageText;
+      onSaved?.(saved);
+    }
+    pageImages.push(`data:${page.mimeType};base64,${page.imageBase64}`);
+    pages.push(total > 1 ? `--- ${pageLabel} ${page.pageNum} ---\n${pageText}` : pageText);
+    onProgress?.({ labelKey: "extract.progress_page", current: page.pageNum, total: page.totalPages, partial: pages.join("\n\n") });
+  }
+  return { text: pages.join("\n\n"), segments: null, timing: null, pageImages };
+}
+
+/** A failed run as a message key, or the engine's own message; null when it was cancelled. */
+export function describeFailure(err: unknown, signal: AbortSignal): { key: TranslationKey; replace?: [string, string] } | { message: string } | null {
+  if (err instanceof TranscribeCancelledError || signal.aborted) return null;
+  if (err instanceof TooManyPagesError) return { key: "extract.too_many_pages", replace: ["{n}", String(err.limit)] };
+  const msg = err instanceof Error ? err.message : "";
+  if (msg.includes("minute maximum") || msg.includes(`${MAX_DURATION_SECONDS / 60}-minute`)) return { key: "stt.too_long" };
+  if (msg.includes("cannot decode")) return { key: "stt.format_unsupported" };
+  if (/429|limit/i.test(msg)) return { key: "extract.limit_reached" };
+  return msg ? { message: msg } : { key: "extract.failed" };
+}

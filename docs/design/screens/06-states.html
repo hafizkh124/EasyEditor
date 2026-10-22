@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System states</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .cell { inline-size: 360px; min-block-size: 300px; display: flex; flex-direction: column; border-radius: 18px; overflow: hidden; }
+  .cell > header { padding: 8px 14px; font-size: 11px; font-weight: 600; letter-spacing: .04em; color: hsl(var(--muted-foreground)); background: hsl(var(--muted)); text-transform: uppercase; }
+  .cell > div { flex: 1; }
+  .big { font-size: 64px; font-weight: 700; letter-spacing: -.02em; color: hsl(var(--primary)); line-height: 1; }
+  .toast { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 14px; background: hsl(var(--popover)); border: 1px solid hsl(var(--border)); box-shadow: var(--shadow-lg); inline-size: 100%; }
+</style>
+</head>
+<body data-title="06 · نظام کی حالتیں: لوڈنگ، خالی، غلطی، آف لائن، کوٹا، 404" data-note="ہر اسکرین پر یہی یکساں اجزاء۔ تینوں پلیٹ فارمز پر ایک ہی کوڈ، صرف چوڑائی بدلتی ہے۔">
+<main class="stage">
+
+<section>
+  <h2>لوڈنگ (Skeleton) · خالی (Empty) · غلطی (Error)</h2>
+  <p class="cap">لوڈنگ: ہر صفحے کی اپنی ساخت کے مطابق skeleton، عام اسپنر نہیں۔ خالی: آئیکن + ایک سطر وضاحت + ایک بنیادی ایکشن۔ غلطی: کیا ہوا، کیوں، اور اگلا قدم۔</p>
+  <div class="frames">
+    <div class="card cell"><header>Loading · Dashboard</header><div class="p4 col" style="--g:12px"><div class="skeleton" style="block-size:22px;inline-size:55%"></div><div class="skeleton" style="block-size:84px;border-radius:16px"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="skeleton" style="block-size:88px;border-radius:16px"></div><div class="skeleton" style="block-size:88px;border-radius:16px"></div><div class="skeleton" style="block-size:88px;border-radius:16px"></div><div class="skeleton" style="block-size:88px;border-radius:16px"></div></div></div></div>
+    <div class="card cell"><header>Loading · Library list</header><div class="p4 col" style="--g:14px"><div class="row"><div class="skeleton" style="inline-size:36px;block-size:36px;border-radius:10px"></div><div class="col grow" style="--g:6px"><div class="skeleton" style="block-size:12px;inline-size:70%"></div><div class="skeleton" style="block-size:10px;inline-size:40%"></div></div></div><div class="row"><div class="skeleton" style="inline-size:36px;block-size:36px;border-radius:10px"></div><div class="col grow" style="--g:6px"><div class="skeleton" style="block-size:12px;inline-size:60%"></div><div class="skeleton" style="block-size:10px;inline-size:35%"></div></div></div><div class="row"><div class="skeleton" style="inline-size:36px;block-size:36px;border-radius:10px"></div><div class="col grow" style="--g:6px"><div class="skeleton" style="block-size:12px;inline-size:80%"></div><div class="skeleton" style="block-size:10px;inline-size:45%"></div></div></div></div></div>
+    <div class="card cell"><header>Empty · Library</header><div class="emptyst" style="justify-content:center"><div class="art"><i data-i="folder"></i></div><div class="b lg"><x-t ur="ابھی کوئی دستاویز نہیں" en="No documents yet"></x-t></div><div class="sm muted"><x-t ur="نیا دستاویز بنائیں یا کوئی کتاب یا PDF شامل کریں۔" en="Create a document, or add a book or PDF."></x-t></div><button class="btn primary"><i data-i="plus"></i><x-t ur="نیا دستاویز" en="New document"></x-t></button></div></div>
+    <div class="card cell"><header>Empty · Search</header><div class="emptyst" style="justify-content:center"><div class="art" style="background:hsl(var(--info-bg));color:hsl(var(--info))"><i data-i="search"></i></div><div class="b lg"><x-t ur="کوئی نتیجہ نہیں ملا" en="No results"></x-t></div><div class="sm muted"><x-t ur="الفاظ بدل کر دیکھیں، یا تمام ذرائع میں تلاش کریں۔" en="Try different words, or search all sources."></x-t></div><div class="row"><button class="btn"><x-t ur="فلٹر ہٹائیں" en="Clear filters"></x-t></button><button class="btn primary"><x-t ur="سب میں تلاش" en="Search all"></x-t></button></div></div></div>
+    <div class="card cell"><header>Error · Component</header><div class="emptyst" style="justify-content:center"><div class="art" style="background:hsl(var(--danger-bg));color:hsl(var(--danger))"><i data-i="warn"></i></div><div class="b lg"><x-t ur="یہ حصہ لوڈ نہیں ہو سکا" en="This section couldn't load"></x-t></div><div class="sm muted"><x-t ur="آپ کا کام محفوظ ہے۔ دوبارہ کوشش کریں۔" en="Your work is safe. Try again."></x-t></div><div class="row"><button class="btn primary"><i data-i="refresh"></i><x-t ur="دوبارہ کوشش" en="Retry"></x-t></button><button class="btn ghost"><x-t ur="رپورٹ" en="Report"></x-t></button></div><span class="xs mono muted">ref: 7f3a-91c2</span></div></div>
+    <div class="card cell"><header>Error · Inline form</header><div class="p4 col" style="--g:12px"><div class="field err"><label><x-t ur="ای میل" en="Email"></x-t></label><input class="input" style="direction:ltr" value="hafiz@" readonly><span class="hint row" style="--g:6px"><i data-i="warn"></i><x-t ur="درست ای میل لکھیں" en="Enter a valid email"></x-t></span></div><div class="banner danger"><i data-i="warn"></i><div class="t"><b><x-t ur="محفوظ نہیں ہو سکا" en="Couldn't save"></x-t></b><x-t ur="نیٹ ورک منقطع ہے۔ جڑتے ہی خود دوبارہ کوشش ہو گی۔" en="Network dropped. We'll retry automatically when it's back."></x-t></div></div></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>آف لائن · کوٹا · 404 · ٹوسٹ</h2>
+  <p class="cap">آف لائن: پوری ایپ نہیں رکتی، صرف بینر اور کلاؤڈ فیچر پر واضح اشارہ (ڈیسک ٹاپ پر یہ معمول کی حالت ہے، اس لیے وہاں بینر کی جگہ اسٹیٹس بار کا چپ)۔ کوٹا ختم: دھمکی نہیں، حل (ٹاپ اپ / اپنی API)۔</p>
+  <div class="frames">
+    <div class="card cell"><header>Offline · banner</header><div class="p4 col" style="--g:12px"><div class="banner warning"><i data-i="wifioff"></i><div class="t"><b><x-t ur="آپ آف لائن ہیں" en="You're offline"></x-t></b><x-t ur="لکھنا جاری رکھیں، تبدیلیاں جڑتے ہی محفوظ ہوں گی۔" en="Keep writing — changes sync when you're back."></x-t></div></div><div class="li card"><span class="ic neutral"><i data-i="cloud"></i></span><div class="grow"><div class="b sm"><x-t ur="AI تحقیق" en="AI research"></x-t></div><div class="xs muted"><x-t ur="انٹرنیٹ درکار" en="Needs internet"></x-t></div></div><span class="chip neutral"><x-t ur="دستیاب نہیں" en="Unavailable"></x-t></span></div><div class="li card"><span class="ic"><i data-i="pen"></i></span><div class="grow"><div class="b sm"><x-t ur="ایڈیٹر" en="Editor"></x-t></div><div class="xs muted"><x-t ur="مقامی طور پر محفوظ" en="Saved locally"></x-t></div></div><span class="chip success"><x-t ur="چل رہا ہے" en="Working"></x-t></span></div></div></div>
+    <div class="card cell"><header>Quota reached</header><div class="emptyst" style="justify-content:center"><div class="art" style="background:hsl(var(--warning-bg));color:hsl(var(--warning))"><i data-i="spark"></i></div><div class="b lg"><x-t ur="آج کے ٹوکنز ختم ہو گئے" en="You're out of tokens"></x-t></div><div class="sm muted"><x-t ur="ٹاپ اپ کریں، یا اپنی API کلید لگا کر جاری رکھیں۔" en="Top up, or continue with your own API key."></x-t></div><div class="row"><button class="btn primary"><x-t ur="ٹاپ اپ" en="Top up"></x-t></button><button class="btn"><i data-i="key"></i><x-t ur="میری API" en="My API"></x-t></button></div></div></div>
+    <div class="card cell"><header>404</header><div class="emptyst" style="justify-content:center"><div class="big">404</div><div class="b lg"><x-t ur="یہ صفحہ نہیں ملا" en="Page not found"></x-t></div><div class="sm muted"><x-t ur="لنک پرانا ہو سکتا ہے۔" en="The link may be old."></x-t></div><button class="btn primary"><i data-i="home"></i><x-t ur="ورک اسپیس پر واپس" en="Back to workspace"></x-t></button></div></div>
+    <div class="card cell"><header>Toasts</header><div class="p4 col" style="--g:10px"><div class="toast"><span style="color:hsl(var(--success))"><i data-i="check" data-s="20"></i></span><span class="grow sm"><x-t ur="دستاویز محفوظ ہو گیا" en="Document saved"></x-t></span><button class="btn sm ghost"><x-t ur="واپس" en="Undo"></x-t></button></div><div class="toast"><span style="color:hsl(var(--info))"><i data-i="info" data-s="20"></i></span><span class="grow sm"><x-t ur="ہم آہنگی جاری ہے…" en="Syncing…"></x-t></span></div><div class="toast"><span style="color:hsl(var(--danger))"><i data-i="warn" data-s="20"></i></span><span class="grow sm"><x-t ur="ترجمہ ناکام" en="Translation failed"></x-t></span><button class="btn sm ghost"><x-t ur="دوبارہ" en="Retry"></x-t></button></div></div></div>
+  </div>
+</section>
+
+</main>
+</body>
+</html>

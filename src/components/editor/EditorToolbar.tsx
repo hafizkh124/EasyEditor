@@ -253,7 +253,7 @@ const EditorToolbar = ({
 
       {/* Accept all */}
       <Button
-        variant="ghost" size="sm" className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-emerald-600"
+        variant="ghost" size="sm" className="h-8 w-8 p-0 min-h-touch min-w-touch md:min-h-0 md:min-w-0 text-success"
         onClick={onAcceptAll} disabled={pendingCount === 0} aria-label={t("editor.accept_all")} title={t("editor.accept_all")}
       >
         <Check className="h-4 w-4" />

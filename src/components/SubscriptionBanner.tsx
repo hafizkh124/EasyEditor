@@ -21,7 +21,7 @@ export default function SubscriptionBanner() {
 
   if (isLapsed) {
     return (
-      <div className="w-full bg-red-100 border-b border-red-300 px-4 py-2.5 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900">
+      <div className="w-full bg-destructive-soft border-b border-destructive-border px-4 py-2.5 text-sm text-destructive">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
           <div className="flex items-center gap-2">
             <XCircle className="h-4 w-4 flex-shrink-0" />
@@ -40,7 +40,7 @@ export default function SubscriptionBanner() {
   }
 
   return (
-    <div className="w-full bg-amber-100 border-b border-amber-300 px-4 py-2.5 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-900">
+    <div className="w-full bg-warning-soft border-b border-warning-border px-4 py-2.5 text-sm text-warning">
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 flex-shrink-0" />

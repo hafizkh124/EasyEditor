@@ -48,11 +48,11 @@ describe("ComposerHub", () => {
     expect(onOpenAssistModes).toHaveBeenCalledTimes(1);
   });
 
-  it("wires the Playbooks and Books & sources rows", () => {
+  it("wires the Skills (/) and Books & sources rows", () => {
     const onOpenPlaybooks = vi.fn();
     const onOpenScope = vi.fn();
     render(<ComposerHub onOpenPlaybooks={onOpenPlaybooks} onOpenScope={onOpenScope} />);
-    fireEvent.click(screen.getByText(/^Playbooks/));
+    fireEvent.click(screen.getByText(/^مہارتیں/));
     fireEvent.click(screen.getByText(/^Books & sources/));
     expect(onOpenPlaybooks).toHaveBeenCalledTimes(1);
     expect(onOpenScope).toHaveBeenCalledTimes(1);

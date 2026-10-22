@@ -8,6 +8,9 @@ import type { SelectionBarActions } from "./useEditorAiActions";
 import { FloatingBubbleMenu } from "./FloatingBubbleMenu";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { MobileTaskSheet } from "./MobileTaskSheet";
+import { getActionHandler } from "./bubbleMenuTasks";
+import { RecipeRunDialog } from "@/components/workspace/RecipeRunDialog";
+import type { Recipe } from "@/lib/recipes/recipeService";
 import { SolvencyDialog } from "@/components/workspace/SolvencyDialog";
 import { ChunkProgressBar } from "@/components/workspace/ChunkProgressBar";
 import { TaskRunCard } from "@/components/workspace/TaskRunCard";
@@ -21,6 +24,8 @@ import { stripSuggestions } from "@/lib/editor/exporters";
 
 interface EditorMenusAndOverlaysProps {
   editor: Editor | null;
+  /** "Extract text here" — choose a file whose text goes in at the cursor. */
+  onExtract?: () => void;
   menusEnabled: boolean;
   isMobile: boolean;
   aiActions: SelectionBarActions;
@@ -69,6 +74,7 @@ export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({
   mobileSheetText,
   setMobileSheetText,
   handleAutoFormat,
+  onExtract,
   pendingChunkedRun,
   dismissChunkedRun,
   confirmChunkedRun,
@@ -91,6 +97,7 @@ export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({
   t,
 }) => {
   const [footnotesOpen, setFootnotesOpen] = React.useState(false);
+  const [recipeToRun, setRecipeToRun] = React.useState<Recipe | null>(null);
   const canFootnoteExport =
     isDesktop() &&
     Boolean(typeof window !== "undefined" && window.electronAPI?.docBridge?.applyCitations) &&
@@ -108,29 +115,19 @@ export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({
             isMobile={isMobile}
             onOpenMobileSheet={setMobileSheetText}
           />
-          {!isMobile && (
-            <SlashCommandMenu editor={editor} actions={aiActions} onAutoFormat={handleAutoFormat} />
-          )}
+          {/* "/" on phones too (same features everywhere, SYSTEM-2026 §1): skills,
+              recipes and "extract text here" had no other way in there. */}
+          <SlashCommandMenu
+            editor={editor} actions={aiActions} onAutoFormat={handleAutoFormat}
+            onRunRecipe={setRecipeToRun} onExtract={onExtract} isMobile={isMobile}
+          />
+          <RecipeRunDialog recipe={recipeToRun} onClose={() => setRecipeToRun(null)} />
           <MobileTaskSheet
             open={mobileSheetText !== null}
             onOpenChange={(open) => !open && setMobileSheetText(null)}
             selectedText={mobileSheetText ?? ""}
             aiBusy={aiBusy}
-            getHandler={(slug) => {
-              const map: Record<string, (() => void) | undefined> = {
-                add_harakat: aiActions.onAddHarakat,
-                remove_harakat: aiActions.onRemoveHarakat,
-                spelling_check: aiActions.onSpellCheck,
-                paraphrase: aiActions.onParaphrase,
-                summarize: aiActions.onSummarize,
-                citations: aiActions.onCitations,
-                normalize_script: aiActions.onNormalizeScript,
-                formalize: aiActions.onFormalize,
-                humanize: aiActions.onHumanize,
-                shorten: aiActions.onShorten,
-              };
-              return map[slug];
-            }}
+            getHandler={(slug) => getActionHandler(aiActions, slug)}
           />
         </>
       )}

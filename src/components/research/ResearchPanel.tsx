@@ -86,6 +86,14 @@ export const ResearchPanel = () => {
     }
   }, [workspaceCtx?.pendingWorkbenchQuery, agentHook, workspaceCtx]);
 
+  // A prompt skill picked in `Ctrl+K` opens its details dialog here.
+  useEffect(() => {
+    if (workspaceCtx?.pendingSkillPrompt) {
+      agentHook.requestSkillPrompt(workspaceCtx.pendingSkillPrompt);
+      workspaceCtx.clearPendingSkillPrompt();
+    }
+  }, [workspaceCtx?.pendingSkillPrompt, agentHook, workspaceCtx]);
+
   return (
     <AgentComposer
       agent={agentHook}

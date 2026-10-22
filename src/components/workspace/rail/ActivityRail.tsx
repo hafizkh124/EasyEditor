@@ -1,5 +1,5 @@
 import React from "react";
-import { FolderTree, Library, History, Settings } from "lucide-react";
+import { FolderOpen, FolderTree, Library, History, Settings } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { isDesktop } from "@/core/backend";
@@ -21,6 +21,7 @@ interface RailItem {
 }
 
 const ITEMS: RailItem[] = [
+  { id: "folder", icon: FolderOpen, labelKey: "folderindex.title", labelFallback: "اس فولڈر میں" },
   { id: "files", icon: FolderTree, labelKey: "rail.files", labelFallback: "Files", desktopOnly: true },
   { id: "library", icon: Library, labelKey: "rail.library", labelFallback: "Library" },
   { id: "history", icon: History, labelKey: "rail.history", labelFallback: "History" },

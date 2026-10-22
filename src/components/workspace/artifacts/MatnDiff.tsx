@@ -21,8 +21,8 @@ export interface MatnDiffPayload {
 
 const OP_CLASS: Record<DiffToken["op"], string> = {
   equal: "",
-  insert: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 rounded-sm px-0.5",
-  delete: "bg-red-500/10 text-red-700 line-through dark:text-red-400 rounded-sm px-0.5",
+  insert: "bg-success/15 text-success rounded-sm px-0.5",
+  delete: "bg-destructive/10 text-destructive line-through rounded-sm px-0.5",
 };
 
 export const MatnDiff: React.FC<{ payload: MatnDiffPayload }> = ({ payload }) => {

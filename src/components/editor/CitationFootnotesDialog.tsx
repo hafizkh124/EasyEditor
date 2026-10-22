@@ -96,12 +96,12 @@ export const CitationFootnotesDialog: React.FC<Props> = ({ open, onOpenChange, h
 
         {phase === "done" && result ? (
           <div className="flex flex-col items-center gap-3 py-3 text-center">
-            <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+            <CheckCircle2 className="h-10 w-10 text-success" />
             <p className="text-sm">
               {t("docbridge.cite.result", "{n} footnotes inserted").replace("{n}", String(result.applied))}
             </p>
             {(result.notFound.length > 0 || result.unresolved.length > 0) && (
-              <p className="text-xs text-amber-700 dark:text-amber-400">
+              <p className="text-xs text-warning">
                 {result.notFound.length > 0 &&
                   t("docbridge.cite.not_found", "Markers not found: {m}").replace("{m}", result.notFound.join(" "))}
                 {result.unresolved.length > 0 &&
@@ -138,7 +138,7 @@ export const CitationFootnotesDialog: React.FC<Props> = ({ open, onOpenChange, h
             </div>
 
             {markerCount === 0 && (
-              <div className="flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-400">
+              <div className="flex items-center gap-1.5 rounded-md border border-warning/40 bg-warning/5 p-2.5 text-xs text-warning">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 {t("docbridge.cite.no_markers", "No [N] markers found in the document.")}
               </div>

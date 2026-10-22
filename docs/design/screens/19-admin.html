@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .adm { display: grid; grid-template-columns: 232px 1fr; flex: 1; min-block-size: 0; }
+  table { border-collapse: collapse; inline-size: 100%; font-size: 13px; } th { font-size: 11px; color: hsl(var(--muted-foreground)); font-weight: 600; text-align: start; padding: 10px 14px; border-block-end: 1px solid hsl(var(--border)); background: hsl(var(--sidebar)); } td { padding: 10px 14px; border-block-end: 1px solid hsl(var(--border)); } tr:hover td { background: hsl(var(--muted) / .5); }
+  .kpi { padding: 14px; display: flex; flex-direction: column; gap: 2px; } .kpi .n { font-size: 24px; font-weight: 700; }
+  .bars { display: flex; align-items: flex-end; gap: 8px; block-size: 110px; } .bars i { flex: 1; border-radius: 6px 6px 2px 2px; background: hsl(var(--chart-1)); } .bars i.b { background: hsl(var(--chart-2)); }
+  .ucard { padding: 14px; border-radius: 16px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: flex; flex-direction: column; gap: 10px; }
+</style>
+</head>
+<body data-title="19 · ایڈمن (ویب)" data-note="صرف ویب اور موبائل ویب پر۔ ڈیسک ٹاپ ایپ میں نہیں (کلاؤڈ اکاؤنٹس کا انتظام)۔ چار ٹیب: صارفین · اپ گریڈ · آمدنی · کارپس۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag">ویب</span>صارفین · اپ گریڈ درخواستیں</h2>
+  <p class="cap">ٹیبز کے ساتھ متن (چھوٹی اسکرین پر بھی)۔ جدول میں AI رسید جانچ کا چپ (خودکار منظور / دستی جائزہ / مسترد)، تیز ایکشنز قطار کے آخر میں مینو میں۔ چنے ہوئے کئی صارفین پر bulk ایکشن بار۔ نیچے وہی ڈیٹا موبائل پر کارڈ کی صورت۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>app.easyeditor.example/admin/users</div></div>
+      <div class="adm">
+        <aside class="sidebar p3 col" style="--g:2px"><div class="row p2" style="--g:10px"><span class="avatar" style="background:hsl(var(--primary));color:hsl(var(--primary-foreground));border-radius:10px">ع</span><b>Admin</b></div><a class="nav-item on"><i data-i="users"></i><x-t ur="صارفین" en="Users"></x-t><span class="count">248</span></a><a class="nav-item"><i data-i="trend"></i><x-t ur="اپ گریڈ" en="Upgrades"></x-t><span class="chip danger" style="margin-inline-start:auto">5</span></a><a class="nav-item"><i data-i="chart"></i><x-t ur="آمدنی" en="Income"></x-t></a><a class="nav-item"><i data-i="layers"></i><x-t ur="کارپس" en="Corpus"></x-t></a><span class="grow"></span><a class="nav-item"><i data-i="arrow" data-flip></i><x-t ur="ایپ پر واپس" en="Back to app"></x-t></a></aside>
+        <div class="col" style="min-block-size:0"><div class="row p4" style="--g:12px"><div class="xl b"><x-t ur="صارفین" en="Users"></x-t></div><div class="search grow" style="max-inline-size:340px"><i data-i="search"></i><span><x-t ur="نام یا ای میل" en="Name or email"></x-t></span></div><div class="segmented"><span class="on"><x-t ur="سب" en="All"></x-t></span><span><x-t ur="منتظر (12)" en="Pending (12)"></x-t></span><span><x-t ur="فعال" en="Active"></x-t></span><span><x-t ur="مسترد" en="Rejected"></x-t></span></div><button class="btn sm"><i data-i="filter"></i><x-t ur="فلٹر" en="Filters"></x-t></button></div>
+          <div class="banner info" style="margin:0 16px 8px;padding:8px 12px;align-items:center"><b class="sm">2 <x-t ur="منتخب" en="selected"></x-t></b><span class="grow"></span><button class="btn sm primary"><x-t ur="منظور (پرو)" en="Approve (Pro)"></x-t></button><button class="btn sm"><x-t ur="مسترد" en="Reject"></x-t></button></div>
+          <div class="scroll" style="min-block-size:0"><table><tr><th></th><th><x-t ur="نام" en="Name"></x-t></th><th><x-t ur="حالت" en="Status"></x-t></th><th><x-t ur="رسید" en="Receipt"></x-t></th><th><x-t ur="پلان" en="Plan"></x-t></th><th><x-t ur="ٹوکنز" en="Tokens"></x-t></th><th></th></tr>
+            <tr><td><span class="switch on" style="inline-size:22px;block-size:14px"></span></td><td><div class="row" style="--g:10px"><span class="avatar">ا</span><div class="col" style="--g:0"><b>احمد رضا</b><span class="xs muted">ahmad@example.com</span></div></div></td><td><span class="chip warning"><x-t ur="منتظر" en="Pending"></x-t></span></td><td><span class="chip success"><i data-i="spark"></i><x-t ur="خودکار تصدیق" en="Auto-verified"></x-t></span></td><td>—</td><td>0</td><td><button class="icon-btn sm"><i data-i="more"></i></button></td></tr>
+            <tr><td><span class="switch on" style="inline-size:22px;block-size:14px"></span></td><td><div class="row" style="--g:10px"><span class="avatar">ب</span><div class="col" style="--g:0"><b>بلال خان</b><span class="xs muted">bilal@example.com</span></div></div></td><td><span class="chip warning"><x-t ur="منتظر" en="Pending"></x-t></span></td><td><span class="chip info"><x-t ur="دستی جائزہ" en="Manual review"></x-t></span></td><td>—</td><td>0</td><td><button class="icon-btn sm"><i data-i="more"></i></button></td></tr>
+            <tr><td><span class="switch" style="inline-size:22px;block-size:14px"></span></td><td><div class="row" style="--g:10px"><span class="avatar">ع</span><div class="col" style="--g:0"><b>عمران علی</b><span class="xs muted">imran@example.com</span></div></div></td><td><span class="chip success"><x-t ur="فعال" en="Active"></x-t></span></td><td>—</td><td><span class="chip brand"><x-t ur="پرو" en="Pro"></x-t></span></td><td>12,400</td><td><button class="icon-btn sm"><i data-i="more"></i></button></td></tr>
+            <tr><td><span class="switch" style="inline-size:22px;block-size:14px"></span></td><td><div class="row" style="--g:10px"><span class="avatar">ف</span><div class="col" style="--g:0"><b>فاطمہ زہرا</b><span class="xs muted">fatima@example.com</span></div></div></td><td><span class="chip danger"><x-t ur="مسترد" en="Rejected"></x-t></span></td><td><span class="chip danger"><x-t ur="رسید مسترد" en="Receipt rejected"></x-t></span></td><td>—</td><td>0</td><td><button class="icon-btn sm"><i data-i="more"></i></button></td></tr></table></div>
+          <div class="row between p3 xs muted" style="border-block-start:1px solid hsl(var(--border))"><span>1–25 / 248</span><div class="row" style="--g:4px"><button class="icon-btn sm"><i data-i="chev-r" data-flip></i></button><button class="icon-btn sm"><i data-i="chev-l" data-flip></i></button></div></div></div>
+      </div>
+    </div>
+
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><div class="urlbar"><i data-i="lock" data-s="12"></i>app.easyeditor.example/admin/income</div></div>
+      <div class="adm">
+        <aside class="sidebar p3 col" style="--g:2px"><div class="row p2" style="--g:10px"><span class="avatar" style="background:hsl(var(--primary));color:hsl(var(--primary-foreground));border-radius:10px">ع</span><b>Admin</b></div><a class="nav-item"><i data-i="users"></i><x-t ur="صارفین" en="Users"></x-t></a><a class="nav-item"><i data-i="trend"></i><x-t ur="اپ گریڈ" en="Upgrades"></x-t></a><a class="nav-item on"><i data-i="chart"></i><x-t ur="آمدنی" en="Income"></x-t></a><a class="nav-item"><i data-i="layers"></i><x-t ur="کارپس" en="Corpus"></x-t></a></aside>
+        <div class="scroll p6 col" style="--g:18px"><div class="row between"><div class="xl b"><x-t ur="آمدنی" en="Income"></x-t></div><div class="segmented"><span><x-t ur="30 دن" en="30 d"></x-t></span><span class="on"><x-t ur="سال" en="Year"></x-t></span></div></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px"><div class="card kpi"><span class="xs muted"><x-t ur="کل آمدنی" en="Total"></x-t></span><span class="n">PKR 412k</span><span class="chip success" style="align-self:flex-start">+12%</span></div><div class="card kpi"><span class="xs muted"><x-t ur="فعال صارفین" en="Active users"></x-t></span><span class="n">186</span></div><div class="card kpi"><span class="xs muted"><x-t ur="نئے" en="New"></x-t></span><span class="n">42</span></div><div class="card kpi"><span class="xs muted"><x-t ur="تجدید کی شرح" en="Renewal rate"></x-t></span><span class="n">78%</span></div></div>
+          <div class="card pad col" style="--g:10px"><div class="row between"><b class="sm"><x-t ur="ماہانہ" en="Monthly"></x-t></b><div class="row" style="--g:10px"><span class="row xs" style="--g:4px"><span class="dot" style="color:hsl(var(--chart-1))"></span><x-t ur="نئے" en="New"></x-t></span><span class="row xs" style="--g:4px"><span class="dot" style="color:hsl(var(--chart-2))"></span><x-t ur="تجدید" en="Renewals"></x-t></span></div></div><div class="bars"><i style="block-size:40%"></i><i class="b" style="block-size:30%"></i><i style="block-size:55%"></i><i class="b" style="block-size:42%"></i><i style="block-size:48%"></i><i class="b" style="block-size:60%"></i><i style="block-size:70%"></i><i class="b" style="block-size:66%"></i><i style="block-size:90%"></i><i class="b" style="block-size:80%"></i></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>ایڈمن (موبائل ویب)</h2>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><span class="title grow" style="padding-inline:12px">Admin</span><button class="icon-btn"><i data-i="search"></i></button></div>
+      <div class="tabs" style="overflow-x:auto"><button class="tab on"><i data-i="users"></i><x-t ur="صارفین" en="Users"></x-t></button><button class="tab"><i data-i="trend"></i><x-t ur="اپ گریڈ" en="Upgrades"></x-t><span class="chip danger">5</span></button><button class="tab"><i data-i="chart"></i><x-t ur="آمدنی" en="Income"></x-t></button><button class="tab"><i data-i="layers"></i><x-t ur="کارپس" en="Corpus"></x-t></button></div>
+      <div class="viewport"><div class="scroll grow p3 col" style="--g:10px"><div class="row" style="overflow:hidden;--g:6px"><span class="chip brand"><x-t ur="سب" en="All"></x-t></span><span class="chip neutral"><x-t ur="منتظر 12" en="Pending 12"></x-t></span><span class="chip neutral"><x-t ur="فعال" en="Active"></x-t></span></div>
+        <div class="ucard"><div class="row" style="--g:10px"><span class="avatar">ا</span><div class="col grow" style="--g:0"><b class="sm">احمد رضا</b><span class="xs muted">ahmad@example.com</span></div><span class="chip warning"><x-t ur="منتظر" en="Pending"></x-t></span></div><div class="row"><span class="chip success"><i data-i="spark"></i><x-t ur="خودکار تصدیق" en="Auto-verified"></x-t></span><span class="grow"></span></div><div class="row"><button class="btn primary sm grow"><x-t ur="منظور (پرو)" en="Approve (Pro)"></x-t></button><button class="btn sm"><x-t ur="مسترد" en="Reject"></x-t></button><button class="icon-btn sm"><i data-i="more"></i></button></div></div>
+        <div class="ucard"><div class="row" style="--g:10px"><span class="avatar">ب</span><div class="col grow" style="--g:0"><b class="sm">بلال خان</b><span class="xs muted">bilal@example.com</span></div><span class="chip warning"><x-t ur="منتظر" en="Pending"></x-t></span></div><div class="row"><span class="chip info"><x-t ur="دستی جائزہ" en="Manual review"></x-t></span></div><div class="row"><button class="btn sm grow"><i data-i="image"></i><x-t ur="رسید دیکھیں" en="View receipt"></x-t></button><button class="icon-btn sm"><i data-i="more"></i></button></div></div></div></div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>

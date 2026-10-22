@@ -1,4 +1,5 @@
 import { collectSseText } from "@/lib/sse";
+import { usesOwnKey } from "@/lib/pages/pageEngine";
 
 /**
  * Single-page call to the `translate-page` edge function — the request
@@ -21,7 +22,8 @@ export interface TranslateOnePageArgs {
   genreInstruction?: string;
   /** True inside a whole-book run — charges the cheaper `translate_book` rate. */
   bookMode?: boolean;
-  accessToken: string;
+  /** The signed-in session's token, for the cloud route; unused with the desktop's own key. */
+  accessToken?: string;
   signal?: AbortSignal;
   /** Called with the accumulated text as streamed chunks arrive. */
   onChunk?: (accumulated: string) => void;
@@ -54,6 +56,9 @@ export async function translateOnePage({
     body.text = text;
   }
 
+  // The desktop with the user's own key translates locally (SYSTEM-2026 §10).
+  if (await usesOwnKey()) return translateWithOwnKey(body, signal, onChunk);
+
   const response = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-page`,
     {
@@ -76,4 +81,38 @@ export async function translateOnePage({
   }
 
   return collectSseText(response, onChunk);
+}
+
+/** The desktop's own-key route: the main process streams chunks back on a one-off channel. */
+async function translateWithOwnKey(
+  body: Record<string, unknown>,
+  signal: AbortSignal | undefined,
+  onChunk: ((accumulated: string) => void) | undefined,
+): Promise<string> {
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  const api = window.electronAPI!;
+  const streamChannelId = `translate-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  let accumulated = "";
+  const stop = api.byok?.onStreamChunk(streamChannelId, (data) => {
+    if (data.chunk) {
+      accumulated += data.chunk;
+      onChunk?.(accumulated);
+    }
+  });
+  try {
+    const call = api.invoke("ai:invoke", { mode: "edge-function", functionName: "translate-page", body, streamChannelId }) as Promise<{
+      data?: { text?: string };
+    }>;
+    // An abort stops waiting here; the main-process call finishes on its own.
+    const aborted = new Promise<never>((_, reject) =>
+      signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true }),
+    );
+    const result = await Promise.race([call, aborted]);
+    return result?.data?.text ?? accumulated;
+  } catch (err) {
+    if (err instanceof Error && /429|درخواستیں بہت تیز/.test(err.message)) err.name = "RateLimitError";
+    throw err;
+  } finally {
+    stop?.();
+  }
 }

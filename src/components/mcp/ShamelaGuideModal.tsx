@@ -92,9 +92,9 @@ export function ShamelaGuideModal({ open, onOpenChange }: ShamelaGuideModalProps
           </div>
 
           {/* Security */}
-          <div className="rounded-lg border border-border p-4 space-y-2 bg-emerald-500/5">
-            <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300 text-xs">
-              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+          <div className="rounded-lg border border-border p-4 space-y-2 bg-success/5">
+            <div className="flex items-center gap-2 font-bold text-success text-xs">
+              <ShieldCheck className="h-4 w-4 text-success" />
               سیکیورٹی اور پرائیویسی کی ضمانت
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">

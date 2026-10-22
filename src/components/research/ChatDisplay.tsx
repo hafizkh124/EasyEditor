@@ -445,7 +445,7 @@ const ChatDisplay = ({
 
           {/* M13 (ADR-0056) — per-write approval for a file outside the project. */}
           {agent.fileApproval && (
-            <div className="rounded border border-amber-500/50 bg-amber-500/5 p-2 text-xs space-y-2" dir="auto">
+            <div className="rounded border border-warning/50 bg-warning/5 p-2 text-xs space-y-2" dir="auto">
               <p className="font-medium">{t("agent.file_approval_title", "مجوزہ اقدامات برائے منظوری")}</p>
               <p className="font-mono break-all opacity-80" dir="ltr">{agent.fileApproval.path}</p>
               <ol className="list-decimal ps-5 space-y-0.5">
@@ -476,7 +476,7 @@ const ChatDisplay = ({
             >
               <ChevronRight className="h-3.5 w-3.5 shrink-0" />
               {t("agent.ran_steps", "Ran {n} steps").replace("{n}", String(stepLines.length))}
-              {stepLines.some(isFailedStep) && <span className="text-amber-600">· {stepLines.filter(isFailedStep).length}</span>}
+              {stepLines.some(isFailedStep) && <span className="text-warning">· {stepLines.filter(isFailedStep).length}</span>}
             </button>
           ) : (
             <div className="space-y-1.5">
@@ -489,11 +489,11 @@ const ChatDisplay = ({
               {stepLines.map((p, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs">
                   {isFailedStep(p)
-                    ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500 mt-0.5" />
+                    ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning mt-0.5" />
                     : p.kind === "done"
-                      ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500 mt-0.5" />
+                      ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success mt-0.5" />
                       : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />}
-                  <span className={isFailedStep(p) ? "text-amber-700 dark:text-amber-400" : "text-foreground"}>
+                  <span className={isFailedStep(p) ? "text-warning" : "text-foreground"}>
                     {p.labelKey ? t(p.labelKey as Parameters<typeof t>[0], p.label) : p.label}{p.detail ? ` — ${p.detail}` : ""}
                   </span>
                 </div>
@@ -583,7 +583,7 @@ const ChatDisplay = ({
                 </div>
               )}
               {agent.result.stopReason === "step-limit" && (
-                <p className="text-xs text-amber-700 dark:text-amber-400">{t("agent.step_limit", "Stopped at the step limit — ask a narrower question.")}</p>
+                <p className="text-xs text-warning">{t("agent.step_limit", "Stopped at the step limit — ask a narrower question.")}</p>
               )}
               {agent.modeUpgradeRequest && (
                 <div className="rounded border border-primary/40 bg-primary/5 p-2 text-xs space-y-2">
@@ -601,8 +601,8 @@ const ChatDisplay = ({
                 </div>
               )}
               {agent.pendingOptions.length > 0 && (
-                <div className="rounded border border-amber-500/40 bg-amber-500/5 p-2 text-xs space-y-1.5">
-                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                <div className="rounded border border-warning/40 bg-warning/5 p-2 text-xs space-y-1.5">
+                  <p className="font-medium text-warning">
                     {t("agent.global_option_consent", "This changes a Word setting for every document — approve it?")}
                   </p>
                   <ul className="space-y-0.5 font-mono">
@@ -623,8 +623,8 @@ const ChatDisplay = ({
                 </div>
               )}
               {agent.pendingOcr.length > 0 && (
-                <div className="rounded border border-amber-500/40 bg-amber-500/5 p-2 text-xs space-y-1.5">
-                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                <div className="rounded border border-warning/40 bg-warning/5 p-2 text-xs space-y-1.5">
+                  <p className="font-medium text-warning">
                     {t("agent.ocr_consent", "OCR sends the page images to the EasyEditor cloud OCR service — this is not a local reading. Approve it for this project?")}
                   </p>
                   {agent.pendingOcr[0]?.scanPath && <p className="font-mono opacity-80">{agent.pendingOcr[0].scanPath}</p>}

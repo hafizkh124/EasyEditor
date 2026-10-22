@@ -88,12 +88,12 @@ export const VoiceCloningDialog: React.FC<DialogProps> = ({ open, onClose, onClo
 
         <div className="space-y-4 py-4 text-right">
           {error && (
-            <div className="p-3 border rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 text-xs">
+            <div className="p-3 border rounded-lg bg-destructive/10 text-destructive text-xs">
               {error}
             </div>
           )}
 
-          <div className="p-3 border rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs">
+          <div className="p-3 border rounded-lg bg-warning/10 text-warning text-xs">
             ⚠️ <strong>اہم اخلاقی لیبل:</strong> اس انداز سے تیار کردہ تمام صوتی فائلز پر خودکار طور پر{' '}
             <span className="font-bold underline">"نقل شدہ انداز، اصل آواز نہیں"</span> کا واٹر مارک لیبل شامل ہوگا۔
           </div>

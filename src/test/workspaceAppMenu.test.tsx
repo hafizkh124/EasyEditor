@@ -37,9 +37,9 @@ const open = () => {
 describe("workspace app menu", () => {
   beforeEach(() => navigate.mockReset());
 
-  it("offers a route to the dashboard", async () => {
+  it("offers a route to Home (the dashboard route)", async () => {
     open();
-    const item = await screen.findByText("ڈیش بورڈ");
+    const item = await screen.findByText("ہوم");
     fireEvent.click(item);
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/dashboard"));
   });
@@ -66,9 +66,11 @@ describe("workspace app menu", () => {
   it("lists every standalone tool on the web, so the workspace is not a dead end", async () => {
     open();
     // `t` mirrors the additive API and returns the explicit fallback.
-    for (const label of ["ٹرانسکرائب", "OCR", "بولیں", "کتاب کا ترجمہ"]) {
+    for (const label of ["ٹرانسکرائب", "OCR", "کتاب کا ترجمہ"]) {
       expect(await screen.findByText(label)).toBeInTheDocument();
     }
+    // Speak is hidden for now (SYSTEM-2026 §11).
+    expect(screen.queryByText("بولیں")).not.toBeInTheDocument();
   });
 
   /**
@@ -88,15 +90,17 @@ describe("workspace app menu", () => {
       vi.unstubAllEnvs();
     });
 
-    it("drops the cloud-only tools", async () => {
+    // SYSTEM-2026 §10: the page tools are never missing on the desktop —
+    // they run on the user's own key or account, or show how to enable them.
+    it("keeps the page tools", async () => {
       open();
-      await screen.findByText("ڈیش بورڈ");
-      for (const label of ["OCR", "استخراج", "کتاب کا ترجمہ"]) {
-        expect(screen.queryByText(label)).not.toBeInTheDocument();
+      for (const label of ["OCR", "کتاب کا ترجمہ"]) {
+        expect(await screen.findByText(label)).toBeInTheDocument();
       }
     });
 
     it("keeps the tools that run on the offline voice engines", async () => {
+      vi.stubEnv("VITE_VOICE_STUDIO", "true");
       open();
       for (const label of ["ٹرانسکرائب", "بولیں"]) {
         expect(await screen.findByText(label)).toBeInTheDocument();
@@ -105,7 +109,7 @@ describe("workspace app menu", () => {
 
     it("still offers a way out to the dashboard, settings and the profile", async () => {
       open();
-      expect(await screen.findByText("ڈیش بورڈ")).toBeInTheDocument();
+      expect(await screen.findByText("ہوم")).toBeInTheDocument();
       expect(await screen.findByText("ترتیبات")).toBeInTheDocument();
       expect(await screen.findByText("میری پروفائل")).toBeInTheDocument();
     });

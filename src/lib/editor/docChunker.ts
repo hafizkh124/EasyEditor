@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/react";
 import type { Node as PMNode } from "@tiptap/pm/model";
+import { MIN_SECTION_CHARS } from "~shared/agent/sectionSummaries";
 
 /**
  * Block-aware chunking of a TipTap document (SPEC-M3 FR-5.1).
@@ -11,7 +12,7 @@ import type { Node as PMNode } from "@tiptap/pm/model";
  * each result back into exactly the block it read.
  */
 
-export type BatchMode = "inline" | "block";
+export type BatchMode = "inline" | "block" | "append";
 
 export interface TextBatch {
   index: number;
@@ -23,6 +24,8 @@ export interface TextBatch {
   /**
    * "inline" — replace the block's *inner* range, so an <h2> stays an <h2>.
    * "block"  — replace the whole range with re-parsed paragraphs.
+   * "append" — leave the range alone and insert the result after it
+   *            (section summaries); `from`/`to` span the whole section.
    */
   mode: BatchMode;
   charCount: number;
@@ -217,4 +220,90 @@ function mergeTinyBatches(batches: TextBatch[]): TextBatch[] {
   }
 
   return out.map((b, i) => ({ ...b, index: i }));
+}
+
+/** A section with less body text than this has nothing worth summarising. */
+export { MIN_SECTION_CHARS };
+
+/**
+ * Plan a section-by-section summary (SYSTEM-2026: "حصوں کا خلاصہ").
+ *
+ * A section runs from a heading to the next heading of any level; text before
+ * the first heading is a section of its own, and a document with no headings
+ * is one section. Every batch is "append": the section is never rewritten, its
+ * summary is inserted after it. A section longer than one request is sent in
+ * parts that share the section's range, so their summaries land in order.
+ * Tables, images and code are left out of the text, as they are everywhere.
+ */
+export function planSectionSummaries(editor: Editor): ChunkPlan {
+  const doc = editor.state.doc;
+  const batches: TextBatch[] = [];
+  let skipped = 0;
+  let index = 0;
+
+  type Section = { from: number; to: number; heading: string; blocks: string[] };
+  const sections: Section[] = [];
+  let current: Section | null = null;
+
+  doc.forEach((node, offset) => {
+    const end = offset + node.nodeSize;
+    if (node.type.name === "heading") {
+      if (current) sections.push(current);
+      current = { from: offset, to: end, heading: node.textContent.trim(), blocks: [] };
+      return;
+    }
+    if (!current) current = { from: offset, to: end, heading: "", blocks: [] };
+    current.to = end;
+    if (SKIPPED_NODES.has(node.type.name)) {
+      skipped++;
+      return;
+    }
+    const text = node.textContent.trim();
+    if (text) current.blocks.push(text);
+  });
+  if (current) sections.push(current);
+
+  for (const section of sections) {
+    const bodyLength = section.blocks.reduce((n, b) => n + b.length, 0);
+    if (bodyLength < MIN_SECTION_CHARS) continue;
+
+    // Group the section's blocks into request-sized parts. A single block
+    // longer than a request is cut at sentence ends.
+    const parts: string[] = [];
+    let buffer = section.heading;
+    const push = (piece: string) => {
+      if (buffer && buffer.length + piece.length + 2 > MAX_BATCH_CHARS) {
+        parts.push(buffer);
+        buffer = section.heading;
+      }
+      buffer = buffer ? `${buffer}\n\n${piece}` : piece;
+    };
+    for (const block of section.blocks) {
+      if (block.length <= MAX_BATCH_CHARS - section.heading.length - 2) {
+        push(block);
+        continue;
+      }
+      let sentenceRun = "";
+      for (const sentence of block.split(SENTENCE_SPLIT)) {
+        if (sentenceRun && sentenceRun.length + sentence.length + 1 > MAX_BATCH_CHARS / 2) {
+          push(sentenceRun);
+          sentenceRun = "";
+        }
+        sentenceRun = sentenceRun ? `${sentenceRun} ${sentence}` : sentence;
+      }
+      if (sentenceRun) push(sentenceRun);
+    }
+    if (buffer && buffer !== section.heading) parts.push(buffer);
+
+    for (const text of parts) {
+      batches.push({ index: index++, from: section.from, to: section.to, text, mode: "append", charCount: text.length });
+    }
+  }
+
+  return { batches, skipped };
+}
+
+/** The plan a whole-document run of this task uses. */
+export function planTaskChunks(editor: Editor, task: { applyMode: string } | undefined): ChunkPlan {
+  return task?.applyMode === "append" ? planSectionSummaries(editor) : planDocumentChunks(editor);
 }

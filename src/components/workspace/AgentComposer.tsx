@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Send, Loader2, Square, Mic, Plus, X, Book, User, Layers, CalendarClock, Repeat, AtSign, Pencil, Hourglass, ScrollText, FolderOpen, Hash } from "lucide-react";
+import { Send, Loader2, Square, Mic, Plus, X, Book, User, Layers, CalendarClock, Repeat, AtSign, Pencil, Hourglass, ScrollText, FolderOpen, Hash, Pin } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CONNECTORS, isConnectorOn } from "../../../shared/agent/connectors";
@@ -7,8 +7,7 @@ import { useAgentRun, type AgentMode, type ScopeTag } from "@/hooks/useAgentRun"
 import { useClampToViewport } from "@/lib/ui/clampToViewport";
 import { ScopeReviewDialog } from "./ScopeReviewDialog";
 import { ComposerHub } from "@/components/composer/ComposerHub";
-import { CustomPromptsPicker } from "@/components/composer/CustomPromptsPicker";
-import { ScholarlyPromptModal } from "@/components/research/ScholarlyPromptModal";
+import { SkillPromptDialog } from "@/components/composer/SkillPromptDialog";
 
 /** Icon + accent for a scope chip, keyed by kind (colour is never the only signal). */
 function chipStyle(tag: ScopeTag): { icon: React.ReactNode; cls: string } {
@@ -69,12 +68,8 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
   const pickerRef = useRef<HTMLDivElement>(null);
   const hubRef = useRef<HTMLDivElement>(null);
   const [overflowOpen, setOverflowOpen] = React.useState(false);
-  const [promptsOpen, setPromptsOpen] = React.useState(false);
-  const [scholarlyPromptsOpen, setScholarlyPromptsOpen] = React.useState(false);
-  const promptsRef = useRef<HTMLDivElement>(null);
   const { transform: pickerTransform } = useClampToViewport(pickerRef, [a.picker, a.pickerItems.length]);
   const { transform: hubTransform } = useClampToViewport(hubRef, [a.hubOpen]);
-  const { transform: promptsTransform } = useClampToViewport(promptsRef, [promptsOpen]);
 
   const chips = a.scopeTags;
   const visibleChips = chips.slice(0, 4);
@@ -157,7 +152,7 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
           open `a.pf.chapters` is also empty, but that isn't "an empty
           folder", it's "no folder yet" (the hint below already covers that). */}
       {a.pf.folder && a.pf.chapters.length === 0 && (
-        <div className="flex items-center gap-1.5 rounded border border-amber-500/40 bg-amber-500/5 p-2 m-3 mb-0 text-xs text-amber-700 dark:text-amber-400 shrink-0">
+        <div className="flex items-center gap-1.5 rounded border border-warning/40 bg-warning/5 p-2 m-3 mb-0 text-xs text-warning shrink-0">
           {t("agent.no_chapters", "This folder has no .docx or .rtf files yet — the agent has nothing to read. Add chapter files, or pick a different folder.")}
         </div>
       )}
@@ -212,8 +207,6 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
               showSources
               showSkills
               showConnectors
-              showPrompts
-              showScholarlyPrompts
               selectedDomains={selectedDomains}
               onSelectedDomainsChange={onSelectedDomainsChange}
               requireArabicMatn={requireArabicMatn}
@@ -226,24 +219,16 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
               onChangeFolder={() => a.pf.openFolder()}
               onOpenPlaybooks={() => { a.updateInput("/", 1); a.taRef.current?.focus(); }}
               onOpenScope={() => { a.updateInput(`${a.input}${a.input && !a.input.endsWith(" ") ? " " : ""}#`, a.input.length + (a.input && !a.input.endsWith(" ") ? 2 : 1)); a.taRef.current?.focus(); }}
-              onOpenPrompts={() => setPromptsOpen(true)}
-              onOpenScholarlyPrompts={() => setScholarlyPromptsOpen(true)}
               onClose={() => a.setHubOpen(false)}
             />
           </div>
         )}
-        {promptsOpen && (
-          <div ref={promptsRef} style={{ transform: promptsTransform }} className="absolute bottom-full start-2 mb-1 w-[min(20rem,80vw)] max-h-[min(24rem,70vh)] overflow-y-auto overscroll-contain rounded-md border border-border bg-popover text-xs shadow-md">
-            <CustomPromptsPicker
-              onInsert={(text) => { a.updateInput(text, text.length); a.taRef.current?.focus(); }}
-              onClose={() => setPromptsOpen(false)}
-            />
-          </div>
-        )}
-        <ScholarlyPromptModal
-          isOpen={scholarlyPromptsOpen}
-          onClose={() => setScholarlyPromptsOpen(false)}
-          onSelectPrompt={(promptText, prompt) => {
+        {/* My skills, scholarly prompts and "مجھ سے پوچھو" are all in the `/`
+            menu now (SYSTEM-2026 §7); a prompt skill's details are filled here. */}
+        <SkillPromptDialog
+          prompt={a.skillPromptRequest}
+          onClose={a.clearSkillPromptRequest}
+          onApply={(promptText, prompt) => {
             a.updateInput(promptText, promptText.length);
             if (!prompt.corpusReady) toast.warning(t("research.prompt_corpus_pending"));
             setTimeout(() => a.taRef.current?.focus(), 50);
@@ -278,6 +263,7 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
                   >
                     {it.kind === "command" ? <ScrollText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       : it.kind === "library" ? <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      : it.section === "source" ? <Book className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       : <span className="text-muted-foreground">@</span>}
                     <span className="truncate">{it.label}</span>
                     {it.sublabel ? <span className="ms-auto shrink-0 truncate text-muted-foreground/70">{it.sublabel}</span> : null}
@@ -285,6 +271,41 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
                 </React.Fragment>
               );
             })}
+          </div>
+        )}
+        {/* The folder's pinned sources (SYSTEM-2026 §3): on by default for every
+            chat in the folder, switchable for this one. */}
+        {a.folderSources.length > 0 && (
+          <div className="mb-1.5 flex items-center gap-1 text-xs">
+            {a.folderSourcesOn ? (
+              <span
+                className="inline-flex max-w-full items-center gap-1 rounded bg-primary/10 py-0.5 pe-1 ps-1.5 text-primary"
+                title={a.folderSources.map((f) => f.label).join("، ")}
+              >
+                <Pin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">
+                  {t("sources.folder_chip", "{folder} کے ذرائع ({count})")
+                    .replace("{folder}", a.folderName ?? "")
+                    .replace("{count}", String(a.folderSources.length))}
+                </span>
+                <button
+                  className="ms-0.5 shrink-0 rounded p-0.5 hover:bg-background/40"
+                  onClick={() => a.setFolderSourcesOn(false)}
+                  aria-label={t("sources.folder_chip_off", "اس چیٹ میں فولڈر کے ذرائع بند کریں")}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => a.setFolderSourcesOn(true)}
+                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground hover:bg-muted"
+              >
+                <Pin className="h-3 w-3" aria-hidden="true" />
+                {t("sources.folder_chip_on", "فولڈر کے ذرائع استعمال کریں")}
+              </button>
+            )}
           </div>
         )}
         {/* Plan §4.4 — removable scope chips. Chips are authoritative; the inline
@@ -426,7 +447,7 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
           <span className="opacity-40">·</span>
           <span className="shrink-0">{t("agent.pill_chapters", "{n} ch").replace("{n}", String(a.pf.chapters.length))}</span>
           {(() => { const off = CONNECTORS.filter((c) => !(a.connectorState?.[c.id] ?? isConnectorOn(a.connectors, c.id))).length; return off > 0 ? (
-            <><span className="opacity-40">·</span><span className="shrink-0 text-amber-600">{t("agent.pill_connectors_off", "{n} source off").replace("{n}", String(off))}</span></>
+            <><span className="opacity-40">·</span><span className="shrink-0 text-warning">{t("agent.pill_connectors_off", "{n} source off").replace("{n}", String(off))}</span></>
           ) : null; })()}
           <span className="opacity-40 shrink-0">·</span>
           {/* QA finding: `truncate` alone does nothing on a flex item — a

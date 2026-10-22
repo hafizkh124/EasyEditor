@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research agent</title>
+<link rel="stylesheet" href="_shared/tokens.css">
+<link rel="stylesheet" href="_shared/ui.css">
+<script src="_shared/kit.js" defer></script>
+<style>
+  .rs { display: grid; grid-template-columns: 76px 280px 1fr; flex: 1; min-block-size: 0; }
+  .rs.art { grid-template-columns: 76px 1fr 400px; }
+  .rail { background: hsl(var(--sidebar)); border-inline-end: 1px solid hsl(var(--border)); display: flex; flex-direction: column; align-items: center; padding: 12px 6px; gap: 4px; }
+  .rail a { inline-size: 62px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; border-radius: 14px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+  .rail a svg.i { font-size: 22px; } .rail a.on { background: hsl(var(--primary-soft)); color: hsl(var(--primary)); font-weight: 600; }
+  .msg { display: flex; flex-direction: column; gap: 8px; max-inline-size: 640px; }
+  .me { align-self: flex-end; background: hsl(var(--primary-soft)); padding: 10px 14px; border-radius: 16px 16px 4px 16px; }
+  [dir="rtl"] .me { border-radius: 16px 16px 16px 4px; }
+  .ai { align-self: flex-start; }
+  .mode { display: inline-flex; padding: 3px; border-radius: 12px; background: hsl(var(--muted)); gap: 2px; }
+  .mode button { border: 0; background: none; padding: 5px 12px; border-radius: 9px; font-size: 13px; font-weight: 500; color: hsl(var(--muted-foreground)); display: inline-flex; gap: 6px; align-items: center; min-block-size: 30px; } .mode button.on { background: hsl(var(--card)); color: hsl(var(--foreground)); box-shadow: var(--shadow-sm); }
+  .plan { border: 1px solid hsl(var(--info-bd)); background: hsl(var(--info-bg) / .5); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .pstep { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; } .pstep .n { inline-size: 22px; block-size: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: hsl(var(--card)); border: 1px solid hsl(var(--info-bd)); color: hsl(var(--info)); flex: none; }
+  .comp { border: 1px solid hsl(var(--border-strong)); border-radius: 20px; background: hsl(var(--card)); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow-sm); }
+  .tool { display: flex; align-items: center; gap: 8px; font-size: 12px; color: hsl(var(--muted-foreground)); padding: 6px 10px; border-radius: 10px; background: hsl(var(--muted)); }
+  .tree { position: relative; block-size: 230px; } .tree .nd { position: absolute; padding: 5px 10px; border-radius: 10px; border: 1px solid; font-size: 12px; font-weight: 600; background: hsl(var(--card)); text-align: center; line-height: 1.5; }
+  .scholar { padding: 14px; border-radius: 16px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body data-title="13 · تحقیق (ایجنٹ)" data-note="ایک ہی جگہ: Ask / Plan / Auto، کمپوزر ہب، حوالہ جات، آرٹیفیکٹس (سند ٹری، راوی کارڈ)۔ موبائل پر اپنا ٹیب۔">
+<main class="stage">
+
+<section>
+  <h2><span class="tag desk">ڈیسک ٹاپ</span><span class="tag">ویب</span>تحقیق: گفتگو · منصوبہ منظوری · آرٹیفیکٹس</h2>
+  <p class="cap">بائیں سیشنز کی فہرست، درمیان میں گفتگو، دائیں آرٹیفیکٹ اسٹیج (جب ایجنٹ کچھ بنائے)۔ موڈ کا ٹوگل واضح بیان کے ساتھ (Ask: صرف پڑھنا، Plan: پہلے منظوری، Auto: ٹریک شدہ تبدیلیاں)۔ ایجنٹ کے اوزار چھوٹی خاموش قطاروں میں۔ ہر جواب کے ساتھ اعتماد کا چپ اور ماخذ۔</p>
+  <div class="frames">
+    <div class="device desk">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="تحقیق" en="Research"></x-t></span></div>
+      <div class="rs art">
+        <div class="rail"><a><i data-i="pen"></i><x-t ur="لکھیں" en="Write"></x-t></a><a><i data-i="folder"></i><x-t ur="مکتبہ" en="Library"></x-t></a><a class="on"><i data-i="bot"></i><x-t ur="تحقیق" en="Research"></x-t></a><a><i data-i="dash"></i><x-t ur="ٹولز" en="Tools"></x-t></a></div>
+        <div class="col" style="min-block-size:0">
+          <div class="row p3" style="border-block-end:1px solid hsl(var(--border))"><b class="sm grow"><x-t ur="مسئلہ اباحت کی تحقیق" en="Research on the default ruling"></x-t></b><div class="mode"><button><i data-i="eye" data-s="14"></i>Ask</button><button class="on"><i data-i="list" data-s="14"></i>Plan</button><button><i data-i="zap" data-s="14"></i>Auto</button></div><button class="icon-btn sm"><i data-i="plus"></i></button></div>
+          <div class="scroll grow p4 col" style="--g:16px;padding-inline:36px">
+            <div class="msg me"><span><x-t ur="اصل اباحت کے بارے میں چاروں مذاہب کا موقف اور دلائل جمع کرو" en="Gather the four schools' positions and evidence on the default ruling of permissibility"></x-t></span></div>
+            <div class="msg ai">
+              <div class="plan"><div class="row between"><b class="sm"><i data-i="list"></i> <x-t ur="منصوبہ · منظوری کا انتظار" en="Plan · awaiting approval"></x-t></b><span class="chip info"><x-t ur="~3,000 ٹوکنز" en="~3,000 tokens"></x-t></span></div>
+                <div class="pstep"><span class="n">1</span><span><x-t ur="شاملہ اور آپ کے ذرائع میں اصل اباحت کی عبارتیں تلاش کریں" en="Search Shamela and your sources for passages on the default ruling"></x-t></span></div>
+                <div class="pstep"><span class="n">2</span><span><x-t ur="ہر مذہب کا قول الگ جدول میں لائیں" en="Lay out each school's view in a table"></x-t></span></div>
+                <div class="pstep"><span class="n">3</span><span><x-t ur="مسودہ بنائیں، ہر دعوے پر حوالہ" en="Draft with a citation on every claim"></x-t></span></div>
+                <div class="row"><button class="btn primary"><i data-i="check"></i><x-t ur="منظور کریں" en="Approve"></x-t></button><button class="btn"><i data-i="pen"></i><x-t ur="ترمیم" en="Edit plan"></x-t></button><button class="btn ghost"><x-t ur="رد" en="Reject"></x-t></button></div></div>
+            </div>
+            <div class="msg ai"><div class="tool"><i data-i="search"></i><x-t ur="شاملہ میں تلاش: «الأصل في الأشياء الإباحة» · 14 نتائج" en="Shamela search: “الأصل في الأشياء الإباحة” · 14 results"></x-t></div><div class="tool"><i data-i="layers"></i><x-t ur="آپ کے ذرائع میں تلاش · 6 نتائج" en="Searching your sources · 6 results"></x-t></div>
+              <div class="doc" style="font-size:17px;line-height:2.1"><x-t ur="جمہور کے نزدیک اصل اباحت ہے" en="The majority hold that permissibility is the default"></x-t><span class="cite">1</span><x-t ur="، جبکہ بعض نے توقف کو اختیار کیا" en=", while some chose to suspend judgement"></x-t><span class="cite">2</span>۔</div>
+              <div class="row"><span class="chip warning"><span class="dot"></span><x-t ur="اعتماد: درمیانہ" en="Confidence: moderate"></x-t></span><span class="chip neutral"><x-t ur="2 ماخذ" en="2 sources"></x-t></span><span class="grow"></span><button class="icon-btn sm"><i data-i="copy"></i></button><button class="icon-btn sm"><i data-i="refresh"></i></button><button class="btn sm"><i data-i="plus"></i><x-t ur="ایڈیٹر میں" en="To editor"></x-t></button></div></div>
+          </div>
+          <div style="padding:12px 24px"><div class="comp"><span class="muted sm"><x-t ur="سوال لکھیں، @ باب، / پلے بک، # کتاب…" en="Ask…  @ chapter, / playbook, # book"></x-t></span><div class="row" style="--g:6px"><button class="icon-btn sm"><i data-i="plus"></i></button><span class="chip neutral"><i data-i="folder"></i>D:\Fatawa</span><span class="chip neutral"><i data-i="layers"></i><x-t ur="3 کتب" en="3 books"></x-t></span><span class="grow"></span><button class="icon-btn sm"><i data-i="mic"></i></button><button class="icon-btn sm fill"><i data-i="send" data-flip></i></button></div></div></div>
+        </div>
+        <aside class="sidebar" style="border-inline-end:0;border-inline-start:1px solid hsl(var(--border))">
+          <div class="row p3" style="border-block-end:1px solid hsl(var(--border))"><b class="sm grow"><x-t ur="آرٹیفیکٹس" en="Artifacts"></x-t></b><button class="icon-btn sm"><i data-i="copy"></i></button><button class="icon-btn sm"><i data-i="download"></i></button><button class="icon-btn sm"><i data-i="plus"></i></button></div>
+          <div class="p3 col" style="--g:12px;overflow:auto"><div class="card pad col" style="--g:6px"><div class="row between"><b class="sm"><x-t ur="سند کی زنجیر" en="Chain of transmission"></x-t></b><span class="chip success"><x-t ur="مصحح" en="Verified"></x-t></span></div>
+            <div class="tree"><svg width="100%" height="100%" style="position:absolute;inset:0"><g stroke="hsl(var(--border-strong))" stroke-width="1.5" fill="none"><path d="M50% 30 V 80 M50% 80 H 25% V 120 M50% 80 H 75% V 120 M25% 150 V 190 M75% 150 V 190"/></g></svg>
+              <span class="nd" style="inset-block-start:4px;inset-inline-start:36%;border-color:hsl(var(--primary));color:hsl(var(--primary))">رسول اللہ ﷺ</span>
+              <span class="nd" style="inset-block-start:112px;inset-inline-start:8%;border-color:hsl(var(--success-bd))">راوی ا</span><span class="nd" style="inset-block-start:112px;inset-inline-start:60%;border-color:hsl(var(--success-bd))">راوی ب</span>
+              <span class="nd" style="inset-block-start:186px;inset-inline-start:8%;border-color:hsl(var(--warning-bd));color:hsl(var(--warning))">راوی ج</span><span class="nd" style="inset-block-start:186px;inset-inline-start:60%;border-color:hsl(var(--success-bd))">راوی د</span></div></div>
+            <div class="scholar"><div class="row"><span class="avatar">ا</span><div class="col grow" style="--g:0"><b class="sm">راوی ج</b><span class="xs muted"><x-t ur="وفات 180ھ" en="d. 180 AH"></x-t></span></div><span class="chip warning"><x-t ur="موثق" en="Reliable"></x-t></span></div><div class="sm muted"><x-t ur="ائمہ جرح و تعدیل کے اقوال: 4 تعدیل، 1 جرح" en="Rijal verdicts: 4 positive, 1 critical"></x-t></div></div></div>
+        </aside>
+      </div>
+    </div>
+
+    <div class="device desk short" style="inline-size:620px">
+      <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="grow" style="text-align:center"><x-t ur="کمپوزر ہب" en="Composer hub"></x-t></span></div>
+      <div class="viewport hero-bg" style="padding:24px;justify-content:flex-end"><div class="pop card raised" style="inline-size:420px;padding:6px;margin-block-end:12px"><div class="nav-label" style="padding-block-start:4px"><x-t ur="شامل کریں" en="ADD"></x-t></div>
+        <div class="menu-item"><i data-i="upload"></i><x-t ur="فائلیں یا اسکین" en="Files or scans"></x-t></div><div class="menu-item"><i data-i="folder"></i><x-t ur="پروجیکٹ فولڈر" en="Project folder"></x-t><span class="chip neutral" style="margin-inline-start:auto">D:\Fatawa</span></div>
+        <div class="nav-label"><x-t ur="دائرہ" en="SCOPE"></x-t></div><div class="menu-item"><i data-i="book"></i><x-t ur="کتب اور مصنفین" en="Books & authors"></x-t><span class="chip brand" style="margin-inline-start:auto"><x-t ur="3 منتخب" en="3 selected"></x-t></span></div><div class="menu-item"><i data-i="globe"></i><x-t ur="ذرائع (کنیکٹرز)" en="Connectors"></x-t><span class="chip success" style="margin-inline-start:auto">5</span></div>
+        <div class="nav-label"><x-t ur="ٹاسک لائبریری" en="TASK LIBRARY"></x-t></div><div class="menu-item"><i data-i="tasks"></i><x-t ur="پلے بکس" en="Playbooks"></x-t></div><div class="menu-item"><i data-i="pen"></i><x-t ur="میرے پرامپٹس" en="My prompts"></x-t></div><div class="menu-item"><i data-i="star"></i><x-t ur="14 علمی پرامپٹس" en="14 scholarly prompts"></x-t></div></div>
+        <div class="comp"><span class="muted sm"><x-t ur="سوال لکھیں…" en="Ask…"></x-t></span><div class="row"><button class="icon-btn sm" style="background:hsl(var(--primary-soft));color:hsl(var(--primary))"><i data-i="plus"></i></button><span class="grow"></span><button class="icon-btn sm fill"><i data-i="send" data-flip></i></button></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag mob">موبائل</span>تحقیق ٹیب · ہوم، گفتگو، منصوبہ، آرٹیفیکٹ</h2>
+  <p class="cap">ٹیب کھلنے پر: نئی تحقیق کا بڑا باکس، تجاویز، حالیہ گفتگو۔ گفتگو میں کمپوزر نیچے (انگوٹھے کی پہنچ)۔ منصوبہ کی منظوری نیچے شیٹ میں۔ آرٹیفیکٹ ٹیپ پر پوری اسکرین (چٹکی سے زوم)۔</p>
+  <div class="frames">
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><span class="title grow" style="padding-inline:12px"><x-t ur="تحقیق" en="Research"></x-t></span><button class="icon-btn"><i data-i="clock"></i></button></div>
+      <div class="viewport"><div class="scroll grow p4 col" style="--g:16px">
+        <div class="col" style="--g:4px"><div class="xl b"><x-t ur="آج کیا تحقیق کریں؟" en="What shall we research?"></x-t></div></div>
+        <div class="comp"><span class="muted"><x-t ur="سوال لکھیں…" en="Ask…"></x-t></span><div class="row"><div class="mode"><button>Ask</button><button class="on">Plan</button><button>Auto</button></div><span class="grow"></span><button class="icon-btn sm fill"><i data-i="send" data-flip></i></button></div></div>
+        <div class="col" style="--g:8px"><span class="xs muted"><x-t ur="تجاویز" en="SUGGESTIONS"></x-t></span><button class="li card"><span class="ic"><i data-i="search"></i></span><span class="grow sm"><x-t ur="کسی مسئلے پر چاروں مذاہب کا موقف" en="The four schools' views on an issue"></x-t></span></button><button class="li card"><span class="ic info"><i data-i="shield"></i></span><span class="grow sm"><x-t ur="کسی روایت کی سند کی جانچ" en="Check a narration's chain"></x-t></span></button><button class="li card"><span class="ic warning"><i data-i="quote"></i></span><span class="grow sm"><x-t ur="مسودے کے حوالہ جات مکمل کریں" en="Complete my draft's citations"></x-t></span></button></div>
+        <div class="col" style="--g:2px"><span class="xs muted"><x-t ur="حالیہ" en="RECENT"></x-t></span><div class="li"><span class="ic neutral"><i data-i="chat"></i></span><div class="grow"><b class="sm">مسئلہ اباحت کی تحقیق</b><div class="xs muted"><x-t ur="آج" en="Today"></x-t></div></div></div><div class="li"><span class="ic neutral"><i data-i="chat"></i></span><div class="grow"><b class="sm">زکوٰۃ کے نصاب کا موازنہ</b><div class="xs muted"><x-t ur="کل" en="Yesterday"></x-t></div></div></div></div>
+      </div>
+      <nav class="bottomnav"><a><i data-i="folder"></i><x-t ur="مکتبہ" en="Library"></x-t></a><a><i data-i="pen"></i><x-t ur="لکھیں" en="Write"></x-t></a><a class="on"><i data-i="bot"></i><x-t ur="تحقیق" en="Research"></x-t></a><a><i data-i="dash"></i><x-t ur="ٹولز" en="Tools"></x-t></a><a><i data-i="user"></i><x-t ur="میں" en="Me"></x-t></a></nav></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="sm grow trunc">مسئلہ اباحت کی تحقیق</b><div class="mode" style="margin-inline-end:6px"><button class="on" style="padding-inline:8px">Plan</button></div></div>
+      <div class="viewport"><div class="scroll grow p3 col" style="--g:14px"><div class="msg me" style="max-inline-size:90%"><span class="sm"><x-t ur="چاروں مذاہب کا موقف جمع کرو" en="Gather the four schools' positions"></x-t></span></div>
+        <div class="msg ai"><div class="tool"><i data-i="search"></i><x-t ur="شاملہ میں تلاش · 14 نتائج" en="Shamela · 14 results"></x-t></div><div class="doc" style="font-size:16px;line-height:2.1"><x-t ur="جمہور کے نزدیک اصل اباحت ہے" en="The majority hold permissibility is the default"></x-t><span class="cite">1</span>۔</div><div class="row"><span class="chip warning"><span class="dot"></span><x-t ur="درمیانہ" en="Moderate"></x-t></span><span class="grow"></span><button class="btn sm"><i data-i="plus"></i><x-t ur="ایڈیٹر میں" en="To editor"></x-t></button></div></div>
+        <button class="li card"><span class="ic"><i data-i="graph"></i></span><div class="grow"><b class="sm"><x-t ur="سند کی زنجیر" en="Chain of transmission"></x-t></b><div class="xs muted"><x-t ur="کھولنے کے لیے ٹیپ" en="Tap to open"></x-t></div></div><span class="chip success"><x-t ur="مصحح" en="Verified"></x-t></span></button></div>
+        <div style="padding:8px 12px"><div class="comp" style="padding:8px 10px"><span class="muted sm"><x-t ur="مزید پوچھیں…" en="Ask more…"></x-t></span><div class="row"><button class="icon-btn sm"><i data-i="plus"></i></button><span class="grow"></span><button class="icon-btn sm fill"><i data-i="send" data-flip></i></button></div></div></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="chev-r" data-flip></i></button><b class="sm grow trunc">مسئلہ اباحت کی تحقیق</b></div>
+      <div class="viewport"><div class="scrim"></div>
+        <div class="sheet" style="position:absolute;inset-inline:0;inset-block-end:0;z-index:6;padding-block-end:20px"><div class="grab"></div><div class="p4 col" style="--g:12px"><div class="row between"><b><i data-i="list"></i> <x-t ur="منصوبہ" en="Plan"></x-t></b><span class="chip info"><x-t ur="~3,000 ٹوکنز" en="~3,000 tokens"></x-t></span></div>
+          <div class="pstep"><span class="n">1</span><span class="sm"><x-t ur="شاملہ اور ذرائع میں تلاش" en="Search Shamela and sources"></x-t></span></div><div class="pstep"><span class="n">2</span><span class="sm"><x-t ur="مذاہب کا جدول" en="School-by-school table"></x-t></span></div><div class="pstep"><span class="n">3</span><span class="sm"><x-t ur="حوالہ کے ساتھ مسودہ" en="Draft with citations"></x-t></span></div>
+          <button class="btn primary lg block"><i data-i="check"></i><x-t ur="منظور کریں" en="Approve"></x-t></button><div class="row"><button class="btn grow"><i data-i="pen"></i><x-t ur="ترمیم" en="Edit"></x-t></button><button class="btn ghost grow"><x-t ur="رد" en="Reject"></x-t></button></div></div></div></div>
+    </div>
+    <div class="device phone">
+      <div class="statusbar"><span>9:41</span><span>●●●● 100%</span></div>
+      <div class="topbar"><button class="icon-btn"><i data-i="x"></i></button><b class="sm grow"><x-t ur="سند کی زنجیر" en="Chain of transmission"></x-t></b><button class="icon-btn"><i data-i="download"></i></button><button class="icon-btn"><i data-i="plus"></i></button></div>
+      <div class="viewport" style="background:hsl(var(--card))"><div class="tree" style="block-size:300px;margin:20px 16px"><svg width="100%" height="100%" style="position:absolute;inset:0"><g stroke="hsl(var(--border-strong))" stroke-width="1.5" fill="none"><path d="M50% 30 V 90 M50% 90 H 25% V 150 M50% 90 H 75% V 150 M25% 190 V 250 M75% 190 V 250"/></g></svg>
+        <span class="nd" style="inset-block-start:4px;inset-inline-start:34%;border-color:hsl(var(--primary));color:hsl(var(--primary))">رسول اللہ ﷺ</span><span class="nd" style="inset-block-start:140px;inset-inline-start:6%;border-color:hsl(var(--success-bd))">راوی ا</span><span class="nd" style="inset-block-start:140px;inset-inline-start:62%;border-color:hsl(var(--success-bd))">راوی ب</span><span class="nd" style="inset-block-start:250px;inset-inline-start:6%;border-color:hsl(var(--warning-bd));color:hsl(var(--warning))">راوی ج</span><span class="nd" style="inset-block-start:250px;inset-inline-start:62%;border-color:hsl(var(--success-bd))">راوی د</span></div>
+        <div class="sheet" style="position:absolute;inset-inline:0;inset-block-end:0;padding-block-end:20px"><div class="grab"></div><div class="p3 row" style="--g:12px"><span class="avatar">ا</span><div class="col grow" style="--g:0"><b class="sm">راوی ج</b><span class="xs muted"><x-t ur="4 تعدیل، 1 جرح" en="4 positive, 1 critical"></x-t></span></div><span class="chip warning"><x-t ur="موثق" en="Reliable"></x-t></span></div></div></div>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>

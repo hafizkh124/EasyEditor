@@ -31,7 +31,7 @@ export const BrandSpinner: React.FC<{ state?: "loading" | "thinking" | "done" }>
         animate={{ scale: 1, opacity: 1 }}
         className="inline-flex items-center"
       >
-        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+        <CheckCircle2 className="h-4 w-4 text-success" />
       </motion.span>
     );
   }
@@ -76,14 +76,14 @@ export const SourcesReadyIndicator = ({ count, domains, t }: SourcesReadyIndicat
     <motion.div
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-center gap-2 rounded-lg border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400"
+      className="flex items-center gap-2 rounded-lg border border-success-border bg-success-soft px-3 py-2 text-xs text-success"
     >
       <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
       <span>
         <span className="font-semibold">{count}</span>{" "}
         {t("research.sources_fetched")}
         {domainLabels && (
-          <span className="text-emerald-600 dark:text-emerald-500 ms-1">— {domainLabels}</span>
+          <span className="text-success ms-1">— {domainLabels}</span>
         )}
       </span>
     </motion.div>

@@ -223,7 +223,7 @@ const CorpusPanel = () => {
                 <div key={row.name} className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm">
                   <div className="flex items-center gap-2 min-w-0">
                     {row.ok
-                      ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                      ? <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
                       : <XCircle className="h-4 w-4 text-destructive shrink-0" />}
                     <span className="font-medium truncate">{row.name}</span>
                   </div>

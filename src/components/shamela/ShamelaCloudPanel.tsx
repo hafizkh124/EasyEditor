@@ -88,12 +88,12 @@ export function ShamelaCloudPanel() {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {status.flowPending && (
-          <p className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+          <p className="flex items-start gap-1.5 text-warning">
             <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
             {t("shamelaCloud.waitingForBrowser", "A login page opened in your browser — approve access, then return here.")}
           </p>
         )}
-        {error && !status.flowPending && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+        {error && !status.flowPending && <p className="text-xs text-destructive">{error}</p>}
 
         <p className="text-xs text-muted-foreground">{t("shamelaCloud.quotaNote", "")}</p>
 

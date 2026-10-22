@@ -46,6 +46,9 @@ export class WorkspaceDbService {
     return documents.createProject(this.db, title, kind, meta);
   }
   public async getProject(id: string): Promise<Project | null> { return documents.getProject(this.db, id); }
+  public async updateProject(id: string, updates: Partial<Pick<Project, 'title' | 'meta'>>): Promise<Project> {
+    return documents.updateProject(this.db, id, updates);
+  }
   public async listDocuments(projectId: string): Promise<Document[]> { return documents.listDocuments(this.db, projectId); }
   public async getDocument(id: string): Promise<Document | null> { return documents.getDocument(this.db, id); }
   public async findBlankDocument(projectId: string): Promise<Document | null> { return documents.findBlankDocument(this.db, projectId); }
@@ -230,7 +233,7 @@ export class WorkspaceDbService {
   public async clearSearches(): Promise<void> { searchHistory.clearSearches(this.db); }
 
   // ── Research sessions — offline mirror (plan §3.5) ────────────────────────
-  public async upsertResearchSession(p: { id: string | null; title: string; mode: string; messages: unknown[]; citations: unknown[]; selectedDomains: string[] }): Promise<string> {
+  public async upsertResearchSession(p: { id: string | null; title: string; mode: string; messages: unknown[]; citations: unknown[]; selectedDomains: string[]; projectId?: string | null }): Promise<string> {
     return sessions.upsertResearchSession(this.db, p);
   }
   public async loadResearchSession(id: string): Promise<sessions.LocalResearchSession | null> { return sessions.loadResearchSession(this.db, id); }

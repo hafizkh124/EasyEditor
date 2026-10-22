@@ -36,13 +36,13 @@ export const AnnotationSheet: React.FC<AnnotationSheetProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-xs gap-1 px-2 text-amber-700 hover:bg-amber-500/10"
+          className="h-7 text-xs gap-1 px-2 text-warning hover:bg-warning/10"
           aria-label={t("annotations.title_count", "Margin Notes ({count})").replace("{count}", String(annotations.length))}
         >
           <StickyNote className="h-3.5 w-3.5" />
           <span>{t("annotations.title", "Margin Notes")}</span>
           {annotations.length > 0 && (
-            <span className="rounded-full bg-amber-500/15 px-1.5 text-xs font-bold">
+            <span className="rounded-full bg-warning/15 px-1.5 text-xs font-bold">
               {annotations.length}
               {detached > 0 && <span className="text-muted-foreground">{t("annotations.detached_count", " · {count} detached").replace("{count}", String(detached))}</span>}
             </span>

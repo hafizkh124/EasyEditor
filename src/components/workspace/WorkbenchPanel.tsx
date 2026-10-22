@@ -119,7 +119,7 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
                 identity, not two. */}
             {showTaskTabs && (
               <TabsTrigger value="trust" className="text-xs h-full py-0 gap-1 px-1" title={t("workbench.trust", "Trust")} aria-label={t("workbench.trust", "Trust")}>
-                <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-success" />
               </TabsTrigger>
             )}
           </TabsList>

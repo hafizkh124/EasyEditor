@@ -36,6 +36,19 @@ export interface LongFormTranscribeArgs {
   onProgress?: (event: ProgressEvent) => void;
   /** Backend to use. Resolved with `resolveSttRoute` when omitted. */
   route?: SttRoute;
+  /**
+   * Chunks finished before an interruption, by index — reused instead of
+   * transcribed (and paid for) again when a job resumes (SYSTEM-2026 §9).
+   * Chunking is deterministic for the same file, so the indices line up.
+   */
+  doneChunks?: Readonly<Record<number, ChunkTranscript>>;
+  /** Called as each chunk finishes, so a job can keep it for resuming. */
+  onChunkDone?: (index: number, chunk: ChunkTranscript) => void;
+}
+
+export interface ChunkTranscript {
+  text: string;
+  segments?: TranscriptSegment[];
 }
 
 export interface LongFormTranscribeResult {
@@ -50,6 +63,12 @@ export interface LongFormTranscribeResult {
    * must be disabled in that case, never write an empty file).
    */
   segments?: TranscriptSegment[];
+  /**
+   * Each chunk's text with the stretch of the file it covers — always
+   * present, whichever engine ran. The cloud gives no times inside a chunk,
+   * so this is what an approximate read-along is built from.
+   */
+  chunkSpans: TranscriptSegment[];
 }
 
 export class TranscribeCancelledError extends Error {
@@ -137,6 +156,8 @@ export async function transcribeLongForm({
   signal,
   onProgress,
   route,
+  doneChunks,
+  onChunkDone,
 }: LongFormTranscribeArgs): Promise<LongFormTranscribeResult> {
   checkSignal(signal);
 
@@ -159,6 +180,7 @@ export async function transcribeLongForm({
   checkSignal(signal);
 
   const parts: string[] = [];
+  const spans: TranscriptSegment[] = [];
   const allSegments: TranscriptSegment[] = [];
   let everyChunkHadSegments = true;
   for (const chunk of chunks) {
@@ -171,8 +193,13 @@ export async function transcribeLongForm({
       total: chunks.length,
       partialTranscript: parts.join("\n\n"),
     });
-    const { text, segments } = await transcribeChunk(chunk, language, resolvedRoute, signal);
-    if (text) parts.push(text);
+    const kept = doneChunks?.[chunk.index];
+    const { text, segments } = kept ?? (await transcribeChunk(chunk, language, resolvedRoute, signal));
+    if (!kept) onChunkDone?.(chunk.index, { text, segments });
+    if (text) {
+      parts.push(text);
+      spans.push({ start: chunk.startSeconds, end: chunk.endSeconds, text });
+    }
     if (segments) {
       // Chunk-relative times become file-absolute, otherwise every chunk's
       // subtitles would start again from zero.
@@ -212,5 +239,6 @@ export async function transcribeLongForm({
     // audio, so they are offered only when every chunk supplied them.
     segments:
       everyChunkHadSegments && allSegments.length > 0 ? allSegments : undefined,
+    chunkSpans: spans,
   };
 }

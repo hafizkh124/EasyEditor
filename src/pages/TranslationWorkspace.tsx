@@ -385,9 +385,9 @@ export default function TranslationWorkspace({ documentId, projectId, documentTi
                   >
                     <span className="truncate flex-1 ps-2">ٹکڑا #{c.chunk_index}: {c.source_text.slice(0, 20)}...</span>
                     {c.translated_text ? (
-                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <Check className="h-3.5 w-3.5 text-success shrink-0" />
                     ) : (
-                      <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
+                      <span className="h-2 w-2 rounded-full bg-warning shrink-0" />
                     )}
                   </button>
                 ))}

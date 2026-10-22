@@ -95,8 +95,8 @@ const IncomeDashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Card>
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="rounded-lg bg-green-100 dark:bg-green-950 p-2">
-                  <DollarSign className="h-5 w-5 text-green-700" />
+                <div className="rounded-lg bg-success-soft p-2">
+                  <DollarSign className="h-5 w-5 text-success" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{t("admin.total_income")}</p>
@@ -107,8 +107,8 @@ const IncomeDashboard = () => {
 
             <Card>
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="rounded-lg bg-blue-100 dark:bg-blue-950 p-2">
-                  <Hash className="h-5 w-5 text-blue-700" />
+                <div className="rounded-lg bg-info-soft p-2">
+                  <Hash className="h-5 w-5 text-info" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{t("admin.payment_count")}</p>
@@ -119,8 +119,8 @@ const IncomeDashboard = () => {
 
             <Card>
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="rounded-lg bg-amber-100 dark:bg-amber-950 p-2">
-                  <TrendingUp className="h-5 w-5 text-amber-700" />
+                <div className="rounded-lg bg-warning-soft p-2">
+                  <TrendingUp className="h-5 w-5 text-warning" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{t("admin.avg_payment")}</p>

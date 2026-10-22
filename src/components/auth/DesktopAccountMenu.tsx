@@ -216,7 +216,7 @@ const SignInForm: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   );
 };
 
-const SignInDialog: React.FC<{ open: boolean; onOpenChange: (v: boolean) => void }> = ({ open, onOpenChange }) => {
+export const SignInDialog: React.FC<{ open: boolean; onOpenChange: (v: boolean) => void }> = ({ open, onOpenChange }) => {
   const { t } = useLanguage();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

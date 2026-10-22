@@ -19,6 +19,8 @@ interface SolvencyDialogProps {
   totalCost: number;
   availableTokens: number;
   onConfirm: () => void;
+  /** More lines for the summary, e.g. the time a run will take. */
+  extraRows?: Array<{ label: string; value: string }>;
 }
 
 export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
@@ -29,6 +31,7 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
   totalCost,
   availableTokens,
   onConfirm,
+  extraRows,
 }) => {
   const { t } = useLanguage();
   const isSolvent = availableTokens >= totalCost;
@@ -38,7 +41,7 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-            <Coins className="h-5 w-5 text-amber-500" />
+            <Coins className="h-5 w-5 text-warning" />
             <span>{t("library.solvency_title", "Token cost and run confirmation")}</span>
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -59,9 +62,15 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
               <span className="text-muted-foreground">{t("library.total_batches", "Total batches:")}</span>
               <span className="font-medium">{t("library.chunks", "{count} chunks").replace("{count}", String(totalChunks))}</span>
             </div>
+            {extraRows?.map((row) => (
+              <div key={row.label} className="flex justify-between items-center">
+                <span className="text-muted-foreground">{row.label}</span>
+                <span className="font-medium">{row.value}</span>
+              </div>
+            ))}
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">{t("library.required_cost", "Required token cost:")}</span>
-              <span className="font-bold text-amber-700 dark:text-amber-400">{t("library.tokens", "{count} tokens").replace("{count}", String(totalCost))}</span>
+              <span className="font-bold text-warning">{t("library.tokens", "{count} tokens").replace("{count}", String(totalCost))}</span>
             </div>
             <div className="flex justify-between items-center border-t border-border/50 pt-1.5">
               <span className="text-muted-foreground">{t("library.available_balance", "Available token balance:")}</span>

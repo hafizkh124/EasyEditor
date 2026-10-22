@@ -55,6 +55,26 @@ const checks = [
   ["dark.muted-fg/background", ".dark", "muted-foreground", "background", 4.5],
   ["dark.muted-fg/muted", ".dark", "muted-foreground", "muted", 4.5],
   ["dark.input/card", ".dark", "input", "card", 3],
+  // Semantic status families: text and icons sit on their soft surface
+  // (chips, banners) and on plain cards.
+  ["light.success/soft", ":root", "success", "success-soft", 4.5],
+  ["light.warning/soft", ":root", "warning", "warning-soft", 4.5],
+  ["light.weak/soft", ":root", "weak", "weak-soft", 4.5],
+  ["light.info/soft", ":root", "info", "info-soft", 4.5],
+  ["dark.success/soft", ".dark", "success", "success-soft", 4.5],
+  ["dark.warning/soft", ".dark", "warning", "warning-soft", 4.5],
+  ["dark.weak/soft", ".dark", "weak", "weak-soft", 4.5],
+  ["dark.info/soft", ".dark", "info", "info-soft", 4.5],
+  ["light.destructive/soft", ":root", "destructive", "destructive-soft", 4.5],
+  ["dark.destructive/soft", ".dark", "destructive", "destructive-soft", 4.5],
+  ["light.success/card", ":root", "success", "card", 4.5],
+  ["light.warning/card", ":root", "warning", "card", 4.5],
+  ["light.weak/card", ":root", "weak", "card", 4.5],
+  ["light.info/card", ":root", "info", "card", 4.5],
+  ["dark.success/card", ".dark", "success", "card", 4.5],
+  ["dark.warning/card", ".dark", "warning", "card", 4.5],
+  ["dark.weak/card", ".dark", "weak", "card", 4.5],
+  ["dark.info/card", ".dark", "info", "card", 4.5],
 ] as const;
 
 describe("design-token contrast", () => {

@@ -40,9 +40,24 @@ const pf = {
 };
 vi.mock("@/core/projectFolder/context", () => ({ useProjectFolderContext: () => pf }));
 
-let documentOutline: string[] = [];
+let documentOutline: { text: string; level: number }[] = [];
+let activeDocumentId: string | null = null;
 vi.mock("@/core/workspace/WorkspaceContext", () => ({
-  useOptionalWorkspace: () => ({ documentOutline }),
+  useOptionalWorkspace: () => ({ documentOutline, activeDocumentId }),
+}));
+// SYSTEM-2026 §3 — the open document's folder and its pinned sources.
+let folderMeta: Record<string, unknown> = {};
+vi.mock("@/core/workspace/useAllDocuments", () => ({
+  useAllDocuments: () => ({
+    allDocs: [{ id: "d1", project_id: "p1", title: "باب" }],
+    projects: [{ id: "p1", title: "فتاویٰ", kind: "general", meta: folderMeta }],
+    docsMap: {},
+    loading: false,
+    refresh: vi.fn(),
+  }),
+}));
+vi.mock("@/lib/sources/searchSources", () => ({
+  searchSources: vi.fn(async (q: string) => (q.includes("رد") ? [{ ref: "shamela:12", label: "رد المحتار" }] : [])),
 }));
 
 // jsdom has no Web Audio / MediaRecorder — stub just enough for the mic path.
@@ -331,6 +346,51 @@ describe("AgentPanel", () => {
     expect(await screen.findByText(/university thesis format/i)).toBeInTheDocument();
   });
 
+  it("offers 'مجھ سے پوچھو' on '/', and fills its instruction into the composer", async () => {
+    renderPanel();
+    const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: "/مجھ" } });
+    fireEvent.click(await screen.findByText("مجھ سے پوچھو"));
+    const topic = await screen.findByLabelText(/موضوع/);
+    fireEvent.change(topic, { target: { value: "زکوٰۃ" } });
+    fireEvent.click(screen.getByRole("button", { name: "استعمال کریں" }));
+    await waitFor(() => expect(ta.value).toContain("«زکوٰۃ»"));
+  });
+
+  describe("the folder's pinned sources", () => {
+    afterEach(() => {
+      activeDocumentId = null;
+      folderMeta = {};
+    });
+
+    it("scope every chat in the folder, and can be switched off for this chat", async () => {
+      activeDocumentId = "d1";
+      folderMeta = { pinnedSources: [{ ref: "shamela:77", label: "بدائع الصنائع" }] };
+      renderPanel();
+      expect(screen.getByText("فتاویٰ کے ذرائع (1)")).toBeInTheDocument();
+      const ta = screen.getByPlaceholderText(/Ask, or describe a task/);
+      fireEvent.change(ta, { target: { value: "zakat on gold" } });
+      fireEvent.keyDown(ta, { key: "Enter" });
+      await waitFor(() => expect(agentRun).toHaveBeenCalledTimes(1));
+      expect((agentRun.mock.calls[0][3] as { books: string[] }).books).toEqual(["shamela:77"]);
+
+      fireEvent.click(screen.getByRole("button", { name: "اس چیٹ میں فولڈر کے ذرائع بند کریں" }));
+      expect(screen.getByRole("button", { name: "فولڈر کے ذرائع استعمال کریں" })).toBeInTheDocument();
+    });
+
+    it("'@' offers sources; picking one scopes the run to it", async () => {
+      renderPanel();
+      const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
+      fireEvent.change(ta, { target: { value: "check @رد", selectionStart: 9 } });
+      fireEvent.click(await screen.findByText("رد المحتار"));
+      expect(ta.value).toBe("check ");
+      fireEvent.change(ta, { target: { value: "check this" } });
+      fireEvent.keyDown(ta, { key: "Enter" });
+      await waitFor(() => expect(agentRun).toHaveBeenCalledTimes(1));
+      expect((agentRun.mock.calls[0][3] as { books: string[] }).books).toEqual(["shamela:12"]);
+    });
+  });
+
   it("opens the chapter picker on '@'", async () => {
     renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
@@ -385,7 +445,7 @@ describe("AgentPanel", () => {
   });
 
   it("offers the open document's headings as `@` mentions", async () => {
-    documentOutline = ["Literature Review", "Methodology"];
+    documentOutline = [{ text: "Literature Review", level: 2 }, { text: "Methodology", level: 2 }];
     renderPanel();
     const ta = screen.getByPlaceholderText(/Ask, or describe a task/) as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "expand @method", selectionStart: 14 } });

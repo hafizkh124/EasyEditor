@@ -34,6 +34,8 @@ export interface UpsertParams {
   messages: ChatMessage[];
   citations: CitationItem[];
   selectedDomains: string[];
+  /** The folder the chat was started in. */
+  projectId?: string | null;
 }
 
 export interface SessionStore {
@@ -75,6 +77,7 @@ class LocalSessionStore implements SessionStore {
     try {
       return await localInvoke<string>("upsertResearchSession", {
         id: p.id, title: p.title, mode: p.mode, messages: p.messages, citations: p.citations, selectedDomains: p.selectedDomains,
+        projectId: p.projectId ?? null,
       });
     } catch {
       return null;

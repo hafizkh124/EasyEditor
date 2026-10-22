@@ -1,14 +1,20 @@
-import { useState } from "react";
-import { Link, useMatch } from "react-router-dom";
-import { ChevronLeft, ChevronRight, ChevronDown, User } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ChevronLeft, ChevronRight, FileText, MessageSquareText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import SidebarHistory from "@/components/SidebarHistory";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useRecentItems } from "@/hooks/useRecentItems";
 import type { Translator } from "@/lib/i18n";
-import type { SessionSection } from "@/hooks/useSessionHistory";
 import type { NavItem } from "./appNav";
 
-/* ─── Section Nav Item ─── */
+/**
+ * The desktop/web sidebar (SYSTEM-2026 §2, Claude-style): "+ New" at the top,
+ * then Home and Files, then one recent list of chats and documents, and "Me"
+ * at the bottom.
+ */
+
+const RECENT_LIMIT = 12;
+
 const SectionNavItem = ({
   item, isActive, collapsed, onClick, t,
 }: {
@@ -21,126 +27,79 @@ const SectionNavItem = ({
   <Link
     to={item.path}
     onClick={onClick}
+    aria-current={isActive ? "page" : undefined}
     className={cn(
-      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
       collapsed && "justify-center px-2",
       isActive
         ? "bg-sidebar-accent text-sidebar-accent-foreground"
-        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
     )}
     title={collapsed ? t(item.labelKey, item.fallbackLabel) : undefined}
   >
-    <item.icon className={cn("h-[18px] w-[18px] flex-shrink-0", isActive && "text-primary")} />
+    <item.icon className={cn("h-[18px] w-[18px] shrink-0", isActive && "text-primary")} aria-hidden="true" />
     {!collapsed && <span>{t(item.labelKey, item.fallbackLabel)}</span>}
   </Link>
 );
 
-/* ─── Section Nav Group (FR-7) — a heading that expands to its own routes ─── */
-const SectionNavGroup = ({
-  item, activePath, collapsed, onItemClick, t,
-}: {
-  item: NavItem;
-  activePath: string;
-  collapsed: boolean;
-  onItemClick?: () => void;
-  t: Translator;
-}) => {
-  const children = item.children ?? [];
-  const isChildActive = (path: string) => activePath === path || activePath.startsWith(path + "/");
-  const groupActive = children.some((c) => isChildActive(c.path));
-  const [open, setOpen] = useState(groupActive);
-
-  const childItems = children.map((c) => (
-    <SectionNavItem
-      key={c.path}
-      item={{ ...c, section: null }}
-      isActive={isChildActive(c.path)}
-      collapsed={collapsed}
-      onClick={onItemClick}
-      t={t}
-    />
-  ));
-
-  // Collapsed rail: no room for a heading, so the tools stand on their own.
-  if (collapsed) return <div className="space-y-0.5">{childItems}</div>;
-
+const SidebarRecent = ({ onItemClick, t }: { onItemClick?: () => void; t: Translator }) => {
+  const { items, loading } = useRecentItems(RECENT_LIMIT);
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
-          groupActive
-            ? "text-sidebar-accent-foreground"
-            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+    <section aria-labelledby="sidebar-recent" className="flex min-h-0 flex-1 flex-col">
+      <h2 id="sidebar-recent" className="px-4 pb-1 pt-3 text-xs font-semibold text-muted-foreground">
+        {t("home.recent", "حالیہ")}
+      </h2>
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+        {loading ? (
+          <div className="space-y-1.5 px-1">
+            {[0, 1, 2].map((i) => <Skeleton key={i} className="h-7 w-full" />)}
+          </div>
+        ) : items.length === 0 ? (
+          <p className="px-3 py-2 text-xs text-muted-foreground">{t("home.recent_empty", "آپ کی چیٹس اور دستاویزات یہاں نظر آئیں گی۔")}</p>
+        ) : (
+          <ul className="space-y-0.5">
+            {items.map((item) => {
+              const Icon = item.kind === "chat" ? MessageSquareText : FileText;
+              const typeLabel = item.kind === "chat" ? t("home.type_chat", "چیٹ") : t("home.type_document", "دستاویز");
+              const title = item.title || t("editor.untitled", "بے عنوان");
+              return (
+                <li key={item.id}>
+                  <Link
+                    to={item.to}
+                    onClick={onItemClick}
+                    title={title}
+                    className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label={typeLabel} />
+                    <span className="truncate">{title}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         )}
-      >
-        <item.icon className={cn("h-[18px] w-[18px] flex-shrink-0", groupActive && "text-primary")} />
-        <span className="flex-1 text-start">
-          {t(item.labelKey, item.fallbackLabel)}
-        </span>
-        <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
-      </button>
-      {open && <div className="ms-4 ps-2 border-s border-sidebar-border space-y-0.5">{childItems}</div>}
-    </div>
+      </div>
+    </section>
   );
 };
 
-/* ─── Profile Footer (FR-2.7) — logout lives on /profile per FR-5.2 ─── */
-const ProfileFooter = ({
-  user, collapsed, onNavigate, t,
-}: {
-  user: { email?: string } | null;
-  collapsed: boolean;
-  onNavigate?: () => void;
-  t: Translator;
-}) => {
-  const isOnProfile = useMatch("/profile");
-  return (
-    <div className="border-t border-sidebar-border p-2">
-      <Link
-        to="/profile"
-        onClick={onNavigate}
-        className={cn(
-          "flex items-center gap-2 rounded-lg px-2 py-2 transition-colors group",
-          collapsed && "justify-center",
-          isOnProfile
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-            : "hover:bg-sidebar-accent/50"
-        )}
-        title={collapsed ? t("nav.profile", "Profile") : undefined}
-      >
-        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <User className="h-4 w-4 text-primary" />
-        </div>
-        {!collapsed && (
-          <p className="text-xs text-muted-foreground truncate group-hover:text-foreground transition-colors">
-            {user?.email}
-          </p>
-        )}
-      </Link>
-    </div>
-  );
-};
-
-/* ─── Sidebar Body (shared by the desktop rail and the mobile drawer) ─── */
 export interface AppSidebarProps {
   collapsed: boolean;
   onToggleCollapse?: () => void;
   onItemClick?: () => void;
-  activeSection: SessionSection | null;
   activePath: string;
   navItems: NavItem[];
-  user: { email?: string } | null;
   t: Translator;
   showCollapseButton: boolean;
+  /** The "+ New" create menu, rendered under the logo. */
+  createSlot?: React.ReactNode;
+  /** "Me" (the account menu), pinned to the bottom. */
+  footerSlot?: React.ReactNode;
 }
 
 export const AppSidebar = ({
-  collapsed, onToggleCollapse, onItemClick, activeSection, activePath,
-  navItems, user, t, showCollapseButton,
+  collapsed, onToggleCollapse, onItemClick, activePath,
+  navItems, t, showCollapseButton, createSlot, footerSlot,
 }: AppSidebarProps) => (
   <div className="flex h-full flex-col bg-sidebar">
     <div className={cn(
@@ -148,7 +107,7 @@ export const AppSidebar = ({
       collapsed ? "justify-center px-2" : "justify-between px-4",
     )}>
       <Link to="/" onClick={onItemClick} className="flex items-center gap-2.5 min-w-0">
-        <img src={`${import.meta.env.BASE_URL}favicon.webp`} alt="Easy Editor" width={26} height={26} className="rounded flex-shrink-0" />
+        <img src={`${import.meta.env.BASE_URL}favicon.webp`} alt="Easy Editor" width={26} height={26} className="rounded shrink-0" />
         {!collapsed && <span className="text-lg font-bold text-sidebar-foreground tracking-tight truncate">Easy Editor</span>}
       </Link>
       {showCollapseButton && !collapsed && onToggleCollapse && (
@@ -156,8 +115,9 @@ export const AppSidebar = ({
           variant="ghost"
           size="icon"
           onClick={onToggleCollapse}
-          className="h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
+          className="h-9 w-9"
           aria-label={t("sidebar.collapse", "Collapse sidebar")}
+          title="Ctrl+B"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -170,50 +130,38 @@ export const AppSidebar = ({
           variant="ghost"
           size="icon"
           onClick={onToggleCollapse}
-          className="h-9 w-9 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
+          className="h-9 w-9"
           aria-label={t("sidebar.expand", "Expand sidebar")}
+          title="Ctrl+B"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     )}
 
-    <nav className="flex-shrink-0 space-y-0.5 p-2">
-      {navItems.map((item) =>
-        item.children?.length ? (
-          <SectionNavGroup
-            key={item.path}
-            item={item}
-            activePath={activePath}
-            collapsed={collapsed}
-            onItemClick={onItemClick}
-            t={t}
-          />
-        ) : (
-          <SectionNavItem
-            key={item.path}
-            item={item}
-            isActive={activePath === item.path || activePath.startsWith(item.path + "/")}
-            collapsed={collapsed}
-            onClick={onItemClick}
-            t={t}
-          />
-        ),
-      )}
+    {createSlot && <div className={cn("px-2 pt-3", collapsed && "px-3")}>{createSlot}</div>}
+
+    <nav aria-label={t("nav.menu", "مینو")} className="shrink-0 space-y-0.5 p-2">
+      {navItems.map((item) => (
+        <SectionNavItem
+          key={item.path}
+          item={item}
+          isActive={activePath === item.path || activePath.startsWith(item.path + "/")}
+          collapsed={collapsed}
+          onClick={onItemClick}
+          t={t}
+        />
+      ))}
     </nav>
 
-    {activeSection && !collapsed && (
+    {collapsed ? <div className="flex-1" /> : (
       <>
-        <div className="border-t border-sidebar-border" />
-        {/* Research has its own header "New chat" button — suppress the
-            duplicate here to keep a single new-chat entry point. */}
-        <SidebarHistory section={activeSection} collapsed={collapsed} showNewChat={activeSection !== "research"} />
+        <div className="mx-4 border-t border-sidebar-border" />
+        <SidebarRecent onItemClick={onItemClick} t={t} />
       </>
     )}
 
-    {(!activeSection || collapsed) && <div className="flex-1" />}
-
-    <ProfileFooter user={user} collapsed={collapsed} onNavigate={onItemClick} t={t} />
+    {footerSlot && <div className="border-t border-sidebar-border p-2">{footerSlot}</div>}
   </div>
 );
 
