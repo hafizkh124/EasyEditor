@@ -24,6 +24,8 @@ import type { TranslationKey } from "@/lib/i18n";
 import { useExtract } from "./extract/useExtract";
 import { takeSharedFile } from "@/lib/extract/sharedFile";
 import { AudioReadAlong } from "@/components/extract/AudioReadAlong";
+import { PageCompare } from "@/components/extract/PageCompare";
+import { countUncertain } from "@/lib/extract/uncertain";
 
 /**
  * "Extract text" (SYSTEM-2026 §5) — the one screen behind "+ → audio to text"
@@ -53,9 +55,14 @@ const Extract = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
-  // Audio with its recording opens as a read-along; "Edit" shows the plain text.
+  // Audio with its recording opens as a read-along, and a scan or PDF beside
+  // its page images; "Edit" shows the plain text.
   const [editing, setEditing] = useState(false);
-  const readAlong = x.phase === "done" && !editing && Boolean(x.mediaUrl && x.paragraphs?.length);
+  const canReadAlong = x.phase === "done" && Boolean(x.mediaUrl && x.paragraphs?.length);
+  const canCompare = x.phase === "done" && x.kind !== "audio" && Boolean(x.pageImages?.length);
+  const readAlong = canReadAlong && !editing;
+  const comparing = canCompare && !editing;
+  const uncertainCount = x.kind === "audio" ? 0 : countUncertain(x.text);
   const projectId = (location.state as { projectId?: string } | null)?.projectId;
 
   // A file shared into the app ("Share → Easy Editor") starts right away.
@@ -188,7 +195,7 @@ const Extract = () => {
         {(x.phase === "done" || (x.phase === "running" && x.text)) && (
           <section aria-labelledby="extract-result" className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 id="extract-result" className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <h2 id="extract-result" className="flex min-w-0 basis-full items-center gap-2 text-sm font-semibold text-muted-foreground sm:flex-1 sm:basis-0">
                 {x.kind === "audio" ? <FileAudio className="h-4 w-4" aria-hidden="true" /> : x.kind === "pdf" ? <FileText className="h-4 w-4" aria-hidden="true" /> : <ImageIcon className="h-4 w-4" aria-hidden="true" />}
                 <span className="truncate">{x.fileName || t("extract.result", "نتیجہ")}</span>
               </h2>
@@ -205,7 +212,7 @@ const Extract = () => {
                 </>
               )}
             </div>
-            {x.phase === "done" && x.mediaUrl && x.paragraphs?.length ? (
+            {canReadAlong || canCompare ? (
               <div role="tablist" aria-label={t("extract.view", "منظر")} className="inline-flex rounded-lg bg-muted p-0.5 text-sm">
                 {([false, true] as const).map((edit) => (
                   <button
@@ -216,22 +223,41 @@ const Extract = () => {
                     onClick={() => setEditing(edit)}
                     className={cn("min-h-touch rounded-md px-3", editing === edit ? "bg-background font-semibold shadow-xs" : "text-muted-foreground")}
                   >
-                    {edit ? t("extract.view_edit", "ترمیم") : t("extract.view_listen", "سنیں اور پڑھیں")}
+                    {edit
+                      ? t("extract.view_edit", "ترمیم")
+                      : canCompare ? t("extract.view_compare", "تصویر کے ساتھ") : t("extract.view_listen", "سنیں اور پڑھیں")}
                   </button>
                 ))}
               </div>
             ) : null}
             {readAlong ? (
               <AudioReadAlong src={x.mediaUrl!} paragraphs={x.paragraphs!} exact={x.timesExact} dir={dir} />
+            ) : comparing ? (
+              <PageCompare images={x.pageImages!} text={x.text} dir={dir} />
             ) : (
-            <Textarea
-              value={x.text}
-              onChange={(e) => x.setText(e.target.value)}
-              readOnly={x.phase !== "done"}
-              dir={dir}
-              aria-label={t("extract.result", "نتیجہ")}
-              className="min-h-[18rem] text-base leading-loose"
-            />
+              <>
+              {x.phase === "done" && uncertainCount > 0 && (
+                <p className="rounded-lg border border-warning-border bg-warning-soft px-3 py-2 text-sm text-foreground">
+                  {t("extract.uncertain_note", "{n} جگہ OCR کو یقین نہیں تھا، وہاں [?] لگا ہے۔").replace("{n}", String(uncertainCount))}
+                  {canCompare && (
+                    <>
+                      {" "}
+                      <button type="button" className="font-semibold text-primary underline-offset-2 hover:underline" onClick={() => setEditing(false)}>
+                        {t("extract.uncertain_check", "تصویر سے ملائیں")}
+                      </button>
+                    </>
+                  )}
+                </p>
+              )}
+              <Textarea
+                value={x.text}
+                onChange={(e) => x.setText(e.target.value)}
+                readOnly={x.phase !== "done"}
+                dir={dir}
+                aria-label={t("extract.result", "نتیجہ")}
+                className="min-h-[18rem] text-base leading-loose"
+              />
+              </>
             )}
             {x.phase === "done" && (
               <div className="flex flex-wrap items-center gap-2">

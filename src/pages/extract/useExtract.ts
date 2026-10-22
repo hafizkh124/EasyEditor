@@ -59,6 +59,8 @@ export function useExtract() {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [paragraphs, setParagraphs] = useState<TimedParagraph[] | null>(null);
   const [timesExact, setTimesExact] = useState(false);
+  // Image/PDF: each page's image, to check the text against (SYSTEM-2026 §5).
+  const [pageImages, setPageImages] = useState<string[] | null>(null);
   const replaceMedia = useCallback((file: File | null) => {
     setMediaUrl((old) => {
       if (old) URL.revokeObjectURL(old);
@@ -122,6 +124,7 @@ export function useExtract() {
     setText("");
     setSegments(null);
     setParagraphs(null);
+    setPageImages(null);
     replaceMedia(fileKind === "audio" ? file : null);
     setPhase("running");
     try {
@@ -141,6 +144,7 @@ export function useExtract() {
       setSegments(result.segments);
       setParagraphs(result.timing ? toParagraphs(result.timing.segments) : null);
       setTimesExact(Boolean(result.timing?.exact));
+      setPageImages(result.pageImages);
       setPhase("done");
       if (!result.text.trim()) {
         toast.info(t("extract.nothing_found"));
@@ -202,12 +206,13 @@ export function useExtract() {
     setText("");
     setSegments(null);
     setParagraphs(null);
+    setPageImages(null);
     replaceMedia(null);
   }, [audioSession, pageSession, replaceMedia]);
 
   return {
     accept: gate.accept, audioAvailable: gate.audioAvailable, pagesAvailable: gate.pagesAvailable,
-    phase, kind, fileName, text, setText, segments, progress, mediaUrl, paragraphs, timesExact,
+    phase, kind, fileName, text, setText, segments, progress, mediaUrl, paragraphs, timesExact, pageImages,
     language, setLanguage, sttRoute: gate.sttRoute, autoCopy, setAutoCopy,
     start, cancel, startRecording, stopRecording, startOver, copyAll,
   };

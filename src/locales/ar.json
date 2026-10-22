@@ -2249,5 +2249,15 @@
   "translate.glossary_paste": "الصق قائمة",
   "translate.glossary_from_earlier": "خذ من ترجمة سابقة",
   "translate.glossary_paste_hint": "مصطلح في كل سطر: الصلاة = Salah",
-  "translate.glossary_paste_add": "أضف إلى القائمة"
+  "translate.glossary_paste_add": "أضف إلى القائمة",
+  "library.cmd_jobs": "المهام",
+  "library.cmd_extract_here": "استخرج النص — في هذا المستند",
+  "extract.page_of": "صفحة {n} من {total}",
+  "extract.uncertain_count": "{n} كلمات غير مؤكدة بالأصفر — قارنها بالصورة",
+  "extract.uncertain_none": "لا كلمات غير مؤكدة في هذه الصفحة",
+  "extract.page_image": "صورة الصفحة {n}",
+  "extract.uncertain": "غير مؤكد",
+  "extract.view_compare": "مع الصورة",
+  "extract.uncertain_note": "لم يتيقن OCR في {n} مواضع، وعليها [?].",
+  "extract.uncertain_check": "قارن بالصورة"
 }

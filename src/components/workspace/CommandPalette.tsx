@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Plus, Search, PanelRight, PanelLeft, Languages, Folder, FolderPlus, Settings2, Sparkles } from "lucide-react";
+import { FileText, Plus, Search, PanelRight, PanelLeft, Languages, Folder, FolderPlus, Settings2, Sparkles, ScanText } from "lucide-react";
 import {
   CommandDialog,
   CommandInput,
@@ -23,6 +23,8 @@ import { SKILLS_SETTINGS_PATH } from "@/lib/skills/useOpenSkillsSettings";
 import type { Skill } from "@/lib/skills/types";
 import type { Recipe } from "@/lib/recipes/recipeService";
 import { RecipeRunDialog } from "./RecipeRunDialog";
+import { availableCapabilities } from "@/core/capabilities/registry";
+import { useOpenFolderId } from "@/components/layout/useCreateActions";
 
 export const CommandPalette: React.FC = () => {
   const navigate = useNavigate();
@@ -41,7 +43,9 @@ export const CommandPalette: React.FC = () => {
     runDocumentTask,
     requestSkillPrompt,
     sendSelectionToWorkbench,
+    extractIntoEditor,
   } = useWorkspace();
+  const folderId = useOpenFolderId();
   const { skills, forPlace } = useSkills();
   const [recipeToRun, setRecipeToRun] = useState<Recipe | null>(null);
 
@@ -271,6 +275,46 @@ export const CommandPalette: React.FC = () => {
             <Languages className="h-4 w-4 text-purple-500" />
             <span>{t("library.cmd_switch_language", "Switch Language / RTL")}</span>
           </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        {/* Jobs (SYSTEM-2026 §5–6): extract into the open document, or open a tool
+            for a new result — which goes into the open document's folder. */}
+        <CommandGroup heading={t("library.cmd_jobs", "کام")}>
+          {extractIntoEditor && (
+            <CommandItem
+              value="extract here متن نکالیں دستاویز میں ocr transcribe ٹرانسکرائب آڈیو تصویر pdf"
+              onSelect={() => {
+                handleOpenChange(false);
+                extractIntoEditor();
+              }}
+              className="cursor-pointer gap-2"
+            >
+              <ScanText className="h-4 w-4 text-primary" />
+              <span>{t("library.cmd_extract_here", "متن نکالیں — اسی دستاویز میں")}</span>
+            </CommandItem>
+          )}
+          {availableCapabilities("command-palette")
+            .filter((c) => c.id !== "workspace" && c.route)
+            .map((c) => {
+              const Icon = c.icon;
+              const label = t(c.createLabelKey ?? c.labelKey, c.createFallbackLabel ?? c.fallbackLabel);
+              return (
+                <CommandItem
+                  key={c.id}
+                  value={`job ${c.id} ${label} ${t(c.labelKey, c.fallbackLabel)}${c.id === "transcribe" || c.id === "ocr" ? " extract متن نکالیں" : ""}`}
+                  onSelect={() => {
+                    handleOpenChange(false);
+                    navigate(c.route!, { state: folderId ? { projectId: folderId } : undefined });
+                  }}
+                  className="cursor-pointer gap-2"
+                >
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <span>{label}</span>
+                </CommandItem>
+              );
+            })}
         </CommandGroup>
 
         <CommandSeparator />

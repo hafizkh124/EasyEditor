@@ -37,6 +37,8 @@ export type DocumentTaskRunner = (taskSlug: string) => Promise<DocumentTaskOutco
 
 /** Runs one editor skill the way the `/` menu does (see SelectionBarActions.runTask). */
 export type EditorTaskRunner = (taskSlug: string) => void;
+/** Pick a file and extract its text at the open document's cursor (SYSTEM-2026 §5). */
+export type EditorExtractRunner = () => void;
 
 interface WorkspaceContextType {
   activeDocumentId: string | null;
@@ -103,6 +105,9 @@ interface WorkspaceContextType {
    */
   runEditorTask: EditorTaskRunner | null;
   registerEditorTaskRunner: (runner: EditorTaskRunner | null) => void;
+  /** Set while a document is open and extracting is available here — for `Ctrl+K`. */
+  extractIntoEditor: EditorExtractRunner | null;
+  registerEditorExtract: (runner: EditorExtractRunner | null) => void;
 
   /**
    * Open a saved chat in the research tab (the folder index, History). An
@@ -210,6 +215,10 @@ export const WorkspaceProvider: React.FC<{
   const registerEditorTaskRunner = useCallback((runner: EditorTaskRunner | null) => {
     setRunEditorTask(() => runner);
   }, []);
+  const [extractIntoEditor, setExtractIntoEditor] = useState<EditorExtractRunner | null>(null);
+  const registerEditorExtract = useCallback((runner: EditorExtractRunner | null) => {
+    setExtractIntoEditor(() => runner);
+  }, []);
 
   const [chatSessionRequest, setChatSessionRequest] = useState<{ id: string; nonce: number } | null>(null);
   const openChatSession = useCallback(
@@ -276,6 +285,8 @@ export const WorkspaceProvider: React.FC<{
         registerDocumentTaskRunner,
         runEditorTask,
         registerEditorTaskRunner,
+        extractIntoEditor,
+        registerEditorExtract,
         chatSessionRequest,
         openChatSession,
         pendingSkillPrompt,

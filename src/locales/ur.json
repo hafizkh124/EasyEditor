@@ -2249,5 +2249,15 @@
   "translate.glossary_paste": "فہرست چسپاں کریں",
   "translate.glossary_from_earlier": "پچھلے ترجمے سے لیں",
   "translate.glossary_paste_hint": "ہر سطر پر ایک اصطلاح: الصلاة = Salah",
-  "translate.glossary_paste_add": "فہرست میں شامل کریں"
+  "translate.glossary_paste_add": "فہرست میں شامل کریں",
+  "library.cmd_jobs": "کام",
+  "library.cmd_extract_here": "متن نکالیں — اسی دستاویز میں",
+  "extract.page_of": "صفحہ {n} از {total}",
+  "extract.uncertain_count": "{n} غیر یقینی الفاظ پیلے ہیں — تصویر سے ملا لیں",
+  "extract.uncertain_none": "اس صفحے پر کوئی غیر یقینی لفظ نہیں",
+  "extract.page_image": "صفحہ {n} کی تصویر",
+  "extract.uncertain": "غیر یقینی",
+  "extract.view_compare": "تصویر کے ساتھ",
+  "extract.uncertain_note": "{n} جگہ OCR کو یقین نہیں تھا، وہاں [?] لگا ہے۔",
+  "extract.uncertain_check": "تصویر سے ملائیں"
 }

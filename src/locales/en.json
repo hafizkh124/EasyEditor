@@ -2249,5 +2249,15 @@
   "translate.glossary_paste": "Paste a list",
   "translate.glossary_from_earlier": "Take from an earlier translation",
   "translate.glossary_paste_hint": "One term per line: الصلاة = Salah",
-  "translate.glossary_paste_add": "Add to the list"
+  "translate.glossary_paste_add": "Add to the list",
+  "library.cmd_jobs": "Jobs",
+  "library.cmd_extract_here": "Extract text — into this document",
+  "extract.page_of": "Page {n} of {total}",
+  "extract.uncertain_count": "{n} uncertain words in yellow — check them against the image",
+  "extract.uncertain_none": "No uncertain words on this page",
+  "extract.page_image": "Image of page {n}",
+  "extract.uncertain": "uncertain",
+  "extract.view_compare": "With the image",
+  "extract.uncertain_note": "OCR was unsure in {n} places, marked [?].",
+  "extract.uncertain_check": "Check against the image"
 }

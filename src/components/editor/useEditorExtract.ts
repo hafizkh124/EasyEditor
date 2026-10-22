@@ -6,6 +6,7 @@ import { blockReason, describeFailure, detectKind, runExtraction } from "@/lib/e
 import { useExtractGate } from "@/lib/extract/useExtractGate";
 import { escapeHtml, textToHtml } from "@/lib/editor/htmlText";
 import { logActivity } from "@/lib/activityLog";
+import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 
 /**
  * Extract text into the open document (SYSTEM-2026 §5): from `/متن نکالیں`
@@ -113,6 +114,14 @@ export function useEditorExtract(editor: Editor | null) {
       dom.removeEventListener("drop", onDrop, true);
     };
   }, [editor, available, extractInto]);
+
+  // Published for `Ctrl+K`, which lives outside the editor.
+  const register = useOptionalWorkspace()?.registerEditorExtract;
+  useEffect(() => {
+    if (!register) return;
+    register(editor && available ? pickAndExtract : null);
+    return () => register(null);
+  }, [register, editor, available, pickAndExtract]);
 
   return { extractAvailable: available, extractInto, pickAndExtract };
 }

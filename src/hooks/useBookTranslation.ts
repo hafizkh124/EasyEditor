@@ -108,6 +108,8 @@ function pageFromChunk(pageNum: number, existing: ExistingChunk | undefined, bas
 interface UseBookTranslationOptions {
   /** Called as soon as a project row exists, so the caller can reflect it in the URL. */
   onProjectId?: (projectId: string) => void;
+  /** The workspace folder this translation was started from ("+" in a folder). */
+  folderId?: string | null;
 }
 
 export function useBookTranslation(options: UseBookTranslationOptions = {}) {
@@ -185,6 +187,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
         genre,
         status: "in_progress",
         source_ref: sourceRef,
+        ...(options.folderId ? { project_id: options.folderId } : {}),
       };
       const insert = (values: typeof row) =>
         supabase.from("translation_projects").insert(values).select("id").single();

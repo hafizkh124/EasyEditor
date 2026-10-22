@@ -146,6 +146,32 @@ describe("Extract page", () => {
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ metadata: { extractedText: box.value } }));
   });
 
+  it("shows a scan beside its text, uncertain words in yellow, page by page", async () => {
+    getPdfPageCount.mockResolvedValue(2);
+    renderPdfPages.mockImplementation(async function* () {
+      yield { pageNum: 1, totalPages: 2, imageBase64: "a", mimeType: "image/jpeg" };
+      yield { pageNum: 2, totalPages: 2, imageBase64: "b", mimeType: "image/jpeg" };
+    });
+    ocrPageImage.mockResolvedValueOnce("قال الشيخ[?] رحمه الله").mockResolvedValueOnce("دوسرا صفحہ");
+    renderPage();
+    drop(new File(["%PDF"], "fatawa.pdf", { type: "application/pdf" }));
+
+    const word = await screen.findByText("الشيخ");
+    expect(word.tagName).toBe("MARK");
+    expect(screen.getByRole("img", { name: "صفحہ 1 کی تصویر" })).toHaveAttribute("src", "data:image/jpeg;base64,a");
+    expect(screen.getByText(/1 غیر یقینی الفاظ/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "اگلا صفحہ" }));
+    expect(screen.getByText("دوسرا صفحہ")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "صفحہ 2 کی تصویر" })).toHaveAttribute("src", "data:image/jpeg;base64,b");
+
+    // Edit shows the whole text, with a note pointing back to the image.
+    fireEvent.click(screen.getByRole("tab", { name: "ترمیم" }));
+    expect(screen.getByDisplayValue(/قال الشيخ\[\?\]/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "تصویر سے ملائیں" }));
+    expect(screen.getByRole("tab", { name: "تصویر کے ساتھ" })).toHaveAttribute("aria-selected", "true");
+  });
+
   it("refuses an unreadable kind of file", () => {
     renderPage();
     drop(new File(["x"], "notes.docx", { type: "application/msword" }));
@@ -181,7 +207,7 @@ describe("Extract page", () => {
     ocrPageImage.mockResolvedValue("متن");
     renderPage();
     drop(new File(["x"], "page.png", { type: "image/png" }));
-    await screen.findByDisplayValue("متن");
+    await screen.findByText("متن");
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith("متن"));
   });
 
@@ -189,7 +215,7 @@ describe("Extract page", () => {
     ocrPageImage.mockResolvedValue("فتویٰ کا متن");
     renderPage();
     drop(new File(["x"], "page.png", { type: "image/png" }));
-    await screen.findByDisplayValue("فتویٰ کا متن");
+    await screen.findByText("فتویٰ کا متن");
     fireEvent.click(screen.getByRole("button", { name: /دستاویز بنائیں/ }));
     expect(landed).toEqual({ pathname: "/workspace", state: { content: "فتویٰ کا متن", source: "ocr", projectId: undefined } });
   });

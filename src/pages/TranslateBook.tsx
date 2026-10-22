@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Upload, FileText, Library, ArrowRightLeft, FileEdit, Copy, Languages, Type, Image as ImageIcon,
   BookMarked, ChevronDown, Download, FlaskConical, Rows3, Columns2,
@@ -74,7 +74,12 @@ export default function TranslateBook() {
   const reuploadInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  const location = useLocation();
+  // Read once: the URL is replaced with the project id as soon as it exists, which drops this state.
+  const [folderId] = useState(() => (location.state as { projectId?: string } | null)?.projectId ?? null);
+
   const book = useBookTranslation({
+    folderId,
     onProjectId: (id) => {
       if (routeProjectId !== id) navigate(`/translate-book/${id}`, { replace: true });
     },
@@ -154,7 +159,7 @@ export default function TranslateBook() {
       workspaceCtx.insertIntoCanvas(html);
       toast.success(t("toast.canvas.inserted", "Inserted into Canvas"));
     } else {
-      navigate(editorRoute(), { state: { content: html, source: "manual" } });
+      navigate(editorRoute(), { state: { content: html, source: "manual", projectId: folderId ?? undefined } });
     }
   };
 

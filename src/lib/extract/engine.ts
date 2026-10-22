@@ -86,6 +86,8 @@ export interface ExtractResult {
   segments: TranscriptSegment[] | null;
   /** Read-along timing for audio: exact when the engine gave it, else estimated per chunk. */
   timing: { segments: TranscriptSegment[]; exact: boolean } | null;
+  /** Image/PDF: each page's image (data URL), to show beside its text. */
+  pageImages: string[] | null;
 }
 
 export async function runExtraction({
@@ -116,25 +118,30 @@ export async function runExtraction({
       text: result.text,
       segments: exact,
       timing: timed.length ? { segments: timed, exact: Boolean(exact) } : null,
+      pageImages: null,
     };
   }
 
   if (kind === "image") {
     onProgress?.({ labelKey: "extract.progress_page", current: 1, total: 1 });
-    return { text: await ocrPageImage(await readBase64(file), file.type || "image/jpeg"), segments: null, timing: null };
+    const mime = file.type || "image/jpeg";
+    const base64 = await readBase64(file);
+    return { text: await ocrPageImage(base64, mime), segments: null, timing: null, pageImages: [`data:${mime};base64,${base64}`] };
   }
 
   const total = await getPdfPageCount(file);
   if (total > MAX_PDF_PAGES) throw new TooManyPagesError();
   const pages: string[] = [];
+  const pageImages: string[] = [];
   for await (const page of renderPdfPages(file, { signal })) {
     if (signal.aborted) throw new TranscribeCancelledError();
     onProgress?.({ labelKey: "extract.progress_page", current: page.pageNum, total: page.totalPages, partial: pages.join("\n\n") || undefined });
     const pageText = await ocrPageImage(page.imageBase64, page.mimeType);
+    pageImages.push(`data:${page.mimeType};base64,${page.imageBase64}`);
     pages.push(total > 1 ? `--- ${pageLabel} ${page.pageNum} ---\n${pageText}` : pageText);
     onProgress?.({ labelKey: "extract.progress_page", current: page.pageNum, total: page.totalPages, partial: pages.join("\n\n") });
   }
-  return { text: pages.join("\n\n"), segments: null, timing: null };
+  return { text: pages.join("\n\n"), segments: null, timing: null, pageImages };
 }
 
 /** A failed run as a message key, or the engine's own message; null when it was cancelled. */
