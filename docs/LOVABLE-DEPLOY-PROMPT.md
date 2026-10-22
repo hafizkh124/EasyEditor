@@ -2,57 +2,69 @@
 
 Copy the block below into Lovable. Everything outside it is notes for you.
 
-**Current round — latest `main`.** One new migration: `20261020120000_citation_feedback.sql`
-(table `citation_feedback`). **No edge function changed in this round.**
+**Current round — latest `main` (PR #10, UI/UX 2026).** Two new migrations:
+`20261021000000_research_sessions_folder.sql` and `20261022000000_translation_review.sql`.
+**One edge function changed:** `refine-text` (its `summarize_sections` prompt).
 
 ---
 
 ```
 The GitHub repo's `main` branch has been updated (use the latest commit on main).
-Please sync and apply exactly ONE database migration:
+Please sync, apply exactly TWO database migrations, and redeploy ONE edge function.
 
-  - supabase/migrations/20261020120000_citation_feedback.sql
+## Migrations — apply in this order, as written in the repo
 
-## What to do
+  1. supabase/migrations/20261021000000_research_sessions_folder.sql
+  2. supabase/migrations/20261022000000_translation_review.sql
 
-1. Pull the latest `main`.
-2. Apply the migration above, as written in the repo. Do not rewrite it, rename it,
-   or generate any other migration. It creates `public.citation_feedback`.
-3. Do NOT regenerate or overwrite `src/integrations/supabase/types.ts` — it already
-   contains a hand-added `citation_feedback` entry that matches the migration. If your
-   generator produces a different shape, keep the repo's version and tell me what differs.
-4. Confirm the edge function `islamic-search` is the latest version from `main`. Open the
-   DEPLOYED source (not the repo) and check it contains the text "demote quran+weak behind
-   hadith". Redeploy it ONLY if that text is missing. Do NOT refactor the exported
-   `handle(req)` pattern back into an inline `Deno.serve(async (req) => { ... })` — it is
-   exported on purpose so tests can call it.
-5. Do not touch any other function, table or policy.
+Do not rewrite, rename or merge them, and do not generate any other migration.
+Both are additive (ADD COLUMN IF NOT EXISTS / CREATE INDEX IF NOT EXISTS); no existing
+row, column, table, policy or function is changed.
 
-## What the migration does
+What they do:
+- 20261021000000: adds `research_sessions.project_id uuid` (nullable, REFERENCES
+  public.projects(id) ON DELETE SET NULL) and the index
+  `research_sessions_user_project_idx` on (user_id, project_id, updated_at DESC).
+  A chat now belongs to the folder it was started in.
+- 20261022000000: adds `translation_projects.glossary jsonb NOT NULL DEFAULT '[]'`,
+  `translation_projects.style text NOT NULL DEFAULT 'idiomatic'` with a CHECK
+  (style IN ('idiomatic','literal')), and `translation_chunks.reviewed integer[]
+  NOT NULL DEFAULT '{}'`. Used by the translation glossary, style and review marks.
 
-`citation_feedback` stores a scholar's Approve / Edit & Correct feedback on AI citations
-(columns: id, user_id → auth.users, action 'approve'|'correct', source_id, verify_status,
-original jsonb, corrected jsonb, consent_training boolean default false, created_at).
-Row Level Security is ON with exactly two policies: a user can SELECT and INSERT only their
-own rows (auth.uid() = user_id). There is deliberately no update or delete policy.
-A check constraint `citation_feedback_correct_has_payload` requires `corrected` when
-action = 'correct'.
+Do NOT regenerate or overwrite `src/integrations/supabase/types.ts`. The client reads
+these columns through its own types and retries without them if they are missing, so
+the repo's types file must stay as it is.
+
+## Edge function — redeploy ONE
+
+  - refine-text
+
+Its shared prompt file changed (supabase/functions/_shared/mirror/ai/prompts/refineText.ts,
+action `summarize_sections`: it now summarizes ONE section, which the editor inserts under
+that section). After deploying, open the DEPLOYED source and confirm it contains the text
+"Your summary is inserted directly after the section". Do NOT refactor the exported
+`handle(req)` pattern back into an inline `Deno.serve(async (req) => { ... })`.
+
+Do not touch any other function, table, policy or bucket.
 
 ## Please report back
 
-- The applied migration name and timestamp.
-- The table's columns, its RLS status, and its two policy names.
-- That the `citation_feedback_correct_has_payload` check constraint exists.
-- The `islamic-search` deployed state (current, or redeployed with a timestamp). If you
-  cannot read the deployed source, say so plainly.
+- Both applied migration names and timestamps, in order.
+- The new columns with their types and defaults: research_sessions.project_id,
+  translation_projects.glossary, translation_projects.style, translation_chunks.reviewed;
+  that the `style` check constraint and `research_sessions_user_project_idx` exist.
+- The refine-text deployed state (redeployed with a timestamp) and whether the deployed
+  source contains the sentence above. If you cannot read the deployed source, say so plainly.
 ```
 
 ---
 
 ## Notes for you (not for Lovable)
 
-- Lovable syncs from `main`. The work is on branch `ccr-8863bd66-qkvxe6`; merge it to `main`
-  first (or ask Claude to open a PR), otherwise Lovable will not see the migration.
-- Until the migration is applied, Approve / Edit feedback is kept in the browser's local queue
-  and sent automatically on a later signed-in session, so nothing is lost.
-- Once Lovable confirms, tell Claude; it will check the desktop and web flows.
+- Lovable syncs from `main`; this round reaches it once PR #10 is merged.
+- Until the migrations are applied the app still works: chats simply are not tied to a
+  folder, and a translation's glossary, style and review marks are not saved.
+- Until `refine-text` is redeployed, "summarize each section" in the editor may write a
+  summary that does not fit under one section (the old prompt).
+- Once Lovable confirms, check these live once: extract text from an image, translate one
+  page, and in the desktop app (Word) run section summaries on a chapter.
