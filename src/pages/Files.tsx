@@ -17,6 +17,8 @@ import { EmptyState } from "@/components/workspace/EmptyState";
 import { useAllDocuments } from "@/core/workspace/useAllDocuments";
 import { documentService } from "@/core/workspace/documentService";
 import { useSessionHistory } from "@/hooks/useSessionHistory";
+import { useBookTranslationList } from "@/hooks/bookTranslations";
+import { useAuth } from "@/contexts/AuthContext";
 import { availableCapability } from "@/core/capabilities/registry";
 import type { Project, ProjectKind } from "@/core/workspace/types";
 import { logger } from "@/lib/logger";
@@ -66,6 +68,9 @@ const FilesPage = () => {
   const transcripts = useSessionHistory("transcribe");
   const ocrSessions = useSessionHistory("ocr");
   const chatHistory = useSessionHistory("research");
+  const { user } = useAuth();
+  const translateRoute = availableCapability("translate.book")?.route ?? null;
+  const bookTranslations = useBookTranslationList(translateRoute && user ? user.id : null);
 
   const folders = projects.filter((p) => p.kind !== "translation");
   const folder = folderId ? folders.find((p) => p.id === folderId) ?? null : null;
@@ -100,17 +105,23 @@ const FilesPage = () => {
         out.push({ id: `o:${s.id}`, title: s.title, updatedAt: s.updated_at, to: `${ocr.route}?session=${encodeURIComponent(s.id)}`, icon: ScanText, tint: "bg-warning-soft text-warning", typeLabel: t("filespage.type_ocr", "OCR متن") });
       }
     }
-    const translate = availableCapability("translate.book");
-    if (translate?.route) {
-      for (const p of projects.filter((p) => p.kind === "translation")) {
-        out.push({ id: `tr:${p.id}`, title: p.title, updatedAt: p.updated_at, to: `${translate.route}/${p.id}`, icon: Languages, tint: "bg-success-soft text-success", typeLabel: t("filespage.type_translation", "ترجمہ") });
+    const translationItem = { icon: Languages, tint: "bg-success-soft text-success", typeLabel: t("filespage.type_translation", "ترجمہ") };
+    // Book translations resume in the translator by their own id.
+    if (translateRoute) {
+      for (const b of bookTranslations.items) {
+        out.push({ id: `bt:${b.id}`, title: b.title, updatedAt: b.updatedAt, to: `${translateRoute}/${b.id}`, ...translationItem });
       }
+    }
+    // A workspace translation project opens in the canvas, on its document.
+    for (const p of projects.filter((p) => p.kind === "translation")) {
+      const doc = docsMap[p.id]?.[0];
+      if (doc) out.push({ id: `tr:${p.id}`, title: p.title, updatedAt: p.updated_at, to: `/workspace/${doc.id}`, ...translationItem });
     }
     return out
       .filter((r) => !q || matches(r.title, q))
       .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-  }, [transcripts.items, ocrSessions.items, projects, q, t]);
-  const resultsLoading = (transcripts.loading || ocrSessions.loading) && results.length === 0;
+  }, [transcripts.items, ocrSessions.items, bookTranslations.items, translateRoute, projects, docsMap, q, t]);
+  const resultsLoading = (transcripts.loading || ocrSessions.loading || bookTranslations.loading) && results.length === 0;
 
   const setParams = (next: { tab?: Tab; folder?: string | null }) => {
     const params = new URLSearchParams(searchParams);

@@ -203,6 +203,10 @@ export default tseslint.config(
       //    core/capabilities/registry.ts (id "translate.book"), so this file
       //    never even loads there. ─────────────────────────────────────────
       "src/hooks/useBookTranslation.ts",
+      // Its list/glossary reads, split out so Files can list book
+      // translations without loading the PDF pipeline. Files only calls it
+      // where "translate.book" is available, i.e. never on desktop.
+      "src/hooks/bookTranslations.ts",
 
       // Tests exercise the real Supabase client/mocks directly and are never
       // bundled into the desktop build.

@@ -19,6 +19,8 @@ interface SolvencyDialogProps {
   totalCost: number;
   availableTokens: number;
   onConfirm: () => void;
+  /** More lines for the summary, e.g. the time a run will take. */
+  extraRows?: Array<{ label: string; value: string }>;
 }
 
 export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
@@ -29,6 +31,7 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
   totalCost,
   availableTokens,
   onConfirm,
+  extraRows,
 }) => {
   const { t } = useLanguage();
   const isSolvent = availableTokens >= totalCost;
@@ -59,6 +62,12 @@ export const SolvencyDialog: React.FC<SolvencyDialogProps> = ({
               <span className="text-muted-foreground">{t("library.total_batches", "Total batches:")}</span>
               <span className="font-medium">{t("library.chunks", "{count} chunks").replace("{count}", String(totalChunks))}</span>
             </div>
+            {extraRows?.map((row) => (
+              <div key={row.label} className="flex justify-between items-center">
+                <span className="text-muted-foreground">{row.label}</span>
+                <span className="font-medium">{row.value}</span>
+              </div>
+            ))}
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">{t("library.required_cost", "Required token cost:")}</span>
               <span className="font-bold text-warning">{t("library.tokens", "{count} tokens").replace("{count}", String(totalCost))}</span>

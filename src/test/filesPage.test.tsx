@@ -25,11 +25,18 @@ vi.mock("@/core/workspace/useAllDocuments", () => ({
     loading: false,
     refresh: vi.fn(),
     projects: [general, translation, { id: "p3", title: "عام", kind: "general", updated_at: "2026-01-01T00:00:00Z" }],
-    docsMap: { p1: [docA], p3: [docB] },
+    docsMap: { p1: [docA], p2: [{ id: "d9", project_id: "p2", title: "ترجمہ", updated_at: "2026-03-01T00:00:00Z" }], p3: [docB] },
     allDocs: [
       { ...docA, projectName: "فتاویٰ", projectKind: "general" },
       { ...docB, projectName: "عام", projectKind: "general" },
     ],
+  }),
+}));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1" } }) }));
+vi.mock("@/hooks/bookTranslations", () => ({
+  useBookTranslationList: (userId: string | null) => ({
+    loading: false,
+    items: userId ? [{ id: "bt1", title: "کتاب الصلاۃ", updatedAt: "2026-02-20T00:00:00Z" }] : [],
   }),
 }));
 vi.mock("@/hooks/useSessionHistory", () => ({
@@ -105,6 +112,8 @@ describe("Files page", () => {
   it("lists transcripts and translations under Results", () => {
     renderFiles("/files?tab=results");
     const links = within(screen.getByRole("list")).getAllByRole("link");
-    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/translate-book/p2", "/transcribe?session=s1"]);
+    // A book translation resumes in the translator by its own id; a workspace
+    // translation project opens its document.
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/workspace/d9", "/translate-book/bt1", "/transcribe?session=s1"]);
   });
 });
