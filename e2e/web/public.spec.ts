@@ -7,7 +7,7 @@ import AxeBuilder from "@axe-core/playwright";
  * visitor to /login. Nothing here needs an account.
  */
 
-const PUBLIC_PAGES = ["/", "/login", "/signup", "/forgot-password", "/about", "/faq", "/privacy", "/terms"];
+const PUBLIC_PAGES = ["/", "/login", "/signup", "/forgot-password", "/about", "/answers", "/privacy", "/terms"];
 
 /** Errors that come from the platform or third parties, not from this app. */
 const IGNORED_CONSOLE = [/favicon/i, /ResizeObserver loop/i, /Failed to load resource.*(401|403|404)/i];
