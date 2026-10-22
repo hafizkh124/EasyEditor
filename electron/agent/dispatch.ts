@@ -39,6 +39,7 @@ import type { CritiqueKind } from '../../shared/ai/prompts/critique.js';
 import type { ModelFn } from '../../shared/agent/types.js';
 import { resolveTaskSlug, taskOutputIsHtml, RUN_TASK_NAMES } from '../../shared/agent/textTasks.js';
 import { getRefineTextPrompt } from '../../shared/ai/prompts/refineText.js';
+import { MIN_SECTION_CHARS, splitHtmlSections, withSectionSummaries } from '../../shared/agent/sectionSummaries.js';
 import { withAuthorVoice, VOICE_SHAPED_TASKS, AUTHOR_VOICE_FILES, AUTHOR_VOICE_PROPOSAL_FILE } from '../../shared/agent/authorVoice.js';
 import { AUTHOR_VOICE_EXTRACT_INSTRUCTION } from '../../shared/ai/prompts/authorVoiceExtract.js';
 import { AI_DISCLOSURE_FILE, buildDisclosureStatement } from '../../shared/agent/disclosure.js';
@@ -1648,7 +1649,12 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         const systemInstruction = VOICE_SHAPED_TASKS.has(slug) ? withAuthorVoice(prompt, authorVoice) : prompt;
 
         const dest = chapterPath(root, chapter);
-        const isHtml = taskOutputIsHtml(slug);
+        // Section summaries ADD to the chapter: each section is summarized on
+        // its own and the summary inserted under it, so the tracked change is
+        // the summaries alone. (The task's prompt returns one section's
+        // summary — written back wholesale it would replace the chapter.)
+        const summarizing = slug === 'summarize_sections';
+        const isHtml = summarizing || taskOutputIsHtml(slug);
 
         // Read the chapter's current content (html for auto-format, else text).
         const tmp = path.join(os.tmpdir(), `easyeditor-run-${Date.now()}-${Math.random().toString(36).slice(2)}.${isHtml ? 'html' : 'txt'}`);
@@ -1661,6 +1667,25 @@ export function createDispatcher(session: AgentSession): Dispatcher {
         }
         if (isHtml) source = source.replace(/^[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*$/i, '').trim();
         if (!source.trim()) return { error: `chapter "${chapter}" has no text to work on` };
+
+        if (summarizing) {
+          const sections = splitHtmlSections(source);
+          const summaries: Array<string | null> = [];
+          for (const section of sections) {
+            summaries.push(
+              section.text.length >= MIN_SECTION_CHARS
+                ? (await generateAgentText({ prompt: section.text, systemInstruction })).trim() || null
+                : null,
+            );
+          }
+          const summarized = summaries.filter(Boolean).length;
+          if (!summarized) {
+            return { error: `chapter "${chapter}" has no section long enough to summarize (at least ${MIN_SECTION_CHARS} characters under a heading)` };
+          }
+          const backedUp = guardEdit(chapter);
+          const res = await word.applyTextTask(dest, withSectionSummaries(sections, summaries), { isHtml: true });
+          return { chapter, task: slug, sections: summarized, revisions: res.revisions, backedUp, changed: true };
+        }
 
         const refined = (await generateAgentText({ prompt: source, systemInstruction })).trim();
         if (!refined) return { error: 'the model returned nothing' };

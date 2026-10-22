@@ -697,6 +697,43 @@ describe('agent dispatch', () => {
     expect(r).toMatchObject({ task: 'add_harakat', revisions: 4, backedUp: true, changed: true });
   });
 
+  // SYSTEM-2026 §7 — the section-summaries playbook's run_task step. The
+  // task's prompt summarizes ONE section; written back wholesale it replaced
+  // the whole chapter with a single summary. Each section is summarized on
+  // its own and the summary inserted under it, the text kept.
+  it('run_task section-summaries adds a summary under each section and keeps the text', async () => {
+    const body = (n: number) => `<p>${'نماز دین کا ستون ہے اور اس کی پابندی ہر مسلمان پر لازم ہے۔ '.repeat(n)}</p>`;
+    wordMock.fromWord.mockImplementationOnce(async (_src: string, _to: string, out: string) => {
+      fs.writeFileSync(out, `<html><body><p>تمہید</p><h1>باب الصلاۃ</h1>${body(6)}<h2>مختصر</h2><p>چھوٹا حصہ</p><h2>اوقات</h2>${body(5)}</body></html>`);
+      return { outputPath: out, ms: 1 };
+    });
+    generateContentStream.mockResolvedValueOnce('خلاصہ:\n- نماز دین کا ستون ہے').mockResolvedValueOnce('- پانچ اوقات');
+    const { dispatch } = mk();
+    const r = await dispatch('run_task', { chapter: '01.docx', task: 'section-summaries' }) as { task: string; sections: number; changed: boolean };
+    // Two sections are long enough; the preamble and the short one are left alone.
+    expect(generateContentStream).toHaveBeenCalledTimes(2);
+    expect((generateContentStream.mock.calls[0] as unknown as [{ prompt: string }])[0].prompt).toMatch(/^باب الصلاۃ/);
+    const [dest, html, opts] = wordMock.applyTextTask.mock.calls.at(-1)!;
+    expect(dest).toBe('C:\\p\\01.docx');
+    expect(opts).toEqual({ isHtml: true });
+    expect(html).toContain('<p>تمہید</p><h1>باب الصلاۃ</h1>');
+    expect(html).toContain('<h2>مختصر</h2><p>چھوٹا حصہ</p><h2>اوقات</h2>');
+    expect(html).toContain('<blockquote><p><strong>خلاصہ</strong></p><ul><li>نماز دین کا ستون ہے</li></ul></blockquote><h2>مختصر</h2>');
+    expect(html.endsWith('<blockquote><p><strong>خلاصہ</strong></p><ul><li>پانچ اوقات</li></ul></blockquote>')).toBe(true);
+    expect(r).toMatchObject({ task: 'summarize_sections', sections: 2, changed: true });
+  });
+
+  it('run_task section-summaries says so when no section is long enough', async () => {
+    wordMock.fromWord.mockImplementationOnce(async (_src: string, _to: string, out: string) => {
+      fs.writeFileSync(out, '<html><body><h1>عنوان</h1><p>مختصر</p></body></html>');
+      return { outputPath: out, ms: 1 };
+    });
+    const { dispatch } = mk();
+    const before = wordMock.applyTextTask.mock.calls.length;
+    expect(await dispatch('run_task', { chapter: '01.docx', task: 'section-summaries' })).toMatchObject({ error: expect.stringMatching(/long enough/) });
+    expect(wordMock.applyTextTask.mock.calls.length).toBe(before);
+  });
+
   it('run_task maps auto-format to an HTML task and rejects an unknown slug / citations', async () => {
     const { dispatch } = mk();
     await dispatch('run_task', { chapter: '01.docx', task: 'auto-format' });

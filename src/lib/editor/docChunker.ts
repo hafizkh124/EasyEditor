@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/react";
 import type { Node as PMNode } from "@tiptap/pm/model";
+import { MIN_SECTION_CHARS } from "~shared/agent/sectionSummaries";
 
 /**
  * Block-aware chunking of a TipTap document (SPEC-M3 FR-5.1).
@@ -222,7 +223,7 @@ function mergeTinyBatches(batches: TextBatch[]): TextBatch[] {
 }
 
 /** A section with less body text than this has nothing worth summarising. */
-export const MIN_SECTION_CHARS = 200;
+export { MIN_SECTION_CHARS };
 
 /**
  * Plan a section-by-section summary (SYSTEM-2026: "حصوں کا خلاصہ").

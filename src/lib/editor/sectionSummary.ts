@@ -1,4 +1,6 @@
 import { escapeHtml, markdownToHtml } from "./htmlText";
+// One label and heading rule with the desktop agent's section summaries.
+import { summaryLabel, withoutOwnHeading } from "~shared/agent/sectionSummaries";
 
 /**
  * The block a section summary is inserted as: a quote headed "خلاصہ" (or the
@@ -6,19 +8,7 @@ import { escapeHtml, markdownToHtml } from "./htmlText";
  * addition to the section rather than part of the author's text.
  */
 
-const URDU_LETTERS = /[ٹڈڑںےہھپچژگک]/;
-const ARABIC_SCRIPT = /[؀-ۿ]/;
-
-export function summaryLabel(text: string): string {
-  if (URDU_LETTERS.test(text)) return "خلاصہ";
-  if (ARABIC_SCRIPT.test(text)) return "خلاصة";
-  return "Summary";
-}
-
-/** Strip a leading "Summary:"-style line the model sometimes adds anyway. */
-function withoutOwnHeading(text: string): string {
-  return text.replace(/^\s*(?:#+\s*)?(?:\*\*)?(?:خلاصہ|خلاصة|الخلاصة|ملخص|Summary)(?:\*\*)?\s*[:：۔]?\s*\n+/i, "");
-}
+export { summaryLabel };
 
 export function sectionSummaryHtml(output: string): string {
   const body = withoutOwnHeading(output.trim());
