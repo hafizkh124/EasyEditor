@@ -67,6 +67,12 @@ export interface Connector {
    * download or a live service). Everything else is on by default.
    */
   defaultOff?: boolean;
+  /**
+   * ADR-0062 — a deployment choice rather than a topic (the Shamela transports):
+   * the Hub keeps it under a collapsed "Advanced" section and no preset
+   * includes it. Turath already serves every device.
+   */
+  advanced?: boolean;
   /** Optional deep-view / help link for the Hub card. */
   docsHref?: string;
   /**
@@ -86,6 +92,7 @@ export const CONNECTORS: Connector[] = [
     icon: 'library-big',
     healthKind: 'local-native',
     tools: ['search_shamela', 'read_shamela_page', 'find_shamela_book'],
+    advanced: true,
   },
   {
     // ADR-0044 — the cloud transport for Shamela. Owns NO tool in the map
@@ -99,6 +106,7 @@ export const CONNECTORS: Connector[] = [
     icon: 'library-big',
     healthKind: 'mcp',
     tools: [],
+    advanced: true,
     defaultOff: true,
     docsHref: 'https://shamela.link',
   },

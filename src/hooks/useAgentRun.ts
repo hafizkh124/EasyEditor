@@ -271,6 +271,18 @@ export function useAgentRun() {
     void refreshConnectors();
   }, [projectRoot, refreshConnectors]);
 
+  // ADR-0062 — "turn it on" from the composer's suggestion card: the global
+  // switch (so Settings shows it) and, when a project is open, its override
+  // (which may be what turned it off).
+  const enableConnector = useCallback(async (id: string) => {
+    try {
+      await window.electronAPI?.connectors?.setEnabled?.(id, true, "global");
+      const fsApi = window.electronAPI?.projectFolder;
+      if (fsApi?.setConnector && projectRoot) await fsApi.setConnector(projectRoot, id, true);
+    } catch (err) { log.warn("enableConnector failed", { err }); }
+    void refreshConnectors();
+  }, [projectRoot, refreshConnectors]);
+
   useEffect(() => {
     window.electronAPI?.docBridge?.detectTools().then((d) => {
       if (!d.word) { setCaps(t("agent.caps_no_word", "Word not found on this machine")); return; }
@@ -1307,6 +1319,7 @@ export function useAgentRun() {
     connectorState,
     connectorGlobal,
     toggleConnector,
+    enableConnector,
     progressExpanded, setProgressExpanded,
     taRef,
     fileInputRef,

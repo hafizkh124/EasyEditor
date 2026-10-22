@@ -36,12 +36,39 @@ afterEach(() => {
 });
 
 describe("ConnectorsHub", () => {
-  it("renders a card per connector, grouped, from the IPC list", async () => {
+  it("renders a card for every enabled, non-advanced connector under My connectors", async () => {
     win.electronAPI = { connectors: makeApi() };
     render(<ConnectorsHub />);
-    for (const c of CONNECTORS) {
+    const merged = mergeConnectorState({}, {});
+    for (const c of CONNECTORS.filter((x) => merged[x.id] && !x.advanced)) {
       expect(await screen.findByText(c.label)).toBeInTheDocument();
     }
+  });
+
+  it("keeps the Shamela transports and the unused connectors out of sight until asked", async () => {
+    win.electronAPI = { connectors: makeApi() };
+    render(<ConnectorsHub />);
+    await screen.findByText("My connectors (", { exact: false });
+    expect(screen.queryByText(CONNECTORS.find((c) => c.id === "shamela")!.label)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Advanced: Shamela on this computer"));
+    expect(await screen.findByText(CONNECTORS.find((c) => c.id === "shamela")!.label)).toBeInTheDocument();
+  });
+
+  it("a preset only switches ON what is off and leaves the rest alone", async () => {
+    const global = { ganjoor: false } as Record<string, boolean>;
+    const api = makeApi({
+      list: vi.fn(async () => ({
+        connectors: CONNECTORS, global, project: {},
+        merged: { ...mergeConnectorState(global, {}), lexicon: false, ganjoor: false, "urdu-prosody": true },
+      })),
+    });
+    win.electronAPI = { connectors: api };
+    render(<ConnectorsHub />);
+    fireEvent.click(await screen.findByRole("button", { name: /Literature & poetry/ }));
+    await waitFor(() => expect(api.setEnabled).toHaveBeenCalledWith("lexicon", true, "global"));
+    expect(api.setEnabled).toHaveBeenCalledWith("ganjoor", true, "global");
+    expect(api.setEnabled).not.toHaveBeenCalledWith("urdu-prosody", expect.anything(), expect.anything());
+    for (const call of api.setEnabled.mock.calls) expect(call[1]).toBe(true);
   });
 
   it("renders nothing when there is no desktop connectors API", () => {
@@ -53,14 +80,14 @@ describe("ConnectorsHub", () => {
     const api = makeApi();
     win.electronAPI = { connectors: api };
     render(<ConnectorsHub />);
-    const shamelaLabel = CONNECTORS.find((c) => c.id === "shamela")!.label;
-    const shamela = await screen.findByLabelText(shamelaLabel);
-    fireEvent.click(shamela);
-    await waitFor(() => expect(api.setEnabled).toHaveBeenCalledWith("shamela", false, "global"));
+    const tafsirLabel = CONNECTORS.find((c) => c.id === "tafsir")!.label;
+    const tafsir = await screen.findByLabelText(tafsirLabel);
+    fireEvent.click(tafsir);
+    await waitFor(() => expect(api.setEnabled).toHaveBeenCalledWith("tafsir", false, "global"));
   });
 
-  it("a disabled connector shows in the Add dialog, and enabling it calls setEnabled(true)", async () => {
-    const global = { shamela: false };
+  it("a disabled connector shows in the Library, and enabling it calls setEnabled(true)", async () => {
+    const global = { tafsir: false };
     const api = makeApi({
       list: vi.fn(async () => ({
         connectors: CONNECTORS, global, project: {},
@@ -69,7 +96,7 @@ describe("ConnectorsHub", () => {
     });
     win.electronAPI = { connectors: api };
     render(<ConnectorsHub />);
-    fireEvent.click(await screen.findByText("Add a connector"));
+    fireEvent.click(await screen.findByText("Library (", { exact: false }));
     const enableButtons = await screen.findAllByText("Enable");
     fireEvent.click(enableButtons[0]);
     await waitFor(() => expect(api.setEnabled).toHaveBeenCalledWith(expect.any(String), true, "global"));
@@ -97,6 +124,7 @@ describe("ConnectorsHub", () => {
     });
     win.electronAPI = { connectors: api };
     render(<ConnectorsHub />);
+    fireEvent.click(await screen.findByText("Advanced: Shamela on this computer"));
     expect(await screen.findByText("Sign-in needed")).toBeInTheDocument();
     expect(screen.queryByText("Error")).not.toBeInTheDocument();
   });

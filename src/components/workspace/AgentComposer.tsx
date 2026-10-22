@@ -7,6 +7,7 @@ import { useAgentRun, type AgentMode, type ScopeTag } from "@/hooks/useAgentRun"
 import { useClampToViewport } from "@/lib/ui/clampToViewport";
 import { ScopeReviewDialog } from "./ScopeReviewDialog";
 import { ComposerHub } from "@/components/composer/ComposerHub";
+import { ConnectorSuggestion } from "@/components/composer/ConnectorSuggestion";
 import { SkillPromptDialog } from "@/components/composer/SkillPromptDialog";
 
 /** Icon + accent for a scope chip, keyed by kind (colour is never the only signal). */
@@ -385,6 +386,13 @@ export const AgentComposer: React.FC<AgentComposerProps> = ({
               <X className="h-3 w-3" />
             </button>
           </div>
+        )}
+        {window.electronAPI?.connectors && (
+          <ConnectorSuggestion
+            text={a.input}
+            isOn={(id) => a.connectorState?.[id] ?? isConnectorOn(a.connectors, id)}
+            onEnable={a.enableConnector}
+          />
         )}
         <div className="flex items-end gap-1.5">
           <Button
