@@ -1,26 +1,31 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePageSession } from "@/hooks/usePageSession";
 import { isVideoFile } from "@/lib/audio/formatSupport";
 import type { TranscribeLanguage } from "@/lib/audio/transcribeLongForm";
-import { logActivity } from "@/lib/activityLog";
-import { blockReason, describeFailure, detectKind, runExtraction, type ExtractKind, type ExtractProgress } from "@/lib/extract/engine";
+import { blockReason, detectKind, type ExtractKind, type ExtractProgress } from "@/lib/extract/engine";
 import { useExtractGate } from "@/lib/extract/useExtractGate";
 import { toParagraphs, type TimedParagraph } from "@/lib/extract/timedParagraphs";
 import type { TranscriptSegment } from "@/core/voice/types";
+import { cancelJob, canResume, resumeJob, useJob } from "@/lib/jobs/jobStore";
+import { startExtractJob, useExtractLive } from "@/lib/jobs/extractJob";
+import { askJobNotificationPermission } from "@/lib/jobs/notificationPermission";
 
 export { detectKind, type ExtractKind } from "@/lib/extract/engine";
 
 /**
  * The Extract screen's state (SYSTEM-2026 §5): a recording, an audio or video
  * file, an image or a PDF goes in; text comes out. The kind is read from the
- * file — the user never chooses between "transcribe" and "OCR". The engine
- * itself is `@/lib/extract/engine`, shared with the editor.
+ * file — the user never chooses between "transcribe" and "OCR".
  *
- * Results save to the same session sections the old pages used, so earlier
- * results still open. A microphone recording goes through the same engine as
- * a file — local Whisper when it is installed.
+ * The run itself is a queued job (`@/lib/jobs/extractJob`, §9): this screen
+ * starts it and attaches to it by `?job=`, so leaving the page does not stop
+ * it, and coming back — from the jobs strip or the finish notice — shows it
+ * again. The job saves its result to the same session sections the old pages
+ * used; `?session=` opens one from Files.
  */
 
 export type ExtractPhase = "idle" | "recording" | "running" | "done";
@@ -46,47 +51,63 @@ interface SessionMeta extends Record<string, unknown> {
 
 export function useExtract() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const gate = useExtractGate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const jobId = searchParams.get("job");
+  const job = useJob(jobId);
+  const liveJob = useExtractLive(jobId);
 
-  const [phase, setPhase] = useState<ExtractPhase>("idle");
-  const [kind, setKind] = useState<ExtractKind | null>(null);
-  const [fileName, setFileName] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [restored, setRestored] = useState<{ kind: ExtractKind; text: string } | null>(null);
   const [text, setText] = useState("");
-  const [segments, setSegments] = useState<TranscriptSegment[] | null>(null);
-  // Read-along (SYSTEM-2026 §5): the recording itself, and the transcript in
-  // timed paragraphs. Only for a run in this visit — a result reopened from
-  // Files has no recording to play.
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
-  const [paragraphs, setParagraphs] = useState<TimedParagraph[] | null>(null);
-  const [timesExact, setTimesExact] = useState(false);
-  // Image/PDF: each page's image, to check the text against (SYSTEM-2026 §5).
-  const [pageImages, setPageImages] = useState<string[] | null>(null);
-  const replaceMedia = useCallback((file: File | null) => {
-    setMediaUrl((old) => {
-      if (old) URL.revokeObjectURL(old);
-      return file ? URL.createObjectURL(file) : null;
-    });
-  }, []);
-  useEffect(() => () => replaceMedia(null), [replaceMedia]);
-  const [progress, setProgress] = useState<ExtractProgress | null>(null);
   const [language, setLanguage] = useState<TranscribeLanguage>("auto");
   const [autoCopy, setAutoCopyState] = useState(readAutoCopy);
-  const abortRef = useRef<AbortController | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
 
   // Earlier results open from Files (`?session=`), from either old section.
   const restoreAs = useCallback((restoredKind: ExtractKind, meta: SessionMeta) => {
     const restoredText = meta.transcript ?? meta.extractedText ?? "";
     if (!restoredText) return;
+    setRestored({ kind: restoredKind, text: restoredText });
     setText(restoredText);
-    setKind(restoredKind);
-    setPhase("done");
     if (meta.sttLanguage) setLanguage(meta.sttLanguage);
   }, []);
   const restoreAudio = useCallback((m: SessionMeta) => restoreAs("audio", m), [restoreAs]);
   const restorePages = useCallback((m: SessionMeta) => restoreAs("image", m), [restoreAs]);
-  const audioSession = usePageSession<SessionMeta>({ section: "transcribe", onRestore: restoreAudio });
-  const pageSession = usePageSession<SessionMeta>({ section: "ocr", onRestore: restorePages });
+  usePageSession<SessionMeta>({ section: "transcribe", onRestore: restoreAudio });
+  usePageSession<SessionMeta>({ section: "ocr", onRestore: restorePages });
+
+  // A finished job from an earlier visit has no live state left — open its saved result.
+  const savedSessionId = job?.meta?.sessionId as string | undefined;
+  useEffect(() => {
+    if (jobId && !liveJob && job?.status === "done" && savedSessionId) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("job");
+      next.set("session", savedSessionId);
+      setSearchParams(next, { replace: true });
+    }
+  }, [jobId, liveJob, job?.status, savedSessionId, searchParams, setSearchParams]);
+
+  // The job's text, as it grows and once it is done. Edits are local after that.
+  const liveStatus = liveJob?.status;
+  const liveText = liveJob?.text ?? "";
+  useEffect(() => {
+    if (liveStatus) setText(liveText);
+  }, [liveStatus, liveText]);
+
+  // The recording, for the read-along.
+  const mediaFile = liveJob?.mediaFile ?? null;
+  useEffect(() => {
+    if (!mediaFile) {
+      setMediaUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(mediaFile);
+    setMediaUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [mediaFile]);
 
   const setAutoCopy = (on: boolean) => {
     setAutoCopyState(on);
@@ -105,6 +126,33 @@ export function useExtract() {
     }
   }, [text, t]);
 
+  // Copy on finishing, when the switch is on and this screen saw it finish.
+  const sawRunning = useRef(false);
+  useEffect(() => {
+    if (liveStatus === "running") {
+      sawRunning.current = true;
+      return;
+    }
+    if (!sawRunning.current) return;
+    sawRunning.current = false;
+    if (liveStatus === "done") {
+      const result = liveJob?.result?.text ?? "";
+      if (!result.trim()) toast.info(t("extract.nothing_found"));
+      else if (autoCopy) void copyAll(result);
+    }
+    if (liveStatus === "cancelled") toast.info(t("extract.cancelled"));
+    if (liveStatus === "failed" && liveJob?.error) toast.error(liveJob.error);
+  }, [liveStatus, liveJob?.result, liveJob?.error, autoCopy, copyAll, t]);
+
+  const openJob = useCallback((id: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("session");
+    next.delete("shared");
+    if (id) next.set("job", id);
+    else next.delete("job");
+    setSearchParams(next, { replace: !id });
+  }, [searchParams, setSearchParams]);
+
   /** Extract text from a file: the kind is read from the file itself. */
   const start = useCallback(async (file: File) => {
     const fileKind = detectKind(file);
@@ -114,63 +162,20 @@ export function useExtract() {
       return;
     }
     if (fileKind === "audio" && isVideoFile(file)) toast.info(t("stt.video_info"));
-    // A new extraction is a new result, not an overwrite of the last one.
-    audioSession.reset();
-    pageSession.reset();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setKind(fileKind);
-    setFileName(file.name);
+    askJobNotificationPermission();
+    setRestored(null);
     setText("");
-    setSegments(null);
-    setParagraphs(null);
-    setPageImages(null);
-    replaceMedia(fileKind === "audio" ? file : null);
-    setPhase("running");
-    try {
-      const result = await runExtraction({
-        file,
-        kind: fileKind,
-        language,
-        sttRoute: gate.sttRoute,
-        signal: controller.signal,
-        pageLabel: t("extract.page", "صفحہ"),
-        onProgress: (p) => {
-          setProgress(p);
-          if (p.partial) setText(p.partial);
-        },
-      });
-      setText(result.text);
-      setSegments(result.segments);
-      setParagraphs(result.timing ? toParagraphs(result.timing.segments) : null);
-      setTimesExact(Boolean(result.timing?.exact));
-      setPageImages(result.pageImages);
-      setPhase("done");
-      if (!result.text.trim()) {
-        toast.info(t("extract.nothing_found"));
-        return;
-      }
-      logActivity(fileKind === "audio" ? "stt" : "ocr", result.text.slice(0, 60));
-      void (fileKind === "audio" ? audioSession : pageSession).save({
-        title: result.text.slice(0, 80),
-        metadata: fileKind === "audio"
-          ? { transcript: result.text, originalText: "", sttLanguage: language }
-          : { extractedText: result.text },
-      });
-      if (autoCopy) void copyAll(result.text);
-    } catch (err) {
-      setPhase((p) => (p === "running" && text ? "done" : "idle"));
-      const failure = describeFailure(err, controller.signal);
-      if (!failure) toast.info(t("extract.cancelled"));
-      else if ("message" in failure) toast.error(failure.message);
-      else toast.error(failure.replace ? t(failure.key).replace(...failure.replace) : t(failure.key));
-    } finally {
-      abortRef.current = null;
-      setProgress(null);
-    }
-  }, [gate, language, audioSession, pageSession, autoCopy, copyAll, text, t, replaceMedia]);
+    const { id } = startExtractJob({ file, kind: fileKind, language, sttRoute: gate.sttRoute, userId: user?.id ?? null, pageLabel: t("extract.page", "صفحہ") });
+    openJob(id);
+  }, [gate, language, user, openJob, t]);
 
-  const cancel = useCallback(() => abortRef.current?.abort(), []);
+  const cancel = useCallback(() => {
+    if (jobId) cancelJob(jobId);
+  }, [jobId]);
+
+  const resume = useCallback(() => {
+    if (jobId) void resumeJob(jobId);
+  }, [jobId]);
 
   const startRecording = useCallback(async () => {
     try {
@@ -180,13 +185,14 @@ export function useExtract() {
       recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
       recorder.onstop = () => {
         stream.getTracks().forEach((track) => track.stop());
+        setRecording(false);
         const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
         const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
         void start(new File([blob], `${t("extract.recording")} ${stamp}.webm`, { type: blob.type }));
       };
       recorderRef.current = recorder;
       recorder.start();
-      setPhase("recording");
+      setRecording(true);
     } catch {
       toast.error(t("extract.mic_denied"));
     }
@@ -198,22 +204,39 @@ export function useExtract() {
   }, []);
 
   const startOver = useCallback(() => {
-    audioSession.reset();
-    pageSession.reset();
-    setPhase("idle");
-    setKind(null);
-    setFileName("");
+    setRestored(null);
     setText("");
-    setSegments(null);
-    setParagraphs(null);
-    setPageImages(null);
-    replaceMedia(null);
-  }, [audioSession, pageSession, replaceMedia]);
+    const next = new URLSearchParams(searchParams);
+    next.delete("job");
+    next.delete("session");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // What the screen shows, from the job (this visit), a restored result, or nothing.
+  const result = liveJob?.result ?? null;
+  const phase: ExtractPhase = recording
+    ? "recording"
+    : liveStatus === "running"
+      ? "running"
+      : liveStatus === "done" || restored
+        ? "done"
+        : liveStatus === "failed" && text
+          ? "done"
+          : "idle";
+  const kind: ExtractKind | null = liveJob?.kind ?? restored?.kind ?? null;
+  const segments: TranscriptSegment[] | null = result?.segments ?? null;
+  const timing = result?.timing;
+  const paragraphs: TimedParagraph[] | null = useMemo(() => (timing ? toParagraphs(timing.segments) : null), [timing]);
+  const progress: ExtractProgress | null = liveJob?.progress ?? null;
+  /** A job the app closed on (or that failed) and can pick up again. */
+  const resumable = !liveJob && job && canResume(job) ? job : null;
 
   return {
     accept: gate.accept, audioAvailable: gate.audioAvailable, pagesAvailable: gate.pagesAvailable,
-    phase, kind, fileName, text, setText, segments, progress, mediaUrl, paragraphs, timesExact, pageImages,
+    phase, kind, fileName: liveJob?.fileName ?? "", text, setText, segments, progress, mediaUrl, paragraphs,
+    timesExact: Boolean(result?.timing?.exact), pageImages: result?.pageImages ?? null,
     language, setLanguage, sttRoute: gate.sttRoute, autoCopy, setAutoCopy,
     start, cancel, startRecording, stopRecording, startOver, copyAll,
+    resumable, resume,
   };
 }

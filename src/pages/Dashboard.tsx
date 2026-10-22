@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, ArrowUp, FileText, MessageCircle, MessageSquareText } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
+import { JobsStrip } from "@/components/jobs/JobsStrip";
 import { handleSupabaseError } from "@/lib/errors";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useApproval } from "@/hooks/useApproval";
@@ -108,6 +109,10 @@ const Dashboard = () => {
   return (
     <AppLayout>
       <div className="mx-auto max-w-3xl space-y-8 p-4 md:p-8">
+        {/* Long jobs (SYSTEM-2026 §9). Wide screens have them at the bottom of the sidebar. */}
+        <div className="md:hidden empty:hidden">
+          <JobsStrip variant="home" />
+        </div>
         <header className="space-y-1 pt-2 text-center md:pt-6">
           <h1 className="text-2xl font-bold text-foreground md:text-3xl">
             {t("home.greeting", "السلام علیکم، آج کیا کرنا ہے؟")}

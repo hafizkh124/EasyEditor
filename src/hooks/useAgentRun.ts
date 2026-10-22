@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { translateStored } from "@/lib/i18n";
 import { useAuth } from "@/contexts/AuthContext";
 import { callRefineText, isRefineTextAction } from "@/lib/editor/aiActions";
+import { addJob, newJobId, registerCancel, updateJob } from "@/lib/jobs/jobStore";
 
 const log = logger.child("useAgentRun");
 
@@ -171,8 +172,17 @@ export function useAgentRun() {
   // Plan §5.1 — which artifact the stage is showing (defaults to last-opened).
   const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null);
   const [planPending, setPlanPending] = useState(false);
+  // A large agent task (plan/auto mode, or a batch over many books) is a job
+  // in the shared queue (SYSTEM-2026 §9); a quick question is not.
+  const agentJobRef = useRef<string | null>(null);
   // M13 (ADR-0056) — the outside-file write waiting for the scholar's yes/no.
   const [fileApproval, setFileApproval] = useState<FileApproval | null>(null);
+  // Waiting on the user (a plan to approve, a file write to allow) shows as "approval needed".
+  const waitingForUser = planPending || Boolean(fileApproval);
+  useEffect(() => {
+    const jobId = agentJobRef.current;
+    if (jobId) updateJob(jobId, { status: waitingForUser ? "approval" : "running" });
+  }, [waitingForUser]);
   // M11 Phase 1 — the conversation so far. `result`/`progress`/`artifacts`
   // above describe the CURRENT (or most recent) run; `turns` holds every
   // finished run before it, both to render and to feed back as `history`.
@@ -910,6 +920,13 @@ export function useAgentRun() {
 
     const historyArg = history.length ? history : undefined;
     const scopeArg = hasScope ? scope : undefined;
+    if (runMode !== "ask" || scope.batch) {
+      const jobId = newJobId("agent");
+      agentJobRef.current = jobId;
+      addJob({ id: jobId, kind: "agent", title: instruction.slice(0, 80), status: "running", href: "/workspace?panel=research" });
+      registerCancel(jobId, () => { void agent?.cancel(); webAgent.cancel(); });
+    }
+    let failed: string | null = null;
     try {
       // M11 — desktop always uses its own native agent when present (the
       // full tool set — local Shamela, جوامع الكلم, Word — over IPC), even
@@ -930,8 +947,15 @@ export function useAgentRun() {
       if (desktopReady) void pf.refresh();
     } catch (err) {
       log.error("agent run failed", { err });
-      setResult({ answer: "", stopReason: "error", steps: 0, toolCalls: [], error: err instanceof Error ? err.message : String(err) });
+      failed = err instanceof Error ? err.message : String(err);
+      setResult({ answer: "", stopReason: "error", steps: 0, toolCalls: [], error: failed });
     } finally {
+      const jobId = agentJobRef.current;
+      if (jobId) {
+        agentJobRef.current = null;
+        registerCancel(jobId, null);
+        updateJob(jobId, failed ? { status: "failed", error: failed } : { status: "review" });
+      }
       setRunning(false);
       setPlanPending(false);
       setFileApproval(null);

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useRef } from "react";
 import type { Editor } from "@tiptap/react";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { blockReason, describeFailure, detectKind, runExtraction } from "@/lib/extract/engine";
+import { blockReason, detectKind } from "@/lib/extract/engine";
+import { startExtractJob, getExtractLive, watchExtractLive } from "@/lib/jobs/extractJob";
+import { cancelJob, markJobHandled } from "@/lib/jobs/jobStore";
+import { useAuth } from "@/contexts/AuthContext";
 import { useExtractGate } from "@/lib/extract/useExtractGate";
 import { escapeHtml, textToHtml } from "@/lib/editor/htmlText";
-import { logActivity } from "@/lib/activityLog";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 
 /**
@@ -13,9 +15,16 @@ import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
  * or by dropping a recording, scan or PDF on the editor. The text lands where
  * the cursor was — that position follows the user's own edits while the job
  * runs — under a quiet line naming the file it came from.
+ *
+ * The run is a queued job (SYSTEM-2026 §9): if the document is closed before
+ * it finishes, the result is still saved (Files → Results) and the finish
+ * notice opens it.
  */
 export function useEditorExtract(editor: Editor | null) {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const userIdRef = useRef<string | null>(null);
+  userIdRef.current = user?.id ?? null;
   const gate = useExtractGate();
   const available = gate.audioAvailable || gate.pagesAvailable;
   const gateRef = useRef(gate);
@@ -38,39 +47,45 @@ export function useEditorExtract(editor: Editor | null) {
       };
       editor.on("transaction", follow);
 
-      const controller = new AbortController();
+      const job = startExtractJob({
+        file, kind, language: "auto", sttRoute: gateRef.current.sttRoute, userId: userIdRef.current, pageLabel: t("extract.page", "صفحہ"),
+      });
       const toastId = toast.loading(file.name, {
-        action: { label: t("common.cancel", "منسوخ"), onClick: () => controller.abort() },
+        action: { label: t("common.cancel", "منسوخ"), onClick: () => cancelJob(job.id) },
+      });
+      let shown: unknown = null;
+      const stopProgress = watchExtractLive(() => {
+        const p = getExtractLive(job.id)?.progress;
+        if (!p || p === shown) return;
+        shown = p;
+        toast.loading(
+          `${file.name} — ${t(p.labelKey).replace("{current}", String(p.current)).replace("{total}", String(p.total || "…"))}`,
+          { id: toastId, action: { label: t("common.cancel", "منسوخ"), onClick: () => cancelJob(job.id) } },
+        );
       });
       try {
-        const { text } = await runExtraction({
-          file,
-          kind,
-          language: "auto",
-          sttRoute: gateRef.current.sttRoute,
-          signal: controller.signal,
-          pageLabel: t("extract.page", "صفحہ"),
-          onProgress: (p) =>
-            toast.loading(
-              `${file.name} — ${t(p.labelKey).replace("{current}", String(p.current)).replace("{total}", String(p.total || "…"))}`,
-              { id: toastId },
-            ),
-        });
-        if (!text.trim()) {
+        const result = await job.done;
+        const live = getExtractLive(job.id);
+        // This toast reports the outcome; the queue's own notice is only for a closed document.
+        if (!editor.isDestroyed) markJobHandled(job.id);
+        if (!result) {
+          if (live?.status === "cancelled") toast.info(t("extract.cancelled"), { id: toastId });
+          else toast.error(live?.error ?? t("extract.failed"), { id: toastId });
+          return;
+        }
+        if (!result.text.trim()) {
           toast.info(t("extract.nothing_found"), { id: toastId });
           return;
         }
-        if (editor.isDestroyed) return;
+        if (editor.isDestroyed) {
+          toast.dismiss(toastId);
+          return;
+        }
         const source = `<p><em>${escapeHtml(t("extract.from_file", "فائل سے: {name}").replace("{name}", file.name))}</em></p>`;
-        editor.chain().focus().insertContentAt(pos, source + textToHtml(text)).run();
-        logActivity(kind === "audio" ? "stt" : "ocr", text.slice(0, 60));
+        editor.chain().focus().insertContentAt(pos, source + textToHtml(result.text)).run();
         toast.success(t("extract.inserted"), { id: toastId });
-      } catch (err) {
-        const failure = describeFailure(err, controller.signal);
-        if (!failure) toast.info(t("extract.cancelled"), { id: toastId });
-        else if ("message" in failure) toast.error(failure.message, { id: toastId });
-        else toast.error(failure.replace ? t(failure.key).replace(...failure.replace) : t(failure.key), { id: toastId });
       } finally {
+        stopProgress();
         editor.off("transaction", follow);
       }
     },

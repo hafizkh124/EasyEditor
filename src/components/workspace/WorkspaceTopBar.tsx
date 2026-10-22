@@ -21,6 +21,7 @@ import { splitChaptersFromHtml } from "@/lib/audiobook/splitChapters";
 import { isDesktop, modifierKeyLabel } from "@/utils/environment";
 import { WorkspaceAppMenu } from "./WorkspaceAppMenu";
 import { DesktopAccountMenu } from "@/components/auth/DesktopAccountMenu";
+import { JobsStrip } from "@/components/jobs/JobsStrip";
 import { WordExportDialog } from "@/components/editor/WordExportDialog";
 import type { Document, DocumentVersion } from "@/core/workspace/types";
 import type { AudiobookExportProgress } from "@/core/voice/types";
@@ -257,6 +258,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         </DropdownMenu>
 
         {/* Optional online account sign-in (desktop only) */}
+        <JobsStrip variant="icon" />
         <DesktopAccountMenu />
 
         {/* Language / RTL toggle */}

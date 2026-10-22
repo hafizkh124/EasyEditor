@@ -12,6 +12,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { sectionNav } from "@/components/layout/appNav";
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { CreateMenuButton } from "@/components/layout/CreateMenu";
+import { JobsStrip } from "@/components/jobs/JobsStrip";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 
 /* ─── Main Layout ─── */
@@ -47,7 +48,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          "hidden md:flex md:flex-col border-e border-sidebar-border shrink-0 transition-[width] duration-200",
+          // Sticky at the screen's height, so "Me" and the jobs strip stay at its bottom however long the page.
+          "hidden md:sticky md:top-0 md:flex md:h-dvh md:flex-col border-e border-sidebar-border shrink-0 transition-[width] duration-200",
           collapsed ? "md:w-16" : "md:w-60 lg:w-64",
         )}
       >
@@ -59,7 +61,15 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           t={t}
           showCollapseButton
           createSlot={<CreateMenuButton collapsed={collapsed} />}
-          footerSlot={<AccountMenu variant="sidebar" collapsed={collapsed} />}
+          footerSlot={
+            <>
+              {/* Long jobs (SYSTEM-2026 §9), above "Me". */}
+              {collapsed
+                ? <div className="mb-1 flex justify-center"><JobsStrip variant="icon" /></div>
+                : <JobsStrip variant="sidebar" className="mb-2" />}
+              <AccountMenu variant="sidebar" collapsed={collapsed} />
+            </>
+          }
         />
       </aside>
 

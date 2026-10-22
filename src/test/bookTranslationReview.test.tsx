@@ -60,6 +60,7 @@ vi.mock("@/lib/translate/translatePageApi", () => ({
 import { useBookTranslation } from "@/hooks/useBookTranslation";
 import { ReviewPane, type ReviewPaneProps } from "@/components/translate/ReviewPane";
 import { PARAGRAPH_RULE } from "@/lib/translate/glossary";
+import { getJob, resetJobsForTest } from "@/lib/jobs/jobStore";
 
 async function loadedBook() {
   const hook = renderHook(() => useBookTranslation());
@@ -135,6 +136,15 @@ describe("useBookTranslation — read then translate", () => {
     await act(async () => { await result.current.translateSinglePage(1); });
     act(() => result.current.updateParagraph(1, 0, "Praise be to Allah."));
     expect(result.current.pages[0].translationText).toBe("Praise be to Allah.\n\nAnd blessings on the Prophet.");
+  });
+
+  it("runs a whole-book translation as a job in the queue", async () => {
+    resetJobsForTest();
+    const { result } = await loadedBook();
+    await act(async () => { await result.current.translateAll(1, 1); });
+    expect(getJob("translate-proj-1")).toMatchObject({
+      kind: "translate", status: "done", current: 1, total: 1, href: "/translate-book/proj-1", resumable: true,
+    });
   });
 
   it("still creates the project where the glossary column does not exist yet", async () => {

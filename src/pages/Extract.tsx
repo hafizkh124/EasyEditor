@@ -63,7 +63,8 @@ const Extract = () => {
   const readAlong = canReadAlong && !editing;
   const comparing = canCompare && !editing;
   const uncertainCount = x.kind === "audio" ? 0 : countUncertain(x.text);
-  const projectId = (location.state as { projectId?: string } | null)?.projectId;
+  // Read once: starting a job rewrites the URL (`?job=`), which drops the hand-off state.
+  const [projectId] = useState(() => (location.state as { projectId?: string } | null)?.projectId);
 
   // A file shared into the app ("Share → Easy Editor") starts right away.
   const shared = searchParams.get("shared") === "1";
@@ -104,6 +105,21 @@ const Extract = () => {
             <TokenCostBadge action={hint === "image" ? "ocr" : "stt"} quantity={1} />
           ))}
         </header>
+
+        {x.resumable && x.phase === "idle" && (
+          <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border border-warning-border bg-warning-soft p-4">
+            <p className="min-w-0 flex-1 text-sm text-foreground">
+              {(x.resumable.status === "failed"
+                ? t("extract.job_failed", "«{name}» مکمل نہیں ہو سکا۔")
+                : t("extract.job_interrupted", "«{name}» ایپ بند ہونے سے رک گیا تھا۔")).replace("{name}", x.resumable.title)}{" "}
+              {t("extract.job_resume_hint", "جو حصہ ہو چکا وہ دوبارہ نہیں ہوگا۔")}
+            </p>
+            <Button className="gap-2" onClick={x.resume}>
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
+              {t("jobs.resume", "جاری رکھیں")}
+            </Button>
+          </div>
+        )}
 
         {x.phase !== "done" && (
           <>
@@ -188,6 +204,9 @@ const Extract = () => {
               {t(x.progress.labelKey)
                 .replace("{current}", String(x.progress.current))
                 .replace("{total}", String(x.progress.total || "…"))}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {t("extract.runs_in_background", "آپ دوسرا کام کر سکتے ہیں — یہ پس منظر میں چلتا رہے گا اور مکمل ہونے پر اطلاع آئے گی۔")}
             </p>
           </div>
         )}

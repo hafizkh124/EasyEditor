@@ -20,6 +20,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { editorRoute } from "@/lib/routes";
 import { useBookTranslation } from "@/hooks/useBookTranslation";
+import { cancelJob, getJob } from "@/lib/jobs/jobStore";
+import { askJobNotificationPermission } from "@/lib/jobs/notificationPermission";
 import { takePendingBookFile } from "@/lib/translate/pendingBookFile";
 import { GENRE_TRANSLATION_PROMPTS } from "@/lib/translationMemory";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
@@ -103,6 +105,17 @@ export default function TranslateBook() {
     setRangeTo(book.totalPages || 1);
   }, [book.totalPages]);
 
+  // "Resume" from the jobs strip: once the book is loaded again, carry on
+  // from the first untranslated page of the same range (SYSTEM-2026 §9).
+  const [continueJob] = useState(() => (location.state as { continueJob?: string } | null)?.continueJob ?? null);
+  const continuedRef = useRef(false);
+  useEffect(() => {
+    if (!continueJob || continuedRef.current || book.isLoadingSource || book.pages.length === 0 || book.batch || book.backgroundRun) return;
+    continuedRef.current = true;
+    const meta = getJob(continueJob)?.meta as { from?: number; to?: number } | undefined;
+    void book.translateAll(meta?.from ?? 1, meta?.to ?? book.pages.length);
+  }, [continueJob, book]);
+
   const currentBookPage = book.pages.find((p) => p.pageNum === book.currentPage);
   const hasSource = book.sourceKind !== null;
   const needsResume = !hasSource && !!book.projectId && !book.isLoadingSource;
@@ -121,6 +134,7 @@ export default function TranslateBook() {
 
   const confirmTranslateAll = () => {
     setSolvencyOpen(false);
+    askJobNotificationPermission();
     void book.translateAll(runRange[0], runRange[1]);
   };
 
@@ -296,7 +310,7 @@ export default function TranslateBook() {
               {book.totalPages > SAMPLE_PAGES && progress.translatedPages === 0 && (
                 <Button
                   variant="outline" size="sm" className="h-8 gap-1.5 text-xs"
-                  disabled={!!book.batch || book.pages.length === 0}
+                  disabled={!!book.batch || !!book.backgroundRun || book.pages.length === 0}
                   onClick={() => openRun(1, SAMPLE_PAGES)}
                 >
                   <FlaskConical className="h-3.5 w-3.5" aria-hidden="true" />
@@ -306,7 +320,7 @@ export default function TranslateBook() {
               <Button
                 size="sm"
                 className="h-8 gap-1.5 text-xs"
-                disabled={!!book.batch || book.pages.length === 0}
+                disabled={!!book.batch || !!book.backgroundRun || book.pages.length === 0}
                 onClick={() => openRun(rangeFrom, rangeTo)}
               >
                 <Languages className="h-3.5 w-3.5" aria-hidden="true" />
@@ -434,7 +448,7 @@ export default function TranslateBook() {
             onPageChange={book.setCurrentPage}
             glossary={book.glossary}
             streamingText={book.streamingText}
-            busy={!!book.batch || book.isTranslatingSingle}
+            busy={!!book.batch || !!book.backgroundRun || book.isTranslatingSingle}
             retranslatingIndex={book.retranslating?.pageNum === book.currentPage ? book.retranslating.index : null}
             onTranslatePage={() => void book.translateSinglePage(book.currentPage)}
             onUpdateParagraph={(i, text) => book.updateParagraph(book.currentPage, i, text)}
@@ -493,6 +507,15 @@ export default function TranslateBook() {
       )}
 
       {book.batch && <ChunkProgressBar progress={book.batch} onCancel={book.cancelBatch} />}
+      {!book.batch && book.backgroundRun && (
+        <ChunkProgressBar
+          progress={{
+            phase: "running", current: book.backgroundRun.current, total: book.backgroundRun.total,
+            done: book.backgroundRun.current, failed: 0, skipped: 0, tokensSpent: 0, throttled: false,
+          }}
+          onCancel={() => cancelJob(book.backgroundRun!.id)}
+        />
+      )}
 
       <SolvencyDialog
         open={solvencyOpen}

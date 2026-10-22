@@ -1,7 +1,7 @@
 import { ACCEPTED_MEDIA, MAX_FILE_SIZE_BYTES } from "@/lib/audio/formatSupport";
 import {
   transcribeLongForm, TranscribeCancelledError, MAX_DURATION_SECONDS,
-  type SttRoute, type TranscribeLanguage,
+  type ChunkTranscript, type SttRoute, type TranscribeLanguage,
 } from "@/lib/audio/transcribeLongForm";
 import { MAX_PDF_PAGES, getDocumentType, getMaxFileSize } from "@/lib/ocr/documentFormats";
 import { renderPdfPages, getPdfPageCount } from "@/lib/ocr/pdfRenderer";
@@ -90,8 +90,14 @@ export interface ExtractResult {
   pageImages: string[] | null;
 }
 
+/** What a resumed job already has: pages read, audio chunks transcribed. */
+export interface ExtractProgressSaved {
+  pages?: Record<number, string>;
+  chunks?: Record<number, ChunkTranscript>;
+}
+
 export async function runExtraction({
-  file, kind, language, sttRoute, signal, onProgress, pageLabel = "Page",
+  file, kind, language, sttRoute, signal, onProgress, pageLabel = "Page", resume, onSaved,
 }: {
   file: File;
   kind: ExtractKind;
@@ -101,7 +107,12 @@ export async function runExtraction({
   onProgress?: (p: ExtractProgress) => void;
   /** The word for page markers in a multi-page result ("صفحہ"). */
   pageLabel?: string;
+  /** Work kept from an interrupted run of the same file, reused rather than redone. */
+  resume?: ExtractProgressSaved;
+  /** Called with everything finished so far, after each page or chunk — for resuming. */
+  onSaved?: (saved: ExtractProgressSaved) => void;
 }): Promise<ExtractResult> {
+  const saved: ExtractProgressSaved = { pages: { ...resume?.pages }, chunks: { ...resume?.chunks } };
   if (kind === "audio") {
     onProgress?.({ labelKey: "extract.progress_audio", current: 0, total: 0 });
     const result = await transcribeLongForm({
@@ -109,6 +120,11 @@ export async function runExtraction({
       language,
       route: sttRoute,
       signal,
+      doneChunks: saved.chunks,
+      onChunkDone: (index, chunk) => {
+        saved.chunks![index] = chunk;
+        onSaved?.(saved);
+      },
       onProgress: (ev) =>
         onProgress?.({ labelKey: "extract.progress_audio", current: ev.current ?? 0, total: ev.total ?? 0, partial: ev.partialTranscript || undefined }),
     });
@@ -136,7 +152,11 @@ export async function runExtraction({
   for await (const page of renderPdfPages(file, { signal })) {
     if (signal.aborted) throw new TranscribeCancelledError();
     onProgress?.({ labelKey: "extract.progress_page", current: page.pageNum, total: page.totalPages, partial: pages.join("\n\n") || undefined });
-    const pageText = await ocrPageImage(page.imageBase64, page.mimeType);
+    const pageText = saved.pages![page.pageNum] ?? (await ocrPageImage(page.imageBase64, page.mimeType));
+    if (saved.pages![page.pageNum] === undefined) {
+      saved.pages![page.pageNum] = pageText;
+      onSaved?.(saved);
+    }
     pageImages.push(`data:${page.mimeType};base64,${page.imageBase64}`);
     pages.push(total > 1 ? `--- ${pageLabel} ${page.pageNum} ---\n${pageText}` : pageText);
     onProgress?.({ labelKey: "extract.progress_page", current: page.pageNum, total: page.totalPages, partial: pages.join("\n\n") });

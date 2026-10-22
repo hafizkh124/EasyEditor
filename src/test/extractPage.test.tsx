@@ -37,9 +37,10 @@ vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: currentUser, 
 const stableT = (k: string, fb?: string) => fb ?? k;
 vi.mock("@/contexts/LanguageContext", () => ({ useLanguage: () => ({ t: stableT, direction: "rtl", language: "ur" }) }));
 vi.mock("@/hooks/useSeo", () => ({ useSeo: () => {} }));
-const save = vi.fn();
-const reset = vi.fn();
-vi.mock("@/hooks/usePageSession", () => ({ usePageSession: () => ({ save, reset, currentId: null }) }));
+vi.mock("@/hooks/usePageSession", () => ({ usePageSession: () => ({ save: vi.fn(), reset: vi.fn(), currentId: null }) }));
+// The job saves its own result (SYSTEM-2026 §9), whether or not this screen is still open.
+const upsertUserSession = vi.hoisted(() => vi.fn(async () => "sess-1"));
+vi.mock("@/lib/userSessions", () => ({ upsertUserSession }));
 vi.mock("@/lib/activityLog", () => ({ logActivity: vi.fn() }));
 vi.mock("@/components/AppLayout", () => ({ default: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
 vi.mock("@/components/workspace/SaveToLibraryButton", () => ({ SaveToLibraryButton: () => null }));
@@ -108,9 +109,12 @@ describe("Extract page", () => {
     drop(new File(["a"], "bayan.m4a", { type: "audio/mp4" }));
     expect(await screen.findByDisplayValue("بسم اللہ")).toBeInTheDocument();
     expect(transcribeLongForm.mock.calls[0][0]).toMatchObject({ language: "auto", route: "cloud" });
-    expect(save).toHaveBeenCalledWith({ title: "بسم اللہ", metadata: expect.objectContaining({ transcript: "بسم اللہ" }) });
-    // A new extraction never overwrites the previous saved result.
-    expect(reset).toHaveBeenCalled();
+    // Each extraction is a new saved result, never an overwrite of the last one.
+    await waitFor(() =>
+      expect(upsertUserSession).toHaveBeenCalledWith(expect.objectContaining({
+        id: null, userId: "u1", section: "transcribe", title: "بسم اللہ", metadata: expect.objectContaining({ transcript: "بسم اللہ" }),
+      })),
+    );
     fireEvent.click(screen.getByRole("button", { name: /سب کاپی کریں/ }));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith("بسم اللہ"));
   });
@@ -141,9 +145,12 @@ describe("Extract page", () => {
     ocrPageImage.mockResolvedValueOnce("پہلا").mockResolvedValueOnce("دوسرا");
     renderPage();
     drop(new File(["%PDF"], "fatawa.pdf", { type: "application/pdf" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "ترمیم" }));
     const box = (await screen.findByDisplayValue(/دوسرا/)) as HTMLTextAreaElement;
     expect(box.value).toBe("--- صفحہ 1 ---\nپہلا\n\n--- صفحہ 2 ---\nدوسرا");
-    expect(save).toHaveBeenCalledWith(expect.objectContaining({ metadata: { extractedText: box.value } }));
+    await waitFor(() =>
+      expect(upsertUserSession).toHaveBeenCalledWith(expect.objectContaining({ section: "ocr", metadata: { extractedText: box.value } })),
+    );
   });
 
   it("shows a scan beside its text, uncertain words in yellow, page by page", async () => {

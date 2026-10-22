@@ -16,6 +16,11 @@ import {
 } from "@/lib/translate/glossary";
 import { joinParagraphs, pairParagraphs, replaceParagraph, splitParagraphs } from "@/lib/translate/paragraphs";
 import { logger } from "@/lib/logger";
+import {
+  addJob, emitJobEvent, isActive, onJobEvent, registerCancel, updateJob, useJob,
+} from "@/lib/jobs/jobStore";
+import { deleteStash, readStash, writeStash } from "@/lib/jobs/fileStash";
+import { translateStored } from "@/lib/i18n";
 
 const log = logger.child("useBookTranslation");
 
@@ -105,6 +110,17 @@ function pageFromChunk(pageNum: number, existing: ExistingChunk | undefined, bas
   };
 }
 
+/** One queue entry per translation project (SYSTEM-2026 §9). */
+export const translationJobId = (projectId: string) => `translate-${projectId}`;
+/** Where an uploaded PDF is kept on the device, so resuming needs no re-upload. */
+const pdfStashKey = (projectId: string) => `pdf:${projectId}`;
+
+/** A page's change, sent to a re-opened screen while the run goes on elsewhere. */
+interface PageEvent {
+  pageNum: number;
+  patch: Partial<BookPage>;
+}
+
 interface UseBookTranslationOptions {
   /** Called as soon as a project row exists, so the caller can reflect it in the URL. */
   onProjectId?: (projectId: string) => void;
@@ -165,10 +181,28 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
    * state. Functional so a page appended by a still-running PDF render is
    * never lost.
    */
+  const runningJobRef = useRef<string | null>(null);
   const patchPage = useCallback((pageNum: number, patch: Partial<BookPage>) => {
     pagesRef.current = pagesRef.current.map((p) => (p.pageNum === pageNum ? { ...p, ...patch } : p));
     setPages((prev) => prev.map((p) => (p.pageNum === pageNum ? { ...p, ...patch } : p)));
+    if (runningJobRef.current) {
+      const { imageBase64: _image, sourceHtml: _html, ...light } = patch;
+      emitJobEvent(runningJobRef.current, { pageNum, patch: light } satisfies PageEvent);
+    }
   }, []);
+
+  // This project's run in the queue — possibly started by an earlier visit to
+  // this page and still going. Its page changes are followed here.
+  const job = useJob(projectId ? translationJobId(projectId) : null);
+  const backgroundRun = job && isActive(job) && runningJobRef.current !== job.id ? job : undefined;
+  const backgroundId = backgroundRun?.id;
+  useEffect(() => {
+    if (!backgroundId) return;
+    return onJobEvent<PageEvent>(backgroundId, ({ pageNum, patch }) => {
+      pagesRef.current = pagesRef.current.map((p) => (p.pageNum === pageNum ? { ...p, ...patch } : p));
+      setPages((prev) => prev.map((p) => (p.pageNum === pageNum ? { ...p, ...patch } : p)));
+    });
+  }, [backgroundId]);
 
   const setPageStatus = useCallback((pageNum: number, status: PageStatus) => patchPage(pageNum, { status }), [patchPage]);
 
@@ -285,7 +319,9 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     }
 
     try {
-      await ensureProject(titleRef.current, "pdf");
+      const pid = await ensureProject(titleRef.current, "pdf");
+      // Kept on this device so the translation can resume without asking for the file again.
+      if (pid) void writeStash(pdfStashKey(pid), { file, fileName: file.name });
 
       const controller = new AbortController();
       loadAbortRef.current = controller;
@@ -480,6 +516,11 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
         // null); "text"/"image"/null get told to start over instead, since
         // those complete in seconds and a resume prompt for them would just
         // be confusing ("upload PDF" for a project that was never a PDF).
+        const kept = project.source_ref === "pdf" ? await readStash(pdfStashKey(project.id)) : undefined;
+        if (kept?.file) {
+          await loadPdf(kept.file instanceof File ? kept.file : new File([kept.file], kept.fileName ?? "book.pdf", { type: "application/pdf" }));
+          return;
+        }
         setResumeSourceRef(project.source_ref ?? null);
         setIsLoadingSource(false);
       }
@@ -487,7 +528,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
       setSourceError(err instanceof Error ? err.message : "پراجیکٹ لوڈ نہیں ہو سکا۔");
       setIsLoadingSource(false);
     }
-  }, [loadShamelaBook]);
+  }, [loadShamelaBook, loadPdf]);
 
   const setCurrentPage = useCallback((n: number) => {
     setCurrentPageState((prev) => {
@@ -627,10 +668,27 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
 
     let lastDispatch = 0;
     let remainingTokens = tokenBalance.total;
+    let jobId: string | null = null;
+    // Every progress update also moves the queue's entry (SYSTEM-2026 §9).
+    const report = () => {
+      setBatch({ ...progress });
+      if (jobId) updateJob(jobId, { current: progress.done, total: progress.total });
+    };
+    let outOfTokens = false;
     const perPageCost = isBookMode() ? TOKEN_COSTS.translate_book : TOKEN_COSTS.translate;
 
     try {
-      await ensureProject(titleRef.current, sourceMarkerRef.current);
+      const pid = await ensureProject(titleRef.current, sourceMarkerRef.current);
+      if (pid) {
+        jobId = translationJobId(pid);
+        runningJobRef.current = jobId;
+        addJob({
+          id: jobId, kind: "translate", title: titleRef.current || "Translation", status: "running",
+          href: `/translate-book/${pid}`, resumable: true, current: progress.done, total: progress.total,
+          meta: { projectId: pid, from, to },
+        });
+        registerCancel(jobId, () => controller.abort());
+      }
       progress.phase = "running";
 
       for (const { pageNum } of pending) {
@@ -640,18 +698,21 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
           return Boolean(p?.imageBase64 && !p.sourceText?.trim());
         })();
         const pageCost = perPageCost + (needsRead ? TOKEN_COSTS.ocr : 0);
-        if (remainingTokens < pageCost) break;
+        if (remainingTokens < pageCost) {
+          outOfTokens = true;
+          break;
+        }
 
         const wait = DISPATCH_INTERVAL_MS - (Date.now() - lastDispatch);
         if (lastDispatch > 0 && wait > 0) {
           progress.throttled = true;
-          setBatch({ ...progress });
+          report();
           await sleep(wait);
           if (controller.signal.aborted) break;
         }
         progress.throttled = false;
         progress.current += 1;
-        setBatch({ ...progress });
+        report();
         lastDispatch = Date.now();
 
         let result: string | null = null;
@@ -661,7 +722,7 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
           const isRateLimit = err instanceof Error && err.name === "RateLimitError";
           if (isRateLimit && !controller.signal.aborted) {
             progress.throttled = true;
-            setBatch({ ...progress });
+            report();
             await sleep(RETRY_BACKOFF_MS);
             try {
               // The page's text was kept if it was read, so this does not read it again.
@@ -681,19 +742,37 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
           setPageStatus(pageNum, controller.signal.aborted ? "pending" : "failed");
           if (!controller.signal.aborted) progress.failed += 1;
         }
-        setBatch({ ...progress });
+        report();
       }
 
       progress.phase = "finalizing";
-      setBatch({ ...progress });
+      report();
 
       const finishedAll = progress.done + progress.failed >= targets.length && !controller.signal.aborted;
-      if (finishedAll && progress.failed === 0 && projectIdRef.current) {
+      const wholeBook = finishedAll && progress.failed === 0 && from <= 1 && to >= pagesRef.current.length;
+      if (wholeBook && projectIdRef.current) {
         await supabase.from("translation_projects").update({ status: "completed" }).eq("id", projectIdRef.current);
+        void deleteStash(pdfStashKey(projectIdRef.current));
       }
+      if (jobId) {
+        if (controller.signal.aborted) updateJob(jobId, { status: "cancelled" });
+        else if (progress.failed > 0 || outOfTokens) {
+          updateJob(jobId, {
+            status: "failed",
+            error: outOfTokens
+              ? translateStored("jobs.out_of_tokens", "ٹوکن ختم ہو گئے، باقی صفحات رہ گئے۔")
+              : translateStored("jobs.pages_failed", "{n} صفحات کا ترجمہ نہیں ہو سکا۔").replace("{n}", String(progress.failed)),
+          });
+        } else updateJob(jobId, { status: "done" });
+      }
+    } catch (err) {
+      if (jobId) updateJob(jobId, { status: "failed", error: err instanceof Error ? err.message : String(err) });
+      throw err;
     } finally {
       setBatch(null);
       batchAbortRef.current = null;
+      if (jobId) registerCancel(jobId, null);
+      runningJobRef.current = null;
     }
   }, [session, tokenBalance.total, ensureProject, translatePageNow, finishPage, setPageStatus]);
 
@@ -841,6 +920,8 @@ export function useBookTranslation(options: UseBookTranslationOptions = {}) {
     retranslateParagraph,
     retranslating,
     getFullTranslation,
+    /** This project's run, going on from an earlier visit to the page. */
+    backgroundRun,
   };
 }
 

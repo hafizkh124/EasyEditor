@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { JobNotices } from "@/components/jobs/JobNotices";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
@@ -107,6 +108,7 @@ const App = () => (
             <AppRouter>
               <ErrorBoundary>
                 <LocalePrefixSync />
+                <JobNotices />
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                   <Route path="/login" element={<Login />} />
