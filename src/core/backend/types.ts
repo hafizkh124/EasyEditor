@@ -69,6 +69,12 @@ export interface DocumentBackend {
   updateProject(id: string, updates: Partial<Pick<Project, "title" | "meta">>): Promise<Project>;
 
   listDocuments(projectId: string): Promise<Document[]>;
+  /**
+   * Every document of the given folders in ONE round trip, for index views
+   * (sidebar, files, palette). `content_json` is returned empty — use
+   * `getDocument` for a body. Optional: a backend without it is read folder by folder.
+   */
+  listDocumentsIndex?(projectIds: string[]): Promise<Document[]>;
   getDocument(id: string): Promise<Document | null>;
   /** Most recently touched empty document, so `/editor` stops leaving blanks. */
   findBlankDocument(projectId: string): Promise<Document | null>;

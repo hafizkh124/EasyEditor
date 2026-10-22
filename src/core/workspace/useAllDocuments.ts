@@ -49,17 +49,30 @@ async function loadAll(owner: string | null): Promise<Snapshot | null> {
       return { owner, projects: projList, docsMap: {}, allDocs: [], fetchedAt: Date.now() };
     }
 
-    // Parallel fetch across all projects instead of N+1 sequential loop
-    const docResults = await Promise.all(
-      projList.map(async (p: Project) => {
-        try {
-          const list = (await documentService.listDocuments(p.id)) ?? [];
-          return { projectId: p.id, project: p, docs: list };
-        } catch {
-          return { projectId: p.id, project: p, docs: [] };
-        }
-      }),
-    );
+    // One query for every folder when the backend offers it; otherwise per folder.
+    let docResults: { projectId: string; project: Project; docs: Document[] }[];
+    try {
+      if (!documentService.listDocumentsIndex) throw new Error("no index query");
+      const rows = (await documentService.listDocumentsIndex(projList.map((p) => p.id))) ?? [];
+      const byProject = new Map<string, Document[]>();
+      for (const d of rows) {
+        const bucket = byProject.get(d.project_id);
+        if (bucket) bucket.push(d);
+        else byProject.set(d.project_id, [d]);
+      }
+      docResults = projList.map((p) => ({ projectId: p.id, project: p, docs: byProject.get(p.id) ?? [] }));
+    } catch {
+      docResults = await Promise.all(
+        projList.map(async (p: Project) => {
+          try {
+            const list = (await documentService.listDocuments(p.id)) ?? [];
+            return { projectId: p.id, project: p, docs: list };
+          } catch {
+            return { projectId: p.id, project: p, docs: [] };
+          }
+        }),
+      );
+    }
 
     const map: Record<string, Document[]> = {};
     const flatList: DocumentWithProject[] = [];

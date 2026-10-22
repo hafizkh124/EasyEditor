@@ -66,6 +66,21 @@ export const cloudDocuments: DocumentBackend = {
     return data as unknown as Project;
   },
 
+  async listDocumentsIndex(projectIds: string[]): Promise<Document[]> {
+    if (projectIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from("documents" as any)
+      .select(
+        "id, project_id, user_id, title, doc_type, plain_text, sort_order, status, word_count, text_direction, created_at, updated_at",
+      )
+      .in("project_id", projectIds)
+      .order("sort_order", { ascending: true })
+      .order("updated_at", { ascending: false });
+
+    if (error) throw error;
+    return ((data as unknown as Document[]) || []).map((d) => ({ ...d, content_json: {} }));
+  },
+
   async listDocuments(projectId: string): Promise<Document[]> {
     const { data, error } = await supabase
       .from("documents" as any)
