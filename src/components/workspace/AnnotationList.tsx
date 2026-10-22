@@ -47,10 +47,10 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
               placeholder={t("annotations.write_placeholder", "Write a note…")}
-              className="h-7 text-xs"
+              className="h-7 min-h-touch md:min-h-0 text-xs"
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
-            <Button size="sm" className="h-7 px-2 text-xs gap-1 bg-warning hover:bg-warning/90 text-warning-foreground" onClick={handleAdd}>
+            <Button size="sm" className="h-7 min-h-touch md:min-h-0 px-2 text-xs gap-1 bg-warning hover:bg-warning/90 text-warning-foreground" onClick={handleAdd}>
               <Plus className="h-3.5 w-3.5" />
               {t("annotations.add", "Add")}
             </Button>
@@ -84,7 +84,7 @@ export const AnnotationList: React.FC<AnnotationListProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                      className="h-5 w-5 min-h-touch min-w-touch md:min-h-0 md:min-w-0 p-0 text-muted-foreground hover:text-destructive shrink-0"
                       onClick={() => onDeleteAnnotation(item.id)}
                       aria-label={t("sidebar.delete", "Delete")}
                     >

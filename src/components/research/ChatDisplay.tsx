@@ -453,8 +453,8 @@ const ChatDisplay = ({
               </ol>
               <p className="text-muted-foreground">{t("agent.file_approval_note", "This file is outside the project. A backup copy is saved beside it first; content changes land as tracked changes.")}</p>
               <div className="flex gap-2">
-                <Button size="sm" className="h-7 text-xs" onClick={() => void agent.decideFileWrite("approved")}>{t("agent.file_approval_approve", "کام شروع کریں")}</Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void agent.decideFileWrite("rejected")}>{t("agent.file_approval_reject", "منسوخ کریں")}</Button>
+                <Button size="sm" className="h-7 min-h-touch md:min-h-0 text-xs" onClick={() => void agent.decideFileWrite("approved")}>{t("agent.file_approval_approve", "کام شروع کریں")}</Button>
+                <Button size="sm" variant="outline" className="h-7 min-h-touch md:min-h-0 text-xs" onClick={() => void agent.decideFileWrite("rejected")}>{t("agent.file_approval_reject", "منسوخ کریں")}</Button>
               </div>
             </div>
           )}
@@ -463,8 +463,8 @@ const ChatDisplay = ({
             <div className="rounded border border-primary/40 bg-primary/5 p-2 text-xs space-y-2">
               <p className="font-medium">{t("agent.plan_ready", "Review the plan above, then approve it to continue.")}</p>
               <div className="flex gap-2">
-                <Button size="sm" className="h-7 text-xs" onClick={() => void agent.decidePlan("approved")}>{t("agent.plan_approve", "Approve & run")}</Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void agent.decidePlan("rejected")}>{t("agent.plan_reject", "Cancel")}</Button>
+                <Button size="sm" className="h-7 min-h-touch md:min-h-0 text-xs" onClick={() => void agent.decidePlan("approved")}>{t("agent.plan_approve", "Approve & run")}</Button>
+                <Button size="sm" variant="outline" className="h-7 min-h-touch md:min-h-0 text-xs" onClick={() => void agent.decidePlan("rejected")}>{t("agent.plan_reject", "Cancel")}</Button>
               </div>
             </div>
           )}
@@ -542,7 +542,7 @@ const ChatDisplay = ({
                   {(["formalize", "humanize", "shorten"] as const).map((action) => (
                     <Button
                       key={action}
-                      variant="ghost" size="sm" className="h-7 gap-1 text-xs"
+                      variant="ghost" size="sm" className="h-7 min-h-touch md:min-h-0 gap-1 text-xs"
                       disabled={agent.refiningAnswer}
                       onClick={() => void agent.refineLastAnswer(action)}
                     >
@@ -550,11 +550,11 @@ const ChatDisplay = ({
                       {t(`research.${action}` as Parameters<typeof t>[0])}
                     </Button>
                   ))}
-                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs ms-auto" disabled={agent.refiningAnswer} onClick={agent.regenerateLast}>
+                  <Button variant="ghost" size="sm" className="h-7 min-h-touch md:min-h-0 gap-1 text-xs ms-auto" disabled={agent.refiningAnswer} onClick={agent.regenerateLast}>
                     {agent.refiningAnswer ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                     {t("research.regenerate")}
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => copyMessage(agent.result?.answer ?? "")}>
+                  <Button variant="ghost" size="sm" className="h-7 min-h-touch md:min-h-0 gap-1 text-xs" onClick={() => copyMessage(agent.result?.answer ?? "")}>
                     <Copy className="h-3 w-3" />
                     {t("research.copy")}
                   </Button>
@@ -588,13 +588,13 @@ const ChatDisplay = ({
               {agent.modeUpgradeRequest && (
                 <div className="rounded border border-primary/40 bg-primary/5 p-2 text-xs space-y-2">
                   <div className="flex gap-2">
-                    <Button size="sm" className="h-7 text-xs" onClick={() => agent.approveModeUpgrade()}>
+                    <Button size="sm" className="h-7 min-h-touch md:min-h-0 text-xs" onClick={() => agent.approveModeUpgrade()}>
                       {t(
                         agent.modeUpgradeRequest.targetMode === "auto" ? "agent.mode_upgrade_approve_auto" : "agent.mode_upgrade_approve_plan",
                         agent.modeUpgradeRequest.targetMode === "auto" ? "Switch to Auto & retry" : "Switch to Plan & retry",
                       )}
                     </Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => agent.declineModeUpgrade()}>
+                    <Button size="sm" variant="outline" className="h-7 min-h-touch md:min-h-0 text-xs" onClick={() => agent.declineModeUpgrade()}>
                       {t("agent.mode_upgrade_decline", "Not now")}
                     </Button>
                   </div>
@@ -611,12 +611,12 @@ const ChatDisplay = ({
                     ))}
                   </ul>
                   {agent.optionsApplied ? (
-                    <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => void agent.revertOptions()}>
+                    <Button size="sm" variant="outline" className="h-7 min-h-touch md:min-h-0 gap-1.5 text-xs" onClick={() => void agent.revertOptions()}>
                       <Undo2 className="h-3.5 w-3.5" />
                       {t("agent.revert_settings", "Revert Word settings")}
                     </Button>
                   ) : (
-                    <Button size="sm" className="h-7 gap-1.5 text-xs" onClick={() => void agent.applyOptions()}>
+                    <Button size="sm" className="h-7 min-h-touch md:min-h-0 gap-1.5 text-xs" onClick={() => void agent.applyOptions()}>
                       {t("agent.apply_settings", "Apply {n} change(s)").replace("{n}", String(agent.pendingOptions.length))}
                     </Button>
                   )}
@@ -631,7 +631,7 @@ const ChatDisplay = ({
                   {agent.ocrGranted ? (
                     <p className="text-muted-foreground">{t("agent.ocr_consent_granted", "OCR approved for this project — run the task again.")}</p>
                   ) : (
-                    <Button size="sm" className="h-7 gap-1.5 text-xs" onClick={() => void agent.grantOcr()}>
+                    <Button size="sm" className="h-7 min-h-touch md:min-h-0 gap-1.5 text-xs" onClick={() => void agent.grantOcr()}>
                       {t("agent.ocr_consent_approve", "Approve cloud OCR for this project")}
                     </Button>
                   )}
@@ -645,11 +645,11 @@ const ChatDisplay = ({
                     <p className="font-mono break-all" dir="ltr">{e.path}</p>
                     <p className="text-muted-foreground" dir="ltr">{t("agent.external_backup", "Backup")}: {e.backup.split(/[\\/]/).pop()}</p>
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => void agent.openExternal(e.path)}>
+                      <Button size="sm" variant="outline" className="h-7 min-h-touch md:min-h-0 gap-1.5 text-xs" onClick={() => void agent.openExternal(e.path)}>
                         <FileText className="h-3.5 w-3.5" />
                         {t("agent.open_in_word", "ورڈ میں کھولیں")}
                       </Button>
-                      <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => void agent.restoreExternal(e)} disabled={restored}>
+                      <Button size="sm" variant="outline" className="h-7 min-h-touch md:min-h-0 gap-1.5 text-xs" onClick={() => void agent.restoreExternal(e)} disabled={restored}>
                         <Undo2 className="h-3.5 w-3.5" />
                         {restored ? t("agent.external_restored", "Original restored") : t("agent.restore_original", "اصل حالت بحال کریں")}
                       </Button>
@@ -659,7 +659,7 @@ const ChatDisplay = ({
               })}
               {/* M13 (ADR-0061) — undo organize_files. */}
               {(agent.result.fileOps?.length ?? 0) > 0 && (
-                <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => void agent.undoFileOps()} disabled={agent.fileOpsUndone}>
+                <Button size="sm" variant="outline" className="h-7 min-h-touch md:min-h-0 gap-1.5 text-xs" onClick={() => void agent.undoFileOps()} disabled={agent.fileOpsUndone}>
                   <Undo2 className="h-3.5 w-3.5" />
                   {agent.fileOpsUndone
                     ? t("agent.file_ops_undone", "Files put back")
@@ -670,7 +670,7 @@ const ChatDisplay = ({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 gap-1.5 text-xs"
+                  className="h-7 min-h-touch md:min-h-0 gap-1.5 text-xs"
                   onClick={() => void agent.undoTask()}
                   disabled={agent.undone}
                 >

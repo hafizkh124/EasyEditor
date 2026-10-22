@@ -78,15 +78,15 @@ export const VoiceCloningDialog: React.FC<DialogProps> = ({ open, onClose, onClo
           always Urdu regardless of the app's current language. */}
       <DialogContent className="sm:max-w-[500px]" dir="rtl">
         <DialogHeader>
-          <DialogTitle className="text-right font-bold">
+          <DialogTitle className="text-end font-bold">
             اخلاقی صوتی کلوننگ (Live Voice Enrollment)
           </DialogTitle>
-          <DialogDescription className="text-right text-xs text-muted-foreground">
+          <DialogDescription className="text-end text-xs text-muted-foreground">
             FR-6.12 کے تحت: صرف مائیکرو فون سے لائیو ریکارڈنگ اجازت یافتہ ہے۔ آڈیو فائل اپ لوڈ کی اجازت نہیں ہے۔
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4 text-right">
+        <div className="space-y-4 py-4 text-end">
           {error && (
             <div className="p-3 border rounded-lg bg-destructive/10 text-destructive text-xs">
               {error}

@@ -21,10 +21,10 @@ export const OnlineEngineConsentDialog: React.FC<ConsentProps> = ({ open, onAcce
     <AlertDialog open={open}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-right font-bold">
+          <AlertDialogTitle className="text-end font-bold">
             آن لائن صوتی سروس کی اجازت (Microsoft Edge TTS)
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-right space-y-2 dir-rtl">
+          <AlertDialogDescription className="text-end space-y-2 dir-rtl">
             یہ انجن منتخب کرنے پر آپ کا متن <strong>Microsoft</strong> کی کلاؤڈ سروس کو پروسیسنگ کے لیے بھیجا جائے گا۔
             <br />
             اگر آپ مکمل پرائیویسی اور آف لائن استعمال چاہتے ہیں تو <strong>Piper (مقامی)</strong> انجن استعمال کریں۔

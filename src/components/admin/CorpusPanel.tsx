@@ -105,11 +105,11 @@ const CorpusPanel = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="pb-2 pr-4">{t("admin.corpus_domain")}</th>
-                    <th className="pb-2 pr-4">{t("admin.corpus_type")}</th>
-                    <th className="pb-2 pr-4 text-right">{t("admin.corpus_total")}</th>
-                    <th className="pb-2 pr-4 text-right">{t("admin.corpus_embedded")}</th>
+                  <tr className="border-b border-border text-start text-xs text-muted-foreground">
+                    <th className="pb-2 pe-4">{t("admin.corpus_domain")}</th>
+                    <th className="pb-2 pe-4">{t("admin.corpus_type")}</th>
+                    <th className="pb-2 pe-4 text-end">{t("admin.corpus_total")}</th>
+                    <th className="pb-2 pe-4 text-end">{t("admin.corpus_embedded")}</th>
                     <th className="pb-2 min-w-[120px]">{t("admin.corpus_progress")}</th>
                   </tr>
                 </thead>
@@ -118,14 +118,14 @@ const CorpusPanel = () => {
                     const pct = row.total > 0 ? Math.round((row.embedded / row.total) * 100) : 0;
                     return (
                       <tr key={i} className="py-2">
-                        <td className="py-2 pr-4 font-medium">{row.domain}</td>
-                        <td className="py-2 pr-4 text-muted-foreground">{row.source_type}</td>
-                        <td className="py-2 pr-4 text-right tabular-nums">{row.total.toLocaleString()}</td>
-                        <td className="py-2 pr-4 text-right tabular-nums">{row.embedded.toLocaleString()}</td>
+                        <td className="py-2 pe-4 font-medium">{row.domain}</td>
+                        <td className="py-2 pe-4 text-muted-foreground">{row.source_type}</td>
+                        <td className="py-2 pe-4 text-end tabular-nums">{row.total.toLocaleString()}</td>
+                        <td className="py-2 pe-4 text-end tabular-nums">{row.embedded.toLocaleString()}</td>
                         <td className="py-2">
                           <div className="flex items-center gap-2">
                             <Progress value={pct} className="h-1.5 flex-1" />
-                            <span className="text-xs text-muted-foreground w-9 text-right">{pct}%</span>
+                            <span className="text-xs text-muted-foreground w-9 text-end">{pct}%</span>
                           </div>
                         </td>
                       </tr>
@@ -135,10 +135,10 @@ const CorpusPanel = () => {
                 <tfoot>
                   <tr className="border-t border-border font-semibold">
                     <td colSpan={2} className="pt-2 text-xs text-muted-foreground">Total</td>
-                    <td className="pt-2 text-right tabular-nums text-xs">
+                    <td className="pt-2 text-end tabular-nums text-xs">
                       {corpusStats.reduce((s, r) => s + r.total, 0).toLocaleString()}
                     </td>
-                    <td className="pt-2 text-right tabular-nums text-xs">
+                    <td className="pt-2 text-end tabular-nums text-xs">
                       {corpusStats.reduce((s, r) => s + r.embedded, 0).toLocaleString()}
                     </td>
                     <td />
@@ -159,19 +159,19 @@ const CorpusPanel = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="pb-2 pr-3">{t("admin.ingest_job_dataset")}</th>
-                    <th className="pb-2 pr-3">{t("admin.ingest_job_status")}</th>
-                    <th className="pb-2 pr-3 text-right">{t("admin.ingest_job_processed")}</th>
-                    <th className="pb-2 pr-3 text-right">{t("admin.ingest_job_errors")}</th>
+                  <tr className="border-b border-border text-start text-xs text-muted-foreground">
+                    <th className="pb-2 pe-3">{t("admin.ingest_job_dataset")}</th>
+                    <th className="pb-2 pe-3">{t("admin.ingest_job_status")}</th>
+                    <th className="pb-2 pe-3 text-end">{t("admin.ingest_job_processed")}</th>
+                    <th className="pb-2 pe-3 text-end">{t("admin.ingest_job_errors")}</th>
                     <th className="pb-2">{t("admin.ingest_job_started")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {ingestJobs.map((job) => (
                     <tr key={job.id}>
-                      <td className="py-2 pr-3 font-medium">{job.dataset}</td>
-                      <td className="py-2 pr-3">
+                      <td className="py-2 pe-3 font-medium">{job.dataset}</td>
+                      <td className="py-2 pe-3">
                         <Badge variant={
                           job.status === "done" ? "default" :
                           job.status === "error" ? "destructive" :
@@ -180,8 +180,8 @@ const CorpusPanel = () => {
                           {job.status}
                         </Badge>
                       </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{job.processed.toLocaleString()}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
+                      <td className="py-2 pe-3 text-end tabular-nums">{job.processed.toLocaleString()}</td>
+                      <td className="py-2 pe-3 text-end tabular-nums">
                         {job.errors > 0
                           ? <span className="text-destructive">{job.errors}</span>
                           : <span className="text-muted-foreground">0</span>

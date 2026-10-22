@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { readerService } from "@/core/workspace/readerService";
 import type { ReadingProgress, ReaderBookmark } from "@/core/backend/types";
+import { logger } from "@/lib/logger";
+
+const log = logger.child("useReaderProgress");
 
 /**
  * SPEC-M6 Phase 8 (Favorites & Progress): reader-side state for reading
@@ -73,7 +76,7 @@ export function useReaderProgress(
       const pending = pendingRef.current;
       pendingRef.current = null;
       if (!pending) return;
-      readerService.saveReadingProgress(pending.bookId, pending.page, pending.count).catch(() => {});
+      readerService.saveReadingProgress(pending.bookId, pending.page, pending.count).catch((err) => log.warn("could not save reading progress", { err }));
     }, 500);
   }, []);
 
@@ -84,7 +87,7 @@ export function useReaderProgress(
       const pending = pendingRef.current;
       pendingRef.current = null;
       if (pending) {
-        readerService.saveReadingProgress(pending.bookId, pending.page, pending.count).catch(() => {});
+        readerService.saveReadingProgress(pending.bookId, pending.page, pending.count).catch((err) => log.warn("could not save reading progress", { err }));
       }
     };
   }, []);
