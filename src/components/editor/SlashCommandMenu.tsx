@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import type { Editor } from "@tiptap/react";
 import {
   Sparkles, Eraser, CheckCheck, RefreshCw, FileText, BookmarkCheck,
@@ -19,6 +20,8 @@ interface SlashCommandMenuProps {
   onRunRecipe?: (recipe: Recipe) => void;
   /** `/متن نکالیں`: choose a file whose text goes in at the cursor. */
   onExtract?: () => void;
+  /** A phone: the menu spans the editor's width with full-size rows, instead of hanging off the edge from the caret. */
+  isMobile?: boolean;
 }
 
 interface CommandItemOption {
@@ -50,13 +53,16 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
   onNavigateSpeak,
   onRunRecipe,
   onExtract,
+  isMobile = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [query, setQuery] = useState("");
   /** Exact document range of the typed `/query`, and where to draw the popup. */
   const [trigger, setTrigger] = useState<
-    { from: number; to: number; top: number; left: number } | null
+    // Anchored by `left` in left-to-right text and by `right` in right-to-left
+    // text, so the menu opens toward the page, never past the editor's edge.
+    { from: number; to: number; top: number; left?: number; right?: number } | null
   >(null);
 
   const close = useCallback(() => {
@@ -171,11 +177,18 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
       const rect = container.getBoundingClientRect();
       const caret = editor.view.coordsAtPos(from);
 
+      // Direction of the paragraph being typed in — the editor sets it per
+      // block, so the editor root alone says nothing.
+      const at = editor.view.domAtPos(from).node;
+      const block = at instanceof Element ? at : at.parentElement;
+      const rtl = getComputedStyle(block ?? editor.view.dom).direction === "rtl";
       setTrigger({
         from,
         to: $from.pos,
         top: caret.bottom - rect.top + 6,
-        left: Math.min(Math.max(caret.left - rect.left, 8), Math.max(8, rect.width - 8)),
+        ...(rtl
+          ? { right: Math.min(Math.max(rect.right - caret.right, 8), Math.max(8, rect.width - 8)) }
+          : { left: Math.min(Math.max(caret.left - rect.left, 8), Math.max(8, rect.width - 8)) }),
       });
       setQuery(typed);
       setIsOpen(true);
@@ -243,13 +256,47 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
     return () => dom.removeEventListener("keydown", handleKeyDown, true);
   }, [isOpen, filteredOptions, selectedIndex, editor, runOption, close]);
 
+  // Keep the menu inside the editor: a "/" near the far edge (a new, still
+  // directionless line in Urdu text, say) would otherwise open off its side.
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [shiftX, setShiftX] = useState(0);
+  const optionCount = filteredOptions.length;
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    const box = menu?.offsetParent as HTMLElement | null | undefined;
+    if (!menu || !box || isMobile) {
+      setShiftX(0);
+      return;
+    }
+    // Layout sizes, not the bounding box: the opening animation scales the menu.
+    const width = menu.offsetWidth;
+    const boxWidth = box.clientWidth;
+    const baseLeft = menu.offsetLeft - shiftX;
+    let next = 0;
+    if (baseLeft + width > boxWidth - 8) next = boxWidth - 8 - width - baseLeft;
+    if (baseLeft + next < 8) next = 8 - baseLeft;
+    if (Math.round(next) !== Math.round(shiftX)) setShiftX(next);
+    // shiftX is read only to undo itself; re-measure when the menu moves or resizes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trigger, optionCount, isMobile, isOpen]);
+
   if (!isOpen || !trigger || filteredOptions.length === 0) return null;
 
   return (
     <div
+      ref={menuRef}
       data-testid="slash-command-menu"
-      style={{ position: "absolute", top: `${trigger.top}px`, left: `${trigger.left}px` }}
-      className="z-50 min-w-[240px] max-w-sm rounded-lg border border-border bg-popover p-1.5 shadow-xl text-popover-foreground animate-in fade-in zoom-in-95"
+      style={
+        isMobile
+          ? { position: "absolute", top: `${trigger.top}px`, insetInline: "8px" }
+          : trigger.right !== undefined
+            ? { position: "absolute", top: `${trigger.top}px`, right: `${(trigger.right ?? 0) - shiftX}px` }
+            : { position: "absolute", top: `${trigger.top}px`, left: `${(trigger.left ?? 0) + shiftX}px` }
+      }
+      className={cn(
+        "z-50 rounded-lg border border-border bg-popover p-1.5 shadow-xl text-popover-foreground animate-in fade-in zoom-in-95",
+        !isMobile && "min-w-[240px] max-w-sm",
+      )}
       dir="rtl"
       role="listbox"
       aria-label="ایڈیٹر کمانڈ مینو"
@@ -268,9 +315,11 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
               role="option"
               aria-selected={isSelected}
               onClick={() => runOption(opt)}
-              className={`w-full text-end px-2.5 py-1.5 rounded text-xs flex items-center gap-2 transition-colors ${
-                isSelected ? "bg-primary text-primary-foreground font-medium" : "hover:bg-accent text-foreground"
-              }`}
+              className={cn(
+                "w-full text-end px-2.5 py-1.5 rounded text-xs flex items-center gap-2 transition-colors",
+                isMobile && "min-h-touch text-sm",
+                isSelected ? "bg-primary text-primary-foreground font-medium" : "hover:bg-accent text-foreground",
+              )}
             >
               <Icon className="h-4 w-4 shrink-0" />
               <span className="truncate flex-1">{opt.label}</span>

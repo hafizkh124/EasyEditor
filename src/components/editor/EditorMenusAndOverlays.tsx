@@ -115,9 +115,12 @@ export const EditorMenusAndOverlays: React.FC<EditorMenusAndOverlaysProps> = ({
             isMobile={isMobile}
             onOpenMobileSheet={setMobileSheetText}
           />
-          {!isMobile && (
-            <SlashCommandMenu editor={editor} actions={aiActions} onAutoFormat={handleAutoFormat} onRunRecipe={setRecipeToRun} onExtract={onExtract} />
-          )}
+          {/* "/" on phones too (same features everywhere, SYSTEM-2026 §1): skills,
+              recipes and "extract text here" had no other way in there. */}
+          <SlashCommandMenu
+            editor={editor} actions={aiActions} onAutoFormat={handleAutoFormat}
+            onRunRecipe={setRecipeToRun} onExtract={onExtract} isMobile={isMobile}
+          />
           <RecipeRunDialog recipe={recipeToRun} onClose={() => setRecipeToRun(null)} />
           <MobileTaskSheet
             open={mobileSheetText !== null}
