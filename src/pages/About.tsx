@@ -133,17 +133,13 @@ const About = () => {
             )}
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/signup">
-              <Button size="lg" className="h-12 gap-2 px-6 text-base">
+            <Button asChild size="lg" className="h-12 gap-2 px-6 text-base"><Link to="/signup">
                 {pick(lang, "Create account", "اکاؤنٹ بنائیں", "إنشاء حساب")}
                 <ArrowRight className="h-4 w-4 rtl:rotate-180" />
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="outline" size="lg" className="h-12 px-6 text-base">
+              </Link></Button>
+            <Button asChild variant="outline" size="lg" className="h-12 px-6 text-base"><Link to="/login">
                 {pick(lang, "Sign in for research", "ریسرچ کے لیے لاگ ان کریں", "سجّل الدخول للبحث")}
-              </Button>
-            </Link>
+              </Link></Button>
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
             {pick(
@@ -214,17 +210,13 @@ const About = () => {
             )}
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/signup">
-              <Button size="lg" className="h-12 gap-2 px-6 text-base">
+            <Button asChild size="lg" className="h-12 gap-2 px-6 text-base"><Link to="/signup">
                 {pick(lang, "Create account", "اکاؤنٹ بنائیں", "إنشاء حساب")}
                 <ArrowRight className="h-4 w-4 rtl:rotate-180" />
-              </Button>
-            </Link>
-            <Link to="/faq/is-ai-haram-in-islam">
-              <Button variant="outline" size="lg" className="h-12 px-6 text-base">
+              </Link></Button>
+            <Button asChild variant="outline" size="lg" className="h-12 px-6 text-base"><Link to="/faq/is-ai-haram-in-islam">
                 {pick(lang, "Is AI haram in Islam?", "کیا AI حرام ہے؟", "هل الذكاء الاصطناعي حرام؟")}
-              </Button>
-            </Link>
+              </Link></Button>
           </div>
         </div>
       </section>

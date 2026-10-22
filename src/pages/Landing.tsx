@@ -186,12 +186,10 @@ const Landing = () => {
             </h1>
             <p className="text-lg text-muted-foreground md:text-xl">{HERO.subtitle[lang]}</p>
             <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Link to="/signup">
-                <Button size="lg" className="h-12 gap-2 px-6 text-base">
+              <Button asChild size="lg" className="h-12 gap-2 px-6 text-base"><Link to="/signup">
                   {HERO.ctaSignup[lang]}
                   <ArrowRight className="h-4 w-4 rtl:rotate-180" />
-                </Button>
-              </Link>
+                </Link></Button>
               <Button asChild variant="outline" size="lg" className="h-12 gap-2 px-6 text-base">
                 <a href={DESKTOP_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
                   <Download className="h-4 w-4" />
@@ -461,17 +459,13 @@ const Landing = () => {
             {FINAL_CTA.subtitle[lang]}
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/signup">
-              <Button size="lg" className="h-12 gap-2 px-6 text-base">
+            <Button asChild size="lg" className="h-12 gap-2 px-6 text-base"><Link to="/signup">
                 {HERO.ctaSignup[lang]}
                 <ArrowRight className="h-4 w-4 rtl:rotate-180" />
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="outline" size="lg" className="h-12 px-6 text-base">
+              </Link></Button>
+            <Button asChild variant="outline" size="lg" className="h-12 px-6 text-base"><Link to="/login">
                 {t("auth.login")}
-              </Button>
-            </Link>
+              </Link></Button>
           </div>
         </div>
       </section>

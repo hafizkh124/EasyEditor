@@ -66,9 +66,7 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link to="/login">
-              <Button variant="outline" size="sm">{t("auth.login")}</Button>
-            </Link>
+            <Button asChild variant="outline" size="sm"><Link to="/login">{t("auth.login")}</Link></Button>
           </nav>
         </div>
       </header>

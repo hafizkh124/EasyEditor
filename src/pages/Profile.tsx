@@ -237,9 +237,7 @@ const Profile = () => {
               {(() => {
                 const upgradeKey = getUpgradeLabelKey(tier);
                 return upgradeKey ? (
-                  <Link to="/pricing">
-                    <Button variant="outline" size="sm">{t(upgradeKey as import("@/lib/i18n").TranslationKey)}</Button>
-                  </Link>
+                  <Button asChild variant="outline" size="sm"><Link to="/pricing">{t(upgradeKey as import("@/lib/i18n").TranslationKey)}</Link></Button>
                 ) : null;
               })()}
             </div>
