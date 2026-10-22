@@ -38,7 +38,8 @@ describe('assertSafeOutputPath', () => {
     expect(() => assertSafeOutputPath(path.join(dir, 'o\0ut.docx'), ['.docx'])).toThrow(UnsafePathError);
   });
 
-  it('rejects writing into a system directory', () => {
+  // Windows-only semantics (drive-letter paths / C:\Windows / case-insensitive compare) — runs on Windows, skipped on POSIX CI.
+  it.skipIf(process.platform !== 'win32')('rejects writing into a system directory', () => {
     const sys = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'evil.docx');
     expect(() => assertSafeOutputPath(sys, ['.docx'])).toThrow(/system directory/);
   });

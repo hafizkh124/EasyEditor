@@ -48,7 +48,8 @@ export function saveJkhssnPath(p: string): void {
 function hadithDbFrom(root: string): string | null {
   const direct = fs.existsSync(path.join(root, JKHSSN_DISCOVERY_KEY)) ? root : null;
   if (direct) return direct;
-  const nested = path.join(root, JKHSSN_HADITHDB_SUBPATH);
+  // the constant is written with Windows separators; split so it also resolves on POSIX
+  const nested = path.join(root, ...JKHSSN_HADITHDB_SUBPATH.split(/[\\/]/));
   return fs.existsSync(path.join(nested, JKHSSN_DISCOVERY_KEY)) ? nested : null;
 }
 

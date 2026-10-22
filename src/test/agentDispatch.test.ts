@@ -300,6 +300,29 @@ describe('agent dispatch', () => {
     expect(ledger.size).toBe(1);
   });
 
+  it('verify_citation checks claimed details against the retrieved dorar chunk and gates insert_footnote', async () => {
+    const researchSearch = vi.fn(async () => ({
+      answer: '…',
+      citations: [{ domain: 'dorar', citation_ref: { book: 'التمهيد', hadith_number: '21', grade: 'خطأ في إسناده', mohdith: 'ابن عبدالبر' }, url: 'https://dorar/1' }],
+    }));
+    const { dispatch, ledger } = mk({ researchSearch });
+    const g = await dispatch('grade_hadith', { text: 'x' }) as { results: Array<{ id: string }> };
+    const id = g.results[0].id;
+    expect((ledger.get(id)?.locus?.gradedBy)).toBe('ابن عبدالبر');
+
+    const ok = await dispatch('verify_citation', { source_id: id, book: 'التمهيد', number: '21', graded_by: 'ابن عبدالبر' }) as { status: string };
+    expect(ok.status).toBe('verified');
+
+    const bad = await dispatch('verify_citation', { source_id: id, book: 'التمهيد', number: '99' }) as { status: string; instruction: string };
+    expect(bad.status).toBe('partial');
+    expect(bad.instruction).toMatch(/number/);
+    // a footnote for a source that failed verification is refused
+    await expect(dispatch('insert_footnote', { chapter: '01.docx', marker: '[1]', source_id: id })).rejects.toThrow(/لم أقف عليه/);
+
+    const unknown = await dispatch('verify_citation', { source_id: 'nope', page: '1' }) as { error?: string };
+    expect(unknown.error).toMatch(/not one of the/);
+  });
+
   it('grade_hadith falls back to the direct adapter when the bridge has no dorar rows', async () => {
     const researchSearch = vi.fn(async () => ({ answer: '…', citations: [{ domain: 'hadith', citation_ref: { collection: 'البخاري', hadith_number: 1 } }] }));
     gradeHadith.mockResolvedValueOnce({ chunks: [{ id: 'dorar:abc123', reference: 'صحيح البخاري ١ — الحكم: صحيح (الدرر السنية)', content: 'متن', grade: 'صحيح' }], note: undefined, error: undefined });
@@ -798,7 +821,8 @@ describe('build_spreadsheet (M12 Phase D — multi-sheet, formulas, formatting, 
     { name: 'خلاصہ', data: [['کل', 100000]] },
   ]);
 
-  it('parses "sheets" as JSON and calls buildWorkbook once with every sheet, format defaulted from the extension', async () => {
+  // Windows-only semantics (drive-letter paths / C:\Windows / case-insensitive compare) — runs on Windows, skipped on POSIX CI.
+  it.skipIf(process.platform !== 'win32')('parses "sheets" as JSON and calls buildWorkbook once with every sheet, format defaulted from the extension', async () => {
     const { dispatch } = mk();
     const r = await dispatch('build_spreadsheet', { filePath: 'zakat.xlsx', sheets }) as { path: string; format: string; sheets: number; note: string };
     expect(excelMock.buildWorkbook).toHaveBeenCalledTimes(1);
@@ -1107,7 +1131,8 @@ describe('research_topic (bounded sub-run, M9 Phase E)', () => {
 });
 
 describe('P9 tools — font / template / global options', () => {
-  it('install_font rejects a URL and a relative path, but installs an absolute font file', async () => {
+  // Windows-only semantics (drive-letter paths / C:\Windows / case-insensitive compare) — runs on Windows, skipped on POSIX CI.
+  it.skipIf(process.platform !== 'win32')('install_font rejects a URL and a relative path, but installs an absolute font file', async () => {
     const { dispatch } = mk();
     expect(await dispatch('install_font', { font_path: 'https://example.com/x.ttf' })).toMatchObject({ error: expect.stringMatching(/URL/i) });
     expect(await dispatch('install_font', { font_path: 'fonts/x.ttf' })).toMatchObject({ error: expect.stringMatching(/absolute/i) });
@@ -1116,7 +1141,8 @@ describe('P9 tools — font / template / global options', () => {
     expect(wordMock.installFont).toHaveBeenCalledWith('C:\\fonts\\Jameel.ttf');
   });
 
-  it('install_template checkpoints + backs up the chapter it attaches to', async () => {
+  // Windows-only semantics (drive-letter paths / C:\Windows / case-insensitive compare) — runs on Windows, skipped on POSIX CI.
+  it.skipIf(process.platform !== 'win32')('install_template checkpoints + backs up the chapter it attaches to', async () => {
     const { dispatch } = mk();
     await dispatch('install_template', { template_path: 'C:\\t\\thesis.dotx', chapter: '01.docx' });
     expect(recordEdit).toHaveBeenCalledWith('C:\\p', 'cp_1', '01.docx');

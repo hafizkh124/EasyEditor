@@ -200,21 +200,21 @@ export const ChunkInspectorDialog: React.FC<ChunkInspectorDialogProps> = ({ item
                     <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-mono font-bold text-foreground">#{chunk.chunk_index}</span>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        <Badge variant="outline" className="text-xs px-1.5 py-0">
                           {fill(t("library.chunks.chars", "{start} – {end} chars"), {
                             start: chunk.char_start ?? "?",
                             end: chunk.char_end ?? "?",
                           })}
                         </Badge>
                         {chunk.page_number != null && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          <Badge variant="secondary" className="text-xs px-1.5 py-0">
                             {fill(t("library.chunks.page", "p. {n}"), { n: chunk.page_number })}
                           </Badge>
                         )}
                         {metaKind && (
                           <Badge
                             variant="secondary"
-                            className={`text-[10px] px-1.5 py-0 ${
+                            className={`text-xs px-1.5 py-0 ${
                               metaKind === "hadith"
                                 ? "bg-success/15 text-success"
                                 : metaKind === "fiqh"
@@ -255,7 +255,7 @@ export const ChunkInspectorDialog: React.FC<ChunkInspectorDialogProps> = ({ item
                     )}
 
                     {isnad && (
-                      <div className="text-[11px] text-muted-foreground bg-muted px-2 py-1 rounded border border-border/40">
+                      <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded border border-border/40">
                         <span className="font-semibold text-foreground/80">{t("library.chunks.isnad", "Isnad")}: </span>
                         <span className="break-words">{isnad}</span>
                       </div>

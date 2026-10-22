@@ -8,7 +8,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookMarked, Check, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import CitationBadge from "./CitationBadge";
+import CitationBadge, { formatCitation } from "./CitationBadge";
+import { CitationFeedbackBar } from "./CitationFeedbackBar";
 import { passageClipboardText } from "@/lib/citations/passageText";
 import { highlightSegments } from "@/lib/citations/highlight";
 import { DOMAIN_LABEL, groupByDomain } from "@/lib/citations/domains";
@@ -114,6 +115,14 @@ const PassageCard = ({ index, item, query, t }: { index: number; item: CitationI
           )}
         </>
       )}
+      <CitationFeedbackBar
+        citation={{
+          reference: formatCitation(item.domain, item.citation_ref),
+          grade: item.citation_ref.grade,
+          gradedBy: item.citation_ref.mohdith,
+          sourceUrl: item.url ?? item.citation_ref.url,
+        }}
+      />
     </li>
   );
 };

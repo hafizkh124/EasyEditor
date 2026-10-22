@@ -29,6 +29,7 @@ import {
 } from './adapters/shamelaRouter.js';
 import { generateAgentText } from './modelRouter.js';
 import { embedTextContent } from '../ai/geminiClient.js';
+import { verifyCitation } from '../../shared/citation/verifyCitation.js';
 import { RetrievalLedger, assertClaimSupported, type RetrievedChunk, type ClaimCheckFn } from '../../shared/agent/grounding.js';
 import { summariseCapabilities } from '../../shared/agent/capabilities.js';
 import { runAgentLoop } from '../../shared/agent/loop.js';
@@ -506,6 +507,31 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           transport: r.transport,
           note: r.books.length === 0 ? (r.note ?? 'No matching Shamela book or author.') : r.note,
           books: r.books.slice(0, 15),
+        };
+      }
+
+      case 'verify_citation': {
+        const id = str(args.source_id, 'source_id');
+        const chunk = ledger.get(id);
+        if (!chunk) {
+          return { error: `verify_citation: "${id}" is not one of the ${ledger.size} chunk id(s) retrieved in this task — search first` };
+        }
+        const opt = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+        const result = verifyCitation(
+          {
+            book: opt(args.book), volume: opt(args.volume), page: opt(args.page),
+            number: opt(args.number), chapter: opt(args.chapter),
+            grade: opt(args.grade), gradedBy: opt(args.graded_by),
+          },
+          chunk,
+        );
+        ledger.markVerification(id, result.status);
+        return {
+          ...result,
+          reference: chunk.reference,
+          instruction: result.status === 'verified'
+            ? 'Every claimed detail appears in the source — you may cite it.'
+            : `Do not state the mismatched details (${result.mismatched.join(', ')}). Say: ${result.text ?? 'only the details that matched'}.`,
         };
       }
 
@@ -1339,6 +1365,12 @@ export function createDispatcher(session: AgentSession): Dispatcher {
                   id: `dorar:${c.citation_ref.collection ?? c.citation_ref.book ?? 'x'}:${key}`,
                   reference: `${ref} (الدرر السنية)`,
                   grade: c.citation_ref.grade,
+                  locus: {
+                    book: c.citation_ref.collection ?? c.citation_ref.book,
+                    number: c.citation_ref.hadith_number,
+                    gradedBy: c.citation_ref.mohdith,
+                    grade: c.citation_ref.grade,
+                  },
                   source_url: c.url ?? c.citation_ref.url ?? null,
                   bibliographic: true, // the bridge carries the ref + الحكم, not the matn
                 });
@@ -1371,7 +1403,7 @@ export function createDispatcher(session: AgentSession): Dispatcher {
           op: 'citations', artifactId,
           entries: chunks.map((c, i) => ({
             marker: String(i + 1), reference: c.reference, sourceId: c.id,
-            supported: true, tier: 1, grade: c.grade,
+            supported: true, tier: 1, grade: c.grade, gradedBy: c.grade ? (c.locus?.gradedBy ?? '') : undefined,
             excerpt: (c.content ?? '').slice(0, 400) || undefined,
           })),
         });

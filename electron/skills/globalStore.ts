@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import { app } from 'electron';
 import { logger } from '../lib/logger.js';
 import { PLAYBOOKS } from '../../shared/playbooks/registry.js';
+import { readCustomSkills } from './customStore.js';
 
 const log = logger.child('skills/globalStore');
 const FILE = 'skills.json';
@@ -44,10 +45,10 @@ export function readGlobalSkills(): Record<string, boolean> {
 
 /**
  * Flip one skill on/off globally and persist. Turning it back on drops the
- * key (absent = on). Unknown ids are rejected — the registry is curated.
+ * key (absent = on). Unknown ids (neither built-in nor a saved custom skill) are rejected.
  */
 export function setGlobalSkill(id: string, on: boolean): Record<string, boolean> {
-  const known = PLAYBOOKS.some((pb) => pb.id === id);
+  const known = PLAYBOOKS.some((pb) => pb.id === id) || readCustomSkills().some((pb) => pb.id === id);
   if (!known) {
     log.warn('ignored unknown playbook id', { id });
     return readGlobalSkills();

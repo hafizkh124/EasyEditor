@@ -30,11 +30,13 @@ export interface SkillSources {
   scholarlyPrompts: readonly ScholarlyPromptDef[];
   /** `null` where the agent cannot run playbooks (the web). */
   playbooks: readonly Playbook[] | null;
+  /** The scholar's own playbooks (custom skills / imported skill.md) among them. */
+  customPlaybookIds?: ReadonlySet<string>;
   /** Runnable recipes only. */
   recipes?: readonly Recipe[];
 }
 
-export function buildSkills({ tasks, customRows, scholarlyPrompts, playbooks, recipes = [] }: SkillSources): Skill[] {
+export function buildSkills({ tasks, customRows, scholarlyPrompts, playbooks, customPlaybookIds, recipes = [] }: SkillSources): Skill[] {
   const guided: Skill = {
     id: `guided:${GRILL_ME.id}`,
     kind: "guided",
@@ -90,7 +92,7 @@ export function buildSkills({ tasks, customRows, scholarlyPrompts, playbooks, re
   const workflows: Skill[] = (playbooks ?? []).map((pb) => ({
     id: `playbook:${pb.id}`,
     kind: "workflow",
-    origin: "builtin",
+    origin: customPlaybookIds?.has(pb.id) ? "mine" : "builtin",
     label: pb.title,
     description: pb.guidance,
     icon: ScrollText,

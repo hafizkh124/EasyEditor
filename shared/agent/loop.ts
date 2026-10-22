@@ -89,6 +89,7 @@ function labelFor(name: string): string {
     case 'lookup_urdu_verse': return 'looking up the verse';
     case 'calculate_zakat': return 'calculating the zakat due';
     case 'calculate_faraid': return 'calculating the inheritance shares';
+    case 'verify_citation': return 'verifying the citation against the source';
     case 'insert_footnote': return 'inserting the footnote';
     case 'add_document_comment': return 'adding a margin comment';
     case 'set_page_layout': return 'setting the page layout';

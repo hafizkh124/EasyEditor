@@ -575,6 +575,7 @@ const electronAPI = {
   skills: {
     list: (projectRoot?: string): Promise<{
       playbooks: import('../shared/playbooks/registry.js').Playbook[];
+      custom: import('../shared/playbooks/registry.js').Playbook[];
       global: Record<string, boolean>;
       project: Record<string, boolean>;
       merged: Record<string, boolean>;
@@ -587,6 +588,17 @@ const electronAPI = {
       projectRoot?: string,
     ): Promise<{ global?: Record<string, boolean>; project?: Record<string, boolean> }> =>
       ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SKILLS_INVOKE, { action: 'setEnabled', id, on, scope, projectRoot }),
+    /** Add/replace a custom skill from editor fields, or from imported skill.md text (`markdown`). */
+    saveCustom: (input: {
+      markdown?: string;
+      id?: string; title?: string; trigger?: string; keywords?: string[]; guidance?: string; steps?: string[];
+    }): Promise<
+      | { ok: true; skill: import('../shared/playbooks/registry.js').Playbook; custom: import('../shared/playbooks/registry.js').Playbook[] }
+      | { ok: false; errors: string[] }
+    > =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SKILLS_INVOKE, { action: 'saveCustom', ...input }),
+    deleteCustom: (id: string): Promise<{ custom: import('../shared/playbooks/registry.js').Playbook[] }> =>
+      ipcRenderer.invoke(ALLOWED_IPC_CHANNELS.SKILLS_INVOKE, { action: 'deleteCustom', id }),
   },
 
 };

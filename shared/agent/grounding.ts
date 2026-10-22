@@ -15,6 +15,8 @@
  * Pure — no runtime globals.
  */
 
+import { UNVERIFIED_DISCLAIMER_AR, type CitationVerifyStatus, type SourceLocus } from '../citation/verifyCitation.js';
+
 /** A chunk the agent retrieved and may cite. */
 export interface RetrievedChunk {
   /** Stable identity — `match_key`, or a synthesised id. */
@@ -36,11 +38,19 @@ export interface RetrievedChunk {
    * reference line.
    */
   grade?: string;
+  /**
+   * The source's structured coordinates (book / volume / page / number / the
+   * scholar behind `grade`), when the adapter has them — what `verifyCitation`
+   * checks a claimed citation against. Absent ⇒ it matches against `reference`.
+   */
+  locus?: SourceLocus;
 }
 
 /** Accumulates every chunk the agent has retrieved so far in one task. */
 export class RetrievalLedger {
   private readonly byId = new Map<string, RetrievedChunk>();
+  /** Chunks a `verify_citation` call found wanting — insert_footnote refuses them. */
+  private readonly failedVerification = new Map<string, CitationVerifyStatus>();
 
   add(chunks: RetrievedChunk[]): void {
     for (const c of chunks) {
@@ -59,6 +69,17 @@ export class RetrievalLedger {
     return [...this.byId.values()];
   }
 
+  /** The retrieved chunk for an id, or undefined (no throw, no verification block). */
+  get(id: string): RetrievedChunk | undefined {
+    return this.byId.get(id);
+  }
+
+  /** Record a `verify_citation` verdict; a partial/unverified one blocks footnoting that source. */
+  markVerification(id: string, status: CitationVerifyStatus): void {
+    if (status === 'verified') this.failedVerification.delete(id);
+    else this.failedVerification.set(id, status);
+  }
+
   /**
    * Resolve `sourceId` to a retrieved chunk, or throw a clear error the agent
    * loop feeds back to the model. This is the gate: no chunk ⇒ no footnote.
@@ -75,12 +96,33 @@ export class RetrievalLedger {
           : `insert_footnote: "${sourceId}" is not one of the ${this.size} chunk id(s) retrieved in this task`,
       );
     }
+    const failed = this.failedVerification.get(sourceId);
+    if (failed) {
+      throw new Error(
+        `insert_footnote: verify_citation found the claimed details for "${sourceId}" ${failed === 'partial' ? 'only partly' : 'not'} in the source — do not footnote them as claimed. Write: ${UNVERIFIED_DISCLAIMER_AR}`,
+      );
+    }
     return chunk;
+  }
+
+  /**
+   * Attributed grading: a grade whose scholar the source did not name is not
+   * printed in a footnote (the reference line is otherwise kept as retrieved).
+   * Chunks with no `locus` are left untouched — their reference is the source's own line.
+   */
+  private withoutUnattributedGrade(chunk: RetrievedChunk): string {
+    if (!chunk.grade || !chunk.locus || chunk.locus.gradedBy?.trim()) return chunk.reference;
+    const g = chunk.grade;
+    return chunk.reference
+      .replace(`الحكم: ${g}`, '')
+      .replace(`(${g})`, '')
+      .replace(/\s*[—،]\s*(?=\(|$)/g, ' ')
+      .replace(/\s{2,}/g, ' ');
   }
 
   /** The footnote body for a resolved chunk (URL appended when present). */
   footnoteText(chunk: RetrievedChunk): string {
-    const ref = chunk.reference.trim();
+    const ref = this.withoutUnattributedGrade(chunk).trim();
     return chunk.source_url ? `${ref} — ${chunk.source_url}` : ref;
   }
 }

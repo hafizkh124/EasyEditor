@@ -14,7 +14,7 @@ import {
   buildMentions, filterMentions, activeTriggerQuery, applyMention, applyLibraryTag,
   type Mention, type ScopeKind,
 } from "../../shared/mentions";
-import { useSkills } from "@/lib/skills/useSkills";
+import { useSkills, refreshPlaybooks } from "@/lib/skills/useSkills";
 import { useAllDocuments } from "@/core/workspace/useAllDocuments";
 import { pinnedSourcesOf, type PinnedSource } from "@/lib/sources/pinnedSources";
 import { searchSources } from "@/lib/sources/searchSources";
@@ -195,6 +195,14 @@ export function useAgentRun() {
   const [caps, setCaps] = useState<string | null>(null);
   const [picker, setPicker] = useState<{ kind: "mention" | "command" | "library"; query: string } | null>(null);
   const [pickerActiveIndex, setPickerActiveIndex] = useState(0);
+
+  // Re-read the playbooks each time the `/` picker opens, so a custom skill
+  // just saved in Settings (they come in through the skills list) shows up
+  // without a reload.
+  const commandPickerOpen = picker?.kind === "command";
+  useEffect(() => {
+    if (commandPickerOpen) void refreshPlaybooks();
+  }, [commandPickerOpen]);
   const [shamelaBooks, setShamelaBooks] = useState<Array<{ id: string; title: string }>>([]);
   const [libraryRows, setLibraryRows] = useState<LibraryPickerRow[]>([]);
   const [scopeTags, setScopeTags] = useState<ScopeTag[]>([]);

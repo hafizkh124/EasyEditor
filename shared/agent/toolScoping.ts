@@ -49,12 +49,12 @@ const DOMAIN_RULES: DomainRule[] = [
     // connector, and search_shamela was never offered (caught by the live
     // Gemini check, agentDesktopTools.live.test.ts).
     keywords: ['مکتبہ شاملہ', 'مکتبۂ شاملہ', 'المكتبة الشاملة', 'مكتبة الشاملة', 'شاملہ', 'الشاملة', 'shamela'],
-    tools: ['search_shamela', 'read_shamela_page', 'find_shamela_book', 'insert_footnote'],
+    tools: ['search_shamela', 'read_shamela_page', 'find_shamela_book', 'verify_citation', 'insert_footnote'],
     connector: 'shamela',
   },
   {
     keywords: ['فتویٰ', 'فتوى', 'استفتاء', 'نازلہ', 'حکم شرعی', 'مذاہب', 'fatwa', 'istifta', 'ruling', 'madhhab', 'madhahib'],
-    tools: ['query_tafseer', 'search_hadith', 'search_shamela', 'search_general', 'research_topic', 'insert_footnote', 'draft_section'],
+    tools: ['query_tafseer', 'search_hadith', 'search_shamela', 'search_general', 'research_topic', 'verify_citation', 'insert_footnote', 'draft_section'],
   },
   {
     // ADR-0043 — a bare "what does this Arabic word mean in Urdu" is the lexicon
@@ -63,7 +63,7 @@ const DOMAIN_RULES: DomainRule[] = [
       'لغوی معنی', 'لغوی معنیٰ', 'لغوی مفہوم', 'لفظ کا مطلب', 'لفظ کا معنی', 'اس لفظ کے معنی', 'عربی سے اردو', 'اردو معنی',
       'معجم', 'مفردات', 'مصباح اللغات', 'القاموس الوحید', 'المعاني', 'almaany', 'lexical meaning', 'dictionary meaning', 'مادہ لغوی',
     ],
-    tools: ['lookup_lexicon', 'query_tafseer', 'search_shamela', 'insert_footnote'],
+    tools: ['lookup_lexicon', 'query_tafseer', 'search_shamela', 'verify_citation', 'insert_footnote'],
     connector: 'lexicon',
   },
   {
@@ -72,7 +72,7 @@ const DOMAIN_RULES: DomainRule[] = [
       // Bahouth / Markaz Tafsir lexical work (ADR-0039): Qur'anic roots + qirāʾāt.
       'جذر', 'الجذر', 'قرآنی جڑ', 'قرآنی مادہ', 'quranic root', 'قراءات', 'قراءة', 'قرات', 'qiraat', 'qeraat', 'لفظی تجزیہ',
     ],
-    tools: ['query_tafseer', 'search_shamela', 'search_general', 'research_topic', 'insert_footnote', 'draft_section'],
+    tools: ['query_tafseer', 'search_shamela', 'search_general', 'research_topic', 'verify_citation', 'insert_footnote', 'draft_section'],
     connector: 'tafsir',
   },
   {
@@ -82,7 +82,7 @@ const DOMAIN_RULES: DomainRule[] = [
       'is this hadith sahih', 'ضعیف ہے', 'صحیح ہے', 'موضوع ہے', 'hadith grade', 'grade of this hadith', 'authenticity of the hadith',
       'علت', 'علل', 'ادراج', 'مدرج', 'ilal', 'illah',
     ],
-    tools: ['grade_hadith', 'jkhssn_judgments', 'jkhssn_takhrij', 'search_hadith', 'search_shamela', 'insert_footnote'],
+    tools: ['grade_hadith', 'jkhssn_judgments', 'jkhssn_takhrij', 'search_hadith', 'search_shamela', 'verify_citation', 'insert_footnote'],
     connector: 'dorar',
   },
   {
@@ -92,12 +92,12 @@ const DOMAIN_RULES: DomainRule[] = [
       'ثقہ ہے', 'ثقة أم', 'ضعيف الحديث', 'تهذيب الكمال', 'شیوخه', 'تلاميذه', 'شيوخ الراوي', 'narrator reliability', 'narrator biography',
       'is this narrator', 'who did this narrator', 'raawi ka haal', 'کتنی احادیث روایت', 'مرتبہ', 'تقریب', 'طبقہ',
     ],
-    tools: ['lookup_narrator', 'jkhssn_narrator', 'search_hadith', 'search_shamela', 'insert_footnote'],
+    tools: ['lookup_narrator', 'jkhssn_narrator', 'search_hadith', 'search_shamela', 'verify_citation', 'insert_footnote'],
     connector: 'rijal',
   },
   {
     keywords: ['حدیث', 'حديث', 'سند', 'اسناد', 'راوی', 'رواة', 'جرح', 'تعدیل', 'hadith', 'hadeeth', 'isnad', 'sanad', 'rijal', 'rawi', 'takhrij', 'تخریج', 'takhreej', 'شجرہ', 'شجرۂ', 'مدار', 'مدارِ'],
-    tools: ['search_hadith', 'grade_hadith', 'lookup_narrator', 'jkhssn_sanad_tree', 'jkhssn_takhrij', 'jkhssn_narrator', 'search_shamela', 'search_general', 'insert_footnote', 'add_document_comment'],
+    tools: ['search_hadith', 'grade_hadith', 'lookup_narrator', 'jkhssn_sanad_tree', 'jkhssn_takhrij', 'jkhssn_narrator', 'search_shamela', 'search_general', 'verify_citation', 'insert_footnote', 'add_document_comment'],
     connector: 'hadith',
   },
   {
@@ -106,16 +106,16 @@ const DOMAIN_RULES: DomainRule[] = [
       'موضوعاتی', 'موضوعی اشاریہ', 'ابواب الفقہ', 'ابواب فقہ', 'کتاب الطہارۃ', 'باب سے احادیث', 'thematic hadith', 'hadith on the topic of',
       'فہرست موضوعات', 'اشاریہ موضوعات', 'فقہی ابواب',
     ],
-    tools: ['jkhssn_thematic', 'jkhssn_takhrij', 'search_hadith', 'search_shamela', 'insert_footnote'],
+    tools: ['jkhssn_thematic', 'jkhssn_takhrij', 'search_hadith', 'search_shamela', 'verify_citation', 'insert_footnote'],
     connector: 'jkhssn',
   },
   {
     keywords: ['نظرثانی', 'نگران', 'supervisor', 'audit', 'مراجعة', 'تقييم', 'review my', 'تنقیدی', 'تحقیق', 'مسودہ', 'محقق', 'muhaqqiq', 'نقد', 'critique', 'critical review'],
-    tools: ['search_shamela', 'search_corpus', 'search_general', 'insert_footnote', 'add_document_comment', 'check_consistency', 'critique'],
+    tools: ['search_shamela', 'search_corpus', 'search_general', 'verify_citation', 'insert_footnote', 'add_document_comment', 'check_consistency', 'critique'],
   },
   {
     keywords: ['audio', 'lecture', 'recording', 'transcribe', 'درس', 'خطاب', 'ریکارڈنگ', 'آڈیو', 'تقریر', 'محاضرة'],
-    tools: ['transcribe_media', 'create_chapter', 'draft_section', 'search_shamela', 'insert_footnote'],
+    tools: ['transcribe_media', 'create_chapter', 'draft_section', 'search_shamela', 'verify_citation', 'insert_footnote'],
   },
   {
     keywords: ['ocr', 'scan', 'scanned', 'digitise', 'digitize', 'photographed', 'اسکین', 'سکین', 'عکسی', 'مصورة', 'ڈیجیٹائز', 'برائے تحویل نص'],
@@ -123,7 +123,7 @@ const DOMAIN_RULES: DomainRule[] = [
   },
   {
     keywords: ['کالم', 'مضمون', 'مقالہ', 'ترجمہ', 'ترجمة', 'column', 'essay', 'translate', 'translation', 'paper', 'draft a', 'write a chapter'],
-    tools: ['create_chapter', 'draft_section', 'research_topic', 'search_shamela', 'search_general', 'search_repositories', 'insert_footnote', 'check_consistency'],
+    tools: ['create_chapter', 'draft_section', 'research_topic', 'search_shamela', 'search_general', 'search_repositories', 'verify_citation', 'insert_footnote', 'check_consistency'],
   },
   {
     keywords: ['اسلوب', 'طرز تحریر', 'طرزِ تحریر', 'میرا انداز', 'my style', 'my voice', 'writing style', 'author voice', 'like i write', 'match my'],
@@ -135,7 +135,7 @@ const DOMAIN_RULES: DomainRule[] = [
   },
   {
     keywords: ['archive.org', 'openalex', 'repository', 'repositories', 'journal', 'مقالات', 'thesis', 'dissertation', 'مخطوطات محفوظة', 'edition scan', 'bibliograph'],
-    tools: ['search_repositories', 'search_shamela', 'search_general', 'insert_footnote', 'draft_section'],
+    tools: ['search_repositories', 'search_shamela', 'search_general', 'verify_citation', 'insert_footnote', 'draft_section'],
     connector: 'repositories',
   },
   {
@@ -195,7 +195,7 @@ const DOMAIN_RULES: DomainRule[] = [
   },
   {
     keywords: ['مخطوط', 'مخطوطة', 'نسخ', 'فروق النسخ', 'apparatus', 'collate', 'critical edition', 'witness', 'نسخہ', 'تدوین'],
-    tools: ['compare_manuscript_variants', 'insert_footnote', 'add_document_comment', 'build_scholarly_indexes', 'search_shamela'],
+    tools: ['compare_manuscript_variants', 'verify_citation', 'insert_footnote', 'add_document_comment', 'build_scholarly_indexes', 'search_shamela'],
   },
   {
     keywords: ['typeset', 'کمپوزنگ', 'print', 'press', 'گٹر', 'gutter', 'trim', 'اشاعت', 'کتابت', 'طباعة', 'تنضيد', 'پرنٹ ریڈی'],
@@ -366,11 +366,10 @@ export function toolsFor(mode: AgentMode, ctx: ScopeContext = {}): AgentTool[] {
     return mode === 'ask' ? [...open, CLARIFY_TOOL, MODE_UPGRADE_TOOL] : [...open, CLARIFY_TOOL];
   }
 
-  // CITATION CLOSURE — retrieval must always be citable.
-  if (writeCapable) {
-    const exposesCitableSearch = [...allowed].some((n) => (CITABLE_SEARCH_TOOLS as readonly string[]).includes(n));
-    if (exposesCitableSearch) allowed.add('insert_footnote');
-  }
+  // CITATION CLOSURE — retrieval must always be citable (and checkable: verify_citation is read-only).
+  const exposesCitableSearch = [...allowed].some((n) => (CITABLE_SEARCH_TOOLS as readonly string[]).includes(n));
+  if (exposesCitableSearch) allowed.add('verify_citation');
+  if (writeCapable && exposesCitableSearch) allowed.add('insert_footnote');
 
   // SHAMELA CLOSURE (ADR-0044) — read_shamela_page / find_shamela_book are
   // follow-ups to search_shamela; wherever search_shamela survives narrowing,

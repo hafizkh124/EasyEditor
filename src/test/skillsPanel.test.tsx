@@ -35,18 +35,29 @@ const list = vi.fn(async () => ({
   merged: { [PLAYBOOKS[0].id]: false } as Record<string, boolean>,
 }));
 const setEnabled = vi.fn(async (id: string, on: boolean) => ({ global: { [id]: on } }));
+const saveCustom = vi.fn(async (_input: Record<string, unknown>) => ({ ok: true as const }));
+const deleteCustom = vi.fn(async (_id: string) => ({ custom: [] }));
 
 function asWeb() {
   Object.defineProperty(window, "electronAPI", { configurable: true, value: undefined });
 }
 function asDesktop() {
-  Object.defineProperty(window, "electronAPI", { configurable: true, value: { isDesktop: true, skills: { list, setEnabled } } });
+  Object.defineProperty(window, "electronAPI", {
+    configurable: true,
+    value: { isDesktop: true, skills: { list, setEnabled, saveCustom, deleteCustom } },
+  });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   resetSkillsStore();
+  list.mockImplementation(async () => ({
+    playbooks: PLAYBOOKS,
+    global: {},
+    project: {},
+    merged: { [PLAYBOOKS[0].id]: false },
+  }));
 });
 
 describe("SkillsPanel", () => {
@@ -87,5 +98,41 @@ describe("SkillsPanel", () => {
     const section = await screen.findByRole("region", { name: "کئی مراحل والی" });
     fireEvent.click(within(section).getByRole("switch", { name: PLAYBOOKS[1].title }));
     await waitFor(() => expect(setEnabled).toHaveBeenCalledWith(PLAYBOOKS[1].id, false, "global"));
+  });
+
+  it("custom skills sit under my skills, with edit / export / delete; built-ins have none", async () => {
+    asDesktop();
+    const custom = {
+      id: "custom-mine", title: "My own skill", trigger: "mine", keywords: ["k"], guidance: "g",
+      steps: [{ tool: "search_hadith", bind: ["query"], note: "n" }],
+    };
+    list.mockResolvedValue({
+      playbooks: [...PLAYBOOKS, custom], custom: [custom], global: {}, project: {},
+      merged: Object.fromEntries([...PLAYBOOKS, custom].map((p) => [p.id, true])),
+    } as never);
+    render(<SkillsPanel />);
+    const mine = await screen.findByRole("region", { name: "میری مہارتیں" });
+    await waitFor(() => expect(within(mine).getByText("My own skill")).toBeInTheDocument());
+    expect(within(screen.getByRole("region", { name: "کئی مراحل والی" })).queryByText("My own skill")).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText("Export .md")).toHaveLength(1);
+    fireEvent.click(screen.getByLabelText("Delete"));
+    await waitFor(() => expect(deleteCustom).toHaveBeenCalledWith("custom-mine"));
+  });
+
+  it("Add custom skill: shows validation errors from the backend, then saves", async () => {
+    asDesktop();
+    saveCustom.mockResolvedValueOnce({ ok: false, errors: ["at least one step (a tool name) is required"] } as never);
+    render(<SkillsPanel />);
+    await waitFor(() => expect(list).toHaveBeenCalled());
+    fireEvent.click(screen.getByText("Add custom skill"));
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "New one" } });
+    fireEvent.click(screen.getByText("Save"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("at least one step");
+
+    fireEvent.click(screen.getByText("search_hadith"));
+    fireEvent.click(screen.getByText("Save"));
+    await waitFor(() => expect(saveCustom).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "New one", steps: ["search_hadith"] }),
+    ));
   });
 });

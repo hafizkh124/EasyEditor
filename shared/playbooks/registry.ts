@@ -252,6 +252,7 @@ export const PLAYBOOKS: Playbook[] = [
       { tool: 'read_document', bind: ['chapter'], note: 'Read the draft and list every claim that needs a source.' },
       { tool: 'search_shamela', bind: ['query'], repeat: true, note: 'Retrieve the original classical source for each claim.' },
       { tool: 'search_hadith', bind: ['query'], optional: true, repeat: true, note: 'Retrieve the takhrīj + grade for each hadith claim.' },
+      { tool: 'verify_citation', bind: ['source_id', 'book', 'volume', 'page', 'number', 'grade', 'graded_by'], optional: true, repeat: true, note: 'Check each cited detail against its retrieved source.' },
       { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id', 'claim'], repeat: true, note: 'Footnote each claim from its verified source.' },
       { tool: 'add_document_comment', bind: ['chapter', 'anchor_text', 'comment'], optional: true, repeat: true, note: 'Flag each claim that could not be sourced with a margin note.' },
     ],
@@ -415,13 +416,138 @@ export const PLAYBOOKS: Playbook[] = [
       { tool: 'organize_files', bind: ['files', 'destination', 'action'], note: 'Copy (or move) them into the folder — approved first, never overwrites.' },
     ],
   },
+  // ── Temporary starter skills ────────────────────────────────────────────
+  // Lean first versions built only from existing tools. The scholar's detailed
+  // skill files replace them: import a skill.md with the same /trigger and
+  // switch the built-in off (a disabled built-in yields its trigger to a custom
+  // skill — see `findPlaybook`).
+  {
+    // temporary
+    id: 'hadith-takhreej',
+    title: 'Takhrīj of a hadith — source, reference and attributed grading (تخريج الحديث)',
+    trigger: 'takhrij',
+    keywords: ['hadith takhrij', 'takhrij hadith', 'hadith takhreej', 'تخریج حدیث', 'تخريج حديث', 'تخريج الحديث', 'حدیث کی تخریج'],
+    guidance:
+      'Take the hadith exactly as the scholar gave it and normalise only for searching (strip tashkīl, fold hamza/alif forms). ' +
+      'Find it with search_hadith, then fetch its grading with grade_hadith. Report the collection (اسم الكتاب), chapter (الباب), ' +
+      'hadith number (رقم الحديث) and volume/page (الجزء والصفحة) ONLY as the retrieved result states them — a field the source ' +
+      'did not give is left out, never filled in. Every grading must be attributed to a named scholar exactly as the source states it ' +
+      '(e.g. "قال الألباني: صحيح"); never grade a hadith yourself or merge verdicts into your own. Never fabricate a hadith text, ' +
+      'book name or page number. Run verify_citation on the retrieved source before stating any of these details; if it is not verified, state only what matched. If no source is found, write: لم أقف عليه في المصادر المتاحة.',
+    steps: [
+      { tool: 'search_hadith', bind: ['query'], note: 'Find the narration and the collections that report it.' },
+      { tool: 'grade_hadith', bind: ['text'], note: 'Fetch the grading exactly as the named scholar stated it (الدرر السنية).' },
+      { tool: 'search_shamela', bind: ['query'], optional: true, note: 'Locate the original book page for the reference.' },
+      { tool: 'verify_citation', bind: ['source_id', 'book', 'volume', 'page', 'number', 'grade', 'graded_by'], optional: true, note: 'Check the book, page, number and grading scholar against the retrieved source.' },
+      { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id', 'claim'], optional: true, note: 'Footnote the hadith from its retrieved source.' },
+    ],
+  },
+  {
+    // temporary
+    id: 'fatwa-writing',
+    title: 'Write a sourced fatwā (فتویٰ نویسی)',
+    trigger: 'fatwa',
+    keywords: ['fatwa writing', 'write a fatwa', 'draft a fatwa', 'فتوی نویسی', 'فتویٰ نویسی', 'فتوى نويسي', 'کتابة الفتوى'],
+    guidance:
+      'Follow the classical istiftāʾ method: restate the question precisely; establish the Qur\'anic evidence (query_tafseer) and the ' +
+      'hadith evidence (search_hadith) with each narration\'s grade attributed to the named scholar who gave it; survey the madhāhib ' +
+      'from the classical works (search_shamela) and attribute every position to a named scholar or school; then give a measured ' +
+      'conclusion that names the stronger view and its evidence. Where the sources are silent say so; never invent a ruling or a ' +
+      'citation. Note that a personal or case-specific situation needs a qualified muftī, and that this draft is for the scholar to review.',
+    steps: [
+      { tool: 'query_tafseer', bind: ['reference', 'mode'], optional: true, note: 'Retrieve the relevant āyah(s) and their tafsīr.' },
+      { tool: 'search_hadith', bind: ['query'], optional: true, note: 'Retrieve the relevant hadith, with grades.' },
+      { tool: 'search_shamela', bind: ['query'], note: 'Survey the fiqh positions in the classical works.' },
+      {
+        tool: 'draft_section',
+        args: { mode: 'fatwa' },
+        bind: ['chapter', 'section_heading', 'question'],
+        optional: true,
+        note: 'Write the answer as the ruling section of a formal fatwā document.',
+      },
+      { tool: 'typeset_print_ready', args: { preset: 'fatwa' }, bind: ['chapter'], optional: true, note: 'Apply the fatwā letterhead page layout.' },
+      { tool: 'convert_document', args: { to: 'pdf' }, bind: ['chapter'], optional: true, note: 'Export the finished fatwā as a PDF.' },
+    ],
+  },
+  {
+    // temporary
+    id: 'quran-verse-sources',
+    title: 'Source the Qur\'anic verses quoted in a chapter (آیات کے حوالے)',
+    trigger: 'ayah-sources',
+    keywords: ['ayah sources', 'verse sources', 'quranic references', 'آیات کے حوالے', 'آیت کا حوالہ', 'مصادر الآيات'],
+    guidance:
+      'Find each quoted āyah in the text, resolve it to surah:ayah with query_tafseer, and footnote it from the retrieved result. ' +
+      'Quote the āyah exactly as retrieved; never supply a verse number from memory. An āyah you cannot resolve gets a margin note, not a guess.',
+    steps: [
+      { tool: 'read_document', bind: ['chapter'], note: 'Read the chapter and list each quoted āyah.' },
+      { tool: 'query_tafseer', args: { mode: 'ayah' }, bind: ['reference'], repeat: true, note: 'Resolve each quoted āyah to surah:ayah.' },
+      { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id'], repeat: true, note: 'Footnote each āyah from its retrieved source.' },
+    ],
+  },
+  {
+    // temporary
+    id: 'narrator-profile',
+    title: 'Profile a narrator — biography and jarḥ wa taʿdīl (ترجمة الراوي)',
+    trigger: 'narrator',
+    keywords: ['narrator profile', 'who is the narrator', 'راوی کا تعارف', 'ترجمۃ الراوی', 'ترجمة الراوي', 'راوی کی توثیق'],
+    guidance:
+      'Consult BOTH rijāl sources, reconcile them, and report each critic\'s verdict as that critic stated it, naming who said what. ' +
+      'Do not summarise into your own grading of the narrator; where the sources disagree, show the disagreement.',
+    steps: [
+      { tool: 'lookup_narrator', bind: ['name'], note: 'Look up the narrator in the rijāl literature.' },
+      { tool: 'jkhssn_narrator', bind: ['name'], optional: true, note: 'Cross-check against the local جوامع الكلم engine.' },
+      { tool: 'add_document_comment', bind: ['chapter', 'anchor_text', 'comment'], optional: true, note: 'Record the verdicts as a margin note.' },
+    ],
+  },
+  {
+    // temporary
+    id: 'lecture-citations',
+    title: 'Source the quotations in a transcribed lecture (درس کے حوالے)',
+    trigger: 'lecture-citations',
+    keywords: ['lecture citations', 'source the lecture', 'درس کے حوالے', 'تقریر کے حوالے', 'خطاب کی تخریج'],
+    guidance:
+      'The speaker\'s words stay as spoken-then-edited; add sources, never new claims. Find each quoted verse, hadith or scholar and ' +
+      'source it from a retrieved result. Anything you cannot source gets a margin comment saying so — never a reference from memory.',
+    steps: [
+      { tool: 'read_document', bind: ['chapter'], note: 'Read the transcript chapter and list each quotation.' },
+      { tool: 'search_hadith', bind: ['query'], optional: true, repeat: true, note: 'Find each quoted hadith with its grade.' },
+      { tool: 'search_shamela', bind: ['query'], optional: true, repeat: true, note: 'Find each quoted scholarly text in its original book.' },
+      { tool: 'verify_citation', bind: ['source_id', 'book', 'volume', 'page', 'number'], optional: true, repeat: true, note: 'Check each cited detail against its retrieved source.' },
+      { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id', 'claim'], optional: true, repeat: true, note: 'Footnote each quotation from its retrieved source.' },
+      { tool: 'add_document_comment', bind: ['chapter', 'anchor_text', 'comment'], optional: true, repeat: true, note: 'Flag each quotation that could not be sourced.' },
+    ],
+  },
+  {
+    // temporary
+    id: 'word-meaning-note',
+    title: 'Add a lexical note for an Arabic word (لغوی حاشیہ)',
+    trigger: 'lexicon-note',
+    keywords: ['lexicon note', 'word meaning note', 'لغوی حاشیہ', 'لفظ کے معنی', 'معنى الكلمة'],
+    guidance: 'Give the meaning only as the retrieved lexicon states it, with its source; if the corpus has nothing, say so and give the link.',
+    steps: [
+      { tool: 'lookup_lexicon', bind: ['word'], note: 'Look the word up in the classical lexicons.' },
+      { tool: 'insert_footnote', bind: ['chapter', 'marker', 'source_id'], optional: true, note: 'Footnote the meaning from its source.' },
+    ],
+  },
+  {
+    // temporary
+    id: 'claim-source-audit',
+    title: 'Audit how well a chapter\'s claims are sourced (read-only)',
+    trigger: 'source-audit',
+    keywords: ['source audit', 'audit the sourcing', 'حوالہ جات کا جائزہ', 'مصادر کا جائزہ'],
+    guidance: 'Read-only: report which claims lack a source or rest on a weak one. Change nothing and invent no source.',
+    steps: [
+      { tool: 'read_document', bind: ['chapter'], note: 'Read the chapter structure and footnotes.' },
+      { tool: 'critique', args: { kind: 'sourcing' }, bind: ['chapter'], note: 'Get a rigorous second opinion on the sourcing.' },
+    ],
+  },
 ];
 
 const BY_ID = new Map(PLAYBOOKS.map((p) => [p.id, p]));
 const BY_TRIGGER = new Map(PLAYBOOKS.filter((p) => p.trigger).map((p) => [p.trigger!, p]));
 
-export function getPlaybook(id: string): Playbook | undefined {
-  return BY_ID.get(id);
+export function getPlaybook(id: string, extra: readonly Playbook[] = []): Playbook | undefined {
+  return BY_ID.get(id) ?? extra.find((p) => p.id === id);
 }
 
 /**
@@ -436,16 +562,18 @@ export function isSkillOn(skills: Record<string, boolean> | undefined, id: strin
 
 /**
  * Fold the global ("this machine") and project ("this project") skill switch
- * maps into one explicit id -> boolean map covering every playbook, the same
- * shape `mergeConnectorState` produces for connectors. Precedence: an
- * explicit project value wins, then global, then on-by-default.
+ * maps into one explicit id -> boolean map covering every playbook (built-in
+ * and `extra` custom ones), the same shape `mergeConnectorState` produces for
+ * connectors. Precedence: an explicit project value wins, then global, then
+ * on-by-default.
  */
 export function mergeSkillState(
   global: Record<string, boolean> | undefined,
   project: Record<string, boolean> | undefined,
+  extra: readonly Playbook[] = [],
 ): Record<string, boolean> {
   const out: Record<string, boolean> = {};
-  for (const pb of PLAYBOOKS) {
+  for (const pb of [...PLAYBOOKS, ...extra]) {
     const p = project?.[pb.id];
     const g = global?.[pb.id];
     out[pb.id] = typeof p === 'boolean' ? p : typeof g === 'boolean' ? g : true;
@@ -454,18 +582,41 @@ export function mergeSkillState(
 }
 
 /**
+ * Find the playbook a `/trigger` or id names. Built-ins win over `extra`
+ * (custom) skills with the same trigger — unless the built-in is switched off
+ * in `enabled`, in which case the trigger falls through to the custom skill.
+ * That is how a scholar's detailed skill replaces a temporary built-in: import
+ * it with the same /trigger and toggle the built-in off.
+ */
+function findPlaybook(
+  ref: string,
+  enabled: Record<string, boolean> | undefined,
+  extra: readonly Playbook[],
+): Playbook | undefined {
+  const usable = (p: Playbook | undefined): Playbook | undefined =>
+    p && (!enabled || isSkillOn(enabled, p.id)) ? p : undefined;
+  return (
+    usable(BY_TRIGGER.get(ref)) ??
+    usable(BY_ID.get(ref)) ??
+    usable(extra.find((p) => p.trigger === ref)) ??
+    usable(extra.find((p) => p.id === ref))
+  );
+}
+
+/**
  * Resolve a `/trigger` or an id to a playbook. `enabled`, when given, hides a
  * switched-off skill even from an explicit `/trigger` — that is what "off"
  * means (ADR-0047), the same as a switched-off connector's tools disappearing
  * from every path, not just automatic ones. Omitted `enabled` = old
  * behaviour, every playbook eligible (a headless/eval caller, or a test that
- * does not care about the toggle).
+ * does not care about the toggle). `extra` = the scholar's custom skills.
  */
-export function resolvePlaybook(ref: string, enabled?: Record<string, boolean>): Playbook | undefined {
-  const clean = ref.trim().replace(/^\//, '');
-  const pb = BY_TRIGGER.get(clean) ?? BY_ID.get(clean);
-  if (pb && enabled && !isSkillOn(enabled, pb.id)) return undefined;
-  return pb;
+export function resolvePlaybook(
+  ref: string,
+  enabled?: Record<string, boolean>,
+  extra: readonly Playbook[] = [],
+): Playbook | undefined {
+  return findPlaybook(ref.trim().replace(/^\//, ''), enabled, extra);
 }
 
 /**
@@ -475,17 +626,20 @@ export function resolvePlaybook(ref: string, enabled?: Record<string, boolean>):
  * keyword-hit count; returns null when nothing matches — the agent then just
  * works step by step. `enabled` — see {@link resolvePlaybook}.
  */
-export function selectPlaybook(ask: string, enabled?: Record<string, boolean>): Playbook | null {
+export function selectPlaybook(
+  ask: string,
+  enabled?: Record<string, boolean>,
+  extra: readonly Playbook[] = [],
+): Playbook | null {
   const trimmed = ask.trim();
   if (trimmed.startsWith('/')) {
-    const token = trimmed.slice(1).split(/\s/)[0];
-    const exact = BY_TRIGGER.get(token) ?? BY_ID.get(token);
-    if (exact && (!enabled || isSkillOn(enabled, exact.id))) return exact;
+    const exact = findPlaybook(trimmed.slice(1).split(/\s/)[0], enabled, extra);
+    if (exact) return exact;
   }
 
   const lower = trimmed.toLowerCase();
   let best: { p: Playbook; hits: number } | null = null;
-  for (const p of PLAYBOOKS) {
+  for (const p of [...PLAYBOOKS, ...extra]) {
     if (enabled && !isSkillOn(enabled, p.id)) continue;
     const hits = p.keywords.reduce((n, k) => (lower.includes(k.toLowerCase()) ? n + 1 : n), 0);
     if (hits > 0 && (!best || hits > best.hits)) best = { p, hits };

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { BUILTIN_TASKS, setCustomTasks } from "@/lib/tasks/registry";
 import { customTaskService, rowToDefinition, type CustomTaskRow } from "@/lib/tasks/customTasks";
 import { SCHOLARLY_PROMPTS } from "@/lib/prompts/promptsRegistry";
-import { PLAYBOOKS } from "~shared/playbooks/registry";
+import { PLAYBOOKS, type Playbook } from "~shared/playbooks/registry";
 import { recipeService, type Recipe } from "@/lib/recipes/recipeService";
 import { validateRecipe } from "@/lib/recipes/recipeOrchestrator";
 import { isDesktop } from "@/utils/environment";
@@ -32,6 +32,9 @@ interface State {
   customRows: CustomTaskRow[];
   recipes: Recipe[];
   playbookEnabled: Record<string, boolean>;
+  /** Built-in playbooks plus the scholar's custom ones, as the desktop skills store lists them. */
+  playbooks: Playbook[];
+  customPlaybookIds: string[];
   hidden: string[];
   loaded: boolean;
 }
@@ -52,7 +55,7 @@ function writeHidden(hidden: string[]) {
   } catch { /* storage unavailable: the choice lasts until reload */ }
 }
 
-let state: State = { customRows: [], recipes: [], playbookEnabled: {}, hidden: readHidden(), loaded: false };
+let state: State = { customRows: [], recipes: [], playbookEnabled: {}, playbooks: PLAYBOOKS, customPlaybookIds: [], hidden: readHidden(), loaded: false };
 let loading: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
@@ -80,13 +83,7 @@ async function load(): Promise<void> {
       setState({ customRows, loaded: true });
     });
 
-  const switches =
-    playbooksAvailable() && skillsApi()?.list
-      ? skillsApi()!
-          .list()
-          .then((r) => setState({ playbookEnabled: r.merged ?? {} }))
-          .catch(() => undefined)
-      : Promise.resolve();
+  const switches = loadPlaybooks();
 
   const recipes =
     import.meta.env.VITE_RECIPES === "false"
@@ -100,6 +97,27 @@ async function load(): Promise<void> {
   await Promise.all([mine, switches, recipes]);
 }
 
+/** The playbooks (built-in and custom) and their on/off switches, from the desktop skills store. */
+function loadPlaybooks(): Promise<void> {
+  const api = skillsApi();
+  if (!playbooksAvailable() || !api?.list) return Promise.resolve();
+  return api
+    .list()
+    .then((r) =>
+      setState({
+        playbookEnabled: r.merged ?? {},
+        playbooks: r.playbooks ?? PLAYBOOKS,
+        customPlaybookIds: (r.custom ?? []).map((c) => c.id),
+      }),
+    )
+    .catch(() => undefined);
+}
+
+/** Re-read only the playbooks — cheap; the chat's `/` does it on opening, so a skill just saved shows up. */
+export function refreshPlaybooks(): Promise<void> {
+  return loadPlaybooks();
+}
+
 /** Reload my skills and the playbook switches (after creating or editing one). */
 export function refreshSkills(): Promise<void> {
   loading = load().finally(() => {
@@ -110,7 +128,7 @@ export function refreshSkills(): Promise<void> {
 
 /** For tests: drop everything loaded so far. */
 export function resetSkillsStore() {
-  state = { customRows: [], recipes: [], playbookEnabled: {}, hidden: readHidden(), loaded: false };
+  state = { customRows: [], recipes: [], playbookEnabled: {}, playbooks: PLAYBOOKS, customPlaybookIds: [], hidden: readHidden(), loaded: false };
   loading = null;
   listeners.forEach((l) => l());
 }
@@ -134,10 +152,11 @@ export function useSkills() {
         tasks: BUILTIN_TASKS,
         customRows: s.customRows,
         scholarlyPrompts: SCHOLARLY_PROMPTS,
-        playbooks: playbooksAvailable() ? PLAYBOOKS : null,
+        playbooks: playbooksAvailable() ? s.playbooks : null,
+        customPlaybookIds: new Set(s.customPlaybookIds),
         recipes: s.recipes,
       }),
-    [s.customRows, s.recipes],
+    [s.customRows, s.recipes, s.playbooks, s.customPlaybookIds],
   );
 
   const isHidden = useCallback(
@@ -166,5 +185,5 @@ export function useSkills() {
 
   const forPlace = useCallback((place: SkillPlace) => skillsFor(skills, place, isHidden), [skills, isHidden]);
 
-  return { skills, loaded: s.loaded, isHidden, setHidden, forPlace };
+  return { skills, loaded: s.loaded, isHidden, setHidden, forPlace, playbooks: s.playbooks };
 }
