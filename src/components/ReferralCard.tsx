@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useFormatDate } from "@/lib/formatDate";
 import { buildReferralLink } from "@/lib/referral";
 
 interface ReferralEvent {
@@ -20,6 +21,7 @@ interface ReferralEvent {
 const ReferralCard = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const formatDate = useFormatDate();
   const [code, setCode] = useState<string | null>(null);
   const [credits, setCredits] = useState(0);
   const [events, setEvents] = useState<ReferralEvent[]>([]);
@@ -176,7 +178,7 @@ const ReferralCard = () => {
                   <div className="min-w-0">
                     <p className="truncate">{e.referee_name || t("referral.anonymous_friend")}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(e.granted_at).toLocaleDateString()}
+                      {formatDate(e.granted_at, "date")}
                     </p>
                   </div>
                   <Badge variant="default">+{e.credits_granted}</Badge>

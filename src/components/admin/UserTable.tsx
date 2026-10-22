@@ -36,6 +36,7 @@ import {
   Gift,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useFormatDate } from "@/lib/formatDate";
 import type { UserRow, PaidTier, Tier } from "./types";
 import { getLifecycleInfo, formatLifecycleDate } from "@/lib/subscriptionLifecycle";
 import { buildWhatsAppLink } from "@/lib/phoneValidation";
@@ -66,6 +67,7 @@ const UserTable = ({
   tierLabel,
 }: UserTableProps) => {
   const { t } = useLanguage();
+  const formatDate = useFormatDate();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [approvalPlanMap, setApprovalPlanMap] = useState<Record<string, string>>({});
   const [rejectingUser, setRejectingUser] = useState<UserRow | null>(null);
@@ -182,7 +184,7 @@ const UserTable = ({
                         {totalTokens.toLocaleString()}
                       </div>
                       <div className="hidden lg:block flex-shrink-0 text-xs text-muted-foreground w-[85px] text-end">
-                        {new Date(u.created_at).toLocaleDateString()}
+                        {formatDate(u.created_at, "date")}
                       </div>
                     </div>
 

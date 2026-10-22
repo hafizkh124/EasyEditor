@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useFormatDate } from "@/lib/formatDate";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,8 +104,7 @@ const Dashboard = () => {
     navigate("/workspace?panel=research", { state: { question: text } });
   };
 
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const formatDate = useFormatDate();
 
   return (
     <AppLayout>

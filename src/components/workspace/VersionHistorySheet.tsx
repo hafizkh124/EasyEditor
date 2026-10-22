@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useFormatDate } from "@/lib/formatDate";
 import type { DocumentVersion } from "@/core/workspace/types";
 
 interface VersionHistorySheetProps {
@@ -22,6 +23,7 @@ export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
   versions, side, onRestoreVersion, onCreateSnapshot, open: controlledOpen, onOpenChange,
 }) => {
   const { t } = useLanguage();
+  const formatDate = useFormatDate();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = (next: boolean) => {
@@ -80,7 +82,7 @@ export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
                   <div className="min-w-0">
                     <p className="font-semibold text-foreground truncate">{v.label || t("library.snapshot", "Snapshot")}</p>
                     <p className="text-muted-foreground text-xs">
-                      {new Date(v.created_at).toLocaleString()}
+                      {formatDate(v.created_at, "datetime")}
                     </p>
                   </div>
                   <Button

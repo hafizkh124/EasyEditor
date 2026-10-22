@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useFormatDate } from "@/lib/formatDate";
 import { useNotifications } from "@/contexts/NotificationContext";
 
 export const NotificationBell = () => {
   const { t } = useLanguage();
+  const formatDate = useFormatDate();
   const { notifications, unreadCount, markAllRead, markRead } = useNotifications();
   const [open, setOpen] = useState(false);
 
@@ -54,7 +56,7 @@ export const NotificationBell = () => {
                     <div className={cn("space-y-0.5", n.is_read && "ms-4")}>
                       <p className="text-sm font-medium text-foreground leading-snug">{n.title}</p>
                       <p className="text-xs text-muted-foreground leading-snug">{n.message}</p>
-                      <p className="text-xs text-muted-foreground/70">{new Date(n.created_at).toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground/70">{formatDate(n.created_at, "datetime")}</p>
                     </div>
                   </div>
                 </button>

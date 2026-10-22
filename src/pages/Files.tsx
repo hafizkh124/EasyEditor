@@ -7,6 +7,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useSeo } from "@/hooks/useSeo";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useFormatDate } from "@/lib/formatDate";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,12 +52,12 @@ interface ResultItem {
 
 const matches = (text: string, query: string) => text.toLocaleLowerCase().includes(query);
 
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
 const FilesPage = () => {
   useSeo({ title: "Files — Easy Editor", description: "Your folders, documents and results.", path: "/files", noindex: true });
 
   const { t, direction } = useLanguage();
+  const formatDate = useFormatDate();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab: Tab = searchParams.get("tab") === "results" ? "results" : "folders";
