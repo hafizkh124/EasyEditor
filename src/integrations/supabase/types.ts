@@ -1053,7 +1053,6 @@ export type Database = {
           id: string
           messages: Json
           mode: string
-          project_id: string | null
           selected_domains: string[]
           title: string | null
           updated_at: string
@@ -1065,7 +1064,6 @@ export type Database = {
           id?: string
           messages?: Json
           mode?: string
-          project_id?: string | null
           selected_domains?: string[]
           title?: string | null
           updated_at?: string
@@ -1077,21 +1075,12 @@ export type Database = {
           id?: string
           messages?: Json
           mode?: string
-          project_id?: string | null
           selected_domains?: string[]
           title?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "research_sessions_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       research_sources: {
         Row: {
@@ -1505,7 +1494,6 @@ export type Database = {
           notes: string | null
           passage_key: string | null
           project_id: string
-          reviewed: number[]
           source_text: string
           status: string
           tm_match_score: number | null
@@ -1518,7 +1506,6 @@ export type Database = {
           notes?: string | null
           passage_key?: string | null
           project_id: string
-          reviewed?: number[]
           source_text: string
           status?: string
           tm_match_score?: number | null
@@ -1531,7 +1518,6 @@ export type Database = {
           notes?: string | null
           passage_key?: string | null
           project_id?: string
-          reviewed?: number[]
           source_text?: string
           status?: string
           tm_match_score?: number | null
@@ -1553,13 +1539,11 @@ export type Database = {
           created_at: string
           document_id: string | null
           genre: string
-          glossary: Json
           id: string
           project_id: string | null
           source_lang: string
           source_ref: string | null
           status: string
-          style: string
           target_lang: string
           title: string
           updated_at: string
@@ -1569,13 +1553,11 @@ export type Database = {
           created_at?: string
           document_id?: string | null
           genre?: string
-          glossary?: Json
           id?: string
           project_id?: string | null
           source_lang?: string
           source_ref?: string | null
           status?: string
-          style?: string
           target_lang?: string
           title: string
           updated_at?: string
@@ -1585,13 +1567,11 @@ export type Database = {
           created_at?: string
           document_id?: string | null
           genre?: string
-          glossary?: Json
           id?: string
           project_id?: string | null
           source_lang?: string
           source_ref?: string | null
           status?: string
-          style?: string
           target_lang?: string
           title?: string
           updated_at?: string
