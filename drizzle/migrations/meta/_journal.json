@@ -15,6 +15,13 @@
       "when": 1792674226906,
       "tag": "0001_research_sessions_folder",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792674248871,
+      "tag": "0002_translation_review",
+      "breakpoints": true
     }
   ]
 }
