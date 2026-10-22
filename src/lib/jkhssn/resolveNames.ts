@@ -46,13 +46,12 @@ export async function resolveNarratorNames(rawyIds: number[]): Promise<Map<numbe
   if (missing.length === 0) return out;
 
   try {
-    const { data, error } = await supabase
-      .from("scholarly_documents")
-      .select("citation_ref, source_url, title")
-      .eq("domain", "islamicurdubooks-rijal")
-      .in("citation_ref->>rawy_id", missing.map(String))
-      .limit(missing.length * 2);
+    // Through the server: the browser can no longer read this table directly.
+    const { data: reply, error } = await supabase.functions.invoke("corpus-reads", {
+      body: { action: "narrator-names", rawyIds: missing },
+    });
     if (error) throw error;
+    const data = (reply as { rows?: Array<{ citation_ref: unknown; source_url: string | null; title: string | null }> } | null)?.rows;
 
     for (const row of data ?? []) {
       const cr = readCitation(row.citation_ref);
