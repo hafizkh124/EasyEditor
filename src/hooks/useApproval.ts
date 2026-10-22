@@ -2,6 +2,35 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+/**
+ * useApproval is mounted by the route guard, the gate, the account menu, the
+ * banner and the page at once; each used to issue its own profile + has_role
+ * pair (3x each on one load). Concurrent and just-finished reads for the same
+ * user now share one request; `refetch` bypasses it.
+ */
+const SHARE_MS = 5_000;
+let shared: { userId: string; at: number; promise: ReturnType<typeof fetchRaw> } | null = null;
+
+function fetchRaw(userId: string) {
+  return Promise.all([
+    supabase
+      .from("profiles")
+      .select("is_approved, rejection_status, rejection_reason, whatsapp_number, display_name")
+      .eq("user_id", userId)
+      .single(),
+    supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
+  ]);
+}
+
+function fetchShared(userId: string, force: boolean) {
+  if (!force && shared && shared.userId === userId && Date.now() - shared.at < SHARE_MS) {
+    return shared.promise;
+  }
+  const promise = fetchRaw(userId);
+  shared = { userId, at: Date.now(), promise };
+  return promise;
+}
+
 export const useApproval = () => {
   // P2: Use session from AuthContext instead of redundant auth calls
   const { user, session } = useAuth();
@@ -13,7 +42,7 @@ export const useApproval = () => {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async (force = true) => {
     if (!user || !session) {
       setIsApproved(null);
       setIsAdmin(false);
@@ -25,14 +54,7 @@ export const useApproval = () => {
       return;
     }
     const userId = session.user.id;
-    const [profileRes, roleRes] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("is_approved, rejection_status, rejection_reason, whatsapp_number, display_name")
-        .eq("user_id", userId)
-        .single(),
-      supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
-    ]);
+    const [profileRes, roleRes] = await fetchShared(userId, force);
 
     // A failed request is NOT a "not approved" answer. Collapsing the two sent
     // users whose profile fetch merely failed (offline, transient 5xx) to
@@ -72,7 +94,7 @@ export const useApproval = () => {
   }, [user, session]);
 
   useEffect(() => {
-    fetchStatus();
+    fetchStatus(false);
   }, [fetchStatus]);
 
   return {
@@ -83,6 +105,6 @@ export const useApproval = () => {
     profileComplete,
     displayName,
     loading,
-    refetch: fetchStatus,
+    refetch: () => fetchStatus(true),
   };
 };
