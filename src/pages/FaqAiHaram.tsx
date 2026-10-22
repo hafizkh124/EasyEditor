@@ -151,21 +151,17 @@ const FaqAiHaram = () => {
               : "Get answers from Quran & Hadith with citations"}
           </h3>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/signup">
-              <Button size="lg" className="h-11 gap-2 px-5">
+            <Button asChild size="lg" className="h-11 gap-2 px-5"><Link to="/signup">
                 {lang === "ar" ? "إنشاء حساب" : lang === "ur" ? "اکاؤنٹ بنائیں" : "Create account"}
                 <ArrowRight className="h-4 w-4 rtl:rotate-180" />
-              </Button>
-            </Link>
-            <Link to="/about">
-              <Button variant="outline" size="lg" className="h-11 px-5">
+              </Link></Button>
+            <Button asChild variant="outline" size="lg" className="h-11 px-5"><Link to="/about">
                 {lang === "ar"
                   ? "تعرّف على مهمّتنا"
                   : lang === "ur"
                   ? "ہمارے مشن کے بارے میں مزید جانیں"
                   : "Learn more about our mission"}
-              </Button>
-            </Link>
+              </Link></Button>
           </div>
         </div>
       </article>

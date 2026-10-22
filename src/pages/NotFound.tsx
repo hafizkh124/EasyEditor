@@ -26,12 +26,10 @@ const NotFound = () => {
         <p className="text-sm text-muted-foreground max-w-xs mx-auto">
           {t("notfound.description")}
         </p>
-        <Link to="/">
-          <Button className="gap-2 mt-2">
+        <Button asChild className="gap-2 mt-2"><Link to="/">
             <Home className="h-4 w-4" />
             {t("notfound.return_home")}
-          </Button>
-        </Link>
+          </Link></Button>
       </div>
     </div>
   );
