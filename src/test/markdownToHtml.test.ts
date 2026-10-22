@@ -92,6 +92,20 @@ describe("deriveTitleFromText", () => {
     expect(deriveTitleFromText("**زور دار** عنوان")).toBe("زور دار عنوان");
   });
 
+  it("skips page markers, rules and the answer banner", () => {
+    expect(deriveTitleFromText("--- صفحہ 1 ---\nنماز کا طریقہ")).toBe("نماز کا طریقہ");
+    expect(deriveTitleFromText("---\n\nبسم اللہ")).toBe("بسم اللہ");
+    expect(deriveTitleFromText("## 📝 جواب / Answer\n\nزکوٰۃ کے احکام")).toBe("زکوٰۃ کے احکام");
+  });
+
+  it("drops a leading emoji from a real title", () => {
+    expect(deriveTitleFromText("📚 کتاب کا خلاصہ")).toBe("کتاب کا خلاصہ");
+  });
+
+  it("returns empty when nothing but banners exist", () => {
+    expect(deriveTitleFromText("--- صفحہ 3 ---\n---")).toBe("");
+  });
+
   it("truncates long titles with an ellipsis", () => {
     const long = "ا".repeat(80);
     const title = deriveTitleFromText(long, 60);
