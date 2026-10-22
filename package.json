@@ -35,6 +35,7 @@
     "smoke:functions:json": "node scripts/smoke-edge-functions.mjs --json",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:web": "playwright test -c playwright.web.config.ts",
     "release:patch": "npm version patch && npm run build",
     "release:minor": "npm version minor && npm run build",
     "release:major": "npm version major && npm run build",
@@ -209,6 +210,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@eslint/js": "^9.32.0",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/typography": "^0.5.16",

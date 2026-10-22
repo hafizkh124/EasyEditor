@@ -31,6 +31,10 @@ dist-ssr
 .env.development
 .env.production
 .env.staging
+.env.test
+e2e/.auth/
+test-results/
+playwright-report/
 
 # Editor directories and files
 .vscode/*

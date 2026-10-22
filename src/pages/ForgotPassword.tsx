@@ -6,7 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { toast } from "sonner";
 
 const ForgotPassword = () => {
@@ -34,7 +34,7 @@ const ForgotPassword = () => {
     <div className="flex min-h-screen items-center justify-center bg-background p-4" dir={direction}>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle>{t("auth.forgot_password")}</CardTitle>
+          <h1 className="text-2xl font-semibold leading-none tracking-tight">{t("auth.forgot_password")}</h1>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleReset} className="space-y-4">

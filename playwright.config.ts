@@ -8,6 +8,8 @@ import { defineConfig } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
+  // The browser specs have their own config: playwright.web.config.ts.
+  testIgnore: "**/web/**",
   timeout: 60_000,
   // Electron cold-starts one instance at a time in CI; there is exactly one
   // spec today, so parallelism buys nothing and only adds flakiness risk.
