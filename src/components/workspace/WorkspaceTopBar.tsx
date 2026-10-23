@@ -217,7 +217,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
         {/* Export dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 px-2 hidden sm:flex">
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 px-2 hidden sm:flex" aria-label={t("editor.download", "Download")} title={t("editor.download", "Download")}>
               <Download className="h-3.5 w-3.5" />
               <ChevronDown className="h-3.5 w-3.5 opacity-60" />
             </Button>
