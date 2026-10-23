@@ -1,6 +1,6 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ChevronDown, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -38,6 +38,21 @@ export const WorkspaceAppMenu: React.FC = () => {
   const profile = entryFor("profile");
 
   return (
+    <>
+    {/* The logo menu below is where the tools live, but nothing about a logo and a
+        chevron says "this takes me back". A plain Home button does (QA: new users
+        did not find the way out of the workspace). From `sm`; a phone has its own. */}
+    <Button
+      asChild
+      variant="ghost"
+      size="sm"
+      className="hidden h-8 shrink-0 gap-1.5 px-2 text-xs sm:inline-flex"
+    >
+      <Link to={dashboard?.route ?? "/dashboard"} aria-label={t("nav.home", "Home")} title={t("nav.home", "Home")}>
+        <Home className="h-4 w-4" aria-hidden="true" />
+        <span className="hidden lg:inline">{t("nav.home", "Home")}</span>
+      </Link>
+    </Button>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -96,5 +111,6 @@ export const WorkspaceAppMenu: React.FC = () => {
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   );
 };

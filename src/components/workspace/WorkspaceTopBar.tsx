@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   FileText, Download, CheckCircle2, Loader2, AlertCircle,
-  ChevronDown, FileType, FileCode, File, Search, PanelRight, PanelLeft,
+  ChevronDown, ShieldCheck, FileType, FileCode, File, Search, PanelRight, PanelLeft,
   Languages, MoreHorizontal, History, ChevronsUpDown, AudioLines, X, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { formatTranslation } from "@/lib/i18n";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { VersionHistorySheet } from "./VersionHistorySheet";
+import { AiActivitySheet } from "./AiActivitySheet";
 import { exportTxt, exportHtml, exportDoc, exportPdf, stripSuggestions } from "@/lib/editor/exporters";
 import { splitChaptersFromHtml } from "@/lib/audiobook/splitChapters";
 import { isDesktop, modifierKeyLabel } from "@/utils/environment";
@@ -55,6 +56,7 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
   // The Versions trigger button is `hidden sm:flex` — controlled state gives the
   // mobile overflow menu a second way in without duplicating the sheet.
   const [versionsOpen, setVersionsOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   // SPEC-M5 FR-6.9: whole document → .mp3 with chapter marks. Desktop only —
   // it runs on the local Piper voices in the main process. Ported from the
@@ -214,6 +216,14 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
           />
         )}
 
+        {doc?.id && (
+          <AiActivitySheet
+            side={direction === "rtl" ? "left" : "right"}
+            open={activityOpen}
+            onOpenChange={setActivityOpen}
+          />
+        )}
+
         {/* Export dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -302,6 +312,11 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
               {doc?.id && (
                 <DropdownMenuItem onClick={() => setVersionsOpen(true)} className="gap-2">
                   <History className="h-4 w-4" /> {t("library.versions", "Versions")}
+                </DropdownMenuItem>
+              )}
+              {doc?.id && (
+                <DropdownMenuItem onClick={() => setActivityOpen(true)} className="gap-2">
+                  <ShieldCheck className="h-4 w-4" /> {t("workbench.trust", "AI activity")}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={toggleDirection} className="gap-2">

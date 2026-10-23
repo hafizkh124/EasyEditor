@@ -1,10 +1,9 @@
 import React from "react";
-import { ShieldCheck, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResearchPanel } from "@/components/research/ResearchPanel";
 import { StudyPanel } from "./StudyPanel";
-import { TrustPanel } from "./TrustPanel";
 import { useWorkspace } from "@/core/workspace/WorkspaceContext";
 import { type WorkbenchTab } from "@/core/workspace/usePanelState";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -51,12 +50,6 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
   const { workbenchCollapsed, setWorkbenchOpen, workbenchTab, setWorkbenchTab } = useWorkspace();
   const { t } = useLanguage();
   const hidden = workbenchCollapsed && !alwaysVisible;
-  // Tasks + Trust (now one merged "trust" tab, TrustPanel.tsx) are both
-  // Pillar A/C surfaces, so they ride the flag SPEC-M3 §4.3 defines. (An
-  // extra `VITE_TRUST_UI` flag would be a fourth, undocumented switch that
-  // `.env.example` never mentions.)
-  const showTaskTabs = import.meta.env.VITE_TASK_LIBRARY !== "false";
-
   const baseTabs = React.useMemo(
     () =>
       availableCapabilities("workbench-tab")
@@ -69,8 +62,7 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
   // still name "translate" after the same document is opened on desktop. Without
   // this the Workbench renders a tab strip with no panel under it.
   const activeTabAvailable =
-    baseTabs.some((entry) => entry.value === workbenchTab)
-    || (showTaskTabs && workbenchTab === "trust");
+    baseTabs.some((entry) => entry.value === workbenchTab);
   React.useEffect(() => {
     if (!activeTabAvailable && baseTabs.length > 0) setWorkbenchTab(baseTabs[0].value);
   }, [activeTabAvailable, baseTabs, setWorkbenchTab]);
@@ -95,7 +87,7 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
               text a screen reader or a hovering user ever gets. */}
           {/* h-11 (44px, min-h-touch) below md, h-7 once a mouse is the input —
               same split as LibraryPanel's tab strip. Triggers fill via h-full. */}
-          <TabsList className={`grid ${GRID_COLS[baseTabs.length + (showTaskTabs ? 1 : 0)]} h-11 md:h-7 bg-muted p-0.5`}>
+          <TabsList className={`grid ${GRID_COLS[baseTabs.length]} h-11 md:h-7 bg-muted p-0.5`}>
             {baseTabs.map(({ capability, value }) => {
               const label = t(capability.labelKey, capability.fallbackLabel);
               const Icon = capability.icon;
@@ -113,16 +105,6 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
               );
             })}
 
-            {/* M10 Phase 3 §3.6 — Tasks + Trust merged into one "trust" tab
-                (TrustPanel.tsx's own inner segmented control switches between
-                them); this outer trigger only needs the combined tab's own
-                identity, not two. */}
-            {showTaskTabs && (
-              <TabsTrigger value="trust" className="text-xs h-full py-0 gap-1 px-1" title={t("workbench.trust", "Trust")} aria-label={t("workbench.trust", "Trust")}>
-                <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-success" />
-                <span className="truncate">{t("workbench.trust", "Audit")}</span>
-              </TabsTrigger>
-            )}
           </TabsList>
         </Tabs>
 
@@ -146,11 +128,6 @@ export const WorkbenchPanel: React.FC<WorkbenchPanelProps> = ({ alwaysVisible = 
         <div className={`h-full ${workbenchTab === "research" ? "block" : "hidden"}`}>
           <ResearchPanel />
         </div>
-        {showTaskTabs && (
-          <div className={`h-full ${workbenchTab === "trust" ? "block" : "hidden"}`}>
-            <TrustPanel />
-          </div>
-        )}
       </div>
     </div>
   );

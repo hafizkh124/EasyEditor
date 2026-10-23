@@ -56,11 +56,13 @@ function renderWorkbench() {
 }
 
 describe("Workbench tab consolidation (M10 Phase 3 §3.6)", () => {
-  it("shows exactly three outer tabs: Study, Research, Audit", () => {
+  it("shows exactly two outer tabs: Study and Research", () => {
     renderWorkbench();
     expect(screen.getByTitle("Study")).toBeInTheDocument();
     expect(screen.getByTitle("Research")).toBeInTheDocument();
-    expect(screen.getByTitle("Audit")).toBeInTheDocument();
+    // The AI-activity record moved to the top bar (AiActivitySheet), not a tab.
+    expect(screen.queryByTitle("AI activity")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Audit")).not.toBeInTheDocument();
     expect(screen.queryByTitle("Translate")).not.toBeInTheDocument();
     // The retired standalone tabs no longer exist at the outer level.
     expect(screen.queryByTitle("AI Reader")).not.toBeInTheDocument();
@@ -84,15 +86,5 @@ describe("Workbench tab consolidation (M10 Phase 3 §3.6)", () => {
     // Switching the inner sub-view never remounted either stub.
     expect(mountCounts.aiReader).toBe(1);
     expect(mountCounts.notes).toBe(1);
-  });
-
-  it("Trust is just the audit trail — skills are managed in Settings now", () => {
-    mountCounts.trust = 0;
-    renderWorkbench();
-
-    selectTab(screen.getByTitle("Audit"));
-    expect(screen.getByTestId("trust-panel")).toBeInTheDocument();
-    expect(screen.queryByText("Tasks")).not.toBeInTheDocument();
-    expect(mountCounts.trust).toBe(1);
   });
 });
