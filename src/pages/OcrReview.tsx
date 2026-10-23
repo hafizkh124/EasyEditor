@@ -125,7 +125,7 @@ const OcrReview = () => {
         {currentPageData?.imageBase64 ? (
           <img
             src={`data:image/jpeg;base64,${currentPageData.imageBase64}`}
-            alt={`Page ${review.currentPage}`}
+            alt={t("translate.page_alt", "صفحہ {page}").replace("{page}", String(review.currentPage))}
             className="max-w-full rounded-lg border border-border shadow-sm"
           />
         ) : (

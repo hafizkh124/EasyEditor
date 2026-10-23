@@ -52,6 +52,8 @@ const MaktabaShamilaGuide = lazy(() => import("./pages/guides/MaktabaShamila"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const ConnectDevice = lazy(() => import("./pages/ConnectDevice"));
 
+import { OfflineBanner } from "./components/OfflineBanner";
+
 const queryClient = new QueryClient();
 
 const PageLoader = () => (
@@ -133,6 +135,7 @@ const App = () => {
               <ErrorBoundary>
                 <LocalePrefixSync />
                 <JobNotices />
+                <OfflineBanner />
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                   <Route path="/login" element={<Login />} />

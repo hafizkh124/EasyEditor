@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useApproval } from "@/hooks/useApproval";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Navigate } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
 import AppLayout from "@/components/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -73,7 +74,18 @@ const Admin = () => {
     tierLabel,
   } = useAdminUsers(verified);
 
-  if (approvalLoading || verifying) return null;
+  // Was `null`: a blank page for the second or two the role check takes.
+  if (approvalLoading || verifying) {
+    return (
+      <AppLayout>
+        <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4" aria-busy="true">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-full max-w-md" />
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      </AppLayout>
+    );
+  }
   if (!isAdmin || !verified) return <Navigate to="/dashboard" replace />;
 
   const upgradeRequests = users.filter((u) => u.upgrade_requested);

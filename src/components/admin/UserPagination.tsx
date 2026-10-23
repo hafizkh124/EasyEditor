@@ -49,7 +49,7 @@ const UserPagination = ({ pagination, onPageChange, onPageSizeChange }: UserPagi
             className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
             disabled={page <= 1}
             onClick={() => onPageChange(1)}
-            aria-label="First page"
+            aria-label={t("admin.page_first", "First page")}
           >
             <ChevronsLeft className="h-3.5 w-3.5" />
           </Button>
@@ -59,7 +59,7 @@ const UserPagination = ({ pagination, onPageChange, onPageSizeChange }: UserPagi
             className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
-            aria-label="Previous page"
+            aria-label={t("translate.prev_page", "Previous page")}
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
@@ -72,7 +72,7 @@ const UserPagination = ({ pagination, onPageChange, onPageSizeChange }: UserPagi
             className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
-            aria-label="Next page"
+            aria-label={t("translate.next_page", "Next page")}
           >
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
@@ -82,7 +82,7 @@ const UserPagination = ({ pagination, onPageChange, onPageSizeChange }: UserPagi
             className="h-7 w-7 min-h-touch min-w-touch md:min-h-0 md:min-w-0"
             disabled={page >= totalPages}
             onClick={() => onPageChange(totalPages)}
-            aria-label="Last page"
+            aria-label={t("admin.page_last", "Last page")}
           >
             <ChevronsRight className="h-3.5 w-3.5" />
           </Button>
