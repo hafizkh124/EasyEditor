@@ -80,6 +80,17 @@ test.describe("signed in", () => {
     });
   }
 
+  // A page with no sidebar and no way back traps the user (/translate-book/:id once did).
+  for (const path of ["/dashboard", "/files", "/settings", "/workspace", "/extract", "/speak", "/translate-book", "/pricing", "/profile"]) {
+    test(`${path} has a visible way to the rest of the app`, async ({ page }) => {
+      await page.goto(path, { waitUntil: "networkidle" });
+      const exits = page.locator(
+        'a[href="/dashboard"]:visible, a[href="/files"]:visible, a[href="/"]:visible, nav:visible a:visible, button[aria-label]:visible:is([aria-label*="Back"], [aria-label*="واپس"], [aria-label*="رجوع"], [aria-label*="Home"], [aria-label*="ہوم"])',
+      );
+      await expect(exits.first(), `no visible exit on ${path}`).toBeVisible();
+    });
+  }
+
   test("dates follow the app language, not the browser's", async ({ page }) => {
     await page.goto("/files", { waitUntil: "networkidle" });
     const lang = await page.locator("html").getAttribute("lang");

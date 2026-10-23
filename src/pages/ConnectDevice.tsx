@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSeo } from "@/hooks/useSeo";
@@ -131,6 +131,11 @@ export default function ConnectDevice() {
                 {phase === "confirming" ? <Loader2 className="h-4 w-4 animate-spin" /> : t("connect_device.confirm")}
               </Button>
             </>
+          )}
+          {phase !== "loading" && (
+            <Button asChild variant="ghost" size="sm" className="w-full text-muted-foreground">
+              <Link to="/dashboard">{t("nav.home", "Home")}</Link>
+            </Button>
           )}
         </CardContent>
       </Card>

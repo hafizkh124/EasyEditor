@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { isRtlText } from "@/utils/textUtils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { PageBack } from "@/components/layout/PageBack";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOptionalWorkspace } from "@/core/workspace/WorkspaceContext";
 import { editorRoute } from "@/lib/routes";
@@ -191,6 +192,7 @@ export default function TranslateBook() {
   return (
     <div className="flex flex-col h-dvh bg-background">
       <header className="flex flex-wrap items-center gap-2 px-3 h-auto min-h-12 py-2 border-b border-border shrink-0">
+        <PageBack />
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <Languages className="h-4 w-4 text-primary shrink-0" />
           <p className="text-sm font-medium truncate">
